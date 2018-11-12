@@ -1,0 +1,9 @@
+-e git+ssh://git@github.com/codecov/torngit.git@python-3#egg=torngit
+amqp==2.3.2
+billiard==3.5.0.4
+celery==4.2.1
+kombu==4.2.1
+pkg-resources==0.0.0
+pytz==2018.7
+redis==2.10.6
+vine==1.1.4
