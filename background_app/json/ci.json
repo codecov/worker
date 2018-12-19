@@ -1,0 +1,177 @@
+{
+  "travis": {
+    "title": "Travis-CI",
+    "icon": "travis",
+    "require_token_when_public": false,
+    "instructions": "travis",
+    "build_url": "https://travis-ci.{tld}/{owner[username]}/{repo[name]}/jobs/{session.job}"
+  },
+  "azure-pipelines": {
+    "title": "Azure",
+    "icon": "custom",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "azure_pipelines": {
+    "title": "Azure",
+    "icon": "custom",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "azure-devops": {
+    "title": "Azure",
+    "icon": "custom",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "docker": {
+    "title": "Docker",
+    "icon": "custom",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "buildbot": {
+    "title": "Buildbot",
+    "icon": "buildbot",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "codefresh": {
+    "title": "Codefresh",
+    "icon": "custom",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": "https://g.codefresh.io/repositories/{owner[username]}/{repo[name]}/builds/{session.build}"
+  },
+  "circleci": {
+    "title": "CircleCI",
+    "icon": "circleci",
+    "require_token_when_public": false,
+    "instructions": "circleci",
+    "build_url": "https://circleci.com/gh/{owner[username]}/{repo[name]}/{session.build}#tests/containers/{session.job}"
+  },
+  "buddybuild": {
+    "title": "buddybuild",
+    "icon": "custom",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "solano": {
+    "title": "Solano",
+    "icon": "custom",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "teamcity": {
+    "title": "TeamCity",
+    "icon": "teamcity",
+    "require_token_when_public": true,
+    "instructions": "teamcity",
+    "build_url": null
+  },
+  "appveyor": {
+    "title": "AppVeyor",
+    "icon": "appveyor",
+    "require_token_when_public": false,
+    "instructions": "appveyor",
+    "build_url": "https://ci.appveyor.com/project/{owner[username]}/{repo[name]}/build/job/{session.build}"
+  },
+  "wercker": {
+    "title": "Wercker",
+    "icon": "wercker",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": "https://app.wercker.com/#build/{session.build}"
+  },
+  "shippable": {
+    "title": "Shippable",
+    "icon": "shippable",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null  
+  },
+  "codeship": {
+    "title": "Codeship",
+    "icon": "codeship",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null  
+  },
+  "drone.io": {
+    "title": "Drone.io",
+    "icon": "drone.io",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null  
+  },
+  "jenkins": {
+    "title": "Jenkins",
+    "icon": "jenkins",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null  
+  },
+  "semaphore": {
+    "title": "Semaphore",
+    "icon": "semaphore",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": "https://semaphoreapp.com/{owner[username]}/{repo[name]}/branches/{commit[branch]}/builds/{session.build}"
+  },
+  "gitlab": {
+    "title": "GitLab CI",
+    "icon": "gitlab",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": "https://gitlab.com/{owner[username]}/{repo[name]}/builds/{session.build}"
+  },
+  "bamboo": {
+    "title": "Bamboo",
+    "icon": "bamboo",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "buildkite": {
+    "title": "BuildKite",
+    "icon": "buildkite",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null  
+  },
+  "bitrise": {
+    "title": "Bitrise",
+    "icon": "bitrise",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null  
+  },
+  "greenhouse": {
+    "title": "Greenhouse",
+    "icon": "greenhouse",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "heroku": {
+    "title": "Heroku",
+    "icon": "heroku",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null
+  },
+  "custom": {
+    "title": "Custom",
+    "icon": "custom",
+    "require_token_when_public": true,
+    "instructions": "generic",
+    "build_url": null  
+  }
+}

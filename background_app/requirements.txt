@@ -1,4 +1,4 @@
--e git+ssh://git@github.com/codecov/torngit.git@python-3#egg=torngit
+-e git+ssh://git@github.com/codecov/torngit.git@migration-to-3/adding-circle-ci#egg=torngit
 amqp==2.3.2
 billiard==3.5.0.4
 celery==4.2.1

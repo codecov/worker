@@ -2,31 +2,29 @@ import logging
 from json import dumps, loads
 
 import torngit
-from app import config
 
-from app.helpers import yaml_join
-from config import PEM
-from database.engine import get_db_session
 from services.encryption import adjust_token
-from services.redis import get_redis_connection
+from services.pem import get_pem
+
+from helpers.config import config
+from helpers.yml import yaml_join
 
 log = logging.getLogger(__name__)
 
 
-def get_repo(repoid, commitid=None, use_integration=True):
-    _timeouts = [
-        config.get(('setup', 'http', 'timeouts', 'connect'), 15),
-        config.get(('setup', 'http', 'timeouts', 'receive'), 30)
-    ]
-    db = get_db_session()
-    redis = get_redis_connection()
+def get_repo(db_session, redis_connection, repoid, commitid=None, use_integration=True):
+    # _timeouts = [
+    #     config.get(('setup', 'http', 'timeouts', 'connect'), 15),
+    #     config.get(('setup', 'http', 'timeouts', 'receive'), 30)
+    # ]
     cache_key = 'repo@%s' % str(repoid)
-    repo = redis.get(cache_key)
+    repo = redis_connection.get(cache_key)
     if repo:
         repo = loads(repo)
     else:
-        repo = db.get("SELECT get_repo(%s::int) limit 1;", repoid)['get_repo']
-        redis.setex(cache_key, 60, dumps(repo))
+        repo = db_session.execute('SELECT get_repo(:repoid)', {'repoid': repoid})
+        repo = repo.first()[0]
+        redis_connection.setex(cache_key, 60, dumps(repo))
     assert repo, 'repo-not-found'
     # create the repo
     service = repo['service']
@@ -37,7 +35,7 @@ def get_repo(repoid, commitid=None, use_integration=True):
     if (
         use_integration and
         service.startswith('github') and
-        PEM.get(service) and
+        get_pem(service) and
         repo.get('integration_id')
     ):
         key = get_github_integration_token(service, repo.pop('integration_id'))

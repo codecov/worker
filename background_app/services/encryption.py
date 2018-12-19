@@ -4,12 +4,14 @@ from Crypto import Random
 from Crypto.Cipher import AES
 from base64 import b64decode, b64encode
 
-from app import config
 
+config = {}
 
-KEY = hashlib.sha256(''.join((config.get(('setup', 'encryption_secret'), '').encode(),
-                              os.getenv('ENCRYPTION_SECRET', '').encode(),
-                              'fYaA^Bj&h89,hs49iXyq]xARuCg'.encode()))).digest()
+secret = 'fYaA^Bj&h89,hs49iXyq]xARuCg'
+encryption_secret = config.get(('setup', 'encryption_secret'), '')
+joined = ''.join((encryption_secret, os.getenv('ENCRYPTION_SECRET', ''), secret))
+
+KEY = hashlib.sha256(joined.encode()).digest()
 
 BS = 16
 

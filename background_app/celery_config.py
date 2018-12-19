@@ -1,63 +1,6 @@
 # http://docs.celeryq.org/en/latest/configuration.html#configuration
-import os
-import sys
-import logging
-import requests
-import tornpsql
-import threading
-from celery import signals
-from redis import StrictRedis
 
 from app import config
-from app import metrics
-from app import logconfig
-
-
-db_conn = None
-
-redis_conn = None
-
-# http://docs.python-requests.org/en/master/user/advanced/#session-objects
-aws_session = None
-
-
-def task_name(sender):
-    try:
-        return sender.name.split('.')[-1].lower()
-    except Exception:
-        return sender.split('.')[-1].lower()
-
-
-@signals.worker_process_init.connect
-def init_worker(**kwargs):
-    from Crypto import Random
-    Random.atfork()
-
-    global db_conn
-    global redis_conn
-    global aws_session
-    db_conn = tornpsql.Connection(config.get(('services', 'database_url')),
-                                  enable_logging=config.get(('setup', 'debug')))
-    redis_conn = StrictRedis.from_url(config.get(('services', 'redis_url')))
-    aws_session = requests.Session()
-
-
-@signals.worker_process_shutdown.connect
-def shutdown_worker(**kwargs):
-    global db_conn
-    global redis_conn
-    if db_conn:
-        db_conn.close()
-    if redis_conn:
-        del redis_conn
-
-
-@signals.setup_logging.connect
-def initialize_logging(loglevel=logging.INFO, **kwargs):
-    log = logging.getLogger('celery')
-    log.addHandler(logging.StreamHandler(sys.stdout))
-    log.setLevel(loglevel)
-    return log
 
 
 BROKER_URL = config.get(('services', 'celery_broker'))
