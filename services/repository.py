@@ -35,7 +35,6 @@ def get_repo(db_session, redis_connection, repoid, commitid=None, use_integratio
     if (
         use_integration and
         service.startswith('github') and
-        get_pem(service) and
         repo.get('integration_id')
     ):
         key = get_github_integration_token(service, repo.pop('integration_id'))

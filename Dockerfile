@@ -1,12 +1,11 @@
-FROM python:3.7-alpine
+FROM python:3.6-alpine
 
-RUN \
- apk add --no-cache postgresql-libs && \
- apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev python3-dev
-COPY background_app app
+RUN apk add --no-cache --virtual .build-deps autoconf gcc git
+COPY . app
 
 WORKDIR app
 
+ENV C_FORCE_ROOT true
 RUN pip install -r requirements.txt
 
-RUN celery worker
+ENTRYPOINT celery -A tasks worker --loglevel=info
