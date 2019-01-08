@@ -1,5 +1,6 @@
 import logging
 
+from app import celery_app
 from tasks.base import BaseCodecovTask
 from helpers import archive
 from services.repository import get_repo
@@ -10,6 +11,7 @@ log = logging.getLogger(__name__)
 class FlushRepo(BaseCodecovTask):
 
     async def run_async(self, db_session, repoid, *args, **kwargs):
+        log.info("in flush_repo tas  task_id: %s" % repoid)
         # delete archives
         repository = get_repo(db_session, repoid, commitid=None, use_integration=True)
         archive.delete_from_archive('v4/repos/{}/'.format(

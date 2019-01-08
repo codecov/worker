@@ -86,7 +86,6 @@ class SyncPlans(BaseCodecovTask):
                                        headers=headers)
                     res.raise_for_status()
                     body = res.json()
-                    print 'account', body
 
                     if len(body) == 0:
                         # next plan
