@@ -8,7 +8,7 @@ services:
             - CELERY_RESULT_BACKEND=redis://redis:6379/0
         build:
             context: .
-            dockerfile: Dockerfile  
+            dockerfile: Dockerfile.dev 
         volumes:
             - .:/app
         depends_on:
