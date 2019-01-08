@@ -4,13 +4,13 @@ from json import dumps, loads
 import torngit
 
 from services.encryption import adjust_token
-from services.pem import get_pem
 
 from helpers.config import config
-from helpers.yml import yaml_join
+
 
 log = logging.getLogger(__name__)
 
+# TODO(Subhi/Thiago): this function needs to be re-written since it includes a lot of legacy old code
 
 def get_repo(db_session, redis_connection, repoid, commitid=None, use_integration=True):
     # _timeouts = [
@@ -57,7 +57,10 @@ def get_repo(db_session, redis_connection, repoid, commitid=None, use_integratio
             username=repo.pop('username')),
         _yaml_location=repo.pop('_yaml_location'),
         token=repo.pop('token') or config.get((service, 'bot')),
-        yaml=yaml_join(org_yaml, repo.pop('yaml')),
+        # TODO (Subhi/Thiago)
+        # Yaml join was commented out for now so we don't bring code from the main app
+        # that is not refactored
+        # yaml=yaml_join(org_yaml, repo.pop('yaml')),
         repo=repo,
         verify_ssl=config.get_verify_ssl(service),
         org_yaml=org_yaml,  # we may use it later
