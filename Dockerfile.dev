@@ -1,6 +1,6 @@
 FROM python:3.6-alpine
 
-RUN apk add --no-cache --virtual .build-deps gcc musl-dev gcc git
+RUN apk add --no-cache --virtual .build-deps gcc musl-dev git
 RUN mkdir -p /app
 VOLUME ["/app"]
 WORKDIR /app
