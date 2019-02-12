@@ -1,0 +1,9 @@
+-e git+https://74b2d36cf710afef720fbf3dc0472241da04ceaf:x-oauth-basic@github.com/codecov/torngit.git@migration-to-3/adding-circle-ci#egg=torngit
+amqp==2.3.2
+billiard==3.5.0.4
+celery==4.2.1
+kombu==4.2.1
+pytz==2018.7
+redis==2.10.6
+vine==1.1.4
+pycrypto==2.6.1

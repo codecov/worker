@@ -1,19 +1,6 @@
-import os
-import sys
-import gzip
-import hmac
-import minio
-import requests
-import StringIO
-from time import time
-from sys import stdout
-from hashlib import sha1, md5
-from urllib import quote_plus
-from datetime import datetime, timedelta
 from base64 import encodestring, b16encode, b64encode
 
 from helpers import config
-from helpers import metrics
 
 
 def get_archive_hash(repository):
@@ -24,41 +11,6 @@ def get_archive_hash(repository):
                           repository.data['repo']['service_id'],
                           config.get(('services', 'minio', 'hash_key')) or '')))
     return b16encode(_hash.digest())
-
-
-def update_archive(path, data):
-    conf = config.get(('services', 'minio'))
-    res = requests.get(
-        '{}/{}'.format(get_archive_dsn(), path),
-        verify=conf['verify_ssl']
-    )
-    if res.status_code == 200:
-        data = '\n'.join((res.text, data))
-
-    write_to_archive(path, data)
-
-
-def write_to_archive(path, data, gzipped=False):
-
-    if not gzipped:
-        out = StringIO.StringIO()
-        with gzip.GzipFile(fileobj=out, mode='w', compresslevel=9) as gz:
-            gz.write(data)
-        data = out.getvalue()
-
-    res = requests.put(
-        get_upload_destination(path.lstrip('/')),
-        data=data,
-        verify=config.get(('services', 'minio', 'verify_ssl')),
-        timeout=30,
-        headers={
-            'Content-Type': 'text/plain',
-            'Content-Encoding': 'gzip',
-            'x-amz-acl': 'public-read'
-        }
-    )
-
-    res.raise_for_status()
 
 
 def delete_from_archive(path):
@@ -117,34 +69,6 @@ def get_archive_dsn(internally=True):
             )
         else:
             return '%s/%s' % (dsn, conf['bucket'])
-
-
-def get_upload_destination(path,
-                           content_type='text/plain',
-                           reduced_redundancy=False,
-                           internally=True):
-    conf = config.get(('services', 'minio'))
-    expires = int(time()) + (conf.get('ttl') or 10)  # ttl seconds to expire
-
-    string_to_sign = '\n'.join(('PUT', '',
-                                content_type,
-                                str(expires),
-                                (
-                                    'x-amz-acl:public-read'
-                                    + ('\nx-amz-storage-class:REDUCED_REDUNDANCY' if reduced_redundancy else '')
-                                ),
-                                '/%s/%s' % (conf['bucket'], path)))
-
-    # create upload signature
-    signature = encodestring(hmac.new(conf['secret_access_key'].encode(),
-                                      string_to_sign.encode('utf-8', 'replace'), sha1).digest())
-
-    return '{}/{}?AWSAccessKeyId={}&Expires={}&Signature={}'.format(
-        get_archive_dsn(internally), path,
-        conf['access_key_id'],
-        expires,
-        quote_plus(signature.strip())
-    )
 
 
 def get_minio_client():
