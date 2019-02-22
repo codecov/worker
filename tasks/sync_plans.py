@@ -110,7 +110,7 @@ class SyncPlans(BaseCodecovTask):
                                    and service_id not in %s;""",
                               tuple(has_a_plan))
 
-    async def sync_plan(self, service_id, purchase_object, headers, oauth_headers, oauth_args):
+    async def sync_plan(self, db_session, service_id, purchase_object, headers, oauth_headers, oauth_args):
         if not purchase_object:
             owner = db_session.execute("""UPDATE owners
                                    set plan = null,

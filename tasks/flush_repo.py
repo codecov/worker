@@ -1,9 +1,9 @@
 import logging
 
 from app import celery_app
+from database.models import Repository
 from tasks.base import BaseCodecovTask
-from helpers import archive
-from services.repository import get_repo
+from services.archive import ArchiveService
 
 log = logging.getLogger(__name__)
 
@@ -13,10 +13,9 @@ class FlushRepo(BaseCodecovTask):
     async def run_async(self, db_session, repoid, *args, **kwargs):
         log.info("in flush_repo tas  task_id: %s" % repoid)
         # delete archives
-        repository = get_repo(db_session, repoid, commitid=None, use_integration=True)
-        archive.delete_from_archive('v4/repos/{}/'.format(
-            archive.get_archive_hash(repository)
-        ))
+        repo = db_session.query(Repository).filter_by(repoid=repoid)
+        archive_service = ArchiveService(repo)
+        archive_service.delete_repo_files()
         # delete database entries
         db_session.execute("DELETE from commits where repoid=%s;", repoid)
         db_session.execute("DELETE from branches where repoid=%s;", repoid)
@@ -24,6 +23,7 @@ class FlushRepo(BaseCodecovTask):
         db_session.execute("""UPDATE repos
                          set cache=null, yaml=null, updatestamp=now()
                          where repoid=%s;""", repoid)
+
 
 FlushRepo = celery_app.register_task(FlushRepo())
 flush_repo = celery_app.tasks[FlushRepo.name]
