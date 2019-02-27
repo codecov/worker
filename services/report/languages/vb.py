@@ -1,6 +1,17 @@
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
 
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class VbProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return bool(content.tag == 'results')
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
+        return from_xml(content, path_fixer, ignored_lines, sessionid)
+
 
 def from_xml(xml, fix, ignored_lines, sessionid):
     report = Report()
@@ -21,10 +32,11 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                 if _file is not None:
                     coverage = line['covered']
                     coverage = 1 if coverage == 'yes' else 0 if coverage == 'no' else True
-                    for ln in xrange(int(line['start_line']), int(line['end_line'])+1):
+                    for ln in range(int(line['start_line']), int(line['end_line'])+1):
                         _file[ln] = ReportLine(coverage, None, [[sessionid, coverage]])
 
             # add files
-            map(report.append, file_by_source.values())
+            for v in file_by_source.values():
+                report.append(v)
 
     return report

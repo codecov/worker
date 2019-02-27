@@ -1,10 +1,20 @@
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine, LineSession
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class ElmProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return bool(content.get('coverageData'))
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_json(content, path_fixer, ignored_lines, sessionid)
 
 
 def from_json(json, fix, ignored_lines, sessionid):
     report = Report()
-    for name, data in json['coverageData'].iteritems():
+    for name, data in json['coverageData'].items():
         fn = fix(json['moduleMap'][name])
         if fn is None:
             continue

@@ -1,5 +1,5 @@
-from tests.base import TestCase
-from app.tasks.reports.languages import lua
+from tests.base import BaseTestCase
+from services.report.languages import lua
 
 
 txt = '''
@@ -42,29 +42,8 @@ Summary
 
 '''
 
-result = {
-    "files": {
-        "file.lua": {
-            "l": {
-                "1": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "3": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "5": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "4": {"c": 0, "s": [[0, 0, None, None, None]]}
-            }
-        },
-        "source.lua": {
-            "l": {
-                "3": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "2": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "5": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "4": {"c": 0, "s": [[0, 0, None, None, None]]}
-            }
-        }
-    }
-}
 
-
-class Test(TestCase):
+class TestLua(BaseTestCase):
     def test_report(self):
         def fixes(path):
             if path == 'ignore.lua':
@@ -73,9 +52,25 @@ class Test(TestCase):
             return path
 
         report = lua.from_txt(txt, fixes, {}, 0)
-        report = self.v3_to_v2(report)
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'file.lua': [
+                (1, 1, None, [[0, 1]], None, None),
+                (3, 1, None, [[0, 1]], None, None),
+                (4, 0, None, [[0, 0]], None, None),
+                (5, 0, None, [[0, 0]], None, None)
+            ],
+            'source.lua': [
+                (2, 0, None, [[0, 0]], None, None),
+                (3, 1, None, [[0, 1]], None, None),
+                (4, 0, None, [[0, 0]], None, None),
+                (5, 1, None, [[0, 1]], None, None)
+            ]
+        }
+
+        assert expected_result_archive == processed_report['archive']
 
     def test_detect(self):
         assert lua.detect('=========') is True

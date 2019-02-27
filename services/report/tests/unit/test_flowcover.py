@@ -1,5 +1,5 @@
-from tests.base import TestCase
-from app.tasks.reports.languages import flowcover
+from tests.base import BaseTestCase
+from services.report.languages import flowcover
 
 
 json = {
@@ -35,22 +35,18 @@ json = {
     }
 }
 
-result = {
-    "files": {
-        "file.js": {
-            "l": {
-                "1": {"c": 1, "s": [[0, 1, None, [[1, 5, 1]], None]]},
-                "2": {"c": 0, "s": [[0, 0, None, None, None]]}
-            }
-        }
-    }
-}
 
-
-class Test(TestCase):
+class TestFlowCover(BaseTestCase):
     def test_report(self):
         report = flowcover.from_json(json, str, {}, 0)
-        report = self.v3_to_v2(report)
-        print report
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        # import pprint
+        # pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'file.js': [
+                (1, 1, None, [[0, 1, None, [[1, 5, 1]]]], None, None),
+                (2, 0, None, [[0, 0, None, None]], None, None)
+            ]
+        }
+
+        assert expected_result_archive == processed_report['archive']

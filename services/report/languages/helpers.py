@@ -1,17 +1,8 @@
-import types as ObjTypes
-from json import JSONEncoder
-from json import dumps
 from collections import defaultdict
-from itertools import chain, groupby
+from itertools import groupby
 
-from app.helpers.sessions import Session
-from covreports.utils.tuples import ReportLine, LineSession
-from covreports.resources import ReportEncoder, Report
 from covreports.utils import merge
 
-
-
-END_OF_CHUNK = '\n<<<<< end_of_chunk >>>>>\n'
 
 def combine_partials(partials):
     """
@@ -28,7 +19,7 @@ def combine_partials(partials):
 
     columns = defaultdict(list)
     # fill in the partials WITH end values: (_, X, _)
-    [[columns[c].append(cov) for c in xrange(sc or 0, ec)]
+    [[columns[c].append(cov) for c in range(sc or 0, ec)]
      for (sc, ec, cov) in partials
      if ec is not None]
 
@@ -38,14 +29,14 @@ def combine_partials(partials):
     eol = []
 
     # fill in the partials WITHOUT end values: (_, None, _)
-    [([columns[c].append(cov) for c in xrange(sc or 0, lc)], eol.append(cov))
+    [([columns[c].append(cov) for c in range(sc or 0, lc)], eol.append(cov))
      for (sc, ec, cov) in partials
      if ec is None]
 
-    columns = [(c, merge.merge_all(cov)) for c, cov in columns.iteritems()]
+    columns = [(c, merge.merge_all(cov)) for c, cov in columns.items()]
 
     # sum all the line hits && sort and group lines based on hits
-    columns = groupby(sorted(columns), lambda (c, h): h)
+    columns = groupby(sorted(columns), lambda c: c[1])
 
     results = []
     for cov, cols in columns:
@@ -91,43 +82,8 @@ def list_to_dict(lines):
     else:
         return lines or {}
 
-def _rstrip_none(lst):
-    while lst[-1] is None:
-        lst.pop(-1)
-    return lst
 
-
-def dumps_not_none(value):
-    if isinstance(value, (list, ReportLine, LineSession)):
-        return dumps(_rstrip_none(list(value)),
-                     cls=ReportEncoder,
-                     separators=(',', ':'))
-    return value if value and value != 'null' else ''
-
-def get_paths_from_flags(repository, flags):
-    if flags:
-        from covreports.helpers.yaml import walk
-        return list(set(list(chain(*[(walk(repository, ('yaml', 'flags', flag, 'paths')) or [])
-                                     for flag in flags]))))
-    else:
-        return []
-
-
-class WithNone:
-    def __enter__(self):
-        pass
-
-    def __exit__(self, *args):
-        pass
-
-
-def process_commit(commit, flags=None):
-    if commit and commit['totals']:
-        _commit = commit.pop('report', None) or {}
-        _commit.setdefault('totals', commit.get('totals', None))
-        _commit.setdefault('chunks', commit.pop('chunks', None))
-        commit['report'] = Report(**_commit)
-        if flags:
-            commit['report'].filter(flags=flags)
-
-    return commit
+def remove_non_ascii(string, replace_with=''):
+    # ASCII control characters <=31, 127
+    # Extended ASCII characters: >=128
+    return ''.join([i if 31 < ord(i) < 127 else replace_with for i in string])

@@ -1,8 +1,8 @@
 from json import dumps, loads
 import xml.etree.cElementTree as etree
 
-from tests.base import TestCase
-from app.tasks.reports.languages import csharp
+from tests.base import BaseTestCase
+from services.report.languages import csharp
 
 
 xml = '''<?xml version="1.0" encoding="utf-8"?>
@@ -63,47 +63,8 @@ xml = '''<?xml version="1.0" encoding="utf-8"?>
 </CoverageSession>
 '''
 
-result = {
-    "files": {
-        "source": {
-            "l": {
-                "10": {
-                    "c": 2,
-                    "s": [[0, 2, None, None, None]]
-                },
-                "1": {
-                    "c": 2,
-                    "s": [[0, 2, None, None, None]]
-                },
-                "3": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]],
-                    "t": "m"
-                },
-                "2": {
-                    "c": 2,
-                    "s": [[0, 2, None, None, None]]
-                },
-                "4": {
-                    "s": [[0, 3, None, None, None]],
-                    "c": 3,
-                    "t": "m"
-                },
-                "5": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                },
-                "6": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                }
-            }
-        }
-    }
-}
 
-
-class Test(TestCase):
+class TestCSharp2(BaseTestCase):
     def test_report(self):
         def fixes(path):
             if path == 'ignore':
@@ -112,7 +73,18 @@ class Test(TestCase):
             return path
 
         report = csharp.from_xml(etree.fromstring(xml), fixes, {}, 0)
-        report = self.v3_to_v2(report)
-        print dumps(report, indent=4)
-        self.validate.report(report)
-        assert loads(dumps(result)) == report
+        processed_report = self.convert_report_to_better_readable(report)
+        # import pprint
+        # pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'source': [
+                (1, 2, None, [[0, 2, None, None, None]], None, None),
+                (2, 2, None, [[0, 2, None, None, None]], None, None),
+                (3, 0, 'm', [[0, 0, None, None, None]], None, None),
+                (4, 3, 'm', [[0, 3, None, None, None]], None, None),
+                (5, 0, None, [[0, 0, None, None, None]], None, None),
+                (6, 0, None, [[0, 0, None, None, None]], None, None),
+                (10, 2, None, [[0, 2, None, None, None]], None, None)
+            ]
+        }
+        assert expected_result_archive == processed_report['archive']

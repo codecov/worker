@@ -1,4 +1,3 @@
-// if (this.match(tt.colon) || this.match(tt.parenL) || this.match(tt.braceR)) {
 {
   "report": {
     "file.js": {

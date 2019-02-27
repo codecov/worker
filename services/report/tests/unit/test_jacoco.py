@@ -1,10 +1,10 @@
 import json
 from time import time
-from ddt import ddt, data
 import xml.etree.cElementTree as etree
+import pytest
 
-from tests.base import TestCase
-from app.tasks.reports.languages import jacoco
+from tests.base import BaseTestCase
+from services.report.languages import jacoco
 
 
 xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
@@ -47,46 +47,8 @@ xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 </report>
 '''
 
-result = {
-    "files": {
-        "base/file.java": {
-            "l": {
-                "1": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                }
-            }
-        },
-        "base/source.java": {
-            "l": {
-                "1": {
-                    "c": "2/2",
-                    "t": "m",
-                    "C": [1, 4],
-                    "s": [[0, "2/2", None, None, [1, 4]]]
-                },
-                "3": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                },
-                "2": {
-                    "c": "1/2",
-                    "t": "m",
-                    "C": [1, 4],
-                    "s": [[0, "1/2", None, None, [1, 4]]]
-                },
-                "4": {
-                    "c": 2,
-                    "s": [[0, 2, None, None, None]]
-                }
-            }
-        }
-    }
-}
 
-
-@ddt
-class Test(TestCase):
+class TestJacoco(BaseTestCase):
     def test_report(self):
         def fixes(path):
             if path == 'base/ignore':
@@ -95,14 +57,28 @@ class Test(TestCase):
             return path
 
         report = jacoco.from_xml(etree.fromstring(xml % int(time())), fixes, {}, 0, None)
-        report = self.v3_to_v2(report)
-        print json.dumps(report, indent=2)
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'base/file.java': [(1, 1, None, [[0, 1, None, None, None]], None, None)],
+            'base/source.java': [
+                (1, '2/2', 'm', [[0, '2/2', None, None, (1, 4)]], None, (1, 4)),
+                (2, '1/2', 'm', [[0, '1/2', None, None, (1, 4)]], None, (1, 4)),
+                (3, 0, None, [[0, 0, None, None, None]], None, None),
+                (4, 2, None, [[0, 2, None, None, None]], None, None)
+            ]
+        }
 
-    @data(('a', 'module_a/package/file'),
-          ('b', 'module_b/src/main/java/package/file'),)
-    def test_multi_module(self, (module, path)):
+        assert expected_result_archive == processed_report['archive']
+
+    @pytest.mark.parametrize(
+        "module, path",
+        [
+            ('a', 'module_a/package/file'),
+            ('b', 'module_b/src/main/java/package/file')
+        ])
+    def test_multi_module(self, module, path):
         data = '''<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
         <!DOCTYPE report PUBLIC "-//JACOCO//DTD Report 1.0//EN" "report.dtd">
         <report name="module_%s">
@@ -120,10 +96,10 @@ class Test(TestCase):
                 return path if 'src/main/java' in path else None
 
         report = jacoco.from_xml(etree.fromstring(data), fixes, {}, 0, None)
-        report = self.v3_to_v2(report)
-        assert [path] == report['files'].keys()
+        processed_report = self.convert_report_to_better_readable(report)
+        assert [path] == list(processed_report['archive'].keys())
 
-    @data((int(time()) - 172800), '01-01-2014')
+    @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
     def test_expired(self, date):
-        with self.assertRaisesRegexp(AssertionError, 'Jacoco report expired'):
+        with pytest.raises(AssertionError, match='Jacoco report expired'):
             jacoco.from_xml(etree.fromstring(xml % date), None, {}, 0, None)

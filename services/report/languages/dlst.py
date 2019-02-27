@@ -1,5 +1,15 @@
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class DLSTProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return bool(content[-7:] == 'covered')
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_string(name, content, path_fixer, ignored_lines, sessionid)
 
 
 def from_string(filename, string, fix, ignored_lines, sessionid):
@@ -23,7 +33,7 @@ def from_string(filename, string, fix, ignored_lines, sessionid):
         try:
             coverage = int(line.split('|', 1)[0].strip())
             _file[ln] = ReportLine(coverage, None, [[sessionid, coverage]])
-        except:
+        except Exception:
             # not a vaild line
             pass
 

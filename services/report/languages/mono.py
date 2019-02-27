@@ -1,5 +1,15 @@
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class MonoProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return bool(content.tag == 'coverage' and content.find('assembly') is not None)
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
 
 
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):

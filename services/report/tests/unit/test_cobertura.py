@@ -1,10 +1,10 @@
 from time import time
 from json import dumps
-from ddt import data, ddt
 import xml.etree.cElementTree as etree
+import pytest
 
-from tests.base import TestCase
-from app.tasks.reports.languages import cobertura
+from tests.base import BaseTestCase
+from services.report.languages import cobertura
 
 
 xml = '''<?xml version="1.0" ?>
@@ -62,70 +62,8 @@ xml = '''<?xml version="1.0" ?>
 </%scoverage>
 '''
 
-result = {
-    "files": {
-        "source": {
-            "l": {
-                "1": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                },
-                "2": {
-                    "c": "0/2",
-                    "t": "b",
-                    "s": [[0, "0/2", ["exit"], None, None]]
-                },
-                "3": {
-                    "c": "1/2",
-                    "t": "b",
-                    "s": [[0, "1/2", ["30"], None, None]]
-                },
-                "4": {
-                    "c": "2/2",
-                    "t": "b",
-                    "s": [[0, "2/2", None, None, None]]
-                },
-                "5": {
-                    "c": "2/4",
-                    "t": "b",
-                    "s": [[0, "2/4", ["0:jump", "1:jump"], None, None]]
-                },
-                "6": {
-                    "c": "2/4",
-                    "t": "b",
-                    "s": [[0, "2/4", ["0:jump", "1:jump"], None, None]]
-                },
-                "7": {
-                    "c": "0/2",
-                    "t": "b",
-                    "s": [[0, "0/2", ["loop", "exit"], None, None]]
-                }
-            }
-        },
-        "file": {
-            "l": {
-                "1": {
-                    "c": 0,
-                    "t": "m",
-                    "s": [[0, 0, None, None, None]]
-                },
-                "2": {
-                    "c": 1,
-                    "t": "b",
-                    "s": [[0, 1, None, None, None]]
-                },
-                "3": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                }
-            }
-        }
-    }
-}
 
-
-@ddt
-class Test(TestCase):
+class TestCobertura(BaseTestCase):
     def test_report(self):
         def fixes(path):
             if path == 'ignore':
@@ -134,16 +72,65 @@ class Test(TestCase):
             return path
 
         report = cobertura.from_xml(etree.fromstring(xml % ('', int(time()), '')), fixes, {}, 0, {'codecov': {'max_report_age': None}})
-        print report.to_database()
-        report = self.v3_to_v2(report)
-        print dumps(report, indent=4)
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report)
+        expected_result = {
+            'archive': {
+                'file': [
+                    (1, 0, 'm', [[0, 0]], None, None),
+                    (2, 1, 'b', [[0, 1]], None, None),
+                    (3, 1, None, [[0, 1]], None, None)
+                ],
+                'source': [
+                    (1, 1, None, [[0, 1]], None, None),
+                    (2, '0/2', 'b', [[0, '0/2', ['exit']]], None, None),
+                    (3, '1/2', 'b', [[0, '1/2', ['30']]], None, None),
+                    (4, '2/2', 'b', [[0, '2/2']], None, None),
+                    (5, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump']]], None, None),
+                    (6, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump']]], None, None),
+                    (7, '0/2', 'b', [[0, '0/2', ['loop', 'exit']]], None, None)
+                ]
+            },
+            'report': {
+                'files': {
+                    'file': [
+                        1,
+                        [0, 3, 2, 1, 0, '66.66667', 1, 1, 0, 0, 0, 0, 0],
+                        [[0, 3, 2, 1, 0, '66.66667', 1, 1, 0, 0, 0, 0, 0]],
+                        None
+                    ],
+                    'source': [
+                        0,
+                        [0, 7, 2, 2, 3, '28.57143', 6, 0, 0, 0, 0, 0, 0],
+                        [[0, 7, 2, 2, 3, '28.57143', 6, 0, 0, 0, 0, 0, 0]],
+                        None
+                    ]
+                },
+                'sessions': {}
+            },
+            'totals': {
+                'C': 0,
+                'M': 0,
+                'N': 0,
+                'b': 7,
+                'c': '40.00000',
+                'd': 1,
+                'diff': None,
+                'f': 2,
+                'h': 4,
+                'm': 3,
+                'n': 10,
+                'p': 3,
+                's': 0
+            }
+        }
+        assert processed_report == expected_result
 
-    @data((int(time()) - 172800), '01-01-2014')
+    @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
     def test_expired(self, date):
-        with self.assertRaisesRegexp(AssertionError, 'Cobertura report expired'):
+        with pytest.raises(AssertionError, match='Cobertura report expired'):
             cobertura.from_xml(etree.fromstring(xml % ('', date, '')), None, {}, None, None)
 
-        with self.assertRaisesRegexp(AssertionError, 'Cobertura report expired'):
+        with pytest.raises(AssertionError, match='Cobertura report expired'):
             cobertura.from_xml(etree.fromstring(xml % ('s', date, 's')), None, {}, None, None)

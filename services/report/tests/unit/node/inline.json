@@ -1,4 +1,3 @@
-//      if (isGenerator) this.unexpected();
 {
   "report": {
     "file.js": {

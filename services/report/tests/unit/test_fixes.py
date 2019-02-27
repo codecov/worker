@@ -1,6 +1,6 @@
 import unittest
 
-from app.tasks.reports import fixes
+from services.report import fixes
 
 
 class Test(unittest.TestCase):
@@ -25,7 +25,7 @@ class Test(unittest.TestCase):
                 'lines': set([2])
             },
             'lcov': {
-                'lines': set([10, 21] + range(11, 21)),
+                'lines': set([10, 21] + list(range(11, 21))),
             },
             'file.go': {
                 'lines': set([20, 21, 23, 50, 52, 22, 51])

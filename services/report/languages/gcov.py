@@ -3,6 +3,17 @@ import re
 from covreports.helpers.yaml import walk
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class GcovProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return detect(content)
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        settings = walk(repo_yaml, ('parsers', 'gcov'))
+        return from_txt(name, content, path_fixer, ignored_lines, sessionid, settings)
 
 
 ignored_lines = re.compile(r'(\{|\})(\s*\/\/.*)?').match
@@ -26,7 +37,9 @@ def from_txt(name, string, fix, ignored_lines, sesisonid, settings):
         return None
 
     report = Report()
-    report.append(_process_gcov_file(filename, ignored_lines.get(filename), string, sesisonid, settings))
+    report.append(
+        _process_gcov_file(filename, ignored_lines.get(filename), string, sesisonid, settings)
+    )
     return report
 
 
@@ -132,7 +145,7 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
             hit = hit.strip()
             try:
                 ln = int(ln.strip())
-            except:
+            except Exception:
                 continue
 
             if hit == '#####':
@@ -148,7 +161,7 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
             else:
                 try:
                     coverage = int(hit)
-                except:
+                except Exception:
                     # https://app.getsentry.com/codecov/v4/issues/125373723/
                     ln = None
                     continue
@@ -161,7 +174,7 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
             next_is_func = False
 
     _file = ReportFile(filename, ignore=ignore_func)
-    for ln, (coverage, _type) in lines.iteritems():
+    for ln, (coverage, _type) in lines.items():
         branches = line_branches.get(ln)
         if branches:
             coverage = '%s/%s' % tuple(branches)

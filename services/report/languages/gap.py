@@ -1,12 +1,31 @@
-from json import loads
+from json import loads, dumps
 
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class GapProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        if not isinstance(content, str):
+            # Its a list of jsons, so the system might mistake this as a json type
+            content = dumps(content)
+        return detect(content)
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        if not isinstance(content, str):
+            content = dumps(content)
+        return from_string(content, path_fixer, ignored_lines, sessionid)
 
 
 def detect(string):
     _string = string.split('\n', 1)[0]
-    return '"Type":' in _string and '"File":' in _string
+    try:
+        val = loads(_string)
+        return 'Type' in val and 'File' in val
+    except ValueError as ex:
+        return False
 
 
 def from_string(string, fix, ignored_lines, sessionid):

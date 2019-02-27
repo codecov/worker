@@ -1,8 +1,18 @@
 from collections import defaultdict
-from itertools import chain, izip, repeat
+from itertools import chain, repeat
 
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class CSharpProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return bool(content.tag == 'CoverageSession')
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
+        return from_xml(content, path_fixer, ignored_lines, sessionid)
 
 
 def _build_branches(branch_gen):
@@ -52,8 +62,8 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                 branches_get = branches.get
                 file_append = _file.append
 
-                for _type, node in chain(izip(repeat(None), method.getiterator('SequencePoint')),
-                                         izip(repeat('m'), method.getiterator('MethodPoint'))):
+                for _type, node in chain(zip(repeat(None), method.getiterator('SequencePoint')),
+                                         zip(repeat('m'), method.getiterator('MethodPoint'))):
                     attrib = node.attrib.get
                     sl, el = attrib('sl'), attrib('el')
                     if sl and el:
@@ -74,7 +84,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
 
                         # spans > 1 line
                         if el > sl:
-                            for ln in xrange(sl, el+1):
+                            for ln in range(sl, el+1):
                                 file_append(ln,
                                             ReportLine(coverage=coverage,
                                                        type=_type,
@@ -90,6 +100,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                                                    complexity=complexity))
 
     report = Report()
-    map(report.append, file_by_name.itervalues())
+    for v in file_by_name.values():
+        report.append(v)
 
     return report

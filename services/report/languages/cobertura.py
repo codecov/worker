@@ -3,12 +3,22 @@ from timestring import Date
 from covreports.helpers.yaml import walk
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class CoberturaProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return True  # TODO Fix this
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
+        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
 
 
 def Int(value):
     try:
         return int(value)
-    except:
+    except Exception:
         return int(float(value))
 
 
@@ -17,20 +27,22 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     if walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
         try:
             try:
-                timestamp = xml.getiterator('coverage').next().get('timestamp')
+                timestamp = next(xml.getiterator('coverage')).get('timestamp')
 
-            except:
-                timestamp = xml.getiterator('scoverage').next().get('timestamp')
-
+            except Exception:
+                timestamp = next(xml.getiterator('scoverage')).get('timestamp')
+            print(timestamp)
+            print(Date(timestamp))
+            print(walk(yaml, ('codecov', 'max_report_age'), '12h ago'))
+            print(Date(timestamp) > walk(yaml, ('codecov', 'max_report_age'), '12h ago'))
+            print(Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'))
+            print(Date(timestamp) == walk(yaml, ('codecov', 'max_report_age'), '12h ago'))
             if timestamp and Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
                 raise AssertionError("Cobertura report expired " + timestamp)
 
         except AssertionError:
             raise
-
-        except:
-            pass
 
     report = Report()
 
@@ -77,10 +89,9 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                         #         <condition number="0" type="jump" coverage="0%"/>
                         #     </conditions>
                         # </line>
-                        conditions.extend(map(str, xrange(len(conditions), int(coverage.split('/')[1]))))
+                        conditions.extend(map(str, range(len(conditions), int(coverage.split('/')[1]))))
                     if conditions:
                         sessions = [[sessionid, coverage, conditions]]
-
                 _file.append(ln,
                              ReportLine(coverage=coverage,
                                         type=_type,
@@ -97,7 +108,6 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 _file.append(int(stmt['line']), ReportLine(coverage, 'b', [[sessionid, coverage]]))
             else:
                 _file.append(int(stmt['line']), ReportLine(coverage, 'm' if stmt['method'] else None, [[sessionid, coverage]]))
-
         report.append(_file)
 
     # path rename
@@ -108,8 +118,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
     _set = set(('dist-packages', 'site-packages'))
     report.resolve_paths(sorted(path_name_fixing,
-                                key=lambda (a, b): _set & set(a.split('/'))))
+                                key=lambda a: _set & set(a[0].split('/'))))
 
     report.ignore_lines(ignored_lines)
-
     return report

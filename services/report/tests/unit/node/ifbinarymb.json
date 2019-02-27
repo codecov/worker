@@ -1,7 +1,3 @@
-/*
-    if (this.match(tt.parenL) && this.state.inMethod !== "constructor" && !this.options.allowSuperOutsideMethod) {
-        this.raise(node.start, "super() outside of class constructor");
-*/
 {
   "report": {
     "file.js": {

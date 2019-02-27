@@ -2,6 +2,16 @@ from collections import defaultdict
 
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class LcovProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return detect(content)
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_txt(content, path_fixer, ignored_lines, sessionid)
 
 
 def detect(report):
@@ -128,10 +138,10 @@ def _process_file(doc, fix, ignored_lines, sessionid):
     methods = fln.values()
 
     # work branches
-    for ln, br in branches.iteritems():
-        s, l = sum(br.values()), len(br.values())
-        mb = [bid for bid, cov in br.iteritems() if cov == 0]
-        cov = '%s/%s' % (s, l)
+    for ln, br in branches.items():
+        s, li = sum(br.values()), len(br.values())
+        mb = [bid for bid, cov in br.items() if cov == 0]
+        cov = '%s/%s' % (s, li)
         # override bc inline js: """if (True) { echo() }"""
         _file[int(ln)] = ReportLine(cov,
                                     'm' if ln in methods else 'b',

@@ -1,20 +1,37 @@
-from ddt import ddt
-from mock import patch, Mock
-from ddt import data as _data
+from unittest.mock import patch, Mock
 from lxml import etree
-from tests.base import TestCase
-from app.tasks.reports import process
-from app.helpers import ReportTotals, Session
+import pytest
+from json import loads
+from pathlib import Path
+from tests.base import BaseTestCase
+from services.report import raw_upload_processor as process
+from covreports.utils.tuples import ReportTotals
+from covreports.utils.sessions import Session
+from covreports.resources import Report
+
+here = Path(__file__)
+folder = here.parent
 
 
-@ddt
-class TestProcessRawUpload(TestCase):
+class TestProcessRawUpload(BaseTestCase):
+
+    def readjson(self, filename):
+        with open(folder / filename, 'r') as d:
+            contents = loads(d.read())
+            return contents
+
+    def get_v3_report(self):
+        filename = 'report.v3.json'
+        with open(folder / filename, 'r') as d:
+            contents = loads(d.read())
+            return Report(**contents)
+
     @property
     def data(self):
         return {'yaml': {}}
 
-    @_data('nm', 'n', 'm', 'nme', 'ne', 'M')
-    def test(self, keys):
+    @pytest.mark.parametrize("keys", ['nm', 'n', 'm', 'nme', 'ne', 'M'])
+    def test_process_raw_upload(self, keys):
         report = []
         # add env
         if 'e' in keys:
@@ -41,7 +58,7 @@ class TestProcessRawUpload(TestCase):
             master = None
 
         master = process.process_raw_upload(repository=self,
-                                            master=master,
+                                            original_report=master,
                                             reports='\n'.join(report),
                                             flags=[])
 
@@ -67,11 +84,11 @@ class TestProcessRawUpload(TestCase):
         assert ('file2' in master) is ('m' in keys and 'n' not in keys)
 
     def test_none(self):
-        with self.assertRaisesRegexp(AssertionError, 'No files found in report.'):
+        with pytest.raises(AssertionError, match='No files found in report.'):
             process.process_raw_upload(self, {}, '', [])
 
 
-class TestProcessRawUploadFixed(TestCase):
+class TestProcessRawUploadFixed(BaseTestCase):
     def test_fixes(self):
         repo = Mock(data={'yaml': {}})
         reports = '\n'.join(('# path=coverage.info',
@@ -81,42 +98,42 @@ class TestProcessRawUploadFixed(TestCase):
                              '# path=fixes',
                              'file.go:8:',
                              '<<<<<< EOF', ''))
-        report = process.process_raw_upload(repository=repo, master=None, reports=reports, flags=[], session={})
+        report = process.process_raw_upload(repository=repo, original_report=None, reports=reports, flags=[], session={})
         assert 2 not in report['file.go'], '2 never existed'
         assert report['file.go'][7].coverage == 1
         assert 8 not in report['file.go'], '8 should have been removed'
         assert 9 not in report['file.go'], '9 should have been removed'
 
 
-@ddt
-class TestProcessRawUploadNotJoined(TestCase):
-    @_data(('nightly', False), ('unittests', True), ('ui', True), ('other', True))
-    def test_not_joined(self, (flag, joined)):
+class TestProcessRawUploadNotJoined(BaseTestCase):
+    @pytest.mark.parametrize('flag, joined', [('nightly', False), ('unittests', True), ('ui', True), ('other', True)])
+    def test_not_joined(self, flag, joined):
         repo = Mock(data={'yaml': {'flags': {'nightly': {'joined': False},
                                              'unittests': {'joined': True},
                                              'ui': {'paths': ['ui/']}}}})
         merge = Mock(side_effect=NotImplementedError)
         report = Mock(totals=Mock())
-        with patch('app.tasks.reports.process.process_report', return_value=report):
-            with self.assertRaises(NotImplementedError):
-                report = process.process_raw_upload(repository=repo,
-                                                    master=Mock(merge=merge,
-                                                                add_session=Mock(return_value=(1, Session()))),
-                                                    reports='a<<<<<< EOF',
-                                                    flags=[flag],
-                                                    session=Session())
+        with patch('services.report.raw_upload_processor.process_report', return_value=report):
+            with pytest.raises(NotImplementedError):
+                report = process.process_raw_upload(
+                    repository=repo,
+                    original_report=Mock(
+                        merge=merge,
+                        add_session=Mock(return_value=(1, Session()))),
+                    reports='a<<<<<< EOF',
+                    flags=[flag],
+                    session=Session())
             merge.assert_called_with(report, joined=joined)
 
 
-@ddt
-class TestProcessRawUploadFlags(TestCase):
-    @_data({'paths': ['!tests/.*']},
+class TestProcessRawUploadFlags(BaseTestCase):
+    @pytest.mark.parametrize('flag', [{'paths': ['!tests/.*']},
            {'ignore': ['tests/.*']},
-           {'paths': ['folder/']},)
+           {'paths': ['folder/']}])
     def test_flags(self, flag):
         master = process.process_raw_upload(repository=Mock(log=Mock(),
                                                             data={'yaml': {'flags': {'docker': flag}}}),
-                                            master={},
+                                            original_report={},
                                             session={},
                                             reports='{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}',
                                             flags=['docker'])
@@ -124,23 +141,22 @@ class TestProcessRawUploadFlags(TestCase):
         assert master.sessions[0].flags == ['docker']
 
 
-class TestProcessSessions(TestCase):
+class TestProcessSessions(BaseTestCase):
     def test_sessions(self):
         master = process.process_raw_upload(repository=Mock(log=Mock(), data={'yaml': {}}),
-                                            master={}, session={},
+                                            original_report={}, session={},
                                             reports='{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}',
                                             flags=None)
         master = process.process_raw_upload(repository=Mock(log=Mock(), data={'yaml': {}}),
-                                            master=master, session={},
+                                            original_report=master, session={},
                                             reports='{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}',
                                             flags=None)
-        print master.totals
+        print(master.totals)
         assert master.totals.sessions == 2
 
 
-@ddt
-class TestProcessReport(TestCase):
-    @_data("<idk>", "<?xml", "# path=./coverage.xml\n\n")
+class TestProcessReport(BaseTestCase):
+    @pytest.mark.parametrize("report", ["<idk>", "<?xml", "# path=./coverage.xml\n\n"])
     def test_emptys(self, report):
         res = process.process_report(report=report,
                                      repository=Mock(data={'yaml': None,
@@ -160,7 +176,7 @@ class TestProcessReport(TestCase):
 
         assert res.get('file') is not None
 
-    @_data(('go.from_txt', 'mode: atomic'),
+    @pytest.mark.parametrize("lang, report", [('go.from_txt', 'mode: atomic'),
            ('xcode.from_txt', '# path=/Users/path/to/app.coverage.txt\n<data>'),
            ('xcode.from_txt', '# path=app.coverage.txt\n<data>'),
            ('xcode.from_txt', '# path=/Users/path/to/framework.coverage.txt\n<data>'),
@@ -187,15 +203,15 @@ class TestProcessReport(TestCase):
            ('cobertura.from_xml', '<coverage><SampleTag></SampleTag></coverage>'),
            ('csharp.from_xml', '<CoverageSession><SampleTag></SampleTag></CoverageSession>'),
            ('jacoco.from_xml', '<report><SampleTag></SampleTag></report>'),
-           ('xcodeplist.from_xml', '<?xml version="1.0" encoding="utf-8"?>\n<plist version="1.0">'),
+           ('xcodeplist.from_xml', '<?xml version="1.0">\n<plist version="1.0">'),
            ('xcodeplist.from_xml', '# path=3CB41F9A-1DEA-4DE1-B321-6F462C460DB6.xccoverage.plist\n__'),
            ('scoverage.from_xml', '<?xml version="1.0" encoding="utf-8"?>\n<statements><SampleTag></SampleTag></statements>'),
            ('clover.from_xml', '<?xml version="1.0" encoding="utf-8"?>\n<coverage generated="abc"><SampleTag></SampleTag></coverage>'),
            ('cobertura.from_xml', '<?xml version="1.0" encoding="utf-8"?>\n<coverage><SampleTag></SampleTag></coverage>'),
            ('csharp.from_xml', '<?xml version="1.0" encoding="utf-8"?>\n<CoverageSession><SampleTag></SampleTag></CoverageSession>'),
-           ('jacoco.from_xml', '<?xml version="1.0" encoding="utf-8"?>\n<report><SampleTag></SampleTag></report>'))
-    def test_detect(self, (lang, report)):
-        with patch('app.tasks.reports.process.languages.%s' % lang, return_value=lang) as func:
+           ('jacoco.from_xml', '<?xml version="1.0" encoding="utf-8"?>\n<report><SampleTag></SampleTag></report>')])
+    def test_detect(self, lang, report):
+        with patch('services.report.languages.%s' % lang, return_value=lang) as func:
             res = process.process_report(report=report,
                                          repository=Mock(log=dict, data={'yaml': None}),
                                          sessionid=0,
@@ -204,17 +220,6 @@ class TestProcessReport(TestCase):
             assert res == lang
             assert func.called
 
-    def test_catches_assertion(self):
-        with patch('app.tasks.reports.process.languages.xcode.from_txt', side_effect=AssertionError('expired')):
-            logger = Mock()
-            res = process.process_report(report='# path=app.coverage.txt\n<data>',
-                                         repository=Mock(data={'yaml': None, 'task': Mock(log=logger)}),
-                                         sessionid=0,
-                                         ignored_lines={},
-                                         path_fixer=str)
-            assert res is None
-            logger.assert_called_with('warn', 'expired', filename='app.coverage.txt')
-
     def test_xxe_entity_not_called(self):
         report_xxe_xml = """<?xml version="1.0"?>
         <!DOCTYPE coverage [
@@ -222,7 +227,7 @@ class TestProcessReport(TestCase):
         <!ENTITY xxe SYSTEM "file:///config/codecov.yml" >]>
         <statements><statement>&xxe;</statement></statements>
         """
-        with patch('app.tasks.reports.process.languages.scoverage.from_xml') as func:
+        with patch('services.report.languages.scoverage.from_xml') as func:
             process.process_report(report=report_xxe_xml,
                                             repository=Mock(log=dict, data={'yaml': None}),
                                             sessionid=0,
@@ -230,18 +235,5 @@ class TestProcessReport(TestCase):
                                             path_fixer=str)
             assert func.called
             expected_xml_string = '<statements><statement>&xxe;</statement></statements>'
-            output_xml_string = etree.tostring(func.call_args_list[0][0][0])
-            self.assertEquals(output_xml_string, expected_xml_string)
-
-
-
-    def test_catches_all_exceptions(self):
-        with patch('app.tasks.reports.process.languages.xcode.from_txt', side_effect=Exception()):
-            logger = Mock()
-            res = process.process_report(report='# path=app.coverage.txt\n<data>',
-                                         repository=Mock(data={'yaml': None, 'task': Mock(traceback=logger)}),
-                                         sessionid=0,
-                                         ignored_lines={},
-                                         path_fixer=str)
-            assert res is None
-            logger.assert_called_with(filename='app.coverage.txt')
+            output_xml_string = etree.tostring(func.call_args_list[0][0][0]).decode()
+            assert output_xml_string == expected_xml_string

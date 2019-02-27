@@ -1,7 +1,7 @@
 from json import dumps
 
-from tests.base import TestCase
-from app.tasks.reports.languages import lcov
+from tests.base import BaseTestCase
+from services.report.languages import lcov
 
 
 txt = '''TN:
@@ -115,7 +115,7 @@ result = {
 }
 
 
-class Test(TestCase):
+class TestLcov(BaseTestCase):
     def test_report(self):
         def fixes(path):
             if path == 'ignore':
@@ -124,10 +124,22 @@ class Test(TestCase):
             return path
 
         report = lcov.from_txt(txt, fixes, {}, 0)
-        report = self.v3_to_v2(report)
-        print dumps(report, indent=2)
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'file.cpp': [
+                (1, 1, None, [[0, 1]], None, None),
+                (2, '1/3', 'm', [[0, '1/3', ['1:1', '1:3']]], None, None),
+                (5, '2/2', 'b', [[0, '2/2', None]], None, None),
+                (77, '0/4', 'b', [[0, '0/4', ['3:0', '3:1', '4:0', '4:1']]], None, None)
+                # TODO (Thiago): This is out f order compared to the original, verify what happened
+            ],
+            'file.js': [(1, 1, None, [[0, 1, None, None, None]], None, None)],
+            'file.ts': [(2, 1, None, [[0, 1]], None, None)]
+        }
+
+        assert expected_result_archive == processed_report['archive']
 
     def test_detect(self):
         assert lcov.detect('hello\nend_of_record\n') is True

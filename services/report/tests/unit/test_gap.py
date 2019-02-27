@@ -1,5 +1,5 @@
-from tests.base import TestCase
-from app.tasks.reports.languages import gap
+from tests.base import BaseTestCase
+from services.report.languages import gap
 
 
 RAW = '''{"Type":"S","File":"lib/error.g","FileId":37}
@@ -32,13 +32,25 @@ result = {
 }
 
 
-class Test(TestCase):
+class TestGap(BaseTestCase):
     def test_report(self):
         report = gap.from_string(RAW, str, {}, 0)
-        report = self.v3_to_v2(report)
-        print report
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        # import pprint
+        # pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'lib/error.g': [
+                (1, 0, None, [[0, 0]], None, None),
+                (2, 1, None, [[0, 1]], None, None),
+                (3, 0, None, [[0, 0]], None, None),
+                (4, 0, None, [[0, 0]], None, None)
+            ],
+            'lib/test.g': [
+                (1, 0, None, [[0, 0]], None, None)
+            ]
+        }
+
+        assert expected_result_archive == processed_report['archive']
 
     def test_detect(self):
         assert gap.detect('') is False

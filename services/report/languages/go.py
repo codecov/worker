@@ -1,10 +1,20 @@
 from collections import defaultdict
 
-from app.helpers.reports import combine_partials
+from services.report.languages.helpers import combine_partials
 from covreports.helpers.yaml import walk
 from covreports.resources import Report, ReportFile
 from covreports.utils.merge import partials_to_line
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class GoProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return content[:6] == 'mode: ' or '.go:' in first_line
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
+        return from_txt(content, path_fixer, ignored_lines, sessionid, repo_yaml)
 
 
 def from_txt(string, fix, ignored_lines, sessionid, yaml):
@@ -70,8 +80,8 @@ def from_txt(string, fix, ignored_lines, sessionid, yaml):
         columns, _, hits = data.split(' ', 2)
         hits = int(hits)
         sl, el = columns.split(',', 1)
-        sl, sc = map(int, sl.split('.', 1))
-        el, ec = map(int, el.split('.', 1))
+        sl, sc = list(map(int, sl.split('.', 1)))
+        el, ec = list(map(int, el.split('.', 1)))
 
         # add start of line
         if sl == el:
@@ -79,16 +89,16 @@ def from_txt(string, fix, ignored_lines, sessionid, yaml):
         else:
             lines[sl].append([sc, None, hits])
             # add middles
-            [lines[ln].append([0, None, hits]) for ln in xrange(sl + 1, el)]
+            [lines[ln].append([0, None, hits]) for ln in range(sl + 1, el)]
             if ec > 2:
                 # add end of line
                 lines[el].append([None, ec, hits])
 
     # create a file
     report = Report()
-    for filename, lines in files.iteritems():
+    for filename, lines in files.items():
         _file = ReportFile(filename, ignore=ignored_lines.get(filename))
-        for ln, partials in lines.iteritems():
+        for ln, partials in lines.items():
             best_in_partials = max(map(lambda p: p[2], partials))
             partials = combine_partials(partials)
             if partials:

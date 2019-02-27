@@ -1,5 +1,15 @@
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class RlangProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return content.get('uploader') == 'R'
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_json(content, path_fixer, ignored_lines, sessionid)
 
 
 def from_json(data_dict, fix, ignored_lines, sessionid):

@@ -2,6 +2,16 @@ import re
 
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class LuaProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return detect(content)
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_txt(content, path_fixer, ignored_lines, sessionid)
 
 
 docs = re.compile(r'^=+\n', re.M).split
@@ -33,7 +43,7 @@ def from_txt(string, fix, ignored_lines, sessionid):
                     cov = 0 if cov[-2:] in ('*0', '0') else int(cov)
                     _file[ln] = ReportLine(cov, None, [[sessionid, cov]])
 
-                except:
+                except Exception:
                     pass
 
             report.append(_file)

@@ -1,10 +1,10 @@
 from time import time
-from json import dumps
-from ddt import data, ddt
+from json import loads
 import xml.etree.cElementTree as etree
+import pytest
 
-from tests.base import TestCase
-from app.tasks.reports.languages import clover
+from tests.base import BaseTestCase
+from services.report.languages import clover
 
 
 xml = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -133,8 +133,7 @@ result = {
 }
 
 
-@ddt
-class Test(TestCase):
+class TestCloverProcessor(BaseTestCase):
     def test_report(self):
         def fixes(path):
             if path == 'ignore':
@@ -143,12 +142,61 @@ class Test(TestCase):
             return path
 
         report = clover.from_xml(etree.fromstring(xml % int(time())), fixes, {}, 0, None)
-        report = self.v3_to_v2(report)
-        print dumps(report, indent=4)
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        expected_result = {
+            'archive': {
+                'file.php': [
+                    (11, 1, None, [[0, 1, None, None, None]], None, None)
+                ],
+                'source.php': [
+                    (1, '1/2', 'b', [[0, '1/2', None, None, None]], None, None),
+                    (2, '1/2', 'b', [[0, '1/2', None, None, None]], None, None),
+                    (3, '2/2', 'b', [[0, '2/2', None, None, None]], None, None),
+                    (4, '0/2', 'b', [[0, '0/2', None, None, None]], None, None),
+                    (5, 1, 'm', [[0, 1, None, None, 0]], None, 0),
+                    (6, 2969, 'm', [[0, 2969, None, None, 9]], None, 9),
+                    (8, 0, None, [[0, 0, None, None, None]], None, None),
+                    (11, 1, None, [[0, 1, None, None, None]], None, None),
+                    (21, 0, None, [[0, 0, None, None, None]], None, None),
+                    (22, 0, None, [[0, 0, None, None, None]], None, None),
+                    (23, 0, None, [[0, 0, None, None, None]], None, None)
+                ]
+            },
+            'report': {
+                'files': {
+                    'file.php': [
+                        1,
+                        [0, 1, 1, 0, 0, '100', 0, 0, 0, 0, 0, 0, 0],
+                        [[0, 1, 1, 0, 0, '100', 0, 0, 0, 0, 0, 0, 0]],
+                        None
+                    ],
+                    'source.php': [
+                        0,
+                        [0, 11, 4, 5, 2, '36.36364', 4, 2, 0, 0, 9, 0, 0],
+                        [[0, 11, 4, 5, 2, '36.36364', 4, 2, 0, 0, 9, 0, 0]],
+                        None
+                    ]},
+                'sessions': {}},
+            'totals': {
+                'C': 9,
+                'M': 0,
+                'N': 0,
+                'b': 4,
+                'c': '41.66667',
+                'd': 2,
+                'diff': None,
+                'f': 2,
+                'h': 5,
+                'm': 5,
+                'n': 12,
+                'p': 2,
+                's': 0
+            }
+        }
 
-    @data((int(time()) - 172800), '01-01-2014')
+        assert processed_report == expected_result
+
+    @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
     def test_expired(self, date):
-        with self.assertRaisesRegexp(AssertionError, 'Clover report expired'):
+        with pytest.raises(AssertionError, match='Clover report expired'):
             clover.from_xml(etree.fromstring(xml % date), None, {}, 0, None)

@@ -1,6 +1,16 @@
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
 from covreports.helpers.numeric import maxint
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class SCoverageProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return bool(content.tag == 'statements')
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_xml(content, path_fixer, ignored_lines, sessionid)
 
 
 def from_xml(xml, fix, ignored_lines, sessionid):
@@ -11,7 +21,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
     files = {}
     for statement in xml.getiterator('statement'):
         # Determine the path
-        unfixed_path = statement.getiterator('source').next().text
+        unfixed_path = next(statement.getiterator('source')).text
         if unfixed_path in ignore:
             continue
 
@@ -39,21 +49,22 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                 files[filename] = _file
 
         # Add the line
-        ln = int(statement.getiterator('line').next().text)
-        hits = statement.getiterator('count').next().text
+        ln = int(next(statement.getiterator('line')).text)
+        hits = next(statement.getiterator('count')).text
         try:
-            if statement.getiterator('ignored').next().text == 'true':
+            if next(statement.getiterator('ignored')).text == 'true':
                 continue
-        except:
+        except StopIteration:
             pass
 
-        if statement.getiterator('branch').next().text == 'true':
+        if next(statement.getiterator('branch')).text == 'true':
             cov = '%s/2' % hits
             _file[ln] = ReportLine(cov, 'b', [[sessionid, cov]])
         else:
             cov = maxint(hits)
             _file[ln] = ReportLine(cov, None, [[sessionid, cov]])
 
-    map(report.append, files.values())
+    for v in files.values():
+        report.append(v)
 
     return report

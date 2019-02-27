@@ -3,10 +3,19 @@ import plistlib
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine, LineSession
 from covreports.helpers.numeric import maxint
+from services.report.languages.base import BaseLanguageProcessor
 
+
+class XCodePlistProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return name.endswith('xccoverage.plist') or (not name and content.find('<plist version="1.0">') > -1 and content.startswith('<?xml'))
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_xml(content, path_fixer, ignored_lines, sessionid)
 
 def from_xml(xml, fix, ignored_lines, sessionid):
-    objects = plistlib.readPlistFromString(xml)['$objects']
+    objects = plistlib.loads(xml.encode())['$objects']
 
     _report = Report()
 

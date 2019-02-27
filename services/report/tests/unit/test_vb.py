@@ -1,8 +1,8 @@
 from json import dumps
 import xml.etree.cElementTree as etree
 
-from tests.base import TestCase
-from app.tasks.reports.languages import vb
+from tests.base import BaseTestCase
+from services.report.languages import vb
 
 
 txt = '''<?xml version="1.0" encoding="UTF-8" ?>
@@ -41,52 +41,24 @@ txt = '''<?xml version="1.0" encoding="UTF-8" ?>
 </results>
 '''
 
-result = {
-    "files": {
-        "Source/Mobius/csharp/Tests.Common/RowHelper.cs": {
-            "l": {
-                "90": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                },
-                "91": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                },
-                "92": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                }
-            }
-        },
-        "Source/Mobius/csharp/Tests.Common/Picklers.cs": {
-            "l": {
-                "42": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                },
-                "45": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                },
-                "50": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                },
-                "52": {
-                    "c": True,
-                    "s": [[0, True, None, None, None]]
-                }
-            }
-        }
-    }
-}
 
-
-class Test(TestCase):
+class TestVBOne(BaseTestCase):
     def test_report(self):
         report = vb.from_xml(etree.fromstring(txt), str, {}, 0)
-        report = self.v3_to_v2(report)
-        self.validate.report(report)
-        print dumps(report, indent=4)
-        assert report == result
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'Source/Mobius/csharp/Tests.Common/Picklers.cs': [
+                (42, 1, None, [[0, 1]], None, None),
+                (45, 0, None, [[0, 0]], None, None),
+                (50, 1, None, [[0, 1]], None, None),
+                (52, True, None, [[0, True]], None, None)],
+            'Source/Mobius/csharp/Tests.Common/RowHelper.cs': [
+                (90, 1, None, [[0, 1]], None, None),
+                (91, 0, None, [[0, 0]], None, None),
+                (92, 1, None, [[0, 1]], None, None)
+            ]
+        }
+
+        assert expected_result_archive == processed_report['archive']

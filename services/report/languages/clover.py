@@ -3,6 +3,16 @@ from timestring import Date
 from covreports.helpers.yaml import walk
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class CloverProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return bool(content.tag == 'coverage' and content.attrib.get('generated'))
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
 
 
 def get_end_of_file(filename, xmlfile):
@@ -15,25 +25,21 @@ def get_end_of_file(filename, xmlfile):
         for metrics in xmlfile.getiterator('metrics'):
             try:
                 return int(metrics.attrib['loc'])
-            except:
+            except Exception:
                 pass
 
 
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     if walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
         try:
-            timestamp = xml.getiterator('coverage').next().get('generated')
+            timestamp = next(xml.getiterator('coverage')).get('generated')
             if '-' in timestamp:
                 t = timestamp.split('-')
-                timestamp = t[1]+'-'+t[0]+'-'+t[2]
+                timestamp = t[1] + '-' + t[0] + '-' + t[2]
             if timestamp and Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
                 raise AssertionError('Clover report expired %s' % timestamp)
-
-        except AssertionError:
-            raise
-
-        except:
+        except StopIteration:
             pass
 
     files = {}
@@ -94,7 +100,8 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                                    complexity=complexity)
 
     report = Report()
-    map(report.append, files.values())
+    for f in files.values():
+        report.append((f))
     report.resolve_paths([(f, fix(f)) for f in files.keys()])
     report.ignore_lines(ignored_lines)
 

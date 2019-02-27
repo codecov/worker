@@ -1,8 +1,8 @@
 from json import dumps
 import xml.etree.cElementTree as etree
 
-from tests.base import TestCase
-from app.tasks.reports.languages import scoverage
+from tests.base import BaseTestCase
+from services.report.languages import scoverage
 
 
 xml = '''<?xml version="1.0" ?>
@@ -61,7 +61,7 @@ result = {
 }
 
 
-class Test(TestCase):
+class TestSCoverage(BaseTestCase):
     def test_report(self):
         def fixes(path):
             if path == 'ignore':
@@ -69,7 +69,15 @@ class Test(TestCase):
             return path
 
         report = scoverage.from_xml(etree.fromstring(xml), fixes, {}, 0)
-        report = self.v3_to_v2(report)
-        print(dumps(report, indent=4))
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'source.scala': [
+                (1, 1, None, [[0, 1]], None, None),
+                (2, '0/2', 'b', [[0, '0/2']], None, None),
+                (3, 0, None, [[0, 0]], None, None)
+            ]
+        }
+
+        assert expected_result_archive == processed_report['archive']

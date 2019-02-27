@@ -1,8 +1,18 @@
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine, LineSession
+from services.report.languages.base import BaseLanguageProcessor
 
 
-def from_xml(xml, fix, ignored_lines, sessionid):
+class JetBrainsXMLProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return bool(content.tag == 'Root')
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
+
+
+def from_xml(xml, fix, ignored_lines, sessionid, repo_yaml):
     # dict of {"fileid": "path"}
     file_by_id = {}
     file_by_id_get = file_by_id.get
@@ -34,7 +44,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
 
     report = Report()
     report_append = report.append
-    for fid, content in file_by_id.iteritems():
+    for fid, content in file_by_id.items():
         report_append(content)
 
     return report

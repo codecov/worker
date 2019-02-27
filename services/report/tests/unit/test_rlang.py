@@ -1,7 +1,7 @@
 from json import loads
 
-from tests.base import TestCase
-from app.tasks.reports.languages import rlang
+from tests.base import BaseTestCase
+from services.report.languages import rlang
 
 
 txt = '''
@@ -20,30 +20,25 @@ txt = '''
 }
 '''
 
-result = {
-    "files": {
-        "source/cov.r": {
-            "l": {
-                "1": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "2": {"c": 0, "s": [[0, 0, None, None, None]]}
-            }
-        },
-        "source/app.r": {
-            "l": {
-                "1": {"c": 1, "s": [[0, 1, None, None, None]]}
-            }
-        }
-    }
-}
 
-
-class Test(TestCase):
+class TestRlang(BaseTestCase):
     def test_report(self):
         def fixes(path):
             assert path in ('source/cov.r', 'source/app.r')
             return path
 
         report = rlang.from_json(loads(txt), fixes, {}, 0)
-        report = self.v3_to_v2(report)
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'source/app.r': [
+                (1, 1, None, [[0, 1]], None, None)
+            ],
+            'source/cov.r': [
+                (1, 1, None, [[0, 1]], None, None),
+                (2, 0, None, [[0, 0]], None, None)
+            ]
+        }
+
+        assert expected_result_archive == processed_report['archive']

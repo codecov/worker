@@ -1,7 +1,7 @@
 from json import dumps
 
-from tests.base import TestCase
-from app.tasks.reports.languages import gcov
+from tests.base import BaseTestCase
+from services.report.languages import gcov
 
 
 txt = '''    -:    0:Source:tmp.c
@@ -39,73 +39,45 @@ branch  1 taken 3
     1:   16:@implementation blah;
 '''
 
-result = {
-    "files": {
-        "tmp.c": {
-            "l": {
-                "2": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                },
-                "3": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                },
-                "8": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                },
-                "10": {
-                    "c": "2/4",
-                    "t": "b",
-                    "s": [[0, "2/4", None, None, None]]
-                },
-                "11": {
-                    "c": 1,
-                    "t": "m",
-                    "s": [[0, 1, None, None, None]]
-                },
-                "13": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                },
-                "14": {
-                    "c": "2/2",
-                    "s": [[0, "2/2", None, None, None]],
-                    "t": "b"
-                }
-            }
-        }
-    }
-}
 
+class TestGcov(BaseTestCase):
 
-class Test(TestCase):
     def test_report(self):
         report = gcov.from_txt('temp.c.gcov', txt, str, {}, 0, {'branch_detection': {'conditional': True, 'loop': True}})
-        report = self.v3_to_v2(report)
-        self.validate.report(report)
-        print dumps(report, indent=4)
-        assert report == result
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'tmp.c': [
+                (2, 1, None, [[0, 1]], None, None),
+                (3, 0, None, [[0, 0]], None, None),
+                (8, 0, None, [[0, 0]], None, None),
+                (10, '2/4', 'b', [[0, '2/4']], None, None),
+                (11, 1, 'm', [[0, 1]], None, None),
+                (13, 1, None, [[0, 1]], None, None),
+                (14, '2/2', 'b', [[0, '2/2']], None, None)
+            ]
+        }
+
+        assert expected_result_archive == processed_report['archive']
 
     def test_no_cond_branch_report(self):
         report = gcov.from_txt('', txt, str, {}, 1, {'branch_detection': {'conditional': False}})
-        report = self.v3_to_v2(report)
-        self.validate.report(report)
-        assert report['files']['tmp.c']['l']['10']['c'] == 1
+        processed_report = self.convert_report_to_better_readable(report)
+        assert processed_report['archive']['tmp.c'][3][0] == 10
+        assert processed_report['archive']['tmp.c'][3] == (10, 1, 'b', [[1, 1]], None, None)
 
     def test_no_cond_loop_report(self):
         report = gcov.from_txt('', txt, str, {}, 1, {'branch_detection': {'loop': False}})
-        report = self.v3_to_v2(report)
-        self.validate.report(report)
-        assert report['files']['tmp.c']['l']['14']['c'] == 1
+        processed_report = self.convert_report_to_better_readable(report)
+        assert processed_report['archive']['tmp.c'][6][0] == 14
+        assert processed_report['archive']['tmp.c'][6] == (14, 1, 'b', [[1, 1]], None, None)
 
     def test_track_macro_report(self):
         report = gcov.from_txt('', txt, str, {}, 1, {'branch_detection': {'macro': True}})
-        report = self.v3_to_v2(report)
-        self.validate.report(report)
-        assert report['files']['tmp.c']['l']['13']['c'] == '0/2'
-        assert report['files']['tmp.c']['l']['13'].get('t') is None
+        processed_report = self.convert_report_to_better_readable(report)
+        assert processed_report['archive']['tmp.c'][5][0] == 13
+        assert processed_report['archive']['tmp.c'][5] == (13, '0/2', None, [[1, '0/2']], None, None)
 
     def test_detect(self):
         assert gcov.detect('   -: 0:Source:black') is True

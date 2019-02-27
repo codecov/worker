@@ -1,8 +1,8 @@
 from json import dumps
 import xml.etree.cElementTree as etree
 
-from tests.base import TestCase
-from app.tasks.reports.languages import vb2
+from tests.base import BaseTestCase
+from services.report.languages import vb2
 
 
 txt = '''<?xml version="1.0" standalone="yes"?>
@@ -45,40 +45,22 @@ txt = '''<?xml version="1.0" standalone="yes"?>
 </CoverageDSPriv>
 '''
 
-result = {
-    "files": {
-        "source/mobius/cpp/riosock/riosock.cpp": {
-            "l": {
-                "258": {
-                    "c": True,
-                    "s": [[0, True, None, None, None]]
-                }
-            }
-        },
-        "Source/Mobius/csharp/Tests.Common/RowHelper.cs": {
-            "l": {
-                "262": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                },
-                "261": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                },
-                "260": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                }
-            }
-        }
-    }
-}
 
-
-class Test(TestCase):
+class TestVBTwo(BaseTestCase):
     def test_report(self):
         report = vb2.from_xml(etree.fromstring(txt), str, {}, 0)
-        report = self.v3_to_v2(report)
-        self.validate.report(report)
-        print dumps(report, indent=4)
-        assert report == result
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'Source/Mobius/csharp/Tests.Common/RowHelper.cs': [
+                (260, 1, None, [[0, 1]], None, None),
+                (261, 0, None, [[0, 0]], None, None),
+                (262, 0, None, [[0, 0]], None, None)
+            ],
+            'source/mobius/cpp/riosock/riosock.cpp': [
+                (258, True, None, [[0, True]], None, None)
+            ]
+        }
+
+        assert expected_result_archive == processed_report['archive']

@@ -4,6 +4,16 @@ from collections import defaultdict
 from covreports.helpers.yaml import walk
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+from services.report.languages.base import BaseLanguageProcessor
+
+
+class JacocoProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return bool(content.tag == 'report')
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
+        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
 
 
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):
@@ -16,7 +26,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     """
     if walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
         try:
-            timestamp = xml.getiterator('sessioninfo').next().get('start')
+            timestamp = next(xml.getiterator('sessioninfo')).get('start')
             if timestamp and Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
                 raise AssertionError('Jacoco report expired %s' % timestamp)
@@ -24,7 +34,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
         except AssertionError:
             raise
 
-        except:
+        except StopIteration:
             pass
 
     report = Report()

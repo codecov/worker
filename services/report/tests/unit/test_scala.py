@@ -1,7 +1,7 @@
 from json import dumps
 
-from tests.base import TestCase
-from app.tasks.reports.languages import scala
+from tests.base import BaseTestCase
+from services.report.languages import scala
 
 
 json = {
@@ -44,33 +44,8 @@ json = {
     ]
 }
 
-result = {
-    "files": {
-        "f1": {
-            "l": {
-                "25": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "26": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "16": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "19": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "32": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "36": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "34": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "18": {"c": 1, "s": [[0, 1, None, None, None]]}
-            }
-        },
-        "f2": {
-            "l": {
-                "24": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "25": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "28": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "23": {"c": 1, "s": [[0, 1, None, None, None]]}
-            }
-        }
-    }
-}
 
-
-class Test(TestCase):
+class TestScala(BaseTestCase):
     def test_report(self):
         def fixes(path):
             if path == 'ignore':
@@ -79,7 +54,25 @@ class Test(TestCase):
             return path
 
         report = scala.from_json(json, fixes, {}, 0)
-        report = self.v3_to_v2(report)
-        print(dumps(report, indent=4))
-        self.validate.report(report)
-        assert result == report
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report['archive'])
+        expected_result_archive = {
+            'f1': [
+                (16, 0, None, [[0, 0]], None, None),
+                (18, 1, None, [[0, 1]], None, None),
+                (19, 1, None, [[0, 1]], None, None),
+                (25, 1, None, [[0, 1]], None, None),
+                (26, 0, None, [[0, 0]], None, None),
+                (32, 0, None, [[0, 0]], None, None),
+                (34, 1, None, [[0, 1]], None, None),
+                (36, 1, None, [[0, 1]], None, None)],
+            'f2': [
+                (23, 1, None, [[0, 1]], None, None),
+                (24, 1, None, [[0, 1]], None, None),
+                (25, 0, None, [[0, 0]], None, None),
+                (28, 1, None, [[0, 1]], None, None)
+            ]
+        }
+
+        assert expected_result_archive == processed_report['archive']

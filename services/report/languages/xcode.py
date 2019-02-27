@@ -1,4 +1,4 @@
-from app.helpers import remove_non_ascii
+from services.report.languages.helpers import remove_non_ascii
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine, LineSession
 from covreports.helpers.numeric import maxint
@@ -6,7 +6,19 @@ from covreports.helpers.numeric import maxint
 START_PARTIAL = '\033[0;41m'
 END_PARTIAL = '\033[0m'
 NAME_COLOR = '\033[0;36m'
+from services.report.languages.base import BaseLanguageProcessor
 
+
+class XCodeProcessor(BaseLanguageProcessor):
+
+    def matches_content(self, content, first_line, name):
+        return (
+            name.endswith(('app.coverage.txt', 'framework.coverage.txt', 'xctest.coverage.txt')) or
+            first_line.endswith(('.h:', '.m:', '.swift:', '.hpp:', '.cpp:', '.cxx:',  '.c:', '.C:', '.cc:', '.cxx:', '.c++:'))
+        )
+
+    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+        return from_txt(content, path_fixer, ignored_lines, sessionid)
 
 def get_partials_in_line(line):
     if START_PARTIAL in line:
@@ -73,7 +85,7 @@ def from_txt(content, fix, ignored_lines, sessionid):
 
                         try:
                             ln = int(line[ln_i].strip())
-                        except:
+                        except Exception:
                             # bad xcode line
                             if line[0] == '1':
                                 ln_i, cov_i = 0, 1
@@ -100,13 +112,14 @@ def from_txt(content, fix, ignored_lines, sessionid):
                                     cov = 99999
                                 else:
                                     cov = maxint(str(int(float(cov))))
-                            except:
+                            except Exception:
                                 cov = 1
 
                             try:
                                 _file.append(ln, ReportLine(cov, None, [[sessionid, cov]]))
-                            except:
+                            except Exception:
                                 pass
 
-    map(report.append, files.values())
+    for val in files.values():
+        report.append(val)
     return report

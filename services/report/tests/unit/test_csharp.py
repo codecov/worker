@@ -1,8 +1,8 @@
 from json import dumps, loads
 import xml.etree.cElementTree as etree
 
-from tests.base import TestCase
-from app.tasks.reports.languages import csharp
+from tests.base import BaseTestCase
+from services.report.languages import csharp
 
 
 xml = '''<?xml version="1.0" encoding="utf-8"?>
@@ -65,55 +65,8 @@ xml = '''<?xml version="1.0" encoding="utf-8"?>
 </CoverageSession>
 '''
 
-result = {
-    "files": {
-        "source": {
-            "l": {
-                "10": {
-                    "c": "1/2",
-                    "t": "b",
-                    "s": [[0, '1/2', ['1:2'], None, None]]
-                    # "p": [[4, 10, 1]]
-                },
-                "1": {
-                    "c": "2/2",
-                    "t": "b",
-                    "s": [[0, "2/2", None, None, None]]
-                },
-                "3": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]],
-                    "t": "m"
-                    # "p": [[4, None, 0]]
-                },
-                "4": {
-                    "c": 3,
-                    "s": [[0, 3, None, None, None]],
-                    "t": "m"
-                    # "p": [[4, None, 0]]
-                },
-                "2": {
-                    "c": 2,
-                    "s": [[0, 2, None, None, None]]
-                    # "p": [[0, 31, 2]]
-                },
-                "5": {
-                    "c": 0,
-                    "s": [[0, 0, None, None, None]]
-                    # "p": [[None, 10, 0]]
-                },
-                "6": {
-                    "c": 1,
-                    "s": [[0, 1, None, None, None]]
-                    # "p": [[4, 10, 1]]
-                }
-            }
-        }
-    }
-}
 
-
-class Test(TestCase):
+class TestCSharp(BaseTestCase):
     def test_report(self):
         def fixes(path):
             if path == 'ignore':
@@ -122,7 +75,46 @@ class Test(TestCase):
             return path
 
         report = csharp.from_xml(etree.fromstring(xml), fixes, {}, 0)
-        report = self.v3_to_v2(report)
-        print dumps(report, indent=4)
-        self.validate.report(report)
-        assert loads(dumps(result)) == report
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+        pprint.pprint(processed_report)
+        expected_result = {
+            'archive': {
+                'source': [
+                    (1, '2/2', 'b', [[0, '2/2', None, None, None]], None, None),
+                    (2, 2, None, [[0, 2, None, None, None]], None, None),
+                    (3, 0, 'm', [[0, 0, None, None, None]], None, None),
+                    (4, 3, 'm', [[0, 3, None, None, None]], None, None),
+                    (5, 0, None, [[0, 0, None, None, None]], None, None),
+                    (6, 1, None, [[0, 1, None, None, None]], None, None),
+                    (10, '1/2', 'b', [[0, '1/2', ['1:2'], None, None]], None, None)
+                ]
+            },
+            'report': {
+                'files': {
+                    'source': [
+                        0,
+                        [0, 7, 4, 2, 1, '57.14286', 2, 2, 0, 0, 0, 0, 0],
+                        [[0, 7, 4, 2, 1, '57.14286', 2, 2, 0, 0, 0, 0, 0]],
+                        None
+                    ]
+                },
+                'sessions': {}
+            },
+            'totals': {
+                'C': 0,
+                'M': 0,
+                'N': 0,
+                'b': 2,
+                'c': '57.14286',
+                'd': 2,
+                'diff': None,
+                'f': 1,
+                'h': 4,
+                'm': 2,
+                'n': 7,
+                'p': 1,
+                's': 0
+            }
+        }
+        assert processed_report == expected_result

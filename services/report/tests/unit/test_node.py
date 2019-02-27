@@ -1,9 +1,13 @@
-from ddt import data, ddt
-from json import loads, dumps
+from json import loads, dumps, JSONEncoder
+from fractions import Fraction
+import pytest
+from pathlib import Path
+from tests.base import BaseTestCase
+from services.report.languages import node
 
-from tests.base import TestCase
-from app.tasks.reports.languages import node
 
+here = Path(__file__)
+folder = here.parent
 
 base_report = {
     "ignore": {},
@@ -21,38 +25,63 @@ base_report = {
 }
 
 
-@ddt
-class Test(TestCase):
-    @data({'skip': True},
+class OwnEncoder(JSONEncoder):
+
+    def default(self, o):
+        if isinstance(o, Fraction):
+            return str(o)
+        return super().default(o)
+
+
+class Test(BaseTestCase):
+
+    def readjson(self, filename):
+        with open(folder / filename, 'r') as d:
+            contents = loads(d.read())
+            return contents
+
+    def readfile(self, filename, if_empty_write=None):
+        with open(folder / filename, 'r') as r:
+            contents = r.read()
+
+        # codecov: assert not covered start [FUTURE new concept]
+        if contents.strip() == '' and if_empty_write:
+            with open(folder / filename, 'w+') as r:
+                r.write(if_empty_write)
+            return if_empty_write
+        return contents
+
+    @pytest.mark.parametrize("location", [
+          {'skip': True},
           {'start': {'line': 0}},
-          {'start': {'line': 1, 'column': 1}, 'end': {'line': 1, 'column': 2}})
+          {'start': {'line': 1, 'column': 1}, 'end': {'line': 1, 'column': 2}}])
     def test_get_location(self, location):
         assert node.get_line_coverage(location, None, None) == (None, None, None)
 
-    @data(1, 2, 3)
+    @pytest.mark.parametrize("i", [1, 2, 3])
     def test_report(self, i):
         def fixes(path):
             if path == 'ignore':
                 return None
             return path
 
-        nodejson = loads(self.readfile('tests/unittests/tasks/reports/node/node%s.json' % i))
+        nodejson = loads(self.readfile('node/node%s.json' % i))
         nodejson.update(base_report)
 
         report = node.from_json(nodejson, fixes, {}, 0, {'enable_partials': True})
-        report = self.v3_to_v2(report)
+        totals_dict, report_dict = report.to_database()
+        report_dict = loads(report_dict)
+        archive = report.to_archive()
+        expected_result = loads(self.readfile('node/node%s-result.json' % i))
+        # print(dumps({'totals': totals_dict, 'report': report_dict , 'archive': archive.split("<<<<< end_of_chunk >>>>>")}))
+        assert expected_result['report'] == report_dict
+        assert expected_result['totals'] == totals_dict
+        assert expected_result['archive'] == archive.split("<<<<< end_of_chunk >>>>>")
 
-        self.validate.report(report)
-
-        # with open('/Users/peak/Documents/codecov/codecov.io/tests/unittests/tasks/reports/node/node%s-result.json' % i, 'w+') as w:
-        #     w.write(dumps(report, indent=2, sort_keys=True))
-
-        assert report == loads(self.readfile('tests/unittests/tasks/reports/node/node%s-result.json' % i))
-
-    @data('inline', 'ifbinary', 'ifbinarymb')
+    @pytest.mark.parametrize("name", ['inline', 'ifbinary', 'ifbinarymb'])
     def test_singles(self, name):
-        record = self.readjson('tests/unittests/tasks/reports/node/%s.json' % name)
+        record = self.readjson('node/%s.json' % name)
         report = node.from_json(record['report'], str, {}, 0, {'enable_partials': True})
-        for filename, lines in record['result'].iteritems():
-            for ln, result in lines.iteritems():
+        for filename, lines in record['result'].items():
+            for ln, result in lines.items():
                 assert loads(dumps(report[filename][int(ln)])) == result
