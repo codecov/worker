@@ -1,9 +1,7 @@
 import requests
-from tornado import gen
-
+\
 from app import config
 from stripe import Stripe
-from app.tasks.task import celery, TornadoTask
 from tasks.base import BaseCodecovTask
 
 

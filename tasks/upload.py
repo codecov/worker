@@ -1,10 +1,11 @@
 import logging
 import re
-from json import loads
+from json import loads, dumps
 from time import time
 from datetime import datetime
 import zlib
 from app import celery_app
+from celery import exceptions
 
 from tasks.base import BaseCodecovTask
 from database.models import Commit, Owner
@@ -33,13 +34,27 @@ def recursive_getattr(_dict, keys, _else=None):
             else:
                 _dict = getattr(_dict, key)
         return _dict
-    except Exception:
+    except (AttributeError, KeyError):
         return _else
 
 
 class UploadTask(BaseCodecovTask):
 
     def lists_of_arguments(self, redis_connection, uploads_list_key):
+        """Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
+            and feeds them to the processing code.
+
+        This function doesn't go infinite because it keeps emptying the respective key on redis.
+        It will only go arbitrrily long if someone else keeps uploading more and more arguments
+        to such list
+
+        Args:
+            redis_connection (Redis): An instance of a redis connection
+            uploads_list_key (str): The key where the list is
+
+        Yields:
+            dict: A dict with the parameters to be passed
+        """
         while redis_connection.exists(uploads_list_key):
             arguments = redis_connection.lpop(uploads_list_key)
             if arguments:  # fix race issue https://app.getsentry.com/codecov/v4/issues/126562772/
@@ -53,6 +68,12 @@ class UploadTask(BaseCodecovTask):
 
     def release_lock(self, redis_connection, repoid, commitid):
         return redis_connection.srem('processing/upload', '%s/%s' % (repoid, commitid))
+
+    def schedule_for_later_try(self, redis_connection, uploads_list_key, try_later_list):
+        retry_in = 20 * (self.request.retries + 1)
+        for el_to_try_later in try_later_list:
+            redis_connection.rpush(uploads_list_key, dumps(el_to_try_later))
+        self.retry(max_retries=3, countdown=retry_in)
 
     async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
         redis_connection = get_redis_connection()
@@ -70,6 +91,10 @@ class UploadTask(BaseCodecovTask):
         archive_service = ArchiveService(repository)
         try:
             if not commit.message:
+                log.info(
+                    "Commit %s from repo %s does not have all neede info. Reaching provider to fetch info",
+                    commitid, repoid
+                )
                 await self.update_commit_from_provider_info(db_session, repository_service, commit)
 
             report = ReportService().build_report_from_commit(commit)
@@ -80,14 +105,19 @@ class UploadTask(BaseCodecovTask):
                 repository_service, commit.repository
             )
 
+            try_later = []
+
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 pr = arguments.get('pr')
-                report = await self.process_individual_report(
-                    archive_service, redis_connection, repository_service, commit, report,
-                    should_delete_archive, **arguments)
+                try:
+                    report = await self.process_individual_report(
+                        archive_service, redis_connection, repository_service, commit, report,
+                        should_delete_archive, **arguments)
+                except Exception:
+                    try_later.append(arguments)
                 n_processed += 1
 
-            log.info('Processed %d reports' % n_processed)
+            log.info('Processed %d reports for commit %s on repo %s', n_processed, commitid, repoid)
 
             self.release_lock(redis_connection, repoid, commitid)
             if n_processed > 0:
@@ -95,12 +125,16 @@ class UploadTask(BaseCodecovTask):
                     db_session, archive_service, redis_connection, repository_service,
                     repository, commit, report, pr
                 )
+            if try_later:
+                self.schedule_for_later_try(redis_connection, uploads_list_key, try_later)
+        except exceptions.Retry:
+            raise
         except Exception:
             commit.state = 'error'
             log.exception('Could not properly upload commit %s - %s', repoid, commitid)
             raise
         finally:
-            log.info('Released commit from checkout @1')
+            log.info('Finished processing for commit %s on repoid %s', repoid, commitid)
 
     async def finish_reports_processing(
             self, db_session, archive_service, redis_connection,
@@ -149,6 +183,7 @@ class UploadTask(BaseCodecovTask):
         if should_post_webhook:
             try:
                 hookid = await self.post_webhook(repository_service)
+                log.info("Registered hook %s for repo %s", hookid, repoid)
                 repository.hookid = hookid
                 repo_data['repo']['hookid'] = hookid
             except Exception:
@@ -316,7 +351,10 @@ class UploadTask(BaseCodecovTask):
         git_commit = await repository_service.get_commit(commitid)
 
         if git_commit is None:
-            log.error('Could not find commit in service.')
+            log.error(
+                'Could not find commit in service for commit %s on repo %s.',
+                commit.commitid, commit.repoid
+            )
         else:
             author_info = git_commit['author']
             commit_author = self.get_author_from_commit(
