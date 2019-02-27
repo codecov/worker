@@ -1,0 +1,129 @@
+/*
+    if (this.match(tt.parenL) && this.state.inMethod !== "constructor" && !this.options.allowSuperOutsideMethod) {
+        this.raise(node.start, "super() outside of class constructor");
+*/
+{
+  "report": {
+    "file.js": {
+      "fnMap": {},
+      "s": {
+        "211": 7,
+        "212": 0
+      },
+      "statementMap": {
+        "211": {
+          "start": {
+            "line": 383,
+            "column": 6
+          },
+          "end": {
+            "line": 385,
+            "column": 7
+          }
+        },
+        "212": {
+          "start": {
+            "line": 384,
+            "column": 8
+          },
+          "end": {
+            "line": 384,
+            "column": 71
+          }
+        }
+      },
+      "b": {
+        "72": [ 0, 7],
+        "73": [ 7, 3, 0]
+      },
+      "branchMap": {
+        "72": {
+          "loc": {
+            "start": {
+              "line": 383,
+              "column": 6
+            },
+            "end": {
+              "line": 385,
+              "column": 7
+            }
+          },
+          "type": "if",
+          "locations": [
+            {
+              "start": {
+                "line": 383,
+                "column": 6
+              },
+              "end": {
+                "line": 385,
+                "column": 7
+              }
+            },
+            {
+              "start": {
+                "line": 383,
+                "column": 6
+              },
+              "end": {
+                "line": 385,
+                "column": 7
+              }
+            }
+          ]
+        },
+        "73": {
+          "loc": {
+            "start": {
+              "line": 383,
+              "column": 10
+            },
+            "end": {
+              "line": 383,
+              "column": 113
+            }
+          },
+          "type": "binary-expr",
+          "locations": [
+            {
+              "start": {
+                "line": 383,
+                "column": 10
+              },
+              "end": {
+                "line": 383,
+                "column": 31
+              }
+            },
+            {
+              "start": {
+                "line": 383,
+                "column": 35
+              },
+              "end": {
+                "line": 383,
+                "column": 72
+              }
+            },
+            {
+              "start": {
+                "line": 383,
+                "column": 76
+              },
+              "end": {
+                "line": 383,
+                "column": 113
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "result": {
+    "file.js": {
+      "383": ["1/2", "b", [[0, "1/2", ["0"], [[10, 31, 7], [35, 72, 3], [76, 113, 0]]]], null, null],
+      "384": [0, null, [[0, 0, null, [[8, 71, 0]]]], null, null]
+    }
+  }
+}
