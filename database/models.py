@@ -18,6 +18,7 @@ class Owner(CodecovBaseModel):
     admins = Column(postgresql.ARRAY(types.Integer))
     permission = Column(postgresql.ARRAY(types.Integer))
     free = Column(types.Integer)
+    yaml = Column(postgresql.JSON)
     oauth_token = Column(types.Text)
 
 

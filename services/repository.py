@@ -4,12 +4,9 @@ import torngit
 
 from helpers.config import get_config, get_verify_ssl
 from services.encryption import decrypt_token
+from services.yaml import get_repo_yaml
 
 log = logging.getLogger(__name__)
-
-
-def get_repo_yaml(repository):
-    return repository.yaml
 
 
 def get_repo_provider_service(repo, commit=None):
