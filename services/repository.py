@@ -3,7 +3,7 @@ import logging
 import torngit
 
 from helpers.config import get_config, get_verify_ssl
-from services.encryption import decrypt_token
+from services.encryption import encryptor
 from services.bots import get_repo_appropriate_bot
 
 log = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def get_repo_provider_service(repository, commit=None):
             ownerid=repository.ownerid,
             username=repository.owner.username
         ),
-        token=decrypt_token(bot.oauth_token),
+        token=encryptor.decrypt_token(bot.oauth_token),
         verify_ssl=get_verify_ssl(service),
         timeouts=_timeouts
     )

@@ -1,4 +1,4 @@
--e git+https://github.com/codecov/report.git@c81ef30bb025d456c3ea5e7af521f8772dd0484f#egg=covreports
+-e git+https://github.com/codecov/report.git@915b896c114a9733a488bb1a166ef5705049aa93#egg=covreports
 -e git+https://github.com/codecov/torngit.git@python-3-master#egg=torngit
 celery==4.3
 factory-boy==2.11.1
