@@ -1,9 +1,21 @@
 -e git+https://74b2d36cf710afef720fbf3dc0472241da04ceaf:x-oauth-basic@github.com/codecov/torngit.git@migration-to-3/adding-circle-ci#egg=torngit
-amqp==2.3.2
-billiard==3.5.0.4
+-e git+https://74b2d36cf710afef720fbf3dc0472241da04ceaf:x-oauth-basic@github.com/codecov/report.git@f/thiago/worker-needed-changes#egg=covreports
 celery==4.2.1
-kombu==4.2.1
-pytz==2018.7
-redis==2.10.6
-vine==1.1.4
+factory-boy==2.11.1
+lxml==4.3.1
+minio==4.0.8
+pathmap==0.1.5
+psycopg2==2.7.6.1
 pycrypto==2.6.1
+pytest-asyncio==0.10.0
+pytest-mock==1.10.1
+pytest-sqlalchemy==0.2.1
+pytest==4.0.1
+python-dateutil==2.8.0
+PyYAML==3.13
+redis==2.10.6
+requests==2.20.1
+SQLAlchemy-Utils==0.33.9
+SQLAlchemy==1.2.14
+timestring==1.6.2
+vcrpy==2.0.1

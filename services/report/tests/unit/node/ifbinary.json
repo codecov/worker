@@ -1,0 +1,120 @@
+{
+  "report": {
+    "file.js": {
+      "s": {
+        "433": 8
+      },
+      "statementMap": {
+        "433": {
+          "start": {
+            "line": 731,
+            "column": 6
+          },
+          "end": {
+            "line": 737,
+            "column": 7
+          }
+        }
+      },
+      "b": {
+        "123": [
+          3,
+          5
+        ],
+        "124": [
+          8,
+          7,
+          6
+        ]
+      },
+      "branchMap": {
+        "123": {
+          "loc": {
+            "start": {
+              "line": 731,
+              "column": 6
+            },
+            "end": {
+              "line": 737,
+              "column": 7
+            }
+          },
+          "type": "if",
+          "locations": [
+            {
+              "start": {
+                "line": 731,
+                "column": 6
+              },
+              "end": {
+                "line": 737,
+                "column": 7
+              }
+            },
+            {
+              "start": {
+                "line": 731,
+                "column": 6
+              },
+              "end": {
+                "line": 737,
+                "column": 7
+              }
+            }
+          ]
+        },
+        "124": {
+          "loc": {
+            "start": {
+              "line": 731,
+              "column": 10
+            },
+            "end": {
+              "line": 731,
+              "column": 80
+            }
+          },
+          "type": "binary-expr",
+          "locations": [
+            {
+              "start": {
+                "line": 731,
+                "column": 10
+              },
+              "end": {
+                "line": 731,
+                "column": 30
+              }
+            },
+            {
+              "start": {
+                "line": 731,
+                "column": 34
+              },
+              "end": {
+                "line": 731,
+                "column": 55
+              }
+            },
+            {
+              "start": {
+                "line": 731,
+                "column": 59
+              },
+              "end": {
+                "line": 731,
+                "column": 80
+              }
+            }
+          ]
+        }
+      },
+      "fnMap": {}
+    }
+  },
+  "result": {
+    "file.js": {
+      "731": ["2/2", "b", [[0, "2/2", [], [[10, 30, 8], [34, 55, 7], [59, 80, 6]]]], null, null]
+    }
+  }
+}

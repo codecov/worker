@@ -1,0 +1,78 @@
+{
+  "report": {
+    "file.js": {
+      "b": {
+      	"122": [8, 8]
+      },
+      "branchMap": {
+        "122": {
+          "loc": {
+            "start": {
+              "line": 728,
+              "column": 6
+            },
+            "end": {
+              "line": 728,
+              "column": 41
+            }
+          },
+          "type": "if",
+          "locations": [
+            {
+              "start": {
+                "line": 728,
+                "column": 6
+              },
+              "end": {
+                "line": 728,
+                "column": 41
+              }
+            },
+            {
+              "start": {
+                "line": 728,
+                "column": 6
+              },
+              "end": {
+                "line": 728,
+                "column": 41
+              }
+            }
+          ]
+        }
+      },
+      "s": {
+        "430": 1,
+        "431": 1
+      },
+      "statementMap": {
+        "430": {
+          "start": {
+            "line": 728,
+            "column": 6
+          },
+          "end": {
+            "line": 728,
+            "column": 41
+          }
+        },
+        "431": {
+          "start": {
+            "line": 728,
+            "column": 23
+          },
+          "end": {
+            "line": 728,
+            "column": 41
+          }
+        }
+      },
+      "fnMap": {}
+    }
+  },
+  "result": {
+    "file.js": {
+      "728": ["2/2", "b", [[0, "2/2", ["0"], [[10, 21, "2/2"], [23, 41, 8]]]], null]
+    }
+  }
+}

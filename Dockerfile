@@ -1,6 +1,7 @@
 FROM python:3.6-alpine
 
-RUN apk add --no-cache --virtual .build-deps gcc musl-dev git
+RUN apk add --no-cache --virtual .build-deps gcc musl-dev git libxslt-dev g++
+RUN apk update && apk add postgresql-dev gcc python3-dev musl-dev
 RUN mkdir -p /app
 VOLUME ["/app"]
 WORKDIR /app

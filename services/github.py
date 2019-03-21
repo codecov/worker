@@ -4,7 +4,7 @@ import requests
 import jwt
 
 import torngit
-import config
+from helpers.config import get_config
 
 
 def get_github_integration_token(self, service, integration_id=None):
@@ -14,9 +14,9 @@ def get_github_integration_token(self, service, integration_id=None):
       # issued at time
       'iat': now,
       # JWT expiration time (max 10 minutes)
-      'exp': now + int(config.get((service, 'integration', 'expires'), 500)),
+      'exp': now + int(get_config(service, 'integration', 'expires', default=500)),
       # Integration's GitHub identifier
-      'iss': config.get((service, 'integration', 'id'))
+      'iss': get_config(service, 'integration', 'id')
     }
     token = jwt.encode(payload, PEM[service], algorithm='RS256')
     if integration_id:
