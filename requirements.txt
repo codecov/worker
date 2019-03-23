@@ -1,6 +1,5 @@
--e git+https://74b2d36cf710afef720fbf3dc0472241da04ceaf:x-oauth-basic@github.com/codecov/torngit.git@migration-to-3/adding-circle-ci#egg=torngit
--e git+https://74b2d36cf710afef720fbf3dc0472241da04ceaf:x-oauth-basic@github.com/codecov/report.git@f/thiago/worker-needed-changes#egg=covreports
-celery==4.2.1
+-e git+https://github.com/codecov/report.git@883a7b66c5ed86acbe9eb773b7a30dfd06ed12ea#egg=covreports
+-e git+https://github.com/codecov/torngit.git@python-3-master#egg=torngit
 factory-boy==2.11.1
 lxml==4.3.1
 minio==4.0.8
