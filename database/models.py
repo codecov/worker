@@ -14,7 +14,7 @@ class Owner(CodecovBaseModel):
     email = Column(types.String(300))
     username = Column(types.String(100))
     plan_activated_users = Column(postgresql.ARRAY(types.Integer))
-    errors = Column(postgresql.ARRAY(types.Text))
+    # errors = Column(postgresql.ARRAY(types.Text))
     admins = Column(postgresql.ARRAY(types.Integer))
     permission = Column(postgresql.ARRAY(types.Integer))
     free = Column(types.Integer)
