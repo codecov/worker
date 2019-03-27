@@ -1,5 +1,6 @@
 -e git+https://github.com/codecov/report.git@883a7b66c5ed86acbe9eb773b7a30dfd06ed12ea#egg=covreports
 -e git+https://github.com/codecov/torngit.git@python-3-master#egg=torngit
+celery==4.2.1
 factory-boy==2.11.1
 lxml==4.3.1
 minio==4.0.8
@@ -12,7 +13,7 @@ pytest-sqlalchemy==0.2.1
 pytest==4.0.1
 python-dateutil==2.8.0
 PyYAML==3.13
-redis==2.10.6
+redis==3.2.0
 requests==2.20.1
 SQLAlchemy-Utils==0.33.9
 SQLAlchemy==1.2.14
