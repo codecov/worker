@@ -39,6 +39,7 @@ def recursive_getattr(_dict, keys, _else=None):
 
 
 class UploadTask(BaseCodecovTask):
+    name = "app.tasks.upload.Upload"
 
     def lists_of_arguments(self, redis_connection, uploads_list_key):
         """Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
@@ -61,7 +62,9 @@ class UploadTask(BaseCodecovTask):
                 yield loads(arguments)
 
     def acquire_lock(self, redis_connection, repoid, commitid):
+        log.info("In acquire_lock for commit:%s" % commitid)
         if redis_connection.sismember('processing/upload', '%s/%s' % (repoid, commitid)):
+
             return False
         redis_connection.sadd('processing/upload', '%s/%s' % (repoid, commitid))
         return True
@@ -76,6 +79,7 @@ class UploadTask(BaseCodecovTask):
         self.retry(max_retries=3, countdown=retry_in)
 
     async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
+        log.info("In run_async for commit: %s" % commitid)
         redis_connection = get_redis_connection()
         if not self.acquire_lock(redis_connection, repoid, commitid):
             return {}
@@ -92,7 +96,7 @@ class UploadTask(BaseCodecovTask):
         try:
             if not commit.message:
                 log.info(
-                    "Commit %s from repo %s does not have all neede info. Reaching provider to fetch info",
+                    "Commit %s from repo %s does not have all needed info. Reaching provider to fetch info",
                     commitid, repoid
                 )
                 await self.update_commit_from_provider_info(db_session, repository_service, commit)
@@ -139,6 +143,7 @@ class UploadTask(BaseCodecovTask):
     async def finish_reports_processing(
             self, db_session, archive_service, redis_connection,
             repository_service, repository, commit, report, pr):
+        log.info("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
         repoid = commit.repoid
         report.apply_diff(await repository_service.get_commit_diff(commitid))
@@ -217,6 +222,7 @@ class UploadTask(BaseCodecovTask):
         """Takes a `current_report (Report)`, runs a raw_uploaded_report (str) against
             it and generates a new report with the result
         """
+        log.info("In process_individual_report for commit: %s" % commit)
         raw_uploaded_report = None
         flags = (flags.split(',') if flags else None)
 
@@ -282,7 +288,7 @@ class UploadTask(BaseCodecovTask):
 
     def fetch_raw_uploaded_report(
             self, archive_service, redis_connection, archive_url, commit_sha, reportid, redis_key):
-        """Downloads the raw report, wheever it is (it's either a pth on minio or redos)
+        """Downloads the raw report, wherever it is (it's either a pth on minio or redis)
 
         Args:
             archive_service: [description]
@@ -292,6 +298,7 @@ class UploadTask(BaseCodecovTask):
             reportid: [description]
             redis_key: [description]
         """
+        self.log("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
         if archive_url:
             return archive_service.read_file(archive_url).decode()
         else:
@@ -310,6 +317,7 @@ class UploadTask(BaseCodecovTask):
             commit_sha=commit_sha,
             reportid=reportid
         )
+
         archive_service.write_file(path, raw_uploaded_report, gzipped=gzipped)
         # delete from redis
         redis_connection.delete(redis_key)
@@ -361,16 +369,23 @@ class UploadTask(BaseCodecovTask):
                 db_session, repository_service.service, author_info['id'], author_info['username'],
                 author_info['email'], author_info['name']
             )
+
+            # attempt to populate commit.pullid from repository_service if we don't have it
             if not commit.pullid:
                 commit.pullid = await repository_service.find_pull_request(
                     commit=commitid,
                     branch=commit.branch)
-            commit_updates = await repository_service.get_pull_request(
-                pullid=commit.pullid
-            )
+
+            # if our records or the call above returned a pullid, fetch it's details
+            if commit.pullid:
+                commit_updates = await repository_service.get_pull_request(
+                    pullid=commit.pullid
+                )
+                commit.branch = commit_updates['head']['branch']
+
             commit.message = git_commit['message']
             commit.parent = git_commit['parents'][0]
-            commit.branch = commit_updates['head']['branch']
+            
             commit.merged = False
             commit.author = commit_author
             commit.updatestamp = datetime.now()
