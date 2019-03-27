@@ -72,7 +72,7 @@ class ArchiveService(object):
     @classmethod
     def get_archive_hash(cls, repository):
         _hash = md5()
-        hash_key = get_config('services', 'minio', 'hash_key', default='')
+        hash_key = get_config('services', 'minio', 'hash_key')
         val = ''.join(map(str, (
             repository.repoid,
             repository.service,
@@ -155,6 +155,7 @@ class ArchiveService(object):
     Convenience method to read a chunks file from the archive.
     """
     def read_chunks(self, commit_sha):
+
         path = MinioEndpoints.chunks.get_path(
             version='v4',
             repo_hash=self.storage_hash,

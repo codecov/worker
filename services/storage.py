@@ -12,19 +12,13 @@ from helpers.config import get_config
 # Service class for interfacing with codecov's underlying storage layer, minio
 class StorageService(object):
 
-    def __init__(self, in_config=None):
-        # init minio
-        if in_config is None:
-            self.minio_config = get_config('services', 'minio', default={})
-        else:
-            self.minio_config = in_config
-
+    def __init__(self):
         self.minio_client = self.init_minio_client(
-            os.getenv('MINIO_PORT_9000_TCP_ADDR', '172.17.0.2'),
+            os.getenv('MINIO_PORT_9000_TCP_ADDR', 'minio'),
             os.getenv('MINIO_PORT_9000_TCP_PORT', '9000'),
-            self.minio_config['access_key_id'],
-            self.minio_config['secret_access_key'],
-            self.minio_config['verify_ssl']
+            os.getenv('MINIO_ACCESS_KEY'),
+            os.getenv('MINIO_SECRET_KEY'),
+            os.getenv('MINIO_VERIFY_SSL')
         )
 
     def client(self):

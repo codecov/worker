@@ -26,7 +26,6 @@ class ConfigHelper(object):
     def yaml_content(self):
         yaml_path = 'config/codecov.yml'
         with open(yaml_path, 'r') as c:
-            print(yaml_load(c.read()))
             return yaml_load(c.read())
 
 config = ConfigHelper()
