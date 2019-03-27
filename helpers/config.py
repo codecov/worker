@@ -24,14 +24,10 @@ class ConfigHelper(object):
         return current_p
 
     def yaml_content(self):
-        yaml_path = os.getenv('CODECOV_YML', '/config/codecov.yml')
-        if os.path.exists(yaml_path):
-            # load all configuration defaults
-            with open(yaml_path, 'r') as c:
-                return yaml_load(c.read())
-        else:
-            return None
-
+        yaml_path = 'config/codecov.yml'
+        with open(yaml_path, 'r') as c:
+            print(yaml_load(c.read()))
+            return yaml_load(c.read())
 
 config = ConfigHelper()
 
