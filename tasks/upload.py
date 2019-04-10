@@ -4,9 +4,12 @@ from json import loads, dumps
 from time import time
 from datetime import datetime
 import zlib
-from app import celery_app
+
+import minio.error
 from celery import exceptions
 
+
+from app import celery_app
 from tasks.base import BaseCodecovTask
 from database.models import Commit, Owner
 from services.redis import get_redis_connection
@@ -73,6 +76,7 @@ class UploadTask(BaseCodecovTask):
         return redis_connection.srem('processing/upload', '%s/%s' % (repoid, commitid))
 
     def schedule_for_later_try(self, redis_connection, uploads_list_key, try_later_list):
+        log.info("Scheduling %s reports to be processed later", len(try_later_list))
         retry_in = 20 * (self.request.retries + 1)
         for el_to_try_later in try_later_list:
             redis_connection.rpush(uploads_list_key, dumps(el_to_try_later))
@@ -116,10 +120,13 @@ class UploadTask(BaseCodecovTask):
                 pr = arguments.get('pr')
                 try:
                     log.info("Processing report for commit %s with arguments %s", commitid, arguments)
+                    arguments_commit_id = arguments.pop('commit')
+                    assert arguments_commit_id == commitid
                     report = await self.process_individual_report(
                         archive_service, redis_connection, repository_service, commit, report,
                         should_delete_archive, **arguments)
                 except Exception:
+                    log.exception("Could not process commit %s with parameters %s", commitid, arguments)
                     try_later.append(arguments)
                 n_processed += 1
 
@@ -233,7 +240,7 @@ class UploadTask(BaseCodecovTask):
         archive_url = url
         raw_uploaded_report = self.fetch_raw_uploaded_report(
             archive_service, redis_connection, archive_url, commit.commitid, reportid, redis_key)
-        self.log('info', 'Retrieved report for processing.', url=archive_url)
+        log.info('Retrieved report for processing from url %s', archive_url)
 
         # delete from archive is desired
         if should_delete_archive and archive_url and not archive_url.startswith('http'):
@@ -261,29 +268,30 @@ class UploadTask(BaseCodecovTask):
             session=session
         )
 
-        self.log(
-            'info',
-            'Successfully processed report',
-            session=session.id,
-            ci='{session.provider}:{session.build}:{session.job}'.format(
-                session=session))
+        log.info(
+            'Successfully processed report for session %s and ci %s',
+            session.id,
+            f'{session.provider}:{session.build}:{session.job}'
+        )
         return report
 
     def save_report(self, archive_service, redis_connection, commit, report, pullid=None):
-        totals, network = report.to_database()
+        totals, network_json_str = report.to_database()
+        network = loads(network_json_str)
 
         if pullid is not None:
             commit.pullid = pullid
-            commit.state = 'complete' if report else 'error'
-            commit.totals = totals
-            commit.report = network
+
+        commit.state = 'complete' if report else 'error'
+        commit.totals = totals
+        commit.report = network
 
         # ------------------------
         # Archive Processed Report
         # ------------------------
         archive_data = report.to_archive().encode()
         url = archive_service.write_chunks(commit.commitid, archive_data)
-        self.log('info', 'Archived report', url=url)
+        log.info('Archived report on url %s', url)
 
     def process_raw_upload(self, repository_service, master, reports, flags, session=None):
         return ReportService().build_report_from_raw_content(
@@ -302,12 +310,16 @@ class UploadTask(BaseCodecovTask):
             reportid: [description]
             redis_key: [description]
         """
-        self.log("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
+        log.info("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
         if archive_url:
-            return archive_service.read_file(archive_url).decode()
+            try:
+                return archive_service.read_file(archive_url)
+            except minio.error.NoSuchKey:
+                log.exception("File could not be found on %s for commit %s", archive_url, commit_sha)
+                raise
         else:
             return self.download_archive_from_redis(
-                redis_connection, commit_sha, reportid, redis_key)
+                archive_service, redis_connection, commit_sha, reportid, redis_key)
 
     def download_archive_from_redis(
             self, archive_service, redis_connection, commit_sha, reportid, redis_key):

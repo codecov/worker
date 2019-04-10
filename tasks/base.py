@@ -1,5 +1,4 @@
 import asyncio
-from json import dumps
 import logging
 
 from app import celery_app
@@ -16,16 +15,3 @@ class BaseCodecovTask(celery_app.Task):
         result = loop.run_until_complete(self.run_async(db_session, *args, **kwargs))
         db_session.commit()
         return result
-
-    def log(self, lvl, message, public=True, **kwargs):
-        kwargs['task'] = self.__class__.__name__.lower()
-
-        if '?' in (kwargs.get('endpoint') or ''):
-            kwargs['endpoint'] = kwargs['endpoint'][:kwargs['endpoint'].find('?')]
-
-        message = '{} {}'.format(
-            message,
-            dumps(kwargs, sort_keys=True)
-        )
-
-        getattr(logger, lvl)(message)
