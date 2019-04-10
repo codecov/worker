@@ -62,8 +62,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                 branches_get = branches.get
                 file_append = _file.append
 
-                for _type, node in chain(zip(repeat(None), method.getiterator('SequencePoint')),
-                                         zip(repeat('m'), method.getiterator('MethodPoint'))):
+                for _type, node in zip(repeat(None), method.getiterator('SequencePoint')):
                     attrib = node.attrib.get
                     sl, el = attrib('sl'), attrib('el')
                     if sl and el:

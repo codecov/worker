@@ -80,8 +80,8 @@ class TestCSharp2(BaseTestCase):
             'source': [
                 (1, 2, None, [[0, 2, None, None, None]], None, None),
                 (2, 2, None, [[0, 2, None, None, None]], None, None),
-                (3, 0, 'm', [[0, 0, None, None, None]], None, None),
-                (4, 3, 'm', [[0, 3, None, None, None]], None, None),
+                (3, 0, None, [[0, 0, None, None, None]], None, None),
+                (4, 0, None, [[0, 0, None, None, None]], None, None),
                 (5, 0, None, [[0, 0, None, None, None]], None, None),
                 (6, 0, None, [[0, 0, None, None, None]], None, None),
                 (10, 2, None, [[0, 2, None, None, None]], None, None)

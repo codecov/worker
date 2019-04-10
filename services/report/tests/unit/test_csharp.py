@@ -83,8 +83,8 @@ class TestCSharp(BaseTestCase):
                 'source': [
                     (1, '2/2', 'b', [[0, '2/2', None, None, None]], None, None),
                     (2, 2, None, [[0, 2, None, None, None]], None, None),
-                    (3, 0, 'm', [[0, 0, None, None, None]], None, None),
-                    (4, 3, 'm', [[0, 3, None, None, None]], None, None),
+                    (3, 0, None, [[0, 0, None, None, None]], None, None),
+                    (4, 0, None, [[0, 0, None, None, None]], None, None),
                     (5, 0, None, [[0, 0, None, None, None]], None, None),
                     (6, 1, None, [[0, 1, None, None, None]], None, None),
                     (10, '1/2', 'b', [[0, '1/2', ['1:2'], None, None]], None, None)
@@ -94,8 +94,8 @@ class TestCSharp(BaseTestCase):
                 'files': {
                     'source': [
                         0,
-                        [0, 7, 4, 2, 1, '57.14286', 2, 2, 0, 0, 0, 0, 0],
-                        [[0, 7, 4, 2, 1, '57.14286', 2, 2, 0, 0, 0, 0, 0]],
+                        [0, 7, 3, 3, 1, '42.85714', 2, 0, 0, 0, 0, 0, 0],
+                        [[0, 7, 3, 3, 1, '42.85714', 2, 0, 0, 0, 0, 0, 0]],
                         None
                     ]
                 },
@@ -106,12 +106,12 @@ class TestCSharp(BaseTestCase):
                 'M': 0,
                 'N': 0,
                 'b': 2,
-                'c': '57.14286',
-                'd': 2,
+                'c': '42.85714',
+                'd': 0,
                 'diff': None,
                 'f': 1,
-                'h': 4,
-                'm': 2,
+                'h': 3,
+                'm': 3,
                 'n': 7,
                 'p': 1,
                 's': 0
