@@ -63,10 +63,10 @@ class UploadTask(BaseCodecovTask):
 
     def acquire_lock(self, redis_connection, repoid, commitid):
         log.info("In acquire_lock for commit:%s" % commitid)
-        if redis_connection.sismember('processing/upload', '%s/%s' % (repoid, commitid)):
-
+        key = '%s/%s' % (repoid, commitid)
+        if redis_connection.sismember('processing/upload', key):
             return False
-        redis_connection.sadd('processing/upload', '%s/%s' % (repoid, commitid))
+        redis_connection.sadd('processing/upload', key)
         return True
 
     def release_lock(self, redis_connection, repoid, commitid):
@@ -91,9 +91,10 @@ class UploadTask(BaseCodecovTask):
         commit = commits.first()
         assert commit, 'Commit not found in database.'
         repository = commit.repository
-        repository_service = get_repo_provider_service(repository, commit)
-        archive_service = ArchiveService(repository)
         try:
+            log.info("Starting processing of report for commit %s", commitid)
+            repository_service = get_repo_provider_service(repository, commit)
+            archive_service = ArchiveService(repository)
             if not commit.message:
                 log.info(
                     "Commit %s from repo %s does not have all needed info. Reaching provider to fetch info",
@@ -114,6 +115,7 @@ class UploadTask(BaseCodecovTask):
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 pr = arguments.get('pr')
                 try:
+                    log.info("Processing report for commit %s with arguments %s", commitid, arguments)
                     report = await self.process_individual_report(
                         archive_service, redis_connection, repository_service, commit, report,
                         should_delete_archive, **arguments)
@@ -138,6 +140,7 @@ class UploadTask(BaseCodecovTask):
             log.exception('Could not properly upload commit %s - %s', repoid, commitid)
             raise
         finally:
+            self.release_lock(redis_connection, repoid, commitid)
             log.info('Finished processing for commit %s on repoid %s', repoid, commitid)
 
     async def finish_reports_processing(
@@ -187,7 +190,8 @@ class UploadTask(BaseCodecovTask):
         # try to add webhook
         if should_post_webhook:
             try:
-                hookid = await self.post_webhook(repository_service)
+                hook_result = await self.post_webhook(repository_service)
+                hookid = hook_result['id']
                 log.info("Registered hook %s for repo %s", hookid, repoid)
                 repository.hookid = hookid
                 repo_data['repo']['hookid'] = hookid
