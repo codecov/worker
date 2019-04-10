@@ -1,6 +1,26 @@
 import os
 
 from yaml import load as yaml_load
+import collections
+
+default_config = {
+    'services': {
+        'minio': {
+            'access_key_id': 'codecov-default-key',
+            'secret_access_key': 'codecov-default-secret',
+            'verify_ssl': False
+        }
+    }
+}
+
+
+def update(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.Mapping):
+            d[k] = update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
 
 
 class ConfigHelper(object):
@@ -11,7 +31,9 @@ class ConfigHelper(object):
     @property
     def params(self):
         if self._params is None:
-            self.set_params(self.yaml_content())
+            content = self.yaml_content()
+            final_result = update(default_config, content)
+            self.set_params(final_result)
         return self._params
 
     def set_params(self, val):
@@ -24,9 +46,10 @@ class ConfigHelper(object):
         return current_p
 
     def yaml_content(self):
-        yaml_path = 'config/codecov.yml'
+        yaml_path = os.getenv('CODECOV_YML', '/config/codecov.yml')
         with open(yaml_path, 'r') as c:
             return yaml_load(c.read())
+
 
 config = ConfigHelper()
 

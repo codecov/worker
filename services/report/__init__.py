@@ -13,6 +13,8 @@ class ReportService(object):
         chunks = ArchiveService(commit.repository).read_chunks(commitid)
         if chunks is None:
             return None
+        if commit.report is None:
+            return Report(totals=None, chunks=None)
         files = commit.report['files']
         sessions = commit.report['sessions']
         totals = commit.totals

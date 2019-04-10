@@ -31,12 +31,6 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
             except Exception:
                 timestamp = next(xml.getiterator('scoverage')).get('timestamp')
-            print(timestamp)
-            print(Date(timestamp))
-            print(walk(yaml, ('codecov', 'max_report_age'), '12h ago'))
-            print(Date(timestamp) > walk(yaml, ('codecov', 'max_report_age'), '12h ago'))
-            print(Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'))
-            print(Date(timestamp) == walk(yaml, ('codecov', 'max_report_age'), '12h ago'))
             if timestamp and Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
                 raise AssertionError("Cobertura report expired " + timestamp)

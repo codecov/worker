@@ -1,4 +1,5 @@
 import os
+import logging
 import sys
 import gzip
 import minio
@@ -8,18 +9,24 @@ from io import BytesIO
 
 from helpers.config import get_config
 
+log = logging.getLogger(__name__)
+
 
 # Service class for interfacing with codecov's underlying storage layer, minio
 class StorageService(object):
 
     def __init__(self):
+        self.minio_config = get_config('services', 'minio', default={})
+        log.debug("Connecting to minio with config %s", self.minio_config)
+
         self.minio_client = self.init_minio_client(
             os.getenv('MINIO_PORT_9000_TCP_ADDR', 'minio'),
             os.getenv('MINIO_PORT_9000_TCP_PORT', '9000'),
-            os.getenv('MINIO_ACCESS_KEY'),
-            os.getenv('MINIO_SECRET_KEY'),
-            os.getenv('MINIO_VERIFY_SSL')
+            self.minio_config['access_key_id'],
+            self.minio_config['secret_access_key'],
+            self.minio_config['verify_ssl']
         )
+        log.info("Done setting up minio client")
 
     def client(self):
         return self.minio_client if self.minio_client else None
@@ -35,9 +42,11 @@ class StorageService(object):
     # writes the initial storage bucket to storage via minio.
     def create_root_storage(self, bucket='archive', region='us-east-1'):
         try:
+            log.debug("Making bucket on bucket %s on location %s", bucket, region)
             self.minio_client.make_bucket(bucket, location=region)
-            self.minio_client.set_bucket_policy(bucket, '*', minio.policy.Policy.READ_ONLY)
-
+            log.debug("Setting policy")
+            self.minio_client.set_bucket_policy(bucket, '*', "readonly")
+            log.debug("Done creating root storage")
         # todo should only pass or raise
         except BucketAlreadyOwnedByYou:
             pass

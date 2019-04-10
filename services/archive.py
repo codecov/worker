@@ -1,3 +1,5 @@
+import logging
+
 from datetime import datetime
 from hashlib import md5
 from base64 import b16encode
@@ -5,6 +7,8 @@ from enum import Enum
 
 from helpers.config import get_config
 from services.storage import StorageService
+
+log = logging.getLogger(__name__)
 
 
 class MinioEndpoints(Enum):
@@ -46,11 +50,14 @@ class ArchiveService(object):
         self.enterprise = bool(get_config('setup', 'enterprise_license'))
 
         self.storage = StorageService()
+        log.debug("Getting archive hash")
         self.storage_hash = self.get_archive_hash(repository)
 
         # create storage based on the root, this will throw acceptable
         # exceptions if the bucket exists. ResponseError if it doesn't.
+        log.debug("Creating root storage")
         self.storage.create_root_storage(self.root, self.region)
+        log.debug("Created root storage")
 
     """
     Accessor for underlying StorageService. You typically shouldn't need
@@ -135,7 +142,7 @@ class ArchiveService(object):
     """
     def read_file(self, path):
         contents = self.storage.read_file(self.root, path)
-        return contents
+        return contents.decode()
 
     """
     Generic method to delete a file from the archive.
