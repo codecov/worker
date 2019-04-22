@@ -45,7 +45,7 @@ class StorageService(object):
             log.debug("Making bucket on bucket %s on location %s", bucket, region)
             self.minio_client.make_bucket(bucket, location=region)
             log.debug("Setting policy")
-            self.minio_client.set_bucket_policy(bucket, '*', "readonly")
+            self.minio_client.set_bucket_policy(bucket, "readonly")
             log.debug("Done creating root storage")
         # todo should only pass or raise
         except BucketAlreadyOwnedByYou:

@@ -44,6 +44,9 @@ def recursive_getattr(_dict, keys, _else=None):
 class UploadTask(BaseCodecovTask):
     name = "app.tasks.upload.Upload"
 
+    def write_to_db(self):
+        return False
+
     def lists_of_arguments(self, redis_connection, uploads_list_key):
         """Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
             and feeds them to the processing code.
@@ -59,6 +62,7 @@ class UploadTask(BaseCodecovTask):
         Yields:
             dict: A dict with the parameters to be passed
         """
+        log.info("Fetching arguments from redis %s", uploads_list_key)
         while redis_connection.exists(uploads_list_key):
             arguments = redis_connection.lpop(uploads_list_key)
             if arguments:  # fix race issue https://app.getsentry.com/codecov/v4/issues/126562772/
@@ -87,7 +91,7 @@ class UploadTask(BaseCodecovTask):
         redis_connection = get_redis_connection()
         if not self.acquire_lock(redis_connection, repoid, commitid):
             return {}
-        uploads_list_key = 'uploads/%s/%s' % (repoid, commitid)
+        uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
         commit = None
         n_processed = 0
         commits = db_session.query(Commit).filter(
@@ -118,6 +122,7 @@ class UploadTask(BaseCodecovTask):
 
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 pr = arguments.get('pr')
+                log.info("Running from arguments %s", arguments)
                 try:
                     log.info("Processing report for commit %s with arguments %s", commitid, arguments)
                     arguments_commit_id = arguments.pop('commit')
@@ -158,7 +163,8 @@ class UploadTask(BaseCodecovTask):
         repoid = commit.repoid
         report.apply_diff(await repository_service.get_commit_diff(commitid))
 
-        self.save_report(archive_service, redis_connection, commit, report, pullid=pr)
+        write_archive_service = ArchiveService(commit.repository, bucket='testingarchive')
+        self.save_report(write_archive_service, redis_connection, commit, report, pullid=pr)
         db_session.flush()
         self.app.send_task(
             status_set_pending_task_name,
@@ -193,6 +199,7 @@ class UploadTask(BaseCodecovTask):
         should_post_webhook = (not repo_data['repo']['using_integration']
                                and not repository.hookid and
                                hasattr(repository_service, 'post_webhook'))
+        should_post_webhook = False
 
         # try to add webhook
         if should_post_webhook:
