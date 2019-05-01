@@ -86,7 +86,6 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
             report.append(_file)
             continue
 
-        print(data)
         if data.get('data'):
             # why. idk. node is like that.
             data = data['data']

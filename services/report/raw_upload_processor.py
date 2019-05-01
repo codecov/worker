@@ -128,7 +128,7 @@ def process_raw_upload(repository, original_report, reports, flags, session=None
                 ignored_lines=ignored_file_lines or {},
                 path_fixer=path_fixer
             )
-            print(report)
+
             if report:
                 session.totals = report.totals
 
