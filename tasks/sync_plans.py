@@ -109,6 +109,10 @@ class SyncPlans(BaseCodecovTask):
                               tuple(has_a_plan))
 
     async def sync_plan(self, db_session, service_id, purchase_object, headers, oauth_headers, oauth_args):
+        # Define static plan ids from github
+        LEGACY_PLAN_ID = 18
+        CURRENT_PLAN_ID = 2147
+
         if not purchase_object:
             owner = db_session.execute("""UPDATE owners
                                    set plan = null,
@@ -133,7 +137,7 @@ class SyncPlans(BaseCodecovTask):
                                  where ownerid = %s;""",
                               owner['ownerid'])
 
-        elif purchase_object['plan']['id'] == 18:
+        elif purchase_object['plan']['id'] in [LEGACY_PLAN_ID, CURRENT_PLAN_ID]:
             # add plan to owner
             res = db_session.execute("""UPDATE owners
                                  set plan = 'users',
