@@ -5,7 +5,7 @@ import pytest
 from tests.base import BaseTestCase
 
 
-from services.report import fixpaths
+from services.path_fixer import fixpaths
 
 
 class TestFixpaths(BaseTestCase):

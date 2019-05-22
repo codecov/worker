@@ -5,6 +5,7 @@ import pytest
 from schema import SchemaError
 
 from tests.base import BaseTestCase
+from services.path_fixer.user_path_fixes import UserPathFixes
 from services.yaml.validation import (
     LayoutStructure, validate_yaml, PathPatternSchemaField, CoverageRangeSchemaField,
     PercentSchemaField, CustomFixPathSchemaField, pre_process_yaml, UserGivenSecret
@@ -13,7 +14,6 @@ from services.yaml.exceptions import InvalidYamlException
 from services.yaml.validation.helpers import (
     determine_path_pattern_type, translate_glob_to_regex
 )
-from services.report.fixpaths import fixpaths_to_func
 
 
 class TestPathPatternSchemaField(BaseTestCase):
@@ -344,7 +344,7 @@ class TestCustomFixPathSchemaField(BaseTestCase):
     def test_custom_fixpath(self):
         cfpsf = CustomFixPathSchemaField()
         res = cfpsf.validate('a::b')
-        processing_func = fixpaths_to_func([res])
+        processing_func = UserPathFixes([res])
         assert processing_func('a/this_love/has/taken.py') == 'b/this_love/has/taken.py'
         assert processing_func('b/this_love/has/taken.py') == 'b/this_love/has/taken.py'
         assert processing_func('b/a/this_love/has/taken.py') == 'b/a/this_love/has/taken.py'
@@ -352,7 +352,7 @@ class TestCustomFixPathSchemaField(BaseTestCase):
     def test_custom_fixpath_removal(self):
         cfpsf = CustomFixPathSchemaField()
         res = cfpsf.validate('a/::')
-        processing_func = fixpaths_to_func([res])
+        processing_func = UserPathFixes([res])
         assert processing_func('a/this_love/has/taken.py') == 'this_love/has/taken.py'
         assert processing_func('b/this_love/has/taken.py') == 'b/this_love/has/taken.py'
         assert processing_func('b/a/this_love/has/taken.py') == 'b/a/this_love/has/taken.py'
@@ -360,7 +360,7 @@ class TestCustomFixPathSchemaField(BaseTestCase):
     def test_custom_fixpath_removal_no_slashes(self):
         cfpsf = CustomFixPathSchemaField()
         res = cfpsf.validate('a::')
-        processing_func = fixpaths_to_func([res])
+        processing_func = UserPathFixes([res])
         assert processing_func('a/this_love/has/taken.py') == 'this_love/has/taken.py'
         assert processing_func('b/this_love/has/taken.py') == 'b/this_love/has/taken.py'
         assert processing_func('b/a/this_love/has/taken.py') == 'b/a/this_love/has/taken.py'
@@ -368,7 +368,7 @@ class TestCustomFixPathSchemaField(BaseTestCase):
     def test_custom_fixpath_addition(self):
         cfpsf = CustomFixPathSchemaField()
         res = cfpsf.validate('::b')
-        processing_func = fixpaths_to_func([res])
+        processing_func = UserPathFixes([res])
         assert processing_func('a/this_love/has/taken.py') == 'b/a/this_love/has/taken.py'
         assert processing_func('b/this_love/has/taken.py') == 'b/b/this_love/has/taken.py'
         assert processing_func('b/a/this_love/has/taken.py') == 'b/b/a/this_love/has/taken.py'
@@ -377,7 +377,7 @@ class TestCustomFixPathSchemaField(BaseTestCase):
         cfpsf = CustomFixPathSchemaField()
         res = cfpsf.validate('path-*::b')
         print(res)
-        processing_func = fixpaths_to_func([res])
+        processing_func = UserPathFixes([res])
         assert processing_func('path/this_love/has/taken.py') == 'path/this_love/has/taken.py'
         assert processing_func('path-puppy/this_love/has/taken.py') == 'b/this_love/has/taken.py'
         assert processing_func('path-monster/this_love/has/taken.py') == 'b/this_love/has/taken.py'
@@ -387,7 +387,7 @@ class TestCustomFixPathSchemaField(BaseTestCase):
     def test_custom_fixpath_docs_example(self):
         cfpsf = CustomFixPathSchemaField()
         res = cfpsf.validate("before/tests-*::after/")
-        processing_func = fixpaths_to_func([res])
+        processing_func = UserPathFixes([res])
         assert processing_func('before/tests-apples/test.js') == 'after/test.js'
         assert processing_func('before/tests-oranges/test.js') == 'after/test.js'
         assert processing_func('before/app-apples/app.js') == 'before/app-apples/app.js'
