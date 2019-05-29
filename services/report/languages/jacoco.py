@@ -26,7 +26,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     """
     if walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
         try:
-            timestamp = next(xml.getiterator('sessioninfo')).get('start')
+            timestamp = next(xml.iter('sessioninfo')).get('start')
             if timestamp and Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
                 raise AssertionError('Jacoco report expired %s' % timestamp)
@@ -57,20 +57,20 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
         # package/path
         return fix(path)
 
-    for package in xml.getiterator('package'):
+    for package in xml.iter('package'):
         base_name = package.attrib['name']
 
         file_method_complixity = defaultdict(dict)
         # Classes complexity
-        for _class in package.getiterator('class'):
+        for _class in package.iter('class'):
             class_name = _class.attrib['name']
             if '$' not in class_name:
                 method_complixity = file_method_complixity[class_name]
                 # Method Complexity
-                for method in _class.getiterator('method'):
+                for method in _class.iter('method'):
                     ln = int(method.attrib.get('line', 0))
                     if ln > 0:
-                        for counter in method.getiterator('counter'):
+                        for counter in method.iter('counter'):
                             if counter.attrib['type'] == 'COMPLEXITY':
                                 m = int(counter.attrib['missed'])
                                 c = int(counter.attrib['covered'])
@@ -78,7 +78,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                                 break
 
         # Statements
-        for source in package.getiterator('sourcefile'):
+        for source in package.iter('sourcefile'):
             source_name = '%s/%s' % (base_name, source.attrib['name'])
             filename = try_to_fix_path(source_name)
             if filename is None:
@@ -88,7 +88,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
             _file = ReportFile(filename, ignore=ignored_lines.get(filename))
 
-            for line in source.getiterator('line'):
+            for line in source.iter('line'):
                 line = line.attrib
                 if line['mb'] != '0':
                     cov = '%s/%s' % (line['cb'], int(line['mb']) + int(line['cb']))

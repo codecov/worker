@@ -25,11 +25,11 @@ def test_configuration():
         'bitbucket': {'bot': {'username': 'codecov-io'}},
         'services': {
             'minio': {
-                'access_key_id': 'testjxzd7l8qx1erikoy',
-                'bucket': 'codecov',
+                'access_key_id': 'codecov-default-key',
+                'bucket': 'archive',
                 'hash_key': '88f572f4726e4971827415efa8867978',
                 'periodic_callback_ms': False,
-                'secret_access_key': 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                'secret_access_key': 'codecov-default-secret',
                 'verify_ssl': False
             },
             'redis_url': 'redis://redis:@localhost:6379/'

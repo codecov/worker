@@ -125,8 +125,6 @@ class UploadTask(BaseCodecovTask):
                 log.info("Running from arguments %s", arguments)
                 try:
                     log.info("Processing report for commit %s with arguments %s", commitid, arguments)
-                    arguments_commit_id = arguments.pop('commit')
-                    assert arguments_commit_id == commitid
                     report = await self.process_individual_report(
                         archive_service, redis_connection, repository_service, commit, report,
                         should_delete_archive, **arguments)
@@ -158,7 +156,7 @@ class UploadTask(BaseCodecovTask):
     async def finish_reports_processing(
             self, db_session, archive_service, redis_connection,
             repository_service, repository, commit, report, pr):
-        log.info("In finish_reports_processing for commit: %s" % commit)
+        log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
         repoid = commit.repoid
         report.apply_diff(await repository_service.get_commit_diff(commitid))

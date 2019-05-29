@@ -16,7 +16,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     report = Report()
 
     # loop through methods
-    for method in xml.getiterator('method'):
+    for method in xml.iter('method'):
         # get file name
         filename = fix(method.attrib['filename'])
         if filename is None:
@@ -29,7 +29,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                                ignore=ignored_lines.get(filename))
 
         # loop through statements
-        for line in method.getiterator('statement'):
+        for line in method.iter('statement'):
             line = line.attrib
             coverage = int(line['counter'])
 

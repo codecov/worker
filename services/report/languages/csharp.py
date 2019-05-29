@@ -44,7 +44,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
     file_by_id = {}
     file_by_id_get = file_by_id.get
     file_by_name = {None: None}
-    for f in xml.getiterator('File'):
+    for f in xml.iter('File'):
         filename = fix(f.attrib['fullPath'].replace('\\', '/'))
         if filename:
             file_by_id[f.attrib['uid']] = filename
@@ -53,16 +53,16 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                 ReportFile(filename, ignore=ignored_lines.get(filename))
             )
 
-    for method in xml.getiterator('Method'):
+    for method in xml.iter('Method'):
         fileref = method.find('FileRef')
         if fileref is not None:
             _file = file_by_name[file_by_id.get(fileref.attrib['uid'])]
             if _file is not None:
-                branches = _build_branches(method.getiterator('BranchPoint'))
+                branches = _build_branches(method.iter('BranchPoint'))
                 branches_get = branches.get
                 file_append = _file.append
 
-                for _type, node in zip(repeat(None), method.getiterator('SequencePoint')):
+                for _type, node in zip(repeat(None), method.iter('SequencePoint')):
                     attrib = node.attrib.get
                     sl, el = attrib('sl'), attrib('el')
                     if sl and el:

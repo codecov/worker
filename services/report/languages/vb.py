@@ -15,10 +15,10 @@ class VbProcessor(BaseLanguageProcessor):
 
 def from_xml(xml, fix, ignored_lines, sessionid):
     report = Report()
-    for module in xml.getiterator('module'):
+    for module in xml.iter('module'):
         file_by_source = {}
         # loop through sources
-        for sf in module.getiterator('source_file'):
+        for sf in module.iter('source_file'):
             filename = fix(sf.attrib['path'].replace('\\', '/'))
             if filename:
                 file_by_source[sf.attrib['id']] = ReportFile(filename,
@@ -26,7 +26,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
 
         if file_by_source:
             # loop through each line
-            for line in module.getiterator('range'):
+            for line in module.iter('range'):
                 line = line.attrib
                 _file = file_by_source.get(line['source_id'])
                 if _file is not None:
