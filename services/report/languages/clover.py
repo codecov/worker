@@ -22,7 +22,7 @@ def get_end_of_file(filename, xmlfile):
     past the source code line count
     """
     if filename.endswith('.php'):
-        for metrics in xmlfile.getiterator('metrics'):
+        for metrics in xmlfile.iter('metrics'):
             try:
                 return int(metrics.attrib['loc'])
             except Exception:
@@ -32,7 +32,7 @@ def get_end_of_file(filename, xmlfile):
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     if walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
         try:
-            timestamp = next(xml.getiterator('coverage')).get('generated')
+            timestamp = next(xml.iter('coverage')).get('generated')
             if '-' in timestamp:
                 t = timestamp.split('-')
                 timestamp = t[1] + '-' + t[0] + '-' + t[2]
@@ -43,7 +43,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             pass
 
     files = {}
-    for f in xml.getiterator('file'):
+    for f in xml.iter('file'):
         filename = f.attrib.get('path') or f.attrib['name']
 
         # skip empty file documents
@@ -63,7 +63,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
         eof = get_end_of_file(filename, f)
 
         # process coverage
-        for line in f.getiterator('line'):
+        for line in f.iter('line'):
             attribs = line.attrib
             ln = int(attribs['num'])
             complexity = None

@@ -19,9 +19,9 @@ def from_xml(xml, fix, ignored_lines, sessionid):
     cache_fixes = {}
     _cur_file_name = None
     files = {}
-    for statement in xml.getiterator('statement'):
+    for statement in xml.iter('statement'):
         # Determine the path
-        unfixed_path = next(statement.getiterator('source')).text
+        unfixed_path = next(statement.iter('source')).text
         if unfixed_path in ignore:
             continue
 
@@ -49,15 +49,15 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                 files[filename] = _file
 
         # Add the line
-        ln = int(next(statement.getiterator('line')).text)
-        hits = next(statement.getiterator('count')).text
+        ln = int(next(statement.iter('line')).text)
+        hits = next(statement.iter('count')).text
         try:
-            if next(statement.getiterator('ignored')).text == 'true':
+            if next(statement.iter('ignored')).text == 'true':
                 continue
         except StopIteration:
             pass
 
-        if next(statement.getiterator('branch')).text == 'true':
+        if next(statement.iter('branch')).text == 'true':
             cov = '%s/2' % hits
             _file[ln] = ReportLine(cov, 'b', [[sessionid, cov]])
         else:

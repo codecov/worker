@@ -16,13 +16,13 @@ def from_xml(xml, fix, ignored_lines, sessionid, repo_yaml):
     # dict of {"fileid": "path"}
     file_by_id = {}
     file_by_id_get = file_by_id.get
-    for f in xml.getiterator('File'):
+    for f in xml.iter('File'):
         filename = fix(f.attrib['Name'].replace('\\', '/'))
         if filename:
             file_by_id[str(f.attrib['Index'])] = ReportFile(filename,
                                                             ignore=ignored_lines.get(filename))
 
-    for statement in xml.getiterator('Statement'):
+    for statement in xml.iter('Statement'):
         _file = file_by_id.get(str(statement.attrib['FileIndex']))
         if _file is not None:
             sl = int(statement.attrib['Line'])

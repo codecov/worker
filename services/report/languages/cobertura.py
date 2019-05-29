@@ -27,10 +27,10 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     if walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
         try:
             try:
-                timestamp = next(xml.getiterator('coverage')).get('timestamp')
+                timestamp = next(xml.iter('coverage')).get('timestamp')
 
             except Exception:
-                timestamp = next(xml.getiterator('scoverage')).get('timestamp')
+                timestamp = next(xml.iter('scoverage')).get('timestamp')
             if timestamp and Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
                 raise AssertionError("Cobertura report expired " + timestamp)
@@ -40,11 +40,11 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
     report = Report()
 
-    for _class in xml.getiterator('class'):
+    for _class in xml.iter('class'):
         filename = _class.attrib['filename']
         _file = ReportFile(filename)
 
-        for line in _class.getiterator('line'):
+        for line in _class.iter('line'):
             _line = line.attrib
             ln = _line['number']
             if ln == 'undefined':
@@ -75,7 +75,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 else:
                     # [groovy] embedded conditions
                     conditions = ['%(number)s:%(type)s' % _.attrib
-                                  for _ in line.getiterator('condition')
+                                  for _ in line.iter('condition')
                                   if _.attrib.get('coverage') != '100%']
                     if type(coverage) is str and coverage[0] == '0' and len(conditions) < int(coverage.split('/')[1]):
                         # <line number="23" hits="0" branch="true" condition-coverage="0% (0/2)">
@@ -92,7 +92,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                                         sessions=sessions or [[sessionid, coverage]]))
 
         # [scala] [scoverage]
-        for stmt in _class.getiterator('statement'):
+        for stmt in _class.iter('statement'):
             # scoverage will have repeated data
             stmt = stmt.attrib
             if stmt.get('ignored') == 'true':
@@ -106,7 +106,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
     # path rename
     path_name_fixing = []
-    for _class in xml.getiterator('class'):
+    for _class in xml.iter('class'):
         filename = _class.attrib['filename']
         path_name_fixing.append((filename, fix(filename)))
 

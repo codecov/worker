@@ -14,13 +14,13 @@ class VbTwoProcessor(BaseLanguageProcessor):
 
 def from_xml(xml, fix, ignored_lines, sessionid):
     file_by_source = {}
-    for source in xml.getiterator('SourceFileNames'):
+    for source in xml.iter('SourceFileNames'):
         filename = fix(source.find('SourceFileName').text.replace('\\', '/'))
         if filename:
             file_by_source[source.find('SourceFileID').text] = ReportFile(filename,
                                                                           ignore=ignored_lines.get(filename))
 
-    for line in xml.getiterator('Lines'):
+    for line in xml.iter('Lines'):
         _file = file_by_source.get(line.find('SourceFileID').text)
         if _file is not None:
             # 0 == hit, 1 == partial, 2 == miss
