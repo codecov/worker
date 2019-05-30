@@ -48,4 +48,4 @@ WORKDIR         /app
 
 COPY            codecov.yml /config/codecov.yml
 
-ENTRYPOINT sh
+ENTRYPOINT celery -A tasks worker -Q new_tasks --loglevel=info
