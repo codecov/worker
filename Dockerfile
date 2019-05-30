@@ -46,7 +46,6 @@ RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages
 COPY            . /app
 WORKDIR         /app
 
-ENV CELERY_BROKER_URL=redis://redis:6379/0
-ENV CELERY_RESULT_BACKEND=redis://redis:6379/0
+COPY            codecov.yml /config/codecov.yml
 
-ENTRYPOINT celery -A tasks worker -Q new_tasks --loglevel=info
+ENTRYPOINT sh
