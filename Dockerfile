@@ -35,12 +35,18 @@ RUN             apk add --no-cache postgresql-libs && \
                 postgresql-dev \
                 libxslt-dev \
                 python-dev \ 
-                python3-dev \
-                git
+                python3-dev
 
 WORKDIR         /pip-packages/
 COPY            --from=build /pip-packages/ /pip-packages/
+
 RUN             rm -rf /pip-packages/src
 RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages/*
 
-ENTRYPOINT      ["./worker.sh"]
+COPY            . /app
+WORKDIR         /app
+
+ENV CELERY_BROKER_URL=redis://redis:6379/0
+ENV CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+ENTRYPOINT celery -A tasks worker -Q new_tasks --loglevel=info
