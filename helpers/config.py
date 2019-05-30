@@ -1,7 +1,11 @@
 import os
+import logging
+from copy import deepcopy
 
 from yaml import load as yaml_load
 import collections
+
+log = logging.getLogger(__name__)
 
 default_config = {
     'services': {
@@ -15,6 +19,7 @@ default_config = {
 
 
 def update(d, u):
+    d = deepcopy(d)
     for k, v in u.items():
         if isinstance(v, collections.Mapping):
             d[k] = update(d.get(k, {}), v)
@@ -28,11 +33,24 @@ class ConfigHelper(object):
     def __init__(self):
         self._params = None
 
+    def load_env_var(self):
+        val = {}
+        for env_var in os.environ:
+            multiple_level_vars = env_var.split('__')
+            if len(multiple_level_vars) > 1:
+                current = val
+                for c in multiple_level_vars[:-1]:
+                    current = current.setdefault(c, {})
+                current[multiple_level_vars[-1]] = os.getenv(env_var)
+        return val
+
     @property
     def params(self):
         if self._params is None:
             content = self.yaml_content()
-            final_result = update(default_config, content)
+            env_vars = self.load_env_var()
+            temp_result = update(default_config, content)
+            final_result = update(temp_result, env_vars)
             self.set_params(final_result)
         return self._params
 
