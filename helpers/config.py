@@ -5,6 +5,11 @@ from copy import deepcopy
 from yaml import load as yaml_load
 import collections
 
+
+class MissingConfigException(Exception):
+    pass
+
+
 log = logging.getLogger(__name__)
 
 default_config = {
@@ -60,13 +65,19 @@ class ConfigHelper(object):
     def get(self, *args, **kwargs):
         current_p = self.params
         for el in args:
-            current_p = current_p[el]
+            try:
+                current_p = current_p[el]
+            except KeyError:
+                raise MissingConfigException(args)
         return current_p
 
     def yaml_content(self):
         yaml_path = os.getenv('CODECOV_YML', '/config/codecov.yml')
-        with open(yaml_path, 'r') as c:
-            return yaml_load(c.read())
+        try:
+            with open(yaml_path, 'r') as c:
+                return yaml_load(c.read())
+        except FileNotFoundError:
+            return {}
 
 
 config = ConfigHelper()
@@ -75,7 +86,7 @@ config = ConfigHelper()
 def get_config(*path, default=None):
     try:
         return config.get(*path)
-    except Exception:
+    except MissingConfigException:
         return default
 
 
