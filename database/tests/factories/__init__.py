@@ -31,8 +31,10 @@ class RepositoryFactory(Factory):
 
     private = True
     name = 'example-python'
+    using_integration = False
 
     owner = factory.SubFactory(OwnerFactory)
+    bot = None
 
 
 class CommitFactory(Factory):
