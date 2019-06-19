@@ -19,6 +19,9 @@ class Owner(CodecovBaseModel):
     free = Column(types.Integer)
     yaml = Column(postgresql.JSON)
     oauth_token = Column(types.Text)
+    bot_id = Column('bot', types.Integer, ForeignKey('owners.ownerid'))
+
+    bot = relationship('Owner', remote_side=[ownerid])
 
 
 class Repository(CodecovBaseModel):
@@ -27,6 +30,7 @@ class Repository(CodecovBaseModel):
 
     repoid = Column(types.Integer, primary_key=True)
     ownerid = Column(types.Integer, ForeignKey('owners.ownerid'))
+    bot_id = Column('bot', types.Integer, ForeignKey('owners.ownerid'))
     service_id = Column(types.Text)
     name = Column(types.Text)
     private = Column(types.Boolean)
@@ -34,8 +38,10 @@ class Repository(CodecovBaseModel):
     yaml = Column(postgresql.JSON)
     branch = Column(types.Text)
     hookid = Column(types.Text)
+    using_integration = Column(types.Boolean)
 
-    owner = relationship(Owner)
+    owner = relationship(Owner, foreign_keys=[ownerid])
+    bot = relationship(Owner, foreign_keys=[bot_id])
 
     @property
     def service(self):

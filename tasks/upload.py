@@ -72,7 +72,9 @@ class UploadTask(BaseCodecovTask):
         log.info("In acquire_lock for commit:%s" % commitid)
         key = '%s/%s' % (repoid, commitid)
         if redis_connection.sismember('processing/upload', key):
+            log.info("Commitid %s already in the processing queue", commitid)
             return False
+        log.info("Commitid %s already in the processing queue", commitid)
         redis_connection.sadd('processing/upload', key)
         return True
 
