@@ -87,7 +87,6 @@ class TestUploadTask(object):
         assert expected_result['files'] == result['files']
         del result['sessions']['0']['d']  # This is not deterministic
         assert expected_result['sessions'] == result['sessions']
-        dbsession.refresh(commit)
         assert commit.message == 'dsidsahdsahdsa'
         mocked_1.assert_called_with(commit.commitid)
         mocked_2.assert_called_with(mocker.ANY, 'testuploads/%s/%s' % (commit.repoid, commit.commitid))

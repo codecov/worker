@@ -165,7 +165,6 @@ class UploadTask(BaseCodecovTask):
 
         write_archive_service = ArchiveService(commit.repository, bucket='testingarchive')
         self.save_report(write_archive_service, redis_connection, commit, report, pullid=pr)
-        db_session.flush()
         self.app.send_task(
             status_set_pending_task_name,
             args=None,
@@ -369,7 +368,6 @@ class UploadTask(BaseCodecovTask):
             username=username, name=name, email=email
         )
         db_session.add(author)
-        db_session.flush()
         return author
 
     async def update_commit_from_provider_info(self, db_session, repository_service, commit):
