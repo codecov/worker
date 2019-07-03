@@ -47,5 +47,3 @@ COPY            . /app
 WORKDIR         /app
 
 COPY            codecov.yml /config/codecov.yml
-
-ENTRYPOINT celery -A tasks worker -Q new_tasks --loglevel=info
