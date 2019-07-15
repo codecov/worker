@@ -71,15 +71,15 @@ class UploadTask(BaseCodecovTask):
     def acquire_lock(self, redis_connection, repoid, commitid):
         log.info("In acquire_lock for commit:%s" % commitid)
         key = '%s/%s' % (repoid, commitid)
-        if redis_connection.sismember('processing/upload', key):
+        if redis_connection.sismember('newprocessing/upload', key):
             log.info("Commitid %s already in the processing queue", commitid)
             return False
         log.info("Commitid %s already in the processing queue", commitid)
-        redis_connection.sadd('processing/upload', key)
+        redis_connection.sadd('newprocessing/upload', key)
         return True
 
     def release_lock(self, redis_connection, repoid, commitid):
-        return redis_connection.srem('processing/upload', '%s/%s' % (repoid, commitid))
+        return redis_connection.srem('newprocessing/upload', '%s/%s' % (repoid, commitid))
 
     def schedule_for_later_try(self, redis_connection, uploads_list_key, try_later_list):
         log.info("Scheduling %s reports to be processed later", len(try_later_list))
