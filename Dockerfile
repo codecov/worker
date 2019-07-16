@@ -12,13 +12,10 @@ RUN             apk update \
                 gcc \
                 && pip install --upgrade pip
 
-ARG             SSH_PRIVATE_KEY
-RUN             mkdir /root/.ssh/
-RUN             echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa
-RUN             ssh-keyscan -H github.com >> /root/.ssh/known_hosts
-RUN             chmod 600 /root/.ssh/id_rsa
+ARG             GH_ACCESS_TOKEN
 
 COPY            requirements.txt /
+RUN             sed -i 's/github.com/'"${GH_ACCESS_TOKEN}"'@github.com/g' /requirements.txt
 WORKDIR         /pip-packages/
 RUN             git config --global url."git@github.com:".insteadOf "https://github.com/"
 RUN             pip download -r /requirements.txt
