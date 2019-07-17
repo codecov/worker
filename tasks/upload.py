@@ -74,7 +74,7 @@ class UploadTask(BaseCodecovTask):
         if redis_connection.sismember('newprocessing/upload', key):
             log.info("Commitid %s already in the processing queue", commitid)
             return False
-        log.info("Commitid %s already in the processing queue", commitid)
+        log.info("Commitid %s being added to the processing queue", commitid)
         redis_connection.sadd('newprocessing/upload', key)
         return True
 
@@ -213,8 +213,10 @@ class UploadTask(BaseCodecovTask):
 
         # always notify, let the notify handle if it should submit
         if not regexp_ci_skip(commit.message or ''):
-            if (report and (recursive_getattr(repo_data['yaml'], ('codecov', 'notify', 'after_n_builds'))
-                            or 0) <= len(report.sessions)):
+            after_n_builds = recursive_getattr(repo_data['yaml'], ('codecov', 'notify', 'after_n_builds')) or 0
+            should_call_notifications = bool(report and after_n_builds <= len(report.sessions))
+            should_call_notifications = False
+            if should_call_notifications:
                 # we have the right number of builds
                 self.app.send_task(
                     notify_task_name,
