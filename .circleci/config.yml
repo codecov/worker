@@ -72,18 +72,18 @@ jobs:
 
 workflows:
   version: 2
-  workflow:
+  test-build-deploy:
     jobs:
-    - test
-        filters:
-          ignore:
-            - master
-    - build
-        filters:
-          branches:
-            only:
+      - test:
+          filters:
+            ignore:
               - master
-              - phildier/circleci-test-build-deploy
-    - deploy
-        requires:
-          - build
+      - build:
+          filters:
+            branches:
+              only:
+                - master
+                - phildier/circleci-test-build-deploy
+      - deploy:
+          requires:
+            - build
