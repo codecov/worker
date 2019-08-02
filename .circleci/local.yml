@@ -21,7 +21,7 @@ jobs:
         command: |
           python3 -m venv venv
           . venv/bin/activate
-          sed -i 's/github.com/'"$GH_ACCESS_TOKEN"'@github.com/g' requirements.txt
+          sed -i 's+https://github.com+https://'"$GH_ACCESS_TOKEN"'@github.com+g' requirements.txt
           pip install -r requirements.txt
     - save_cache:
         paths:
@@ -45,17 +45,21 @@ jobs:
     - run:
         name: build container
         command: |-
-          make build GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+          make build GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$VERSION
     - run:
         name: push container
         command: |-
-          make push GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+          make push GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$VERSION
     - run:
         name: configure kubectl
         command: |-
           docker run --detach --entrypoint "/bin/sleep" bitnami/kubectl:1.12.9 -- 60
           docker cp $(docker ps | awk '/bitnami\/kubectl/{print $1}'):/opt/bitnami/kubectl/bin/kubectl /usr/bin/kubectl
           kubectl get pods
+    - run:
+        name: deploy to k8s
+        command: |-
+          make deploy VERSION=$VERSION
 
 workflows:
   version: 2

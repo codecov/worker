@@ -15,7 +15,7 @@ RUN             apk update \
 ARG             GH_ACCESS_TOKEN
 
 COPY            requirements.txt /
-RUN             sed -i 's/github.com/'"${GH_ACCESS_TOKEN}"'@github.com/g' /requirements.txt
+RUN             sed -i 's+https://github.com+https://'"${GH_ACCESS_TOKEN}"'@github.com+g' /requirements.txt
 WORKDIR         /pip-packages/
 RUN             git config --global url."git@github.com:".insteadOf "https://github.com/"
 RUN             pip download -r /requirements.txt
@@ -42,5 +42,3 @@ RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages
 
 COPY            . /app
 WORKDIR         /app
-
-COPY            codecov.yml /config/codecov.yml
