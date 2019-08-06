@@ -88,14 +88,14 @@ workflows:
     jobs:
       - test:
           filters:
-            branches:
+            tags:
               only: /.*/
       - build:
           requires:
             - test
           filters:
             tags:
-              only: /^phildier.*/
+              only: /^phildier-.*/
             branches:
               ignore: /.*/
       - deploy:
