@@ -40,6 +40,12 @@ jobs:
         password: $GCLOUD_SERVICE_KEY
     working_directory: ~/repo
     steps:
+    - setup_remote_docker
+    - checkout
+    - restore_cache:
+        keys:
+        - v1-dependencies-{{ checksum "requirements.txt" }}
+        - v1-dependencies-
     - run:
         name: Copy gcloud cli and auth for docker push
         command: |-
@@ -65,6 +71,12 @@ jobs:
         password: $GCLOUD_SERVICE_KEY
     working_directory: ~/repo
     steps:
+    - setup_remote_docker
+    - checkout
+    - restore_cache:
+        keys:
+        - v1-dependencies-{{ checksum "requirements.txt" }}
+        - v1-dependencies-
     - run:
         name: deploy to k8s
         command: |-
