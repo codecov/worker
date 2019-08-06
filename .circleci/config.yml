@@ -96,8 +96,11 @@ workflows:
           filters:
             tags:
               only: /^phildier-.*/
-            branches:
-              ignore: /.*/
       - deploy:
           requires:
             - build
+          filters:
+            tags:
+              only: /^phildier-.*/
+            branches:
+              ignore: /.*/
