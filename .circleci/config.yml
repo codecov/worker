@@ -86,7 +86,10 @@ workflows:
   version: 2
   test-build-deploy:
     jobs:
-      - test
+      - test:
+          filters:
+            branches:
+              only: /.*/
       - build:
           requires:
             - test
