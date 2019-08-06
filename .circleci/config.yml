@@ -58,11 +58,11 @@ jobs:
     - run:
         name: build container
         command: |-
-          make build GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$VERSION
+          make build GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$CIRCLE_TAG
     - run:
         name: push container
         command: |-
-          make push GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$VERSION
+          make push GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$CIRCLE_TAG
   deploy:
     docker:
     - image: gcr.io/codecov-enterprise-sandbox/codecov-deploy:latest
@@ -80,23 +80,21 @@ jobs:
     - run:
         name: deploy to k8s
         command: |-
-          make deploy VERSION=$VERSION
+          make deploy VERSION=$CIRCLE_TAG
 
 workflows:
   version: 2
   test-build-deploy:
     jobs:
       - test:
-          filters:
-            branches:
-              ignore:
-                - master
       - build:
+          requires:
+            - test
           filters:
+            tags:
+              only: /^phildier.*/
             branches:
-              only:
-                - master
-                - phildier/circleci-test-build-deploy
+              ignore: /.*/
       - deploy:
           requires:
             - build
