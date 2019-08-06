@@ -86,12 +86,7 @@ workflows:
   version: 2
   test-build-deploy:
     jobs:
-      - test:
-          filters:
-            tags:
-              ignore: /^phildier.*/
-            branches:
-              only: /.*/
+      - test
       - build:
           requires:
             - test
