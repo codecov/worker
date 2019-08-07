@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+import celery
 
 from tasks.upload import UploadTask
 from database.tests.factories import CommitFactory
@@ -224,3 +225,37 @@ class TestUploadTask(object):
             f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
         )
         mocked_invalidate_caches.assert_called_with(mocker.ANY, commit)
+
+    @pytest.mark.asyncio
+    async def test_upload_task_call_with_try_later(self, mocker, test_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
+        mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
+        mocked_1.return_value = None
+        mocked_2 = mocker.patch.object(UploadTask, 'process_individual_report')
+        mocked_2.side_effect = Exception()
+        mocked_4 = mocker.patch.object(UploadTask, 'app')
+        mocked_4.send_task.return_value = True
+        commit = CommitFactory.create(
+            message='',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        redis_queue = [
+            {
+                'url': 'url'
+            }
+        ]
+        redis_queue = [json.dumps(x) for x in redis_queue]
+        mock_redis.exists.side_effect = [True, False]
+        mock_redis.lpop.side_effect = redis_queue
+        with pytest.raises(celery.exceptions.Retry):
+            await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
+        mocked_2.assert_called_with(
+            mocker.ANY, mock_redis, mocker.ANY, commit, mocker.ANY, False, url='url'
+        )
+        mock_redis.rpush.assert_called_with(
+            'testuploads/5/abf6d4df662c47e32460020ab14abf9303581429', '{"url": "url"}'
+        )

@@ -113,15 +113,12 @@ class UploadTask(BaseCodecovTask):
                     "Unable to fetch current report for repoid %d and commit %s", repoid, commitid
                 )
                 return
+            pr = None
+            should_delete_archive = self.should_delete_archive(
+                repository_service, commit.repository
+            )
+            try_later = []
             try:
-                pr = None
-
-                should_delete_archive = self.should_delete_archive(
-                    repository_service, commit.repository
-                )
-
-                try_later = []
-
                 for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                     pr = arguments.get('pr')
                     log.info("Running from arguments %s", arguments)
@@ -139,14 +136,16 @@ class UploadTask(BaseCodecovTask):
                     n_processed += 1
 
                 log.info('Processed %d reports for commit %s on repo %s', n_processed, commitid, repoid)
-
+                result = {}
                 if n_processed > 0:
-                    return await self.finish_reports_processing(
+                    result = await self.finish_reports_processing(
                         db_session, archive_service, redis_connection, repository_service,
                         repository, commit, report, pr
                     )
                 if try_later:
+                    log.info('Scheduling extra run for commit %s on repoid %s', repoid, commitid)
                     self.schedule_for_later_try(redis_connection, uploads_list_key, try_later)
+                return result
             except exceptions.Retry:
                 raise
             except Exception:
