@@ -58,6 +58,7 @@ jobs:
     - run:
         name: build container
         command: |-
+          printenv
           make build GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$CIRCLE_TAG
     - run:
         name: push container
