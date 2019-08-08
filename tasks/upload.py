@@ -68,19 +68,6 @@ class UploadTask(BaseCodecovTask):
             if arguments:  # fix race issue https://app.getsentry.com/codecov/v4/issues/126562772/
                 yield loads(arguments)
 
-    def acquire_lock(self, redis_connection, repoid, commitid):
-        log.info("In acquire_lock for commit:%s" % commitid)
-        key = '%s/%s' % (repoid, commitid)
-        if redis_connection.sismember('processing/upload', key):
-            log.info("Commitid %s already in the processing queue", commitid)
-            return False
-        log.info("Commitid %s already in the processing queue", commitid)
-        redis_connection.sadd('processing/upload', key)
-        return True
-
-    def release_lock(self, redis_connection, repoid, commitid):
-        return redis_connection.srem('processing/upload', '%s/%s' % (repoid, commitid))
-
     def schedule_for_later_try(self, redis_connection, uploads_list_key, try_later_list):
         log.info("Scheduling %s reports to be processed later", len(try_later_list))
         retry_in = 20 * (self.request.retries + 1)
@@ -89,71 +76,84 @@ class UploadTask(BaseCodecovTask):
         self.retry(max_retries=3, countdown=retry_in)
 
     async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
-        log.info("In run_async for commit: %s" % commitid)
+        repoid = int(repoid)
+        log.info("In run_async for repoid %d and commit %s", repoid, commitid)
+        lock_name = f"upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
-        if not self.acquire_lock(redis_connection, repoid, commitid):
-            return {}
-        uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
-        commit = None
-        n_processed = 0
-        commits = db_session.query(Commit).filter(
-                Commit.repoid == repoid, Commit.commitid == commitid)
-        commit = commits.first()
-        assert commit, 'Commit not found in database.'
-        repository = commit.repository
-        try:
-            log.info("Starting processing of report for commit %s", commitid)
-            repository_service = get_repo_provider_service(repository, commit)
-            archive_service = ArchiveService(repository)
-            if not commit.message:
-                log.info(
-                    "Commit %s from repo %s does not have all needed info. Reaching provider to fetch info",
-                    commitid, repoid
+        with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
+            log.info("Obtained lock for repoid %d and commit %s", repoid, commitid)
+            uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
+            commit = None
+            n_processed = 0
+            commits = db_session.query(Commit).filter(
+                    Commit.repoid == repoid, Commit.commitid == commitid)
+            commit = commits.first()
+            assert commit, 'Commit not found in database.'
+            repository = commit.repository
+            log.info("Starting processing of report for repoid %d and commit %s", repoid, commitid)
+            try:
+                repository_service = get_repo_provider_service(repository, commit)
+                archive_service = ArchiveService(repository)
+                if not commit.message:
+                    log.info(
+                        "Commit %s from repo %s does not have all needed info. Reaching provider to fetch info",
+                        commitid, repoid
+                    )
+                    await self.update_commit_from_provider_info(db_session, repository_service, commit)
+            except Exception:
+                log.exception(
+                    'Could not properly update commit %s - %s with info from git provider',
+                    repoid, commitid
                 )
-                await self.update_commit_from_provider_info(db_session, repository_service, commit)
-
-            report = ReportService().build_report_from_commit(commit)
-
+                raise
+            try:
+                report = ReportService().build_report_from_commit(commit)
+            except Exception:
+                log.exception(
+                    "Unable to fetch current report for repoid %d and commit %s", repoid, commitid
+                )
+                return
             pr = None
-
             should_delete_archive = self.should_delete_archive(
                 repository_service, commit.repository
             )
-
             try_later = []
+            try:
+                for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
+                    pr = arguments.get('pr')
+                    log.info("Running from arguments %s", arguments)
+                    try:
+                        log.info("Processing report for commit %s with arguments %s", commitid, arguments)
+                        commitid = arguments.pop('commit', None)
+                        if commitid:
+                            assert commitid == commit.commitid
+                        report = await self.process_individual_report(
+                            archive_service, redis_connection, repository_service, commit, report,
+                            should_delete_archive, **arguments)
+                    except Exception:
+                        log.exception("Could not process commit %s with parameters %s", commitid, arguments)
+                        try_later.append(arguments)
+                    n_processed += 1
 
-            for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
-                pr = arguments.get('pr')
-                log.info("Running from arguments %s", arguments)
-                try:
-                    log.info("Processing report for commit %s with arguments %s", commitid, arguments)
-                    report = await self.process_individual_report(
-                        archive_service, redis_connection, repository_service, commit, report,
-                        should_delete_archive, **arguments)
-                except Exception:
-                    log.exception("Could not process commit %s with parameters %s", commitid, arguments)
-                    try_later.append(arguments)
-                n_processed += 1
-
-            log.info('Processed %d reports for commit %s on repo %s', n_processed, commitid, repoid)
-
-            self.release_lock(redis_connection, repoid, commitid)
-            if n_processed > 0:
-                return await self.finish_reports_processing(
-                    db_session, archive_service, redis_connection, repository_service,
-                    repository, commit, report, pr
-                )
-            if try_later:
-                self.schedule_for_later_try(redis_connection, uploads_list_key, try_later)
-        except exceptions.Retry:
-            raise
-        except Exception:
-            commit.state = 'error'
-            log.exception('Could not properly upload commit %s - %s', repoid, commitid)
-            raise
-        finally:
-            self.release_lock(redis_connection, repoid, commitid)
-            log.info('Finished processing for commit %s on repoid %s', repoid, commitid)
+                log.info('Processed %d reports for commit %s on repo %s', n_processed, commitid, repoid)
+                result = {}
+                if n_processed > 0:
+                    result = await self.finish_reports_processing(
+                        db_session, archive_service, redis_connection, repository_service,
+                        repository, commit, report, pr
+                    )
+                if try_later:
+                    log.info('Scheduling extra run for commit %s on repoid %s', repoid, commitid)
+                    self.schedule_for_later_try(redis_connection, uploads_list_key, try_later)
+                return result
+            except exceptions.Retry:
+                raise
+            except Exception:
+                commit.state = 'error'
+                log.exception('Could not properly upload commit %s - %s', repoid, commitid)
+                raise
+            finally:
+                log.info('Finished processing for commit %s on repoid %s', repoid, commitid)
 
     async def finish_reports_processing(
             self, db_session, archive_service, redis_connection,
@@ -213,8 +213,10 @@ class UploadTask(BaseCodecovTask):
 
         # always notify, let the notify handle if it should submit
         if not regexp_ci_skip(commit.message or ''):
-            if (report and (recursive_getattr(repo_data['yaml'], ('codecov', 'notify', 'after_n_builds'))
-                            or 0) <= len(report.sessions)):
+            after_n_builds = recursive_getattr(repo_data['yaml'], ('codecov', 'notify', 'after_n_builds')) or 0
+            should_call_notifications = bool(report and after_n_builds <= len(report.sessions))
+            should_call_notifications = False  # TODO Remove this line when finishing testing
+            if should_call_notifications:
                 # we have the right number of builds
                 self.app.send_task(
                     notify_task_name,
