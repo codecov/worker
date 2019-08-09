@@ -44,8 +44,11 @@ class ArchiveService(object):
     """
     enterprise = False
 
-    def __init__(self, repository, bucket='archive'):
-        self.root = get_config('services', 'minio', 'bucket', default=bucket)
+    def __init__(self, repository, bucket=None):
+        if bucket is None:
+            self.root = get_config('services', 'minio', 'bucket', default='archive')
+        else:
+            self.root = bucket
         self.region = get_config('services', 'minio', 'region', default='us-east-1')
         self.enterprise = bool(get_config('setup', 'enterprise_license'))
 

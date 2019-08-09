@@ -3,7 +3,7 @@
 celery==4.3
 factory-boy==2.11.1
 lxml==4.3.1
-minio==4.0.8
+minio==4.0.19
 pathmap==0.1.5
 psycopg2==2.7.6.1
 pycrypto==2.6.1
