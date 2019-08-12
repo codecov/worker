@@ -5,6 +5,10 @@ config_dict = {
         'standard': {
             'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
         },
+        'json': {
+            'format': '%(message)s %(asctime)s %(name)s %(levelname)s',
+            'class': 'pythonjsonlogger.jsonlogger.JsonFormatter'
+        },
     },
     'root': {  # root logger
         'handlers': ['default'],
@@ -14,7 +18,7 @@ config_dict = {
     'handlers': {
         'default': {
             'level': 'INFO',
-            'formatter': 'standard',
+            'formatter': 'json',
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',  # Default is stderr
         },
