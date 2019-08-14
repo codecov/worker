@@ -14,7 +14,7 @@ class TestRepositoryServiceTestCase(object):
         expected_data = {
             'owner': {'ownerid': repo.owner.ownerid, 'service_id': None, 'username': repo.owner.username},
             'repo': {'name': 'example-python', 'using_integration': False},
-            'yaml': None
+            'yaml': {}
         }
         assert res.data == expected_data
         assert res.token == {'key': 'testyftq3ovzkb3zmt823u3t04lkrt9w', 'secret': None}
@@ -35,7 +35,7 @@ class TestRepositoryServiceTestCase(object):
         expected_data = {
             'owner': {'ownerid': repo.owner.ownerid, 'service_id': None, 'username': repo.owner.username},
             'repo': {'name': 'example-python', 'using_integration': False},
-            'yaml': None
+            'yaml': {}
         }
         assert res.data == expected_data
         assert res.token == {'key': bot_token, 'secret': None}
@@ -57,7 +57,7 @@ class TestRepositoryServiceTestCase(object):
         expected_data = {
             'owner': {'ownerid': repo.owner.ownerid, 'service_id': None, 'username': repo.owner.username},
             'repo': {'name': 'example-python', 'using_integration': False},
-            'yaml': None
+            'yaml': {}
         }
         assert res.data == expected_data
         assert res.token == {'key': bot_token, 'secret': None}
