@@ -48,7 +48,6 @@ class CommitFactory(Factory):
     pullid = 1
     author = factory.SubFactory(OwnerFactory)
     repository = factory.SubFactory(RepositoryFactory)
-    repoid = factory.LazyAttribute(lambda o: o.repository.repoid)
     totals = {
         'C': 0,
         'M': 0,
