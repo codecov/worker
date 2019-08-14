@@ -26,7 +26,7 @@ class StorageService(object):
             self.minio_config['secret_access_key'],
             self.minio_config['verify_ssl']
         )
-        log.info("Done setting up minio client")
+        log.debug("Done setting up minio client")
 
     def client(self):
         return self.minio_client if self.minio_client else None
