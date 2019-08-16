@@ -1,6 +1,6 @@
 -include .envrc
 
-GCLOUD_SERVICE_KEY := $(shell cat ~/.gcloud/codecov-enterprise-sandbox-03eb0a0ecaf2.json | base64 --wrap=0)
+#GCLOUD_SERVICE_KEY := $(shell cat ~/.gcloud/codecov-enterprise-sandbox-03eb0a0ecaf2.json | base64 --wrap=0)
 GCR_REPO := gcr.io/codecov-enterprise-sandbox/codecov-worker
 
 circleci-local:
