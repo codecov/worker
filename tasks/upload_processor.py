@@ -93,7 +93,13 @@ class UploadProcessorTask(BaseCodecovTask):
                 report = ReportService().build_report_from_commit(commit)
             except Exception:
                 log.exception(
-                    "Unable to fetch current report for repoid %d and commit %s", repoid, commitid
+                    "Unable to fetch current report for commit",
+                    extra=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        arguments_list=arguments_list,
+                        commit_yaml=commit_yaml
+                    )
                 )
                 raise
             try:
@@ -130,13 +136,20 @@ class UploadProcessorTask(BaseCodecovTask):
                         )
                         try_later.append(arguments)
 
-                log.info(
-                    'Processed %d reports', n_processed, extra=dict(repoid=repoid, commitid=commitid)
-                )
                 if n_processed > 0:
+                    log.info(
+                        'Finishing the processing of %d reports',
+                        n_processed,
+                        extra=dict(repoid=repoid, commitid=commitid)
+                    )
                     await self.finish_reports_processing(
                         db_session, archive_service, redis_connection, repository_service,
                         repository, commit, report, pr
+                    )
+                    log.info(
+                        'Processed %d reports',
+                        n_processed,
+                        extra=dict(repoid=repoid, commitid=commitid)
                     )
                 if try_later:
                     log.info(
@@ -150,7 +163,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     'sucessful_reports': n_processed,
                     'try_later_reports': len(try_later)
                 }
-            except exceptions.Retry:
+            except exceptions.CeleryError:
                 raise
             except Exception:
                 commit.state = 'error'
@@ -223,9 +236,15 @@ class UploadProcessorTask(BaseCodecovTask):
         )
 
         log.info(
-            'Successfully processed report for session %s and ci %s',
-            session.id,
-            f'{session.provider}:{session.build}:{session.job}'
+            'Successfully processed report',
+            extra=dict(
+                session=session.id,
+                ci=f'{session.provider}:{session.build}:{session.job}',
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                reportid=reportid,
+                commit_yaml=commit_yaml
+            )
         )
         return report
 
@@ -245,7 +264,14 @@ class UploadProcessorTask(BaseCodecovTask):
         # ------------------------
         archive_data = report.to_archive().encode()
         url = archive_service.write_chunks(commit.commitid, archive_data)
-        log.info('Archived report on url %s', url)
+        log.info(
+            'Archived report',
+            extra=dict(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                url=url
+            )
+        )
 
     def process_raw_upload(self, commit_yaml, master, reports, flags, session=None):
         return ReportService().build_report_from_raw_content(
