@@ -7,6 +7,7 @@ async def fetch_commit_yaml_from_provider(commit, repository_service):
     try:
         location = 'codecov.yml'
         ref = commit.commitid
-        return parse_yaml_file(await repository_service.get_source(location, ref))
+        content = await repository_service.get_source(location, ref)
+        return parse_yaml_file(content['content'])
     except torngit.exceptions.ObjectNotFoundException:
         return None

@@ -22,7 +22,6 @@ def merge_yamls(owner_yaml, repo_yaml, commit_yaml=None):
 def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
     repository = current_commit.repository
     existing_yaml = get_repo_yaml(repository)
-    print(existing_yaml)
     syb = read_yaml_field(existing_yaml, ('codecov', 'strict_yaml_branch'))
     branches_considered_for_yaml = (
         syb,
