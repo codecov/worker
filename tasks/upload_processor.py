@@ -1,4 +1,3 @@
-from datetime import datetime
 from json import loads
 from time import time
 import logging
@@ -10,10 +9,10 @@ from celery import exceptions
 from covreports.utils.sessions import Session
 
 from app import celery_app
-from celery_config import status_set_pending_task_name
 from database.models import Commit
 from helpers.config import get_config
-from services.archive import ArchiveService, MinioEndpoints
+from services.archive import ArchiveService
+from services.bots import RepositoryWithoutValidBotException
 from services.redis import get_redis_connection
 from services.report import ReportService
 from services.repository import get_repo_provider_service
@@ -24,6 +23,10 @@ log = logging.getLogger(__name__)
 
 regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]').search
 merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
+
+
+class UnableToTestException(Exception):
+    pass
 
 
 class UploadProcessorTask(BaseCodecovTask):
@@ -50,7 +53,6 @@ class UploadProcessorTask(BaseCodecovTask):
         return False
 
     def schedule_for_later_try(self, try_later_list, **kwargs):
-        log.info("Scheduling %s reports to be processed later", len(try_later_list))
         retry_in = 20 * (self.request.retries + 1)
         retry_kwargs = kwargs
         retry_kwargs['arguments_list'] = try_later_list
@@ -70,7 +72,19 @@ class UploadProcessorTask(BaseCodecovTask):
             commit = commits.first()
             assert commit, 'Commit not found in database.'
             repository = commit.repository
-            repository_service = get_repo_provider_service(repository, commit)
+            try:
+                repository_service = get_repo_provider_service(repository, commit)
+            except RepositoryWithoutValidBotException:
+                log.exception(
+                    'Unable to process report because there is valid repo found for that repo',
+                    extra=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        arguments_list=arguments_list,
+                        commit_yaml=commit_yaml
+                    )
+                )
+                raise
             pr = None
             should_delete_archive = self.should_delete_archive(commit_yaml)
             try_later = []
@@ -87,27 +101,40 @@ class UploadProcessorTask(BaseCodecovTask):
                     pr = arguments.get('pr')
                     try:
                         log.info(
-                            "Processing report",
+                            "Processing individual report %s", arguments.get('reportid'),
                             extra=dict(repoid=repoid, commitid=commitid, arguments=arguments)
                         )
                         arguments_commitid = arguments.pop('commit', None)
                         if arguments_commitid:
                             assert arguments_commitid == commit.commitid
                         report = await self.process_individual_report(
-                            archive_service, redis_connection, repository_service, commit_yaml, commit, report,
-                            should_delete_archive, **arguments)
-                    except Exception:
+                            archive_service, redis_connection, repository_service, commit_yaml,
+                            commit, report, should_delete_archive, **arguments
+                        )
+                        n_processed += 1
+                    except UnableToTestException:
                         log.exception(
-                            "Unable to process report",
+                            "Unable to process report %s due to inherent test conditions",
+                            arguments.get('reportid'),
                             extra=dict(repoid=repoid, commitid=commitid, arguments=arguments)
                         )
+                    except Exception:
+                        log.exception(
+                            "Unable to process report %s", arguments.get('reportid'),
+                            extra=dict(
+                                commit_yaml=commit_yaml,
+                                repoid=repoid,
+                                commitid=commitid,
+                                arguments=arguments
+                            )
+                        )
                         try_later.append(arguments)
-                    n_processed += 1
 
-                log.info('Processed %d reports', extra=dict(repoid=repoid, commitid=commitid))
-                result = {}
+                log.info(
+                    'Processed %d reports', n_processed, extra=dict(repoid=repoid, commitid=commitid)
+                )
                 if n_processed > 0:
-                    result = await self.finish_reports_processing(
+                    await self.finish_reports_processing(
                         db_session, archive_service, redis_connection, repository_service,
                         repository, commit, report, pr
                     )
@@ -119,44 +146,28 @@ class UploadProcessorTask(BaseCodecovTask):
                     self.schedule_for_later_try(
                         try_later, repoid=repoid, commitid=commitid, commit_yaml=commit_yaml, **kwargs
                     )
-                return result
+                return {
+                    'sucessful_reports': n_processed,
+                    'try_later_reports': len(try_later)
+                }
             except exceptions.Retry:
                 raise
             except Exception:
                 commit.state = 'error'
                 log.exception('Could not properly process commit %s - %s', repoid, commitid)
                 raise
-            else:
-                log.info(
-                    'Finished processing',
-                    extra=dict(
-                        repoid=repoid, commitid=commitid, arguments_list=arguments_list
-                    )
-                )
 
     async def finish_reports_processing(
             self, db_session, archive_service, redis_connection,
             repository_service, repository, commit, report, pr):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
-        repoid = commit.repoid
         report.apply_diff(await repository_service.get_commit_diff(commitid))
 
         write_archive_service = ArchiveService(commit.repository, bucket='testingarchive')
         self.save_report(write_archive_service, redis_connection, commit, report, pullid=pr)
-        if self.request.retries == 0:
-            self.app.send_task(
-                status_set_pending_task_name,
-                args=None,
-                kwargs=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    branch=commit.branch,
-                    on_a_pull_request=bool(commit.pullid)
-                )
-            )
         _, report_dict = report.to_database()
-        return loads(report_dict)
+        return {}
 
     async def process_individual_report(
             self, archive_service, redis_connection, repository_service,
@@ -174,7 +185,10 @@ class UploadProcessorTask(BaseCodecovTask):
         archive_url = url
         raw_uploaded_report = self.fetch_raw_uploaded_report(
             archive_service, redis_connection, archive_url, commit.commitid, reportid, redis_key)
-        log.info('Retrieved report for processing from url %s', archive_url)
+        log.debug('Retrieved report for processing from url %s', archive_url)
+        # TODO: Remove this once we are not on test mode anymore
+        if redis_key and not raw_uploaded_report:
+            raise UnableToTestException("Unable to test due to the report living on redis")
 
         # delete from archive is desired
         if should_delete_archive and archive_url and not archive_url.startswith('http'):
@@ -244,7 +258,7 @@ class UploadProcessorTask(BaseCodecovTask):
             reportid: [description]
             redis_key: [description]
         """
-        log.info("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
+        log.debug("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
         if archive_url:
             try:
                 return archive_service.read_file(archive_url)

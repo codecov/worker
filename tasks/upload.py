@@ -140,7 +140,7 @@ class UploadTask(BaseCodecovTask):
             chunk = argument_list[i:i + chunk_size]
             if chunk:
                 sig = upload_processor_task.signature(
-                    args=({},),
+                    args=({},) if i == 0 else (),
                     kwargs=dict(
                         repoid=commit.repoid,
                         commitid=commit.commitid,
