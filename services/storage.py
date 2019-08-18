@@ -26,7 +26,7 @@ class StorageService(object):
             self.minio_config['secret_access_key'],
             self.minio_config['verify_ssl']
         )
-        log.info("Done setting up minio client")
+        log.debug("Done setting up minio client")
 
     def client(self):
         return self.minio_client if self.minio_client else None
@@ -42,11 +42,12 @@ class StorageService(object):
     # writes the initial storage bucket to storage via minio.
     def create_root_storage(self, bucket='archive', region='us-east-1'):
         try:
-            log.debug("Making bucket on bucket %s on location %s", bucket, region)
-            self.minio_client.make_bucket(bucket, location=region)
-            log.debug("Setting policy")
-            self.minio_client.set_bucket_policy(bucket, "readonly")
-            log.debug("Done creating root storage")
+            if not self.minio_client.bucket_exists(bucket):
+                log.debug("Making bucket on bucket %s on location %s", bucket, region)
+                self.minio_client.make_bucket(bucket, location=region)
+                log.debug("Setting policy")
+                self.minio_client.set_bucket_policy(bucket, "readonly")
+                log.debug("Done creating root storage")
         # todo should only pass or raise
         except BucketAlreadyOwnedByYou:
             pass

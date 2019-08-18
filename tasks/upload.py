@@ -335,17 +335,6 @@ class UploadTask(BaseCodecovTask):
         raw_uploaded_report = redis_connection.get(redis_key)
         gzipped = redis_key.endswith('/gzip')
 
-        path = MinioEndpoints.raw.get_path(
-            date=datetime.now().strftime('%Y-%m-%d'),
-            repo_hash=ArchiveService.get_archive_hash(self.repository),
-            commit_sha=commit_sha,
-            reportid=reportid
-        )
-
-        archive_service.write_file(path, raw_uploaded_report, gzipped=gzipped)
-        # delete from redis
-        redis_connection.delete(redis_key)
-
         if gzipped:
             raw_uploaded_report = zlib.decompress(
                 raw_uploaded_report, zlib.MAX_WBITS | 16
