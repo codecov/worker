@@ -76,7 +76,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 repository_service = get_repo_provider_service(repository, commit)
             except RepositoryWithoutValidBotException:
                 log.exception(
-                    'Unable to process report because there is valid repo found for that repo',
+                    'Unable to process report because there is no valid bot found for that repo',
                     extra=dict(
                         repoid=repoid,
                         commitid=commitid,
@@ -93,9 +93,15 @@ class UploadProcessorTask(BaseCodecovTask):
                 report = ReportService().build_report_from_commit(commit)
             except Exception:
                 log.exception(
-                    "Unable to fetch current report for repoid %d and commit %s", repoid, commitid
+                    "Unable to fetch current report for commit",
+                    extra=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        arguments_list=arguments_list,
+                        commit_yaml=commit_yaml
+                    )
                 )
-                return
+                raise
             try:
                 for arguments in arguments_list:
                     pr = arguments.get('pr')
@@ -130,13 +136,20 @@ class UploadProcessorTask(BaseCodecovTask):
                         )
                         try_later.append(arguments)
 
-                log.info(
-                    'Processed %d reports', n_processed, extra=dict(repoid=repoid, commitid=commitid)
-                )
                 if n_processed > 0:
+                    log.info(
+                        'Finishing the processing of %d reports',
+                        n_processed,
+                        extra=dict(repoid=repoid, commitid=commitid)
+                    )
                     await self.finish_reports_processing(
                         db_session, archive_service, redis_connection, repository_service,
                         repository, commit, report, pr
+                    )
+                    log.info(
+                        'Processed %d reports',
+                        n_processed,
+                        extra=dict(repoid=repoid, commitid=commitid)
                     )
                 if try_later:
                     log.info(
@@ -150,11 +163,18 @@ class UploadProcessorTask(BaseCodecovTask):
                     'sucessful_reports': n_processed,
                     'try_later_reports': len(try_later)
                 }
-            except exceptions.Retry:
+            except exceptions.CeleryError:
                 raise
             except Exception:
                 commit.state = 'error'
-                log.exception('Could not properly process commit %s - %s', repoid, commitid)
+                log.exception(
+                    'Could not properly process commit',
+                    extra=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        arguments=try_later
+                    )
+                )
                 raise
 
     async def finish_reports_processing(
@@ -171,8 +191,7 @@ class UploadProcessorTask(BaseCodecovTask):
 
     async def process_individual_report(
             self, archive_service, redis_connection, repository_service,
-            commit_yaml,
-            commit, current_report, should_delete_archive, *,
+            commit_yaml, commit, current_report, should_delete_archive, *,
             flags=None, service=None, build_url=None,
             build=None, job=None, name=None, url=None,
             redis_key=None, reportid=None, **kwargs):
@@ -217,9 +236,15 @@ class UploadProcessorTask(BaseCodecovTask):
         )
 
         log.info(
-            'Successfully processed report for session %s and ci %s',
-            session.id,
-            f'{session.provider}:{session.build}:{session.job}'
+            'Successfully processed report',
+            extra=dict(
+                session=session.id,
+                ci=f'{session.provider}:{session.build}:{session.job}',
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                reportid=reportid,
+                commit_yaml=commit_yaml
+            )
         )
         return report
 
@@ -239,7 +264,14 @@ class UploadProcessorTask(BaseCodecovTask):
         # ------------------------
         archive_data = report.to_archive().encode()
         url = archive_service.write_chunks(commit.commitid, archive_data)
-        log.info('Archived report on url %s', url)
+        log.info(
+            'Archived report',
+            extra=dict(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                url=url
+            )
+        )
 
     def process_raw_upload(self, commit_yaml, master, reports, flags, session=None):
         return ReportService().build_report_from_raw_content(
@@ -248,7 +280,8 @@ class UploadProcessorTask(BaseCodecovTask):
 
     def fetch_raw_uploaded_report(
             self, archive_service, redis_connection, archive_url, commit_sha, reportid, redis_key):
-        """Downloads the raw report, wherever it is (it's either a pth on minio or redis)
+        """
+            Downloads the raw report, wherever it is (it's either a pth on minio or redis)
 
         Args:
             archive_service: [description]
@@ -279,7 +312,9 @@ class UploadProcessorTask(BaseCodecovTask):
             raw_uploaded_report = zlib.decompress(
                 raw_uploaded_report, zlib.MAX_WBITS | 16
             )
-        return raw_uploaded_report
+        if raw_uploaded_report is not None:
+            return raw_uploaded_report.decode()
+        return None
 
     def should_delete_archive(self, commit_yaml):
         if get_config('services', 'minio', 'expire_raw_after_n_days'):

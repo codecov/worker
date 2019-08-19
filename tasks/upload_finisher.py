@@ -36,7 +36,7 @@ class UploadFinisherTask(BaseCodecovTask):
 
     async def run_async(self, db_session, processing_results, *, repoid, commitid, commit_yaml, **kwargs):
         repoid = int(repoid)
-        log.info("In run_async for repoid %d and commit %s", repoid, commitid)
+        log.debug("In run_async for repoid %d and commit %s", repoid, commitid)
         lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
         commits = db_session.query(Commit).filter(
                     Commit.repoid == repoid, Commit.commitid == commitid)
