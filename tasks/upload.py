@@ -21,6 +21,8 @@ log = logging.getLogger(__name__)
 regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]').search
 merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
 
+CHUNK_SIZE = 3
+
 
 class UploadTask(BaseCodecovTask):
     """The first of a series of tasks designed to process an `upload` made by the user
@@ -135,9 +137,8 @@ class UploadTask(BaseCodecovTask):
 
     def schedule_task(self, commit, commit_yaml, argument_list):
         chain_to_call = []
-        chunk_size = 3
-        for i in range(0, len(argument_list), chunk_size):
-            chunk = argument_list[i:i + chunk_size]
+        for i in range(0, len(argument_list), CHUNK_SIZE):
+            chunk = argument_list[i:i + CHUNK_SIZE]
             if chunk:
                 sig = upload_processor_task.signature(
                     args=({},) if i == 0 else (),
