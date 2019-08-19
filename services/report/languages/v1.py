@@ -1,7 +1,7 @@
 from services.report.languages.helpers import list_to_dict
 
 from covreports.resources import Report, ReportFile
-from covreports.helpers.yaml import walk
+from services.yaml import read_yaml_field
 from covreports.utils.tuples import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
 
@@ -20,7 +20,7 @@ class VOneProcessor(BaseLanguageProcessor):
 
         return from_json(
             content, path_fixer, ignored_lines, sessionid,
-            walk(repo_yaml, ('parsers', 'v1')) or {}
+            read_yaml_field(repo_yaml, ('parsers', 'v1')) or {}
         )
 
 

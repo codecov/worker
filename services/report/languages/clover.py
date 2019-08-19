@@ -1,6 +1,6 @@
 from timestring import Date
 
-from covreports.helpers.yaml import walk
+from services.yaml import read_yaml_field
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
@@ -30,13 +30,13 @@ def get_end_of_file(filename, xmlfile):
 
 
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):
-    if walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
+    if read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
         try:
             timestamp = next(xml.iter('coverage')).get('generated')
             if '-' in timestamp:
                 t = timestamp.split('-')
                 timestamp = t[1] + '-' + t[0] + '-' + t[2]
-            if timestamp and Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
+            if timestamp and Date(timestamp) < read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
                 raise AssertionError('Clover report expired %s' % timestamp)
         except StopIteration:

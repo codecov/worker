@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from services.report.languages.helpers import combine_partials
-from covreports.helpers.yaml import walk
+from services.yaml import read_yaml_field
 from covreports.resources import Report, ReportFile
 from covreports.utils.merge import partials_to_line
 from covreports.utils.tuples import ReportLine
@@ -43,7 +43,7 @@ def from_txt(string, fix, ignored_lines, sessionid, yaml):
     ignored_files = []
     file_name_replacement = {}  # {old_name: new_name}
     files = {}  # {new_name: <lines defaultdict(list)>}
-    disable_default_path_fixes = walk(yaml, ('codecov', 'disable_default_path_fixes'), False)
+    disable_default_path_fixes = read_yaml_field(yaml, ('codecov', 'disable_default_path_fixes'), False)
 
     for line in string.splitlines():
         if not line:
