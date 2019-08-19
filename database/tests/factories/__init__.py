@@ -5,7 +5,7 @@ from database import models
 from hashlib import sha1
 from factory import Factory
 
-from services.encryption import encode
+from services.encryption import encryptor
 
 
 class OwnerFactory(Factory):
@@ -22,7 +22,7 @@ class OwnerFactory(Factory):
     free = 0
     unencrypted_oauth_token = factory.LazyFunction(lambda: uuid4().hex)
 
-    oauth_token = factory.LazyAttribute(lambda o: encode(o.unencrypted_oauth_token))
+    oauth_token = factory.LazyAttribute(lambda o: encryptor.encode(o.unencrypted_oauth_token))
 
 
 class RepositoryFactory(Factory):
