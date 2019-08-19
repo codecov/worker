@@ -34,18 +34,15 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
             if yaml_branch:
                 repository.branch = yaml_branch
             repository.yaml = new_yaml
-            log.info('Updated project yaml cache on commit %s', current_commit.commitid)
             return True
     return False
 
 
 def read_yaml_field(yaml_dict, keys, _else=None):
+    log.debug("Field %s requested", keys)
     try:
         for key in keys:
-            if hasattr(yaml_dict, '_asdict'):
-                # namedtuples
-                yaml_dict = getattr(yaml_dict, key)
-            elif hasattr(yaml_dict, '__getitem__'):
+            if hasattr(yaml_dict, '__getitem__'):
                 yaml_dict = yaml_dict[key]
             else:
                 yaml_dict = getattr(yaml_dict, key)

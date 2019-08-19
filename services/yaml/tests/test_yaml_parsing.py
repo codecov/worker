@@ -29,7 +29,7 @@ class TestYamlSavingService(BaseTestCase):
             'coverage': {
                 'precision': 2,
                 'round': 'down',
-                'range': "70...100",
+                'range': (70.0, 100.0),
                 'status': {
                     'project': True,
                     'patch': True,

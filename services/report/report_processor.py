@@ -5,7 +5,7 @@ from json import loads
 from lxml import etree
 import logging
 
-from services.yaml import read_yaml_field
+from covreports.helpers.yaml import walk
 from services.report import languages
 from services.report.languages.helpers import remove_non_ascii
 
@@ -127,7 +127,7 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
                 )
 
         # Just leaving those here out of explicitness, but at this point, no processor matched
-        if read_yaml_field(report, ('stats', 'suites')):
+        if walk(report, ('stats', 'suites')):
             # https://sentry.io/codecov/v4/issues/160367055/activity/
             return None
 
