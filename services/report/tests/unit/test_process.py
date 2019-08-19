@@ -57,7 +57,7 @@ class TestProcessRawUpload(BaseTestCase):
         else:
             master = None
 
-        master = process.process_raw_upload(repository=self,
+        master = process.process_raw_upload(commit_yaml=None,
                                             original_report=master,
                                             reports='\n'.join(report),
                                             flags=[])
@@ -90,7 +90,6 @@ class TestProcessRawUpload(BaseTestCase):
 
 class TestProcessRawUploadFixed(BaseTestCase):
     def test_fixes(self):
-        repo = Mock(data={'yaml': {}})
         reports = '\n'.join(('# path=coverage.info',
                              'mode: count',
                              'file.go:7.14,9.2 1 1',
@@ -98,7 +97,7 @@ class TestProcessRawUploadFixed(BaseTestCase):
                              '# path=fixes',
                              'file.go:8:',
                              '<<<<<< EOF', ''))
-        report = process.process_raw_upload(repository=repo, original_report=None, reports=reports, flags=[], session={})
+        report = process.process_raw_upload(commit_yaml={}, original_report=None, reports=reports, flags=[], session={})
         assert 2 not in report['file.go'], '2 never existed'
         assert report['file.go'][7].coverage == 1
         assert 8 not in report['file.go'], '8 should have been removed'
@@ -108,15 +107,21 @@ class TestProcessRawUploadFixed(BaseTestCase):
 class TestProcessRawUploadNotJoined(BaseTestCase):
     @pytest.mark.parametrize('flag, joined', [('nightly', False), ('unittests', True), ('ui', True), ('other', True)])
     def test_not_joined(self, flag, joined):
-        repo = Mock(data={'yaml': {'flags': {'nightly': {'joined': False},
-                                             'unittests': {'joined': True},
-                                             'ui': {'paths': ['ui/']}}}})
+        yaml = {
+            'flags': {
+                'nightly': {'joined': False},
+                'unittests': {'joined': True},
+                'ui': {
+                    'paths': ['ui/']
+                }
+            }
+        }
         merge = Mock(side_effect=NotImplementedError)
         report = Mock(totals=Mock())
         with patch('services.report.raw_upload_processor.process_report', return_value=report):
             with pytest.raises(NotImplementedError):
                 report = process.process_raw_upload(
-                    repository=repo,
+                    commit_yaml=yaml,
                     original_report=Mock(
                         merge=merge,
                         add_session=Mock(return_value=(1, Session()))),
@@ -131,8 +136,7 @@ class TestProcessRawUploadFlags(BaseTestCase):
            {'ignore': ['tests/.*']},
            {'paths': ['folder/']}])
     def test_flags(self, flag):
-        master = process.process_raw_upload(repository=Mock(log=Mock(),
-                                                            data={'yaml': {'flags': {'docker': flag}}}),
+        master = process.process_raw_upload(commit_yaml={'flags': {'docker': flag}},
                                             original_report={},
                                             session={},
                                             reports='{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}',
@@ -143,11 +147,11 @@ class TestProcessRawUploadFlags(BaseTestCase):
 
 class TestProcessSessions(BaseTestCase):
     def test_sessions(self):
-        master = process.process_raw_upload(repository=Mock(log=Mock(), data={'yaml': {}}),
+        master = process.process_raw_upload(commit_yaml={},
                                             original_report={}, session={},
                                             reports='{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}',
                                             flags=None)
-        master = process.process_raw_upload(repository=Mock(log=Mock(), data={'yaml': {}}),
+        master = process.process_raw_upload(commit_yaml={},
                                             original_report=master, session={},
                                             reports='{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}',
                                             flags=None)
@@ -159,8 +163,7 @@ class TestProcessReport(BaseTestCase):
     @pytest.mark.parametrize("report", ["<idk>", "<?xml", "# path=./coverage.xml\n\n"])
     def test_emptys(self, report):
         res = process.process_report(report=report,
-                                     repository=Mock(data={'yaml': None,
-                                                           'task': Mock(log=Mock())}),
+                                     commit_yaml=None,
                                      sessionid=0,
                                      ignored_lines={},
                                      path_fixer=str)
@@ -169,7 +172,7 @@ class TestProcessReport(BaseTestCase):
 
     def test_fixes_paths(self):
         res = process.process_report(report='# path=app.coverage.txt\n/file:\n 1 | 1|line',
-                                     repository=Mock(log=dict, data={'yaml': None}),
+                                     commit_yaml=None,
                                      sessionid=0,
                                      ignored_lines={},
                                      path_fixer=str)
@@ -213,7 +216,7 @@ class TestProcessReport(BaseTestCase):
     def test_detect(self, lang, report):
         with patch('services.report.languages.%s' % lang, return_value=lang) as func:
             res = process.process_report(report=report,
-                                         repository=Mock(log=dict, data={'yaml': None}),
+                                         commit_yaml=None,
                                          sessionid=0,
                                          ignored_lines={},
                                          path_fixer=str)
@@ -228,11 +231,13 @@ class TestProcessReport(BaseTestCase):
         <statements><statement>&xxe;</statement></statements>
         """
         with patch('services.report.languages.scoverage.from_xml') as func:
-            process.process_report(report=report_xxe_xml,
-                                            repository=Mock(log=dict, data={'yaml': None}),
-                                            sessionid=0,
-                                            ignored_lines={},
-                                            path_fixer=str)
+            process.process_report(
+                report=report_xxe_xml,
+                commit_yaml=None,
+                sessionid=0,
+                ignored_lines={},
+                path_fixer=str
+            )
             assert func.called
             expected_xml_string = '<statements><statement>&xxe;</statement></statements>'
             output_xml_string = etree.tostring(func.call_args_list[0][0][0]).decode()

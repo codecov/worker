@@ -46,7 +46,7 @@ def report_type_matching(raw_report):
     return raw_report, 'txt'
 
 
-def process_report(report, repository, sessionid, ignored_lines, path_fixer):
+def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
     name = ''
     if report[:7] == '# path=':
         if '\n' not in report:
@@ -88,7 +88,7 @@ def process_report(report, repository, sessionid, ignored_lines, path_fixer):
         for processor in xml_processors:
             if processor.matches_content(report, first_line, name):
                 return processor.process(
-                    name, report, path_fixer, ignored_lines, sessionid, repository.data['yaml']
+                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
                 )
     elif report_type == 'txt':
         txt = [
@@ -103,7 +103,7 @@ def process_report(report, repository, sessionid, ignored_lines, path_fixer):
         for processor in txt:
             if processor.matches_content(report, first_line, name):
                 return processor.process(
-                    name, report, path_fixer, ignored_lines, sessionid, repository.data['yaml']
+                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
                 )
 
     elif report_type == 'json':
@@ -123,7 +123,7 @@ def process_report(report, repository, sessionid, ignored_lines, path_fixer):
         for processor in json_processors:
             if processor.matches_content(report, first_line, name):
                 return processor.process(
-                    name, report, path_fixer, ignored_lines, sessionid, repository.data['yaml']
+                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
                 )
 
         # Just leaving those here out of explicitness, but at this point, no processor matched

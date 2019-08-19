@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re
+import logging
 
 from pathmap import resolve_by_method
 
@@ -14,6 +14,8 @@ from services.report.fixpaths import fixpaths_to_func, clean_toc, clean_path
 
 from services.report.report_processor import process_report
 
+log = logging.getLogger(__name__)
+
 
 def invert_pattern(string):
     if string.startswith('!'):
@@ -22,7 +24,7 @@ def invert_pattern(string):
         return '!%s' % string
 
 
-def process_raw_upload(repository, original_report, reports, flags, session=None):
+def process_raw_upload(commit_yaml, original_report, reports, flags, session=None):
     toc, env = None, None
 
     # ----------------------
@@ -51,7 +53,7 @@ def process_raw_upload(repository, original_report, reports, flags, session=None
     # -------------------
     # Make custom_fixes()
     # -------------------
-    custom_fixes = fixpaths_to_func(walk(repository.data['yaml'], ('fixes', )) or [])
+    custom_fixes = fixpaths_to_func(walk(commit_yaml, ('fixes', )) or [])
 
     # -------------
     # Make ignore[]
@@ -59,7 +61,7 @@ def process_raw_upload(repository, original_report, reports, flags, session=None
     path_patterns = list(
         map(
             invert_pattern,
-            walk(repository.data['yaml'], ('ignore', )) or []
+            walk(commit_yaml, ('ignore', )) or []
         )
     )
 
@@ -67,16 +69,16 @@ def process_raw_upload(repository, original_report, reports, flags, session=None
     if flags:
         for flag in flags:
             path_patterns.extend(list(map(invert_pattern,
-                                     walk(repository.data['yaml'],
+                                     walk(commit_yaml,
                                           ('flags', flag, 'ignore')) or [])))
 
-            path_patterns.extend(walk(repository.data['yaml'],
+            path_patterns.extend(walk(commit_yaml,
                                       ('flags', flag, 'paths')) or [])
 
     # callable custom ignore
     path_matcher = patterns_to_func(set(path_patterns))
     resolver = resolve_by_method(toc) if toc else None
-    disable_default_path_fixes = walk(repository.data['yaml'], ('codecov', 'disable_default_path_fixes'))
+    disable_default_path_fixes = walk(commit_yaml, ('codecov', 'disable_default_path_fixes'))
 
     def path_fixer(p):
         return clean_path(custom_fixes, path_matcher, resolver, p,
@@ -116,14 +118,12 @@ def process_raw_upload(repository, original_report, reports, flags, session=None
         report = report.strip()
         if report:
             if report.startswith('# path=') and report.split('\n', 1)[0].split('# path=')[1] in skip_files:
-                repository.data['task'].log('info',
-                                            'Skipping file.',
-                                            filename=report.split('\n', 1)[0].split('# path=')[1])
+                log.info('Skipping file %s', report.split('\n', 1)[0].split('# path=')[1])
                 continue
 
             report = process_report(
                 report=report,
-                repository=repository,
+                commit_yaml=commit_yaml,
                 sessionid=sessionid,
                 ignored_lines=ignored_file_lines or {},
                 path_fixer=path_fixer
@@ -135,7 +135,7 @@ def process_raw_upload(repository, original_report, reports, flags, session=None
                 # skip joining if flags express this fact
                 joined = True
                 for flag in (flags or []):
-                    if walk(repository.data['yaml'], ('flags', flag, 'joined')) is False:
+                    if walk(commit_yaml, ('flags', flag, 'joined')) is False:
                         joined = False
                         break
 
