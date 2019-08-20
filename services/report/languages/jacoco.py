@@ -4,6 +4,8 @@ from collections import defaultdict
 from services.yaml import read_yaml_field
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+
+from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
 
 
@@ -31,7 +33,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 # report expired over 12 hours ago
                 raise AssertionError('Jacoco report expired %s' % timestamp)
 
-        except AssertionError:
+        except ReportExpiredException:
             raise
 
         except StopIteration:

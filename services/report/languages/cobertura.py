@@ -3,6 +3,8 @@ from timestring import Date
 from services.yaml import read_yaml_field
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+
+from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
 
 
@@ -28,14 +30,13 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
         try:
             try:
                 timestamp = next(xml.iter('coverage')).get('timestamp')
-
             except Exception:
                 timestamp = next(xml.iter('scoverage')).get('timestamp')
             if timestamp and Date(timestamp) < read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
-                raise AssertionError("Cobertura report expired " + timestamp)
+                raise ReportExpiredException("Cobertura report expired " + timestamp)
 
-        except AssertionError:
+        except ReportExpiredException:
             raise
 
     report = Report()

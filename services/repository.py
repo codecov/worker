@@ -27,7 +27,11 @@ def get_repo_provider_service(repository, commit=None):
         verify_ssl=get_verify_ssl(service),
         timeouts=_timeouts
     )
+    return _get_repo_provider_service_instance(repository.service, **adapter_params)
+
+
+def _get_repo_provider_service_instance(service_name, **adapter_params):
     return torngit.get(
-        repository.service,
+        service_name,
         **adapter_params
     )

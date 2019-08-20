@@ -3,6 +3,8 @@ from timestring import Date
 from services.yaml import read_yaml_field
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
+
+from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
 
 
@@ -38,7 +40,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 timestamp = t[1] + '-' + t[0] + '-' + t[2]
             if timestamp and Date(timestamp) < read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
-                raise AssertionError('Clover report expired %s' % timestamp)
+                raise ReportExpiredException('Clover report expired %s' % timestamp)
         except StopIteration:
             pass
 

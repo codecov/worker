@@ -5,6 +5,7 @@ import celery
 
 from tasks.upload_processor import UploadProcessorTask
 from database.tests.factories import CommitFactory
+from helpers.exceptions import ReportExpiredException
 from services.archive import ArchiveService
 
 here = Path(__file__)
@@ -46,6 +47,16 @@ class TestUploadProcessorTask(object):
         )
         mock_storage.read_file.assert_called_with('archive', url)
         expected_result = {
+            'processings_so_far': [
+                {
+                    'arguments': {'url': url},
+                    'successful': True
+                }
+            ]
+        }
+        assert expected_result == result
+        assert commit.message == 'dsidsahdsahdsa'
+        expected_generated_report = {
             'files': {
                 'awesome/__init__.py': [
                     0,
@@ -85,16 +96,12 @@ class TestUploadProcessorTask(object):
                     'n': None,
                     'p': None,
                     't': [3, 24, 19, 5, 0, '79.16667', 0, 0, 0, 0, 0, 0, 0],
-                    'u': None
+                    'u': None,
+                    'd': commit.report['sessions']['0']['d']  # This is not deterministic
                 }
             }
         }
-
-        # assert expected_result['files']['awesome/__init__.py'] == result['files']['awesome/__init__.py']
-        # assert expected_result['files'] == result['files']
-        # del result['sessions']['0']['d']  # This is not deterministic
-        # assert expected_result['sessions'] == result['sessions']
-        assert commit.message == 'dsidsahdsahdsa'
+        assert commit.report == expected_generated_report
         mocked_1.assert_called_with(commit.commitid)
         # mocked_3.send_task.assert_called_with(
         #     'app.tasks.notify.Notify',
@@ -103,7 +110,8 @@ class TestUploadProcessorTask(object):
         # )
         # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
-            f"upload_processing_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+            f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
+            blocking_timeout=30, timeout=300
         )
 
     @pytest.mark.asyncio
@@ -142,71 +150,14 @@ class TestUploadProcessorTask(object):
         )
         mock_storage.read_file.assert_called_with('archive', url)
         expected_result = {
-            'files': {
-                'awesome/__init__.py': [
-                    2,
-                    [0, 16, 13, 3, 0, '81.25000', 0, 0, 0, 0, 0, 0, 0],
-                    [
-                        [0, 10, 8, 2, 0, '80.00000', 0, 0, 0, 0, 0, 0, 0],
-                        [0, 14, 10, 4, 0, '71.42857', 0, 0, 0, 0, 0, 0, 0]
-                    ],
-                    [
-                        0, 4, 4, 0, 0, '100', 0, 0, 0, 0, 0, 0, 0
-                    ]
-                ],
-                'tests/__init__.py': [
-                    0,
-                    [0, 3, 2, 1, 0, '66.66667', 0, 0, 0, 0, 0, 0, 0],
-                    [
-                        [0, 3, 2, 1, 0, '66.66667', 0, 0, 0, 0, 0, 0, 0],
-                        [0, 3, 2, 1, 0, '66.66667', 0, 0, 0, 0, 0, 0, 0]
-                    ],
-                    None
-                ],
-                'tests/test_sample.py': [
-                    1,
-                    [0, 7, 7, 0, 0, '100', 0, 0, 0, 0, 0, 0, 0],
-                    [
-                        [0, 7, 7, 0, 0, '100', 0, 0, 0, 0, 0, 0, 0],
-                        [0, 7, 7, 0, 0, '100', 0, 0, 0, 0, 0, 0, 0]
-                    ],
-                    None
-                ]
-            },
-            'sessions': {
-                '0': {
-                    'N': None,
-                    'a': 'v4/raw/2019-01-10/4434BC2A2EC4FCA57F77B473D83F928C/abf6d4df662c47e32460020ab14abf9303581429/9ccc55a1-8b41-4bb1-a946-ee7a33a7fb56.txt',
-                    'c': None,
-                    'e': None,
-                    'f': None,
-                    'j': None,
-                    'n': None,
-                    'p': None,
-                    't': [3, 20, 17, 3, 0, '85.00000', 0, 0, 0, 0, 0, 0, 0],
-                    'u': None
-                },
-                '1': {
-                    'N': None,
-                    'a': url,
-                    'c': None,
-                    'e': None,
-                    'f': None,
-                    'j': None,
-                    'n': None,
-                    'p': None,
-                    't': [3, 24, 19, 5, 0, '79.16667', 0, 0, 0, 0, 0, 0, 0],
-                    'u': None
+            'processings_so_far': [
+                {
+                    'arguments': {'url': url},
+                    'successful': True
                 }
-            }
+            ]
         }
-        # assert expected_result['files']['awesome/__init__.py'] == result['files']['awesome/__init__.py']
-        # assert expected_result['files']['tests/test_sample.py'] == result['files']['tests/test_sample.py']
-        # assert expected_result['files']['tests/__init__.py'] == result['files']['tests/__init__.py']
-        # assert expected_result['files'] == result['files']
-        # del result['sessions']['0']['d']  # This is not deterministic
-        # del result['sessions']['1']['d']  # This is not deterministic
-        # assert expected_result['sessions'] == result['sessions']
+        assert expected_result == result
         assert commit.message == 'dsidsahdsahdsa'
         mocked_1.assert_called_with(commit.commitid)
         # mocked_3.send_task.assert_called_with(
@@ -216,14 +167,15 @@ class TestUploadProcessorTask(object):
         # )
         # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
-            f"upload_processing_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+            f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
+            blocking_timeout=30, timeout=300
         )
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_try_later(self, mocker, test_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(UploadProcessorTask, 'process_individual_report')
+        mocked_2 = mocker.patch.object(UploadProcessorTask, 'do_process_individual_report')
         mocked_2.side_effect = Exception()
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_3 = mocker.patch.object(UploadProcessorTask, 'retry')
@@ -235,7 +187,7 @@ class TestUploadProcessorTask(object):
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
             repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
             repository__owner__username='ThiagoCodecov',
-            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry for the timebomb
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -244,8 +196,6 @@ class TestUploadProcessorTask(object):
                 'url': 'url'
             }
         ]
-        mock_redis.exists.side_effect = [True, False]
-        mock_redis.lpop.side_effect = redis_queue
         with pytest.raises(celery.exceptions.Retry):
             await UploadProcessorTask().run_async(
                 dbsession,
@@ -256,15 +206,67 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue
             )
         mocked_2.assert_called_with(
-            mocker.ANY, mock_redis, mocker.ANY, {}, commit, mocker.ANY, False, url='url'
+            mocker.ANY, mock_redis, {}, commit, mocker.ANY, False, url='url'
         )
         mocked_3.assert_called_with(
             countdown=20,
-            kwargs={
-                'arguments_list': [{'url': 'url'}],
-                'commit_yaml': {},
-                'commitid': commit.commitid,
-                'repoid': commit.repoid
-            },
             max_retries=3
         )
+
+    @pytest.mark.asyncio
+    async def test_upload_task_call_with_expired_report(self, mocker, test_configuration, dbsession, mock_repo_provider, mock_storage, mock_redis):
+        mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
+        mocked_1.return_value = None
+        mocked_2 = mocker.patch.object(UploadProcessorTask, 'do_process_individual_report')
+        false_report = mocker.MagicMock(
+            to_database=mocker.MagicMock(
+                return_value=({}, '{}')
+            )
+        )
+        mocked_2.side_effect = [false_report, ReportExpiredException()]
+        # Mocking retry to also raise the exception so we can see how it is called
+        mocked_4 = mocker.patch.object(UploadProcessorTask, 'app')
+        mocked_4.send_task.return_value = True
+        commit = CommitFactory.create(
+            message='',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry for the timebomb
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        redis_queue = [
+            {
+                'url': 'url',
+                'what': 'huh'
+            },
+            {
+                'url': 'url2',
+                'extra_param': 45
+            },
+        ]
+        result = await UploadProcessorTask().run_async(
+            dbsession,
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={},
+            arguments_list=redis_queue
+        )
+        expected_result = {
+            'processings_so_far': [
+                {
+                    'arguments': {'url': 'url', 'what': 'huh'},
+                    'successful': True
+                },
+                {
+                    'arguments': {'extra_param': 45, 'url': 'url2'},
+                    'error_type': 'report_expired',
+                    'report': None,
+                    'should_retry': False,
+                    'successful': False
+                }
+            ]
+        }
+        assert expected_result == result

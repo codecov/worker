@@ -1,0 +1,2 @@
+class ReportExpiredException(Exception):
+    pass

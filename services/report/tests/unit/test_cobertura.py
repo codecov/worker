@@ -1,9 +1,9 @@
 from time import time
-from json import dumps
 import xml.etree.cElementTree as etree
 import pytest
 
 from tests.base import BaseTestCase
+from helpers.exceptions import ReportExpiredException
 from services.report.languages import cobertura
 
 
@@ -129,8 +129,8 @@ class TestCobertura(BaseTestCase):
 
     @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
     def test_expired(self, date):
-        with pytest.raises(AssertionError, match='Cobertura report expired'):
+        with pytest.raises(ReportExpiredException, match='Cobertura report expired'):
             cobertura.from_xml(etree.fromstring(xml % ('', date, '')), None, {}, None, None)
 
-        with pytest.raises(AssertionError, match='Cobertura report expired'):
+        with pytest.raises(ReportExpiredException, match='Cobertura report expired'):
             cobertura.from_xml(etree.fromstring(xml % ('s', date, 's')), None, {}, None, None)
