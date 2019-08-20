@@ -14,9 +14,10 @@ pytest==4.5.0
 python-dateutil==2.8.0
 PyYAML==3.13
 redis==3.2.0
-requests==2.20.1
+requests==2.22.0
 SQLAlchemy-Utils==0.33.9
 SQLAlchemy==1.2.14
 timestring==1.6.2
 vcrpy==2.0.1
 python-json-logger==0.1.11
+google-cloud-storage==1.18.0
