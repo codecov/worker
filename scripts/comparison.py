@@ -1,10 +1,10 @@
-from services.storage import StorageService
+from services.storage import get_appropriate_storage_service
 from services.report import ReportService
 from database.engine import get_db_session
 from database.models import Commit
 
 def find_filepaths_in_common(first_bucket, second_bucket):
-    storage_service = StorageService()
+    storage_service = get_appropriate_storage_service()
     minio_client = storage_service.minio_client # Its the same client
     first_folders = minio_client.list_objects_v2(first_bucket, prefix='v4/repos', recursive=True)
     second_folders = minio_client.list_objects_v2(second_bucket, prefix='v4/repos', recursive=True)

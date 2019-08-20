@@ -6,7 +6,7 @@ from base64 import b16encode
 from enum import Enum
 
 from helpers.config import get_config
-from services.storage import StorageService
+from services.storage import get_appropriate_storage_service
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class ArchiveService(object):
         self.region = get_config('services', 'minio', 'region', default='us-east-1')
         self.enterprise = bool(get_config('setup', 'enterprise_license'))
 
-        self.storage = StorageService()
+        self.storage = get_appropriate_storage_service()
         log.debug("Getting archive hash")
         self.storage_hash = self.get_archive_hash(repository)
 
