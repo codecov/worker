@@ -84,7 +84,10 @@ class GCPStorageService(BaseStorageService):
         Raises:
             NotImplementedError: If the current instance did not implement this method
         """
-        file_contents = '\n'.join((self.read_file(bucket_name, path).decode(), data))
+        try:
+            file_contents = '\n'.join((self.read_file(bucket_name, path).decode(), data))
+        except FileNotInStorageError:
+            file_contents = data
         return self.write_file(bucket_name, path, file_contents)
 
     def read_file(self, bucket_name, path):

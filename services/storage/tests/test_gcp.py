@@ -72,6 +72,18 @@ class TestGCPStorateService(BaseTestCase):
         reading_result = storage.read_file(bucket_name, path)
         assert reading_result.decode() == '\n'.join([data, second_data])
 
+    def test_append_to_non_existing_file(self, request, codecov_vcr):
+        storage = GCPStorageService(
+            gcp_config
+        )
+        path = f'{request.node.name}/result.txt'
+        second_data = 'mom, look at me, appending data'
+        bucket_name = 'testingarchive'
+        second_writing_result = storage.append_to_file(bucket_name, path, second_data)
+        assert second_writing_result
+        reading_result = storage.read_file(bucket_name, path)
+        assert reading_result.decode() == second_data
+
     def test_read_file_does_not_exist(self, request, codecov_vcr):
         storage = GCPStorageService(
             gcp_config
