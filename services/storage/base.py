@@ -62,6 +62,7 @@ class BaseStorageService(object):
 
         Raises:
             NotImplementedError: If the current instance did not implement this method
+            FileNotInStorageError: If the file does not exist
 
         Returns:
             bytes : The contents of that file, still encoded as bytes

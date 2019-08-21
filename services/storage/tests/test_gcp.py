@@ -2,7 +2,7 @@ import pytest
 
 from tests.base import BaseTestCase
 from services.storage.gcp import GCPStorageService
-from services.storage.exceptions import BucketAlreadyExistsError
+from services.storage.exceptions import BucketAlreadyExistsError, FileNotInStorageError
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
 # one on which the code ran
@@ -23,16 +23,7 @@ C/tY+lZIEO1Gg/FxSMB+hwwhwfSuE3WohZfEcSy+R48=
 -----END RSA PRIVATE KEY-----"""
 
 gcp_config = {
-  "type": "service_account",
-  "project_id": "test6u3411ty6xqh462sri",
-  "private_key_id": "testz9dga2ive5zg2dhw2t9ensbezbe605pmj1f0",
-  "private_key": fake_private_key,
-  "client_email": "codecov@test6u3411ty6xqh462sri.iam.gserviceaccount.com",
-  "client_id": "116227067571432102184",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/codecov%40test6u3411ty6xqh462sri.iam.gserviceaccount.com"
+  "google_credentials_location": "/home/thiagorramos/Downloads/codecov-311a0005573e.json"
 }
 
 
@@ -65,3 +56,27 @@ class TestGCPStorateService(BaseTestCase):
         assert writing_result
         reading_result = storage.read_file(bucket_name, path)
         assert reading_result.decode() == data
+
+    def test_write_then_append_then_read_file(self, codecov_vcr):
+        storage = GCPStorageService(
+            gcp_config
+        )
+        path = 'test_write_then_append_then_read_file/result'
+        data = 'lorem ipsum dolor test_write_then_read_file á'
+        second_data = 'mom, look at me, appending data'
+        bucket_name = 'testingarchive'
+        writing_result = storage.write_file(bucket_name, path, data)
+        second_writing_result = storage.append_to_file(bucket_name, path, second_data)
+        assert writing_result
+        assert second_writing_result
+        reading_result = storage.read_file(bucket_name, path)
+        assert reading_result.decode() == '\n'.join([data, second_data])
+
+    def test_read_file_does_not_exist(self, request, codecov_vcr):
+        storage = GCPStorageService(
+            gcp_config
+        )
+        path = f'{request.node.name}/does_not_exist.txt'
+        bucket_name = 'testingarchive'
+        with pytest.raises(FileNotInStorageError):
+            storage.read_file(bucket_name, path)

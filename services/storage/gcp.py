@@ -7,7 +7,7 @@ from google.oauth2.service_account import Credentials
 import google.cloud.exceptions
 
 from services.storage.base import BaseStorageService
-from services.storage.exceptions import BucketAlreadyExistsError
+from services.storage.exceptions import BucketAlreadyExistsError, FileNotInStorageError
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +73,9 @@ class GCPStorageService(BaseStorageService):
             Appends more content to the file `path`
             (What happens if the file doesn't exist?)
 
+            Note that this method assumes some non-bytes and instead decodable structure
+                at the file
+
         Args:
             bucket_name (str): The name of the bucket for the file lives
             path (str): The desired path of the file
@@ -81,7 +84,8 @@ class GCPStorageService(BaseStorageService):
         Raises:
             NotImplementedError: If the current instance did not implement this method
         """
-        raise NotImplementedError()
+        file_contents = '\n'.join((self.read_file(bucket_name, path).decode(), data))
+        return self.write_file(bucket_name, path, file_contents)
 
     def read_file(self, bucket_name, path):
         """Reads the content of a file
@@ -92,13 +96,17 @@ class GCPStorageService(BaseStorageService):
 
         Raises:
             NotImplementedError: If the current instance did not implement this method
+            FileNotInStorageError: If the file does not exist
 
         Returns:
             bytes : The contents of that file, still encoded as bytes
         """
         blob = self.get_blob(bucket_name, path)
         data = BytesIO()
-        blob.download_to_file(data)
+        try:
+            blob.download_to_file(data)
+        except google.api_core.exceptions.NotFound:
+            raise FileNotInStorageError(f"File {path} does not exist in {bucket_name}")
         data.seek(0)
         return data.getvalue()
 
