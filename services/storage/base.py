@@ -78,6 +78,10 @@ class BaseStorageService(object):
 
         Raises:
             NotImplementedError: If the current instance did not implement this method
+            FileNotInStorageError: If the file does not exist
+
+        Returns:
+            bool: True if the deletion was succesful
         """
         raise NotImplementedError()
 
@@ -91,6 +95,10 @@ class BaseStorageService(object):
 
         Raises:
             NotImplementedError: If the current instance did not implement this method
+
+        Returns:
+            list: A list of booleans, where each result indicates whether that file was deleted
+                successfully
         """
         raise NotImplementedError()
 

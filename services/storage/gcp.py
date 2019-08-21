@@ -119,6 +119,10 @@ class GCPStorageService(BaseStorageService):
 
         Raises:
             NotImplementedError: If the current instance did not implement this method
+            FileNotInStorageError: If the file does not exist
+
+        Returns:
+            bool: True if the deletion was succesful
         """
         blob = self.get_blob(bucket_name, path)
         try:
@@ -137,8 +141,16 @@ class GCPStorageService(BaseStorageService):
 
         Raises:
             NotImplementedError: If the current instance did not implement this method
+
+        Returns:
+            list: A list of booleans, where each result indicates whether that file was deleted
+                successfully
         """
-        raise NotImplementedError()
+        bucket = self.storage_client.get_bucket(bucket_name)
+        blobs = [self.get_blob(bucket_name, path) for path in paths]
+        blobs_errored = set()
+        bucket.delete_blobs(blobs, on_error=blobs_errored.add)
+        return [b not in blobs_errored for b in blobs]
 
     def list_folder_contents(self, bucket_name, prefix=None, recursive=True):
         """List the contents of a specific folder

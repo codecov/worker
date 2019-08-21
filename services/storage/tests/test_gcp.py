@@ -103,3 +103,21 @@ class TestGCPStorateService(BaseTestCase):
         bucket_name = 'testingarchive'
         with pytest.raises(FileNotInStorageError):
             storage.delete_file(bucket_name, path)
+
+    def test_batch_delete_files(self, request, codecov_vcr):
+        storage = GCPStorageService(
+            gcp_config
+        )
+        path_1 = f'{request.node.name}/result_1.txt'
+        path_2 = f'{request.node.name}/result_2.txt'
+        path_3 = f'{request.node.name}/result_3.txt'
+        paths = [path_1, path_2, path_3]
+        data = 'lorem ipsum dolor test_write_then_read_file á'
+        bucket_name = 'testingarchive'
+        storage.write_file(bucket_name, path_1, data)
+        storage.write_file(bucket_name, path_3, data)
+        deletion_result = storage.delete_files(bucket_name, paths)
+        assert deletion_result == [True, False, True]
+        for p in paths:
+            with pytest.raises(FileNotInStorageError):
+                storage.read_file(bucket_name, p)
