@@ -80,3 +80,26 @@ class TestGCPStorateService(BaseTestCase):
         bucket_name = 'testingarchive'
         with pytest.raises(FileNotInStorageError):
             storage.read_file(bucket_name, path)
+
+    def test_write_then_delete_file(self, request, codecov_vcr):
+        storage = GCPStorageService(
+            gcp_config
+        )
+        path = f'{request.node.name}/result.txt'
+        data = 'lorem ipsum dolor test_write_then_read_file á'
+        bucket_name = 'testingarchive'
+        writing_result = storage.write_file(bucket_name, path, data)
+        assert writing_result
+        deletion_result = storage.delete_file(bucket_name, path)
+        assert deletion_result is True
+        with pytest.raises(FileNotInStorageError):
+            storage.read_file(bucket_name, path)
+
+    def test_delete_file_doesnt_exist(self, request, codecov_vcr):
+        storage = GCPStorageService(
+            gcp_config
+        )
+        path = f'{request.node.name}/result.txt'
+        bucket_name = 'testingarchive'
+        with pytest.raises(FileNotInStorageError):
+            storage.delete_file(bucket_name, path)

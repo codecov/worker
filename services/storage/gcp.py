@@ -105,7 +105,7 @@ class GCPStorageService(BaseStorageService):
         data = BytesIO()
         try:
             blob.download_to_file(data)
-        except google.api_core.exceptions.NotFound:
+        except google.cloud.exceptions.NotFound:
             raise FileNotInStorageError(f"File {path} does not exist in {bucket_name}")
         data.seek(0)
         return data.getvalue()
@@ -120,7 +120,12 @@ class GCPStorageService(BaseStorageService):
         Raises:
             NotImplementedError: If the current instance did not implement this method
         """
-        raise NotImplementedError()
+        blob = self.get_blob(bucket_name, path)
+        try:
+            blob.delete()
+        except google.cloud.exceptions.NotFound:
+            raise FileNotInStorageError(f"File {path} does not exist in {bucket_name}")
+        return True
 
     def delete_files(self, bucket_name, paths=[]):
         """Batch deletes a list of files from a given bucket
