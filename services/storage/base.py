@@ -70,7 +70,14 @@ class BaseStorageService(object):
         raise NotImplementedError()
 
     def delete_file(self, bucket_name, path):
-        """Deletes a single file from the storage (what happens if the file doesnt exist?)
+        """Deletes a single file from the storage
+
+        Note: Not all implementations raise a FileNotInStorageError
+            if the file is not already there in the first place.
+            It seems that minio, for example, returns a 204 regardless.
+            So while you should prepare for a FileNotInStorageError,
+            know that if it is not raise, it doesn't mean the file
+            was there beforehand.
 
         Args:
             bucket_name (str): The name of the bucket for the file lives

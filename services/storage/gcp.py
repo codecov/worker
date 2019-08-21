@@ -44,7 +44,10 @@ class GCPStorageService(BaseStorageService):
             NotImplementedError: If the current instance did not implement this method
         """
         try:
-            return self.storage_client.create_bucket(bucket_name)
+            bucket = self.storage_client.create_bucket(bucket_name)
+            return {
+                'name': bucket.name
+            }
         except google.cloud.exceptions.Conflict:
             raise BucketAlreadyExistsError(f"Bucket {bucket_name} already exists")
 
