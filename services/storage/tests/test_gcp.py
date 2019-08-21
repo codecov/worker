@@ -23,7 +23,16 @@ C/tY+lZIEO1Gg/FxSMB+hwwhwfSuE3WohZfEcSy+R48=
 -----END RSA PRIVATE KEY-----"""
 
 gcp_config = {
-  "google_credentials_location": "/home/thiagorramos/Downloads/codecov-311a0005573e.json"
+  "type": "service_account",
+  "project_id": "test6u3411ty6xqh462sri",
+  "private_key_id": "testz9dga2ive5zg2dhw2t9ensbezbe605pmj1f0",
+  "private_key": fake_private_key,
+  "client_email": "codecov@test6u3411ty6xqh462sri.iam.gserviceaccount.com",
+  "client_id": "116227067571432102184",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/codecov%40test6u3411ty6xqh462sri.iam.gserviceaccount.com"
 }
 
 
@@ -133,3 +142,36 @@ class TestGCPStorateService(BaseTestCase):
         for p in paths:
             with pytest.raises(FileNotInStorageError):
                 storage.read_file(bucket_name, p)
+
+    def test_list_folder_contents(self, request, codecov_vcr):
+        storage = GCPStorageService(
+            gcp_config
+        )
+        path_1 = f'thiago/{request.node.name}/result_1.txt'
+        path_2 = f'thiago/{request.node.name}/result_2.txt'
+        path_3 = f'thiago/{request.node.name}/result_3.txt'
+        path_4 = f'thiago/{request.node.name}/f1/result_1.txt'
+        path_5 = f'thiago/{request.node.name}/f1/result_2.txt'
+        path_6 = f'thiago/{request.node.name}/f1/result_3.txt'
+        all_paths = [path_1, path_2, path_3, path_4, path_5, path_6]
+        bucket_name = 'testingarchive'
+        for i, p in enumerate(all_paths):
+            data = f"Lorem ipsum on file {p} for {i * 'po'}"
+            storage.write_file(bucket_name, p, data)
+        results_1 = list(storage.list_folder_contents(bucket_name, f'thiago/{request.node.name}'))
+        expected_result_1 = [
+            {'name': path_1, 'size': 70},
+            {'name': path_2, 'size': 72},
+            {'name': path_3, 'size': 74},
+            {'name': path_4, 'size': 79},
+            {'name': path_5, 'size': 81},
+            {'name': path_6, 'size': 83},
+        ]
+        assert sorted(expected_result_1, key=lambda x: x['size']) == sorted(results_1, key=lambda x: x['size'])
+        results_2 = list(storage.list_folder_contents(bucket_name, f'thiago/{request.node.name}/f1'))
+        expected_result_2 = [
+            {'name': path_4, 'size': 79},
+            {'name': path_5, 'size': 81},
+            {'name': path_6, 'size': 83},
+        ]
+        assert sorted(expected_result_2, key=lambda x: x['size']) == sorted(results_2, key=lambda x: x['size'])

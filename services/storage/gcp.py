@@ -158,6 +158,8 @@ class GCPStorageService(BaseStorageService):
     def list_folder_contents(self, bucket_name, prefix=None, recursive=True):
         """List the contents of a specific folder
 
+        Attention: google ignores the `recursive` param
+
         Args:
             bucket_name (str): The name of the bucket for the file lives
             prefix: The prefix of the files to be listed (default: {None})
@@ -166,4 +168,12 @@ class GCPStorageService(BaseStorageService):
         Raises:
             NotImplementedError: If the current instance did not implement this method
         """
-        raise NotImplementedError()
+        assert recursive
+        bucket = self.storage_client.get_bucket(bucket_name)
+        return (self._blob_to_dict(b) for b in bucket.list_blobs(prefix=prefix))
+
+    def _blob_to_dict(self, blob):
+        return {
+            'name': blob.name,
+            'size': blob.size
+        }
