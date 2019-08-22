@@ -23,13 +23,11 @@ build:
 push:
 	docker tag codecov/worker ${GCR_REPO}:${VERSION}
 	docker push ${GCR_REPO}:latest
-	docker push ${GCR_REPO}:${VERSION}
 
 tag:
-	docker tag codecov/worker ${GCR_REPO}:${VERSION}
+	docker pull ${GCR_REPO}:latest
+	docker tag ${GCR_REPO}:latest ${GCR_REPO}:${VERSION}
 	docker push ${GCR_REPO}:${VERSION}
-	git tag ${VERSION}
-	git push --tags
 
 deploy:
 	kubectl set image deployment/worker workers=${GCR_REPO}:${VERSION}
