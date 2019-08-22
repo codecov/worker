@@ -7,6 +7,7 @@ from enum import Enum
 
 from helpers.config import get_config
 from services.storage import get_appropriate_storage_service
+from services.storage.exceptions import BucketAlreadyExistsError
 
 log = logging.getLogger(__name__)
 
@@ -59,7 +60,10 @@ class ArchiveService(object):
         # create storage based on the root, this will throw acceptable
         # exceptions if the bucket exists. ResponseError if it doesn't.
         log.debug("Creating root storage")
-        self.storage.create_root_storage(self.root, self.region)
+        try:
+            self.storage.create_root_storage(self.root, self.region)
+        except BucketAlreadyExistsError:
+            pass
         log.debug("Created root storage")
 
     """
