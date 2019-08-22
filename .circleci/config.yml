@@ -60,7 +60,7 @@ jobs:
 
 workflows:
   version: 2
-  test-build-deploy:
+  build-test-deploy:
     jobs:
       - build:
           filters:

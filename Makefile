@@ -21,7 +21,7 @@ build:
 	docker tag codecov/worker ${GCR_REPO}:latest
 
 push:
-	docker tag codecov/worker ${GCR_REPO}:${VERSION}
+	docker tag codecov/worker ${GCR_REPO}:latest
 	docker push ${GCR_REPO}:latest
 
 tag:
