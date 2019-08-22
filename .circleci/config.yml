@@ -8,44 +8,19 @@ executors:
         username: _json_key
         password: $GCLOUD_SERVICE_KEY
     - image: circleci/postgres:9.6.2
-    working_directory: /tmp
+    working_directory: /work
+  codecov-worker:
+    docker:
+    - image: codecov/worker
+      user: root
+    - image: circleci/postgres:9.6.2
+    working_directory: /app
+
 jobs:
-  test:
-    executor: codecov-deploy
-    steps:
-    - checkout
-    - restore_cache:
-        keys:
-        - v1-dependencies-{{ checksum "requirements.txt" }}
-        - v1-dependencies-
-    - run:
-        name: install dependencies
-        command: |
-          python3 -m venv venv
-          . venv/bin/activate
-          sed -i 's+https://github.com+https://'"$GH_ACCESS_TOKEN"'@github.com+g' requirements.txt
-          pip install -r requirements.txt
-    - persist_to_workspace:
-        root: .
-    - save_cache:
-        paths:
-        - ./venv
-        key: v1-dependencies-{{ checksum "requirements.txt" }}
-    - run:
-        name: run tests
-        command: |
-          . venv/bin/activate
-          python -m pytest --cov=./
   build:
     executor: codecov-deploy
     steps:
-    - attach_workspace:
-        at: /tmp
     - setup_remote_docker
-    - restore_cache:
-        keys:
-        - v1-dependencies-{{ checksum "requirements.txt" }}
-        - v1-dependencies-
     - run:
         name: Copy gcloud cli and auth for docker push
         command: |-
@@ -60,43 +35,42 @@ jobs:
         command: |-
           printenv
           make build GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$CIRCLE_TAG
+  test:
+    executor: codecov-worker
+    steps:
     - run:
-        name: push container
-        command: |-
-          make push GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$CIRCLE_TAG
+        name: run tests
+        command: |
+          . venv/bin/activate
+          python -m pytest --cov=./
   deploy:
     executor: codecov-deploy
     steps:
-    - attach_workspace:
-        at: /tmp
     - setup_remote_docker
-    - checkout
-    - restore_cache:
-        keys:
-        - v1-dependencies-{{ checksum "requirements.txt" }}
-        - v1-dependencies-
     - run:
         name: deploy to k8s
         command: |-
+          make push GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$CIRCLE_TAG
           make deploy VERSION=$CIRCLE_TAG
 
 workflows:
   version: 2
   test-build-deploy:
     jobs:
-      - test:
+      - build:
           filters:
             tags:
               only: /.*/
-      - build:
+      - test:
           requires:
-            - test
+            - build
           filters:
             tags:
-              only: /^phildier-.*/
+              only: /.*/
       - deploy:
           requires:
             - build
+            - test
           filters:
             tags:
               only: /^phildier-.*/
