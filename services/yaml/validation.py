@@ -1,5 +1,10 @@
+import logging
+
 from schema import Schema, Optional, Or, And, SchemaError, Regex
 from services.yaml.exceptions import InvalidYamlException
+from covreports.encryption import StandardEncryptor
+
+log = logging.getLogger(__name__)
 
 
 def validate_yaml(inputted_yaml_dict):
@@ -18,6 +23,7 @@ def validate_yaml(inputted_yaml_dict):
     try:
         return user_yaml_schema.validate(inputted_yaml_dict)
     except SchemaError as e:
+        log.exception("Unable to validate yaml", extra=dict(user_input=inputted_yaml_dict))
         raise InvalidYamlException(e)
 
 
@@ -91,13 +97,66 @@ class LayoutStructure(object):
         return value
 
 
+class BranchStructure(object):
+
+    def validate(self, value):
+        if not isinstance(value, str):
+            raise SchemaError(f"Branch must be {str}, was {type(value)} ({value})")
+        if value[:7] == 'origin/':
+            return value[7:]
+        elif value[:11] == 'refs/heads/':
+            return value[11:]
+        return value
+
+
+class EncryptorWithAlreadyGeneratedKey(StandardEncryptor):
+
+    def __init__(self, key):
+        self.key = key
+        self.bs = 16
+
+
+class UserGivenSecret(object):
+    encryptor = EncryptorWithAlreadyGeneratedKey(
+        b']\xbb\x13\xf9}\xb3\xb7\x03)*0Kv\xb2\xcet'  # Same secret as in the main app
+    )
+
+    def validate(self, value):
+        if value is not None and value.startswith('secret:'):
+            self.decode(value)
+        return value
+
+    @classmethod
+    def encode(cls, value):
+        return 'secret:%s' % cls.encryptor.encode(value).decode()
+
+    @classmethod
+    def decode(cls, value):
+        return cls.encryptor.decode(value[7:])
+
+
 user_given_title = Regex(r'^[\w\-\.]+$')
 flag_name = Regex(r'^[\w\.\-]{1,45}$')
 percent_type = Percent()
+branch_structure = BranchStructure()
+branches_regexp = Regex(r'')
 user_given_regex = UserGivenRegex()
 layout_structure = LayoutStructure()
 path_structure = PathStructure()
+base_structure = Or('parent', 'pr', 'auto')
+branch = BranchStructure()
+url = Regex(r'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)')
 
+notification_standard_attributes = {
+    Optional('url'): Or(None, UserGivenSecret()),
+    Optional('branches'): Or(None, [branches_regexp]),
+    Optional('threshold'): Or(None, percent_type),
+    Optional('message'): str,  # TODO (Thiago): Convert this to deal with handlebars
+    Optional('flags'): Or(None, [flag_name]),
+    Optional('base'): base_structure,
+    Optional('only_pulls'): bool,
+    Optional('paths'): Or(None, [path_structure])
+}
 
 status_standard_attributes = {
     Optional('branches'): Or(None, [user_given_regex]),
@@ -111,7 +170,7 @@ status_standard_attributes = {
     Optional('threshold'): Or(None, percent_type),
     Optional('only_pulls'): bool,
     Optional('include_changes'): bool,
-    Optional('base'): Or('parent', 'pr', 'auto'),
+    Optional('base'): base_structure,
     Optional('measurement'): Or(None, 'line', 'statement', 'branch', 'method', 'complexity'),
     Optional('flags'): Or(None, [flag_name]),
     Optional('paths'): Or(None, [path_structure])
@@ -120,11 +179,11 @@ status_standard_attributes = {
 user_yaml_schema = Schema(
     {
         Optional('codecov'): {
-            Optional('url'): 'url',
+            Optional('url'): url,
             Optional('token'): str,
             Optional('slug'): str,
             Optional('bot'): str,
-            Optional('branch'): 'branch',
+            Optional('branch'): branch,
             Optional('ci'): [str],
             Optional('assume_all_flags'): bool,
             Optional('strict_yaml_branch'): str,
@@ -156,7 +215,42 @@ user_yaml_schema = Schema(
             Optional('round'): And(str, Or('down', 'up', 'nearest')),
             Optional('range'): CoverageRange(),
             Optional('notify'): {
-                # TODO (Thiago): Add this
+                Optional('irc'): {
+                    user_given_title: {
+                        Optional('channel'): str,
+                        Optional('server'): str,
+                        Optional('password'): UserGivenSecret(),
+                        Optional('nickserv_password'): UserGivenSecret(),
+                        Optional('notice'): bool,
+                        **notification_standard_attributes
+                    }
+                },  # TODO (Thiago): Implement this
+                Optional('slack'): {
+                    user_given_title: {
+                        Optional('attachments'): layout_structure,
+                        **notification_standard_attributes
+                    }
+                },  # TODO (Thiago): Implement this
+                Optional('gitter'): {
+                    user_given_title: {**notification_standard_attributes}
+                },  # TODO (Thiago): Implement this
+                Optional('hipchat'): {
+                    user_given_title: {
+                        Optional('card'): bool,
+                        Optional('notify'): bool,
+                        **notification_standard_attributes
+                    }
+                },  # TODO (Thiago): Implement this
+                Optional('webhook'): {
+                    user_given_title: {**notification_standard_attributes}
+                },  # TODO (Thiago): Implement this
+                Optional('email'): {
+                    user_given_title: {
+                        Optional('layout'): layout_structure,
+                        'to': [And(str, UserGivenSecret())],
+                        **notification_standard_attributes
+                    }
+                },  # TODO (Thiago): Implement this
             },
             Optional('status'): Or(
                 bool,
