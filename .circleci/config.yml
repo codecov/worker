@@ -24,8 +24,7 @@ jobs:
     executor: codecov-deploy
     steps:
     - checkout
-    - setup_remote_docker:
-      docker_layer_caching: true
+    - setup_remote_docker
     - run:
         name: Copy gcloud cli and auth for docker push
         command: |-
