@@ -19,9 +19,9 @@ build:
 		-t codecov/worker:latest \
 		--build-arg GH_ACCESS_TOKEN=${GH_ACCESS_TOKEN}
 	docker tag codecov/worker ${GCR_REPO}:latest
-	docker tag codecov/worker ${GCR_REPO}:${VERSION}
 
 push:
+	docker tag codecov/worker ${GCR_REPO}:${VERSION}
 	docker push ${GCR_REPO}:latest
 	docker push ${GCR_REPO}:${VERSION}
 
