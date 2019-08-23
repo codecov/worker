@@ -29,6 +29,14 @@ class TestPathStructure(BaseTestCase):
         assert compiled.match('cachorro/what/test_folder.py') is None
         assert compiled.match('[/a/b') is None
 
+    def test_simple_path_structure_one_star_end(self):
+        ps = PathStructure()
+        res = ps.validate('tests/*')
+        compiled = re.compile(res)
+        assert compiled.match('tests/file_1.py') is not None
+        assert compiled.match('tests/testeststsetetesetsfile_2.py') is not None
+        assert compiled.match('tests/deep/file_1.py') is None
+
     def test_simple_path_structure_one_star(self):
         ps = PathStructure()
         res = ps.validate('a/*/b')
@@ -142,7 +150,7 @@ class TestUserYamlValidation(BaseTestCase):
             'coverage': {
                 'precision': 2,
                 'round': 'down',
-                'range': (70, 100),
+                'range': [70, 100],
                 'status': {
                     'project': True,
                     'patch': True,
@@ -150,9 +158,8 @@ class TestUserYamlValidation(BaseTestCase):
                 }
             },
             'codecov': {
-                'notify': {
-                    'require_ci_to_pass': True
-                }
+                'notify': {},
+                'require_ci_to_pass': True
             },
             'comment': {
                 'behavior': 'default',

@@ -29,7 +29,7 @@ class TestYamlSavingService(BaseTestCase):
             'coverage': {
                 'precision': 2,
                 'round': 'down',
-                'range': (70.0, 100.0),
+                'range': [70.0, 100.0],
                 'status': {
                     'project': True,
                     'patch': True,
@@ -37,9 +37,8 @@ class TestYamlSavingService(BaseTestCase):
                 }
             },
             'codecov': {
-                'notify': {
-                    'require_ci_to_pass': True
-                }
+                'notify': {},
+                'require_ci_to_pass': True
             },
             'comment': {
                 'behavior': 'default',
@@ -68,10 +67,15 @@ class TestYamlSavingService(BaseTestCase):
                 'branches': ['.*'],
                 'layout': 'diff, flags, reach', 'behavior': 'default'
             },
-            'ignore': ['^tests/.*'],
+            'ignore': ['(?s:tests/[^\\/]+)\\Z'],
             'flags': {
                 'integration': {
-                    'ignore': ['^app/ui.*'], 'branches': ['master']
+                    'ignore': ['^app/ui.*'],
+                    "assume": {
+                        "branches": [
+                            "^master$"
+                        ]
+                    }
                 }
             },
             'codecov': {
@@ -84,7 +88,7 @@ class TestYamlSavingService(BaseTestCase):
                     'project': {
                         'default': {
                             'if_ci_failed': 'error', 'only_pulls': False, 'branches': ['^master$'],
-                            'target': 'auto', 'paths': ['^folder.*'], 'against': 'parent',
+                            'target': 'auto', 'paths': ['^folder.*'], 'base': 'parent',
                             'flags': ['integration'], 'if_not_found': 'success',
                             'if_no_uploads': 'error', 'threshold': 1.0
                         }
@@ -92,14 +96,14 @@ class TestYamlSavingService(BaseTestCase):
                     'changes': {
                         'default': {
                             'if_ci_failed': 'error', 'only_pulls': False, 'branches': None,
-                            'paths': ['^folder.*'], 'against': 'parent', 'flags': ['integration'],
+                            'paths': ['^folder.*'], 'base': 'parent', 'flags': ['integration'],
                             'if_not_found': 'success', 'if_no_uploads': 'error'
                         }
                     },
                     'patch': {
                         'default': {
                             'if_ci_failed': 'error', 'only_pulls': False, 'branches': None,
-                            'target': 80.0, 'paths': ['^folder.*'], 'against': 'parent',
+                            'target': 80.0, 'paths': ['^folder.*'], 'base': 'parent',
                             'flags': ['integration'], 'if_not_found': 'success',
                             'if_no_uploads': 'success'
                         }
@@ -111,14 +115,17 @@ class TestYamlSavingService(BaseTestCase):
                     'slack': {
                         'default': {
                             'only_pulls': False, 'branches': None, 'attachments': 'sunburst, diff',
-                            'paths': None, 'url': 'http://uol', 'flags': None, 'threshold': 1.0,
+                            'paths': None,
+                            'url': 'github/44376991/156617777/http://test.thiago.website',
+                            'flags': None, 'threshold': 1.0,
                             'message': 'Coverage {{changed}} for {{owner}}/{{repo}}'
                         }
                     },
                     'hipchat': {
                         'default': {
-                            'paths': None, 'branches': None, 'room': 'name|id', 'url': 'http://uol',
-                            'token': 'encrypted', 'flags': None, 'notify': False, 'threshold': 1.0,
+                            'paths': None, 'branches': None,
+                            'url': 'github/44376991/156617777/http://test.thiago.website',
+                            'flags': None, 'notify': False, 'threshold': 1.0,
                             'message': 'Coverage {{changed}} for {{owner}}/{{repo}}'
                         }
                     },
@@ -131,7 +138,8 @@ class TestYamlSavingService(BaseTestCase):
                     },
                     'webhook': {
                         '_name_': {
-                            'url': 'http://uol', 'threshold': 1.0, 'branches': None
+                            'url': 'github/44376991/156617777/http://test.thiago.website',
+                            'threshold': 1.0, 'branches': None
                         }
                     },
                     'email': {
@@ -143,7 +151,8 @@ class TestYamlSavingService(BaseTestCase):
                     },
                     'gitter': {
                         'default': {
-                            'url': 'http://uol', 'threshold': 1.0,
+                            'url': 'github/44376991/156617777/http://test.thiago.website',
+                            'threshold': 1.0,
                             'message': 'Coverage {{changed}} for {{owner}}/{{repo}}',
                             'branches': None
                         }
@@ -152,7 +161,11 @@ class TestYamlSavingService(BaseTestCase):
             },
             'fixes': ['^old_path::new_path']
         }
-        for key in res.keys():
-            assert sorted(res.get(key).items()) == sorted(expected_result.get(key).items())
+        assert sorted(res.get('comment').items()) == sorted(expected_result.get('comment').items())
+        assert sorted(res.get('ignore')) == sorted(expected_result.get('ignore'))
+        assert sorted(res.get('flags').items()) == sorted(expected_result.get('flags').items())
+        assert sorted(res.get('codecov').items()) == sorted(expected_result.get('codecov').items())
+        assert sorted(res.get('coverage').items()) == sorted(expected_result.get('coverage').items())
+        assert sorted(res.get('fixes')) == sorted(expected_result.get('fixes'))
         assert sorted(res.items()) == sorted(expected_result.items())
         assert res == expected_result

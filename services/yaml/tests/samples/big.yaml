@@ -123,8 +123,9 @@ coverage:
 
   flags:
     integration:
-      branches:
-        - master
+      assume:
+        branches:
+          - master
       ignore:
         - app/ui
 
@@ -136,7 +137,8 @@ coverage:
 
 comment:
   layout: diff, flags, reach
-  branches: "*"
+  branches:
+    - "*"
   behavior: default # defualt = posts once then update, posts new if delete
                     # once = post once then updates
                     # new = delete old, post new

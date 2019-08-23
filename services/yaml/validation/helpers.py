@@ -17,7 +17,7 @@ class CoverageRange(object):
         if len(split_value) != 2:
             raise SchemaError(f"{data} should have only two numbers")
         try:
-            return (float(split_value[0]), float(split_value[1]))
+            return [float(split_value[0]), float(split_value[1])]
         except ValueError:
             raise SchemaError(f"{data} should have numbers as the range limits")
 
@@ -165,8 +165,8 @@ class CustomFixPath(object):
         before, after = value.split("::", 1)
         if before == '' or after == '':
             return value
-        before_input_type = self.input_type(value)
-        before = self.validate_according_to_type(before_input_type, value)
+        before_input_type = self.input_type(before)
+        before = self.validate_according_to_type(before_input_type, before)
         return f"{before}::{after}"
 
     def validate_according_to_type(self, input_type, value):
@@ -257,7 +257,7 @@ class UserGivenSecret(object):
 
     def validate(self, value):
         if value is not None and value.startswith('secret:'):
-            self.decode(value)
+            return self.decode(value)
         return value
 
     @classmethod

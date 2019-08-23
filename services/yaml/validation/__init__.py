@@ -61,6 +61,10 @@ def pre_process_yaml(inputted_yaml_dict):
         inputted_yaml_dict['ignore'] = coverage.pop('ignore')
     if 'fixes' in coverage:
         inputted_yaml_dict['fixes'] = coverage.pop('fixes')
+    if 'codecov' in inputted_yaml_dict and 'notify' in inputted_yaml_dict['codecov']:
+        if 'require_ci_to_pass' in inputted_yaml_dict['codecov']['notify']:
+            val = inputted_yaml_dict['codecov']['notify'].pop('require_ci_to_pass')
+            inputted_yaml_dict['codecov']['require_ci_to_pass'] = val
 
 
 user_given_title = Regex(r'^[\w\-\.]+$')
