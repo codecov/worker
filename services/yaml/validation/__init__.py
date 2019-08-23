@@ -3,8 +3,8 @@ import logging
 from schema import Schema, Optional, Or, And, SchemaError, Regex
 from services.yaml.exceptions import InvalidYamlException
 from services.yaml.validation.helpers import (
-    Percent, BranchStructure, UserGivenBranchRegex, LayoutStructure, PathStructure,
-    UserGivenSecret, CoverageRange, CustomFixPath
+    PercentSchemaField, BranchSchemaField, UserGivenBranchRegex, LayoutStructure,
+    PathPatternSchemaField, UserGivenSecret, CoverageRangeSchemaField, CustomFixPathSchemaField
 )
 
 log = logging.getLogger(__name__)
@@ -69,14 +69,14 @@ def pre_process_yaml(inputted_yaml_dict):
 
 user_given_title = Regex(r'^[\w\-\.]+$')
 flag_name = Regex(r'^[\w\.\-]{1,45}$')
-percent_type = Percent()
-branch_structure = BranchStructure()
+percent_type = PercentSchemaField()
+branch_structure = BranchSchemaField()
 branches_regexp = Regex(r'')
 user_given_regex = UserGivenBranchRegex()
 layout_structure = LayoutStructure()
-path_structure = PathStructure()
+path_structure = PathPatternSchemaField()
 base_structure = Or('parent', 'pr', 'auto')
-branch = BranchStructure()
+branch = BranchSchemaField()
 url = Regex(r'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)')
 
 notification_standard_attributes = {
@@ -145,7 +145,7 @@ user_yaml_schema = Schema(
         Optional('coverage'): {
             Optional('precision'): And(int, lambda n: 0 <= n <= 99),
             Optional('round'): And(str, Or('down', 'up', 'nearest')),
-            Optional('range'): CoverageRange(),
+            Optional('range'): CoverageRangeSchemaField(),
             Optional('notify'): {
                 Optional('irc'): {
                     user_given_title: {
@@ -247,7 +247,7 @@ user_yaml_schema = Schema(
             }
         },
         Optional('ignore'): Or(None, [path_structure]),
-        Optional('fixes'): Or(None, [CustomFixPath()]),
+        Optional('fixes'): Or(None, [CustomFixPathSchemaField()]),
         Optional('flags'): {
             user_given_title: {
                 Optional('joined'): bool,
