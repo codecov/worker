@@ -29,6 +29,18 @@ class TestPathStructure(BaseTestCase):
         assert compiled.match('a/b') is None
         assert compiled.match('a/path/path2/b') is None
 
+    def test_simple_path_structure_negative(self):
+        ps = PathStructure()
+        res = ps.validate('!path/to/folder')
+        assert res.startswith('!')
+        compiled = re.compile(res[1:])
+        # Check the negatives, we want `path/to/folder` files to match so we refuse them later
+        assert compiled.match('path/to/folder') is not None
+        assert compiled.match('path/to/folder/file_2.py') is not None
+        assert compiled.match('path/to/folder/more_path/some_file.py') is not None
+        assert compiled.match('a/b') is None
+        assert compiled.match('path/folder') is None
+
     def test_simple_path_structure_double_star(self):
         ps = PathStructure()
         res = ps.validate('a/**/b')

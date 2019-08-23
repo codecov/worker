@@ -127,10 +127,18 @@ class PathStructure(object):
         return r'(?s:%s)\Z' % res
 
     def validate(self, value):
+        if value.startswith('!'):
+            is_negative = True
+            value = value.lstrip('!')
+        else:
+            is_negative = False
         if not value.endswith('$') and not value.endswith('*'):
             # Adding support for a prefix-based list of paths
             value = value + '**'
-        return self.translate(value)
+        result = self.translate(value)
+        if is_negative:
+            return f"!{result}"
+        return result
 
 
 class CustomFixPath(object):
