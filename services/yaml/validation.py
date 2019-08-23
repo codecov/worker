@@ -1,4 +1,5 @@
 import logging
+import re
 
 from schema import Schema, Optional, Or, And, SchemaError, Regex
 from services.yaml.exceptions import InvalidYamlException
@@ -54,8 +55,82 @@ class Percent(object):
 
 
 class PathStructure(object):
-    # TODO (Thiago): Implement
-    pass
+
+    path_with_star_but_not_dot_star = re.compile(r'(?<!\.)\*')
+
+    def translate(self, pat):
+        """
+            Translate a shell PATTERN to a regular expression.
+
+            There is no way to quote meta-characters.
+
+            This is copied from fnmatch.translate. If you could be
+                so kind and see if they changed it since we copied,
+                that would be very helpful, thanks.
+
+            The only reason we copied (instead of importing and using),
+                is that we needed to change behavior on **
+        """
+
+        i, n = 0, len(pat)
+        res = ''
+        while i < n:
+            c = pat[i]
+            i = i+1
+            if c == '*':
+                if i < n and pat[i] == '*':
+                    res = res + '.*'
+                    i = i + 1
+                else:
+                    res = res + r'[^\/]+'
+            elif c == '?':
+                res = res + '.'
+            elif c == '[':
+                j = i
+                if j < n and pat[j] == '!':
+                    j = j+1
+                if j < n and pat[j] == ']':
+                    j = j+1
+                while j < n and pat[j] != ']':
+                    j = j+1
+                if j >= n:
+                    res = res + '\\['
+                else:
+                    stuff = pat[i:j]
+                    if '--' not in stuff:
+                        stuff = stuff.replace('\\', r'\\')
+                    else:
+                        chunks = []
+                        k = i+2 if pat[i] == '!' else i+1
+                        while True:
+                            k = pat.find('-', k, j)
+                            if k < 0:
+                                break
+                            chunks.append(pat[i:k])
+                            i = k+1
+                            k = k+3
+                        chunks.append(pat[i:j])
+                        # Escape backslashes and hyphens for set difference (--).
+                        # Hyphens that create ranges shouldn't be escaped.
+                        stuff = '-'.join(s.replace('\\', r'\\').replace('-', r'\-')
+                                         for s in chunks)
+                    # Escape set operations (&&, ~~ and ||).
+                    stuff = re.sub(r'([&~|])', r'\\\1', stuff)
+                    i = j+1
+                    if stuff[0] == '!':
+                        stuff = '^' + stuff[1:]
+                    elif stuff[0] in ('^', '['):
+                        stuff = '\\' + stuff
+                    res = '%s[%s]' % (res, stuff)
+            else:
+                res = res + re.escape(c)
+        return r'(?s:%s)\Z' % res
+
+    def validate(self, value):
+        if not value.endswith('$') and not value.endswith('*'):
+            # Adding support for a prefix-based list of paths
+            value = value + '**'
+        return self.translate(value)
 
 
 class CustomFixPath(object):
@@ -63,9 +138,22 @@ class CustomFixPath(object):
     pass
 
 
-class UserGivenRegex(object):
-    # TODO (Thiago): Implement
-    pass
+class UserGivenBranchRegex(object):
+
+    asterisk_to_regexp = re.compile(r'(?<!\.)\*')
+
+    def validate(self, value):
+        if value in ('*', '', None, '.*'):
+            return '.*'
+        else:
+            # apple* => apple.*
+            nv = self.asterisk_to_regexp.sub('.*', value.strip())
+            if not nv.startswith(('.*', '^')):
+                nv = '^%s' % nv
+            if not nv.endswith(('.*', '$')):
+                nv = '%s$' % nv
+            re.compile(nv)
+            return nv
 
 
 class LayoutStructure(object):
@@ -140,7 +228,7 @@ flag_name = Regex(r'^[\w\.\-]{1,45}$')
 percent_type = Percent()
 branch_structure = BranchStructure()
 branches_regexp = Regex(r'')
-user_given_regex = UserGivenRegex()
+user_given_regex = UserGivenBranchRegex()
 layout_structure = LayoutStructure()
 path_structure = PathStructure()
 base_structure = Or('parent', 'pr', 'auto')

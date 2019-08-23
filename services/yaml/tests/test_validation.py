@@ -1,8 +1,63 @@
+import re
+
 import pytest
 from schema import SchemaError
 
 from tests.base import BaseTestCase
-from services.yaml.validation import LayoutStructure, validate_yaml
+from services.yaml.validation import LayoutStructure, validate_yaml, PathStructure
+
+
+class TestPathStructure(BaseTestCase):
+
+    def test_simple_path_structure_no_star(self):
+        ps = PathStructure()
+        res = ps.validate('a/b')
+        compiled = re.compile(res)
+        assert compiled.match('a/b') is not None
+        assert compiled.match('a/b/file_1.py') is not None
+        assert compiled.match('c/a/b') is None
+        assert compiled.match('a/path/b') is None
+        assert compiled.match('a/path/path2/b') is None
+
+    def test_simple_path_structure_one_star(self):
+        ps = PathStructure()
+        res = ps.validate('a/*/b')
+        compiled = re.compile(res)
+        assert compiled.match('a/path/b') is not None
+        assert compiled.match('a/path/b/file_2.py') is not None
+        assert compiled.match('a/path/b/more_path/some_file.py') is not None
+        assert compiled.match('a/b') is None
+        assert compiled.match('a/path/path2/b') is None
+
+    def test_simple_path_structure_double_star(self):
+        ps = PathStructure()
+        res = ps.validate('a/**/b')
+        compiled = re.compile(res)
+        assert compiled.match('a/path/b') is not None
+        assert compiled.match('a/path/b/some_file.py') is not None
+        assert compiled.match('a/path/b/more_path/some_file.py') is not None
+        assert compiled.match('a/path/path2/b') is not None
+        assert compiled.match('a/path/path2/b/some_file.py') is not None
+        assert compiled.match('a/path/path2/b/more_path/some_file.py') is not None
+        assert compiled.match('a/c') is None
+
+    def test_multiple_path_structures(self):
+        ps = PathStructure()
+        # assert ps.validate('**/abc') == '^.*/abc.*'
+        # assert ps.validate('**/**/abc') == '^.*/.*/abc.*'
+        # assert ps.validate('**/**/abc**') == '^.*/.*/abc.*'
+        # assert ps.validate('*/abc') == '^.*/abc.*'
+        # assert ps.validate('folder') == '^folder.*'
+        # assert ps.validate('/folder') == '^folder.*'
+        # assert ps.validate('./folder') == '^folder.*'
+        # assert ps.validate('folder/') == '^folder/.*'
+        # assert ps.validate('!/folder/') == '!^folder/.*'
+        # assert ps.validate('!^/folder/') == '!^folder/.*'
+        # assert ps.validate('!^/folder/$') == '!^folder/$'
+        # assert ps.validate('!^/folder/file.py$') == '!^folder/file.py$'
+        # assert ps.validate('^/folder/file.py$') == '^folder/file.py$'
+        # assert ps.validate('/folder/file.py$') == '^folder/file.py$'
+        # assert ps.validate('path/**/') == '^path/.*/.*'
 
 
 class TestLayoutStructure(BaseTestCase):
