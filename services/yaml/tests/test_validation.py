@@ -19,6 +19,16 @@ class TestPathStructure(BaseTestCase):
         assert compiled.match('a/path/b') is None
         assert compiled.match('a/path/path2/b') is None
 
+    def test_simple_path_structure_regex(self):
+        ps = PathStructure()
+        res = ps.validate('[a-z]+/test_.*')
+        compiled = re.compile(res)
+        assert compiled.match('perro/test_folder.py') is not None
+        assert compiled.match('cachorro/test_folder.py') is not None
+        assert compiled.match('cachorro/tes_folder.py') is None
+        assert compiled.match('cachorro/what/test_folder.py') is None
+        assert compiled.match('[/a/b') is None
+
     def test_simple_path_structure_one_star(self):
         ps = PathStructure()
         res = ps.validate('a/*/b')

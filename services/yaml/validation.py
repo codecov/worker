@@ -21,11 +21,44 @@ def validate_yaml(inputted_yaml_dict):
     Raises:
         InvalidYamlException: If the yaml inputted by the user is not valid
     """
+    pre_process_yaml(inputted_yaml_dict)
     try:
-        return user_yaml_schema.validate(inputted_yaml_dict)
+        result = user_yaml_schema.validate(inputted_yaml_dict)
+        return post_process(result)
     except SchemaError as e:
         log.exception("Unable to validate yaml", extra=dict(user_input=inputted_yaml_dict))
         raise InvalidYamlException(e)
+
+
+def post_process(validated_yaml_dict):
+    """Does any needed post-processings
+
+    Args:
+        validated_yaml_dict (dict): The dict after validated
+
+    Returns:
+        (dict): The post-processed dict to be used
+
+    """
+    return validated_yaml_dict
+
+
+def pre_process_yaml(inputted_yaml_dict):
+    """
+        Changes the inputted_yaml_dict in-place with compatibility changes that need to be done
+
+    Args:
+        inputted_yaml_dict (dict): The yaml dict inputted by the user
+    """
+    coverage = inputted_yaml_dict.get('coverage', {})
+    if 'flags' in coverage:
+        inputted_yaml_dict['flags'] = coverage.pop('flags')
+    if 'parsers' in coverage:
+        inputted_yaml_dict['parsers'] = coverage.pop('parsers')
+    if 'ignore' in coverage:
+        inputted_yaml_dict['ignore'] = coverage.pop('ignore')
+    if 'fixes' in coverage:
+        inputted_yaml_dict['fixes'] = coverage.pop('fixes')
 
 
 class CoverageRange(object):
@@ -57,6 +90,16 @@ class Percent(object):
 class PathStructure(object):
 
     path_with_star_but_not_dot_star = re.compile(r'(?<!\.)\*')
+
+    def input_type(self, value):
+        reserved_chars = ['*', '$', ']', '[']
+        if not any(x in value for x in reserved_chars):
+            return 'closed_path'
+        if '**' in value or '/*' in value:
+            return 'glob'
+        if '.*' in value:
+            return 'regex'
+        return 'glob'
 
     def translate(self, pat):
         """
@@ -126,19 +169,41 @@ class PathStructure(object):
                 res = res + re.escape(c)
         return r'(?s:%s)\Z' % res
 
+    def validate_glob(self, value):
+        if not value.endswith('$') and not value.endswith('*'):
+            # Adding support for a prefix-based list of paths
+            value = value + '**'
+        return self.translate(value)
+
+    def validate_closed_path(self, value):
+        return f"{value}.*"
+
     def validate(self, value):
         if value.startswith('!'):
             is_negative = True
             value = value.lstrip('!')
         else:
             is_negative = False
-        if not value.endswith('$') and not value.endswith('*'):
-            # Adding support for a prefix-based list of paths
-            value = value + '**'
-        result = self.translate(value)
+
+        input_type = self.input_type(value)
+        result = self.validate_according_to_type(input_type, value)
         if is_negative:
             return f"!{result}"
         return result
+
+    def validate_according_to_type(self, input_type, value):
+        if input_type == 'regex':
+            try:
+                re.compile(value)
+                return value
+            except re.error:
+                raise SchemaError(f"{value} does not work as a regex")
+        elif input_type == 'glob':
+            return self.validate_glob(value)
+        elif input_type == 'closed_path':
+            return self.validate_closed_path(value)
+        else:
+            raise SchemaError(f"We did not detect what {value} is")
 
 
 class CustomFixPath(object):

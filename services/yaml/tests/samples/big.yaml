@@ -80,7 +80,7 @@ coverage:
   status:
     project:
       default:
-        against: parent
+        base: parent
         target: auto
         threshold: 1%
         branches:
@@ -96,7 +96,7 @@ coverage:
 
     patch:
       default:
-        against: parent
+        base: parent
         target: 80%
         branches: null
         if_no_uploads: success
@@ -110,7 +110,7 @@ coverage:
     
     changes:
       default:
-        against: parent
+        base: parent
         branches: null
         if_no_uploads: error
         if_not_found: success
