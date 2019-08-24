@@ -9,5 +9,5 @@ async def fetch_commit_yaml_from_provider(commit, repository_service):
         ref = commit.commitid
         content = await repository_service.get_source(location, ref)
         return parse_yaml_file(content['content'])
-    except torngit.exceptions.ObjectNotFoundException:
+    except torngit.exceptions.TorngitObjectNotFoundError:
         return None
