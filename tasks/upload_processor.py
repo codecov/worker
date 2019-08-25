@@ -79,7 +79,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     'Unable to process report because there is no valid bot found for that repo',
                     extra=dict(
                         repoid=repoid,
-                        commitid=commitid,
+                        commit=commitid,
                         arguments_list=arguments_list,
                         commit_yaml=commit_yaml
                     )
@@ -96,7 +96,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     "Unable to fetch current report for commit",
                     extra=dict(
                         repoid=repoid,
-                        commitid=commitid,
+                        commit=commitid,
                         arguments_list=arguments_list,
                         commit_yaml=commit_yaml
                     )
@@ -107,7 +107,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     pr = arguments.get('pr')
                     log.info(
                         "Processing individual report %s", arguments.get('reportid'),
-                        extra=dict(repoid=repoid, commitid=commitid, arguments=arguments)
+                        extra=dict(repoid=repoid, commit=commitid, arguments=arguments)
                     )
                     individual_info = {
                         'arguments': arguments.copy()
@@ -129,7 +129,7 @@ class UploadProcessorTask(BaseCodecovTask):
                             extra=dict(
                                 commit_yaml=commit_yaml,
                                 repoid=repoid,
-                                commitid=commitid,
+                                commit=commitid,
                                 arguments=arguments
                             )
                         )
@@ -142,7 +142,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     log.info(
                         'Finishing the processing of %d reports',
                         n_processed,
-                        extra=dict(repoid=repoid, commitid=commitid)
+                        extra=dict(repoid=repoid, commit=commitid)
                     )
                     await self.save_report_results(
                         db_session, archive_service, repository_service,
@@ -151,7 +151,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     log.info(
                         'Processed %d reports',
                         n_processed,
-                        extra=dict(repoid=repoid, commitid=commitid)
+                        extra=dict(repoid=repoid, commit=commitid)
                     )
                 return {
                     'processings_so_far': processings_so_far,
@@ -164,7 +164,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     'Could not properly process commit',
                     extra=dict(
                         repoid=repoid,
-                        commitid=commitid,
+                        commit=commitid,
                         arguments=try_later
                     )
                 )
@@ -258,7 +258,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 session=session.id,
                 ci=f'{session.provider}:{session.build}:{session.job}',
                 repoid=commit.repoid,
-                commitid=commit.commitid,
+                commit=commit.commitid,
                 reportid=reportid,
                 commit_yaml=commit_yaml
             )
@@ -345,7 +345,7 @@ class UploadProcessorTask(BaseCodecovTask):
             'Archived report',
             extra=dict(
                 repoid=commit.repoid,
-                commitid=commit.commitid,
+                commit=commit.commitid,
                 url=url
             )
         )
