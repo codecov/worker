@@ -6,7 +6,7 @@ import vcr
 
 from database.base import Base
 from sqlalchemy_utils import create_database, database_exists
-from helpers.config import config
+from helpers.config import ConfigHelper
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -20,8 +20,11 @@ def db(engine, sqlalchemy_connect_url):
     Base.metadata.create_all(engine)
 
 
-@pytest.fixture(scope='session', autouse=True)
-def test_configuration():
+@pytest.fixture
+def mock_configuration(mocker):
+    m = mocker.patch('helpers.config._get_config_instance')
+    mock_config = ConfigHelper()
+    m.return_value = mock_config
     our_config = {
         'bitbucket': {'bot': {'username': 'codecov-io'}},
         'services': {
@@ -40,8 +43,8 @@ def test_configuration():
             'encryption_secret': 'zp^P9*i8aR3'
         }
     }
-    config.set_params(our_config)
-    return our_config
+    mock_config.set_params(our_config)
+    return mock_config
 
 
 @pytest.fixture

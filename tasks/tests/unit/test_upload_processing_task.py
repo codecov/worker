@@ -14,7 +14,7 @@ here = Path(__file__)
 class TestUploadProcessorTask(object):
 
     @pytest.mark.asyncio
-    async def test_upload_processor_task_call(self, mocker, test_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
+    async def test_upload_processor_task_call(self, mocker, mock_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         mocked_1.return_value = None
         with open(here.parent.parent / 'samples' / 'sample_uploaded_report_1.txt') as f:
@@ -115,7 +115,7 @@ class TestUploadProcessorTask(object):
         )
 
     @pytest.mark.asyncio
-    async def test_upload_task_call_existing_chunks(self, mocker, test_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
+    async def test_upload_task_call_existing_chunks(self, mocker, mock_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         with open(here.parent.parent / 'samples' / 'sample_chunks_1.txt') as f:
             content = f.read()
@@ -172,7 +172,7 @@ class TestUploadProcessorTask(object):
         )
 
     @pytest.mark.asyncio
-    async def test_upload_task_call_with_try_later(self, mocker, test_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
+    async def test_upload_task_call_with_try_later(self, mocker, mock_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         mocked_1.return_value = None
         mocked_2 = mocker.patch.object(UploadProcessorTask, 'do_process_individual_report')
@@ -214,7 +214,7 @@ class TestUploadProcessorTask(object):
         )
 
     @pytest.mark.asyncio
-    async def test_upload_task_call_with_expired_report(self, mocker, test_configuration, dbsession, mock_repo_provider, mock_storage, mock_redis):
+    async def test_upload_task_call_with_expired_report(self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         mocked_1.return_value = None
         mocked_2 = mocker.patch.object(UploadProcessorTask, 'do_process_individual_report')
