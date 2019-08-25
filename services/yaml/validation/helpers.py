@@ -1,7 +1,7 @@
 import re
 
 from schema import SchemaError
-from covreports.encryption import StandardEncryptor
+from covreports.encryption import EncryptorWithAlreadyGeneratedKey
 
 
 class CoverageRangeSchemaField(object):
@@ -337,13 +337,6 @@ class BranchSchemaField(object):
         elif value[:11] == 'refs/heads/':
             return value[11:]
         return value
-
-
-class EncryptorWithAlreadyGeneratedKey(StandardEncryptor):
-
-    def __init__(self, key):
-        self.key = key
-        self.bs = 16
 
 
 class UserGivenSecret(object):

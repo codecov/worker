@@ -1,13 +1,14 @@
--e git+https://github.com/codecov/report.git@915b896c114a9733a488bb1a166ef5705049aa93#egg=covreports
+-e git+https://github.com/codecov/report.git@3da3b7f3423cc3c84dc26294149c18df871cfb34#egg=covreports
 -e git+https://github.com/codecov/torngit.git@51f675eaa4771a9e703e51c44ee1a41dc31bbbc6#egg=torngit
 celery==4.3
+cryptography==2.7
 factory-boy==2.11.1
 google-cloud-storage==1.18.0
 lxml==4.3.1
 minio==4.0.19
 pathmap==0.1.5
 psycopg2==2.7.6.1
-pycrypto==2.6.1
+PyJWT==1.7.1
 pytest-asyncio==0.10.0
 pytest-mock==1.10.1
 pytest-sqlalchemy==0.2.1
