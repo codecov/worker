@@ -9,6 +9,7 @@ RUN             apk update \
                 musl-dev \
                 libxslt-dev \
                 python-dev \
+                libffi-dev \
                 gcc \
                 && pip install --upgrade pip
 
@@ -22,6 +23,7 @@ COPY            requirements.txt /
 WORKDIR         /pip-packages/
 RUN             git config --global url."git@github.com:".insteadOf "https://github.com/"
 RUN             pip download -r /requirements.txt
+RUN             pip download setuptools wheel
 
 
 
@@ -36,6 +38,8 @@ RUN             apk add --no-cache postgresql-libs && \
                 libxslt-dev \
                 python-dev \ 
                 python3-dev
+
+RUN             apk add gcc musl-dev python3-dev libffi-dev openssl-dev
 
 WORKDIR         /pip-packages/
 COPY            --from=build /pip-packages/ /pip-packages/
