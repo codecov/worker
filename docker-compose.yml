@@ -7,6 +7,8 @@ services:
             - CELERY_BROKER_URL=redis://redis:6379/0
             - CELERY_RESULT_BACKEND=redis://redis:6379/0
         build:
+            args:
+                - GH_ACCESS_TOKEN
             context: .
             dockerfile: Dockerfile 
         volumes:
@@ -21,6 +23,13 @@ services:
         ports:
             - "5672:5672"
             - "6379:6379"
+    postgres:
+        networks:
+            worker:
+        hostname: postgres
+        image: postgres:10-alpine
+        ports:
+            - "5432:5432"
 networks:
     worker:
         driver: bridge

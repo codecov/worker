@@ -6,9 +6,9 @@ GCR_REPO := gcr.io/codecov-enterprise-sandbox/codecov-worker
 circleci-local:
 	circleci local execute \
 		-c .circleci/local.yml \
-		--job build \
+		--job ${JOB} \
 		--env GH_ACCESS_TOKEN=${GH_ACCESS_TOKEN} \
-		--env GCLOUD_SERVICE_KEY="${GCLOUD_SERVICE_KEY}" \
+		--env GCLOUD_SERVICE_KEY=${GCLOUD_SERVICE_KEY} \
 		--env GOOGLE_COMPUTE_ZONE=us-east4 \
 		--env GOOGLE_PROJECT_ID=codecov-enterprise-sandbox \
 		--env VERSION=${VERSION}

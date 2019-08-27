@@ -53,6 +53,15 @@ jobs:
     steps:
     - setup_remote_docker
     - run:
+        name: Copy gcloud cli and auth for docker push
+        command: |-
+          echo "$GCLOUD_SERVICE_KEY" > service.json
+          gcloud auth activate-service-account --key-file=service.json
+          gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
+          gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
+          gcloud auth configure-docker
+          gcloud container clusters get-credentials --region us-east4 default-codecov-cluster
+    - run:
         name: deploy to k8s
         command: |-
           make tag VERSION=$CIRCLE_TAG
