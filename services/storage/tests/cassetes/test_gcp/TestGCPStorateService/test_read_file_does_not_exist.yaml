@@ -1,0 +1,86 @@
+interactions:
+- request:
+    body: assertion=eyJ0eXAiOiAiSldUIiwgImFsZyI6ICJSUzI1NiIsICJraWQiOiAiMzExYTAwMDU1NzNlYzhhNWZiY2QzZDViZTY0ODRkZWEyMWUzN2NkMSJ9.eyJpYXQiOiAxNTY2Mzk1MTQ1LCAiZXhwIjogMTU2NjM5ODc0NSwgImlzcyI6ICJjb2RlY292QGdlbnVpbmUtcG9seW1lci0xNjU3MTIuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCAiYXVkIjogImh0dHBzOi8vb2F1dGgyLmdvb2dsZWFwaXMuY29tL3Rva2VuIiwgInNjb3BlIjogImh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL2F1dGgvZGV2c3RvcmFnZS5mdWxsX2NvbnRyb2wgaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vYXV0aC9kZXZzdG9yYWdlLnJlYWRfb25seSBodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9hdXRoL2RldnN0b3JhZ2UucmVhZF93cml0ZSJ9.E7A2N69bFOyM36UeSnV0heFO45vGGFNVoalUVXAyWRCtpKcjG1ns35R6RbbUjqW9pzTnolux3hi_JT9uUeTsaqKqqbWQJPXHwavFmRw4p0SueexYdqP6H-54twyiJtIDkUOxQTgZYwjMA_7PkozrCRyk9c6P0vk3pbCIeiGN6MOyVNJGLP6ve5NdesB7M_NrW8NjCk7bxC7IyCw9_7b3iUdbze1NBrre4URoEJ3xPW3qE6KNUbt1rI8gYyidEjq4fXEeaMAG_S-RKEv4SF3FsknCOphLMAuCQoc6c-NxXLEJ6piIIiZSKIEGXog5KKQNN5X0kQPx1XQ33IO2h8_c2Q&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['959']
+      User-Agent: [python-requests/2.20.1]
+      content-type: [application/x-www-form-urlencoded]
+    method: POST
+    uri: https://oauth2.googleapis.com/token
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAC/x3Ouw6CMBQA0N2vIJ3FIK+IW4toDEoIBlGXppYr8ghii0Ew/rvB9UznM1EUxDgH
+        KWn7KKFGSwX1THdmfOZVliA6dodiHs3XJ4a9mg2uSwOSlWfdktfE8TfdnaSa6RThy00bqMrntgg4
+        WVnG5SChqyJzUTinvR93jxD3BzXClcnDRL08M20vhnqHj2myitWWSlHbatwG2S3AvvcOfRtNxxy8
+        m1yApPlYM2xN++v/Stu+gTFMgAkQaPL9AcGhQybPAAAA
+    headers:
+      Alt-Svc: ['quic=":443"; ma=2592000; v="46,43,39"']
+      Cache-Control: [private]
+      Content-Encoding: [gzip]
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Wed, 21 Aug 2019 13:45:45 GMT']
+      Server: [scaffolding on HTTPServer2]
+      Transfer-Encoding: [chunked]
+      Vary: [Origin, X-Origin, Referer]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [SAMEORIGIN]
+      X-XSS-Protection: ['0']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: [gzip]
+      Connection: [keep-alive]
+      User-Agent: [gl-python/3.7.3 gax/1.14.2 gapic/1.18.0 gccl/1.18.0]
+      X-Goog-API-Client: [gl-python/3.7.3 gax/1.14.2 gapic/1.18.0 gccl/1.18.0]
+    method: GET
+    uri: https://www.googleapis.com/storage/v1/b/testingarchive?projection=noAcl
+  response:
+    body: {string: "{\n \"kind\": \"storage#bucket\",\n \"id\": \"testingarchive\",\n
+        \"selfLink\": \"https://www.googleapis.com/storage/v1/b/testingarchive\",\n
+        \"projectNumber\": \"testa6bzzpt4\",\n \"name\": \"testingarchive\",\n \"timeCreated\":
+        \"2019-08-14T22:57:54.537Z\",\n \"updated\": \"2019-08-14T22:57:54.537Z\",\n
+        \"metageneration\": \"1\",\n \"iamConfiguration\": {\n  \"bucketPolicyOnly\":
+        {\n   \"enabled\": false\n  },\n  \"uniformBucketLevelAccess\": {\n   \"enabled\":
+        false\n  }\n },\n \"location\": \"US\",\n \"locationType\": \"multi-region\",\n
+        \"storageClass\": \"STANDARD\",\n \"etag\": \"CAE=\"\n}\n"}
+    headers:
+      Alt-Svc: ['quic=":443"; ma=2592000; v="46,43,39"']
+      Cache-Control: ['private, max-age=0, must-revalidate, no-transform']
+      Content-Length: ['525']
+      Content-Type: [application/json; charset=UTF-8]
+      Date: ['Wed, 21 Aug 2019 13:45:45 GMT']
+      ETag: [CAE=]
+      Expires: ['Wed, 21 Aug 2019 13:45:45 GMT']
+      Server: [UploadServer]
+      Vary: [Origin, X-Origin]
+      X-GUploader-UploadID: [AEnB2UqgNJFdUBUM_aaMYPLnp4sTkXdem8xjlNSujIyDWLi2mKHfN3InMFWJQEXNZEoe5eALV7wLXBImFN29j1S9FmxZHMXf_A]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.20.1]
+      accept-encoding: [gzip]
+    method: GET
+    uri: https://www.googleapis.com/download/storage/v1/b/testingarchive/o/test_read_file_does_not_exist%2Fdoes_not_exist.txt?alt=media
+  response:
+    body: {string: 'No such object: testingarchive/test_read_file_does_not_exist/does_not_exist.txt'}
+    headers:
+      Alt-Svc: ['quic=":443"; ma=2592000; v="46,43,39"']
+      Cache-Control: ['private, max-age=0']
+      Content-Length: ['79']
+      Content-Type: [text/html; charset=UTF-8]
+      Date: ['Wed, 21 Aug 2019 13:45:45 GMT']
+      Expires: ['Wed, 21 Aug 2019 13:45:45 GMT']
+      Server: [UploadServer]
+      Vary: [Origin, X-Origin]
+      X-GUploader-UploadID: [AEnB2UoM8RcRzTAKSYTm6KhwofEmWV2gdIEzExVNMulTm7N0pL6uK2ohj1q_tIU59MzBsn2VoUODeC3mO4oX-XLh2oAy7s2k5Q]
+    status: {code: 404, message: Not Found}
+version: 1

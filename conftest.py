@@ -68,7 +68,7 @@ def mock_redis(mocker):
 
 @pytest.fixture
 def mock_storage(mocker):
-    m = mocker.patch('services.archive.StorageService')
+    m = mocker.patch('services.storage.MinioStorageService')
     redis_server = mocker.MagicMock()
     m.return_value = redis_server
     yield redis_server
