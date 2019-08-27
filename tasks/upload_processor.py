@@ -89,8 +89,11 @@ class UploadProcessorTask(BaseCodecovTask):
             should_delete_archive = self.should_delete_archive(commit_yaml)
             try_later = []
             archive_service = ArchiveService(repository)
+            chunks_archive_service = ArchiveService(commit.repository, bucket='testingarchive')
             try:
-                report = ReportService().build_report_from_commit(commit)
+                report = ReportService().build_report_from_commit(
+                    commit, chunks_archive_service=chunks_archive_service
+                )
             except Exception:
                 log.exception(
                     "Unable to fetch current report for commit",
@@ -145,7 +148,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         extra=dict(repoid=repoid, commit=commitid)
                     )
                     await self.save_report_results(
-                        db_session, archive_service, repository_service,
+                        db_session, chunks_archive_service, repository_service,
                         repository, commit, report, pr
                     )
                     log.info(
@@ -319,13 +322,12 @@ class UploadProcessorTask(BaseCodecovTask):
         )
 
     async def save_report_results(
-            self, db_session, archive_service,
+            self, db_session, chunks_archive_service,
             repository_service, repository, commit, report, pr):
         log.debug("In save_report_results for commit: %s" % commit)
         commitid = commit.commitid
         report.apply_diff(await repository_service.get_commit_diff(commitid))
 
-        write_archive_service = ArchiveService(commit.repository, bucket='testingarchive')
         totals, network_json_str = report.to_database()
         network = loads(network_json_str)
 
@@ -340,7 +342,7 @@ class UploadProcessorTask(BaseCodecovTask):
         # Archive Processed Report
         # ------------------------
         archive_data = report.to_archive().encode()
-        url = write_archive_service.write_chunks(commit.commitid, archive_data)
+        url = chunks_archive_service.write_chunks(commit.commitid, archive_data)
         log.info(
             'Archived report',
             extra=dict(

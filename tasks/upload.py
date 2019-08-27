@@ -13,6 +13,7 @@ from services.redis import get_redis_connection
 from services.repository import get_repo_provider_service
 from services.yaml import merge_yamls, save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
+from services.report import ReportService
 from tasks.upload_processor import upload_processor_task
 from tasks.upload_finisher import upload_finisher_task
 
@@ -119,6 +120,7 @@ class UploadTask(BaseCodecovTask):
             was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit)
             was_setup = await self.possibly_setup_webhooks(commit)
             commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit)
+            self.move_commit_chunks_to_different_bucket(commit)
             argument_list = []
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 argument_list.append(arguments)
@@ -127,6 +129,9 @@ class UploadTask(BaseCodecovTask):
                 'was_setup': was_setup,
                 'was_updated': was_updated
             }
+
+    def move_commit_chunks_to_different_bucket(self, commit):
+        return ReportService().move_report_to_different_bucket(commit, 'testingarchive_2')
 
     async def fetch_commit_yaml_and_possibly_store(self, commit):
         repository = commit.repository

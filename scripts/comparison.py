@@ -3,6 +3,7 @@ from services.report import ReportService
 from database.engine import get_db_session
 from database.models import Commit
 
+
 def find_filepaths_in_common(first_bucket, second_bucket):
     storage_service = get_appropriate_storage_service()
     minio_client = storage_service.minio_client # Its the same client
@@ -19,8 +20,10 @@ def find_filepaths_in_common(first_bucket, second_bucket):
             errors.append(fln)
     return errors
 
+
 def commitid_from_path(path):
     return path.split("/commits/")[1].split("/chunks")[0]
+
 
 def compare_buckets_contents(storage_service, report_service, first_bucket, second_bucket, filename):
     commitid = commitid_from_path(filename)
@@ -43,6 +46,7 @@ def compare_buckets_contents(storage_service, report_service, first_bucket, seco
         print(f"ok - {filename}")
         return True
 
+
 def compare_reports(first_report, second_report):
     first_to_tuple = dict(first_report.network)
     second_to_tuple = dict(first_report.network)
@@ -57,8 +61,9 @@ def compare_reports(first_report, second_report):
             return False
     return True
 
+
 first_bucket = 'archive'
-second_bucket = 'testingarchive'
+second_bucket = 'testingarchive_2'
 db_session = get_db_session()
 errors = find_filepaths_in_common(first_bucket, second_bucket)
 print(f"{len(errors)} found")

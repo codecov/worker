@@ -10,12 +10,14 @@ class ReportService(object):
     def build_report(self, chunks, files, sessions, totals):
         return Report(chunks=chunks, files=files, sessions=sessions, totals=totals)
 
-    def build_report_from_commit(self, commit):
+    def build_report_from_commit(self, commit, chunks_archive_service=None):
         commitid = commit.commitid
         if commit.report is None:
             return Report(totals=None, chunks=None)
         try:
-            chunks = ArchiveService(commit.repository).read_chunks(commitid)
+            if chunks_archive_service is None:
+                chunks_archive_service = ArchiveService(commit.repository)
+            chunks = chunks_archive_service.read_chunks(commitid)
         except minio.error.NoSuchKey:
             return Report(totals=None, chunks=None)
         if chunks is None:
@@ -25,6 +27,12 @@ class ReportService(object):
         totals = commit.totals
         res = self.build_report(chunks, files, sessions, totals)
         return res
+
+    def move_report_to_different_bucket(self, commit, new_bucket):
+        commitid = commit.commitid
+        chunks = ArchiveService(commit.repository).read_chunks(commitid)
+        new_archive_service = ArchiveService(commit.repository, new_bucket).read_chunks(commitid)
+        return new_archive_service.write_chunks(commitid, chunks.encode())
 
     def build_report_from_raw_content(self, commit_yaml, master, reports, flags, session):
         return process_raw_upload(commit_yaml, master, reports, flags, session)
