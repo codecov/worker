@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 
 class MinioEndpoints(Enum):
     chunks = '{version}/repos/{repo_hash}/commits/{commitid}/chunks.txt'
+    reports_json = '{version}/repos/{repo_hash}/commits/{commitid}/report.json'
     raw = 'v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt'
 
     def get_path(self, **kwaargs):

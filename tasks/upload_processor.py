@@ -1,4 +1,4 @@
-from json import loads
+from json import loads, dumps
 from time import time
 import logging
 import re
@@ -12,7 +12,7 @@ from app import celery_app
 from database.models import Commit
 from helpers.config import get_config
 from helpers.exceptions import ReportExpiredException
-from services.archive import ArchiveService
+from services.archive import ArchiveService, MinioEndpoints
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -337,6 +337,13 @@ class UploadProcessorTask(BaseCodecovTask):
         commit.state = 'complete' if report else 'error'
         commit.totals = totals
         commit.report = network
+        # TODO: Remove after tests are done
+        actual_reports_path = MinioEndpoints.reports_json.get_path(
+            version='v4',
+            repo_hash=chunks_archive_service.storage_hash,
+            commitid=commitid
+        )
+        chunks_archive_service.write_file(actual_reports_path, dumps(network, indent=4))
 
         # ------------------------
         # Archive Processed Report
