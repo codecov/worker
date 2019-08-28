@@ -89,7 +89,7 @@ class UploadProcessorTask(BaseCodecovTask):
             should_delete_archive = self.should_delete_archive(commit_yaml)
             try_later = []
             archive_service = ArchiveService(repository)
-            chunks_archive_service = ArchiveService(commit.repository, bucket='testingarchive')
+            chunks_archive_service = ArchiveService(commit.repository, bucket='testingarchive03')
             try:
                 report = ReportService().build_report_from_commit(
                     commit, chunks_archive_service=chunks_archive_service

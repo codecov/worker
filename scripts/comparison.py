@@ -63,7 +63,7 @@ def compare_reports(first_report, second_report):
 
 
 first_bucket = 'archive'
-second_bucket = 'testingarchive_2'
+second_bucket = 'testingarchive03'
 db_session = get_db_session()
 errors = find_filepaths_in_common(first_bucket, second_bucket)
 print(f"{len(errors)} found")
