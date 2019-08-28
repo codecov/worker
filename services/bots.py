@@ -1,10 +1,20 @@
 import logging
 
+from services.github import get_github_integration_token
+from services.encryption import encryptor
+
 log = logging.getLogger(__name__)
 
 
-class RepositoryWithoutValidBotException(Exception):
+class RepositoryWithoutValidBotError(Exception):
     pass
+
+
+def get_repo_appropriate_bot_token(repo):
+    if repo.using_integration and repo.owner.integration_id:
+        github_token = get_github_integration_token(repo.owner.service, repo.owner.integration_id)
+        return dict(key=github_token)
+    return encryptor.decrypt_token(get_repo_appropriate_bot(repo).oauth_token)
 
 
 def get_repo_appropriate_bot(repo):
@@ -23,4 +33,4 @@ def get_repo_appropriate_bot(repo):
             extra=dict(repoid=repo.repoid, ownerid=repo.owner.ownerid)
         )
         return repo.owner
-    raise RepositoryWithoutValidBotException()
+    raise RepositoryWithoutValidBotError()

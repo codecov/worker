@@ -8,6 +8,12 @@ from factory import Factory
 from services.encryption import encryptor
 
 
+def encrypt_oauth_token(val):
+    if val is None:
+        return None
+    return encryptor.encode(val)
+
+
 class OwnerFactory(Factory):
     class Meta:
         model = models.Owner
@@ -22,7 +28,7 @@ class OwnerFactory(Factory):
     free = 0
     unencrypted_oauth_token = factory.LazyFunction(lambda: uuid4().hex)
 
-    oauth_token = factory.LazyAttribute(lambda o: encryptor.encode(o.unencrypted_oauth_token))
+    oauth_token = factory.LazyAttribute(lambda o: encrypt_oauth_token(o.unencrypted_oauth_token))
 
 
 class RepositoryFactory(Factory):

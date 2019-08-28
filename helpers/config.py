@@ -37,6 +37,7 @@ class ConfigHelper(object):
 
     def __init__(self):
         self._params = None
+        self.loaded_files = {}
 
     def load_env_var(self):
         val = {}
@@ -79,15 +80,31 @@ class ConfigHelper(object):
         except FileNotFoundError:
             return {}
 
+    def load_filename_from_path(self, *args):
+        if args not in self.loaded_files:
+            with open(self.get(*args), 'r') as _file:
+                self.loaded_files[args] = _file.read()
+        return self.loaded_files[args]
 
-config = ConfigHelper()
+
+config_class_instance = ConfigHelper()
+
+
+def _get_config_instance():
+    return config_class_instance
 
 
 def get_config(*path, default=None):
+    config = _get_config_instance()
     try:
         return config.get(*path)
     except MissingConfigException:
         return default
+
+
+def load_file_from_path_at_config(*args):
+    config = _get_config_instance()
+    return config.load_filename_from_path(*args)
 
 
 def get_verify_ssl(service):

@@ -13,7 +13,7 @@ from database.models import Commit
 from helpers.config import get_config
 from helpers.exceptions import ReportExpiredException
 from services.archive import ArchiveService
-from services.bots import RepositoryWithoutValidBotException
+from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
 from services.report import ReportService
 from services.repository import get_repo_provider_service
@@ -74,7 +74,7 @@ class UploadProcessorTask(BaseCodecovTask):
             repository = commit.repository
             try:
                 repository_service = get_repo_provider_service(repository, commit)
-            except RepositoryWithoutValidBotException:
+            except RepositoryWithoutValidBotError:
                 log.exception(
                     'Unable to process report because there is no valid bot found for that repo',
                     extra=dict(
