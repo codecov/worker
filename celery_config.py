@@ -1,21 +1,30 @@
 # http://docs.celeryq.org/en/latest/configuration.html#configuration
 import logging
-import sys
+
+import logging.config
+
+from helpers.logging_config import get_logging_config_dict
 
 from helpers.config import get_config
 from celery import signals
 
+log = logging.getLogger(__name__)
+
 
 @signals.setup_logging.connect
 def initialize_logging(loglevel=logging.INFO, **kwargs):
-    log = logging.getLogger('celery')
-    log.addHandler(logging.StreamHandler(sys.stdout))
-    log.setLevel(loglevel)
-    return log
+    config_dict = get_logging_config_dict()
+    logging.config.dictConfig(config_dict)
+    celery_logger = logging.getLogger('celery')
+    celery_logger.setLevel(loglevel)
+    log.info("Initialized celery logging")
+    return celery_logger
 
 
 broker_url = get_config('services', 'redis_url'),
 result_backend = get_config('services', 'redis_url')
+
+task_default_queue = 'new_tasks'
 
 # Import jobs
 imports = ('tasks', )

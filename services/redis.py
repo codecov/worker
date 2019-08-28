@@ -17,4 +17,8 @@ def get_redis_url():
 
 def get_redis_connection():
     url = get_redis_url()
+    return _get_redis_instance_from_url(url)
+
+
+def _get_redis_instance_from_url(url):
     return Redis.from_url(url)

@@ -12,7 +12,8 @@ class BaseCodecovTask(celery_app.Task):
     def run(self, *args, **kwargs):
         loop = asyncio.get_event_loop()
         db_session = get_db_session()
-        result = loop.run_until_complete(self.run_async(db_session, *args, **kwargs))
-        if self.write_to_db():
-            db_session.commit()
-        return result
+        try:
+            return loop.run_until_complete(self.run_async(db_session, *args, **kwargs))
+        finally:
+            if self.write_to_db():
+                db_session.commit()

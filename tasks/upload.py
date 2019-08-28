@@ -1,47 +1,80 @@
 import logging
 import re
-from json import loads, dumps
-from time import time
+from json import loads
 from datetime import datetime
-import zlib
 
-import minio.error
-from celery import exceptions
+from celery import chain
 
-
+from helpers.config import get_config
 from app import celery_app
 from tasks.base import BaseCodecovTask
 from database.models import Commit, Owner
 from services.redis import get_redis_connection
 from services.repository import get_repo_provider_service
-from services.report import ReportService
-from services.archive import ArchiveService, MinioEndpoints
-from helpers.config import get_config
-from celery_config import notify_task_name, status_set_pending_task_name
-from covreports.utils.sessions import Session
+from services.yaml import merge_yamls, save_repo_yaml_to_database_if_needed
+from services.yaml.fetcher import fetch_commit_yaml_from_provider
+from tasks.upload_processor import upload_processor_task
+from tasks.upload_finisher import upload_finisher_task
 
 log = logging.getLogger(__name__)
 
 regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]').search
 merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
 
-
-def recursive_getattr(_dict, keys, _else=None):
-    try:
-        for key in keys:
-            if hasattr(_dict, '_asdict'):
-                # namedtuples
-                _dict = getattr(_dict, key)
-            elif hasattr(_dict, '__getitem__'):
-                _dict = _dict[key]
-            else:
-                _dict = getattr(_dict, key)
-        return _dict
-    except (AttributeError, KeyError):
-        return _else
+CHUNK_SIZE = 3
 
 
 class UploadTask(BaseCodecovTask):
+    """The first of a series of tasks designed to process an `upload` made by the user
+
+    This task is the first of three tasks, which run whenever a user makes
+        an upload to `UploadHandler` (on the main app code)
+
+    - UploadTask
+    - UploadProcessorTask
+    - UploadFinisherTask
+
+    Each task has a purpose
+
+    - UploadTask (this one)
+        - Prepares the ground for the other tasks to run (view it as a compatibility layer between
+            the old code and new)
+        - Does thinks that only need to happen once per commit, and not per upload,
+            like populating commit info and webhooks
+    - UploadProcessorTask
+        - Process each individual upload the user did (with some possible batching)
+    - UploadFinisherTask
+        - Does the finishing steps of processing, like deciding what tasks
+            to schedule next (notifications)
+
+    Now a little about this individual task.
+
+    UploadTask has a specific purpose, it does all the 'pre-processing', for things that should be
+        run outside the individual `upload` context, and is also the starter
+        of the other tasks.
+
+    The preprocessing tasks it does are:
+        - Populating commit's info, in case this is the first time this commit is uploaded to our
+            servers
+        - Setup webhooks, in case this is the first time this repo has an upload on our servers
+        - Fetch commit yaml from git provider, and possibly store it on the db (in case this
+            is a commit on the repo default branch). This yaml is also passed and used on
+            the other tasks, so they don't need to fetch it again
+
+    The last thing this task does is schedule the other tasks. It works as a compatibility layer
+        because the `UploadHandler` (on the main app code) pushes some important info to
+        redis to be read here, and this task already takes all the relevant info from redis
+        and pass them directly as parameters to the other tasks, so they don't have to manually
+        deal with redis (since celery kind of automatically does the same behavior already)
+
+    On the scheduling, this task does the following logic:
+        - After fetching all uploads metadata (from redis), it splits the uploads in chunks of 3.
+        - Each chunk goes to a `UploadProcessorTask`, and they are chained (as in `celery chain`)
+        - At the end of the celery chain, we add one `UploadFinisherTask`. So after all processing,
+            the finisher task does the finishing steps
+        - In the end, the tasks are scheduled (sent to celery), and this task finishes
+
+    """
     name = "app.tasks.upload.Upload"
 
     def write_to_db(self):
@@ -68,296 +101,111 @@ class UploadTask(BaseCodecovTask):
             if arguments:  # fix race issue https://app.getsentry.com/codecov/v4/issues/126562772/
                 yield loads(arguments)
 
-    def acquire_lock(self, redis_connection, repoid, commitid):
-        log.info("In acquire_lock for commit:%s" % commitid)
-        key = '%s/%s' % (repoid, commitid)
-        if redis_connection.sismember('processing/upload', key):
-            log.info("Commitid %s already in the processing queue", commitid)
-            return False
-        log.info("Commitid %s already in the processing queue", commitid)
-        redis_connection.sadd('processing/upload', key)
-        return True
-
-    def release_lock(self, redis_connection, repoid, commitid):
-        return redis_connection.srem('processing/upload', '%s/%s' % (repoid, commitid))
-
-    def schedule_for_later_try(self, redis_connection, uploads_list_key, try_later_list):
-        log.info("Scheduling %s reports to be processed later", len(try_later_list))
-        retry_in = 20 * (self.request.retries + 1)
-        for el_to_try_later in try_later_list:
-            redis_connection.rpush(uploads_list_key, dumps(el_to_try_later))
-        self.retry(max_retries=3, countdown=retry_in)
-
     async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
-        log.info("In run_async for commit: %s" % commitid)
+        repoid = int(repoid)
+        lock_name = f"upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
-        if not self.acquire_lock(redis_connection, repoid, commitid):
-            return {}
-        uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
-        commit = None
-        n_processed = 0
-        commits = db_session.query(Commit).filter(
-                Commit.repoid == repoid, Commit.commitid == commitid)
-        commit = commits.first()
-        assert commit, 'Commit not found in database.'
-        repository = commit.repository
-        try:
-            log.info("Starting processing of report for commit %s", commitid)
-            repository_service = get_repo_provider_service(repository, commit)
-            archive_service = ArchiveService(repository)
-            if not commit.message:
-                log.info(
-                    "Commit %s from repo %s does not have all needed info. Reaching provider to fetch info",
-                    commitid, repoid
-                )
-                await self.update_commit_from_provider_info(db_session, repository_service, commit)
-
-            report = ReportService().build_report_from_commit(commit)
-
-            pr = None
-
-            should_delete_archive = self.should_delete_archive(
-                repository_service, commit.repository
+        with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
+            uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
+            commit = None
+            commits = db_session.query(Commit).filter(
+                    Commit.repoid == repoid, Commit.commitid == commitid)
+            commit = commits.first()
+            assert commit, 'Commit not found in database.'
+            log.info(
+                "Starting processing of report",
+                extra=dict(repoid=repoid, commitid=commitid)
             )
-
-            try_later = []
-
+            was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit)
+            was_setup = await self.possibly_setup_webhooks(commit)
+            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit)
+            argument_list = []
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
-                pr = arguments.get('pr')
-                log.info("Running from arguments %s", arguments)
-                try:
-                    log.info("Processing report for commit %s with arguments %s", commitid, arguments)
-                    report = await self.process_individual_report(
-                        archive_service, redis_connection, repository_service, commit, report,
-                        should_delete_archive, **arguments)
-                except Exception:
-                    log.exception("Could not process commit %s with parameters %s", commitid, arguments)
-                    try_later.append(arguments)
-                n_processed += 1
+                argument_list.append(arguments)
+            self.schedule_task(commit, commit_yaml, argument_list)
+            return {
+                'was_setup': was_setup,
+                'was_updated': was_updated
+            }
 
-            log.info('Processed %d reports for commit %s on repo %s', n_processed, commitid, repoid)
+    async def fetch_commit_yaml_and_possibly_store(self, commit):
+        repository = commit.repository
+        repository_service = get_repo_provider_service(repository, commit)
+        commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
+        save_repo_yaml_to_database_if_needed(commit, commit_yaml)
+        return merge_yamls(repository.owner.yaml, repository.yaml, commit_yaml)
 
-            self.release_lock(redis_connection, repoid, commitid)
-            if n_processed > 0:
-                return await self.finish_reports_processing(
-                    db_session, archive_service, redis_connection, repository_service,
-                    repository, commit, report, pr
+    def schedule_task(self, commit, commit_yaml, argument_list):
+        chain_to_call = []
+        for i in range(0, len(argument_list), CHUNK_SIZE):
+            chunk = argument_list[i:i + CHUNK_SIZE]
+            if chunk:
+                sig = upload_processor_task.signature(
+                    args=({},) if i == 0 else (),
+                    kwargs=dict(
+                        repoid=commit.repoid,
+                        commitid=commit.commitid,
+                        commit_yaml=commit_yaml,
+                        arguments_list=chunk,
+                    ),
                 )
-            if try_later:
-                self.schedule_for_later_try(redis_connection, uploads_list_key, try_later)
-        except exceptions.Retry:
-            raise
-        except Exception:
-            commit.state = 'error'
-            log.exception('Could not properly upload commit %s - %s', repoid, commitid)
-            raise
-        finally:
-            self.release_lock(redis_connection, repoid, commitid)
-            log.info('Finished processing for commit %s on repoid %s', repoid, commitid)
-
-    async def finish_reports_processing(
-            self, db_session, archive_service, redis_connection,
-            repository_service, repository, commit, report, pr):
-        log.debug("In finish_reports_processing for commit: %s" % commit)
-        commitid = commit.commitid
-        repoid = commit.repoid
-        report.apply_diff(await repository_service.get_commit_diff(commitid))
-
-        write_archive_service = ArchiveService(commit.repository, bucket='testingarchive')
-        self.save_report(write_archive_service, redis_connection, commit, report, pullid=pr)
-        self.app.send_task(
-            status_set_pending_task_name,
-            args=None,
-            kwargs=dict(
-                repoid=repoid,
-                commitid=commitid,
-                branch=commit.branch,
-                on_a_pull_request=bool(commit.pullid)
+                chain_to_call.append(sig)
+        if chain_to_call:
+            finish_sig = upload_finisher_task.signature(
+                kwargs=dict(
+                    repoid=commit.repoid,
+                    commitid=commit.commitid,
+                    commit_yaml=commit_yaml
+                ),
             )
-        )
-        branchs_considered_for_yaml = (
-            repository_service.data['repo'].get('strict_yaml_branch'),
-            commit.repository.branch,
-            recursive_getattr(repository_service.data['yaml'], ('codecov', 'branch'))
-        )
-        if commit.branch and commit.branch in branchs_considered_for_yaml:
-            syb = repository_service.data['repo'].get('strict_yaml_branch')
-            if not syb or (syb and syb == commit.branch):
-                # update yaml cache
-                yaml_branch = recursive_getattr(repository_service.data['yaml'], ('codecov', 'branch'))
-                if repository_service.data['_yaml_location'] and yaml_branch:
-                    repository.branch = recursive_getattr(repository_service.data['yaml'], ('codecov', 'branch'))
-                if repository_service.data['_yaml_location'] and yaml_branch:
-                    repository.yaml = recursive_getattr(repository_service.data['yaml'], ('codecov', 'branch'))
-                log.info('Updated project yaml cache on commit %s', commit.commitid)
+            chain_to_call.append(finish_sig)
+        return chain(*chain_to_call).apply_async()
 
-        # delete branch cache
-        self.invalidate_caches(redis_connection, commit)
+    async def possibly_setup_webhooks(self, commit):
+        repository = commit.repository
+        repository_service = get_repo_provider_service(repository, commit)
         repo_data = repository_service.data
-
         should_post_webhook = (not repo_data['repo']['using_integration']
                                and not repository.hookid and
                                hasattr(repository_service, 'post_webhook'))
-        should_post_webhook = False
+        should_post_webhook = False  # Temporarily while we test this
 
         # try to add webhook
         if should_post_webhook:
             try:
                 hook_result = await self.post_webhook(repository_service)
                 hookid = hook_result['id']
-                log.info("Registered hook %s for repo %s", hookid, repoid)
+                log.info("Registered hook %s for repo %s", hookid, repository.repoid)
                 repository.hookid = hookid
                 repo_data['repo']['hookid'] = hookid
+                return True
             except Exception:
-                log.exception('Failed to create project webhook')
-
-        # always notify, let the notify handle if it should submit
-        if not regexp_ci_skip(commit.message or ''):
-            if (report and (recursive_getattr(repo_data['yaml'], ('codecov', 'notify', 'after_n_builds'))
-                            or 0) <= len(report.sessions)):
-                # we have the right number of builds
-                self.app.send_task(
-                    notify_task_name,
-                    args=None,
-                    kwargs=dict(
-                        repoid=repoid,
-                        commitid=commitid
-                    )
+                log.exception(
+                    'Failed to create project webhook',
+                    extra=dict(repoid=repository.repoid, commitid=commit.commitid)
                 )
-        else:
-            commit.state = 'skipped'
-            commit.notified = False
-        _, report_dict = report.to_database()
-        return loads(report_dict)
+        return False
 
-    async def process_individual_report(
-            self, archive_service, redis_connection, repository_service,
-            commit, current_report, should_delete_archive, *,
-            flags=None, service=None, build_url=None,
-            build=None, job=None, name=None, url=None,
-            redis_key=None, reportid=None, **kwargs):
-        """Takes a `current_report (Report)`, runs a raw_uploaded_report (str) against
-            it and generates a new report with the result
-        """
-        log.info("In process_individual_report for commit: %s" % commit)
-        raw_uploaded_report = None
-        flags = (flags.split(',') if flags else None)
-
-        archive_url = url
-        raw_uploaded_report = self.fetch_raw_uploaded_report(
-            archive_service, redis_connection, archive_url, commit.commitid, reportid, redis_key)
-        log.info('Retrieved report for processing from url %s', archive_url)
-
-        # delete from archive is desired
-        if should_delete_archive and archive_url and not archive_url.startswith('http'):
-            archive_service.delete_file(archive_url)
-            archive_url = None
-
-        # ---------------
-        # Process Reports
-        # ---------------
-        session = Session(
-            provider=service,
-            build=build,
-            job=job,
-            name=name,
-            time=int(time()),
-            flags=flags,
-            archive=archive_url or url,
-            url=build_url
-        )
-        report = self.process_raw_upload(
-            repository_service=repository_service,
-            master=current_report,
-            reports=raw_uploaded_report,
-            flags=flags,
-            session=session
-        )
-
-        log.info(
-            'Successfully processed report for session %s and ci %s',
-            session.id,
-            f'{session.provider}:{session.build}:{session.job}'
-        )
-        return report
-
-    def save_report(self, archive_service, redis_connection, commit, report, pullid=None):
-        totals, network_json_str = report.to_database()
-        network = loads(network_json_str)
-
-        if pullid is not None:
-            commit.pullid = pullid
-
-        commit.state = 'complete' if report else 'error'
-        commit.totals = totals
-        commit.report = network
-
-        # ------------------------
-        # Archive Processed Report
-        # ------------------------
-        archive_data = report.to_archive().encode()
-        url = archive_service.write_chunks(commit.commitid, archive_data)
-        log.info('Archived report on url %s', url)
-
-    def process_raw_upload(self, repository_service, master, reports, flags, session=None):
-        return ReportService().build_report_from_raw_content(
-            repository_service, master, reports, flags, session
-        )
-
-    def fetch_raw_uploaded_report(
-            self, archive_service, redis_connection, archive_url, commit_sha, reportid, redis_key):
-        """Downloads the raw report, wherever it is (it's either a pth on minio or redis)
-
-        Args:
-            archive_service: [description]
-            redis_connection: [description]
-            archive_url: [description]
-            commit_sha: [description]
-            reportid: [description]
-            redis_key: [description]
-        """
-        log.info("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
-        if archive_url:
-            try:
-                return archive_service.read_file(archive_url)
-            except minio.error.NoSuchKey:
-                log.exception("File could not be found on %s for commit %s", archive_url, commit_sha)
-                raise
-        else:
-            return self.download_archive_from_redis(
-                archive_service, redis_connection, commit_sha, reportid, redis_key)
-
-    def download_archive_from_redis(
-            self, archive_service, redis_connection, commit_sha, reportid, redis_key):
-        # download from redis
-        raw_uploaded_report = redis_connection.get(redis_key)
-        gzipped = redis_key.endswith('/gzip')
-
-        path = MinioEndpoints.raw.get_path(
-            date=datetime.now().strftime('%Y-%m-%d'),
-            repo_hash=ArchiveService.get_archive_hash(self.repository),
-            commit_sha=commit_sha,
-            reportid=reportid
-        )
-
-        archive_service.write_file(path, raw_uploaded_report, gzipped=gzipped)
-        # delete from redis
-        redis_connection.delete(redis_key)
-
-        if gzipped:
-            raw_uploaded_report = zlib.decompress(
-                raw_uploaded_report, zlib.MAX_WBITS | 16
+    async def possibly_update_commit_from_provider_info(self, db_session, commit):
+        repoid = commit.repoid
+        repository = commit.repository
+        commitid = commit.commitid
+        try:
+            repository_service = get_repo_provider_service(repository, commit)
+            if not commit.message:
+                log.info(
+                    "Commit does not have all needed info. Reaching provider to fetch info",
+                    extra=dict(repoid=repoid, commitid=commitid)
+                )
+                await self.update_commit_from_provider_info(db_session, repository_service, commit)
+                return True
+        except Exception:
+            log.exception(
+                'Could not properly update commit with info from git provider',
+                extra=dict(repoid=repoid, commitid=commitid)
             )
-        return raw_uploaded_report
-
-    def should_delete_archive(self, repository_service, repository):
-        if get_config('services', 'minio', 'expire_raw_after_n_days'):
-            return True
-        return not recursive_getattr(
-            repository_service.data['yaml'],
-            ('codecov', 'archive', 'uploads'),
-            _else=True
-        )
+            raise
+        return False
 
     def get_author_from_commit(self, db_session, service, author_id, username, email, name):
         author = db_session.query(Owner).filter_by(service_id=author_id, service=service).first()
@@ -381,8 +229,8 @@ class UploadTask(BaseCodecovTask):
 
         if git_commit is None:
             log.error(
-                'Could not find commit in service for commit %s on repo %s.',
-                commit.commitid, commit.repoid
+                'Could not find commit on git provider',
+                extra=dict(repoid=commit.repoid, commitid=commit.commitid)
             )
         else:
             author_info = git_commit['author']
@@ -406,7 +254,6 @@ class UploadTask(BaseCodecovTask):
 
             commit.message = git_commit['message']
             commit.parent = git_commit['parents'][0]
-            
             commit.merged = False
             commit.author = commit_author
             commit.updatestamp = datetime.now()
@@ -420,10 +267,10 @@ class UploadTask(BaseCodecovTask):
                         await
                         repository_service.get_pull_request(pullid)
                     )['base']['branch']
-
-    def invalidate_caches(self, redis_connection, commit):
-        redis_connection.delete('cache/{}/tree/{}'.format(commit.repoid, commit.branch))
-        redis_connection.delete('cache/{0}/tree/{1}'.format(commit.repoid, commit.commitid))
+            log.info(
+                'Updated commit with info from git provider',
+                extra=dict(repoid=commit.repoid, commitid=commit.commitid)
+            )
 
     async def post_webhook(self, repository_service):
         """

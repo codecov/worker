@@ -53,7 +53,7 @@ class Commit(CodecovBaseModel):
     __tablename__ = 'commits'
 
     commitid = Column(types.Text, primary_key=True)
-    repoid = Column(types.Integer, ForeignKey('repos.repoid'))
+    repoid = Column(types.Integer, ForeignKey('repos.repoid'), primary_key=True)
     author_id = Column('author', types.Integer, ForeignKey('owners.ownerid'))
     message = Column(types.Text)
     ci_passed = Column(types.Boolean)
