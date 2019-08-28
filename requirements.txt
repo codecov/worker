@@ -1,5 +1,5 @@
 -e git+https://github.com/codecov/report.git@915b896c114a9733a488bb1a166ef5705049aa93#egg=covreports
--e git+https://github.com/codecov/torngit.git@python-3-master#egg=torngit
+-e git+https://github.com/codecov/torngit.git@51f675eaa4771a9e703e51c44ee1a41dc31bbbc6#egg=torngit
 celery==4.3
 factory-boy==2.11.1
 google-cloud-storage==1.18.0

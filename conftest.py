@@ -1,4 +1,5 @@
 from pathlib import Path
+from asyncio import Future
 
 import pytest
 import vcr
@@ -72,3 +73,17 @@ def mock_storage(mocker):
     redis_server = mocker.MagicMock()
     m.return_value = redis_server
     yield redis_server
+
+
+@pytest.fixture
+def mock_repo_provider(mocker):
+    f = Future()
+    f.set_result({})
+    m = mocker.patch('services.repository._get_repo_provider_service_instance')
+    provider_instance = mocker.MagicMock(
+        get_commit_diff=mocker.MagicMock(
+            return_value=f
+        )
+    )
+    m.return_value = provider_instance
+    yield provider_instance

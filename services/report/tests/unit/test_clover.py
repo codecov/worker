@@ -1,9 +1,9 @@
 from time import time
-from json import loads
 import xml.etree.cElementTree as etree
 import pytest
 
 from tests.base import BaseTestCase
+from helpers.exceptions import ReportExpiredException
 from services.report.languages import clover
 
 
@@ -198,5 +198,5 @@ class TestCloverProcessor(BaseTestCase):
 
     @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
     def test_expired(self, date):
-        with pytest.raises(AssertionError, match='Clover report expired'):
+        with pytest.raises(ReportExpiredException, match='Clover report expired'):
             clover.from_xml(etree.fromstring(xml % date), None, {}, 0, None)

@@ -52,8 +52,10 @@ class UploadFinisherTask(BaseCodecovTask):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
         repoid = commit.repoid
+        should_set_pending = self.request.retries == 0
+        should_set_pending = False
 
-        if self.request.retries == 0:
+        if should_set_pending:
             self.app.send_task(
                 status_set_pending_task_name,
                 args=None,
