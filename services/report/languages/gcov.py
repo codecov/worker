@@ -1,6 +1,6 @@
 import re
 
-from covreports.helpers.yaml import walk
+from services.yaml import read_yaml_field
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
@@ -12,7 +12,7 @@ class GcovProcessor(BaseLanguageProcessor):
         return detect(content)
 
     def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
-        settings = walk(repo_yaml, ('parsers', 'gcov'))
+        settings = read_yaml_field(repo_yaml, ('parsers', 'gcov'))
         return from_txt(name, content, path_fixer, ignored_lines, sessionid, settings)
 
 
@@ -73,7 +73,7 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
 
         elif line[:4] == 'bran' and ln in lines:
             if _cur_branch_detected is False:
-                # skip walking/regexp checks because of repeated branchs
+                # skip read_yaml_fielding/regexp checks because of repeated branchs
                 continue
 
             elif _cur_branch_detected is None:
@@ -81,20 +81,20 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
 
                 # class
                 if lines[ln][1] == 'm':
-                    if walk(settings, ('branch_detection', 'method')) is not True:
+                    if read_yaml_field(settings, ('branch_detection', 'method')) is not True:
                         continue
                 # loop
                 elif detect_loop(data):
                     lines[ln] = (lines[ln][0], 'b')
-                    if walk(settings, ('branch_detection', 'loop')) is not True:
+                    if read_yaml_field(settings, ('branch_detection', 'loop')) is not True:
                         continue
                 # conditional
                 elif detect_conditional(data):
                     lines[ln] = (lines[ln][0], 'b')
-                    if walk(settings, ('branch_detection', 'conditional')) is not True:
+                    if read_yaml_field(settings, ('branch_detection', 'conditional')) is not True:
                         continue
                 # else macro
-                elif walk(settings, ('branch_detection', 'macro')) is not True:
+                elif read_yaml_field(settings, ('branch_detection', 'macro')) is not True:
                     continue
 
                 _cur_branch_detected = True  # proven true

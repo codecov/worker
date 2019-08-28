@@ -4,7 +4,7 @@ import logging
 
 from pathmap import resolve_by_method
 
-from covreports.helpers.yaml import walk
+from services.yaml import read_yaml_field
 from covreports.utils.sessions import Session
 from covreports.resources import Report
 
@@ -53,7 +53,7 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     # -------------------
     # Make custom_fixes()
     # -------------------
-    custom_fixes = fixpaths_to_func(walk(commit_yaml, ('fixes', )) or [])
+    custom_fixes = fixpaths_to_func(read_yaml_field(commit_yaml, ('fixes', )) or [])
 
     # -------------
     # Make ignore[]
@@ -61,7 +61,7 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     path_patterns = list(
         map(
             invert_pattern,
-            walk(commit_yaml, ('ignore', )) or []
+            read_yaml_field(commit_yaml, ('ignore', )) or []
         )
     )
 
@@ -69,16 +69,16 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     if flags:
         for flag in flags:
             path_patterns.extend(list(map(invert_pattern,
-                                     walk(commit_yaml,
+                                     read_yaml_field(commit_yaml,
                                           ('flags', flag, 'ignore')) or [])))
 
-            path_patterns.extend(walk(commit_yaml,
+            path_patterns.extend(read_yaml_field(commit_yaml,
                                       ('flags', flag, 'paths')) or [])
 
     # callable custom ignore
     path_matcher = patterns_to_func(set(path_patterns))
     resolver = resolve_by_method(toc) if toc else None
-    disable_default_path_fixes = walk(commit_yaml, ('codecov', 'disable_default_path_fixes'))
+    disable_default_path_fixes = read_yaml_field(commit_yaml, ('codecov', 'disable_default_path_fixes'))
 
     def path_fixer(p):
         return clean_path(custom_fixes, path_matcher, resolver, p,
@@ -135,7 +135,7 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
                 # skip joining if flags express this fact
                 joined = True
                 for flag in (flags or []):
-                    if walk(commit_yaml, ('flags', flag, 'joined')) is False:
+                    if read_yaml_field(commit_yaml, ('flags', flag, 'joined')) is False:
                         joined = False
                         break
 

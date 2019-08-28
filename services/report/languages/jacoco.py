@@ -1,7 +1,7 @@
 from timestring import Date
 from collections import defaultdict
 
-from covreports.helpers.yaml import walk
+from services.yaml import read_yaml_field
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
@@ -24,10 +24,10 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     mb = missed branches
     cb = covered branches
     """
-    if walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
+    if read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
         try:
             timestamp = next(xml.iter('sessioninfo')).get('start')
-            if timestamp and Date(timestamp) < walk(yaml, ('codecov', 'max_report_age'), '12h ago'):
+            if timestamp and Date(timestamp) < read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
                 raise AssertionError('Jacoco report expired %s' % timestamp)
 

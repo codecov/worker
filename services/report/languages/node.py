@@ -4,7 +4,7 @@ from fractions import Fraction
 from covreports.resources import Report, ReportFile
 from covreports.utils.tuples import ReportLine
 from covreports.utils.merge import partials_to_line
-from covreports.helpers.yaml import walk
+from services.yaml import read_yaml_field
 
 from services.report.languages.base import BaseLanguageProcessor
 
@@ -15,7 +15,7 @@ class NodeProcessor(BaseLanguageProcessor):
         return True  # TODO: fix this
 
     def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
-        config = walk(repo_yaml, ('parsers', 'javascript')) or {}
+        config = read_yaml_field(repo_yaml, ('parsers', 'javascript')) or {}
         return from_json(content, path_fixer, ignored_lines, sessionid, config)
 
 
