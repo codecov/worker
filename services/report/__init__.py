@@ -1,9 +1,12 @@
 import json
+import logging
 
 from covreports.resources import Report
 from services.archive import ArchiveService, MinioEndpoints
 from services.report.raw_upload_processor import process_raw_upload
 from services.storage.exceptions import FileNotInStorageError
+
+log = logging.getLogger(__name__)
 
 
 class ReportService(object):
@@ -34,6 +37,9 @@ class ReportService(object):
             files = report_dict['files']
             sessions = report_dict['sessions']
         except (FileNotInStorageError, json.decoder.JSONDecodeError):
+            log.exception(
+                "What happened in here?", extra=dict(actual_reports_path=actual_reports_path)
+            )
             files = commit.report['files']
             sessions = commit.report['sessions']
         totals = commit.totals
