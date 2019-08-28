@@ -154,7 +154,11 @@ class UploadProcessorTask(BaseCodecovTask):
                     log.info(
                         'Processed %d reports',
                         n_processed,
-                        extra=dict(repoid=repoid, commit=commitid)
+                        extra=dict(
+                            repoid=repoid,
+                            commit=commitid,
+                            commit_yaml=commit_yaml,
+                        )
                     )
                 return {
                     'processings_so_far': processings_so_far,
