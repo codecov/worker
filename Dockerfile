@@ -40,5 +40,5 @@ COPY            --from=build /pip-packages/ /pip-packages/
 RUN             rm -rf /pip-packages/src
 RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages/*
 
-COPY            . /app
-WORKDIR         /app
+COPY            . /worker
+WORKDIR         /worker
