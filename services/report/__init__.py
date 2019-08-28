@@ -28,11 +28,5 @@ class ReportService(object):
         res = self.build_report(chunks, files, sessions, totals)
         return res
 
-    def move_report_to_different_bucket(self, commit, new_bucket):
-        commitid = commit.commitid
-        chunks = ArchiveService(commit.repository).read_chunks(commitid)
-        new_archive_service = ArchiveService(commit.repository, new_bucket).read_chunks(commitid)
-        return new_archive_service.write_chunks(commitid, chunks.encode())
-
     def build_report_from_raw_content(self, commit_yaml, master, reports, flags, session):
         return process_raw_upload(commit_yaml, master, reports, flags, session)

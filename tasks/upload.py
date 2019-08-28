@@ -120,7 +120,6 @@ class UploadTask(BaseCodecovTask):
             was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit)
             was_setup = await self.possibly_setup_webhooks(commit)
             commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit)
-            self.move_commit_chunks_to_different_bucket(commit)
             argument_list = []
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 argument_list.append(arguments)
@@ -129,9 +128,6 @@ class UploadTask(BaseCodecovTask):
                 'was_setup': was_setup,
                 'was_updated': was_updated
             }
-
-    def move_commit_chunks_to_different_bucket(self, commit):
-        return ReportService().move_report_to_different_bucket(commit, 'testingarchive_2')
 
     async def fetch_commit_yaml_and_possibly_store(self, commit):
         repository = commit.repository

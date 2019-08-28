@@ -24,7 +24,6 @@ class TestUploadTask(object):
         ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocked_3 = mocker.patch.object(UploadTask, 'app')
-        mocker.patch.object(UploadTask, 'move_commit_chunks_to_different_bucket')
         mocked_3.send_task.return_value = True
         mock_redis.exists.side_effect = [True, False]
         mock_redis.lpop.side_effect = jsonified_redis_queue
@@ -105,7 +104,6 @@ class TestUploadTask(object):
         mocked_3.send_task.return_value = True
         mock_redis.exists.side_effect = [True] * 8 + [False]
         mock_redis.lpop.side_effect = jsonified_redis_queue
-        mocker.patch.object(UploadTask, 'move_commit_chunks_to_different_bucket')
 
         commit = CommitFactory.create(
             message='',
