@@ -16,12 +16,14 @@ circleci-local:
 		--env VERSION=${VERSION}
 
 build-requirements:
-	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG} || true
-	docker build \
+	# if docker pull succeeds, we have already build this version of
+	# requirements.txt.  Otherwise, build and push a version tagged
+	# with the hash of this requirements.txt
+	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG} || docker build \
 		-f Dockerfile.requirements . \
 		-t codecov/worker:${REQUIREMENTS_TAG} \
-		--build-arg GH_ACCESS_TOKEN=${GH_ACCESS_TOKEN}
-	docker tag codecov/worker ${GCR_REPO}:${REQUIREMENTS_TAG}
+		--build-arg GH_ACCESS_TOKEN=${GH_ACCESS_TOKEN} \
+	&& docker tag codecov/worker ${GCR_REPO}:${REQUIREMENTS_TAG}
 
 push-requirements:
 	docker push ${GCR_REPO}:${REQUIREMENTS_TAG}
