@@ -39,7 +39,9 @@ jobs:
         name: build container
         command: |-
           printenv
-          make build GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$CIRCLE_TAG
+          make build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+          make push-requirements
+          make build VERSION=$CIRCLE_TAG
           make push
   test:
     executor: codecov-worker
