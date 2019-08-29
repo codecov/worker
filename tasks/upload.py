@@ -117,9 +117,11 @@ class UploadTask(BaseCodecovTask):
                 "Starting processing of report",
                 extra=dict(repoid=repoid, commit=commitid)
             )
-            was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit)
-            was_setup = await self.possibly_setup_webhooks(commit)
-            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit)
+            repository = commit.repository
+            repository_service = get_repo_provider_service(repository, commit)
+            was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit, repository_service)
+            was_setup = await self.possibly_setup_webhooks(commit, repository_service)
+            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
             argument_list = []
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 argument_list.append(arguments)
@@ -129,9 +131,8 @@ class UploadTask(BaseCodecovTask):
                 'was_updated': was_updated
             }
 
-    async def fetch_commit_yaml_and_possibly_store(self, commit):
+    async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
-        repository_service = get_repo_provider_service(repository, commit)
         commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
         save_repo_yaml_to_database_if_needed(commit, commit_yaml)
         return merge_yamls(repository.owner.yaml, repository.yaml, commit_yaml)
@@ -162,9 +163,8 @@ class UploadTask(BaseCodecovTask):
             chain_to_call.append(finish_sig)
         return chain(*chain_to_call).apply_async()
 
-    async def possibly_setup_webhooks(self, commit):
+    async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
-        repository_service = get_repo_provider_service(repository, commit)
         repo_data = repository_service.data
         should_post_webhook = (not repo_data['repo']['using_integration']
                                and not repository.hookid and
@@ -187,12 +187,10 @@ class UploadTask(BaseCodecovTask):
                 )
         return False
 
-    async def possibly_update_commit_from_provider_info(self, db_session, commit):
+    async def possibly_update_commit_from_provider_info(self, db_session, commit, repository_service):
         repoid = commit.repoid
-        repository = commit.repository
         commitid = commit.commitid
         try:
-            repository_service = get_repo_provider_service(repository, commit)
             if not commit.message:
                 log.info(
                     "Commit does not have all needed info. Reaching provider to fetch info",
