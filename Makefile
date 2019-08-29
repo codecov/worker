@@ -29,6 +29,10 @@ tag:
 	docker tag ${GCR_REPO}:latest ${GCR_REPO}:${VERSION}
 	docker push ${GCR_REPO}:${VERSION}
 
+release:
+	git tag ${VERSION}
+	git push --tags
+
 deploy:
 	kubectl set image deployment/worker workers=${GCR_REPO}:${VERSION}
 	kubectl rollout status deployments worker
