@@ -3,8 +3,7 @@ import logging
 import torngit
 
 from helpers.config import get_config, get_verify_ssl
-from services.encryption import encryptor
-from services.bots import get_repo_appropriate_bot
+from services.bots import get_repo_appropriate_bot_token
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ def get_repo_provider_service(repository, commit=None):
         get_config('setup', 'http', 'timeouts', 'receive', default=30)
     ]
     service = repository.owner.service
-    bot = get_repo_appropriate_bot(repository)
+    token = get_repo_appropriate_bot_token(repository)
     adapter_params = dict(
         repo=dict(name=repository.name, using_integration=repository.using_integration or False),
         owner=dict(
@@ -23,7 +22,7 @@ def get_repo_provider_service(repository, commit=None):
             ownerid=repository.ownerid,
             username=repository.owner.username
         ),
-        token=encryptor.decrypt_token(bot.oauth_token),
+        token=token,
         verify_ssl=get_verify_ssl(service),
         timeouts=_timeouts
     )
