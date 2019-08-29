@@ -13,7 +13,7 @@ from services.redis import get_redis_connection
 from services.repository import get_repo_provider_service
 from services.yaml import merge_yamls, save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
-from services.report import ReportService
+from services.yaml.exceptions import InvalidYamlException
 from tasks.upload_processor import upload_processor_task
 from tasks.upload_finisher import upload_finisher_task
 
@@ -133,8 +133,15 @@ class UploadTask(BaseCodecovTask):
 
     async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
-        commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
-        save_repo_yaml_to_database_if_needed(commit, commit_yaml)
+        try:
+            commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
+            save_repo_yaml_to_database_if_needed(commit, commit_yaml)
+        except InvalidYamlException:
+            log.exception(
+                "Unable to use yaml from commit because it is invalid",
+                extra=dict(repoid=repository.repoid, commit=commit.commitid)
+            )
+            commit_yaml = None
         return merge_yamls(repository.owner.yaml, repository.yaml, commit_yaml)
 
     def schedule_task(self, commit, commit_yaml, argument_list):
