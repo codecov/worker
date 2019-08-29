@@ -32,11 +32,10 @@ build:
 	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG}
 	docker build \
 		-f Dockerfile . \
-		-t codecov/worker:latest \
+		-t ${GCR_REPO}:latest \
 		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
 
 push:
-	docker tag codecov/worker ${GCR_REPO}:latest
 	docker push ${GCR_REPO}:latest
 
 tag:
