@@ -11,12 +11,17 @@ class FileDifferenceWeirdError(Exception):
     pass
 
 
+class FileDifferenceNotComparableCase(Exception):
+    pass
+
+
 def find_filepaths_in_common(test_bucket):
     storage_service = get_appropriate_storage_service()
     minio_client = storage_service.minio_client
     first_folders = minio_client.list_objects_v2(test_bucket, prefix='v4/repos', recursive=True)
     report_service = ReportService()
     errors = []
+    non_comparables = 0
     successes = 0
     for fln in first_folders:
         if 'report.json' in fln.object_name:
@@ -26,7 +31,11 @@ def find_filepaths_in_common(test_bucket):
                 successes += 1
             except FileDifferenceWeirdError as er:
                 errors.append((fln.object_name, er.args))
+            except FileDifferenceNotComparableCase:
+                non_comparables += 1
     print(f"{successes} successes")
+    print(f"{non_comparables} non_comparables")
+    print(f"{len(errors)} errors")
     return errors
 
 
@@ -39,6 +48,11 @@ def compare_report_contents(storage_service, report_service, compare_report_cont
     commit = db_session.query(Commit).filter_by(commitid=commitid).first()
     json_content = json.loads(compare_report_contents)
     files = commit.report['files']
+    if len(commit.report['sessions']) != len(json_content['sessions']):
+        print(f"not comparable - {filename}")
+        raise FileDifferenceNotComparableCase(
+            len(commit.report['sessions']), len(json_content['sessions'])
+        )
     if set(files.keys()) != set(json_content['files'].keys()):
         only_old = set(files.keys()) - set(json_content['files'].keys())
         only_new = set(json_content['files'].keys()) - set(files.keys())
@@ -47,26 +61,32 @@ def compare_report_contents(storage_service, report_service, compare_report_cont
         )
     else:
         for inside_fln in files:
-            res = compare_individual_file(files.get(inside_fln), json_content['files'].get(inside_fln))
+            old_result = files.get(inside_fln)
+            new_result = json_content['files'].get(inside_fln)
+            res = compare_individual_file(old_result, new_result)
             if not res:
                 raise FileDifferenceWeirdError(
-                    commit.repoid, commit.commitid, f"ERROR ON {filename} - Different value on {inside_fln}"
+                    commit.repoid, commit.commitid,
+                    f"ERROR ON {filename} - Different value on {inside_fln}", old_result[1], new_result[1]
                 )
     print(f"ok - {filename}")
 
 
 def compare_individual_file(old_result, new_result):
-    _, old_res, _, _ = old_result
-    _, new_res, _, _ = new_result
+    _, old_res, sess_old, _ = old_result
+    _, new_res, sess_new, _ = new_result
     return old_res == new_res
 
 
-test_bucket = 'testingarchive03'
-db_session = get_db_session()
-errors = find_filepaths_in_common(test_bucket)
-print(f"{len(errors)} errors found")
-if errors:
-    for err in errors:
-        print(f"Error on f{err}")
+def run_test():
+    test_bucket = 'testingarchive03'
+    db_session = get_db_session()
+    errors = find_filepaths_in_common(test_bucket)
+    print(f"{len(errors)} errors found")
+    if errors:
+        for err in errors:
+            print(f"Error on f{err}")
+    db_session.close()
 
-db_session.close()
+
+run_test()
