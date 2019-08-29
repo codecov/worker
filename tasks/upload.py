@@ -13,6 +13,7 @@ from services.redis import get_redis_connection
 from services.repository import get_repo_provider_service
 from services.yaml import merge_yamls, save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
+from services.report import ReportService
 from tasks.upload_processor import upload_processor_task
 from tasks.upload_finisher import upload_finisher_task
 
@@ -95,7 +96,7 @@ class UploadTask(BaseCodecovTask):
         Yields:
             dict: A dict with the parameters to be passed
         """
-        log.info("Fetching arguments from redis %s", uploads_list_key)
+        log.debug("Fetching arguments from redis %s", uploads_list_key)
         while redis_connection.exists(uploads_list_key):
             arguments = redis_connection.lpop(uploads_list_key)
             if arguments:  # fix race issue https://app.getsentry.com/codecov/v4/issues/126562772/
@@ -114,7 +115,7 @@ class UploadTask(BaseCodecovTask):
             assert commit, 'Commit not found in database.'
             log.info(
                 "Starting processing of report",
-                extra=dict(repoid=repoid, commitid=commitid)
+                extra=dict(repoid=repoid, commit=commitid)
             )
             was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit)
             was_setup = await self.possibly_setup_webhooks(commit)
@@ -182,7 +183,7 @@ class UploadTask(BaseCodecovTask):
             except Exception:
                 log.exception(
                     'Failed to create project webhook',
-                    extra=dict(repoid=repository.repoid, commitid=commit.commitid)
+                    extra=dict(repoid=repository.repoid, commit=commit.commitid)
                 )
         return False
 
@@ -195,14 +196,14 @@ class UploadTask(BaseCodecovTask):
             if not commit.message:
                 log.info(
                     "Commit does not have all needed info. Reaching provider to fetch info",
-                    extra=dict(repoid=repoid, commitid=commitid)
+                    extra=dict(repoid=repoid, commit=commitid)
                 )
                 await self.update_commit_from_provider_info(db_session, repository_service, commit)
                 return True
         except Exception:
             log.exception(
                 'Could not properly update commit with info from git provider',
-                extra=dict(repoid=repoid, commitid=commitid)
+                extra=dict(repoid=repoid, commit=commitid)
             )
             raise
         return False
@@ -230,7 +231,7 @@ class UploadTask(BaseCodecovTask):
         if git_commit is None:
             log.error(
                 'Could not find commit on git provider',
-                extra=dict(repoid=commit.repoid, commitid=commit.commitid)
+                extra=dict(repoid=commit.repoid, commit=commit.commitid)
             )
         else:
             author_info = git_commit['author']
@@ -269,7 +270,7 @@ class UploadTask(BaseCodecovTask):
                     )['base']['branch']
             log.info(
                 'Updated commit with info from git provider',
-                extra=dict(repoid=commit.repoid, commitid=commit.commitid)
+                extra=dict(repoid=commit.repoid, commit=commit.commitid)
             )
 
     async def post_webhook(self, repository_service):

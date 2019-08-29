@@ -1,4 +1,4 @@
-from json import loads
+from json import loads, dumps
 from time import time
 import logging
 import re
@@ -12,7 +12,7 @@ from app import celery_app
 from database.models import Commit
 from helpers.config import get_config
 from helpers.exceptions import ReportExpiredException
-from services.archive import ArchiveService
+from services.archive import ArchiveService, MinioEndpoints
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -89,8 +89,11 @@ class UploadProcessorTask(BaseCodecovTask):
             should_delete_archive = self.should_delete_archive(commit_yaml)
             try_later = []
             archive_service = ArchiveService(repository)
+            chunks_archive_service = ArchiveService(commit.repository, bucket='testingarchive03')
             try:
-                report = ReportService().build_report_from_commit(commit)
+                report = ReportService().build_report_from_commit(
+                    commit, chunks_archive_service=chunks_archive_service
+                )
             except Exception:
                 log.exception(
                     "Unable to fetch current report for commit",
@@ -145,13 +148,17 @@ class UploadProcessorTask(BaseCodecovTask):
                         extra=dict(repoid=repoid, commit=commitid)
                     )
                     await self.save_report_results(
-                        db_session, archive_service, repository_service,
+                        db_session, chunks_archive_service, repository_service,
                         repository, commit, report, pr
                     )
                     log.info(
                         'Processed %d reports',
                         n_processed,
-                        extra=dict(repoid=repoid, commit=commitid)
+                        extra=dict(
+                            repoid=repoid,
+                            commit=commitid,
+                            commit_yaml=commit_yaml,
+                        )
                     )
                 return {
                     'processings_so_far': processings_so_far,
@@ -319,13 +326,12 @@ class UploadProcessorTask(BaseCodecovTask):
         )
 
     async def save_report_results(
-            self, db_session, archive_service,
+            self, db_session, chunks_archive_service,
             repository_service, repository, commit, report, pr):
         log.debug("In save_report_results for commit: %s" % commit)
         commitid = commit.commitid
         report.apply_diff(await repository_service.get_commit_diff(commitid))
 
-        write_archive_service = ArchiveService(commit.repository, bucket='testingarchive')
         totals, network_json_str = report.to_database()
         network = loads(network_json_str)
 
@@ -335,12 +341,19 @@ class UploadProcessorTask(BaseCodecovTask):
         commit.state = 'complete' if report else 'error'
         commit.totals = totals
         commit.report = network
+        # TODO: Remove after tests are done
+        actual_reports_path = MinioEndpoints.reports_json.get_path(
+            version='v4',
+            repo_hash=chunks_archive_service.storage_hash,
+            commitid=commitid
+        )
+        chunks_archive_service.write_file(actual_reports_path, dumps(network, indent=4))
 
         # ------------------------
         # Archive Processed Report
         # ------------------------
         archive_data = report.to_archive().encode()
-        url = write_archive_service.write_chunks(commit.commitid, archive_data)
+        url = chunks_archive_service.write_chunks(commit.commitid, archive_data)
         log.info(
             'Archived report',
             extra=dict(

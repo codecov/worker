@@ -36,7 +36,6 @@ class UploadFinisherTask(BaseCodecovTask):
 
     async def run_async(self, db_session, processing_results, *, repoid, commitid, commit_yaml, **kwargs):
         repoid = int(repoid)
-        log.debug("In run_async for repoid %d and commit %s", repoid, commitid)
         lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
         commits = db_session.query(Commit).filter(
                     Commit.repoid == repoid, Commit.commitid == commitid)
@@ -44,6 +43,10 @@ class UploadFinisherTask(BaseCodecovTask):
         assert commit, 'Commit not found in database.'
         redis_connection = get_redis_connection()
         with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
+            log.info(
+                "Running finishing logic for commit",
+                extra=dict(repoid=repoid, commit=commitid)
+            )
             result = await self.finish_reports_processing(db_session, commit, commit_yaml)
             self.invalidate_caches(redis_connection, commit)
         return result

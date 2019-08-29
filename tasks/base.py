@@ -17,3 +17,4 @@ class BaseCodecovTask(celery_app.Task):
         finally:
             if self.write_to_db():
                 db_session.commit()
+            db_session.close()
