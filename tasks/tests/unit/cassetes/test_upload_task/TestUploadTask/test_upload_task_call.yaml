@@ -23,7 +23,7 @@ interactions:
     headers:
     - !!python/tuple
       - Date
-      - ['Thu, 29 Aug 2019 12:03:37 GMT']
+      - ['Thu, 29 Aug 2019 13:36:11 GMT']
     - !!python/tuple
       - Content-Type
       - [application/json; charset=utf-8]
@@ -44,10 +44,10 @@ interactions:
       - ['5000']
     - !!python/tuple
       - X-Ratelimit-Remaining
-      - ['4997']
+      - ['4999']
     - !!python/tuple
       - X-Ratelimit-Reset
-      - ['1567083817']
+      - ['1567089371']
     - !!python/tuple
       - Cache-Control
       - ['private, max-age=60, s-maxage=60']
@@ -97,7 +97,7 @@ interactions:
       - [default-src 'none']
     - !!python/tuple
       - X-Github-Request-Id
-      - ['3BD8:5A56:16E6B9:213238:5D67BF19']
+      - ['3A48:7664:2FF9B5:483186:5D67D4CB']
     - !!python/tuple
       - X-Consumed-Content-Encoding
       - [gzip]
@@ -119,7 +119,7 @@ interactions:
     headers:
     - !!python/tuple
       - Date
-      - ['Thu, 29 Aug 2019 12:03:38 GMT']
+      - ['Thu, 29 Aug 2019 13:36:12 GMT']
     - !!python/tuple
       - Content-Type
       - [application/json; charset=utf-8]
@@ -140,10 +140,10 @@ interactions:
       - ['5000']
     - !!python/tuple
       - X-Ratelimit-Remaining
-      - ['4996']
+      - ['4998']
     - !!python/tuple
       - X-Ratelimit-Reset
-      - ['1567083817']
+      - ['1567089371']
     - !!python/tuple
       - Cache-Control
       - ['private, max-age=60, s-maxage=60']
@@ -193,7 +193,7 @@ interactions:
       - [default-src 'none']
     - !!python/tuple
       - X-Github-Request-Id
-      - ['3BD9:027C:2E667:43205:5D67BF1A']
+      - ['3A4A:028D:1692C6:20E320:5D67D4CB']
     - !!python/tuple
       - X-Consumed-Content-Encoding
       - [gzip]
@@ -205,13 +205,13 @@ interactions:
       Accept: [application/json]
       User-Agent: [Default]
     method: GET
-    uri: https://api.github.com/repos/ThiagoCodecov/example-python/contents/codecov.yml?ref=abf6d4df662c47e32460020ab14abf9303581429
+    uri: https://api.github.com/repos/ThiagoCodecov/example-python/contents?ref=abf6d4df662c47e32460020ab14abf9303581429
   response:
-    body: {string: '{"message":"Not Found","documentation_url":"https://developer.github.com/v3/repos/contents/#get-contents"}'}
+    body: {string: '[{"name":".coverage","path":".coverage","sha":"23e6e577d9e906f1fa619e8a8672d9537ff27326","size":335,"url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/.coverage?ref=abf6d4df662c47e32460020ab14abf9303581429","html_url":"https://github.com/ThiagoCodecov/example-python/blob/abf6d4df662c47e32460020ab14abf9303581429/.coverage","git_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs/23e6e577d9e906f1fa619e8a8672d9537ff27326","download_url":"https://raw.githubusercontent.com/ThiagoCodecov/example-python/abf6d4df662c47e32460020ab14abf9303581429/.coverage","type":"file","_links":{"self":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/.coverage?ref=abf6d4df662c47e32460020ab14abf9303581429","git":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs/23e6e577d9e906f1fa619e8a8672d9537ff27326","html":"https://github.com/ThiagoCodecov/example-python/blob/abf6d4df662c47e32460020ab14abf9303581429/.coverage"}},{"name":".travis.yml","path":".travis.yml","sha":"11d295c04e2feac0a533bf5b1df52b84f8076eec","size":144,"url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/.travis.yml?ref=abf6d4df662c47e32460020ab14abf9303581429","html_url":"https://github.com/ThiagoCodecov/example-python/blob/abf6d4df662c47e32460020ab14abf9303581429/.travis.yml","git_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs/11d295c04e2feac0a533bf5b1df52b84f8076eec","download_url":"https://raw.githubusercontent.com/ThiagoCodecov/example-python/abf6d4df662c47e32460020ab14abf9303581429/.travis.yml","type":"file","_links":{"self":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/.travis.yml?ref=abf6d4df662c47e32460020ab14abf9303581429","git":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs/11d295c04e2feac0a533bf5b1df52b84f8076eec","html":"https://github.com/ThiagoCodecov/example-python/blob/abf6d4df662c47e32460020ab14abf9303581429/.travis.yml"}},{"name":"README.rst","path":"README.rst","sha":"405d834472636bc2c83dd8bd6818e4b2c2871e86","size":6377,"url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/README.rst?ref=abf6d4df662c47e32460020ab14abf9303581429","html_url":"https://github.com/ThiagoCodecov/example-python/blob/abf6d4df662c47e32460020ab14abf9303581429/README.rst","git_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs/405d834472636bc2c83dd8bd6818e4b2c2871e86","download_url":"https://raw.githubusercontent.com/ThiagoCodecov/example-python/abf6d4df662c47e32460020ab14abf9303581429/README.rst","type":"file","_links":{"self":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/README.rst?ref=abf6d4df662c47e32460020ab14abf9303581429","git":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs/405d834472636bc2c83dd8bd6818e4b2c2871e86","html":"https://github.com/ThiagoCodecov/example-python/blob/abf6d4df662c47e32460020ab14abf9303581429/README.rst"}},{"name":"awesome","path":"awesome","sha":"b25dbf08d0d6d35990c0fcec549b91f96cace181","size":0,"url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/awesome?ref=abf6d4df662c47e32460020ab14abf9303581429","html_url":"https://github.com/ThiagoCodecov/example-python/tree/abf6d4df662c47e32460020ab14abf9303581429/awesome","git_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees/b25dbf08d0d6d35990c0fcec549b91f96cace181","download_url":null,"type":"dir","_links":{"self":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/awesome?ref=abf6d4df662c47e32460020ab14abf9303581429","git":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees/b25dbf08d0d6d35990c0fcec549b91f96cace181","html":"https://github.com/ThiagoCodecov/example-python/tree/abf6d4df662c47e32460020ab14abf9303581429/awesome"}},{"name":"coverage.xml","path":"coverage.xml","sha":"d4076376a0834a54939fe778da2f0524e10bace0","size":1846,"url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/coverage.xml?ref=abf6d4df662c47e32460020ab14abf9303581429","html_url":"https://github.com/ThiagoCodecov/example-python/blob/abf6d4df662c47e32460020ab14abf9303581429/coverage.xml","git_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs/d4076376a0834a54939fe778da2f0524e10bace0","download_url":"https://raw.githubusercontent.com/ThiagoCodecov/example-python/abf6d4df662c47e32460020ab14abf9303581429/coverage.xml","type":"file","_links":{"self":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/coverage.xml?ref=abf6d4df662c47e32460020ab14abf9303581429","git":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs/d4076376a0834a54939fe778da2f0524e10bace0","html":"https://github.com/ThiagoCodecov/example-python/blob/abf6d4df662c47e32460020ab14abf9303581429/coverage.xml"}},{"name":"tests","path":"tests","sha":"2b1270d7021356b875c31501edb897038ddd589c","size":0,"url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/tests?ref=abf6d4df662c47e32460020ab14abf9303581429","html_url":"https://github.com/ThiagoCodecov/example-python/tree/abf6d4df662c47e32460020ab14abf9303581429/tests","git_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees/2b1270d7021356b875c31501edb897038ddd589c","download_url":null,"type":"dir","_links":{"self":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/tests?ref=abf6d4df662c47e32460020ab14abf9303581429","git":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees/2b1270d7021356b875c31501edb897038ddd589c","html":"https://github.com/ThiagoCodecov/example-python/tree/abf6d4df662c47e32460020ab14abf9303581429/tests"}}]'}
     headers:
     - !!python/tuple
       - Date
-      - ['Thu, 29 Aug 2019 12:03:39 GMT']
+      - ['Thu, 29 Aug 2019 13:36:12 GMT']
     - !!python/tuple
       - Content-Type
       - [application/json; charset=utf-8]
@@ -226,16 +226,28 @@ interactions:
       - [GitHub.com]
     - !!python/tuple
       - Status
-      - [404 Not Found]
+      - [200 OK]
     - !!python/tuple
       - X-Ratelimit-Limit
       - ['5000']
     - !!python/tuple
       - X-Ratelimit-Remaining
-      - ['4995']
+      - ['4997']
     - !!python/tuple
       - X-Ratelimit-Reset
-      - ['1567083817']
+      - ['1567089371']
+    - !!python/tuple
+      - Cache-Control
+      - ['private, max-age=60, s-maxage=60']
+    - !!python/tuple
+      - Vary
+      - ['Accept, Authorization, Cookie, X-GitHub-OTP', Accept-Encoding]
+    - !!python/tuple
+      - Etag
+      - [W/"88796ed5686cfd7dffdb2db34b6b12ccaefde90e"]
+    - !!python/tuple
+      - Last-Modified
+      - ['Tue, 02 Jul 2019 19:22:53 GMT']
     - !!python/tuple
       - X-Oauth-Scopes
       - ['admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion']
@@ -273,250 +285,10 @@ interactions:
       - [default-src 'none']
     - !!python/tuple
       - X-Github-Request-Id
-      - ['3BDA:3907:A12A6:E65DD:5D67BF1B']
+      - ['3A4B:1E42:163D35:20C0EB:5D67D4CC']
     - !!python/tuple
       - X-Consumed-Content-Encoding
       - [gzip]
-    status: {code: 404, message: Not Found}
-    url: https://api.github.com/repos/ThiagoCodecov/example-python/contents/codecov.yml?ref=abf6d4df662c47e32460020ab14abf9303581429
-- request:
-    body: null
-    headers:
-      Accept: [application/json]
-      User-Agent: [Default]
-    method: GET
-    uri: https://api.github.com/repos/ThiagoCodecov/example-python/contents/.codecov.yml?ref=abf6d4df662c47e32460020ab14abf9303581429
-  response:
-    body: {string: '{"message":"Not Found","documentation_url":"https://developer.github.com/v3/repos/contents/#get-contents"}'}
-    headers:
-    - !!python/tuple
-      - Date
-      - ['Thu, 29 Aug 2019 12:03:39 GMT']
-    - !!python/tuple
-      - Content-Type
-      - [application/json; charset=utf-8]
-    - !!python/tuple
-      - Transfer-Encoding
-      - [chunked]
-    - !!python/tuple
-      - Connection
-      - [close]
-    - !!python/tuple
-      - Server
-      - [GitHub.com]
-    - !!python/tuple
-      - Status
-      - [404 Not Found]
-    - !!python/tuple
-      - X-Ratelimit-Limit
-      - ['5000']
-    - !!python/tuple
-      - X-Ratelimit-Remaining
-      - ['4994']
-    - !!python/tuple
-      - X-Ratelimit-Reset
-      - ['1567083817']
-    - !!python/tuple
-      - X-Oauth-Scopes
-      - ['admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion']
-    - !!python/tuple
-      - X-Accepted-Oauth-Scopes
-      - ['']
-    - !!python/tuple
-      - X-Github-Media-Type
-      - [github.v3]
-    - !!python/tuple
-      - Access-Control-Expose-Headers
-      - ['ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
-          X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
-          X-GitHub-Media-Type']
-    - !!python/tuple
-      - Access-Control-Allow-Origin
-      - ['*']
-    - !!python/tuple
-      - Strict-Transport-Security
-      - [max-age=31536000; includeSubdomains; preload]
-    - !!python/tuple
-      - X-Frame-Options
-      - [deny]
-    - !!python/tuple
-      - X-Content-Type-Options
-      - [nosniff]
-    - !!python/tuple
-      - X-Xss-Protection
-      - [1; mode=block]
-    - !!python/tuple
-      - Referrer-Policy
-      - ['origin-when-cross-origin, strict-origin-when-cross-origin']
-    - !!python/tuple
-      - Content-Security-Policy
-      - [default-src 'none']
-    - !!python/tuple
-      - X-Github-Request-Id
-      - ['3BDB:5A58:2E7908:45DA3A:5D67BF1B']
-    - !!python/tuple
-      - X-Consumed-Content-Encoding
-      - [gzip]
-    status: {code: 404, message: Not Found}
-    url: https://api.github.com/repos/ThiagoCodecov/example-python/contents/.codecov.yml?ref=abf6d4df662c47e32460020ab14abf9303581429
-- request:
-    body: null
-    headers:
-      Accept: [application/json]
-      User-Agent: [Default]
-    method: GET
-    uri: https://api.github.com/repos/ThiagoCodecov/example-python/contents/codecov.yaml?ref=abf6d4df662c47e32460020ab14abf9303581429
-  response:
-    body: {string: '{"message":"Not Found","documentation_url":"https://developer.github.com/v3/repos/contents/#get-contents"}'}
-    headers:
-    - !!python/tuple
-      - Date
-      - ['Thu, 29 Aug 2019 12:03:40 GMT']
-    - !!python/tuple
-      - Content-Type
-      - [application/json; charset=utf-8]
-    - !!python/tuple
-      - Transfer-Encoding
-      - [chunked]
-    - !!python/tuple
-      - Connection
-      - [close]
-    - !!python/tuple
-      - Server
-      - [GitHub.com]
-    - !!python/tuple
-      - Status
-      - [404 Not Found]
-    - !!python/tuple
-      - X-Ratelimit-Limit
-      - ['5000']
-    - !!python/tuple
-      - X-Ratelimit-Remaining
-      - ['4993']
-    - !!python/tuple
-      - X-Ratelimit-Reset
-      - ['1567083817']
-    - !!python/tuple
-      - X-Oauth-Scopes
-      - ['admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion']
-    - !!python/tuple
-      - X-Accepted-Oauth-Scopes
-      - ['']
-    - !!python/tuple
-      - X-Github-Media-Type
-      - [github.v3]
-    - !!python/tuple
-      - Access-Control-Expose-Headers
-      - ['ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
-          X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
-          X-GitHub-Media-Type']
-    - !!python/tuple
-      - Access-Control-Allow-Origin
-      - ['*']
-    - !!python/tuple
-      - Strict-Transport-Security
-      - [max-age=31536000; includeSubdomains; preload]
-    - !!python/tuple
-      - X-Frame-Options
-      - [deny]
-    - !!python/tuple
-      - X-Content-Type-Options
-      - [nosniff]
-    - !!python/tuple
-      - X-Xss-Protection
-      - [1; mode=block]
-    - !!python/tuple
-      - Referrer-Policy
-      - ['origin-when-cross-origin, strict-origin-when-cross-origin']
-    - !!python/tuple
-      - Content-Security-Policy
-      - [default-src 'none']
-    - !!python/tuple
-      - X-Github-Request-Id
-      - ['3BDC:776D:1E95D7:2E0C05:5D67BF1C']
-    - !!python/tuple
-      - X-Consumed-Content-Encoding
-      - [gzip]
-    status: {code: 404, message: Not Found}
-    url: https://api.github.com/repos/ThiagoCodecov/example-python/contents/codecov.yaml?ref=abf6d4df662c47e32460020ab14abf9303581429
-- request:
-    body: null
-    headers:
-      Accept: [application/json]
-      User-Agent: [Default]
-    method: GET
-    uri: https://api.github.com/repos/ThiagoCodecov/example-python/contents/.codecov.yaml?ref=abf6d4df662c47e32460020ab14abf9303581429
-  response:
-    body: {string: '{"message":"Not Found","documentation_url":"https://developer.github.com/v3/repos/contents/#get-contents"}'}
-    headers:
-    - !!python/tuple
-      - Date
-      - ['Thu, 29 Aug 2019 12:03:41 GMT']
-    - !!python/tuple
-      - Content-Type
-      - [application/json; charset=utf-8]
-    - !!python/tuple
-      - Transfer-Encoding
-      - [chunked]
-    - !!python/tuple
-      - Connection
-      - [close]
-    - !!python/tuple
-      - Server
-      - [GitHub.com]
-    - !!python/tuple
-      - Status
-      - [404 Not Found]
-    - !!python/tuple
-      - X-Ratelimit-Limit
-      - ['5000']
-    - !!python/tuple
-      - X-Ratelimit-Remaining
-      - ['4992']
-    - !!python/tuple
-      - X-Ratelimit-Reset
-      - ['1567083817']
-    - !!python/tuple
-      - X-Oauth-Scopes
-      - ['admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion']
-    - !!python/tuple
-      - X-Accepted-Oauth-Scopes
-      - ['']
-    - !!python/tuple
-      - X-Github-Media-Type
-      - [github.v3]
-    - !!python/tuple
-      - Access-Control-Expose-Headers
-      - ['ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
-          X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
-          X-GitHub-Media-Type']
-    - !!python/tuple
-      - Access-Control-Allow-Origin
-      - ['*']
-    - !!python/tuple
-      - Strict-Transport-Security
-      - [max-age=31536000; includeSubdomains; preload]
-    - !!python/tuple
-      - X-Frame-Options
-      - [deny]
-    - !!python/tuple
-      - X-Content-Type-Options
-      - [nosniff]
-    - !!python/tuple
-      - X-Xss-Protection
-      - [1; mode=block]
-    - !!python/tuple
-      - Referrer-Policy
-      - ['origin-when-cross-origin, strict-origin-when-cross-origin']
-    - !!python/tuple
-      - Content-Security-Policy
-      - [default-src 'none']
-    - !!python/tuple
-      - X-Github-Request-Id
-      - ['3BDD:5F80:2F556D:46F492:5D67BF1C']
-    - !!python/tuple
-      - X-Consumed-Content-Encoding
-      - [gzip]
-    status: {code: 404, message: Not Found}
-    url: https://api.github.com/repos/ThiagoCodecov/example-python/contents/.codecov.yaml?ref=abf6d4df662c47e32460020ab14abf9303581429
+    status: {code: 200, message: OK}
+    url: https://api.github.com/repos/ThiagoCodecov/example-python/contents?ref=abf6d4df662c47e32460020ab14abf9303581429
 version: 1
