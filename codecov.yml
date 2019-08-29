@@ -1,5 +1,4 @@
 services:
-  database_url: postgres://postgres:@localhost:5432/postgres
   redis_url: redis://redis:@localhost:6379/
   minio:
     hash_key: 88f572f4726e4971827415efa8867978  # never change this
