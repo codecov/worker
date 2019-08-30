@@ -48,9 +48,12 @@ jobs:
     executor: codecov-worker
     steps:
     - run:
-        name: run tests
+        name: verify postgres is up
         command: |
           nc -vz localhost 5432
+    - run:
+        name: run tests
+        command: |
           python -m pytest --cov=./ || true
   deploy:
     executor: codecov-deploy
