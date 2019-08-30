@@ -12,6 +12,9 @@ executors:
     docker:
     - image: gcr.io/codecov-enterprise-sandbox/codecov-worker:latest
       user: root
+      auth:
+        username: _json_key
+        password: $GCLOUD_SERVICE_KEY
     - image: circleci/postgres:9.6.2
     working_directory: /worker
 
