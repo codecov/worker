@@ -51,6 +51,7 @@ jobs:
         name: verify postgres is up
         command: |
           nc -vz localhost 5432 || true
+          nc -vz 127.0.0.1 5432 || true
     - run:
         name: run tests
         command: |
