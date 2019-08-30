@@ -50,7 +50,7 @@ jobs:
     - run:
         name: verify postgres is up
         command: |
-          nc -vz localhost 5432
+          nc -vz localhost 5432 || true
     - run:
         name: run tests
         command: |
