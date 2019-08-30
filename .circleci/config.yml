@@ -52,6 +52,8 @@ jobs:
         command: |
           nc -vz localhost 5432 || true
           nc -vz 127.0.0.1 5432 || true
+          cat /etc/hosts || true
+          ping -c1 localhost || true
     - run:
         name: run tests
         command: |
