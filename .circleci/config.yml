@@ -40,7 +40,6 @@ jobs:
         command: |-
           printenv
           make build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
-          make push-requirements
           make build VERSION=$CIRCLE_TAG
           make push
   test:
