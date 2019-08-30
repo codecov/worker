@@ -53,8 +53,9 @@ jobs:
         command: |
           python -m pytest --cov=./ || true
   deploy:
-    executor: codecov-worker
+    executor: codecov-deploy
     steps:
+    - checkout
     - run:
         <<: *gcloud_auth
     - run:
