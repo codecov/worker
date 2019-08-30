@@ -53,9 +53,8 @@ jobs:
         command: |
           python -m pytest --cov=./ || true
   deploy:
-    executor: codecov-deploy
+    executor: codecov-worker
     steps:
-    - setup_remote_docker
     - run:
         <<: *gcloud_auth
     - run:
