@@ -1,21 +1,17 @@
-import boto3
 import logging
+import boto3
+
+from botocore.exceptions import ClientError
 
 from io import BytesIO
-
 
 from services.storage.base import BaseStorageService
 from services.storage.exceptions import BucketAlreadyExistsError, FileNotInStorageError
 
-from botocore.exceptions import ClientError
-
-
 log = logging.getLogger(__name__)
 
-# https://realpython.com/python-boto3-aws-s3/
 
 class AWSStorageService(BaseStorageService):
-    # Sample aws config
 
     def __init__(self, aws_config):
         self.config = aws_config
@@ -25,10 +21,6 @@ class AWSStorageService(BaseStorageService):
             aws_secret_access_key=aws_config.get('aws_secret_access_key'),
             region_name=aws_config.get('region_name')
         )
-    
-    # TODO: Load crdentials from file? Default .~/.aws/credentials ??
-    # TODO: Load config from default ~/.aws/config
-
 
     def create_root_storage(self, bucket_name='archive', region='us-east-1'):
         """
@@ -39,19 +31,16 @@ class AWSStorageService(BaseStorageService):
             region (str): The region in which the bucket will be created (default: {'us-east-1'})
 
         Raises:
-            NotImplementedError: If the current instance did not implement this method
             BucketAlreadyExistsError: If the bucket already exists
-        TODO: defsault region doesnot raise when create existing bucket
-        https://stackoverflow.com/questions/26871884/how-can-i-easily-determine-if-a-boto-3-s3-bucket-resource-exists
-        https://github.com/spulec/moto/issues/1371
         """
         
         if region == 'us-east-1':
             try:
                 self.storage_client.head_bucket(Bucket=bucket_name)
-                raise BucketAlreadyExistsError("Already Exists Error")
+                raise BucketAlreadyExistsError(f"Bucket {bucket_name} already exists")
             except ClientError as e:
-                self.storage_client.create_bucket(Bucket=bucket_name)
+                if e.response['Error']['Code'] == '404':
+                    self.storage_client.create_bucket(Bucket=bucket_name)
         else:
             try:
                 location = {'LocationConstraint': region}
@@ -61,7 +50,7 @@ class AWSStorageService(BaseStorageService):
                 )
             except ClientError as e:
                 if e.response['Error']['Code'] == 'BucketAlreadyOwnedByYou':
-                    raise BucketAlreadyExistsError(f"Error {e}")     
+                    raise BucketAlreadyExistsError(f"Bucket {bucket_name} already exists")     
         return {
                     'name': bucket_name
                 }
@@ -78,11 +67,14 @@ class AWSStorageService(BaseStorageService):
             data (str): The data to be written to the file
             reduced_redundancy (bool): Whether a reduced redundancy mode should be used (default: {False})
             gzipped (bool): Whether the file should be gzipped on write (default: {False})
-
-        Raises:
-            NotImplementedError: If the current instance did not implement this method
+        
         """
-        self.storage_client.put_object(Bucket=bucket_name, Key=path, Body=data)
+        storage_class = 'REDUCED_REDUNDANCY' if reduced_redundancy else 'STANDARD'
+        self.storage_client.put_object(
+            Bucket=bucket_name, 
+            Key=path, 
+            Body=data
+        )
         return True
 
     def append_to_file(self, bucket_name, path, data):
@@ -123,7 +115,7 @@ class AWSStorageService(BaseStorageService):
             obj = self.storage_client.get_object(Bucket=bucket_name, Key=path)
         except ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey':
-                raise FileNotFoundError(f"Error {e}")
+                raise FileNotFoundError(f"File {path} does not exist in {bucket_name}")
         data = BytesIO(obj['Body'].read())
         data.seek(0)
         return data.getvalue()
@@ -133,7 +125,7 @@ class AWSStorageService(BaseStorageService):
 
         Note: Not all implementations raise a FileNotInStorageError
             if the file is not already there in the first place.
-            It seems that minio, for example, returns a 204 regardless.
+            It seems that minio & AWS, for example, returns a 204 regardless.
             So while you should prepare for a FileNotInStorageError,
             know that if it is not raise, it doesn't mean the file
             was there beforehand.
@@ -143,22 +135,16 @@ class AWSStorageService(BaseStorageService):
             path (str): The path of the file to be deleted
 
         Raises:
-            NotImplementedError: If the current instance did not implement this method
             FileNotInStorageError: If the file does not exist
 
         Returns:
             bool: True if the deletion was succesful
         """
-        # TODO: Deleting a file that doesn't exists does not rises an error
-        # I think it returns a idct with false and message
-        # https://github.com/boto/boto3/issues/759
-        # Issue not resolved           
-        # https://github.com/lsst/daf_butler/pull/159
         try:
             response = self.storage_client.delete_object(Bucket=bucket_name, Key=path)
+            return True
         except ClientError as e:
             raise 
-        return True
 
     def delete_files(self, bucket_name, paths=[]):
         """Batch deletes a list of files from a given bucket
@@ -175,8 +161,6 @@ class AWSStorageService(BaseStorageService):
             list: A list of booleans, where each result indicates whether that file was deleted
                 successfully
         """
-        # TODO: Deleted key shwoing even if file doesnt exists
-        # Should I validate by trying to read file? How to fix?
         objects_to_delete = {
             'Objects': [{'Key': key} for key in paths]
         }
@@ -208,6 +192,5 @@ class AWSStorageService(BaseStorageService):
             )
         except ClientError as e:
             raise
-        print(f"Response {response}")
         contents = response.get('Contents')
         return [{'name': content.get('Key'), 'size': content.get('Size')} for content in contents]
