@@ -23,4 +23,4 @@ schema==0.7.0
 SQLAlchemy-Utils==0.33.9
 SQLAlchemy==1.2.14
 timestring==1.6.2
-vcrpy==2.0.1
+vcrpy==2.1.0
