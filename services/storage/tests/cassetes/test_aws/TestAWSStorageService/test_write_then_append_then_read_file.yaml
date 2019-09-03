@@ -1,0 +1,136 @@
+interactions:
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        bG9yZW0gaXBzdW0gZG9sb3IgdGVzdF93cml0ZV90aGVuX3JlYWRfZmlsZSDDoQ==
+      - 0
+      - null
+    headers:
+      Content-Length: ['46']
+      Content-MD5:
+      - !!binary |
+        TndJZjQ2RWlDY25mYW90OU4rR2FCUT09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODQ2Wg==
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_append_then_read_file/result
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:47 GMT']
+      ETag: ['"37021fe3a12209c9df6a8b7d37e19a05"']
+      Server: [AmazonS3]
+      x-amz-id-2: [Hdqvvjw5WDtIjFmAyPtcm1pogY78SVROjNi+ob6O2zAa9k4gBRlcv0SZ7P7oJc9KjOnTZjw3Bdc=]
+      x-amz-request-id: [22F4FF660242262A]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODQ3Wg==
+    method: GET
+    uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_append_then_read_file/result
+  response:
+    body: {string: "lorem ipsum dolor test_write_then_read_file \xE1"}
+    headers:
+      Accept-Ranges: [bytes]
+      Content-Length: ['46']
+      Content-Type: [binary/octet-stream]
+      Date: ['Tue, 03 Sep 2019 20:08:48 GMT']
+      ETag: ['"37021fe3a12209c9df6a8b7d37e19a05"']
+      Last-Modified: ['Tue, 03 Sep 2019 20:08:47 GMT']
+      Server: [AmazonS3]
+      x-amz-id-2: [+sqx8w1Bl5HBAOa+ZW9wlGsQ+E2Dwz4DlmLBu+A1TWRHwEs7dHc0Nvy8Q6Wc09QJsimIQUgNmb0=]
+      x-amz-request-id: [FABE2F2682134C67]
+    status: {code: 200, message: OK}
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        bG9yZW0gaXBzdW0gZG9sb3IgdGVzdF93cml0ZV90aGVuX3JlYWRfZmlsZSDDoQptb20sIGxvb2sg
+        YXQgbWUsIGFwcGVuZGluZyBkYXRh
+      - 0
+      - null
+    headers:
+      Content-Length: ['78']
+      Content-MD5:
+      - !!binary |
+        MlpISHlkek9ESDR2S0JJZDNqNEl4QT09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODQ3Wg==
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_append_then_read_file/result
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:48 GMT']
+      ETag: ['"d991c7c9dcce0c7e2f28121dde3e08c4"']
+      Server: [AmazonS3]
+      x-amz-id-2: [rwtU+HBTRHfwTX6dFyzftLNzj7aC3LuBVQJ8y/QOa295x7TPKEJOJO2QnO7zx0Z7WWo9H+NhkfA=]
+      x-amz-request-id: [AB92BF33856B93BA]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODQ3Wg==
+    method: GET
+    uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_append_then_read_file/result
+  response:
+    body: {string: "lorem ipsum dolor test_write_then_read_file \xE1\nmom, look at\
+        \ me, appending data"}
+    headers:
+      Accept-Ranges: [bytes]
+      Content-Length: ['78']
+      Content-Type: [binary/octet-stream]
+      Date: ['Tue, 03 Sep 2019 20:08:48 GMT']
+      ETag: ['"d991c7c9dcce0c7e2f28121dde3e08c4"']
+      Last-Modified: ['Tue, 03 Sep 2019 20:08:48 GMT']
+      Server: [AmazonS3]
+      x-amz-id-2: [bXVlk409kM8xx98bjV02H5IGn2+Miep8sRbuHEIcmp8qTGn9XbX1jm+AQDC/XVvuDpaIH3SA6+Y=]
+      x-amz-request-id: [5DB34CF42D0AD852]
+    status: {code: 200, message: OK}
+version: 1

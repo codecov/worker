@@ -1,0 +1,92 @@
+interactions:
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        bG9yZW0gaXBzdW0gZG9sb3IgdGVzdF93cml0ZV90aGVuX3JlYWRfZmlsZSDDoQ==
+      - 0
+      - null
+    headers:
+      Content-Length: ['46']
+      Content-MD5:
+      - !!binary |
+        TndJZjQ2RWlDY25mYW90OU4rR2FCUT09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODQ3Wg==
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/test_delete_file/result2
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:49 GMT']
+      ETag: ['"37021fe3a12209c9df6a8b7d37e19a05"']
+      Server: [AmazonS3]
+      x-amz-id-2: [BDCeDWWFjXT91JeOmYlGlVLTGPbCQzaZnHDVOVlGkZovaC279JQZ8vgAcFjm9W7t2X9OyG6GfjY=]
+      x-amz-request-id: [A1B1926BE2B03F48]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Content-Length: ['0']
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODQ5Wg==
+    method: DELETE
+    uri: https://felipearchivetest.s3.amazonaws.com/test_delete_file/result2
+  response:
+    body: {string: ''}
+    headers:
+      Date: ['Tue, 03 Sep 2019 20:08:50 GMT']
+      Server: [AmazonS3]
+      x-amz-id-2: [wmoL8k2R+QSZDvR4jaoRNY8IwHtl7tLPK+UNtURAgysZeJU4riSNTpDyP9OYv9i7lMG9iue7uEI=]
+      x-amz-request-id: [573A73B75A79780B]
+    status: {code: 204, message: No Content}
+- request:
+    body: null
+    headers:
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODQ5Wg==
+    method: GET
+    uri: https://felipearchivetest.s3.amazonaws.com/test_delete_file/result2
+  response:
+    body: {string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <Error><Code>NoSuchKey</Code><Message>The specified key does not exist.</Message><Key>test_delete_file/result2</Key><RequestId>DF93311A2EB5C132</RequestId><HostId>p9JLjlHMd4uggM3n0tzL2vinPb4ffcYjvnNarXNMpDTg9BP5MMi89YJNBRQ66I5JlBM7rCZiVYU=</HostId></Error>'}
+    headers:
+      Content-Type: [application/xml]
+      Date: ['Tue, 03 Sep 2019 20:08:49 GMT']
+      Server: [AmazonS3]
+      Transfer-Encoding: [chunked]
+      x-amz-id-2: [p9JLjlHMd4uggM3n0tzL2vinPb4ffcYjvnNarXNMpDTg9BP5MMi89YJNBRQ66I5JlBM7rCZiVYU=]
+      x-amz-request-id: [DF93311A2EB5C132]
+    status: {code: 404, message: Not Found}
+version: 1

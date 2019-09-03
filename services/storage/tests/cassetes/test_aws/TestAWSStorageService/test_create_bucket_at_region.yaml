@@ -1,0 +1,29 @@
+interactions:
+- request:
+    body: <CreateBucketConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><LocationConstraint>us-west-1</LocationConstraint></CreateBucketConfiguration>
+    headers:
+      Content-Length: ['153']
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        YjAyNGMzODhkOWQwNjkwMzAwMDhhZmQ2ZTMwMjUyNGVkMTMwOGE5ZjNjMTA4YmZhNGU0ODFkNjUy
+        YjUzMTNjZg==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODQzWg==
+    method: PUT
+    uri: https://felipearchivetestw.s3.amazonaws.com/
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:45 GMT']
+      Location: ['http://felipearchivetestw.s3.amazonaws.com/']
+      Server: [AmazonS3]
+      x-amz-id-2: [LvFRLHwSu9nkFmqdOjoZ9U56N4YHU4aX3Aa2+Lo2pZRAlq01W1PHamhAkUQf1n1qxPCb+w76eGI=]
+      x-amz-request-id: [1FB56A9EA31CE2F3]
+    status: {code: 200, message: OK}
+version: 1

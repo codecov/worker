@@ -1,0 +1,33 @@
+interactions:
+- request:
+    body: <CreateBucketConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><LocationConstraint>us-west-1</LocationConstraint></CreateBucketConfiguration>
+    headers:
+      Content-Length: ['153']
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        YjAyNGMzODhkOWQwNjkwMzAwMDhhZmQ2ZTMwMjUyNGVkMTMwOGE5ZjNjMTA4YmZhNGU0ODFkNjUy
+        YjUzMTNjZg==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODQ1Wg==
+    method: PUT
+    uri: https://felipearchivetestw.s3.amazonaws.com/
+  response:
+    body: {string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <Error><Code>BucketAlreadyOwnedByYou</Code><Message>Your previous request
+        to create the named bucket succeeded and you already own it.</Message><BucketName>felipearchivetestw</BucketName><RequestId>3C446E86D15E0C61</RequestId><HostId>KDOiU15WFiRzoy44dZBeems657sChB8dwtyQng1Xsf+SLwsr7zU3Yw4HYNJiQEZqRCiwLWcejZM=</HostId></Error>'}
+    headers:
+      Content-Type: [application/xml]
+      Date: ['Tue, 03 Sep 2019 20:08:45 GMT']
+      Server: [AmazonS3]
+      Transfer-Encoding: [chunked]
+      x-amz-bucket-region: [us-west-1]
+      x-amz-id-2: [KDOiU15WFiRzoy44dZBeems657sChB8dwtyQng1Xsf+SLwsr7zU3Yw4HYNJiQEZqRCiwLWcejZM=]
+      x-amz-request-id: [3C446E86D15E0C61]
+    status: {code: 409, message: Conflict}
+version: 1

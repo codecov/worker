@@ -1,0 +1,288 @@
+interactions:
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        TG9yZW0gaXBzdW0gb24gZmlsZSBmZWxpcGUvdGVzdF9saXN0X2ZvbGRlcl9jb250ZW50cy9yZXN1
+        bHRfMS50eHQgZm9yIA==
+      - 0
+      - null
+    headers:
+      Content-Length: ['70']
+      Content-MD5:
+      - !!binary |
+        UjJ0eWMraWdlQTBzaXBIOWZhdWFqZz09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODUyWg==
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/felipe/test_list_folder_contents/result_1.txt
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:53 GMT']
+      ETag: ['"476b7273e8a0780d2c8a91fd7dab9a8e"']
+      Server: [AmazonS3]
+      x-amz-id-2: [k3fSrO04+ohd9XbPeM2UJJKgjUk6MC0z1P7QM15zbaq89tnI6wRVWQe+I3d4tmqTu5LPkspYFgE=]
+      x-amz-request-id: [7C8EFC3C3050CF41]
+    status: {code: 200, message: OK}
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        TG9yZW0gaXBzdW0gb24gZmlsZSBmZWxpcGUvdGVzdF9saXN0X2ZvbGRlcl9jb250ZW50cy9yZXN1
+        bHRfMi50eHQgZm9yIHBv
+      - 0
+      - null
+    headers:
+      Content-Length: ['72']
+      Content-MD5:
+      - !!binary |
+        RlRRbDBhSE9XVFVXQU9reUlZRFNGZz09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODUzWg==
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/felipe/test_list_folder_contents/result_2.txt
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:54 GMT']
+      ETag: ['"153425d1a1ce59351600e9322180d216"']
+      Server: [AmazonS3]
+      x-amz-id-2: [w4L50C5z5LfBcsHkefgx2IjHxxIBe2KCZvD+fI1I1iMy91whzym+K7Z9rTkt1Y3dBj7kROV1aqI=]
+      x-amz-request-id: [28299B5006B499D7]
+    status: {code: 200, message: OK}
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        TG9yZW0gaXBzdW0gb24gZmlsZSBmZWxpcGUvdGVzdF9saXN0X2ZvbGRlcl9jb250ZW50cy9yZXN1
+        bHRfMy50eHQgZm9yIHBvcG8=
+      - 0
+      - null
+    headers:
+      Content-Length: ['74']
+      Content-MD5:
+      - !!binary |
+        QitRZW1LMTF5T1c5Z3dGK0tHUU5RZz09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODUzWg==
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/felipe/test_list_folder_contents/result_3.txt
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:54 GMT']
+      ETag: ['"07e41e98ad75c8e5bd83017e28640d42"']
+      Server: [AmazonS3]
+      x-amz-id-2: [7WIl/QI1LNtnnvrNVyY3S3uZCIEz8+y457Rq+b3Jmnt6aeHECLDDY8LeYeAVVQ39JEP3Dw+BT5E=]
+      x-amz-request-id: [20C346CCCE2AF25F]
+    status: {code: 200, message: OK}
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        TG9yZW0gaXBzdW0gb24gZmlsZSBmZWxpcGUvdGVzdF9saXN0X2ZvbGRlcl9jb250ZW50cy9mMS9y
+        ZXN1bHRfNC50eHQgZm9yIHBvcG9wbw==
+      - 0
+      - null
+    headers:
+      Content-Length: ['79']
+      Content-MD5:
+      - !!binary |
+        UmhEUTU1L0RFNG95R1dsQXE2RUdaQT09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODUzWg==
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/felipe/test_list_folder_contents/f1/result_4.txt
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:54 GMT']
+      ETag: ['"4610d0e79fc3138a32196940aba10664"']
+      Server: [AmazonS3]
+      x-amz-id-2: [ZS6Sl4R9ON/B82IUshPpacyckweKjnOoKw2q1yzQsiyfOYjKVthvQBMtOyd7myp2tXtNc0yq5yo=]
+      x-amz-request-id: [7C93650DCFA09E80]
+    status: {code: 200, message: OK}
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        TG9yZW0gaXBzdW0gb24gZmlsZSBmZWxpcGUvdGVzdF9saXN0X2ZvbGRlcl9jb250ZW50cy9mMS9y
+        ZXN1bHRfNS50eHQgZm9yIHBvcG9wb3Bv
+      - 0
+      - null
+    headers:
+      Content-Length: ['81']
+      Content-MD5:
+      - !!binary |
+        ZlRraE1MZ1o0ZmVvZEN6TEYxNENVQT09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODUzWg==
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/felipe/test_list_folder_contents/f1/result_5.txt
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:55 GMT']
+      ETag: ['"7d392130b819e1f7a8742ccb175e0250"']
+      Server: [AmazonS3]
+      x-amz-id-2: [CQGqK8FUoyRBCSp3HOJRSkM4ejkFu4obLqmm3np4mEdPU3AaJ+tgYzzsU0L0Mpay1VZ3tColl7c=]
+      x-amz-request-id: [2ADC1D38E9CC5781]
+    status: {code: 200, message: OK}
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        TG9yZW0gaXBzdW0gb24gZmlsZSBmZWxpcGUvdGVzdF9saXN0X2ZvbGRlcl9jb250ZW50cy9mMS9y
+        ZXN1bHRfNi50eHQgZm9yIHBvcG9wb3BvcG8=
+      - 0
+      - null
+    headers:
+      Content-Length: ['83']
+      Content-MD5:
+      - !!binary |
+        RVAvZEJQeEcrK0FjZE5QWnJtNDNSdz09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODU0Wg==
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/felipe/test_list_folder_contents/f1/result_6.txt
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Tue, 03 Sep 2019 20:08:55 GMT']
+      ETag: ['"10ffdd04fc46fbe01c74d3d9ae6e3747"']
+      Server: [AmazonS3]
+      x-amz-id-2: [Cx7pcuKDLRgLOQZtMtSPQ0zChD0VrQYKubAoJPnAoFk4qxRuu77v+Ry46EUmP79wnIxzy557SpY=]
+      x-amz-request-id: [1BED4B2DE11B96D5]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODU0Wg==
+    method: GET
+    uri: https://felipearchivetest.s3.amazonaws.com/?prefix=felipe%2Ftest_list_folder_contents&encoding-type=url
+  response:
+    body: {string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>felipearchivetest</Name><Prefix>felipe/test_list_folder_contents</Prefix><Marker></Marker><MaxKeys>1000</MaxKeys><EncodingType>url</EncodingType><IsTruncated>false</IsTruncated><Contents><Key>felipe/test_list_folder_contents/f1/result_4.txt</Key><LastModified>2019-09-03T20:08:54.000Z</LastModified><ETag>&quot;4610d0e79fc3138a32196940aba10664&quot;</ETag><Size>79</Size><Owner><ID>3105e4cf451e730df5382ab578e76e3b0de79b77ec03e40ac79bcc9b1b9c22a5</ID><DisplayName>devops</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>felipe/test_list_folder_contents/f1/result_5.txt</Key><LastModified>2019-09-03T20:08:55.000Z</LastModified><ETag>&quot;7d392130b819e1f7a8742ccb175e0250&quot;</ETag><Size>81</Size><Owner><ID>3105e4cf451e730df5382ab578e76e3b0de79b77ec03e40ac79bcc9b1b9c22a5</ID><DisplayName>devops</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>felipe/test_list_folder_contents/f1/result_6.txt</Key><LastModified>2019-09-03T20:08:55.000Z</LastModified><ETag>&quot;10ffdd04fc46fbe01c74d3d9ae6e3747&quot;</ETag><Size>83</Size><Owner><ID>3105e4cf451e730df5382ab578e76e3b0de79b77ec03e40ac79bcc9b1b9c22a5</ID><DisplayName>devops</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>felipe/test_list_folder_contents/result_1.txt</Key><LastModified>2019-09-03T20:08:53.000Z</LastModified><ETag>&quot;476b7273e8a0780d2c8a91fd7dab9a8e&quot;</ETag><Size>70</Size><Owner><ID>3105e4cf451e730df5382ab578e76e3b0de79b77ec03e40ac79bcc9b1b9c22a5</ID><DisplayName>devops</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>felipe/test_list_folder_contents/result_2.txt</Key><LastModified>2019-09-03T20:08:54.000Z</LastModified><ETag>&quot;153425d1a1ce59351600e9322180d216&quot;</ETag><Size>72</Size><Owner><ID>3105e4cf451e730df5382ab578e76e3b0de79b77ec03e40ac79bcc9b1b9c22a5</ID><DisplayName>devops</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>felipe/test_list_folder_contents/result_3.txt</Key><LastModified>2019-09-03T20:08:54.000Z</LastModified><ETag>&quot;07e41e98ad75c8e5bd83017e28640d42&quot;</ETag><Size>74</Size><Owner><ID>3105e4cf451e730df5382ab578e76e3b0de79b77ec03e40ac79bcc9b1b9c22a5</ID><DisplayName>devops</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>'}
+    headers:
+      Content-Type: [application/xml]
+      Date: ['Tue, 03 Sep 2019 20:08:55 GMT']
+      Server: [AmazonS3]
+      Transfer-Encoding: [chunked]
+      x-amz-bucket-region: [us-east-1]
+      x-amz-id-2: [8fr7+FXiyGl2U5f4FEbEpVvMU+RpSztNauoYru7zVSNdJ+vXqcEB1ZPi3diQciRYmSDDSRK8gto=]
+      x-amz-request-id: [CF7D0F925857E7A4]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        MA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDNUMjAwODU0Wg==
+    method: GET
+    uri: https://felipearchivetest.s3.amazonaws.com/?prefix=felipe%2Ftest_list_folder_contents%2Ff1&encoding-type=url
+  response:
+    body: {string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>felipearchivetest</Name><Prefix>felipe/test_list_folder_contents/f1</Prefix><Marker></Marker><MaxKeys>1000</MaxKeys><EncodingType>url</EncodingType><IsTruncated>false</IsTruncated><Contents><Key>felipe/test_list_folder_contents/f1/result_4.txt</Key><LastModified>2019-09-03T20:08:54.000Z</LastModified><ETag>&quot;4610d0e79fc3138a32196940aba10664&quot;</ETag><Size>79</Size><Owner><ID>3105e4cf451e730df5382ab578e76e3b0de79b77ec03e40ac79bcc9b1b9c22a5</ID><DisplayName>devops</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>felipe/test_list_folder_contents/f1/result_5.txt</Key><LastModified>2019-09-03T20:08:55.000Z</LastModified><ETag>&quot;7d392130b819e1f7a8742ccb175e0250&quot;</ETag><Size>81</Size><Owner><ID>3105e4cf451e730df5382ab578e76e3b0de79b77ec03e40ac79bcc9b1b9c22a5</ID><DisplayName>devops</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents><Contents><Key>felipe/test_list_folder_contents/f1/result_6.txt</Key><LastModified>2019-09-03T20:08:55.000Z</LastModified><ETag>&quot;10ffdd04fc46fbe01c74d3d9ae6e3747&quot;</ETag><Size>83</Size><Owner><ID>3105e4cf451e730df5382ab578e76e3b0de79b77ec03e40ac79bcc9b1b9c22a5</ID><DisplayName>devops</DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>'}
+    headers:
+      Content-Type: [application/xml]
+      Date: ['Tue, 03 Sep 2019 20:08:55 GMT']
+      Server: [AmazonS3]
+      Transfer-Encoding: [chunked]
+      x-amz-bucket-region: [us-east-1]
+      x-amz-id-2: [eCdNCveIZAkc4YOqzqlfd/PO6irNVsBRQUVu8wHQf2ZHHt3c9sXgwxC5xWkEsoTcOySiDUUPkpo=]
+      x-amz-request-id: [892BDE5AAA19962D]
+    status: {code: 200, message: OK}
+version: 1
