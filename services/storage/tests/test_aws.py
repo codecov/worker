@@ -14,7 +14,7 @@ aws_config = {
 
 class TestAWSStorageService(BaseTestCase):
     
-    def test_create_bucket(self):
+    def test_create_bucket(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
         )
@@ -22,7 +22,7 @@ class TestAWSStorageService(BaseTestCase):
         res = storage.create_root_storage(bucket_name=bucket_name)
         assert res['name'] == 'felipearchivetest'
     
-    def test_create_bucket_at_region(self):
+    def test_create_bucket_at_region(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
         )
@@ -30,7 +30,7 @@ class TestAWSStorageService(BaseTestCase):
         res = storage.create_root_storage(bucket_name=bucket_name, region='us-west-1')
         assert res['name'] == 'felipearchivetestw'
 
-    def test_create_bucket_already_exists(self):
+    def test_create_bucket_already_exists(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
         )
@@ -38,7 +38,7 @@ class TestAWSStorageService(BaseTestCase):
         with pytest.raises(BucketAlreadyExistsError):
             storage.create_root_storage(bucket_name=bucket_name)
 
-    def test_create_bucket_already_exists_at_region(self):
+    def test_create_bucket_already_exists_at_region(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
         )
@@ -46,7 +46,7 @@ class TestAWSStorageService(BaseTestCase):
         with pytest.raises(BucketAlreadyExistsError):
             storage.create_root_storage(bucket_name=bucket_name, region='us-west-1')
 
-    def test_write_then_read_file(self):
+    def test_write_then_read_file(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
         )
@@ -58,7 +58,7 @@ class TestAWSStorageService(BaseTestCase):
         reading_result = storage.read_file(bucket_name=bucket_name, path=path)
         assert reading_result.decode() == data
 
-    def test_write_then_append_then_read_file(self):
+    def test_write_then_append_then_read_file(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
         )
@@ -73,7 +73,7 @@ class TestAWSStorageService(BaseTestCase):
         reading_result = storage.read_file(bucket_name, path)
         assert reading_result.decode() == '\n'.join([data, second_data])
 
-    def test_delete_file(self):
+    def test_delete_file(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
         )
@@ -87,7 +87,7 @@ class TestAWSStorageService(BaseTestCase):
         with pytest.raises(FileNotFoundError):
             reading_result = storage.read_file(bucket_name=bucket_name, path=path)
 
-    def test_batch_delete_files(self):
+    def test_batch_delete_files(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
         )
@@ -107,7 +107,7 @@ class TestAWSStorageService(BaseTestCase):
             with pytest.raises(FileNotFoundError):
                 storage.read_file(bucket_name=bucket_name, path=p)
 
-    def test_list_folder_contents(self):
+    def test_list_folder_contents(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
         )
