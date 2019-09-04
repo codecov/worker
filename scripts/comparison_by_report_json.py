@@ -17,7 +17,7 @@ def find_filepaths_in_common(test_bucket, db_session):
     first_folders = minio_client.list_objects_v2(test_bucket, prefix='v4/repos', recursive=True)
     results = []
     for fln in first_folders:
-        if 'report.json' in fln.object_name and fln.last_modified > since:
+        if 'report.json' in fln.object_name and fln.last_modified > since and fln.last_modified < until:
             content = storage_service.read_file(test_bucket, fln.object_name).decode()
             result = compare_report_contents(db_session, content, fln.object_name)
             print(f"{result['case']:>30} - {result['repo']:>7}/{result['commit']}")
@@ -29,10 +29,17 @@ def commitid_from_path(path):
     return path.split("/commits/")[1].split("/report")[0]
 
 
-def compare_report_contents(db_session, compare_report_contents, filename):
+def compare_report_contents(db_session, report_contents, filename):
     commitid = commitid_from_path(filename)
     commit = db_session.query(Commit).filter_by(commitid=commitid).first()
-    json_content = json.loads(compare_report_contents)
+    json_content = json.loads(report_contents)
+    if commit is None:
+        return {
+            'error': False,
+            'commit': commitid,
+            'repo': filename.split("/")[2],
+            'case': 'production_without_commit',
+        }
     if commit.report is None:
         return {
             'error': False,
@@ -74,7 +81,9 @@ def compare_report_contents(db_session, compare_report_contents, filename):
                     'commit': commit.commitid,
                     'repo': commit.repoid,
                     'old_result': old_result[1],
-                    'new_result': new_result[1]
+                    'new_result': new_result[1],
+                    'filename': inside_fln,
+                    'reports_filename': filename
                 }
             return {
                 'error': False,
@@ -114,8 +123,9 @@ def run_test():
     return results
 
 
-since = datetime.utcnow().replace(tzinfo=pytz.utc) - timedelta(hours=12)
-print("Checking since", since)
+since = datetime.utcnow().replace(tzinfo=pytz.utc) - timedelta(hours=9)
+until = datetime.utcnow().replace(tzinfo=pytz.utc) - timedelta(hours=8)
+print("Checking since", since, "until", until)
 results = run_test()
 for x in results:
     if x['error']:
