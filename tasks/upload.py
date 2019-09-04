@@ -11,7 +11,7 @@ from tasks.base import BaseCodecovTask
 from database.models import Commit, Owner
 from services.redis import get_redis_connection
 from services.repository import get_repo_provider_service
-from services.yaml import merge_yamls, save_repo_yaml_to_database_if_needed
+from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.exceptions import InvalidYamlException
 from tasks.upload_processor import upload_processor_task
@@ -142,7 +142,11 @@ class UploadTask(BaseCodecovTask):
                 extra=dict(repoid=repository.repoid, commit=commit.commitid)
             )
             commit_yaml = None
-        return merge_yamls(repository.owner.yaml, repository.yaml, commit_yaml)
+        return get_final_yaml(
+            owner_yaml=repository.owner.yaml,
+            repo_yaml=repository.yaml,
+            commit_yaml=commit_yaml
+        )
 
     def schedule_task(self, commit, commit_yaml, argument_list):
         chain_to_call = []

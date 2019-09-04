@@ -40,7 +40,7 @@ old_file = old_report.get(to_check)
 new_file = new_report.get(to_check)
 print(old_file.totals)
 print(new_file.totals)
-for number, res in enumerate(zip(old_file._lines, new_file._lines)):
+for number, res in enumerate(zip(old_file._lines, new_file._lines), start=1):
     old, new = res
     if old != new:
         print(number)

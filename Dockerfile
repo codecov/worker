@@ -49,5 +49,3 @@ RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages
 
 COPY            . /app
 WORKDIR         /app
-
-COPY            codecov.yml /config/codecov.yml

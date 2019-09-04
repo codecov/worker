@@ -72,12 +72,21 @@ class TestGcov(BaseTestCase):
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report['archive']['tmp.c'][6][0] == 14
         assert processed_report['archive']['tmp.c'][6] == (14, 1, 'b', [[1, 1]], None, None)
+        assert processed_report['archive']['tmp.c'][3] == (10, 1, 'b', [[1, 1]], None, None)
 
     def test_track_macro_report(self):
         report = gcov.from_txt('', txt, str, {}, 1, {'branch_detection': {'macro': True}})
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report['archive']['tmp.c'][5][0] == 13
         assert processed_report['archive']['tmp.c'][5] == (13, '0/2', None, [[1, '0/2']], None, None)
+        assert processed_report['archive']['tmp.c'][3] == (10, 1, 'b', [[1, 1]], None, None)
+
+    def test_no_yaml(self):
+        report = gcov.from_txt('', txt, str, {}, 1, None)
+        processed_report = self.convert_report_to_better_readable(report)
+        assert processed_report['archive']['tmp.c'][5][0] == 13
+        assert processed_report['archive']['tmp.c'][5] == (13, 1, None, [[1, 1]], None, None)
+        assert processed_report['archive']['tmp.c'][3] == (10, 1, 'b', [[1, 1]], None, None)
 
     def test_detect(self):
         assert gcov.detect('   -: 0:Source:black') is True
