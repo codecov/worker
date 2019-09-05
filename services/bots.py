@@ -14,10 +14,10 @@ def get_repo_appropriate_bot_token(repo):
     if repo.using_integration and repo.owner.integration_id:
         github_token = get_github_integration_token(repo.owner.service, repo.owner.integration_id)
         return dict(key=github_token)
-    return encryptor.decrypt_token(get_repo_appropriate_bot(repo).oauth_token)
+    return encryptor.decrypt_token(_get_repo_appropriate_bot(repo).oauth_token)
 
 
-def get_repo_appropriate_bot(repo):
+def _get_repo_appropriate_bot(repo):
     if repo.bot is not None and repo.bot.oauth_token is not None:
         log.info("Repo has specific bot", extra=dict(repoid=repo.repoid, botid=repo.bot.ownerid))
         return repo.bot
