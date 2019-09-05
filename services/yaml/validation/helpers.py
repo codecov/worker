@@ -229,6 +229,9 @@ class PathPatternSchemaField(object):
         else:
             is_negative = False
 
+        if value.startswith('./'):
+            value = value[2:]
+
         input_type = self.input_type(value)
         result = self.validate_according_to_type(input_type, value)
         if is_negative:
