@@ -78,23 +78,11 @@ class TestPathPatternSchemaField(BaseTestCase):
         assert compiled.match('a/path/path2/b/more_path/some_file.py') is not None
         assert compiled.match('a/c') is None
 
-    def test_multiple_path_structures(self):
+    def test_path_with_leading_period_slash(self):
         ps = PathPatternSchemaField()
-        # assert ps.validate('**/abc') == '^.*/abc.*'
-        # assert ps.validate('**/**/abc') == '^.*/.*/abc.*'
-        # assert ps.validate('**/**/abc**') == '^.*/.*/abc.*'
-        # assert ps.validate('*/abc') == '^.*/abc.*'
-        # assert ps.validate('folder') == '^folder.*'
-        # assert ps.validate('/folder') == '^folder.*'
-        # assert ps.validate('./folder') == '^folder.*'
-        # assert ps.validate('folder/') == '^folder/.*'
-        # assert ps.validate('!/folder/') == '!^folder/.*'
-        # assert ps.validate('!^/folder/') == '!^folder/.*'
-        # assert ps.validate('!^/folder/$') == '!^folder/$'
-        # assert ps.validate('!^/folder/file.py$') == '!^folder/file.py$'
-        # assert ps.validate('^/folder/file.py$') == '^folder/file.py$'
-        # assert ps.validate('/folder/file.py$') == '^folder/file.py$'
-        # assert ps.validate('path/**/') == '^path/.*/.*'
+        res = ps.validate('./src/register-test-globals.ts')
+        compiled = re.compile(res)
+        assert compiled.match('src/register-test-globals.ts') is not None
 
 
 class TestLayoutStructure(BaseTestCase):
