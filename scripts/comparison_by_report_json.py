@@ -11,14 +11,6 @@ from database.engine import get_db_session
 from database.models import Commit
 
 
-class FileDifferenceWeirdError(Exception):
-    pass
-
-
-class FileDifferenceNotComparableCase(Exception):
-    pass
-
-
 def find_filepaths_in_common(test_bucket, db_session):
     storage_service = get_appropriate_storage_service()
     minio_client = storage_service.minio_client
@@ -41,6 +33,13 @@ def compare_report_contents(db_session, compare_report_contents, filename):
     commitid = commitid_from_path(filename)
     commit = db_session.query(Commit).filter_by(commitid=commitid).first()
     json_content = json.loads(compare_report_contents)
+    if commit.report is None:
+        return {
+            'error': False,
+            'commit': commit.commitid,
+            'repo': commit.repoid,
+            'case': 'production_without_report',
+        }
     files = commit.report['files']
     if len(commit.report['sessions']) != len(json_content['sessions']):
         return {

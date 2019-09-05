@@ -7,8 +7,8 @@ from services.yaml.validation import validate_yaml
 def parse_yaml_file(content):
     try:
         yaml_dict = safe_load(content)
-    except ScannerError:
-        raise InvalidYamlException()
+    except ScannerError as e:
+        raise InvalidYamlException(e)
     if yaml_dict is None:
         return None
     return validate_yaml(yaml_dict)
