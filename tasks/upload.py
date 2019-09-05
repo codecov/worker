@@ -4,6 +4,7 @@ from json import loads
 from datetime import datetime
 
 from celery import chain
+from torngit.exceptions import TorngitObjectNotFoundError
 
 from helpers.config import get_config
 from app import celery_app
@@ -119,7 +120,7 @@ class UploadTask(BaseCodecovTask):
             )
             repository = commit.repository
             repository_service = get_repo_provider_service(repository, commit)
-            was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit, repository_service)
+            commit_found, was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit, repository_service)
             was_setup = await self.possibly_setup_webhooks(commit, repository_service)
             commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
             argument_list = []
@@ -127,6 +128,7 @@ class UploadTask(BaseCodecovTask):
                 argument_list.append(arguments)
             self.schedule_task(commit, commit_yaml, argument_list)
             return {
+                'commit_found': commit_found,
                 'was_setup': was_setup,
                 'was_updated': was_updated
             }
@@ -172,7 +174,24 @@ class UploadTask(BaseCodecovTask):
                 ),
             )
             chain_to_call.append(finish_sig)
-        return chain(*chain_to_call).apply_async()
+            log.info(
+                "Scheduling task for %s different reports", len(argument_list),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    argument_list=argument_list
+                )
+            )
+            return chain(*chain_to_call).apply_async()
+        log.info(
+            "Not scheduling task because there were no reports to be processed found",
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid,
+                argument_list=argument_list
+            )
+        )
+        return None
 
     async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
@@ -208,14 +227,14 @@ class UploadTask(BaseCodecovTask):
                     extra=dict(repoid=repoid, commit=commitid)
                 )
                 await self.update_commit_from_provider_info(db_session, repository_service, commit)
-                return True
-        except Exception:
-            log.exception(
+                return (True, True)
+        except TorngitObjectNotFoundError:
+            log.warning(
                 'Could not properly update commit with info from git provider',
                 extra=dict(repoid=repoid, commit=commitid)
             )
-            raise
-        return False
+            return (False, False)
+        return (True, False)
 
     def get_author_from_commit(self, db_session, service, author_id, username, email, name):
         author = db_session.query(Owner).filter_by(service_id=author_id, service=service).first()
