@@ -368,7 +368,6 @@ class UploadProcessorTask(BaseCodecovTask):
                 url=url
             )
         )
-        _, report_dict = report.to_database()
         return {}
 
 
