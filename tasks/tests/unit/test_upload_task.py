@@ -38,7 +38,7 @@ class TestUploadTask(object):
         dbsession.add(commit)
         dbsession.flush()
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
-        expected_result = {'commit_found': True, 'was_setup': False, 'was_updated': True}
+        expected_result = {'was_setup': False, 'was_updated': True}
         assert expected_result == result
         assert commit.message == 'dsidsahdsahdsa'
         t1 = upload_processor_task.signature(
@@ -115,7 +115,7 @@ class TestUploadTask(object):
         dbsession.add(commit)
         dbsession.flush()
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
-        expected_result = {'commit_found': True, 'was_setup': False, 'was_updated': True}
+        expected_result = {'was_setup': False, 'was_updated': True}
         assert expected_result == result
         assert commit.message == 'dsidsahdsahdsa'
         t1 = upload_processor_task.signature(

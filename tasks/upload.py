@@ -120,7 +120,7 @@ class UploadTask(BaseCodecovTask):
             )
             repository = commit.repository
             repository_service = get_repo_provider_service(repository, commit)
-            commit_found, was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit, repository_service)
+            was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit, repository_service)
             was_setup = await self.possibly_setup_webhooks(commit, repository_service)
             commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
             argument_list = []
@@ -128,7 +128,6 @@ class UploadTask(BaseCodecovTask):
                 argument_list.append(arguments)
             self.schedule_task(commit, commit_yaml, argument_list)
             return {
-                'commit_found': commit_found,
                 'was_setup': was_setup,
                 'was_updated': was_updated
             }
@@ -227,14 +226,18 @@ class UploadTask(BaseCodecovTask):
                     extra=dict(repoid=repoid, commit=commitid)
                 )
                 await self.update_commit_from_provider_info(db_session, repository_service, commit)
-                return (True, True)
+                return True
         except TorngitObjectNotFoundError:
             log.warning(
-                'Could not properly update commit with info from git provider',
+                'Could not update commit with info because it was not found at the provider',
                 extra=dict(repoid=repoid, commit=commitid)
             )
-            return (False, False)
-        return (True, False)
+            return False
+        log.debug(
+            'Not updating commit because it already seems to be populated',
+            extra=dict(repoid=repoid, commit=commitid)
+        )
+        return False
 
     def get_author_from_commit(self, db_session, service, author_id, username, email, name):
         author = db_session.query(Owner).filter_by(service_id=author_id, service=service).first()
