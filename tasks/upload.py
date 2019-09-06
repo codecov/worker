@@ -4,6 +4,7 @@ from json import loads
 from datetime import datetime
 
 from celery import chain
+from torngit.exceptions import TorngitObjectNotFoundError
 
 from helpers.config import get_config
 from app import celery_app
@@ -172,7 +173,24 @@ class UploadTask(BaseCodecovTask):
                 ),
             )
             chain_to_call.append(finish_sig)
-        return chain(*chain_to_call).apply_async()
+            log.info(
+                "Scheduling task for %s different reports", len(argument_list),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    argument_list=argument_list
+                )
+            )
+            return chain(*chain_to_call).apply_async()
+        log.info(
+            "Not scheduling task because there were no reports to be processed found",
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid,
+                argument_list=argument_list
+            )
+        )
+        return None
 
     async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
@@ -209,12 +227,16 @@ class UploadTask(BaseCodecovTask):
                 )
                 await self.update_commit_from_provider_info(db_session, repository_service, commit)
                 return True
-        except Exception:
-            log.exception(
-                'Could not properly update commit with info from git provider',
+        except TorngitObjectNotFoundError:
+            log.warning(
+                'Could not update commit with info because it was not found at the provider',
                 extra=dict(repoid=repoid, commit=commitid)
             )
-            raise
+            return False
+        log.debug(
+            'Not updating commit because it already seems to be populated',
+            extra=dict(repoid=repoid, commit=commitid)
+        )
         return False
 
     def get_author_from_commit(self, db_session, service, author_id, username, email, name):

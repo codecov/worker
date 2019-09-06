@@ -83,6 +83,22 @@ class TestPathPatternSchemaField(BaseTestCase):
         res = ps.validate('./src/register-test-globals.ts')
         compiled = re.compile(res)
         assert compiled.match('src/register-test-globals.ts') is not None
+        second_res = ps.validate("./test/*.cc")
+        second_compiled = re.compile(second_res)
+        assert second_compiled.match('test/test_SW_Markov.cc') is not None
+
+    def test_star_dot_star_pattern(self):
+        ps = PathPatternSchemaField()
+        res = ps.validate("test/**/*.*")
+        compiled = re.compile(res)
+        assert compiled.match('test/unit/presenters/goal_sparkline_test.rb') is not None
+
+    def test_double_star_end(self):
+        user_input = "Snapshots/**"
+        ps = PathPatternSchemaField()
+        res = ps.validate(user_input)
+        compiled = re.compile(res)
+        assert compiled.match('Snapshots/Snapshots/ViewController.swift') is not None
 
 
 class TestLayoutStructure(BaseTestCase):
