@@ -346,7 +346,7 @@ class UploadProcessorTask(BaseCodecovTask):
 
         commit.state = 'complete' if report else 'error'
         commit.totals = totals
-        commit.report = network
+        commit.report_json = network
         # TODO: Remove after tests are done
         actual_reports_path = MinioEndpoints.reports_json.get_path(
             version='v4',

@@ -98,11 +98,11 @@ class TestUploadProcessorTask(object):
                     'p': None,
                     't': [3, 24, 19, 5, 0, '79.16667', 0, 0, 0, 0, 0, 0, 0],
                     'u': None,
-                    'd': commit.report['sessions']['0']['d']  # This is not deterministic
+                    'd': commit.report_json['sessions']['0']['d']  # This is not deterministic
                 }
             }
         }
-        assert commit.report == expected_generated_report
+        assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid)
         # mocked_3.send_task.assert_called_with(
         #     'app.tasks.notify.Notify',

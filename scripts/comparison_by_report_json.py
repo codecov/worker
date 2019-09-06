@@ -40,21 +40,21 @@ def compare_report_contents(db_session, report_contents, filename):
             'repo': filename.split("/")[2],
             'case': 'production_without_commit',
         }
-    if commit.report is None:
+    if commit.report_json is None:
         return {
             'error': False,
             'commit': commit.commitid,
             'repo': commit.repoid,
             'case': 'production_without_report',
         }
-    files = commit.report['files']
-    if len(commit.report['sessions']) != len(json_content['sessions']):
+    files = commit.report_json['files']
+    if len(commit.report_json['sessions']) != len(json_content['sessions']):
         return {
             'error': False,
             'commit': commit.commitid,
             'repo': commit.repoid,
             'case': 'difference_not_comparable',
-            'old_number_sessions': len(commit.report['sessions']),
+            'old_number_sessions': len(commit.report_json['sessions']),
             'new_number_sessions':  len(json_content['sessions'])
         }
     if set(files.keys()) != set(json_content['files'].keys()):
