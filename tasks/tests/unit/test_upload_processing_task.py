@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 import celery
+from redis.exceptions import LockError
 
 from tasks.upload_processor import UploadProcessorTask
 from database.tests.factories import CommitFactory
@@ -208,6 +209,37 @@ class TestUploadProcessorTask(object):
         mocked_2.assert_called_with(
             mocker.ANY, mock_redis, {}, commit, mocker.ANY, False, url='url'
         )
+        mocked_3.assert_called_with(
+            countdown=20,
+            max_retries=3
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_task_call_with_redis_lock_unobtainable(self, mocker, mock_configuration, dbsession, mock_redis):
+        # Mocking retry to also raise the exception so we can see how it is called
+        mocked_3 = mocker.patch.object(UploadProcessorTask, 'retry')
+        mocked_3.side_effect = celery.exceptions.Retry()
+        mocked_4 = mocker.patch.object(UploadProcessorTask, 'app')
+        mocked_4.send_task.return_value = True
+        mock_redis.lock.return_value.__enter__.side_effect = LockError()
+        commit = CommitFactory.create(
+            message='',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry for the timebomb
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        with pytest.raises(celery.exceptions.Retry):
+            await UploadProcessorTask().run_async(
+                dbsession,
+                {},
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml={},
+                arguments_list=[{'url': 'url'}]
+            )
         mocked_3.assert_called_with(
             countdown=20,
             max_retries=3

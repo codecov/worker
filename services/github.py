@@ -30,7 +30,6 @@ def get_github_integration_token(service, integration_id=None):
             'User-Agent': 'Codecov',
             'Authorization': 'Bearer %s' % token
         }
-        print(headers)
         url = '%s/app/installations/%s/access_tokens' % (api_endpoint, integration_id)
         res = requests.post(url, headers=headers)
         try:

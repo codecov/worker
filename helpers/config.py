@@ -15,6 +15,8 @@ log = logging.getLogger(__name__)
 default_config = {
     'services': {
         'minio': {
+            'port': '9000',
+            'host': 'minio',
             'access_key_id': 'codecov-default-key',
             'secret_access_key': 'codecov-default-secret',
             'verify_ssl': False

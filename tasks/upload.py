@@ -4,6 +4,7 @@ from json import loads
 from datetime import datetime
 
 from celery import chain
+from torngit.exceptions import TorngitObjectNotFoundError
 
 from helpers.config import get_config
 from app import celery_app
@@ -11,8 +12,9 @@ from tasks.base import BaseCodecovTask
 from database.models import Commit, Owner
 from services.redis import get_redis_connection
 from services.repository import get_repo_provider_service
-from services.yaml import merge_yamls, save_repo_yaml_to_database_if_needed
+from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
+from services.yaml.exceptions import InvalidYamlException
 from tasks.upload_processor import upload_processor_task
 from tasks.upload_finisher import upload_finisher_task
 
@@ -95,7 +97,7 @@ class UploadTask(BaseCodecovTask):
         Yields:
             dict: A dict with the parameters to be passed
         """
-        log.info("Fetching arguments from redis %s", uploads_list_key)
+        log.debug("Fetching arguments from redis %s", uploads_list_key)
         while redis_connection.exists(uploads_list_key):
             arguments = redis_connection.lpop(uploads_list_key)
             if arguments:  # fix race issue https://app.getsentry.com/codecov/v4/issues/126562772/
@@ -114,11 +116,13 @@ class UploadTask(BaseCodecovTask):
             assert commit, 'Commit not found in database.'
             log.info(
                 "Starting processing of report",
-                extra=dict(repoid=repoid, commitid=commitid)
+                extra=dict(repoid=repoid, commit=commitid)
             )
-            was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit)
-            was_setup = await self.possibly_setup_webhooks(commit)
-            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit)
+            repository = commit.repository
+            repository_service = get_repo_provider_service(repository, commit)
+            was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit, repository_service)
+            was_setup = await self.possibly_setup_webhooks(commit, repository_service)
+            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
             argument_list = []
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 argument_list.append(arguments)
@@ -128,12 +132,22 @@ class UploadTask(BaseCodecovTask):
                 'was_updated': was_updated
             }
 
-    async def fetch_commit_yaml_and_possibly_store(self, commit):
+    async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
-        repository_service = get_repo_provider_service(repository, commit)
-        commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
-        save_repo_yaml_to_database_if_needed(commit, commit_yaml)
-        return merge_yamls(repository.owner.yaml, repository.yaml, commit_yaml)
+        try:
+            commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
+            save_repo_yaml_to_database_if_needed(commit, commit_yaml)
+        except InvalidYamlException:
+            log.exception(
+                "Unable to use yaml from commit because it is invalid",
+                extra=dict(repoid=repository.repoid, commit=commit.commitid)
+            )
+            commit_yaml = None
+        return get_final_yaml(
+            owner_yaml=repository.owner.yaml,
+            repo_yaml=repository.yaml,
+            commit_yaml=commit_yaml
+        )
 
     def schedule_task(self, commit, commit_yaml, argument_list):
         chain_to_call = []
@@ -159,11 +173,27 @@ class UploadTask(BaseCodecovTask):
                 ),
             )
             chain_to_call.append(finish_sig)
-        return chain(*chain_to_call).apply_async()
+            log.info(
+                "Scheduling task for %s different reports", len(argument_list),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    argument_list=argument_list
+                )
+            )
+            return chain(*chain_to_call).apply_async()
+        log.info(
+            "Not scheduling task because there were no reports to be processed found",
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid,
+                argument_list=argument_list
+            )
+        )
+        return None
 
-    async def possibly_setup_webhooks(self, commit):
+    async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
-        repository_service = get_repo_provider_service(repository, commit)
         repo_data = repository_service.data
         should_post_webhook = (not repo_data['repo']['using_integration']
                                and not repository.hookid and
@@ -182,29 +212,31 @@ class UploadTask(BaseCodecovTask):
             except Exception:
                 log.exception(
                     'Failed to create project webhook',
-                    extra=dict(repoid=repository.repoid, commitid=commit.commitid)
+                    extra=dict(repoid=repository.repoid, commit=commit.commitid)
                 )
         return False
 
-    async def possibly_update_commit_from_provider_info(self, db_session, commit):
+    async def possibly_update_commit_from_provider_info(self, db_session, commit, repository_service):
         repoid = commit.repoid
-        repository = commit.repository
         commitid = commit.commitid
         try:
-            repository_service = get_repo_provider_service(repository, commit)
             if not commit.message:
                 log.info(
                     "Commit does not have all needed info. Reaching provider to fetch info",
-                    extra=dict(repoid=repoid, commitid=commitid)
+                    extra=dict(repoid=repoid, commit=commitid)
                 )
                 await self.update_commit_from_provider_info(db_session, repository_service, commit)
                 return True
-        except Exception:
-            log.exception(
-                'Could not properly update commit with info from git provider',
-                extra=dict(repoid=repoid, commitid=commitid)
+        except TorngitObjectNotFoundError:
+            log.warning(
+                'Could not update commit with info because it was not found at the provider',
+                extra=dict(repoid=repoid, commit=commitid)
             )
-            raise
+            return False
+        log.debug(
+            'Not updating commit because it already seems to be populated',
+            extra=dict(repoid=repoid, commit=commitid)
+        )
         return False
 
     def get_author_from_commit(self, db_session, service, author_id, username, email, name):
@@ -230,7 +262,7 @@ class UploadTask(BaseCodecovTask):
         if git_commit is None:
             log.error(
                 'Could not find commit on git provider',
-                extra=dict(repoid=commit.repoid, commitid=commit.commitid)
+                extra=dict(repoid=commit.repoid, commit=commit.commitid)
             )
         else:
             author_info = git_commit['author']
@@ -269,7 +301,7 @@ class UploadTask(BaseCodecovTask):
                     )['base']['branch']
             log.info(
                 'Updated commit with info from git provider',
-                extra=dict(repoid=commit.repoid, commitid=commit.commitid)
+                extra=dict(repoid=commit.repoid, commit=commit.commitid)
             )
 
     async def post_webhook(self, repository_service):
