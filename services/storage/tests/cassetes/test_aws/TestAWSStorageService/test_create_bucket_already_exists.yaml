@@ -5,25 +5,25 @@ interactions:
       User-Agent:
       - !!binary |
         Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
-        MA==
+        NA==
       X-Amz-Content-SHA256:
       - !!binary |
         ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
         ODUyYjg1NQ==
       X-Amz-Date:
       - !!binary |
-        MjAxOTA5MDNUMjAwODQ0Wg==
+        MjAxOTA5MDlUMTcwNDU3Wg==
     method: HEAD
     uri: https://felipearchivetest.s3.amazonaws.com/
   response:
     body: {string: ''}
     headers:
       Content-Type: [application/xml]
-      Date: ['Tue, 03 Sep 2019 20:08:46 GMT']
+      Date: ['Mon, 09 Sep 2019 17:04:58 GMT']
       Server: [AmazonS3]
       Transfer-Encoding: [chunked]
       x-amz-bucket-region: [us-east-1]
-      x-amz-id-2: [4JVcoYcT19ReijldWyqJML1BhEpR17c6gQX/tLY0DlU6Db6GkMacMbhQHLC/sGH3S3qD8Xw5SY4=]
-      x-amz-request-id: [B8AF775AB7BBEFFA]
+      x-amz-id-2: [Moal/oR/d4JS8t4dq8C1isFgmCtkOQweLfxd3eitkmGmTvmr43SWLjimn6Y1CfXheKaN8vbzrOo=]
+      x-amz-request-id: [2C3EA33FF25FA99C]
     status: {code: 200, message: OK}
 version: 1

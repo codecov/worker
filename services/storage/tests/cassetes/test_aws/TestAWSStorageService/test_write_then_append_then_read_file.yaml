@@ -17,24 +17,27 @@ interactions:
       User-Agent:
       - !!binary |
         Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
-        MA==
+        NA==
       X-Amz-Content-SHA256:
       - !!binary |
         VU5TSUdORUQtUEFZTE9BRA==
       X-Amz-Date:
       - !!binary |
-        MjAxOTA5MDNUMjAwODQ2Wg==
+        MjAxOTA5MDlUMTcwNDU4Wg==
+      x-amz-storage-class:
+      - !!binary |
+        U1RBTkRBUkQ=
     method: PUT
     uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_append_then_read_file/result
   response:
     body: {string: ''}
     headers:
       Content-Length: ['0']
-      Date: ['Tue, 03 Sep 2019 20:08:47 GMT']
+      Date: ['Mon, 09 Sep 2019 17:05:00 GMT']
       ETag: ['"37021fe3a12209c9df6a8b7d37e19a05"']
       Server: [AmazonS3]
-      x-amz-id-2: [Hdqvvjw5WDtIjFmAyPtcm1pogY78SVROjNi+ob6O2zAa9k4gBRlcv0SZ7P7oJc9KjOnTZjw3Bdc=]
-      x-amz-request-id: [22F4FF660242262A]
+      x-amz-id-2: [yfsCTYJKXocCjCzeCs6v5bQasfkClg7uYmO+0KagRt2/R4MQszEioMDi+CdgH7U/vjLQn2ymbdE=]
+      x-amz-request-id: [0D8F32D4F1A46EBC]
     status: {code: 200, message: OK}
 - request:
     body: null
@@ -42,14 +45,14 @@ interactions:
       User-Agent:
       - !!binary |
         Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
-        MA==
+        NA==
       X-Amz-Content-SHA256:
       - !!binary |
         ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
         ODUyYjg1NQ==
       X-Amz-Date:
       - !!binary |
-        MjAxOTA5MDNUMjAwODQ3Wg==
+        MjAxOTA5MDlUMTcwNDU5Wg==
     method: GET
     uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_append_then_read_file/result
   response:
@@ -58,12 +61,12 @@ interactions:
       Accept-Ranges: [bytes]
       Content-Length: ['46']
       Content-Type: [binary/octet-stream]
-      Date: ['Tue, 03 Sep 2019 20:08:48 GMT']
+      Date: ['Mon, 09 Sep 2019 17:05:00 GMT']
       ETag: ['"37021fe3a12209c9df6a8b7d37e19a05"']
-      Last-Modified: ['Tue, 03 Sep 2019 20:08:47 GMT']
+      Last-Modified: ['Mon, 09 Sep 2019 17:05:00 GMT']
       Server: [AmazonS3]
-      x-amz-id-2: [+sqx8w1Bl5HBAOa+ZW9wlGsQ+E2Dwz4DlmLBu+A1TWRHwEs7dHc0Nvy8Q6Wc09QJsimIQUgNmb0=]
-      x-amz-request-id: [FABE2F2682134C67]
+      x-amz-id-2: [/tpzrBn5RZnjqSYHDUkidlw5rP81kOqWvkZA7vGohRNjYidcWIxDJvGv8wIHfQavN0mcFHNA8/w=]
+      x-amz-request-id: [6F7225211D7B8954]
     status: {code: 200, message: OK}
 - request:
     body: !!python/object/new:_io.BytesIO
@@ -84,24 +87,27 @@ interactions:
       User-Agent:
       - !!binary |
         Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
-        MA==
+        NA==
       X-Amz-Content-SHA256:
       - !!binary |
         VU5TSUdORUQtUEFZTE9BRA==
       X-Amz-Date:
       - !!binary |
-        MjAxOTA5MDNUMjAwODQ3Wg==
+        MjAxOTA5MDlUMTcwNDU5Wg==
+      x-amz-storage-class:
+      - !!binary |
+        U1RBTkRBUkQ=
     method: PUT
     uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_append_then_read_file/result
   response:
     body: {string: ''}
     headers:
       Content-Length: ['0']
-      Date: ['Tue, 03 Sep 2019 20:08:48 GMT']
+      Date: ['Mon, 09 Sep 2019 17:05:00 GMT']
       ETag: ['"d991c7c9dcce0c7e2f28121dde3e08c4"']
       Server: [AmazonS3]
-      x-amz-id-2: [rwtU+HBTRHfwTX6dFyzftLNzj7aC3LuBVQJ8y/QOa295x7TPKEJOJO2QnO7zx0Z7WWo9H+NhkfA=]
-      x-amz-request-id: [AB92BF33856B93BA]
+      x-amz-id-2: [M7Sg/Ujtq0PpMLxBetfk4NwOwvG9JwffhZHNJDpzpO8m+JeD4ybg8+2nXJNM0Fpf6JjTpydiE8I=]
+      x-amz-request-id: [FABD3E958A23F16D]
     status: {code: 200, message: OK}
 - request:
     body: null
@@ -109,14 +115,14 @@ interactions:
       User-Agent:
       - !!binary |
         Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
-        MA==
+        NA==
       X-Amz-Content-SHA256:
       - !!binary |
         ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
         ODUyYjg1NQ==
       X-Amz-Date:
       - !!binary |
-        MjAxOTA5MDNUMjAwODQ3Wg==
+        MjAxOTA5MDlUMTcwNDU5Wg==
     method: GET
     uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_append_then_read_file/result
   response:
@@ -126,11 +132,11 @@ interactions:
       Accept-Ranges: [bytes]
       Content-Length: ['78']
       Content-Type: [binary/octet-stream]
-      Date: ['Tue, 03 Sep 2019 20:08:48 GMT']
+      Date: ['Mon, 09 Sep 2019 17:05:00 GMT']
       ETag: ['"d991c7c9dcce0c7e2f28121dde3e08c4"']
-      Last-Modified: ['Tue, 03 Sep 2019 20:08:48 GMT']
+      Last-Modified: ['Mon, 09 Sep 2019 17:05:00 GMT']
       Server: [AmazonS3]
-      x-amz-id-2: [bXVlk409kM8xx98bjV02H5IGn2+Miep8sRbuHEIcmp8qTGn9XbX1jm+AQDC/XVvuDpaIH3SA6+Y=]
-      x-amz-request-id: [5DB34CF42D0AD852]
+      x-amz-id-2: [JUs9w5P21EYS5OhHMW9VdCLw8pAVX1S/7qoHDL118k7gE5MKlYadKgQda2pSYIHRU82o8kNxLIg=]
+      x-amz-request-id: [C245A636B6202151]
     status: {code: 200, message: OK}
 version: 1

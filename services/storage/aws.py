@@ -26,6 +26,11 @@ class AWSStorageService(BaseStorageService):
         """
             Creates root storage (or bucket, as in some terminologies)
 
+        Note:
+            AWS API wont return an error if you attempt to create a bucket that 
+            already exists in us-east-1 region. However, it does return an error
+            if you attempt to create a bucket that already exists in any other region.
+
         Args:
             bucket_name (str): The name of the bucket to be created (default: {'archive'})
             region (str): The region in which the bucket will be created (default: {'us-east-1'})
@@ -51,6 +56,8 @@ class AWSStorageService(BaseStorageService):
             except ClientError as e:
                 if e.response['Error']['Code'] == 'BucketAlreadyOwnedByYou':
                     raise BucketAlreadyExistsError(f"Bucket {bucket_name} already exists")     
+                else:
+                    raise
         return {
                     'name': bucket_name
                 }
@@ -59,7 +66,6 @@ class AWSStorageService(BaseStorageService):
         """
             Writes a new file with the contents of `data`
             (What happens if the file already exists?)
-
 
         Args:
             bucket_name (str): The name of the bucket for the file to be created on
@@ -73,14 +79,14 @@ class AWSStorageService(BaseStorageService):
         self.storage_client.put_object(
             Bucket=bucket_name, 
             Key=path, 
-            Body=data
+            Body=data,
+            StorageClass=storage_class
         )
         return True
 
     def append_to_file(self, bucket_name, path, data):
         """
             Appends more content to the file `path`
-            (What happens if the file doesn't exist?)
 
         Args:
             bucket_name (str): The name of the bucket for the file lives
@@ -95,6 +101,9 @@ class AWSStorageService(BaseStorageService):
         except ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey':
                 file_contents = data
+            else:
+                raise
+
         return self.write_file(bucket_name=bucket_name, path=path, data=file_contents)
    
     def read_file(self, bucket_name, path):
@@ -116,6 +125,8 @@ class AWSStorageService(BaseStorageService):
         except ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey':
                 raise FileNotFoundError(f"File {path} does not exist in {bucket_name}")
+            else:
+                raise
         data = BytesIO(obj['Body'].read())
         data.seek(0)
         return data.getvalue()
@@ -123,12 +134,10 @@ class AWSStorageService(BaseStorageService):
     def delete_file(self, bucket_name, path):
         """Deletes a single file from the storage
 
-        Note: Not all implementations raise a FileNotInStorageError
-            if the file is not already there in the first place.
-            It seems that minio & AWS, for example, returns a 204 regardless.
-            So while you should prepare for a FileNotInStorageError,
-            know that if it is not raise, it doesn't mean the file
-            was there beforehand.
+        Note:
+            AWS returns a 204 regardless if the file is not already 
+            there in the first place.
+            FileNotInStorageError wont be raised if a file doesnt exists.
 
         Args:
             bucket_name (str): The name of the bucket for the file lives
@@ -148,7 +157,10 @@ class AWSStorageService(BaseStorageService):
 
     def delete_files(self, bucket_name, paths=[]):
         """Batch deletes a list of files from a given bucket
-            (what happens to the files that don't exist?)
+
+        Note:
+            When trying to delete a file that doesnt exists, AWS SDK will
+            return 'true' as if it was deleted.
 
         Args:
             bucket_name (str): The name of the bucket for the file lives
