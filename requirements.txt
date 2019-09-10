@@ -1,5 +1,6 @@
 -e git+https://github.com/codecov/report.git@3da3b7f3423cc3c84dc26294149c18df871cfb34#egg=covreports
 -e git+https://github.com/codecov/torngit.git@d15ad9cb8c8529240c4bf062bf99ad3483ec9151#egg=torngit
+boto3==1.9.218
 celery==4.3
 cryptography==2.7
 factory-boy==2.11.1
@@ -22,4 +23,4 @@ schema==0.7.0
 SQLAlchemy-Utils==0.33.9
 SQLAlchemy==1.2.14
 timestring==1.6.2
-vcrpy==2.0.1
+vcrpy==2.1.0

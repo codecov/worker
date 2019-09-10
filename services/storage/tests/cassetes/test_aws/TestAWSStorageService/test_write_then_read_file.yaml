@@ -1,0 +1,71 @@
+interactions:
+- request:
+    body: !!python/object/new:_io.BytesIO
+      state: !!python/tuple
+      - !!binary |
+        bG9yZW0gaXBzdW0gZG9sb3IgdGVzdF93cml0ZV90aGVuX3JlYWRfZmlsZSDDoQ==
+      - 0
+      - null
+    headers:
+      Content-Length: ['46']
+      Content-MD5:
+      - !!binary |
+        TndJZjQ2RWlDY25mYW90OU4rR2FCUT09
+      Expect:
+      - !!binary |
+        MTAwLWNvbnRpbnVl
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        NA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        VU5TSUdORUQtUEFZTE9BRA==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDlUMTcwNDU4Wg==
+      x-amz-storage-class:
+      - !!binary |
+        U1RBTkRBUkQ=
+    method: PUT
+    uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_read_file/result
+  response:
+    body: {string: ''}
+    headers:
+      Content-Length: ['0']
+      Date: ['Mon, 09 Sep 2019 17:04:59 GMT']
+      ETag: ['"37021fe3a12209c9df6a8b7d37e19a05"']
+      Server: [AmazonS3]
+      x-amz-id-2: [pRFYYPtGhmYDy/uD4KQBh1Jp5K0Kv37kQPg8VUHxqdXqI8ZC2i3+OrSOEE8kJ+SILExXlH5g7Fo=]
+      x-amz-request-id: [122F8E5B91BDA25B]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        NA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3
+        ODUyYjg1NQ==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDlUMTcwNDU4Wg==
+    method: GET
+    uri: https://felipearchivetest.s3.amazonaws.com/test_write_then_read_file/result
+  response:
+    body: {string: "lorem ipsum dolor test_write_then_read_file \xE1"}
+    headers:
+      Accept-Ranges: [bytes]
+      Content-Length: ['46']
+      Content-Type: [binary/octet-stream]
+      Date: ['Mon, 09 Sep 2019 17:04:59 GMT']
+      ETag: ['"37021fe3a12209c9df6a8b7d37e19a05"']
+      Last-Modified: ['Mon, 09 Sep 2019 17:04:59 GMT']
+      Server: [AmazonS3]
+      x-amz-id-2: [x9PyNiORjsZvpPSYD/cKW71vznNT94+iHc9h61Lq0xtqIoZETPjQ7eKoyZXNHiyriweaF4Va6Fg=]
+      x-amz-request-id: [751529C7DB8043BA]
+    status: {code: 200, message: OK}
+version: 1

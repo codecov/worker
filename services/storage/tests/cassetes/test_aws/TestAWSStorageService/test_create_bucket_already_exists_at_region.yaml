@@ -1,0 +1,64 @@
+interactions:
+- request:
+    body: <CreateBucketConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><LocationConstraint>us-west-1</LocationConstraint></CreateBucketConfiguration>
+    headers:
+      Content-Length: ['153']
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        NA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        YjAyNGMzODhkOWQwNjkwMzAwMDhhZmQ2ZTMwMjUyNGVkMTMwOGE5ZjNjMTA4YmZhNGU0ODFkNjUy
+        YjUzMTNjZg==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDlUMTcwNDU3Wg==
+    method: PUT
+    uri: https://felipearchivetestw.s3.amazonaws.com/
+  response:
+    body: {string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <Error><Code>AuthorizationHeaderMalformed</Code><Message>The authorization
+        header is malformed; the region ''us-east-1'' is wrong; expecting ''us-west-1''</Message><Region>us-west-1</Region><RequestId>5892CCC095B226BB</RequestId><HostId>Z5XlSqUzHOkVqE9w2ekJHAEz9xGj4gYusR+7eWv5zOiZ5+Pglwqd5X8NwcynkX0ZTIimVU3C2tA=</HostId></Error>'}
+    headers:
+      Connection: [close]
+      Content-Type: [application/xml]
+      Date: ['Mon, 09 Sep 2019 17:04:56 GMT']
+      Server: [AmazonS3]
+      Transfer-Encoding: [chunked]
+      x-amz-id-2: [Z5XlSqUzHOkVqE9w2ekJHAEz9xGj4gYusR+7eWv5zOiZ5+Pglwqd5X8NwcynkX0ZTIimVU3C2tA=]
+      x-amz-request-id: [5892CCC095B226BB]
+    status: {code: 400, message: Bad Request}
+- request:
+    body: <CreateBucketConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><LocationConstraint>us-west-1</LocationConstraint></CreateBucketConfiguration>
+    headers:
+      Content-Length: ['153']
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS45LjIxOCBQeXRob24vMy43LjQgRGFyd2luLzE4LjYuMCBCb3RvY29yZS8xLjEyLjIy
+        NA==
+      X-Amz-Content-SHA256:
+      - !!binary |
+        YjAyNGMzODhkOWQwNjkwMzAwMDhhZmQ2ZTMwMjUyNGVkMTMwOGE5ZjNjMTA4YmZhNGU0ODFkNjUy
+        YjUzMTNjZg==
+      X-Amz-Date:
+      - !!binary |
+        MjAxOTA5MDlUMTcwNDU3Wg==
+    method: PUT
+    uri: https://felipearchivetestw.s3.us-west-1.amazonaws.com/
+  response:
+    body: {string: '<?xml version="1.0" encoding="UTF-8"?>
+
+        <Error><Code>BucketAlreadyOwnedByYou</Code><Message>Your previous request
+        to create the named bucket succeeded and you already own it.</Message><BucketName>felipearchivetestw</BucketName><RequestId>6AFE12359F12523D</RequestId><HostId>8fpurkK4kGXOP/B+wbP3iuMRV2blzSF+Rvdb2nmqEMcjNWw+wxDdT43LZ2eESG3FL794U0R3Bek=</HostId></Error>'}
+    headers:
+      Content-Type: [application/xml]
+      Date: ['Mon, 09 Sep 2019 17:04:57 GMT']
+      Server: [AmazonS3]
+      Transfer-Encoding: [chunked]
+      x-amz-bucket-region: [us-west-1]
+      x-amz-id-2: [8fpurkK4kGXOP/B+wbP3iuMRV2blzSF+Rvdb2nmqEMcjNWw+wxDdT43LZ2eESG3FL794U0R3Bek=]
+      x-amz-request-id: [6AFE12359F12523D]
+    status: {code: 409, message: Conflict}
+version: 1
