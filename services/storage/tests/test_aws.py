@@ -58,6 +58,18 @@ class TestAWSStorageService(BaseTestCase):
         reading_result = storage.read_file(bucket_name=bucket_name, path=path)
         assert reading_result.decode() == data
 
+    def test_write_then_read_reduced_redundancy_file(self, codecov_vcr):
+        storage = AWSStorageService(
+            aws_config
+        )
+        path = 'test_write_then_read_reduced_redundancy_file/result'
+        data = 'lorem ipsum dolor test_write_then_read_file á'
+        bucket_name = 'felipearchivetest'
+        writing_result = storage.write_file(bucket_name=bucket_name, path=path, data=data, reduced_redundancy=True)
+        assert writing_result
+        reading_result = storage.read_file(bucket_name=bucket_name, path=path)
+        assert reading_result.decode() == data
+
     def test_write_then_append_then_read_file(self, codecov_vcr):
         storage = AWSStorageService(
             aws_config
