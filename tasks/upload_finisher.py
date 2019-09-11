@@ -12,7 +12,7 @@ from celery_config import notify_task_name, status_set_pending_task_name
 
 log = logging.getLogger(__name__)
 
-regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]').search
+regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]')
 merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
 
 
@@ -32,7 +32,7 @@ class UploadFinisherTask(BaseCodecovTask):
     name = "app.tasks.upload_finisher.UploadFinisherTask"
 
     def write_to_db(self):
-        return False
+        return True
 
     async def run_async(self, db_session, processing_results, *, repoid, commitid, commit_yaml, **kwargs):
         repoid = int(repoid)
@@ -56,7 +56,6 @@ class UploadFinisherTask(BaseCodecovTask):
         commitid = commit.commitid
         repoid = commit.repoid
         should_set_pending = self.request.retries == 0
-        should_set_pending = False
 
         if should_set_pending:
             self.app.send_task(
@@ -71,15 +70,13 @@ class UploadFinisherTask(BaseCodecovTask):
             )
 
         # always notify, let the notify handle if it should submit
-        if not regexp_ci_skip(commit.message or ''):
+        if not regexp_ci_skip.search(commit.message or ''):
             number_sessions = 0
             if commit.report_json:
                 number_sessions = len(commit.report_json.get('sessions', {}))
             after_n_builds = read_yaml_field(commit_yaml, ('codecov', 'notify', 'after_n_builds')) or 0
             should_call_notifications = bool(after_n_builds <= number_sessions)
-            should_call_notifications = False  # TODO Remove this line when finishing testing
             if should_call_notifications:
-                # we have the right number of builds
                 self.app.send_task(
                     notify_task_name,
                     args=None,

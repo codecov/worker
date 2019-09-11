@@ -80,7 +80,7 @@ class UploadTask(BaseCodecovTask):
     name = "app.tasks.upload.Upload"
 
     def write_to_db(self):
-        return False
+        return True
 
     def lists_of_arguments(self, redis_connection, uploads_list_key):
         """Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
