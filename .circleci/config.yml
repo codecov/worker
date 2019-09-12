@@ -27,8 +27,7 @@ gcloud_auth: &gcloud_auth
     gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
     gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
     gcloud auth configure-docker
-    gcloud container clusters get-credentials --region us-east4 default-codecov-cluster
-
+    gcloud container clusters get-credentials --region ${GOOGLE_REGION} ${GOOGLE_PROJECT_ID} 
 jobs:
   build:
     executor: codecov-deploy
