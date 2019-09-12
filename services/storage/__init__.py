@@ -11,6 +11,7 @@ def get_appropriate_storage_service():
         return GCPStorageService(gcp_config)
     elif chosen_storage == 'aws':
         aws_config = get_config('services', 'aws', default={})
+        return AWSStorageService(aws_config)
     else:
         minio_config = get_config('services', 'minio', default={})
         return MinioStorageService(minio_config)
