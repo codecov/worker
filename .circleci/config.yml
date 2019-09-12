@@ -89,6 +89,6 @@ workflows:
             - test
           filters:
             tags:
-              only: /^phildier-.*/
+              only: /^release-.*/
             branches:
               ignore: /.*/
