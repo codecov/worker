@@ -2,7 +2,6 @@ from json import loads, dumps
 from time import time
 import logging
 import re
-import zlib
 
 import minio.error
 from celery import exceptions
@@ -15,7 +14,7 @@ from helpers.config import get_config
 from helpers.exceptions import ReportExpiredException
 from services.archive import ArchiveService, MinioEndpoints
 from services.bots import RepositoryWithoutValidBotError
-from services.redis import get_redis_connection
+from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService
 from services.repository import get_repo_provider_service
 from services.yaml import read_yaml_field
@@ -320,20 +319,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 )
                 raise
         else:
-            return self.download_archive_from_redis(archive_service, redis_connection, redis_key)
-
-    def download_archive_from_redis(self, archive_service, redis_connection, redis_key):
-        # download from redis
-        raw_uploaded_report = redis_connection.get(redis_key)
-        gzipped = redis_key.endswith('/gzip')
-        # TODO Reconsider deleting the file from redis after testing mode is done
-        if gzipped:
-            raw_uploaded_report = zlib.decompress(
-                raw_uploaded_report, zlib.MAX_WBITS | 16
-            )
-        if raw_uploaded_report is not None:
-            return raw_uploaded_report.decode()
-        return None
+            return download_archive_from_redis(redis_connection, redis_key)
 
     def should_delete_archive(self, commit_yaml):
         return False

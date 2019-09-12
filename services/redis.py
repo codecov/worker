@@ -1,4 +1,5 @@
 import logging
+import zlib
 
 from helpers.config import get_config
 from redis import Redis
@@ -22,3 +23,15 @@ def get_redis_connection():
 
 def _get_redis_instance_from_url(url):
     return Redis.from_url(url)
+
+
+def download_archive_from_redis(redis_connection, redis_key):
+    raw_uploaded_report = redis_connection.get(redis_key)
+    gzipped = redis_key.endswith('/gzip')
+    if gzipped:
+        raw_uploaded_report = zlib.decompress(
+            raw_uploaded_report, zlib.MAX_WBITS | 16
+        )
+    if raw_uploaded_report is not None:
+        return raw_uploaded_report.decode()
+    return None
