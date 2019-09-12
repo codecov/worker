@@ -16,7 +16,7 @@ class ReportService(object):
 
     def build_report_from_commit(self, commit, chunks_archive_service=None):
         commitid = commit.commitid
-        if commit.report is None:
+        if commit.report_json is None:
             return Report(totals=None, chunks=None)
         try:
             if chunks_archive_service is None:
@@ -40,8 +40,8 @@ class ReportService(object):
             log.exception(
                 "What happened in here?", extra=dict(actual_reports_path=actual_reports_path)
             )
-            files = commit.report['files']
-            sessions = commit.report['sessions']
+            files = commit.report_json['files']
+            sessions = commit.report_json['sessions']
         totals = commit.totals
         res = self.build_report(chunks, files, sessions, totals)
         return res

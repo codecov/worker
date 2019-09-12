@@ -69,7 +69,7 @@ class CommitFactory(Factory):
         'p': 0,
         's': 1
     }
-    report = {
+    report_json = {
         'files': {
             'awesome/__init__.py': [
                 2,

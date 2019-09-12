@@ -73,8 +73,8 @@ class UploadFinisherTask(BaseCodecovTask):
         # always notify, let the notify handle if it should submit
         if not regexp_ci_skip(commit.message or ''):
             number_sessions = 0
-            if commit.report:
-                number_sessions = len(commit.report.get('sessions', {}))
+            if commit.report_json:
+                number_sessions = len(commit.report_json.get('sessions', {}))
             after_n_builds = read_yaml_field(commit_yaml, ('codecov', 'notify', 'after_n_builds')) or 0
             should_call_notifications = bool(after_n_builds <= number_sessions)
             should_call_notifications = False  # TODO Remove this line when finishing testing

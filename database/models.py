@@ -60,7 +60,7 @@ class Commit(CodecovBaseModel):
     ci_passed = Column(types.Boolean)
     pullid = Column(types.Integer)
     totals = Column(postgresql.JSON)
-    report = Column(postgresql.JSON)
+    report_json = Column("report", postgresql.JSON)
     branch = Column(types.Text)
     parent_commit_id = Column('parent', types.Text)
     state = Column(types.String(256))
