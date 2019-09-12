@@ -6,17 +6,18 @@ from celery import chain
 from torngit.exceptions import TorngitObjectNotFoundError
 
 from app import celery_app
-from tasks.base import BaseCodecovTask
+from celery_config import upload_task_name
 from database.models import Commit
 from services.redis import get_redis_connection
 from services.repository import (
     get_repo_provider_service, update_commit_from_provider_info, create_webhook_on_provider
 )
 from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
-from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.exceptions import InvalidYamlException
-from tasks.upload_processor import upload_processor_task
+from services.yaml.fetcher import fetch_commit_yaml_from_provider
+from tasks.base import BaseCodecovTask
 from tasks.upload_finisher import upload_finisher_task
+from tasks.upload_processor import upload_processor_task
 
 log = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ class UploadTask(BaseCodecovTask):
         - In the end, the tasks are scheduled (sent to celery), and this task finishes
 
     """
-    name = "app.tasks.upload.Upload"
+    name = upload_task_name
 
     def write_to_db(self):
         return True
