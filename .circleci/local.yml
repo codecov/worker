@@ -1,4 +1,19 @@
 version: 2
+
+gcloud_auth: &gcloud_auth
+  name: Copy gcloud auth for docker push
+  command: |-
+    echo "$GCLOUD_SERVICE_KEY" > service.json
+    gcloud auth activate-service-account --key-file=service.json
+    gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
+    gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
+    gcloud auth configure-docker
+
+k8s_auth: &k8s_auth
+  name: Copy k8s auth for kubectl
+  command: |-
+    gcloud container clusters get-credentials --region ${GOOGLE_REGION} ${GOOGLE_PROJECT_ID}
+
 jobs:
   build:
     docker:
@@ -7,27 +22,18 @@ jobs:
       auth:
         username: _json_key
         password: $GCLOUD_SERVICE_KEY
-    - image: circleci/postgres:9.6.2
     working_directory: /work
     steps:
     - checkout
-    - setup_remote_docker:
-        docker_layer_caching: true
+    - setup_remote_docker
     - run:
-        name: Copy gcloud cli and auth for docker push
-        command: |-
-          echo "$GCLOUD_SERVICE_KEY" > service.json
-          gcloud auth activate-service-account --key-file=service.json
-          gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
-          gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
-          gcloud auth configure-docker
-          gcloud container clusters get-credentials --region us-east4 default-codecov-cluster
+        <<: *gcloud_auth
     - run:
         name: build container
         command: |-
-          printenv
-          make build GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$CIRCLE_TAG
-          make push
+          make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+          make -f Makefile.circle build GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN VERSION=$CIRCLE_TAG
+          make -f Makefile.circle push
   test:
     docker:
     - image: gcr.io/codecov-enterprise-sandbox/codecov-worker:latest
@@ -55,19 +61,12 @@ jobs:
     steps:
     - setup_remote_docker
     - run:
-        name: Copy gcloud cli and auth for docker push
-        command: |-
-          echo "$GCLOUD_SERVICE_KEY" > service.json
-          gcloud auth activate-service-account --key-file=service.json
-          gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
-          gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
-          gcloud auth configure-docker
-          gcloud container clusters get-credentials --region us-east4 default-codecov-cluster
+        <<: *gcloud_auth
     - run:
         name: deploy to k8s
         command: |-
-          make tag VERSION=$CIRCLE_TAG
-          make deploy VERSION=$CIRCLE_TAG
+          make -f Makefile.circle tag VERSION=$CIRCLE_TAG
+          make -f Makefile.circle deploy VERSION=$CIRCLE_TAG
 workflows:
   version: 2
   build-test-deploy:

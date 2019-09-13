@@ -9,6 +9,7 @@ RUN             apk update \
                 musl-dev \
                 libxslt-dev \
                 python-dev \
+                libffi-dev \
                 gcc \
                 && pip install --upgrade pip
 
@@ -19,6 +20,7 @@ RUN             sed -i 's+https://github.com+https://'"${GH_ACCESS_TOKEN}"'@gith
 WORKDIR         /pip-packages/
 RUN             git config --global url."git@github.com:".insteadOf "https://github.com/"
 RUN             pip download -r /requirements.txt
+RUN             pip download setuptools wheel
 
 
 
@@ -32,6 +34,8 @@ RUN             apk add --no-cache postgresql-libs && \
                 postgresql-dev \
                 libxslt-dev \
                 python-dev \ 
+                libffi-dev \ 
+                openssl-dev \ 
                 python3-dev
 
 WORKDIR         /pip-packages/
