@@ -36,6 +36,7 @@ RUN             apk add --no-cache postgresql-libs && \
                 python-dev \ 
                 libffi-dev \ 
                 openssl-dev \ 
+                make \ 
                 python3-dev
 
 WORKDIR         /pip-packages/
