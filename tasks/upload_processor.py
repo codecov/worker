@@ -1,4 +1,4 @@
-from json import loads, dumps
+from json import loads
 from time import time
 import logging
 import re
@@ -12,7 +12,7 @@ from app import celery_app
 from database.models import Commit
 from helpers.config import get_config
 from helpers.exceptions import ReportExpiredException
-from services.archive import ArchiveService, MinioEndpoints
+from services.archive import ArchiveService
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService
@@ -51,10 +51,10 @@ class UploadProcessorTask(BaseCodecovTask):
     name = "app.tasks.upload_processor.UploadProcessorTask"
 
     def write_to_db(self):
-        return False
+        return True
 
     def schedule_for_later_try(self):
-        retry_in = 20 * (self.request.retries + 1)
+        retry_in = 20 * 2 ** self.request.retries
         self.retry(max_retries=3, countdown=retry_in)
 
     async def run_async(self, db_session, previous_results, *, repoid, commitid, commit_yaml, arguments_list, **kwargs):
@@ -248,9 +248,13 @@ class UploadProcessorTask(BaseCodecovTask):
         raw_uploaded_report = self.fetch_raw_uploaded_report(
             archive_service, redis_connection, archive_url, commit.commitid, reportid, redis_key)
         log.debug('Retrieved report for processing from url %s', archive_url)
-        # TODO: Remove this once we are not on test mode anymore
         if redis_key and not raw_uploaded_report:
-            raise UnableToTestException("Unable to test due to the report living on redis")
+            log.error(
+                "Report is not available on redis",
+                extra=dict(
+                    commit=commit.commitid, repo=commit.repoid
+                )
+            )
 
         # delete from archive is desired
         if should_delete_archive and archive_url and not archive_url.startswith('http'):
@@ -322,7 +326,6 @@ class UploadProcessorTask(BaseCodecovTask):
             return download_archive_from_redis(redis_connection, redis_key)
 
     def should_delete_archive(self, commit_yaml):
-        return False
         if get_config('services', 'minio', 'expire_raw_after_n_days'):
             return True
         return not read_yaml_field(
@@ -347,13 +350,6 @@ class UploadProcessorTask(BaseCodecovTask):
         commit.state = 'complete' if report else 'error'
         commit.totals = totals
         commit.report_json = network
-        # TODO: Remove after tests are done
-        actual_reports_path = MinioEndpoints.reports_json.get_path(
-            version='v4',
-            repo_hash=chunks_archive_service.storage_hash,
-            commitid=commitid
-        )
-        chunks_archive_service.write_file(actual_reports_path, dumps(network, indent=4))
 
         # ------------------------
         # Archive Processed Report

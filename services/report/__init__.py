@@ -1,8 +1,7 @@
-import json
 import logging
 
 from covreports.resources import Report
-from services.archive import ArchiveService, MinioEndpoints
+from services.archive import ArchiveService
 from services.report.raw_upload_processor import process_raw_upload
 from services.storage.exceptions import FileNotInStorageError
 
@@ -26,22 +25,8 @@ class ReportService(object):
             return Report(totals=None, chunks=None)
         if chunks is None:
             return Report(totals=None, chunks=None)
-        # TODO: Remove after tests are done
-        try:
-            actual_reports_path = MinioEndpoints.reports_json.get_path(
-                version='v4',
-                repo_hash=chunks_archive_service.storage_hash,
-                commitid=commitid
-            )
-            report_dict = json.loads(chunks_archive_service.read_file(actual_reports_path))
-            files = report_dict['files']
-            sessions = report_dict['sessions']
-        except (FileNotInStorageError, json.decoder.JSONDecodeError):
-            log.exception(
-                "What happened in here?", extra=dict(actual_reports_path=actual_reports_path)
-            )
-            files = commit.report_json['files']
-            sessions = commit.report_json['sessions']
+        files = commit.report_json['files']
+        sessions = commit.report_json['sessions']
         totals = commit.totals
         res = self.build_report(chunks, files, sessions, totals)
         return res
