@@ -17,6 +17,7 @@ from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService
 from services.repository import get_repo_provider_service
+from services.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -108,10 +109,9 @@ class UploadProcessorTask(BaseCodecovTask):
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         archive_service = ArchiveService(repository)
-        chunks_archive_service = ArchiveService(commit.repository, bucket='testingarchive03')
         try:
             report = ReportService().build_report_from_commit(
-                commit, chunks_archive_service=chunks_archive_service
+                commit, chunks_archive_service=archive_service
             )
         except Exception:
             log.exception(
@@ -166,8 +166,8 @@ class UploadProcessorTask(BaseCodecovTask):
                     n_processed,
                     extra=dict(repoid=repoid, commit=commitid)
                 )
-                await self.save_report_results(
-                    db_session, chunks_archive_service, repository_service,
+                results_dict = await self.save_report_results(
+                    db_session, archive_service, repository_service,
                     repository, commit, report, pr
                 )
                 log.info(
@@ -177,6 +177,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         repoid=repoid,
                         commit=commitid,
                         commit_yaml=commit_yaml,
+                        url=results_dict.get('url')
                     )
                 )
             return {
@@ -229,6 +230,13 @@ class UploadProcessorTask(BaseCodecovTask):
                 'successful': False,
                 'report': None,
                 'error_type': 'unable_to_test',
+                'should_retry': False
+            }
+        except FileNotInStorageError:
+            return {
+                'successful': False,
+                'report': None,
+                'error_type': 'file_not_in_storage',
                 'should_retry': False
             }
 
@@ -364,7 +372,9 @@ class UploadProcessorTask(BaseCodecovTask):
                 url=url
             )
         )
-        return {}
+        return {
+            'url': url
+        }
 
 
 RegisteredUploadTask = celery_app.register_task(UploadProcessorTask())
