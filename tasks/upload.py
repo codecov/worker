@@ -41,7 +41,7 @@ class UploadTask(BaseCodecovTask):
     - UploadTask (this one)
         - Prepares the ground for the other tasks to run (view it as a compatibility layer between
             the old code and new)
-        - Does thinks that only need to happen once per commit, and not per upload,
+        - Does things that only need to happen once per commit, and not per upload,
             like populating commit info and webhooks
     - UploadProcessorTask
         - Process each individual upload the user did (with some possible batching)
