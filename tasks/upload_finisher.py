@@ -45,7 +45,11 @@ class UploadFinisherTask(BaseCodecovTask):
         with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
             log.info(
                 "Running finishing logic for commit",
-                extra=dict(repoid=repoid, commit=commitid)
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    processing_results=processing_results
+                )
             )
             result = await self.finish_reports_processing(db_session, commit, commit_yaml)
             self.invalidate_caches(redis_connection, commit)

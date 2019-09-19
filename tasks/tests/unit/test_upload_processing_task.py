@@ -211,7 +211,8 @@ class TestUploadProcessorTask(object):
         )
         mocked_3.assert_called_with(
             countdown=20,
-            max_retries=3
+            max_retries=3,
+            queue='new_tasks'
         )
 
     @pytest.mark.asyncio
@@ -242,7 +243,8 @@ class TestUploadProcessorTask(object):
             )
         mocked_3.assert_called_with(
             countdown=20,
-            max_retries=3
+            max_retries=3,
+            queue='new_tasks'
         )
 
     @pytest.mark.asyncio

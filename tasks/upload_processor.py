@@ -9,6 +9,7 @@ from covreports.utils.sessions import Session
 from redis.exceptions import LockError
 
 from app import celery_app
+from celery_config import task_default_queue
 from database.models import Commit
 from helpers.config import get_config
 from helpers.exceptions import ReportExpiredException
@@ -17,6 +18,7 @@ from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService
 from services.repository import get_repo_provider_service
+from services.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -24,6 +26,7 @@ log = logging.getLogger(__name__)
 
 regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]').search
 merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
+FIRST_RETRY_DELAY = 20
 
 
 class UnableToTestException(Exception):
@@ -54,8 +57,8 @@ class UploadProcessorTask(BaseCodecovTask):
         return True
 
     def schedule_for_later_try(self):
-        retry_in = 20 * 2 ** self.request.retries
-        self.retry(max_retries=3, countdown=retry_in)
+        retry_in = FIRST_RETRY_DELAY * 2 ** self.request.retries
+        self.retry(max_retries=3, countdown=retry_in, queue=task_default_queue)
 
     async def run_async(self, db_session, previous_results, *, repoid, commitid, commit_yaml, arguments_list, **kwargs):
         repoid = int(repoid)
@@ -108,10 +111,9 @@ class UploadProcessorTask(BaseCodecovTask):
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         archive_service = ArchiveService(repository)
-        chunks_archive_service = ArchiveService(commit.repository, bucket='testingarchive03')
         try:
             report = ReportService().build_report_from_commit(
-                commit, chunks_archive_service=chunks_archive_service
+                commit, chunks_archive_service=archive_service
             )
         except Exception:
             log.exception(
@@ -166,8 +168,8 @@ class UploadProcessorTask(BaseCodecovTask):
                     n_processed,
                     extra=dict(repoid=repoid, commit=commitid)
                 )
-                await self.save_report_results(
-                    db_session, chunks_archive_service, repository_service,
+                results_dict = await self.save_report_results(
+                    db_session, archive_service, repository_service,
                     repository, commit, report, pr
                 )
                 log.info(
@@ -177,6 +179,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         repoid=repoid,
                         commit=commitid,
                         commit_yaml=commit_yaml,
+                        url=results_dict.get('url')
                     )
                 )
             return {
@@ -229,6 +232,32 @@ class UploadProcessorTask(BaseCodecovTask):
                 'successful': False,
                 'report': None,
                 'error_type': 'unable_to_test',
+                'should_retry': False
+            }
+        except FileNotInStorageError:
+            if self.request.retries == 0:
+                log.info(
+                    "Scheduling a retry so the file has an extra %d to arrive",
+                    FIRST_RETRY_DELAY,
+                    extra=dict(
+                        repoid=commit.repoid,
+                        commit=commit.commitid,
+                        arguments=arguments
+                    )
+                )
+                self.schedule_for_later_try()
+            log.info(
+                "File did not arrive within the expected time, skipping it",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    arguments=arguments
+                )
+            )
+            return {
+                'successful': False,
+                'report': None,
+                'error_type': 'file_not_in_storage',
                 'should_retry': False
             }
 
@@ -364,7 +393,9 @@ class UploadProcessorTask(BaseCodecovTask):
                 url=url
             )
         )
-        return {}
+        return {
+            'url': url
+        }
 
 
 RegisteredUploadTask = celery_app.register_task(UploadProcessorTask())
