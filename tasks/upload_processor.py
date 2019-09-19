@@ -9,6 +9,7 @@ from covreports.utils.sessions import Session
 from redis.exceptions import LockError
 
 from app import celery_app
+from celery_config import task_default_queue
 from database.models import Commit
 from helpers.config import get_config
 from helpers.exceptions import ReportExpiredException
@@ -25,6 +26,7 @@ log = logging.getLogger(__name__)
 
 regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]').search
 merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
+FIRST_RETRY_DELAY = 20
 
 
 class UnableToTestException(Exception):
@@ -55,8 +57,8 @@ class UploadProcessorTask(BaseCodecovTask):
         return True
 
     def schedule_for_later_try(self):
-        retry_in = 20 * 2 ** self.request.retries
-        self.retry(max_retries=3, countdown=retry_in)
+        retry_in = FIRST_RETRY_DELAY * 2 ** self.request.retries
+        self.retry(max_retries=3, countdown=retry_in, queue=task_default_queue)
 
     async def run_async(self, db_session, previous_results, *, repoid, commitid, commit_yaml, arguments_list, **kwargs):
         repoid = int(repoid)
@@ -233,6 +235,25 @@ class UploadProcessorTask(BaseCodecovTask):
                 'should_retry': False
             }
         except FileNotInStorageError:
+            if self.request.retries == 0:
+                log.info(
+                    "Scheduling a retry so the file has an extra %d to arrive",
+                    FIRST_RETRY_DELAY,
+                    extra=dict(
+                        repoid=commit.repoid,
+                        commit=commit.commitid,
+                        arguments=arguments
+                    )
+                )
+                self.schedule_for_later_try()
+            log.info(
+                "File did not arrive within the expected time, skipping it",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    arguments=arguments
+                )
+            )
             return {
                 'successful': False,
                 'report': None,
