@@ -6,7 +6,7 @@ import torngit
 
 from helpers.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
-from database.models import Owner
+from database.models import Owner, Commit
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +41,25 @@ def _get_repo_provider_service_instance(service_name, **adapter_params):
     )
 
 
+async def fetch_appropriate_parent_for_commit(repository_service, commit: Commit, git_commit: dict):
+    db_session = commit.get_db_session()
+    commitid = commit.commitid
+    parents = git_commit['parents']
+    possible_commit = db_session.query(Commit).filter(Commit.parent_commit_id.in_(parents)).first()
+    if possible_commit:
+        return possible_commit.commitid
+    ancestors_tree = await repository_service.get_ancestors_tree(commitid)
+    elements = [ancestors_tree]
+    while elements:
+        parents = [k for el in elements for k in el['parents']]
+        parent_commits = [p['commitid'] for p in parents]
+        closest_parent = db_session.query(Commit).filter(Commit.parent_commit_id.in_(parent_commits)).first()
+        if closest_parent:
+            return closest_parent.commitid
+        elements = parents
+    return None
+
+
 async def update_commit_from_provider_info(repository_service, commit):
     """
         Takes the result from the torngit commit details, and updates the commit
@@ -56,6 +75,7 @@ async def update_commit_from_provider_info(repository_service, commit):
             extra=dict(repoid=commit.repoid, commit=commit.commitid)
         )
     else:
+        log.info("Found git commit", extra=dict(commit=git_commit))
         author_info = git_commit['author']
         commit_author = get_author_from_commit(
             db_session, repository_service.service, author_info['id'], author_info['username'],
@@ -76,7 +96,9 @@ async def update_commit_from_provider_info(repository_service, commit):
             commit.branch = commit_updates['head']['branch']
 
         commit.message = git_commit['message']
-        commit.parent = git_commit['parents'][0]
+        commit.parent_commit_id = await fetch_appropriate_parent_for_commit(
+            repository_service, commit, git_commit
+        )
         commit.merged = False
         commit.author = commit_author
         commit.updatestamp = datetime.now()
