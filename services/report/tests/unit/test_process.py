@@ -223,22 +223,23 @@ class TestProcessReport(BaseTestCase):
             assert res == lang
             assert func.called
 
-    def test_xxe_entity_not_called(self):
+    def test_xxe_entity_not_called(self, mocker):
         report_xxe_xml = """<?xml version="1.0"?>
         <!DOCTYPE coverage [
         <!ELEMENT coverage ANY >
         <!ENTITY xxe SYSTEM "file:///config/codecov.yml" >]>
         <statements><statement>&xxe;</statement></statements>
         """
-        with patch('services.report.languages.scoverage.from_xml') as func:
-            process.process_report(
-                report=report_xxe_xml,
-                commit_yaml=None,
-                sessionid=0,
-                ignored_lines={},
-                path_fixer=str
-            )
-            assert func.called
-            expected_xml_string = '<statements><statement>&xxe;</statement></statements>'
-            output_xml_string = etree.tostring(func.call_args_list[0][0][0]).decode()
-            assert output_xml_string == expected_xml_string
+        func = mocker.patch('services.report.languages.scoverage.from_xml')
+        process.process_report(
+            report=report_xxe_xml,
+            commit_yaml=None,
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str
+        )
+        assert func.called
+        func.assert_called_with(mocker.ANY, str, {}, 0)
+        expected_xml_string = '<statements><statement>&xxe;</statement></statements>'
+        output_xml_string = etree.tostring(func.call_args_list[0][0][0]).decode()
+        assert output_xml_string == expected_xml_string
