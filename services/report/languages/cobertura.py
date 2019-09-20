@@ -11,7 +11,9 @@ from services.report.languages.base import BaseLanguageProcessor
 class CoberturaProcessor(BaseLanguageProcessor):
 
     def matches_content(self, content, first_line, name):
-        return True  # TODO Fix this
+        if bool(list(content.iter('coverage'))):
+            return True
+        return bool(list(content.iter('scoverage')))
 
     def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
         return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
