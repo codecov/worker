@@ -11,13 +11,7 @@ class CustomLocalJsonFormatter(JsonFormatter):
         levelname = log_record.pop('levelname')
         message = log_record.pop('message')
         exc_info = log_record.pop('exc_info', '')
-        content = self.json_serializer(
-            log_record,
-            default=self.json_default,
-            cls=self.json_encoder,
-            indent=self.json_indent,
-            ensure_ascii=self.json_ensure_ascii
-        )
+        content = super().jsonify_log_record(log_record)
         if exc_info:
             return f"{levelname}: {message} --- {content}\n{exc_info}"
         return f"{levelname}: {message} --- {content}"
