@@ -196,10 +196,9 @@ class UploadTask(BaseCodecovTask):
     async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
         repo_data = repository_service.data
-        should_post_webhook = (not repo_data['repo']['using_integration']
+        should_post_webhook = (not repository.using_integration
                                and not repository.hookid and
                                hasattr(repository_service, 'post_webhook'))
-        should_post_webhook = False  # Temporarily while we test this
 
         # try to add webhook
         if should_post_webhook:
