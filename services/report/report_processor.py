@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import re
 from json import loads
 from lxml import etree
 import logging
 
 from covreports.helpers.yaml import walk
-from services.report import languages
 from services.report.languages.helpers import remove_non_ascii
 
 from services.report.languages import (
@@ -15,15 +13,17 @@ from services.report.languages import (
     CoberturaProcessor, SalesforceProcessor, ElmProcessor, RlangProcessor, FlowcoverProcessor,
     VOneProcessor, ScalaProcessor, CoverallsProcessor, RspecProcessor, NodeProcessor,
     LcovProcessor, GcovProcessor, LuaProcessor, GapProcessor, DLSTProcessor, GoProcessor,
-    XCodeProcessor
+    XCodeProcessor, XCodePlistProcessor
 )
 
 log = logging.getLogger(__name__)
 
 
-def report_type_matching(raw_report):
+def report_type_matching(name, raw_report):
     parser = etree.XMLParser(recover=True, resolve_entities=False)
     first_line = raw_report.split('\n', 1)[0]
+    if raw_report.find('<plist version="1.0">') >= 0 or name.endswith('.plist'):
+        return raw_report, 'plist'
     if raw_report and (
         (first_line and first_line[0] == '<' and len(first_line) > 1 and first_line[1] in 'csCrR') or
         raw_report[:5] == '<?xml'
@@ -60,12 +60,18 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
 
     first_line = remove_non_ascii(report.split('\n', 1)[0])
     original_report = report
-    report, report_type = report_type_matching(report)
-
+    report, report_type = report_type_matching(name, report)
     # tag anything larger the 10 seconds
-    if name.endswith('xccoverage.plist') or (not name and original_report.find('<plist version="1.0">') > -1 and report.startswith('<?xml')):
+    if report_type == 'plist':
+        plist_processors = [
+            XCodePlistProcessor()
+        ]
         # [xcode]
-        return languages.xcodeplist.from_xml(report, path_fixer, ignored_lines, sessionid)
+        for processor in plist_processors:
+            if processor.matches_content(report, first_line, name):
+                return processor.process(
+                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
+                )
 
     elif original_report[-11:] == 'has no code':
         # empty [dlst]

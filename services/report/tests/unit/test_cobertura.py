@@ -134,3 +134,28 @@ class TestCobertura(BaseTestCase):
 
         with pytest.raises(ReportExpiredException, match='Cobertura report expired'):
             cobertura.from_xml(etree.fromstring(xml % ('s', date, 's')), None, {}, None, None)
+
+    def test_matches_content(self):
+        processor = cobertura.CoberturaProcessor()
+        content = etree.fromstring(xml % ('', int(time()), ''))
+        first_line = xml.split("\n", 1)[0]
+        name = "coverage.xml"
+        assert processor.matches_content(content, first_line, name)
+
+    def test_not_matches_content(self):
+        processor = cobertura.CoberturaProcessor()
+        content = etree.fromstring("""<?xml version="1.0" standalone="yes"?>
+            <CoverageDSPriv>
+              <Lines>
+                <LnStart>258</LnStart>
+                <ColStart>0</ColStart>
+                <LnEnd>258</LnEnd>
+                <ColEnd>0</ColEnd>
+                <Coverage>1</Coverage>
+                <SourceFileID>1</SourceFileID>
+                <LineID>0</LineID>
+              </Lines>
+            </CoverageDSPriv>""")
+        first_line = xml.split("\n", 1)[0]
+        name = "coverage.xml"
+        assert not processor.matches_content(content, first_line, name)
