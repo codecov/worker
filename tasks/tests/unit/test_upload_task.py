@@ -31,7 +31,7 @@ class TestUploadTask(object):
         commit = CommitFactory.create(
             message='',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
-            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
             repository__owner__username='ThiagoCodecov',
             repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
         )
@@ -41,6 +41,7 @@ class TestUploadTask(object):
         expected_result = {'was_setup': False, 'was_updated': True}
         assert expected_result == result
         assert commit.message == 'dsidsahdsahdsa'
+        assert commit.parent_commit_id is None
         t1 = upload_processor_task.signature(
             args=({},),
             kwargs=dict(
@@ -108,7 +109,7 @@ class TestUploadTask(object):
         commit = CommitFactory.create(
             message='',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
-            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
             repository__owner__username='ThiagoCodecov',
             repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
         )
@@ -118,6 +119,7 @@ class TestUploadTask(object):
         expected_result = {'was_setup': False, 'was_updated': True}
         assert expected_result == result
         assert commit.message == 'dsidsahdsahdsa'
+        assert commit.parent_commit_id is None
         t1 = upload_processor_task.signature(
             args=({},),
             kwargs=dict(
@@ -161,6 +163,44 @@ class TestUploadTask(object):
         #     kwargs={'repoid': commit.repository.repoid, 'commitid': commit.commitid}
         # )
         # mock_redis.assert_called_with(None)
+        mock_redis.lock.assert_called_with(
+            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_task_proper_parent(self, mocker, mock_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
+        mocked_1 = mocker.patch('tasks.upload.chain')
+        redis_queue = []
+        mocked_3 = mocker.patch.object(UploadTask, 'app')
+        mocked_3.send_task.return_value = True
+        mock_redis.exists.side_effect = [False]
+
+        parent_commit = CommitFactory.create(
+            message='',
+            commitid='c5b67303452bbff57cc1f49984339cde39eb1db5',
+            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+        )
+
+        commit = CommitFactory.create(
+            message='',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+        )
+        dbsession.add(parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
+        expected_result = {'was_setup': False, 'was_updated': True}
+        assert expected_result == result
+        assert commit.message == 'dsidsahdsahdsa'
+        assert commit.parent_commit_id == 'c5b67303452bbff57cc1f49984339cde39eb1db5'
+        assert not mocked_1.called
+        assert not mock_redis.lpop.called
+        mock_redis.exists.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
         mock_redis.lock.assert_called_with(
             f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
         )

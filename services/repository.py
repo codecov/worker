@@ -45,7 +45,8 @@ async def fetch_appropriate_parent_for_commit(repository_service, commit: Commit
     db_session = commit.get_db_session()
     commitid = commit.commitid
     parents = git_commit['parents']
-    possible_commit = db_session.query(Commit).filter(Commit.parent_commit_id.in_(parents)).first()
+    possible_commit_query = db_session.query(Commit).filter(Commit.commitid.in_(parents))
+    possible_commit = possible_commit_query.first()
     if possible_commit:
         return possible_commit.commitid
     ancestors_tree = await repository_service.get_ancestors_tree(commitid)
@@ -53,7 +54,7 @@ async def fetch_appropriate_parent_for_commit(repository_service, commit: Commit
     while elements:
         parents = [k for el in elements for k in el['parents']]
         parent_commits = [p['commitid'] for p in parents]
-        closest_parent = db_session.query(Commit).filter(Commit.parent_commit_id.in_(parent_commits)).first()
+        closest_parent = db_session.query(Commit).filter(Commit.commitid.in_(parent_commits)).first()
         if closest_parent:
             return closest_parent.commitid
         elements = parents
@@ -75,7 +76,7 @@ async def update_commit_from_provider_info(repository_service, commit):
             extra=dict(repoid=commit.repoid, commit=commit.commitid)
         )
     else:
-        log.info("Found git commit", extra=dict(commit=git_commit))
+        log.debug("Found git commit", extra=dict(commit=git_commit))
         author_info = git_commit['author']
         commit_author = get_author_from_commit(
             db_session, repository_service.service, author_info['id'], author_info['username'],
