@@ -149,6 +149,8 @@ class TestPercentSchemaField(BaseTestCase):
 
     def test_simple_coverage_range(self):
         crsf = PercentSchemaField()
+        assert crsf.validate(80) == 80.0
+        assert crsf.validate(80.0) == 80.0
         assert crsf.validate('80%') == 80.0
         assert crsf.validate('80') == 80.0
         assert crsf.validate('0') == 0.0
