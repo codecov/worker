@@ -61,12 +61,6 @@ class TestUploadTask(object):
         mocked_1.assert_called_with(t1, t2)
         mock_redis.lpop.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
         mock_redis.exists.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
-        # mocked_3.send_task.assert_called_with(
-        #     'app.tasks.notify.Notify',
-        #     args=None,
-        #     kwargs={'repoid': commit.repository.repoid, 'commitid': commit.commitid}
-        # )
-        # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
             f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
         )
@@ -204,3 +198,40 @@ class TestUploadTask(object):
         mock_redis.lock.assert_called_with(
             f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
         )
+
+    def test_schedule_task_with_no_tasks(self, dbsession):
+        commit = CommitFactory.create()
+        commit_yaml = {}
+        argument_list = []
+        dbsession.add(commit)
+        dbsession.flush()
+        result = UploadTask().schedule_task(commit, commit_yaml, argument_list)
+        assert result is None
+
+    def test_schedule_task_with_one_task(self, dbsession, mocker):
+        mocked_chain = mocker.patch('tasks.upload.chain')
+        commit = CommitFactory.create()
+        commit_yaml = {'codecov': {'max_report_age': '100y ago'}}
+        argument_dict = {'argument_dict': 1}
+        argument_list = [argument_dict]
+        dbsession.add(commit)
+        dbsession.flush()
+        result = UploadTask().schedule_task(commit, commit_yaml, argument_list)
+        assert result == mocked_chain.return_value.apply_async.return_value
+        t1 = upload_processor_task.signature(
+            args=({},),
+            kwargs=dict(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml=commit_yaml,
+                arguments_list=argument_list
+            )
+        )
+        t2 = upload_finisher_task.signature(
+            kwargs=dict(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml=commit_yaml
+            )
+        )
+        mocked_chain.assert_called_with(t1, t2)

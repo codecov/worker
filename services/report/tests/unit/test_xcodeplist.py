@@ -53,5 +53,4 @@ class TestXCodePlist(BaseTestCase):
     def test_detect(self):
         processor = xcodeplist.XCodePlistProcessor()
         assert processor.matches_content('content', 'first_line', '/path/to/xccoverage.plist')
-        assert processor.matches_content('content', 'first_line', '/path/to/xccoverage.xml')
         assert processor.matches_content(sample_small_plist, 'first_line', None)

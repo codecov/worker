@@ -9,9 +9,7 @@ class XCodePlistProcessor(BaseLanguageProcessor):
 
     def matches_content(self, content, first_line, name):
         if name:
-            if name.endswith('xccoverage.plist'):
-                return True
-            return name.endswith('xccoverage.xml')
+            return name.endswith('xccoverage.plist')
         if content.find('<plist version="1.0">') > -1 and content.startswith('<?xml'):
             return True
 
