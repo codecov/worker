@@ -3,6 +3,8 @@ from lxml import etree
 import pytest
 from json import loads
 from pathlib import Path
+
+from helpers.exceptions import ReportEmptyError
 from tests.base import BaseTestCase
 from services.report import raw_upload_processor as process
 from covreports.utils.tuples import ReportTotals
@@ -84,7 +86,7 @@ class TestProcessRawUpload(BaseTestCase):
         assert ('file2' in master) is ('m' in keys and 'n' not in keys)
 
     def test_none(self):
-        with pytest.raises(AssertionError, match='No files found in report.'):
+        with pytest.raises(ReportEmptyError, match='No files found in report.'):
             process.process_raw_upload(self, {}, '', [])
 
 

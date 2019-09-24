@@ -13,7 +13,7 @@ from app import celery_app
 from celery_config import task_default_queue
 from database.models import Commit
 from helpers.config import get_config
-from helpers.exceptions import ReportExpiredException
+from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from services.archive import ArchiveService
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
@@ -28,10 +28,6 @@ log = logging.getLogger(__name__)
 regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]').search
 merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
 FIRST_RETRY_DELAY = 20
-
-
-class UnableToTestException(Exception):
-    pass
 
 
 class UploadProcessorTask(BaseCodecovTask):
@@ -220,21 +216,11 @@ class UploadProcessorTask(BaseCodecovTask):
                 'error_type': 'report_expired',
                 'should_retry': False
             }
-        except UnableToTestException:
-            log.info(
-                "Unable to process report %s due to inherent test conditions",
-                arguments.get('reportid'),
-                exc_info=True,
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    arguments=arguments
-                )
-            )
+        except ReportEmptyError:
             return {
                 'successful': False,
                 'report': None,
-                'error_type': 'unable_to_test',
+                'error_type': 'report_empty',
                 'should_retry': False
             }
         except FileNotInStorageError:

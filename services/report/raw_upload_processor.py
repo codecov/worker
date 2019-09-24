@@ -4,15 +4,15 @@ import logging
 
 from pathmap import resolve_by_method
 
-from services.yaml import read_yaml_field
 from covreports.utils.sessions import Session
 from covreports.resources import Report
 
+from helpers.exceptions import ReportEmptyError
 from services.report.fixes import get_fixes_from_raw
-from services.report.match import patterns_to_func
 from services.report.fixpaths import fixpaths_to_func, clean_toc, clean_path
-
+from services.report.match import patterns_to_func
 from services.report.report_processor import process_report
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -143,6 +143,7 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
                 original_report.merge(report, joined=joined)
 
     # exit if empty
-    assert not original_report.is_empty(), 'No files found in report.'
+    if original_report.is_empty():
+        raise ReportEmptyError('No files found in report.')
 
     return original_report

@@ -6,7 +6,7 @@ from redis.exceptions import LockError
 
 from tasks.upload_processor import UploadProcessorTask
 from database.tests.factories import CommitFactory
-from helpers.exceptions import ReportExpiredException
+from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from services.archive import ArchiveService
 
 here = Path(__file__)
@@ -297,6 +297,63 @@ class TestUploadProcessorTask(object):
                 {
                     'arguments': {'extra_param': 45, 'url': 'url2'},
                     'error_type': 'report_expired',
+                    'report': None,
+                    'should_retry': False,
+                    'successful': False
+                }
+            ]
+        }
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_upload_task_call_with_empty_report(self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage, mock_redis):
+        mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
+        mocked_1.return_value = None
+        mocked_2 = mocker.patch.object(UploadProcessorTask, 'do_process_individual_report')
+        false_report = mocker.MagicMock(
+            to_database=mocker.MagicMock(
+                return_value=({}, '{}')
+            )
+        )
+        mocked_2.side_effect = [false_report, ReportEmptyError()]
+        mocked_4 = mocker.patch.object(UploadProcessorTask, 'app')
+        mocked_4.send_task.return_value = True
+        commit = CommitFactory.create(
+            message='',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry for the timebomb
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        redis_queue = [
+            {
+                'url': 'url',
+                'what': 'huh'
+            },
+            {
+                'url': 'url2',
+                'extra_param': 45
+            },
+        ]
+        result = await UploadProcessorTask().run_async(
+            dbsession,
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={},
+            arguments_list=redis_queue
+        )
+        expected_result = {
+            'processings_so_far': [
+                {
+                    'arguments': {'url': 'url', 'what': 'huh'},
+                    'successful': True
+                },
+                {
+                    'arguments': {'extra_param': 45, 'url': 'url2'},
+                    'error_type': 'report_empty',
                     'report': None,
                     'should_retry': False,
                     'successful': False
