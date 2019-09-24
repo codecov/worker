@@ -124,8 +124,11 @@ def get_author_from_commit(db_session, service, author_id, username, email, name
     if author:
         return author
     author = Owner(
-        service_id=author_id, service=service,
-        username=username, name=name, email=email
+        service_id=author_id,
+        service=service,
+        username=username,
+        name=name,
+        email=email
     )
     db_session.add(author)
     return author

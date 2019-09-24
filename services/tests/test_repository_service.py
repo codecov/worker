@@ -1,7 +1,9 @@
 import pytest
 from asyncio import Future
 
-from services.repository import get_repo_provider_service, fetch_appropriate_parent_for_commit
+from services.repository import (
+    get_repo_provider_service, fetch_appropriate_parent_for_commit, get_author_from_commit
+)
 from database.tests.factories import RepositoryFactory, OwnerFactory, CommitFactory
 
 
@@ -40,7 +42,6 @@ class TestRepositoryServiceTestCase(object):
         }
         assert res.data == expected_data
         assert res.token == {'key': bot_token, 'secret': None}
-
 
     def test_get_repo_provider_service_no_bot(self, dbsession):
         bot_token = 'bcaa0dc0c66b4a8c8c65ac919a1a91aa'
@@ -116,3 +117,59 @@ class TestRepositoryServiceTestCase(object):
         expected_result = parent_commit_id
         result = await fetch_appropriate_parent_for_commit(mock_repo_provider, commit, git_commit)
         assert expected_result == result
+
+    def test_get_author_from_commit_doesnt_exist(self, dbsession):
+        service = 'github'
+        author_id = '123'
+        username = 'username'
+        email = 'email'
+        name = 'name'
+        author = get_author_from_commit(dbsession, service, author_id, username, email, name)
+        dbsession.flush()
+        assert author.free == 0
+        assert author is not None
+        assert author.service == 'github'
+        assert author.service_id == '123'
+        assert author.name == 'name'
+        assert author.email == 'email'
+        assert author.username == 'username'
+        assert author.plan_activated_users is None
+        assert author.admins is None
+        assert author.permission is None
+        assert author.integration_id is None
+        assert author.yaml is None
+        assert author.oauth_token is None
+        assert author.bot_id is None
+
+    def test_get_author_from_commit_already_exists(self, dbsession):
+        owner = OwnerFactory.create(
+            service='bitbucket',
+            service_id='975',
+            email='different_email@email.com',
+            username='whoknew',
+            yaml=dict(a=['12', '3'])
+        )
+        dbsession.add(owner)
+        dbsession.flush()
+        service = 'bitbucket'
+        author_id = '975'
+        username = 'username'
+        email = 'email'
+        name = 'name'
+        author = get_author_from_commit(dbsession, service, author_id, username, email, name)
+        dbsession.flush()
+        assert author.ownerid == owner.ownerid
+        assert author.free == 0
+        assert author is not None
+        assert author.service == 'bitbucket'
+        assert author.service_id == '975'
+        assert author.name == owner.name
+        assert author.email == 'different_email@email.com'
+        assert author.username == 'whoknew'
+        assert author.plan_activated_users == []
+        assert author.admins == []
+        assert author.permission == []
+        assert author.integration_id is None
+        assert author.yaml == {'a': ['12', '3']}
+        assert author.oauth_token == owner.oauth_token
+        assert author.bot_id == owner.bot_id
