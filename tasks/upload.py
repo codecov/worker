@@ -3,7 +3,7 @@ import re
 from json import loads
 
 from celery import chain
-from torngit.exceptions import TorngitObjectNotFoundError
+from torngit.exceptions import TorngitObjectNotFoundError, TorngitClientError
 
 from app import celery_app
 from celery_config import upload_task_name
@@ -144,6 +144,12 @@ class UploadTask(BaseCodecovTask):
                 extra=dict(repoid=repository.repoid, commit=commit.commitid)
             )
             commit_yaml = None
+        except TorngitClientError:
+            log.exception(
+                "Unable to use yaml from commit because it cannot be fetched",
+                extra=dict(repoid=repository.repoid, commit=commit.commitid)
+            )
+            commit_yaml = None
         return get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
@@ -210,9 +216,10 @@ class UploadTask(BaseCodecovTask):
                 repo_data['repo']['hookid'] = hookid
                 return True
             except Exception:
-                log.exception(
+                log.warning(
                     'Failed to create project webhook',
-                    extra=dict(repoid=repository.repoid, commit=commit.commitid)
+                    extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                    exc_info=True
                 )
         return False
 
