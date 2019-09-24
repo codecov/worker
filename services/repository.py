@@ -78,10 +78,21 @@ async def update_commit_from_provider_info(repository_service, commit):
     else:
         log.debug("Found git commit", extra=dict(commit=git_commit))
         author_info = git_commit['author']
-        commit_author = get_author_from_commit(
-            db_session, repository_service.service, author_info['id'], author_info['username'],
-            author_info['email'], author_info['name']
-        )
+        if not author_info.get('id'):
+            commit_author = None
+            log.info(
+                "Not trying to set an author because it does not have an id",
+                extra=dict(
+                    author_info=author_info,
+                    git_commit=git_commit,
+                    commit=commit.commitid
+                )
+            )
+        else:
+            commit_author = get_author_from_commit(
+                db_session, commit.repository.service, author_info['id'], author_info['username'],
+                author_info['email'], author_info['name']
+            )
 
         # attempt to populate commit.pullid from repository_service if we don't have it
         if not commit.pullid:
@@ -124,8 +135,11 @@ def get_author_from_commit(db_session, service, author_id, username, email, name
     if author:
         return author
     author = Owner(
-        service_id=author_id, service=service,
-        username=username, name=name, email=email
+        service_id=author_id,
+        service=service,
+        username=username,
+        name=name,
+        email=email
     )
     db_session.add(author)
     return author
