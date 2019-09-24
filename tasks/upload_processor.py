@@ -7,6 +7,7 @@ import minio.error
 from celery import exceptions
 from covreports.utils.sessions import Session
 from redis.exceptions import LockError
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
 from celery_config import task_default_queue
@@ -146,6 +147,8 @@ class UploadProcessorTask(BaseCodecovTask):
                     )
                     individual_info.update(result)
                 except exceptions.CeleryError:
+                    raise
+                except SQLAlchemyError:
                     raise
                 except Exception:
                     log.exception(
