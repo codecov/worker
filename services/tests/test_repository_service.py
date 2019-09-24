@@ -2,7 +2,8 @@ import pytest
 from asyncio import Future
 
 from services.repository import (
-    get_repo_provider_service, fetch_appropriate_parent_for_commit, get_author_from_commit
+    get_repo_provider_service, fetch_appropriate_parent_for_commit, get_author_from_commit,
+    update_commit_from_provider_info
 )
 from database.tests.factories import RepositoryFactory, OwnerFactory, CommitFactory
 
@@ -173,3 +174,101 @@ class TestRepositoryServiceTestCase(object):
         assert author.yaml == {'a': ['12', '3']}
         assert author.oauth_token == owner.oauth_token
         assert author.bot_id == owner.bot_id
+
+    @pytest.mark.asyncio
+    async def test_update_commit_from_provider_info_no_author_id(self, dbsession, mocker):
+        possible_parent_commit = CommitFactory.create(
+            message='possible_parent_commit',
+            pullid=None
+        )
+        commit = CommitFactory.create(
+            message='',
+            author=None,
+            pullid=1,
+            totals=None,
+            report_json=None,
+            repository=possible_parent_commit.repository
+        )
+        dbsession.add(possible_parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        f = Future()
+        f.set_result({
+            'author': {
+                'id': None, 'username': None, 'email': 'email@email.com', 'name': 'Mario'
+            },
+            'message': 'This message is brought to you by',
+            'parents': [possible_parent_commit.commitid]
+        })
+        get_pull_request_result = Future()
+        get_pull_request_result.set_result({
+            'head': {'branch': 'newbranchyeah'}
+        })
+        repository_service = mocker.MagicMock(
+            get_commit=mocker.MagicMock(
+                return_value=f
+            ),
+            get_pull_request=mocker.MagicMock(
+                return_value=get_pull_request_result
+            ),
+        )
+        await update_commit_from_provider_info(repository_service, commit)
+        assert commit.author is None
+        assert commit.message == 'This message is brought to you by'
+        assert commit.pullid == 1
+        assert commit.totals is None
+        assert commit.report_json is None
+        assert commit.branch == 'newbranchyeah'
+        assert commit.parent_commit_id == possible_parent_commit.commitid
+        assert commit.state == 'complete'
+
+    @pytest.mark.asyncio
+    async def test_update_commit_from_provider_info_with_author_id(self, dbsession, mocker):
+        possible_parent_commit = CommitFactory.create(
+            message='possible_parent_commit',
+            pullid=None
+        )
+        commit = CommitFactory.create(
+            message='',
+            author=None,
+            pullid=1,
+            totals=None,
+            report_json=None,
+            repository=possible_parent_commit.repository
+        )
+        dbsession.add(possible_parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        f = Future()
+        f.set_result({
+            'author': {
+                'id': 'author_id', 'username': 'author_username',
+                'email': 'email@email.com', 'name': 'Mario'
+            },
+            'message': 'This message is brought to you by',
+            'parents': [possible_parent_commit.commitid]
+        })
+        get_pull_request_result = Future()
+        get_pull_request_result.set_result({
+            'head': {'branch': 'newbranchyeah'}
+        })
+        repository_service = mocker.MagicMock(
+            get_commit=mocker.MagicMock(
+                return_value=f
+            ),
+            get_pull_request=mocker.MagicMock(
+                return_value=get_pull_request_result
+            ),
+        )
+        await update_commit_from_provider_info(repository_service, commit)
+        assert commit.message == 'This message is brought to you by'
+        assert commit.pullid == 1
+        assert commit.totals is None
+        assert commit.report_json is None
+        assert commit.branch == 'newbranchyeah'
+        assert commit.parent_commit_id == possible_parent_commit.commitid
+        assert commit.state == 'complete'
+        assert commit.author is not None
+        assert commit.author.username == 'author_username'

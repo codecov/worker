@@ -22,6 +22,7 @@ class OwnerFactory(Factory):
     name = factory.Faker('name')
     username = factory.Faker('user_name')
     plan_activated_users = []
+    service_id = factory.Sequence(lambda n: 'user%d' % n)
     admins = []
     permission = []
     service = 'github'
