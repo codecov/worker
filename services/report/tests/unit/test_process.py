@@ -245,3 +245,17 @@ class TestProcessReport(BaseTestCase):
         expected_xml_string = '<statements><statement>&xxe;</statement></statements>'
         output_xml_string = etree.tostring(func.call_args_list[0][0][0]).decode()
         assert output_xml_string == expected_xml_string
+
+    def test_format_not_recognized(self, mocker):
+        mocked = mocker.patch('services.report.report_processor.report_type_matching')
+        mocked.return_value = 'bad_processing', 'new_type'
+        result = process.process_report(
+            report="# path=/Users/path/to/app.coverage.txt\n<data>",
+            commit_yaml=None,
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str
+        )
+        assert result is None
+        assert mocked.called
+        mocked.assert_called_with('/Users/path/to/app.coverage.txt', '<data>')
