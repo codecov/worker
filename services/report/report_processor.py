@@ -140,3 +140,12 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
         elif 'conda.' in str(report.get('url')):
             # https://sentry.io/codecov/production/issues/661305768
             return None
+    log.info(
+        "File format could not be recognized",
+        extra=dict(
+            report_filename=name,
+            first_line=first_line,
+            report_type=report_type
+        )
+    )
+    return None

@@ -3,6 +3,8 @@ from lxml import etree
 import pytest
 from json import loads
 from pathlib import Path
+
+from helpers.exceptions import ReportEmptyError
 from tests.base import BaseTestCase
 from services.report import raw_upload_processor as process
 from covreports.utils.tuples import ReportTotals
@@ -84,7 +86,7 @@ class TestProcessRawUpload(BaseTestCase):
         assert ('file2' in master) is ('m' in keys and 'n' not in keys)
 
     def test_none(self):
-        with pytest.raises(AssertionError, match='No files found in report.'):
+        with pytest.raises(ReportEmptyError, match='No files found in report.'):
             process.process_raw_upload(self, {}, '', [])
 
 
@@ -243,3 +245,17 @@ class TestProcessReport(BaseTestCase):
         expected_xml_string = '<statements><statement>&xxe;</statement></statements>'
         output_xml_string = etree.tostring(func.call_args_list[0][0][0]).decode()
         assert output_xml_string == expected_xml_string
+
+    def test_format_not_recognized(self, mocker):
+        mocked = mocker.patch('services.report.report_processor.report_type_matching')
+        mocked.return_value = 'bad_processing', 'new_type'
+        result = process.process_report(
+            report="# path=/Users/path/to/app.coverage.txt\n<data>",
+            commit_yaml=None,
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str
+        )
+        assert result is None
+        assert mocked.called
+        mocked.assert_called_with('/Users/path/to/app.coverage.txt', '<data>')
