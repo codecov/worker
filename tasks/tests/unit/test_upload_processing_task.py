@@ -1,8 +1,10 @@
 from pathlib import Path
-
+from asyncio import Future
 import pytest
 import celery
 from redis.exceptions import LockError
+from torngit.exceptions import TorngitObjectNotFoundError
+from covreports.resources import Report, ReportFile, ReportLine, ReportTotals
 
 from tasks.upload_processor import UploadProcessorTask
 from database.tests.factories import CommitFactory
@@ -361,3 +363,112 @@ class TestUploadProcessorTask(object):
             ]
         }
         assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_save_report_results_apply_diff_not_there(self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage):
+        commit = CommitFactory.create(
+            message='',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry for the timebomb
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        report = Report()
+        report_file_1 = ReportFile('path/to/first.py')
+        report_file_2 = ReportFile('to/second/path.py')
+        report_line_1 = ReportLine(coverage=1, sessions=[[0, 1]])
+        report_line_2 = ReportLine(coverage=0, sessions=[[0, 0]])
+        report_line_3 = ReportLine(coverage=1, sessions=[[0, 1]])
+        report_file_1.append(10, report_line_1)
+        report_file_1.append(12, report_line_2)
+        report_file_2.append(12, report_line_3)
+        report.append(report_file_1)
+        report.append(report_file_2)
+        chunks_archive_service = ArchiveService(commit.repository)
+        f = Future()
+        f.set_exception(TorngitObjectNotFoundError('response', 'message'))
+        mock_repo_provider.get_commit_diff.return_value = f
+        result = await UploadProcessorTask().save_report_results(
+            db_session=dbsession,
+            chunks_archive_service=chunks_archive_service,
+            repository_service=mock_repo_provider,
+            repository=commit.repository,
+            commit=commit,
+            report=report,
+            pr=None
+        )
+        expected_result = {
+            'url': f'v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt'
+        }
+        assert expected_result == result
+        assert report.diff_totals is None
+
+    @pytest.mark.asyncio
+    async def test_save_report_results_apply_diff_valid(self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage):
+        commit = CommitFactory.create(
+            message='',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry for the timebomb
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        report = Report()
+        report_file_1 = ReportFile('path/to/first.py')
+        report_file_2 = ReportFile('to/second/path.py')
+        report_line_1 = ReportLine(coverage=1, sessions=[[0, 1]])
+        report_line_2 = ReportLine(coverage=0, sessions=[[0, 0]])
+        report_line_3 = ReportLine(coverage=1, sessions=[[0, 1]])
+        report_file_1.append(10, report_line_1)
+        report_file_1.append(12, report_line_2)
+        report_file_2.append(12, report_line_3)
+        report.append(report_file_1)
+        report.append(report_file_2)
+        chunks_archive_service = ArchiveService(commit.repository)
+        f = Future()
+        f.set_result({
+            'files': {
+                'path/to/first.py': {
+                    'type': 'modified',
+                    'before': None,
+                    'segments': [
+                        {
+                            'header': ['9', '3', '9', '5'],
+                            'lines': ['+sudo: false', '+', ' language: python', ' ', ' python:']
+                        }
+                    ],
+                    'stats': {'added': 2, 'removed': 0}
+                }
+            }
+        })
+        mock_repo_provider.get_commit_diff.return_value = f
+        result = await UploadProcessorTask().save_report_results(
+            db_session=dbsession,
+            chunks_archive_service=chunks_archive_service,
+            repository_service=mock_repo_provider,
+            commit=commit,
+            repository=commit.repository,
+            report=report,
+            pr=None
+        )
+        expected_result = {
+            'url': f'v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt'
+        }
+        assert expected_result == result
+        expected_diff_totals = ReportTotals(
+            files=1,
+            lines=1,
+            hits=1,
+            misses=0,
+            partials=0,
+            coverage='100',
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0
+        )
+        assert report.diff_totals == expected_diff_totals
