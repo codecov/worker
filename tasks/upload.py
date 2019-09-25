@@ -139,15 +139,17 @@ class UploadTask(BaseCodecovTask):
             commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
             save_repo_yaml_to_database_if_needed(commit, commit_yaml)
         except InvalidYamlException:
-            log.exception(
+            log.warning(
                 "Unable to use yaml from commit because it is invalid",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid)
+                extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                exc_info=True
             )
             commit_yaml = None
         except TorngitClientError:
-            log.exception(
+            log.warning(
                 "Unable to use yaml from commit because it cannot be fetched",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid)
+                extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                exc_info=True
             )
             commit_yaml = None
         return get_final_yaml(

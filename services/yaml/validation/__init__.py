@@ -28,7 +28,10 @@ def validate_yaml(inputted_yaml_dict):
         result = user_yaml_schema.validate(inputted_yaml_dict)
         return post_process(result)
     except SchemaError as e:
-        log.exception("Unable to validate yaml", extra=dict(user_input=inputted_yaml_dict))
+        log.warning(
+            "Unable to validate yaml", extra=dict(user_input=inputted_yaml_dict),
+            exc_info=True
+        )
         raise InvalidYamlException(e)
 
 

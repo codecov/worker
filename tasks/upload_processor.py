@@ -8,6 +8,7 @@ from celery import exceptions
 from covreports.utils.sessions import Session
 from redis.exceptions import LockError
 from sqlalchemy.exc import SQLAlchemyError
+from torngit.exceptions import TorngitObjectNotFoundError
 
 from app import celery_app
 from celery_config import task_default_queue
@@ -357,8 +358,17 @@ class UploadProcessorTask(BaseCodecovTask):
             repository_service, repository, commit, report, pr):
         log.debug("In save_report_results for commit: %s" % commit)
         commitid = commit.commitid
-        report.apply_diff(await repository_service.get_commit_diff(commitid))
-
+        try:
+            report.apply_diff(await repository_service.get_commit_diff(commitid))
+        except TorngitObjectNotFoundError:
+            log.warning(
+                "Could not apply diff to report because commit could not be found",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                ),
+                exc_info=True
+            )
         totals, network_json_str = report.to_database()
         network = loads(network_json_str)
 
