@@ -8,6 +8,7 @@ from celery import exceptions
 from covreports.utils.sessions import Session
 from redis.exceptions import LockError
 from sqlalchemy.exc import SQLAlchemyError
+from torngit.exceptions import TorngitObjectNotFoundError
 
 from app import celery_app
 from celery_config import task_default_queue
@@ -355,10 +356,30 @@ class UploadProcessorTask(BaseCodecovTask):
     async def save_report_results(
             self, db_session, chunks_archive_service,
             repository_service, repository, commit, report, pr):
+        """Saves the result of `report` to the commit database and chunks archive
+        
+        This method only takes care of getting a processed Report to the database and archive.
+
+        It also tries to calculate the diff of the report (which uses commit info
+            from th git provider), but it it fails to do so, it just moves on without such diff
+        """
         log.debug("In save_report_results for commit: %s" % commit)
         commitid = commit.commitid
-        report.apply_diff(await repository_service.get_commit_diff(commitid))
-
+        try:
+            report.apply_diff(await repository_service.get_commit_diff(commitid))
+        except TorngitObjectNotFoundError:
+            # When this happens, we have that commit.totals["diff"] is not available.
+            # Since there is no way to calculate such diff without the git commit,
+            # then we assume having the rest of the report saved there is better than the
+            # alternative of refusing an otherwise "good" report because of the lack of diff
+            log.warning(
+                "Could not apply diff to report because commit could not be found",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                ),
+                exc_info=True
+            )
         totals, network_json_str = report.to_database()
         network = loads(network_json_str)
 
