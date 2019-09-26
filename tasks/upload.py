@@ -121,6 +121,7 @@ class UploadTask(BaseCodecovTask):
                 extra=dict(repoid=repoid, commit=commitid)
             )
             repository = commit.repository
+            repository_service = None
             try:
                 repository_service = get_repo_provider_service(repository, commit)
             except RepositoryWithoutValidBotError:
@@ -132,19 +133,22 @@ class UploadTask(BaseCodecovTask):
                     )
                 )
                 was_updated, was_setup = False, False
-                commit_yaml = get_final_yaml(
-                    owner_yaml=repository.owner.yaml,
-                    repo_yaml=repository.yaml,
-                    commit_yaml=None
-                )
             else:
                 was_updated = await self.possibly_update_commit_from_provider_info(commit, repository_service)
                 was_setup = await self.possibly_setup_webhooks(commit, repository_service)
-                commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
             argument_list = []
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 argument_list.append(arguments)
-            self.schedule_task(commit, commit_yaml, argument_list)
+            if argument_list:
+                if repository_service:
+                    commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
+                else:
+                    commit_yaml = get_final_yaml(
+                        owner_yaml=repository.owner.yaml,
+                        repo_yaml=repository.yaml,
+                        commit_yaml=None
+                    )
+                self.schedule_task(commit, commit_yaml, argument_list)
             return {
                 'was_setup': was_setup,
                 'was_updated': was_updated

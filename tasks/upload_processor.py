@@ -92,19 +92,6 @@ class UploadProcessorTask(BaseCodecovTask):
         commit = commits.first()
         assert commit, 'Commit not found in database.'
         repository = commit.repository
-        try:
-            repository_service = get_repo_provider_service(repository, commit)
-        except RepositoryWithoutValidBotError:
-            log.exception(
-                'Unable to process report because there is no valid bot found for that repo',
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    arguments_list=arguments_list,
-                    commit_yaml=commit_yaml
-                )
-            )
-            raise
         pr = None
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
@@ -169,7 +156,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     extra=dict(repoid=repoid, commit=commitid)
                 )
                 results_dict = await self.save_report_results(
-                    db_session, archive_service, repository_service,
+                    db_session, archive_service,
                     repository, commit, report, pr
                 )
                 log.info(
@@ -354,8 +341,7 @@ class UploadProcessorTask(BaseCodecovTask):
         )
 
     async def save_report_results(
-            self, db_session, chunks_archive_service,
-            repository_service, repository, commit, report, pr):
+            self, db_session, chunks_archive_service, repository, commit, report, pr):
         """Saves the result of `report` to the commit database and chunks archive
         
         This method only takes care of getting a processed Report to the database and archive.
@@ -366,6 +352,7 @@ class UploadProcessorTask(BaseCodecovTask):
         log.debug("In save_report_results for commit: %s" % commit)
         commitid = commit.commitid
         try:
+            repository_service = get_repo_provider_service(repository, commit)
             report.apply_diff(await repository_service.get_commit_diff(commitid))
         except TorngitObjectNotFoundError:
             # When this happens, we have that commit.totals["diff"] is not available.
@@ -379,6 +366,14 @@ class UploadProcessorTask(BaseCodecovTask):
                     commit=commit.commitid,
                 ),
                 exc_info=True
+            )
+        except RepositoryWithoutValidBotError:
+            log.exception(
+                'Could not apply diff to report because there is no valid bot found for that repo',
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid
+                )
             )
         totals, network_json_str = report.to_database()
         network = loads(network_json_str)
