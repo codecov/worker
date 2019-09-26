@@ -1,10 +1,10 @@
-import json
 from time import time
 import xml.etree.cElementTree as etree
 import pytest
 
 from tests.base import BaseTestCase
 from services.report.languages import jacoco
+from helpers.exceptions import ReportExpiredException
 
 
 xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
@@ -101,5 +101,5 @@ class TestJacoco(BaseTestCase):
 
     @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
     def test_expired(self, date):
-        with pytest.raises(AssertionError, match='Jacoco report expired'):
+        with pytest.raises(ReportExpiredException, match='Jacoco report expired'):
             jacoco.from_xml(etree.fromstring(xml % date), None, {}, 0, None)

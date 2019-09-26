@@ -8,6 +8,7 @@ from torngit.exceptions import TorngitObjectNotFoundError, TorngitClientError
 from app import celery_app
 from celery_config import upload_task_name
 from database.models import Commit
+from helpers.exceptions import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
 from services.repository import (
     get_repo_provider_service, update_commit_from_provider_info, create_webhook_on_provider
@@ -120,10 +121,26 @@ class UploadTask(BaseCodecovTask):
                 extra=dict(repoid=repoid, commit=commitid)
             )
             repository = commit.repository
-            repository_service = get_repo_provider_service(repository, commit)
-            was_updated = await self.possibly_update_commit_from_provider_info(commit, repository_service)
-            was_setup = await self.possibly_setup_webhooks(commit, repository_service)
-            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
+            try:
+                repository_service = get_repo_provider_service(repository, commit)
+            except RepositoryWithoutValidBotError:
+                log.warning(
+                    "Unable to reach git provider because repo doesn't have a valid bot",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid
+                    )
+                )
+                was_updated, was_setup = False, False
+                commit_yaml = get_final_yaml(
+                    owner_yaml=repository.owner.yaml,
+                    repo_yaml=repository.yaml,
+                    commit_yaml=None
+                )
+            else:
+                was_updated = await self.possibly_update_commit_from_provider_info(commit, repository_service)
+                was_setup = await self.possibly_setup_webhooks(commit, repository_service)
+                commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
             argument_list = []
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 argument_list.append(arguments)

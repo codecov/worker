@@ -4,3 +4,7 @@ class ReportExpiredException(Exception):
 
 class ReportEmptyError(Exception):
     pass
+
+
+class RepositoryWithoutValidBotError(Exception):
+    pass
