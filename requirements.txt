@@ -1,5 +1,5 @@
 -e git+https://github.com/codecov/report.git@0132ba7c93208dc0909ee6f1c00ac8bbd5f818ef#egg=covreports
--e git+https://github.com/codecov/torngit.git@7b118a8e92d051c293b727ac7629bf63f2440cd2#egg=torngit
+-e git+https://github.com/codecov/torngit.git@bfd915e58a0cd12613049bee55025a89d847e248#egg=torngit
 boto3==1.9.218
 celery==4.3
 cryptography==2.7
