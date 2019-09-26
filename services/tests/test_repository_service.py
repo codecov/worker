@@ -272,3 +272,55 @@ class TestRepositoryServiceTestCase(object):
         assert commit.state == 'complete'
         assert commit.author is not None
         assert commit.author.username == 'author_username'
+
+    @pytest.mark.asyncio
+    async def test_update_commit_from_provider_info_bitbucket_merge(self, dbsession, mocker):
+        possible_parent_commit = CommitFactory.create(
+            message='possible_parent_commit',
+            pullid=None,
+            repository__owner__service='bitbucket'
+        )
+        commit = CommitFactory.create(
+            message='',
+            author=None,
+            pullid=1,
+            totals=None,
+            report_json=None,
+            repository=possible_parent_commit.repository
+        )
+        dbsession.add(possible_parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        f = Future()
+        f.set_result({
+            'author': {
+                'id': 'author_id', 'username': 'author_username',
+                'email': 'email@email.com', 'name': 'Mario'
+            },
+            'message': 'Merged in aaaa/coverage.py (pull request #99) Fix #123: crash',
+            'parents': [possible_parent_commit.commitid]
+        })
+        get_pull_request_result = Future()
+        get_pull_request_result.set_result({
+            'head': {'branch': 'newbranchyeah'},
+            'base': {'branch': 'thebasebranch'},
+        })
+        repository_service = mocker.MagicMock(
+            get_commit=mocker.MagicMock(
+                return_value=f
+            ),
+            get_pull_request=mocker.MagicMock(
+                return_value=get_pull_request_result
+            ),
+        )
+        await update_commit_from_provider_info(repository_service, commit)
+        assert commit.message == 'Merged in aaaa/coverage.py (pull request #99) Fix #123: crash'
+        assert commit.pullid == 1
+        assert commit.totals is None
+        assert commit.report_json is None
+        assert commit.branch == 'thebasebranch'
+        assert commit.parent_commit_id == possible_parent_commit.commitid
+        assert commit.state == 'complete'
+        assert commit.author is not None
+        assert commit.author.username == 'author_username'

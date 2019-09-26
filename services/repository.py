@@ -119,8 +119,8 @@ async def update_commit_from_provider_info(repository_service, commit):
         commit.author = commit_author
         commit.updatestamp = datetime.now()
 
-        if repository_service.service == 'bitbucket':
-            res = merged_pull(git_commit.message)
+        if commit.repository.service == 'bitbucket':
+            res = merged_pull(git_commit['message'])
             if res:
                 pullid = res.groups()[0]
                 pullid = pullid

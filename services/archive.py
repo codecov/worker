@@ -150,7 +150,7 @@ class ArchiveService(object):
     """
     def read_file(self, path):
         contents = self.storage.read_file(self.root, path)
-        return contents.decode()
+        return contents.decode(errors="replace")
 
     """
     Generic method to delete a file from the archive.
