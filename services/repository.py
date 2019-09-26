@@ -29,7 +29,11 @@ def get_repo_provider_service(repository, commit=None):
         ),
         token=token,
         verify_ssl=get_verify_ssl(service),
-        timeouts=_timeouts
+        timeouts=_timeouts,
+        oauth_consumer_token=dict(
+            key=get_config(service, 'client_id'),
+            secret=get_config(service, 'client_secret')
+        )
     )
     return _get_repo_provider_service_instance(repository.service, **adapter_params)
 
