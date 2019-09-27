@@ -7,6 +7,16 @@ import vcr
 from database.base import Base
 from sqlalchemy_utils import create_database, database_exists
 from helpers.config import ConfigHelper
+from celery_config import initialize_logging
+
+
+def pytest_configure(config):
+    """
+    Allows plugins and conftest files to perform initial configuration.
+    This hook is called for every plugin and initial conftest
+    file after command line options have been parsed.
+    """
+    initialize_logging()
 
 
 @pytest.fixture(scope='session', autouse=True)
