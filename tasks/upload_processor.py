@@ -368,12 +368,13 @@ class UploadProcessorTask(BaseCodecovTask):
                 exc_info=True
             )
         except RepositoryWithoutValidBotError:
-            log.exception(
+            log.warning(
                 'Could not apply diff to report because there is no valid bot found for that repo',
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid
-                )
+                ),
+                exc_info=True
             )
         totals, network_json_str = report.to_database()
         network = loads(network_json_str)
