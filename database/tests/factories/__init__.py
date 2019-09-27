@@ -39,6 +39,7 @@ class RepositoryFactory(Factory):
     private = True
     name = 'example-python'
     using_integration = False
+    service_id = factory.Sequence(lambda n: 'id_%d' % n)
 
     owner = factory.SubFactory(OwnerFactory)
     bot = None

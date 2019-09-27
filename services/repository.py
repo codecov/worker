@@ -21,9 +21,13 @@ def get_repo_provider_service(repository, commit=None):
     service = repository.owner.service
     token = get_repo_appropriate_bot_token(repository)
     adapter_params = dict(
-        repo=dict(name=repository.name, using_integration=repository.using_integration or False),
+        repo=dict(
+            name=repository.name,
+            using_integration=repository.using_integration or False,
+            service_id=repository.service_id
+        ),
         owner=dict(
-            service_id=repository.service_id,
+            service_id=repository.owner.service_id,
             ownerid=repository.ownerid,
             username=repository.owner.username
         ),
