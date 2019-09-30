@@ -56,13 +56,15 @@ class MinioStorageService(BaseStorageService):
             'Version': '2012-10-17'
         }
         try:
-            if True:  # not self.minio_client.bucket_exists(bucket_name):
+            if not self.minio_client.bucket_exists(bucket_name):
                 log.debug("Making bucket on bucket %s on location %s", bucket_name, region)
                 self.minio_client.make_bucket(bucket_name, location=region)
                 log.debug("Setting policy")
                 self.minio_client.set_bucket_policy(bucket_name, json.dumps(read_only_policy))
                 log.debug("Done creating root storage")
                 return {'name': bucket_name}
+            else:
+                raise BucketAlreadyExistsError(f"Bucket {bucket_name} already exists")
         # todo should only pass or raise
         except BucketAlreadyOwnedByYou:
             raise BucketAlreadyExistsError(f"Bucket {bucket_name} already exists")

@@ -60,12 +60,12 @@ class ArchiveService(object):
 
         # create storage based on the root, this will throw acceptable
         # exceptions if the bucket exists. ResponseError if it doesn't.
-        log.debug("Creating root storage")
-        try:
-            self.storage.create_root_storage(self.root, self.region)
-        except BucketAlreadyExistsError:
-            pass
-        log.debug("Created root storage")
+        # log.debug("Creating root storage")
+        # try:
+        #     self.storage.create_root_storage(self.root, self.region)
+        # except BucketAlreadyExistsError:
+        #     pass
+        # log.debug("Created root storage")
 
     """
     Accessor for underlying StorageService. You typically shouldn't need
