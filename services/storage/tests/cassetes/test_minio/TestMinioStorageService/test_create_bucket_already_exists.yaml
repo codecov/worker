@@ -3,25 +3,43 @@ interactions:
     body: null
     headers:
       Host: ['minio:9000']
-      User-Agent: [MinIO (Linux; x86_64) minio-py/4.0.19]
       X-Amz-Content-Sha256: [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]
-      X-Amz-Date: [20190821T223332Z]
-    method: PUT
-    uri: http://minio:9000/alreadyexists/
+      X-Amz-Date: [20190930T195929Z]
+    method: GET
+    uri: http://minio:9000/alreadyexists?location=
   response:
     body: {string: '<?xml version="1.0" encoding="UTF-8"?>
 
-        <Error><Code>BucketAlreadyOwnedByYou</Code><Message>Your previous request
-        to create the named bucket succeeded and you already own it.</Message><BucketName>alreadyexists</BucketName><Resource>/alreadyexists/</Resource><RequestId>15BD10E2E28B298A</RequestId><HostId>2126bf0a-5175-4816-a76c-e13a7df46e02</HostId></Error>'}
+        <LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/"></LocationConstraint>'}
     headers:
       Accept-Ranges: [bytes]
-      Content-Length: ['357']
       Content-Security-Policy: [block-all-mixed-content]
       Content-Type: [application/xml]
-      Date: ['Wed, 21 Aug 2019 22:33:32 GMT']
-      Server: [MinIO/RELEASE.2019-08-21T19-40-07Z]
+      Date: ['Mon, 30 Sep 2019 19:59:29 GMT']
+      Server: [Minio/RELEASE.2018-08-02T23-11-36Z (linux; amd64)]
+      Transfer-Encoding: [chunked]
       Vary: [Origin]
-      X-Amz-Request-Id: [15BD10E2E28B298A]
+      X-Amz-Request-Id: [15C94FB19ED357F9]
       X-Xss-Protection: [1; mode=block]
-    status: {code: 409, message: Conflict}
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      host: ['minio:9000']
+      user-agent: [MinIO (Linux; x86_64) minio-py/4.0.19]
+      x-amz-content-sha256: [e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855]
+      x-amz-date: [20190930T195929Z]
+    method: HEAD
+    uri: http://minio:9000/alreadyexists/
+  response:
+    body: {string: ''}
+    headers:
+      Accept-Ranges: [bytes]
+      Content-Security-Policy: [block-all-mixed-content]
+      Date: ['Mon, 30 Sep 2019 19:59:29 GMT']
+      Server: [Minio/RELEASE.2018-08-02T23-11-36Z (linux; amd64)]
+      Vary: [Origin]
+      X-Amz-Request-Id: [15C94FB19F0BAC0E]
+      X-Xss-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
 version: 1
