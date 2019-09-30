@@ -3,7 +3,7 @@ from pathlib import Path
 from asyncio import Future
 
 import pytest
-from torngit.exceptions import TorngitClientError
+from torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 
 from tasks.upload import UploadTask
 from tasks.upload_processor import upload_processor_task
@@ -224,6 +224,48 @@ class TestUploadTaskIntegration(object):
             message='',
             parent_commit_id=None,
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '764y ago'}},  # Sorry, this is a timebomb now
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
+        expected_result = {'was_setup': False, 'was_updated': False}
+        assert expected_result == result
+        assert commit.message == ''
+        assert commit.parent_commit_id is None
+        mocked_1.assert_called_with(
+            commit, {'codecov': {'max_report_age': '764y ago'}}, redis_queue
+        )
+        assert not mocked_fetch_yaml.called
+        mock_redis.exists.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
+        mock_redis.lock.assert_called_with(
+            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_task_bot_no_permissions(self, mocker, mock_configuration, dbsession, mock_redis):
+        mocked_1 = mocker.patch.object(UploadTask, 'schedule_task')
+        mocked_3 = mocker.patch.object(UploadTask, 'app')
+        mocked_3.send_task.return_value = True
+        mocked_fetch_yaml = mocker.patch.object(UploadTask, 'fetch_commit_yaml_and_possibly_store')
+        redis_queue = [
+            {
+                'part': 'part1'
+            },
+            {
+                'part': 'part2'
+            }
+        ]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mock_redis.exists.side_effect = [True] * 2 + [False]
+        mock_redis.lpop.side_effect = jsonified_redis_queue
+        mock_get_repo_service = mocker.patch('tasks.upload.get_repo_provider_service')
+        mock_get_repo_service.side_effect = TorngitRepoNotFoundError('fake_response', 'message')
+        commit = CommitFactory.create(
+            message='',
+            parent_commit_id=None,
             repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
             repository__owner__username='ThiagoCodecov',
             repository__yaml={'codecov': {'max_report_age': '764y ago'}},  # Sorry, this is a timebomb now
