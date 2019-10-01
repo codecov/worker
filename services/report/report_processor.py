@@ -102,8 +102,6 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
         ]
     }
     processors = processor_dict.get(report_type, [])
-    print("processors")
-    print(processors)
     # [xcode]
     for processor in processors:
         if processor.matches_content(report, first_line, name):

@@ -202,7 +202,7 @@ class TestProcessReport(BaseTestCase):
            ('rlang.from_json', '{"uploader": "R"}'),
            ('scala.from_json', '{"fileReports": ""}'),
            ('coveralls.from_json', '{"source_files": ""}'),
-           ('node.from_json', '{"branchMap": ""}'),
+           ('node.from_json', '{"filename": {"branchMap": ""}}'),
            ('scoverage.from_xml', '<statements><data>'+u'\xf1'+'</data></statements>'),
            ('clover.from_xml', '<coverage generated="abc"><SampleTag></SampleTag></coverage>'),
            ('cobertura.from_xml', '<coverage><SampleTag></SampleTag></coverage>'),
