@@ -8,7 +8,7 @@ from celery import exceptions
 from covreports.utils.sessions import Session
 from redis.exceptions import LockError
 from sqlalchemy.exc import SQLAlchemyError
-from torngit.exceptions import TorngitObjectNotFoundError, TorngitClientError
+from torngit.exceptions import TorngitClientError
 
 from app import celery_app
 from celery_config import task_default_queue
@@ -55,8 +55,8 @@ class UploadProcessorTask(BaseCodecovTask):
         return True
 
     def schedule_for_later_try(self):
-        retry_in = FIRST_RETRY_DELAY * 2 ** self.request.retries
-        self.retry(max_retries=3, countdown=retry_in, queue=task_default_queue)
+        retry_in = FIRST_RETRY_DELAY * 3 ** self.request.retries
+        self.retry(max_retries=5, countdown=retry_in, queue=task_default_queue)
 
     async def run_async(self, db_session, previous_results, *, repoid, commitid, commit_yaml, arguments_list, **kwargs):
         repoid = int(repoid)

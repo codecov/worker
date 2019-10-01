@@ -3,6 +3,7 @@ import re
 from json import loads
 
 from celery import chain
+from redis.exceptions import LockError
 from torngit.exceptions import (
     TorngitObjectNotFoundError, TorngitClientError, TorngitRepoNotFoundError
 )
@@ -111,59 +112,74 @@ class UploadTask(BaseCodecovTask):
         repoid = int(repoid)
         lock_name = f"upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
-        with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
-            uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
-            commit = None
-            commits = db_session.query(Commit).filter(
-                Commit.repoid == repoid,
-                Commit.commitid == commitid
-            )
-            commit = commits.first()
-            assert commit, 'Commit not found in database.'
-            log.info(
-                "Starting processing of report",
-                extra=dict(repoid=repoid, commit=commitid)
-            )
-            repository = commit.repository
-            repository_service = None
-            was_updated, was_setup = False, False
-            try:
-                repository_service = get_repo_provider_service(repository, commit)
-                was_updated = await self.possibly_update_commit_from_provider_info(commit, repository_service)
-                was_setup = await self.possibly_setup_webhooks(commit, repository_service)
-            except RepositoryWithoutValidBotError:
-                log.warning(
-                    "Unable to reach git provider because repo doesn't have a valid bot",
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid
-                    )
+        try:
+            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
+                return await self.run_async_within_lock(
+                    db_session, redis_connection, repoid, commitid, *args, **kwargs
                 )
-            except TorngitRepoNotFoundError:
-                log.warning(
-                    "Unable to reach git provider because this specific bot can't see that repository",
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid
-                    )
+        except LockError:
+            log.warning(
+                "Unable to acquire lock for key %s. Retrying", lock_name,
+                extra=dict(
+                    commit=commitid,
+                    repoid=repoid
                 )
-            argument_list = []
-            for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
-                argument_list.append(arguments)
-            if argument_list:
-                if repository_service:
-                    commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
-                else:
-                    commit_yaml = get_final_yaml(
-                        owner_yaml=repository.owner.yaml,
-                        repo_yaml=repository.yaml,
-                        commit_yaml=None
-                    )
-                self.schedule_task(commit, commit_yaml, argument_list)
-            return {
-                'was_setup': was_setup,
-                'was_updated': was_updated
-            }
+            )
+            self.retry(max_retries=3, countdown=20 * 2 ** self.request.retries)
+
+    async def run_async_within_lock(self, db_session, redis_connection, repoid, commitid, *args, **kwargs):
+        uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
+        commit = None
+        commits = db_session.query(Commit).filter(
+            Commit.repoid == repoid,
+            Commit.commitid == commitid
+        )
+        commit = commits.first()
+        assert commit, 'Commit not found in database.'
+        log.info(
+            "Starting processing of report",
+            extra=dict(repoid=repoid, commit=commitid)
+        )
+        repository = commit.repository
+        repository_service = None
+        was_updated, was_setup = False, False
+        try:
+            repository_service = get_repo_provider_service(repository, commit)
+            was_updated = await self.possibly_update_commit_from_provider_info(commit, repository_service)
+            was_setup = await self.possibly_setup_webhooks(commit, repository_service)
+        except RepositoryWithoutValidBotError:
+            log.warning(
+                "Unable to reach git provider because repo doesn't have a valid bot",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                )
+            )
+        except TorngitRepoNotFoundError:
+            log.warning(
+                "Unable to reach git provider because this specific bot can't see that repository",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                )
+            )
+        argument_list = []
+        for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
+            argument_list.append(arguments)
+        if argument_list:
+            if repository_service:
+                commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
+            else:
+                commit_yaml = get_final_yaml(
+                    owner_yaml=repository.owner.yaml,
+                    repo_yaml=repository.yaml,
+                    commit_yaml=None
+                )
+            self.schedule_task(commit, commit_yaml, argument_list)
+        return {
+            'was_setup': was_setup,
+            'was_updated': was_updated
+        }
 
     async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
