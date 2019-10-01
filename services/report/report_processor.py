@@ -61,26 +61,14 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
     first_line = remove_non_ascii(report.split('\n', 1)[0])
     original_report = report
     report, report_type = report_type_matching(name, report)
-    # tag anything larger the 10 seconds
-    if report_type == 'plist':
-        plist_processors = [
-            XCodePlistProcessor()
-        ]
-        # [xcode]
-        for processor in plist_processors:
-            if processor.matches_content(report, first_line, name):
-                return processor.process(
-                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
-                )
-
-    elif original_report[-11:] == 'has no code':
+    if original_report[-11:] == 'has no code':
         # empty [dlst]
         return None
-
-    elif report_type == 'xml':
-        if report is None or len(report) is 0:
-            return
-        xml_processors = [
+    processor_dict = {
+        'plist': [
+            XCodePlistProcessor()
+        ],
+        'xml': [
             SCoverageProcessor(),
             JetBrainsXMLProcessor(),
             CloverProcessor(),
@@ -90,14 +78,8 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
             VbProcessor(),
             VbTwoProcessor(),
             CoberturaProcessor()
-        ]
-        for processor in xml_processors:
-            if processor.matches_content(report, first_line, name):
-                return processor.process(
-                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
-                )
-    elif report_type == 'txt':
-        txt = [
+        ],
+        'txt': [
             LcovProcessor(),
             GcovProcessor(),
             LuaProcessor(),
@@ -105,16 +87,8 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
             DLSTProcessor(),
             GoProcessor(),
             XCodeProcessor()
-        ]
-        for processor in txt:
-            if processor.matches_content(report, first_line, name):
-                return processor.process(
-                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
-                )
-
-    elif report_type == 'json':
-
-        json_processors = [
+        ],
+        'json': [
             SalesforceProcessor(),
             ElmProcessor(),
             RlangProcessor(),
@@ -126,20 +100,30 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
             GapProcessor(),
             NodeProcessor(),
         ]
-        for processor in json_processors:
-            if processor.matches_content(report, first_line, name):
+    }
+    processors = processor_dict.get(report_type, [])
+    print("processors")
+    print(processors)
+    # [xcode]
+    for processor in processors:
+        if processor.matches_content(report, first_line, name):
+            try:
                 return processor.process(
                     name, report, path_fixer, ignored_lines, sessionid, commit_yaml
                 )
-
-        # Just leaving those here out of explicitness, but at this point, no processor matched
-        if walk(report, ('stats', 'suites')):
-            # https://sentry.io/codecov/v4/issues/160367055/activity/
-            return None
-
-        elif 'conda.' in str(report.get('url')):
-            # https://sentry.io/codecov/production/issues/661305768
-            return None
+            except Exception:
+                log.exception(
+                    "There was an issue processing the specific file",
+                    extra=dict(
+                        name=name,
+                        ignored_lines=ignored_lines,
+                        sessionid=sessionid,
+                        commit_yaml=commit_yaml,
+                        first_line=first_line,
+                        report_type=report_type
+                    )
+                )
+                raise
     log.info(
         "File format could not be recognized",
         extra=dict(
