@@ -3,7 +3,9 @@ import re
 from json import loads
 
 from celery import chain
-from torngit.exceptions import TorngitObjectNotFoundError, TorngitClientError
+from torngit.exceptions import (
+    TorngitObjectNotFoundError, TorngitClientError, TorngitRepoNotFoundError
+)
 
 from app import celery_app
 from celery_config import upload_task_name
@@ -113,7 +115,9 @@ class UploadTask(BaseCodecovTask):
             uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
             commit = None
             commits = db_session.query(Commit).filter(
-                    Commit.repoid == repoid, Commit.commitid == commitid)
+                Commit.repoid == repoid,
+                Commit.commitid == commitid
+            )
             commit = commits.first()
             assert commit, 'Commit not found in database.'
             log.info(
@@ -122,8 +126,11 @@ class UploadTask(BaseCodecovTask):
             )
             repository = commit.repository
             repository_service = None
+            was_updated, was_setup = False, False
             try:
                 repository_service = get_repo_provider_service(repository, commit)
+                was_updated = await self.possibly_update_commit_from_provider_info(commit, repository_service)
+                was_setup = await self.possibly_setup_webhooks(commit, repository_service)
             except RepositoryWithoutValidBotError:
                 log.warning(
                     "Unable to reach git provider because repo doesn't have a valid bot",
@@ -132,10 +139,14 @@ class UploadTask(BaseCodecovTask):
                         commit=commitid
                     )
                 )
-                was_updated, was_setup = False, False
-            else:
-                was_updated = await self.possibly_update_commit_from_provider_info(commit, repository_service)
-                was_setup = await self.possibly_setup_webhooks(commit, repository_service)
+            except TorngitRepoNotFoundError:
+                log.warning(
+                    "Unable to reach git provider because this specific bot can't see that repository",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid
+                    )
+                )
             argument_list = []
             for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
                 argument_list.append(arguments)

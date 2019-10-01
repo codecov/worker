@@ -139,11 +139,11 @@ async def update_commit_from_provider_info(repository_service, commit):
 
 
 def get_author_from_commit(db_session, service, author_id, username, email, name):
-    author = db_session.query(Owner).filter_by(service_id=author_id, service=service).first()
+    author = db_session.query(Owner).filter_by(service_id=str(author_id), service=service).first()
     if author:
         return author
     author = Owner(
-        service_id=author_id,
+        service_id=str(author_id),
         service=service,
         username=username,
         name=name,
