@@ -46,24 +46,7 @@ def report_type_matching(name, raw_report):
     return raw_report, 'txt'
 
 
-def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
-    name = ''
-    if report[:7] == '# path=':
-        if '\n' not in report:
-            return None
-        name, report = report[7:].split('\n', 1)
-        report = report.strip()
-        if not report:
-            return None
-
-        name = name.replace('#', '/').replace('\\', '/')
-
-    first_line = remove_non_ascii(report.split('\n', 1)[0])
-    original_report = report
-    report, report_type = report_type_matching(name, report)
-    if original_report[-11:] == 'has no code':
-        # empty [dlst]
-        return None
+def get_possible_processors_list(report_type):
     processor_dict = {
         'plist': [
             XCodePlistProcessor()
@@ -101,7 +84,28 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
             NodeProcessor(),
         ]
     }
-    processors = processor_dict.get(report_type, [])
+    return processor_dict.get(report_type, [])
+
+
+def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
+    name = ''
+    if report[:7] == '# path=':
+        if '\n' not in report:
+            return None
+        name, report = report[7:].split('\n', 1)
+        report = report.strip()
+        if not report:
+            return None
+
+        name = name.replace('#', '/').replace('\\', '/')
+
+    first_line = remove_non_ascii(report.split('\n', 1)[0])
+    original_report = report
+    report, report_type = report_type_matching(name, report)
+    if original_report[-11:] == 'has no code':
+        # empty [dlst]
+        return None
+    processors = get_possible_processors_list(report_type)
     # [xcode]
     for processor in processors:
         if processor.matches_content(report, first_line, name):
@@ -113,7 +117,8 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
                 log.exception(
                     "There was an issue processing the specific file",
                     extra=dict(
-                        name=name,
+                        processor_class=processor.get_processor_name(),
+                        report_given_filename=name,
                         ignored_lines=ignored_lines,
                         sessionid=sessionid,
                         commit_yaml=commit_yaml,
@@ -121,7 +126,7 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
                         report_type=report_type
                     )
                 )
-                raise
+                return None
     log.info(
         "File format could not be recognized",
         extra=dict(

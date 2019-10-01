@@ -259,3 +259,26 @@ class TestProcessReport(BaseTestCase):
         assert result is None
         assert mocked.called
         mocked.assert_called_with('/Users/path/to/app.coverage.txt', '<data>')
+
+    def test_process_report_exception_raised(self, mocker):
+        mock_bad_processor = mocker.MagicMock(
+            matches_content=mocker.MagicMock(
+                return_value=True
+            ),
+            process=mocker.MagicMock(
+                side_effect=Exception()
+            ),
+            name='mock_bad_processor'
+        )
+        mock_possible_list = mocker.patch(
+            'services.report.report_processor.get_possible_processors_list'
+        )
+        mock_possible_list.return_value = [mock_bad_processor]
+        result = process.process_report(
+            report="# path=/Users/path/to/app.coverage.txt\n<data>",
+            commit_yaml=None,
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str
+        )
+        assert result is None

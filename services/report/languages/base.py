@@ -8,3 +8,7 @@ class BaseLanguageProcessor(object):
 
     def process(self, content, path_fixer, ignored_lines, sessionid):
         pass
+
+    @classmethod
+    def get_processor_name(cls):
+        return cls.__name__
