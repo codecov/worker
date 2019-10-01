@@ -8,7 +8,7 @@ from celery import exceptions
 from covreports.utils.sessions import Session
 from redis.exceptions import LockError
 from sqlalchemy.exc import SQLAlchemyError
-from torngit.exceptions import TorngitObjectNotFoundError
+from torngit.exceptions import TorngitObjectNotFoundError, TorngitClientError
 
 from app import celery_app
 from celery_config import task_default_queue
@@ -354,13 +354,13 @@ class UploadProcessorTask(BaseCodecovTask):
         try:
             repository_service = get_repo_provider_service(repository, commit)
             report.apply_diff(await repository_service.get_commit_diff(commitid))
-        except TorngitObjectNotFoundError:
+        except TorngitClientError:
             # When this happens, we have that commit.totals["diff"] is not available.
             # Since there is no way to calculate such diff without the git commit,
             # then we assume having the rest of the report saved there is better than the
             # alternative of refusing an otherwise "good" report because of the lack of diff
             log.warning(
-                "Could not apply diff to report because commit could not be found",
+                "Could not apply diff to report because there was a 4xx error",
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
