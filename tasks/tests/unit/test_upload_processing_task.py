@@ -429,9 +429,6 @@ class TestUploadProcessorTask(object):
         report.append(report_file_1)
         report.append(report_file_2)
         chunks_archive_service = ArchiveService(commit.repository)
-        f = Future()
-        f.set_exception(TorngitObjectNotFoundError('response', 'message'))
-        mock_repo_provider.get_commit_diff.return_value = f
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
             chunks_archive_service=chunks_archive_service,

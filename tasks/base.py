@@ -4,6 +4,7 @@ import logging
 from app import celery_app
 from database.engine import get_db_session
 from sqlalchemy.exc import SQLAlchemyError
+from helpers.metrics import metrics
 
 log = logging.getLogger('worker')
 
@@ -14,7 +15,8 @@ class BaseCodecovTask(celery_app.Task):
         loop = asyncio.get_event_loop()
         db_session = get_db_session()
         try:
-            return loop.run_until_complete(self.run_async(db_session, *args, **kwargs))
+            with metrics.timer(f'new-worker.task.%s.run' % self.name):
+                return loop.run_until_complete(self.run_async(db_session, *args, **kwargs))
         except SQLAlchemyError:
             log.exception(
                 "An error talking to the database occurred",
