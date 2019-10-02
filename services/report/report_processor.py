@@ -4,8 +4,8 @@ from json import loads
 from lxml import etree
 import logging
 
-from covreports.helpers.yaml import walk
 from services.report.languages.helpers import remove_non_ascii
+from helpers.exceptions import ReportExpiredException
 
 from services.report.languages import (
     SCoverageProcessor, JetBrainsXMLProcessor, CloverProcessor,
@@ -113,9 +113,11 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
                 return processor.process(
                     name, report, path_fixer, ignored_lines, sessionid, commit_yaml
                 )
+            except ReportExpiredException:
+                raise
             except Exception:
                 log.exception(
-                    "There was an issue processing the specific file",
+                    "There was an unexpected issue processing the specific file",
                     extra=dict(
                         processor_class=processor.get_processor_name(),
                         report_given_filename=name,
@@ -126,7 +128,7 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
                         report_type=report_type
                     )
                 )
-                return None
+                raise
     log.info(
         "File format could not be recognized",
         extra=dict(
