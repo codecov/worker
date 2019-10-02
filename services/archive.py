@@ -6,6 +6,7 @@ from base64 import b16encode
 from enum import Enum
 
 from helpers.config import get_config
+from helpers.metrics import metrics
 from services.storage import get_appropriate_storage_service
 from services.storage.exceptions import BucketAlreadyExistsError
 
@@ -148,6 +149,7 @@ class ArchiveService(object):
     """
     Generic method to read a file from the archive
     """
+    @metrics.timer('services.archive.read_file')
     def read_file(self, path):
         contents = self.storage.read_file(self.root, path)
         return contents.decode(errors="replace")
