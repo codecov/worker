@@ -109,26 +109,9 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
     # [xcode]
     for processor in processors:
         if processor.matches_content(report, first_line, name):
-            try:
-                return processor.process(
-                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
-                )
-            except ReportExpiredException:
-                raise
-            except Exception:
-                log.exception(
-                    "There was an unexpected issue processing the specific file",
-                    extra=dict(
-                        processor_class=processor.get_processor_name(),
-                        report_given_filename=name,
-                        ignored_lines=ignored_lines,
-                        sessionid=sessionid,
-                        commit_yaml=commit_yaml,
-                        first_line=first_line,
-                        report_type=report_type
-                    )
-                )
-                raise
+            return processor.process(
+                name, report, path_fixer, ignored_lines, sessionid, commit_yaml
+            )
     log.info(
         "File format could not be recognized",
         extra=dict(
