@@ -15,7 +15,7 @@ class BaseCodecovTask(celery_app.Task):
         loop = asyncio.get_event_loop()
         db_session = get_db_session()
         try:
-            with metrics.timer(f'new-worker.task.%s.run' % self.name):
+            with metrics.timer(f'new-worker.task.{self.name}.run'):
                 return loop.run_until_complete(self.run_async(db_session, *args, **kwargs))
         except SQLAlchemyError:
             log.exception(
