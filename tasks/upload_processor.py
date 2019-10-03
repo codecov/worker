@@ -4,7 +4,7 @@ import logging
 import re
 
 import minio.error
-from celery import exceptions
+from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from covreports.utils.sessions import Session
 from redis.exceptions import LockError
 from sqlalchemy.exc import SQLAlchemyError
@@ -130,7 +130,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         commit, report, should_delete_archive, **arguments
                     )
                     individual_info.update(result)
-                except exceptions.CeleryError:
+                except (CeleryError, SoftTimeLimitExceeded):
                     raise
                 except SQLAlchemyError:
                     raise
@@ -172,7 +172,7 @@ class UploadProcessorTask(BaseCodecovTask):
             return {
                 'processings_so_far': processings_so_far,
             }
-        except exceptions.CeleryError:
+        except CeleryError:
             raise
         except Exception:
             commit.state = 'error'

@@ -85,3 +85,19 @@ class Test(BaseTestCase):
         for filename, lines in record['result'].items():
             for ln, result in lines.items():
                 assert loads(dumps(report[filename][int(ln)])) == result
+
+    def test_matches_content_bad_user_input(self):
+        processor = node.NodeProcessor()
+        user_input_1 = {'filename_1': {}, 'filename_2': 1}
+        assert not processor.matches_content(user_input_1, 'first_line', 'coverage.json')
+        user_input_2 = {'filename_1': 'adsadasddsa', 'filename_2': {}}
+        assert not processor.matches_content(user_input_2, 'first_line', 'coverage.json')
+        user_input_3 = 'filename: 1'
+        assert not processor.matches_content(user_input_3, 'first_line', 'coverage.json')
+
+    def test_matches_content_good_user_input(self):
+        processor = node.NodeProcessor()
+        user_input_1 = {'filename_1': {}, 'filename_2': {'statementMap': {}}}
+        assert processor.matches_content(user_input_1, 'first_line', 'coverage.json')
+        user_input_2 = {'filename_1': {'statementMap': 1}, 'filename_2': {}}
+        assert processor.matches_content(user_input_2, 'first_line', 'coverage.json')

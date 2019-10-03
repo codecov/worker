@@ -202,7 +202,7 @@ class TestProcessReport(BaseTestCase):
            ('rlang.from_json', '{"uploader": "R"}'),
            ('scala.from_json', '{"fileReports": ""}'),
            ('coveralls.from_json', '{"source_files": ""}'),
-           ('node.from_json', '{"branchMap": ""}'),
+           ('node.from_json', '{"filename": {"branchMap": ""}}'),
            ('scoverage.from_xml', '<statements><data>'+u'\xf1'+'</data></statements>'),
            ('clover.from_xml', '<coverage generated="abc"><SampleTag></SampleTag></coverage>'),
            ('cobertura.from_xml', '<coverage><SampleTag></SampleTag></coverage>'),
@@ -259,3 +259,28 @@ class TestProcessReport(BaseTestCase):
         assert result is None
         assert mocked.called
         mocked.assert_called_with('/Users/path/to/app.coverage.txt', '<data>')
+
+    def test_process_report_exception_raised(self, mocker):
+        class SpecialUnexpectedException(Exception):
+            pass
+        mock_bad_processor = mocker.MagicMock(
+            matches_content=mocker.MagicMock(
+                return_value=True
+            ),
+            process=mocker.MagicMock(
+                side_effect=SpecialUnexpectedException()
+            ),
+            name='mock_bad_processor'
+        )
+        mock_possible_list = mocker.patch(
+            'services.report.report_processor.get_possible_processors_list'
+        )
+        mock_possible_list.return_value = [mock_bad_processor]
+        with pytest.raises(SpecialUnexpectedException):
+            process.process_report(
+                report="# path=/Users/path/to/app.coverage.txt\n<data>",
+                commit_yaml=None,
+                sessionid=0,
+                ignored_lines={},
+                path_fixer=str
+            )
