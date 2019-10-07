@@ -22,6 +22,13 @@ class ReportService(object):
                 chunks_archive_service = ArchiveService(commit.repository)
             chunks = chunks_archive_service.read_chunks(commitid)
         except FileNotInStorageError:
+            log.info(
+                "File for chunks not found in storage",
+                extra=dict(
+                    commit=commitid,
+                    repo=commit.repoid
+                )
+            )
             return Report(totals=None, chunks=None)
         if chunks is None:
             return Report(totals=None, chunks=None)
