@@ -21,7 +21,7 @@ def initialize_logging(loglevel=logging.INFO, **kwargs):
     return celery_logger
 
 
-broker_url = get_config('services', 'redis_url'),
+broker_url = get_config('services', 'celery_broker') or get_config('services', 'redis_url')
 result_backend = get_config('services', 'redis_url')
 
 task_default_queue = 'new_tasks'
