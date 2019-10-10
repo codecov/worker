@@ -43,6 +43,7 @@ xml = '''<?xml version="1.0" ?>
                           </conditions>
                         </line>
                         <line branch="true" condition-coverage="0%% (0/2)" hits="1" missing-branches="exit,exit,exit" number="7"/>
+                        <line branch="true" condition-coverage="50%%" hits="1" number="8"/>
                     </lines>
                 </class>
                 <!-- Scala coverage -->
@@ -89,7 +90,8 @@ class TestCobertura(BaseTestCase):
                     (4, '2/2', 'b', [[0, '2/2']], None, None),
                     (5, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump']]], None, None),
                     (6, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump']]], None, None),
-                    (7, '0/2', 'b', [[0, '0/2', ['loop', 'exit']]], None, None)
+                    (7, '0/2', 'b', [[0, '0/2', ['loop', 'exit']]], None, None),
+                    (8, 1, None, [[0, 1]], None, None)
                 ]
             },
             'report': {
@@ -102,8 +104,8 @@ class TestCobertura(BaseTestCase):
                     ],
                     'source': [
                         0,
-                        [0, 7, 2, 2, 3, '28.57143', 6, 0, 0, 0, 0, 0, 0],
-                        [[0, 7, 2, 2, 3, '28.57143', 6, 0, 0, 0, 0, 0, 0]],
+                        [0, 8, 3, 2, 3, '37.50000', 6, 0, 0, 0, 0, 0, 0],
+                        [[0, 8, 3, 2, 3, '37.50000', 6, 0, 0, 0, 0, 0, 0]],
                         None
                     ]
                 },
@@ -114,13 +116,13 @@ class TestCobertura(BaseTestCase):
                 'M': 0,
                 'N': 0,
                 'b': 7,
-                'c': '40.00000',
+                'c': '45.45455',
                 'd': 1,
                 'diff': None,
                 'f': 2,
-                'h': 4,
+                'h': 5,
                 'm': 3,
-                'n': 10,
+                'n': 11,
                 'p': 3,
                 's': 0
             }

@@ -1,3 +1,5 @@
+import re
+
 from timestring import Date
 
 from services.yaml import read_yaml_field
@@ -58,9 +60,10 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 sessions = None
 
                 # coverage
-                branch = _line.get('condition-coverage', '')
-                if branch and branch != 'NaN':
-                    coverage = branch.split(' ', 1)[1][1:-1]  # 1/2
+                branch = _line.get('branch','')
+                condition_coverage = _line.get('condition-coverage', '')
+                if branch == "true" and re.search("\(\d+\/\d+\)", condition_coverage) is not None:
+                    coverage = condition_coverage.split(' ', 1)[1][1:-1]  # 1/2
                     _type = 'b'
                 else:
                     coverage = Int(_line.get('hits'))
