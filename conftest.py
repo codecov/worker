@@ -3,6 +3,7 @@ from asyncio import Future
 
 import pytest
 import vcr
+from sqlalchemy.exc import OperationalError
 
 from database.base import Base
 from sqlalchemy_utils import create_database, database_exists
@@ -19,16 +20,22 @@ def pytest_configure(config):
     initialize_logging()
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope='session')
 def db(engine, sqlalchemy_connect_url):
     database_url = sqlalchemy_connect_url
-    if not database_exists(database_url):
-        create_database(database_url)
+    try:
+        if not database_exists(database_url):
+            create_database(database_url)
+    except OperationalError:
+        pytest.skip("No available db")
     connection = engine.connect()
     connection.execute('DROP SCHEMA IF EXISTS public CASCADE;')
     connection.execute('CREATE SCHEMA public;')
     Base.metadata.create_all(engine)
 
+@pytest.fixture
+def dbsession(db, dbsession):
+    return dbsession
 
 @pytest.fixture
 def mock_configuration(mocker):
