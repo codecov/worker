@@ -2,6 +2,7 @@ from database.base import CodecovBaseModel
 from sqlalchemy import Column, types, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects import postgresql
+from sqlalchemy import UniqueConstraint
 
 
 class Owner(CodecovBaseModel):
@@ -16,13 +17,19 @@ class Owner(CodecovBaseModel):
     plan_activated_users = Column(postgresql.ARRAY(types.Integer))
     admins = Column(postgresql.ARRAY(types.Integer))
     permission = Column(postgresql.ARRAY(types.Integer))
+    organizations = Column(postgresql.ARRAY(types.Integer))
     free = Column(types.Integer, nullable=False, default=0)
     integration_id = Column(types.Integer)
     yaml = Column(postgresql.JSON)
     oauth_token = Column(types.Text)
+    avatar_url = Column(types.Text)
+    updatestamp = Column(types.DateTime)
+    parent_service_id = Column(types.Text)
     bot_id = Column('bot', types.Integer, ForeignKey('owners.ownerid'))
 
     bot = relationship('Owner', remote_side=[ownerid])
+
+    __table_args__ = (UniqueConstraint('service', 'service_id', name='owner_service_ids'),)
 
 
 class Repository(CodecovBaseModel):
