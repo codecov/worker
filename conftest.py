@@ -7,7 +7,7 @@ from sqlalchemy.exc import OperationalError
 
 from database.base import Base
 from sqlalchemy_utils import create_database, database_exists
-from helpers.config import ConfigHelper
+from covreports.config import ConfigHelper
 from celery_config import initialize_logging
 
 
@@ -39,7 +39,7 @@ def dbsession(db, dbsession):
 
 @pytest.fixture
 def mock_configuration(mocker):
-    m = mocker.patch('helpers.config._get_config_instance')
+    m = mocker.patch('covreports.config._get_config_instance')
     mock_config = ConfigHelper()
     m.return_value = mock_config
     our_config = {
@@ -89,7 +89,7 @@ def mock_redis(mocker):
 
 @pytest.fixture
 def mock_storage(mocker):
-    m = mocker.patch('services.storage.MinioStorageService')
+    m = mocker.patch('covreports.storage.MinioStorageService')
     redis_server = mocker.MagicMock()
     m.return_value = redis_server
     yield redis_server

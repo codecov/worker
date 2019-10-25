@@ -5,7 +5,7 @@ import requests
 import jwt
 
 import torngit
-from helpers.config import get_config
+from covreports.config import get_config
 from services.pem import get_pem
 
 log = logging.getLogger(__name__)

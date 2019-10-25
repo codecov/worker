@@ -13,14 +13,14 @@ from torngit.exceptions import TorngitClientError
 from app import celery_app
 from celery_config import task_default_queue
 from database.models import Commit
-from helpers.config import get_config
+from covreports.config import get_config
 from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from services.archive import ArchiveService
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService
 from services.repository import get_repo_provider_service
-from services.storage.exceptions import FileNotInStorageError
+from covreports.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 

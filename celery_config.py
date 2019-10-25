@@ -5,7 +5,7 @@ import logging.config
 
 from helpers.logging_config import get_logging_config_dict
 
-from helpers.config import get_config
+from covreports.config import get_config
 from celery import signals
 
 log = logging.getLogger(__name__)
