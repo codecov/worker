@@ -57,7 +57,7 @@ class SyncTeamsTask(BaseCodecovTask):
             data['ownerid'] = ownerid
             updated_teams.append(data)
 
-        team_ids = [team['ownerid'] for team in teams]
+        team_ids = [team['ownerid'] for team in updated_teams]
 
         owner.updatestamp = datetime.now()
         owner.organizations = team_ids

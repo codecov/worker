@@ -1,0 +1,106 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups?per_page=100
+  response:
+    body: {string: '[{"id":4165904,"web_url":"https://gitlab.com/groups/l00p_group_1","name":"My
+        Awesome Group","path":"l00p_group_1","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"My
+        Awesome Group","full_path":"l00p_group_1","parent_id":null,"ldap_cn":null,"ldap_access":null},{"id":4570068,"web_url":"https://gitlab.com/groups/falco-group-1","name":"falco-group-1","path":"falco-group-1","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"falco-group-1","full_path":"falco-group-1","parent_id":null,"ldap_cn":null,"ldap_access":null},{"id":4570071,"web_url":"https://gitlab.com/groups/falco-group-1/falco-subgroup-1","name":"falco-subgroup-1","path":"falco-subgroup-1","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"falco-group-1
+        / falco-subgroup-1","full_path":"falco-group-1/falco-subgroup-1","parent_id":4570068,"ldap_cn":null,"ldap_access":null},{"id":4165905,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup1","name":"subgroup1","path":"subgroup1","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"My
+        Awesome Group / subgroup1","full_path":"l00p_group_1/subgroup1","parent_id":4165904,"ldap_cn":null,"ldap_access":null},{"id":4165907,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup2","name":"subgroup2","path":"subgroup2","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"My
+        Awesome Group / subgroup2","full_path":"l00p_group_1/subgroup2","parent_id":4165904,"ldap_cn":null,"ldap_access":null},{"id":4255344,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup2/subsub","name":"subsub","path":"subsub","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"My
+        Awesome Group / subgroup2 / subsub","full_path":"l00p_group_1/subgroup2/subsub","parent_id":4165907,"ldap_cn":null,"ldap_access":null}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 24 Oct 2019 21:44:59 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['4554']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"52ac61adbb1454a98c89845aa24cd882"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups?order_by=name&owned=false&page=1&per_page=100&sort=asc&statistics=false&with_custom_attributes=false>;
+          rel="first", <https://gitlab.com/api/v4/groups?order_by=name&owned=false&page=1&per_page=100&sort=asc&statistics=false&with_custom_attributes=false>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['100']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [f9jlP4u8pu4]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.077474']
+    - !!python/tuple
+      - X-Total
+      - ['8']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['1']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['599']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1571953559']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 24 Oct 2019 21:45:59 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-15-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups?per_page=100
+version: 1

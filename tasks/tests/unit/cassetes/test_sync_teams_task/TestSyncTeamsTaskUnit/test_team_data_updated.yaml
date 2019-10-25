@@ -1,0 +1,184 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://api.github.com/user/orgs?page=1
+  response:
+    body: {string: '[{"login":"codecov","id":8226205,"node_id":"MDEyOk9yZ2FuaXphdGlvbjgyMjYyMDU=","url":"https://api.github.com/orgs/codecov","repos_url":"https://api.github.com/orgs/codecov/repos","events_url":"https://api.github.com/orgs/codecov/events","hooks_url":"https://api.github.com/orgs/codecov/hooks","issues_url":"https://api.github.com/orgs/codecov/issues","members_url":"https://api.github.com/orgs/codecov/members{/member}","public_members_url":"https://api.github.com/orgs/codecov/public_members{/member}","avatar_url":"https://avatars3.githubusercontent.com/u/8226205?v=4","description":"Empower
+        developers with tools to improve code quality and testing."}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [GitHub.com]
+    - !!python/tuple
+      - Date
+      - ['Thu, 24 Oct 2019 22:06:06 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json; charset=utf-8]
+    - !!python/tuple
+      - Transfer-Encoding
+      - [chunked]
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Status
+      - [200 OK]
+    - !!python/tuple
+      - X-Ratelimit-Limit
+      - ['5000']
+    - !!python/tuple
+      - X-Ratelimit-Remaining
+      - ['4999']
+    - !!python/tuple
+      - X-Ratelimit-Reset
+      - ['1571958366']
+    - !!python/tuple
+      - Cache-Control
+      - ['private, max-age=60, s-maxage=60']
+    - !!python/tuple
+      - Vary
+      - ['Accept, Authorization, Cookie, X-GitHub-OTP']
+    - !!python/tuple
+      - Etag
+      - [W/"dc069f2696a19f8b0cee3784d657ea74"]
+    - !!python/tuple
+      - X-Oauth-Scopes
+      - [repo]
+    - !!python/tuple
+      - X-Accepted-Oauth-Scopes
+      - ['admin:org, read:org, repo, user, write:org']
+    - !!python/tuple
+      - X-Github-Media-Type
+      - [github.v3]
+    - !!python/tuple
+      - Access-Control-Expose-Headers
+      - ['ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+          X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+          X-GitHub-Media-Type']
+    - !!python/tuple
+      - Access-Control-Allow-Origin
+      - ['*']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000; includeSubdomains; preload]
+    - !!python/tuple
+      - X-Frame-Options
+      - [deny]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Xss-Protection
+      - [1; mode=block]
+    - !!python/tuple
+      - Referrer-Policy
+      - ['origin-when-cross-origin, strict-origin-when-cross-origin']
+    - !!python/tuple
+      - Content-Security-Policy
+      - [default-src 'none']
+    - !!python/tuple
+      - X-Github-Request-Id
+      - ['B146:6840:114CA8:2EDE55:5DB2204E']
+    - !!python/tuple
+      - X-Consumed-Content-Encoding
+      - [gzip]
+    status: {code: 200, message: OK}
+    url: https://api.github.com/user/orgs?page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://api.github.com/users/codecov
+  response:
+    body: {string: '{"login":"codecov","id":8226205,"node_id":"MDEyOk9yZ2FuaXphdGlvbjgyMjYyMDU=","avatar_url":"https://avatars3.githubusercontent.com/u/8226205?v=4","gravatar_id":"","url":"https://api.github.com/users/codecov","html_url":"https://github.com/codecov","followers_url":"https://api.github.com/users/codecov/followers","following_url":"https://api.github.com/users/codecov/following{/other_user}","gists_url":"https://api.github.com/users/codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/codecov/subscriptions","organizations_url":"https://api.github.com/users/codecov/orgs","repos_url":"https://api.github.com/users/codecov/repos","events_url":"https://api.github.com/users/codecov/events{/privacy}","received_events_url":"https://api.github.com/users/codecov/received_events","type":"Organization","site_admin":false,"name":"Codecov","company":null,"blog":"https://codecov.io/","location":null,"email":"hello@codecov.io","hireable":null,"bio":"Empower
+        developers with tools to improve code quality and testing.","public_repos":89,"public_gists":0,"followers":0,"following":0,"created_at":"2014-07-21T16:22:31Z","updated_at":"2019-09-25T18:53:30Z"}'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [GitHub.com]
+    - !!python/tuple
+      - Date
+      - ['Thu, 24 Oct 2019 22:06:06 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json; charset=utf-8]
+    - !!python/tuple
+      - Transfer-Encoding
+      - [chunked]
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Status
+      - [200 OK]
+    - !!python/tuple
+      - X-Ratelimit-Limit
+      - ['5000']
+    - !!python/tuple
+      - X-Ratelimit-Remaining
+      - ['4996']
+    - !!python/tuple
+      - X-Ratelimit-Reset
+      - ['1571958366']
+    - !!python/tuple
+      - Cache-Control
+      - ['private, max-age=60, s-maxage=60']
+    - !!python/tuple
+      - Vary
+      - ['Accept, Authorization, Cookie, X-GitHub-OTP']
+    - !!python/tuple
+      - Etag
+      - [W/"166555d71f2c61d50a44129cfc25b7d9"]
+    - !!python/tuple
+      - Last-Modified
+      - ['Wed, 25 Sep 2019 18:53:30 GMT']
+    - !!python/tuple
+      - X-Oauth-Scopes
+      - [repo]
+    - !!python/tuple
+      - X-Accepted-Oauth-Scopes
+      - ['']
+    - !!python/tuple
+      - X-Github-Media-Type
+      - [github.v3]
+    - !!python/tuple
+      - Access-Control-Expose-Headers
+      - ['ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+          X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+          X-GitHub-Media-Type']
+    - !!python/tuple
+      - Access-Control-Allow-Origin
+      - ['*']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000; includeSubdomains; preload]
+    - !!python/tuple
+      - X-Frame-Options
+      - [deny]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Xss-Protection
+      - [1; mode=block]
+    - !!python/tuple
+      - Referrer-Policy
+      - ['origin-when-cross-origin, strict-origin-when-cross-origin']
+    - !!python/tuple
+      - Content-Security-Policy
+      - [default-src 'none']
+    - !!python/tuple
+      - X-Github-Request-Id
+      - ['B14C:76D8:33F37F:6D36A4:5DB2204E']
+    - !!python/tuple
+      - X-Consumed-Content-Encoding
+      - [gzip]
+    status: {code: 200, message: OK}
+    url: https://api.github.com/users/codecov
