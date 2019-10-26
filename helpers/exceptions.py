@@ -8,3 +8,6 @@ class ReportEmptyError(Exception):
 
 class RepositoryWithoutValidBotError(Exception):
     pass
+
+class OwnerWithoutOauthTokenError(Exception):
+    pass

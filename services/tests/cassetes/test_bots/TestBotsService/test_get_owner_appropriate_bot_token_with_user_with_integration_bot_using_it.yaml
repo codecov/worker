@@ -1,0 +1,36 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/vnd.github.machine-man-preview+json]
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [Codecov]
+    method: POST
+    uri: https://api.github.com/app/installations/1654873/access_tokens
+  response:
+    body: {string: '{"token":"v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp","expires_at":"2019-08-26T01:25:56Z","permissions":{"checks":"write","pull_requests":"write","statuses":"write","administration":"read","contents":"read","issues":"read","metadata":"read"},"repository_selection":"selected"}'}
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
+          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
+      Cache-Control: ['public, max-age=60, s-maxage=60']
+      Content-Length: ['277']
+      Content-Security-Policy: [default-src 'none']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Mon, 26 Aug 2019 00:25:57 GMT']
+      ETag: ['"d5bbd7f7363c549c2faa22e8f4419077"']
+      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      Server: [GitHub.com]
+      Status: [201 Created]
+      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
+      Vary: [Accept]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [deny]
+      X-GitHub-Media-Type: [github.machine-man-preview; format=json]
+      X-GitHub-Request-Id: ['3B5C:44FD:19779AA:3C3CF0D:5D632714']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 201, message: Created}
+version: 1

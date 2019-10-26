@@ -1,7 +1,9 @@
 import pytest
 
 from tests.base import BaseTestCase
-from services.bots import get_repo_appropriate_bot_token, RepositoryWithoutValidBotError
+from services.bots import ( get_repo_appropriate_bot_token, RepositoryWithoutValidBotError,
+    get_owner_appropriate_bot_token, OwnerWithoutOauthTokenError
+)
 from database.tests.factories import RepositoryFactory, OwnerFactory
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
@@ -138,3 +140,55 @@ class TestBotsService(BaseTestCase):
             'key': 'v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp',
         }
         assert get_repo_appropriate_bot_token(repo) == expected_result
+
+    def test_get_owner_appropriate_bot_token_owner_no_bot_no_integration(self):
+        owner = OwnerFactory.create(
+            unencrypted_oauth_token='owner_token',
+            integration_id=None,
+            bot=None
+        )
+        assert get_owner_appropriate_bot_token(owner, using_integration=False) == {'key': 'owner_token', 'secret': None}
+
+    def test_get_owner_appropriate_bot_token_owner_has_bot_no_integration(self):
+        owner = OwnerFactory.create(
+            unencrypted_oauth_token='owner_token',
+            integration_id=None,
+            bot=OwnerFactory.create(
+                unencrypted_oauth_token='bot_token'
+            )
+        )
+        assert get_owner_appropriate_bot_token(owner, using_integration=False) == {'key': 'bot_token', 'secret': None}
+
+    def test_get_owner_appropriate_bot_token_repo_with_no_oauth_token_at_all(self):
+        owner = OwnerFactory.create(
+            unencrypted_oauth_token=None,
+            integration_id=None,
+            bot=OwnerFactory.create(
+                unencrypted_oauth_token=None
+            )
+        )
+        with pytest.raises(OwnerWithoutOauthTokenError):
+            get_owner_appropriate_bot_token(owner, using_integration=False)
+
+    def test_get_owner_appropriate_bot_token_with_user_with_integration_bot_using_it(self, mock_configuration, codecov_vcr):
+        mock_configuration._params['github'] = {
+            'integration': {
+                'pem': '/home/src/certs/github.pem',
+                'id': 251234  # Fake integration id, tested with a real one
+            }
+        }
+        mock_configuration.loaded_files[('github', 'integration', 'pem')] = fake_private_key
+
+        owner = OwnerFactory.create(
+            service='github',
+            integration_id=1654873,  # 'ThiagoCodecov' integration id, for testing,
+            unencrypted_oauth_token='owner_token',
+            bot=OwnerFactory.create(
+                unencrypted_oauth_token=None
+            )
+        )
+
+        expected_result = {
+            'key': 'v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp',
+        }
+        assert get_owner_appropriate_bot_token(owner, using_integration=True) == expected_result
