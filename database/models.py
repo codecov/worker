@@ -46,11 +46,14 @@ class Repository(CodecovBaseModel):
     updatestamp = Column(types.DateTime)
     yaml = Column(postgresql.JSON)
     branch = Column(types.Text)
+    language = Column(types.Text)
     hookid = Column(types.Text)
     using_integration = Column(types.Boolean)
 
     owner = relationship(Owner, foreign_keys=[ownerid])
     bot = relationship(Owner, foreign_keys=[bot_id])
+
+    __table_args__ = (UniqueConstraint('ownerid', 'name', name='repos_slug'),)
 
     @property
     def service(self):

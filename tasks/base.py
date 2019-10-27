@@ -5,11 +5,17 @@ from app import celery_app
 from database.engine import get_db_session
 from sqlalchemy.exc import SQLAlchemyError
 from helpers.metrics import metrics
+from helpers.config import get_config
 
 log = logging.getLogger('worker')
 
 
 class BaseCodecovTask(celery_app.Task):
+
+    enterprise = False
+
+    def __init__(self):
+        self.enterprise = bool(get_config('setup', 'enterprise_license'))
 
     def run(self, *args, **kwargs):
         loop = asyncio.get_event_loop()
