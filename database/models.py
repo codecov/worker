@@ -25,6 +25,7 @@ class Owner(CodecovBaseModel):
     avatar_url = Column(types.Text)
     updatestamp = Column(types.DateTime)
     parent_service_id = Column(types.Text)
+    plan_provider = Column(types.Text)
     bot_id = Column('bot', types.Integer, ForeignKey('owners.ownerid'))
 
     bot = relationship('Owner', remote_side=[ownerid])
