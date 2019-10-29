@@ -6,7 +6,7 @@ import pprint
 import pytz
 
 
-from services.storage import get_appropriate_storage_service
+from covreports.storage import get_appropriate_storage_service
 from database.engine import get_db_session
 from database.models import Commit
 

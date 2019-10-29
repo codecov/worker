@@ -1,7 +1,7 @@
 import logging
 import zlib
 
-from helpers.config import get_config
+from covreports.config import get_config
 from redis import Redis
 
 log = logging.getLogger(__name__)
