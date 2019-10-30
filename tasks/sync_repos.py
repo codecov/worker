@@ -177,6 +177,9 @@ class SyncReposTask(BaseCodecovTask):
 
 
     def upsert_owner(self, db_session, service, service_id, username, plan_provider=None):
+        log.info(
+            'upserting owner - service: {}, service_id: {}, username: {}'.format(service, service_id, username)
+        )
         # owner = self.db.get("""SELECT ownerid, username
         #                        from owners
         #                        where service=%s
@@ -189,11 +192,17 @@ class SyncReposTask(BaseCodecovTask):
         ).first()
 
         if owner:
+            log.info(
+                'upserting owner - found'
+            )
             if (owner.username or '').lower() != username.lower():
                 # self.db.query("UPDATE owners set username=%s where ownerid=%s;",
                 #               owner['username'], owner['ownerid'])
-                owner.username = owner['username'] # TODO: ????
+                owner.username = username # TODO: ????
         else:
+            log.info(
+                'upserting owner - NOT found'
+            )
             # insert owner
             # owner = self.db.get("""INSERT INTO owners (service, service_id, username, plan_provider)
             #                        values (%s, %s, %s, %s)
