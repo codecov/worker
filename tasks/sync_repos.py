@@ -149,31 +149,7 @@ class SyncReposTask(BaseCodecovTask):
 
             #  choose a bot
             if private_project_ids:
-                owners_by_id = map(str, owners_by_id.values())
-                # remove me
-                if str(ownerid) in owners_by_id:
-                    owners_by_id.remove(str(ownerid))
-
-                if owners_by_id and (
-                    not self.enterprise or  # is production
-                    get_config((service, 'bot')) is None  # or no bot is set in yaml
-                ):
-                    # we can see private repos, make me the bot
-                    # self.db.query("""UPDATE owners
-                    #                     set bot=%s
-                    #                     where service=%s
-                    #                     and ownerid in %s
-                    #                     and bot is null
-                    #                     and oauth_token is null;""",
-                    #                 ownerid, service, tuple(owners_by_id))
-                    db_session.query(Owner).filter(
-                        Owner.service == service,
-                        Owner.ownerid.in_(tuple(owners_by_id)),
-                        Owner.bot_id.is_(None),
-                        Owner.oauth_token.is_(None)
-                    ).update({
-                        Owner.bot_id: ownerid
-                    }, synchronize_session=False)
+                self.choose_bot(db_session, ownerid, service, owners_by_id)
 
 
     def upsert_owner(self, db_session, service, service_id, username, plan_provider=None):
@@ -371,6 +347,34 @@ class SyncReposTask(BaseCodecovTask):
                 repo_id = new_repoid
 
         return repo_id
+
+
+    def choose_bot(self, db_session, ownerid, service, owners_by_id):
+        owners_by_id = map(str, owners_by_id.values())
+        # remove me
+        if str(ownerid) in owners_by_id:
+            owners_by_id.remove(str(ownerid))
+
+        if owners_by_id and (
+            not self.enterprise or  # is production
+            get_config((service, 'bot')) is None  # or no bot is set in yaml
+        ):
+            # we can see private repos, make me the bot
+            # self.db.query("""UPDATE owners
+            #                     set bot=%s
+            #                     where service=%s
+            #                     and ownerid in %s
+            #                     and bot is null
+            #                     and oauth_token is null;""",
+            #                 ownerid, service, tuple(owners_by_id))
+            db_session.query(Owner).filter(
+                Owner.service == service,
+                Owner.ownerid.in_(tuple(owners_by_id)),
+                Owner.bot_id.is_(None),
+                Owner.oauth_token.is_(None)
+            ).update({
+                Owner.bot_id: ownerid
+            }, synchronize_session=False)
 
 
 RegisteredSyncReposTask = celery_app.register_task(SyncReposTask())
