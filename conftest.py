@@ -1,8 +1,11 @@
+from sqlalchemy.orm import Session
+
 from pathlib import Path
 from asyncio import Future
 
 import pytest
 import vcr
+from sqlalchemy.exc import OperationalError
 
 from database.base import Base
 from sqlalchemy_utils import create_database, database_exists
@@ -19,15 +22,39 @@ def pytest_configure(config):
     initialize_logging()
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope='session')
 def db(engine, sqlalchemy_connect_url):
     database_url = sqlalchemy_connect_url
-    if not database_exists(database_url):
-        create_database(database_url)
+    try:
+        if not database_exists(database_url):
+            create_database(database_url)
+    except OperationalError:
+        pytest.skip("No available db")
     connection = engine.connect()
     connection.execute('DROP SCHEMA IF EXISTS public CASCADE;')
     connection.execute('CREATE SCHEMA public;')
     Base.metadata.create_all(engine)
+
+
+@pytest.fixture
+def dbsession(engine, db):
+    """
+    Returns an sqlalchemy session
+    and tears everything down properly after the test.
+    """
+    connection = engine.connect()
+    # begin the nested transaction
+    transaction = connection.begin()
+    # use the connection with the already started transaction
+    session = Session(bind=connection)
+
+    yield session
+
+    session.close()
+    # roll back the broader transaction
+    transaction.rollback()
+    # put connection back in the pool
+    connection.close()
 
 
 @pytest.fixture
