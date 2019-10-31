@@ -36,7 +36,7 @@ class UploadFinisherTask(BaseCodecovTask):
 
     async def run_async(self, db_session, processing_results, *, repoid, commitid, commit_yaml, **kwargs):
         log.info(
-            "Running finishing logic for commit",
+            "Received upload task",
             extra=dict(
                 repoid=repoid,
                 commit=commitid,
