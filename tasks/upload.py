@@ -109,6 +109,13 @@ class UploadTask(BaseCodecovTask):
                 yield loads(arguments)
 
     async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
+        log.info(
+            "Received upload task",
+            extra=dict(
+                repoid=repoid,
+                commit=commitid
+            )
+        )
         repoid = int(repoid)
         lock_name = f"upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
@@ -128,6 +135,10 @@ class UploadTask(BaseCodecovTask):
             self.retry(max_retries=3, countdown=20 * 2 ** self.request.retries)
 
     async def run_async_within_lock(self, db_session, redis_connection, repoid, commitid, *args, **kwargs):
+        log.info(
+            "Starting processing of report",
+            extra=dict(repoid=repoid, commit=commitid)
+        )
         uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
         commit = None
         commits = db_session.query(Commit).filter(
@@ -136,10 +147,7 @@ class UploadTask(BaseCodecovTask):
         )
         commit = commits.first()
         assert commit, 'Commit not found in database.'
-        log.info(
-            "Starting processing of report",
-            extra=dict(repoid=repoid, commit=commitid)
-        )
+
         repository = commit.repository
         repository_service = None
         was_updated, was_setup = False, False
