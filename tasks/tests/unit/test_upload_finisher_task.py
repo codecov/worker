@@ -34,7 +34,14 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        previous_results = {}
+        previous_results = {
+            'processings_so_far': [
+                {
+                    'arguments': {'url': url},
+                    'successful': True
+                }
+            ]
+        }
         result = await UploadFinisherTask().run_async(
             dbsession, previous_results,
             repoid=commit.repoid, commitid=commit.commitid, commit_yaml={}
@@ -45,4 +52,102 @@ class TestUploadFinisherTask(object):
 
         mock_redis.lock.assert_called_with(
             f"upload_finisher_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+        )
+
+    @pytest.mark.asyncio
+    async def test_should_call_notifications(self, dbsession):
+        commit_yaml = {'codecov': {'max_report_age': '1y ago'}}
+        commit = CommitFactory.create(
+            message='dsidsahdsahdsa',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml=commit_yaml,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        processing_results = {
+            'processings_so_far': [
+                {
+                    'arguments': {'url': 'url'},
+                    'successful': True
+                }
+            ]
+        }
+        assert UploadFinisherTask().should_call_notifications(
+             commit, commit_yaml, processing_results
+        )
+
+    @pytest.mark.asyncio
+    async def test_should_call_notifications_no_successful_reports(self, dbsession):
+        commit_yaml = {'codecov': {'max_report_age': '1y ago'}}
+        commit = CommitFactory.create(
+            message='dsidsahdsahdsa',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml=commit_yaml,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        processing_results = {
+            'processings_so_far': 12 * [
+                {
+                    'arguments': {'url': 'url'},
+                    'successful': False
+                }
+            ]
+        }
+        assert not UploadFinisherTask().should_call_notifications(
+             commit, commit_yaml, processing_results
+        )
+
+    @pytest.mark.asyncio
+    async def test_should_call_notifications_not_enough_builds(self, dbsession):
+        commit_yaml = {'codecov': {'notify': {'after_n_builds': 9}}}
+        commit = CommitFactory.create(
+            message='dsidsahdsahdsa',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml=commit_yaml,
+            report_json={'sessions': {str(n): {'a': str(f'http://{n}')} for n in range(8)}}
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        processing_results = {
+            'processings_so_far': 9 * [
+                {
+                    'arguments': {'url': 'url'},
+                    'successful': True
+                }
+            ]
+        }
+        assert not UploadFinisherTask().should_call_notifications(
+             commit, commit_yaml, processing_results
+        )
+
+    @pytest.mark.asyncio
+    async def test_should_call_notifications_more_than_enough_builds(self, dbsession):
+        commit_yaml = {'codecov': {'notify': {'after_n_builds': 9}}}
+        commit = CommitFactory.create(
+            message='dsidsahdsahdsa',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml=commit_yaml,
+            report_json={'sessions': {str(n): {'a': str(f'http://{n}')} for n in range(10)}}
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        processing_results = {
+            'processings_so_far': 2 * [
+                {
+                    'arguments': {'url': 'url'},
+                    'successful': True
+                }
+            ]
+        }
+        assert UploadFinisherTask().should_call_notifications(
+             commit, commit_yaml, processing_results
         )

@@ -198,6 +198,14 @@ class UploadProcessorTask(BaseCodecovTask):
                 'report': result
             }
         except ReportExpiredException:
+            log.info(
+                "Report %s is expired", arguments.get('reportid'),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    arguments=arguments
+                )
+            )
             return {
                 'successful': False,
                 'report': None,
@@ -205,6 +213,14 @@ class UploadProcessorTask(BaseCodecovTask):
                 'should_retry': False
             }
         except ReportEmptyError:
+            log.info(
+                "Report %s is empty", arguments.get('reportid'),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    arguments=arguments
+                )
+            )
             return {
                 'successful': False,
                 'report': None,
