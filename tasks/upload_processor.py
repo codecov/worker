@@ -198,19 +198,39 @@ class UploadProcessorTask(BaseCodecovTask):
                 'report': result
             }
         except ReportExpiredException:
-            return {
+            expired_report_result = {
                 'successful': False,
                 'report': None,
                 'error_type': 'report_expired',
                 'should_retry': False
             }
+            log.info(
+                "Report %s is expired", arguments.get('reportid'),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    arguments=arguments,
+                    result=expired_report_result
+                )
+            )
+            return expired_report_result
         except ReportEmptyError:
-            return {
+            empty_report_result = {
                 'successful': False,
                 'report': None,
                 'error_type': 'report_empty',
                 'should_retry': False
             }
+            log.info(
+                "Report %s is empty", arguments.get('reportid'),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    arguments=arguments,
+                    result=empty_report_result
+                )
+            )
+            return empty_report_result
         except FileNotInStorageError:
             if self.request.retries == 0:
                 log.info(
