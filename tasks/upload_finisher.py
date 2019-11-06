@@ -76,6 +76,15 @@ class UploadFinisherTask(BaseCodecovTask):
         # always notify, let the notify handle if it should submit
         if not regexp_ci_skip.search(commit.message or ''):
             if self.should_call_notifications(commit, commit_yaml, processing_results):
+                log.info(
+                    "Scheduling notify task",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        commit_yaml=commit_yaml,
+                        processing_results=processing_results
+                    )
+                )
                 self.app.send_task(
                     notify_task_name,
                     args=None,
@@ -86,7 +95,7 @@ class UploadFinisherTask(BaseCodecovTask):
                 )
             else:
                 log.info(
-                    "Not scheduling notify task because commit did not match requirements",
+                    "Skipping notify task",
                     extra=dict(
                         repoid=repoid,
                         commit=commitid,
