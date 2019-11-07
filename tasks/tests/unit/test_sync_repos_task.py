@@ -64,12 +64,194 @@ class TestSyncReposTaskUnit(object):
         upserted_ownerid = SyncReposTask().upsert_owner(dbsession, service, service_id, new_username)
 
         assert upserted_ownerid == ownerid
-        new_entry = dbsession.query(Owner).filter(
+        updated_owner = dbsession.query(Owner).filter(
             Owner.service == service,
             Owner.service_id == service_id
         ).first()
-        assert new_entry is not None
-        assert new_entry.username == new_username
+        assert updated_owner is not None
+        assert updated_owner.username == new_username
+
+    @pytest.mark.asyncio
+    async def test_upsert_repo_update_existing(self, mocker, mock_configuration, dbsession):
+        service = 'gitlab'
+        repo_service_id = 12071992
+        repo_data = {
+            'service_id': repo_service_id,
+            'name': 'new-name',
+            'fork': None,
+            'private': True,
+            'language': None,
+            'branch': b'master'
+        }
+
+        # add existing to db
+        user = OwnerFactory.create(
+            organizations=[],
+            service=service,
+            username='1nf1n1t3l00p',
+            permission=[],
+            service_id='45343385'
+        )
+        dbsession.add(user)
+        old_repo = RepositoryFactory.create(
+            private=True,
+            name='old-name',
+            using_integration=False,
+            service_id='12071992',
+            owner=user
+        )
+        dbsession.add(old_repo)
+        dbsession.flush()
+
+        upserted_repoid = SyncReposTask().upsert_repo(dbsession, service, user.ownerid, repo_data)
+
+        assert upserted_repoid == old_repo.repoid
+        updated_repo = dbsession.query(Repository).filter(
+            Repository.ownerid == user.ownerid,
+            Repository.service_id == str(repo_service_id)
+        ).first()
+        assert updated_repo is not None
+        assert updated_repo.private is True
+        assert updated_repo.name == repo_data.get('name')
+        assert updated_repo.updatestamp is not None
+        assert updated_repo.deleted is False
+
+    @pytest.mark.asyncio
+    async def test_upsert_repo_exists_but_wrong_owner(self, mocker, mock_configuration, dbsession):
+        service = 'gitlab'
+        repo_service_id = 12071992
+        repo_data = {
+            'service_id': repo_service_id,
+            'name': 'pytest',
+            'fork': None,
+            'private': True,
+            'language': None,
+            'branch': b'master'
+        }
+
+        # setup db
+        correct_owner = OwnerFactory.create(
+            organizations=[],
+            service=service,
+            username='1nf1n1t3l00p',
+            permission=[],
+            service_id='45343385'
+        )
+        dbsession.add(correct_owner)
+        wrong_owner = OwnerFactory.create(
+            organizations=[],
+            service=service,
+            username='cc',
+            permission=[],
+            service_id='40404'
+        )
+        dbsession.add(wrong_owner)
+        old_repo = RepositoryFactory.create(
+            private=True,
+            name='pytest',
+            using_integration=False,
+            service_id='12071992',
+            owner=wrong_owner
+        )
+        dbsession.add(old_repo)
+        dbsession.flush()
+
+        upserted_repoid = SyncReposTask().upsert_repo(dbsession, service, correct_owner.ownerid, repo_data)
+
+        assert upserted_repoid == old_repo.repoid
+        updated_repo = dbsession.query(Repository).filter(
+            Repository.ownerid == correct_owner.ownerid,
+            Repository.service_id == str(repo_service_id)
+        ).first()
+        assert updated_repo is not None
+        assert updated_repo.deleted is False
+        assert updated_repo.updatestamp is not None
+
+    @pytest.mark.asyncio
+    async def test_upsert_repo_exists_but_wrong_service_id(self, mocker, mock_configuration, dbsession):
+        service = 'gitlab'
+        repo_service_id = 12071992
+        repo_wrong_service_id = 40404
+        repo_data = {
+            'service_id': repo_service_id,
+            'name': 'pytest',
+            'fork': None,
+            'private': True,
+            'language': None,
+            'branch': b'master'
+        }
+
+        # setup db
+        user = OwnerFactory.create(
+            organizations=[],
+            service=service,
+            username='1nf1n1t3l00p',
+            permission=[],
+            service_id='45343385'
+        )
+        dbsession.add(user)
+
+        old_repo = RepositoryFactory.create(
+            private=True,
+            name='pytest',
+            using_integration=False,
+            service_id=repo_wrong_service_id,
+            owner=user
+        )
+        dbsession.add(old_repo)
+        dbsession.flush()
+
+        upserted_repoid = SyncReposTask().upsert_repo(dbsession, service, user.ownerid, repo_data)
+
+        assert upserted_repoid == old_repo.repoid
+        updated_repo = dbsession.query(Repository).filter(
+            Repository.ownerid == user.ownerid,
+            Repository.service_id == str(repo_service_id)
+        ).first()
+        assert updated_repo is not None
+
+        bad_service_id_repo = dbsession.query(Repository).filter(
+            Repository.ownerid == user.ownerid,
+            Repository.service_id == str(repo_wrong_service_id)
+        ).first()
+        assert bad_service_id_repo is None
+
+    @pytest.mark.asyncio
+    async def test_upsert_repo_create_new(self, mocker, mock_configuration, dbsession):
+        service = 'gitlab'
+        repo_service_id = 12071992
+        repo_data = {
+            'service_id': repo_service_id,
+            'name': 'pytest',
+            'fork': None,
+            'private': True,
+            'language': None,
+            'branch': 'master'
+        }
+
+        # setup db
+        user = OwnerFactory.create(
+            organizations=[],
+            service=service,
+            username='1nf1n1t3l00p',
+            permission=[],
+            service_id='45343385'
+        )
+        dbsession.add(user)
+        dbsession.flush()
+
+        upserted_repoid = SyncReposTask().upsert_repo(dbsession, service, user.ownerid, repo_data)
+
+        assert isinstance(upserted_repoid, int)
+        new_repo = dbsession.query(Repository).filter(
+            Repository.ownerid == user.ownerid,
+            Repository.service_id == str(repo_service_id)
+        ).first()
+        assert new_repo is not None
+        assert new_repo.name == repo_data.get('name')
+        assert new_repo.language == repo_data.get('language')
+        assert new_repo.branch == repo_data.get('branch')
+        assert new_repo.private is True
 
     @pytest.mark.asyncio
     async def test_private_repos_set_bot(self, mocker, mock_configuration, dbsession, codecov_vcr):

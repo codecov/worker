@@ -39,12 +39,6 @@ class SyncReposTask(BaseCodecovTask):
             if repo_service_ids:
                 repo_service_ids = tuple(map(str, repo_service_ids))
                 if repo_service_ids:
-                    # self.db.query("""UPDATE repos
-                    #                     set using_integration = true
-                    #                     where ownerid=%s
-                    #                     and service_id in %s
-                    #                     and using_integration is not true;""",
-                    #                 ownerid, repo_service_ids)
                     db_session.query(Repository).filter(
                         Repository.ownerid == ownerid,
                         Repository.service_id.in_(repo_service_ids),
@@ -53,25 +47,14 @@ class SyncReposTask(BaseCodecovTask):
                         Repository.using_integration: True
                     }, synchronize_session=False)
 
-                    # self.db.query("""UPDATE repos
-                    #                     set using_integration = false
-                    #                     where ownerid=%s
-                    #                     and service_id in %s
-                    #                     and using_integration;""",
-                    #                 ownerid, repo_service_ids)
                     db_session.query(Repository).filter(
                         Repository.ownerid == ownerid,
                         Repository.service_id.in_(repo_service_ids),
-                        Repository.using_integration.is_(True) # TODO: ????
+                        Repository.using_integration.is_(True)
                     ).update({
                         Repository.using_integration: False
                     }, synchronize_session=False)
             else:
-                # self.db.query("""UPDATE repos
-                #                     set using_integration=false
-                #                     where ownerid=%s
-                #                     and using_integration;""",
-                #                 ownerid)
                 db_session.query(Repository).filter(
                     Repository.ownerid == ownerid,
                     Repository.using_integration.is_(True)
@@ -83,7 +66,7 @@ class SyncReposTask(BaseCodecovTask):
             # get my repos (and team repos)
             repos = await git.list_repos()
             log.info(
-                'repos: {}'.format(len(repos)),
+                'repos',
                 extra=dict(ownerid=ownerid, username=username, repos=repos)
             )
             owners_by_id = {}
@@ -141,10 +124,6 @@ class SyncReposTask(BaseCodecovTask):
             )
 
             # update user permissions
-            # self.db.query("""UPDATE owners
-            #                     set permission=(select array(select distinct unnest(permission || %s::int[]) order by 1))
-            #                     where ownerid=%s;""",
-            #                 private_project_ids, ownerid)
             owner.permission = sorted(map(int, list(set(owner.permission + private_project_ids))))
 
             #  choose a bot
@@ -155,7 +134,8 @@ class SyncReposTask(BaseCodecovTask):
 
     def upsert_owner(self, db_session, service, service_id, username):
         log.info(
-            'upserting owner - service: {}, service_id: {}, username: {}'.format(service, service_id, username)
+            'upserting owner',
+            extra=dict(service=service, service_id=service_id, username=username)
         )
         owner = db_session.query(Owner).filter(
             Owner.service == service,
@@ -179,72 +159,33 @@ class SyncReposTask(BaseCodecovTask):
 
     def upsert_repo(self, db_session, service, ownerid, repo_data, using_integration=None):
         log.info(
-            'upserting repo {}'.format(repo_data)
+            'upserting repo',
+            extra=dict(ownerid=ownerid, repo_data=repo_data)
         )
-        # update repo information
-        # res = self.db.get("""UPDATE repos
-        #                      set private = %s,
-        #                          language = %s,
-        #                          name = %s,
-        #                          deleted = false,
-        #                          updatestamp = now()
-        #                     where ownerid = %s
-        #                      and service_id = %s
-        #                     returning repoid;""",
-        #                   repo['private'],
-        #                   repo['language'],
-        #                   repo['name'],
-        #                   ownerid,
-        #                   str(repo['service_id']))
         repo = db_session.query(Repository).filter(
             Repository.ownerid == ownerid,
             Repository.service_id == str(repo_data['service_id'])
         ).first()
 
         if repo:
-            log.info('upserting repo - found')
             repo.private = repo_data['private']
             repo.language = repo_data['language']
             repo.name = repo_data['name']
             repo.deleted = False
             repo.updatestamp = datetime.now()
             repo_id = repo.repoid
-
         else:
-            log.info('upserting repo - NOT found')
             # repo was not found, could be a different owner
-            # res = self.db.get("""SELECT repoid
-            #                      from repos r
-            #                      inner join owners o using (ownerid)
-            #                      where r.service_id=%s
-            #                        and o.service=%s
-            #                      limit 1;""",
-            #                   str(repo['service_id']), service)
             repo_id = db_session.query(Repository.repoid).join(
                 Owner, Repository.ownerid == Owner.ownerid
             ).filter(
                 Repository.service_id == str(repo_data['service_id']),
-                Repository.service == service
+                Owner.service == service
             ).first()
+
             if repo_id:
-                log.info('upserting repo - repo exists but wrong owner')
                 try:
-                    # TODO: from here to end of function
                     # repo exists, but wrong owner
-                    # res = self.db.get("""UPDATE repos
-                    #                      set private = %s,
-                    #                          language = %s,
-                    #                          name = %s,
-                    #                          deleted = false,
-                    #                          updatestamp = now(),
-                    #                          ownerid = %s
-                    #                     where repoid = %s
-                    #                     returning repoid;""",
-                    #                   repo['private'],
-                    #                   repo['language'],
-                    #                   repo['name'],
-                    #                   ownerid,
-                    #                   res['repoid'])
                     repo_wrong_owner = db_session.query(Repository).filter(
                         Repository.repoid == repo_id
                     ).first()
@@ -259,43 +200,17 @@ class SyncReposTask(BaseCodecovTask):
                         repo_id = repo_wrong_owner.repoid
                 except:
                     # the repository name exists, but wrong service_id
-                    # TODO: use ORM for this query
-                    self.db.query("""UPDATE repos
-                                     set service_id = %s,
-                                         deleted = false,
-                                         updatestamp = now(),
-                                         private = %s
-                                     where ownerid=%s
-                                       and name=%s;""",
-                                  repo['service_id'], repo['private'],
-                                  ownerid, repo['name'])
+                    repo_wrong_service_id = db_session.query(Repository).filter(
+                        Repository.ownerid == ownerid,
+                        Repository.name == repo_data['name']
+                    ).first()
+
+                    if repo_wrong_service_id:
+                        repo_wrong_service_id.service_id = repo_data['service_id']
+                        repo_wrong_service_id.private = repo_data['private']
+                        repo_id = repo_wrong_owner.repoid
             else:
                 # repo does not exist, create it
-                # res = self.db.get("""INSERT INTO repos (ownerid, service_id, name, language, private, branch, using_integration)
-                #                      values (%s, %s, %s, %s, %s, %s, %s)
-                #                      on conflict (ownerid, name) do update
-                #                        set service_id=%s,
-                #                            name=%s,
-                #                            language=%s,
-                #                            private=%s,
-                #                            using_integration=%s
-                #                      returning repoid;""",
-                #                   ownerid,
-                #                   str(repo['service_id']),
-                #                   repo['name'],
-                #                   repo['language'],
-                #                   repo['private'],
-                #                   repo['branch'],
-                #                   using_integration,
-                #                   str(repo['service_id']),
-                #                   repo['name'],
-                #                   repo['language'],
-                #                   repo['private'],
-                #                   using_integration)
-                log.info(
-                    'upserting repo - repo does not exist, create it',
-                    extra=dict(ownerid=ownerid, repo_name=repo_data['name'])
-                )
                 insert_data = dict(
                     ownerid=ownerid,
                     service_id=str(repo_data['service_id']),
@@ -320,12 +235,7 @@ class SyncReposTask(BaseCodecovTask):
                         .on_conflict_do_update(constraint='repos_slug', set_=conflict_data) \
                         .returning(Repository.repoid)
 
-                res = db_session.execute(i).fetchall()
-                [(new_repoid,)] = res
-                log.info(
-                    'res {}'.format(new_repoid),
-                    extra=dict(res=res, new_repoid=new_repoid)
-                )
+                [(new_repoid,)] = db_session.execute(i).fetchall()
                 repo_id = new_repoid
 
         return repo_id
