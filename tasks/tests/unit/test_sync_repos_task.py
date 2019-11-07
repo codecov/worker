@@ -24,6 +24,106 @@ class TestSyncReposTaskUnit(object):
             )
 
     @pytest.mark.asyncio
+    async def test_upsert_owner_add_new(self, mocker, mock_configuration, dbsession):
+        service = 'github'
+        service_id = '123456'
+        username = 'some_org'
+        prev_entry = dbsession.query(Owner).filter(
+            Owner.service == service,
+            Owner.service_id == service_id
+        ).first()
+        assert prev_entry is None
+
+        upserted_ownerid = SyncReposTask().upsert_owner(dbsession, service, service_id, username)
+
+        assert isinstance(upserted_ownerid, int)
+        new_entry = dbsession.query(Owner).filter(
+            Owner.service == service,
+            Owner.service_id == service_id
+        ).first()
+        assert new_entry is not None
+        assert new_entry.username == username
+
+    @pytest.mark.asyncio
+    async def test_upsert_owner_update_existing(self, mocker, mock_configuration, dbsession):
+        ownerid = 1
+        service = 'github'
+        service_id = '123456'
+        old_username = 'codecov_org'
+        new_username = 'Codecov'
+        existing_owner = OwnerFactory.create(
+            ownerid=ownerid,
+            organizations=[],
+            service=service,
+            username=old_username,
+            permission=[],
+            service_id=service_id
+        )
+        dbsession.add(existing_owner)
+
+        upserted_ownerid = SyncReposTask().upsert_owner(dbsession, service, service_id, new_username)
+
+        assert upserted_ownerid == ownerid
+        new_entry = dbsession.query(Owner).filter(
+            Owner.service == service,
+            Owner.service_id == service_id
+        ).first()
+        assert new_entry is not None
+        assert new_entry.username == new_username
+
+    @pytest.mark.asyncio
+    async def test_private_repos_set_bot(self, mocker, mock_configuration, dbsession, codecov_vcr):
+        mocked_1 = mocker.patch('tasks.sync_repos.SyncReposTask.set_bot')
+        token = 'ecd73a086eadc85db68747a66bdbd662a785a072'
+        user = OwnerFactory.create(
+            organizations=[],
+            service='github',
+            username='1nf1n1t3l00p',
+            unencrypted_oauth_token=token,
+            permission=[],
+            service_id='45343385'
+        )
+        dbsession.add(user)
+        dbsession.flush()
+        await SyncReposTask().run_async(
+            dbsession,
+            user.ownerid,
+            using_integration=False
+        )
+        expected_owners = dbsession.query(Owner.ownerid).filter(
+            Owner.service == 'github',
+            Owner.service_id.in_(tuple(['13630281', '45343385']))
+        ).all()
+        expected_ownerids = sorted([str(t[0]) for t in expected_owners])
+
+        mocked_1.assert_called_with(dbsession, user.ownerid, user.service, expected_ownerids)
+
+    @pytest.mark.asyncio
+    async def test_set_bot_gitlab_subgroups(self, mocker, mock_configuration, dbsession, codecov_vcr):
+        token = 'test1n35vv8idly84gga'
+        user = OwnerFactory.create(
+            organizations=[],
+            service='gitlab',
+            username='1nf1n1t3l00p',
+            unencrypted_oauth_token=token,
+            permission=[],
+            service_id='3215137'
+        )
+        dbsession.add(user)
+        dbsession.flush()
+        await SyncReposTask().run_async(
+            dbsession,
+            user.ownerid,
+            using_integration=False
+        )
+        expected_owners_with_bot_set = dbsession.query(Owner.bot_id).filter(
+            Owner.service == 'gitlab',
+            Owner.service_id.in_(('5542118', '4255344', '4165904', '4570071', '4165905', '5608536')) # 1nf1n1t3l00p groups and subgroups
+        ).all()
+        for o in expected_owners_with_bot_set:
+            assert o.bot_id == user.ownerid
+
+    @pytest.mark.asyncio
     async def test_only_public_repos_already_in_db(self, mocker, mock_configuration, dbsession, codecov_vcr):
         token = 'ecd73a086eadc85db68747a66bdbd662a785a072'
         user = OwnerFactory.create(

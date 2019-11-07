@@ -149,48 +149,30 @@ class SyncReposTask(BaseCodecovTask):
 
             #  choose a bot
             if private_project_ids:
-                self.choose_bot(db_session, ownerid, service, owners_by_id)
+                owner_ids_to_set = list(map(str, owners_by_id.values()))
+                self.set_bot(db_session, ownerid, service, owner_ids_to_set)
 
 
-    def upsert_owner(self, db_session, service, service_id, username, plan_provider=None):
+    def upsert_owner(self, db_session, service, service_id, username):
         log.info(
             'upserting owner - service: {}, service_id: {}, username: {}'.format(service, service_id, username)
         )
-        # owner = self.db.get("""SELECT ownerid, username
-        #                        from owners
-        #                        where service=%s
-        #                          and service_id=%s
-        #                        limit 1;""",
-        #                     service, str(service_id))
         owner = db_session.query(Owner).filter(
             Owner.service == service,
             Owner.service_id == str(service_id)
         ).first()
 
         if owner:
-            log.info(
-                'upserting owner - found'
-            )
             if (owner.username or '').lower() != username.lower():
-                # self.db.query("UPDATE owners set username=%s where ownerid=%s;",
-                #               owner['username'], owner['ownerid'])
-                owner.username = username # TODO: ????
+                owner.username = username
         else:
-            log.info(
-                'upserting owner - NOT found'
-            )
-            # insert owner
-            # owner = self.db.get("""INSERT INTO owners (service, service_id, username, plan_provider)
-            #                        values (%s, %s, %s, %s)
-            #                        returning ownerid;""",
-            #                     service, str(service_id), username, plan_provider)
             owner = Owner(
                 service=service,
                 service_id=str(service_id),
-                username=username,
-                plan_provider=plan_provider
+                username=username
             )
             db_session.add(owner)
+            db_session.flush()
             
         return owner.ownerid
 
@@ -349,27 +331,19 @@ class SyncReposTask(BaseCodecovTask):
         return repo_id
 
 
-    def choose_bot(self, db_session, ownerid, service, owners_by_id):
-        owners_by_id = map(str, owners_by_id.values())
-        # remove me
-        if str(ownerid) in owners_by_id:
-            owners_by_id.remove(str(ownerid))
+    def set_bot(self, db_session, ownerid, service, owner_ids):
+        # remove myself
+        if str(ownerid) in owner_ids:
+            owner_ids.remove(str(ownerid))
 
-        if owners_by_id and (
-            not self.enterprise or  # is production
+        if owner_ids and (
+            not self.enterprise or                # is production
             get_config((service, 'bot')) is None  # or no bot is set in yaml
         ):
             # we can see private repos, make me the bot
-            # self.db.query("""UPDATE owners
-            #                     set bot=%s
-            #                     where service=%s
-            #                     and ownerid in %s
-            #                     and bot is null
-            #                     and oauth_token is null;""",
-            #                 ownerid, service, tuple(owners_by_id))
             db_session.query(Owner).filter(
                 Owner.service == service,
-                Owner.ownerid.in_(tuple(owners_by_id)),
+                Owner.ownerid.in_(tuple(owner_ids)),
                 Owner.bot_id.is_(None),
                 Owner.oauth_token.is_(None)
             ).update({
