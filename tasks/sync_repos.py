@@ -13,7 +13,21 @@ log = logging.getLogger(__name__)
 
 
 class SyncReposTask(BaseCodecovTask):
-    """This task syncs the repos for a user
+    """This task syncs the repos for a user in the same way as the legacy "refresh" task.
+
+        High-level steps:
+
+        1. Get repos for the user. This is all of the repos owned by the user and those
+           in other teams/orgs/groups that the user has permission for. If using a GitHub
+           integration, we get all the repos included in the integration.
+
+        2. Loop over repos and upsert the owner, repo, and fork (if any) into the database.
+
+        3. Update the permissions for the user (permissions col in the owners table).
+
+        4. Set the bot for owners (teams/orgs/groups) that have private repos. This is so
+           we have a link to a valid token through the bot user for calls to the provider
+           service (GitHub, Gitlab, Bitbucket, ...).
     """
     name = sync_repos_task_name
 
@@ -63,12 +77,9 @@ class SyncReposTask(BaseCodecovTask):
                 }, synchronize_session=False)
         else:
             private_project_ids = []
+
             # get my repos (and team repos)
             repos = await git.list_repos()
-            log.info(
-                'repos',
-                extra=dict(ownerid=ownerid, username=username, repos=repos)
-            )
             owners_by_id = {}
 
             for repo in repos:
