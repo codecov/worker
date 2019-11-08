@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import pytest
 
@@ -67,7 +68,7 @@ class TestYamlSavingService(BaseTestCase):
                 'branches': ['.*'],
                 'layout': 'diff, flags, reach', 'behavior': 'default'
             },
-            'ignore': ['(?s:tests/[^\\/]+)\\Z'],
+            'ignore': [r'(?s:tests/[^\/]+)\Z'],
             'flags': {
                 'integration': {
                     'ignore': ['^app/ui.*'],
