@@ -68,7 +68,7 @@ class TestYamlSavingService(BaseTestCase):
                 'branches': ['.*'],
                 'layout': 'diff, flags, reach', 'behavior': 'default'
             },
-            'ignore': [r'(?s:tests/[^\/]+)\Z'],
+            'ignore': [r'(?s:tests\/[^\/]+)\Z'],
             'flags': {
                 'integration': {
                     'ignore': ['^app/ui.*'],

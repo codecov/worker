@@ -2,7 +2,7 @@ version: 2.1
 executors:
   codecov-deploy:
     docker:
-    - image: gcr.io/test6u3411ty6xqh462sri/codecov-deploy@sha256:2ff2cd00cea8cc29bba5c1241397ae8b551a48659956b2056ce56c0efe82886d
+    - image: gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
       user: root
       auth:
         username: _json_key
@@ -61,7 +61,6 @@ jobs:
     - run:
         name: codecov
         command: |
-          . venv/bin/activate
           pip install codecov
           codecov
   deploy:

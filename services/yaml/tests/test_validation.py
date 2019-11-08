@@ -43,8 +43,6 @@ class TestPathPatternSchemaField(BaseTestCase):
         assert compiled.match('tests/file_1.py') is not None
         assert compiled.match('tests/testeststsetetesetsfile_2.py') is not None
         assert compiled.match('tests/deep/file_1.py') is None
-        assert re.escape('/') == '/'
-        assert translate_glob_to_regex('tests/*') == '(?s:tests/[^\\/]+)\\Z'
 
     def test_simple_path_structure_one_star(self):
         ps = PathPatternSchemaField()

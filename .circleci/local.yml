@@ -90,7 +90,7 @@ workflows:
     - deploy:
         filters:
           tags:
-            only: /^testingdeploy-.*/
+            only: /^manual-production-.*/
           branches:
             ignore: /.*/
         requires:
