@@ -33,15 +33,15 @@ services_short = dict(github='gh',
                       gitlab='gl',
                       gitlab_enterprise='gle')
 def make_url(repository, *args, **kwargs):
-    args = map(lambda a: escape(a, True), list(args))
+    args = list(map(lambda a: escape(a, True), list(args)))
     kwargs = dict([(k, escape(v)) for k, v in kwargs.items() if v is not None])
     if repository:
-        return url_concat('/'.join([get_config(('setup', 'codecov_url')),
+        return url_concat('/'.join([get_config('setup', 'codecov_url'),
                                     services_short[repository.service],
                                     repository.slug] + args),
                           kwargs)
     else:
-        return url_concat('/'.join([get_config(('setup', 'codecov_url'))] + args),
+        return url_concat('/'.join([get_config('setup', 'codecov_url')] + args),
                           kwargs)
 
 
@@ -76,31 +76,32 @@ class StatusSetPendingTask(BaseCodecovTask):
                     for key, config in self.default_if_true(settings[context]):
                         try:
                             title = 'codecov/%s%s' % (context, ('/'+key if key != 'default' else ''))
-                            assert self.match(config('branches'), branch), 'Ignore setting pending status on branch'
-                            assert on_a_pull_request if config('only_pulls', False) else True, 'Set pending only on pulls'
-                            assert config('set_pending', True), 'Pending status disabled in YAML'
+                            assert self.match(config.get('branches'), branch or ''), 'Ignore setting pending status on branch'
+                            assert on_a_pull_request if config.get('only_pulls', False) else True, 'Set pending only on pulls'
+                            assert config.get('set_pending', True), 'Pending status disabled in YAML'
                             assert title not in statuses, 'Pending status already set'
 
                             await repo.set_commit_status(commit=commitid,
-                                                                    status='pending',
-                                                                    context=title,
-                                                                    description='Collecting reports and waiting for CI to complete',
-                                                                    url=url)
-                            self.log(
-                                'info',
+                                                         status='pending',
+                                                         context=title,
+                                                         description='Collecting reports and waiting for CI to complete',
+                                                         url=url)
+                            log.info(
                                 'Status set',
-                                context=title,
-                                state='pending'
+                                extra=dict(context=title, state='pending')
                             )
                         except AssertionError as e:
-                            self.log('warn', str(e), context=context)
+                            log.warn(
+                                str(e),
+                                extra=dict(context=context)
+                            )
 
     # TODO: factor out?
     def default_if_true(self, value):
         if value is True:
             yield 'default', {}
         elif type(value) is dict:
-            for key, data in value.iteritems():
+            for key, data in value.items():
                 if data is False:
                     continue
                 elif data is True:
