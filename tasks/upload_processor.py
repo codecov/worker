@@ -149,26 +149,25 @@ class UploadProcessorTask(BaseCodecovTask):
                     report = individual_info.pop('report')
                     n_processed += 1
                 processings_so_far.append(individual_info)
-            if n_processed > 0:
-                log.info(
-                    'Finishing the processing of %d reports',
-                    n_processed,
-                    extra=dict(repoid=repoid, commit=commitid)
+            log.info(
+                'Finishing the processing of %d reports',
+                n_processed,
+                extra=dict(repoid=repoid, commit=commitid)
+            )
+            results_dict = await self.save_report_results(
+                db_session, archive_service,
+                repository, commit, report, pr
+            )
+            log.info(
+                'Processed %d reports',
+                n_processed,
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    commit_yaml=commit_yaml,
+                    url=results_dict.get('url')
                 )
-                results_dict = await self.save_report_results(
-                    db_session, archive_service,
-                    repository, commit, report, pr
-                )
-                log.info(
-                    'Processed %d reports',
-                    n_processed,
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        commit_yaml=commit_yaml,
-                        url=results_dict.get('url')
-                    )
-                )
+            )
             return {
                 'processings_so_far': processings_so_far,
             }
