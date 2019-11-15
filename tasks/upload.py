@@ -171,6 +171,15 @@ class UploadTask(BaseCodecovTask):
                     commit=commitid
                 )
             )
+        except TorngitClientError:
+            log.warning(
+                "Unable to reach git provider because there was a 4xx erro",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                ),
+                exc_info=True
+            )
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
             argument_list.append(arguments)
