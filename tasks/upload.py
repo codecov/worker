@@ -173,7 +173,7 @@ class UploadTask(BaseCodecovTask):
             )
         except TorngitClientError:
             log.warning(
-                "Unable to reach git provider because there was a 4xx erro",
+                "Unable to reach git provider because there was a 4xx error",
                 extra=dict(
                     repoid=repoid,
                     commit=commitid
