@@ -193,6 +193,15 @@ class UploadTask(BaseCodecovTask):
                     commit_yaml=None
                 )
             self.schedule_task(commit, commit_yaml, argument_list)
+        else:
+            log.info(
+                "Not scheduling task because there were no arguments were found on redis",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    argument_list=argument_list
+                )
+            )
         return {
             'was_setup': was_setup,
             'was_updated': was_updated
