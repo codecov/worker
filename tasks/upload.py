@@ -171,6 +171,15 @@ class UploadTask(BaseCodecovTask):
                     commit=commitid
                 )
             )
+        except TorngitClientError:
+            log.warning(
+                "Unable to reach git provider because there was a 4xx erro",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                ),
+                exc_info=True
+            )
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
             argument_list.append(arguments)
@@ -184,6 +193,15 @@ class UploadTask(BaseCodecovTask):
                     commit_yaml=None
                 )
             self.schedule_task(commit, commit_yaml, argument_list)
+        else:
+            log.info(
+                "Not scheduling task because there were no arguments were found on redis",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    argument_list=argument_list
+                )
+            )
         return {
             'was_setup': was_setup,
             'was_updated': was_updated
