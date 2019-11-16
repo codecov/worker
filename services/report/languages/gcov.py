@@ -27,7 +27,11 @@ def detect(report):
 
 def from_txt(name, string, fix, ignored_lines, sesisonid, settings):
     # clean and strip lines
-    filename, string = string.split('\n', 1)
+    if '\n' in string:
+        filename, gcov_content = string.split('\n', 1)
+    else:
+        filename = string
+        gcov_content = ''
     filename = filename.split(':')[3].lstrip('./')
     if name and name.endswith(filename+'.gcov'):
         filename = fix(name[:-5]) or fix(filename)
@@ -38,7 +42,7 @@ def from_txt(name, string, fix, ignored_lines, sesisonid, settings):
 
     report = Report()
     report.append(
-        _process_gcov_file(filename, ignored_lines.get(filename), string, sesisonid, settings)
+        _process_gcov_file(filename, ignored_lines.get(filename), gcov_content, sesisonid, settings)
     )
     return report
 

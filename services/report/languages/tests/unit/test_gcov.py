@@ -1,8 +1,7 @@
-from json import dumps
 
 from tests.base import BaseTestCase
 from services.report.languages import gcov
-
+from covreports.resources import Report
 
 txt = '''    -:    0:Source:tmp.c
     -:    1:not covered source
@@ -66,6 +65,11 @@ class TestGcov(BaseTestCase):
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report['archive']['tmp.c'][3][0] == 10
         assert processed_report['archive']['tmp.c'][3] == (10, 1, 'b', [[1, 1]], None, None)
+
+    def test_single_line_report(self):
+        report = gcov.from_txt('', '        -:    0:Source:another_tmp.c', str, {}, 1, {'branch_detection': {'conditional': False}})
+        assert not report
+        assert isinstance(report, Report)
 
     def test_no_cond_loop_report(self):
         report = gcov.from_txt('', txt, str, {}, 1, {'branch_detection': {'loop': False}})
