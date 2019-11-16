@@ -116,7 +116,12 @@ class UploadProcessorTask(BaseCodecovTask):
                 pr = arguments.get('pr')
                 log.info(
                     "Processing individual report %s", arguments.get('reportid'),
-                    extra=dict(repoid=repoid, commit=commitid, arguments=arguments)
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        arguments=arguments,
+                        commit_yaml=commit_yaml
+                    )
                 )
                 individual_info = {
                     'arguments': arguments.copy()
