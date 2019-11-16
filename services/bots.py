@@ -2,7 +2,7 @@ import logging
 
 from services.github import get_github_integration_token
 from services.encryption import encryptor
-from helpers.exceptions import RepositoryWithoutValidBotError, OwnerWithoutOauthTokenError
+from helpers.exceptions import RepositoryWithoutValidBotError, OwnerWithoutValidBotError
 
 log = logging.getLogger(__name__)
 
@@ -53,4 +53,4 @@ def _get_owner_or_appropriate_bot(owner):
             extra=dict(ownerid=owner.ownerid)
         )
         return owner
-    raise OwnerWithoutOauthTokenError()
+    raise OwnerWithoutValidBotError()

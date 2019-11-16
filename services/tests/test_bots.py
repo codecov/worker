@@ -2,7 +2,7 @@ import pytest
 
 from tests.base import BaseTestCase
 from services.bots import ( get_repo_appropriate_bot_token, RepositoryWithoutValidBotError,
-    get_owner_appropriate_bot_token, OwnerWithoutOauthTokenError
+    get_owner_appropriate_bot_token, OwnerWithoutValidBotError
 )
 from database.tests.factories import RepositoryFactory, OwnerFactory
 
@@ -167,7 +167,7 @@ class TestBotsService(BaseTestCase):
                 unencrypted_oauth_token=None
             )
         )
-        with pytest.raises(OwnerWithoutOauthTokenError):
+        with pytest.raises(OwnerWithoutValidBotError):
             get_owner_appropriate_bot_token(owner, using_integration=False)
 
     def test_get_owner_appropriate_bot_token_with_user_with_integration_bot_using_it(self, mock_configuration, codecov_vcr):

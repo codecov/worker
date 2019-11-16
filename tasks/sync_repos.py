@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app import celery_app
 from celery_config import sync_repos_task_name
 from helpers.config import get_config
+from helpers.environment import is_enterprise
 from tasks.base import BaseCodecovTask
 from database.models import Owner, Repository
 from services.owner import get_owner_provider_service
@@ -195,21 +196,24 @@ class SyncReposTask(BaseCodecovTask):
             ).first()
 
             if repo_id:
-                try:
-                    # repo exists, but wrong owner
-                    repo_wrong_owner = db_session.query(Repository).filter(
-                        Repository.repoid == repo_id
-                    ).first()
+                # repo exists, but wrong owner
+                repo_wrong_owner = db_session.query(Repository).filter(
+                    Repository.repoid == repo_id
+                ).first()
 
-                    if repo_wrong_owner:
-                        repo_wrong_owner.ownerid = ownerid
-                        repo_wrong_owner.private = repo_data['private']
-                        repo_wrong_owner.language = repo_data['language']
-                        repo_wrong_owner.name = repo_data['name']
-                        repo_wrong_owner.deleted = False
-                        repo_wrong_owner.updatestamp = datetime.now()
-                        repo_id = repo_wrong_owner.repoid
-                except:
+                if repo_wrong_owner:
+                    log.info(
+                        'upserting repo - wrong owner',
+                        extra=dict(ownerid=ownerid, repo_id=repo_wrong_owner.repoid)
+                    )
+                    repo_wrong_owner.ownerid = ownerid
+                    repo_wrong_owner.private = repo_data['private']
+                    repo_wrong_owner.language = repo_data['language']
+                    repo_wrong_owner.name = repo_data['name']
+                    repo_wrong_owner.deleted = False
+                    repo_wrong_owner.updatestamp = datetime.now()
+                    repo_id = repo_wrong_owner.repoid
+                else:
                     # the repository name exists, but wrong service_id
                     repo_wrong_service_id = db_session.query(Repository).filter(
                         Repository.ownerid == ownerid,
@@ -217,6 +221,10 @@ class SyncReposTask(BaseCodecovTask):
                     ).first()
 
                     if repo_wrong_service_id:
+                        log.info(
+                            'upserting repo - wrong service_id',
+                            extra=dict(ownerid=ownerid, repo_id=repo_wrong_service_id.service_id)
+                        )
                         repo_wrong_service_id.service_id = repo_data['service_id']
                         repo_wrong_service_id.private = repo_data['private']
                         repo_id = repo_wrong_owner.repoid
@@ -258,8 +266,8 @@ class SyncReposTask(BaseCodecovTask):
             owner_ids.remove(str(ownerid))
 
         if owner_ids and (
-            not self.enterprise or                # is production
-            get_config((service, 'bot')) is None  # or no bot is set in yaml
+            not is_enterprise() or                # is production
+            get_config(service, 'bot') is None  # or no bot is set in yaml
         ):
             # we can see private repos, make me the bot
             db_session.query(Owner).filter(
