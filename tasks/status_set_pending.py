@@ -3,9 +3,8 @@ import re
 
 from app import celery_app
 from celery_config import status_set_pending_task_name
-from covreports.helpers.yaml import walk
+from covreports.helpers.yaml import walk, default_if_true
 from services.repository import get_repo
-from covreports.config import get_config
 from covreports.utils.match import match
 from covreports.utils.urls import make_url
 from tasks.base import BaseCodecovTask
@@ -41,7 +40,7 @@ class StatusSetPendingTask(BaseCodecovTask):
 
             for context in ('project', 'patch', 'changes'):
                 if settings.get(context):
-                    for key, config in self.default_if_true(settings[context]):
+                    for key, config in default_if_true(settings[context]):
                         try:
                             title = 'codecov/%s%s' % (context, ('/'+key if key != 'default' else ''))
                             assert match(config.get('branches'), branch or ''), 'Ignore setting pending status on branch'
@@ -63,21 +62,6 @@ class StatusSetPendingTask(BaseCodecovTask):
                                 str(e),
                                 extra=dict(context=context)
                             )
-
-    # TODO: factor out? - this will be used by set_pending and set_error
-    def default_if_true(self, value):
-        if value is True:
-            yield 'default', {}
-        elif type(value) is dict:
-            for key, data in value.items():
-                if data is False:
-                    continue
-                elif data is True:
-                    yield key, {}
-                elif type(data) is not dict or data.get('enabled') is False:
-                    continue
-                else:
-                    yield key, data
 
 RegisteredStatusSetPendingTask = celery_app.register_task(StatusSetPendingTask())
 status_set_pending_task = celery_app.tasks[StatusSetPendingTask.name]
