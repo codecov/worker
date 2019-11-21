@@ -56,6 +56,7 @@ class Repository(CodecovBaseModel):
     language = Column(types.Text)
     hookid = Column(types.Text)
     using_integration = Column(types.Boolean)
+    cache_do_not_use = Column('cache', postgresql.JSON)
 
     owner = relationship(Owner, foreign_keys=[ownerid], backref=backref("owners", cascade="delete"))
     bot = relationship(Owner, foreign_keys=[bot_id])

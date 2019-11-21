@@ -372,7 +372,9 @@ class TestNotifyTask(object):
         )
         expected_author_dict = {
             'username': 'ThiagoCodecov',
-            'service_id': repository.owner.service_id, 'email': None, 'service': 'github',
+            'service_id': repository.owner.service_id,
+            'email': repository.owner.email,
+            'service': 'github',
             'name': repository.owner.name
         }
         expected_result = {
@@ -473,5 +475,8 @@ class TestNotifyTask(object):
         }
         import pprint
         pprint.pprint(result)
+        assert len(result['notifications']) == len(expected_result['notifications'])
+        for expected, actual in zip(sorted(result['notifications'], key=lambda x: x['notifier']), sorted(expected_result['notifications'], key=lambda x: x['notifier'])):
+            assert expected == actual
         assert sorted(result['notifications'], key=lambda x: x['notifier']) == sorted(expected_result['notifications'], key=lambda x: x['notifier'])
         assert result == expected_result

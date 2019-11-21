@@ -21,6 +21,7 @@ class OwnerFactory(Factory):
         exclude = ('unencrypted_oauth_token',)
 
     name = factory.Faker('name')
+    email = factory.Faker('email')
     username = factory.Faker('user_name')
     plan_activated_users = []
     service_id = factory.Sequence(lambda n: 'user%d' % n)
