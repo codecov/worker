@@ -90,7 +90,7 @@ workflows:
     - deploy:
         filters:
           tags:
-            only: /^manual-production-.*/
+            only: /^production-.*/
           branches:
             ignore: /.*/
         requires:
