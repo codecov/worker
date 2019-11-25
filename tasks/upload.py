@@ -1,6 +1,7 @@
 import logging
 import re
 from json import loads
+from typing import Mapping, Any
 
 from celery import chain
 from redis.exceptions import LockError
@@ -12,7 +13,8 @@ from app import celery_app
 from celery_config import upload_task_name
 from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.redis import get_redis_connection
+from services.archive import ArchiveService
+from services.redis import get_redis_connection, download_archive_from_redis, Redis
 from services.repository import (
     get_repo_provider_service, update_commit_from_provider_info, create_webhook_on_provider
 )
@@ -182,7 +184,10 @@ class UploadTask(BaseCodecovTask):
             )
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
-            argument_list.append(arguments)
+            normalized_arguments = self.normalize_upload_arguments(
+                commit, arguments, redis_connection
+            )
+            argument_list.append(normalized_arguments)
         if argument_list:
             if repository_service:
                 commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
@@ -325,6 +330,28 @@ class UploadTask(BaseCodecovTask):
             extra=dict(repoid=repoid, commit=commitid)
         )
         return False
+
+    def normalize_upload_arguments(self, commit: Commit, arguments: Mapping[str, Any], redis_connection: Redis):
+        """
+            Normalizes and validates the argument list from the user
+        """
+        commit_sha = commit.commitid
+        reportid = arguments.get('reportid')
+        if arguments.get('redis_key'):
+            archive_service = ArchiveService(commit.repository)
+            redis_key = arguments.pop('redis_key')
+            content = download_archive_from_redis(redis_connection, redis_key)
+            written_path = archive_service.write_raw_upload(commit_sha, reportid, content)
+            log.info(
+                "Writing report content from redis to storage",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    path=written_path
+                )
+            )
+            arguments['archive_url'] = written_path
+        return arguments
 
 
 RegisteredUploadTask = celery_app.register_task(UploadTask())
