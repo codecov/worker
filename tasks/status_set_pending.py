@@ -58,7 +58,7 @@ class StatusSetPendingTask(BaseCodecovTask):
                                 extra=dict(context=title, state='pending')
                             )
                         except AssertionError as e:
-                            log.warn(
+                            log.warning(
                                 str(e),
                                 extra=dict(context=context)
                             )

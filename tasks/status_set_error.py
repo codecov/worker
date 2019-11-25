@@ -19,7 +19,7 @@ class StatusSetErrorTask(BaseCodecovTask):
     async def run_async(self, db_session, repoid, commitid, *, message=None, **kwargs):
         log.info(
             'Set error',
-            extra=dict(repoid=repoid, commitid=commitid, message=message)
+            extra=dict(repoid=repoid, commitid=commitid, description=message)
         )
 
         # TODO: need to check for enterprise license?
@@ -29,7 +29,7 @@ class StatusSetErrorTask(BaseCodecovTask):
 
         settings = walk(repo.data['yaml'], ('coverage', 'status'))
         if settings and any(settings.values()):
-            statuses = yield repo.get_commit_statuses(commitid)
+            statuses = await repo.get_commit_statuses(commitid)
             url = make_url(repo, 'commit', commitid)
             for context in ('project', 'patch', 'changes'):
                 if settings.get(context):

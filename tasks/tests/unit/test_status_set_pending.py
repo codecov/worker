@@ -4,7 +4,6 @@ from pathlib import Path
 from asyncio import Future
 
 import pytest
-from torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from torngit.status import Status
 
 from tasks.status_set_pending import StatusSetPendingTask
