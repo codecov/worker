@@ -21,16 +21,14 @@ log = logging.getLogger(__name__)
 
 def report_type_matching(name, raw_report):
     parser = etree.XMLParser(recover=True, resolve_entities=False)
-    first_line = raw_report.split('\n', 1)[0]
     if raw_report.find('<plist version="1.0">') >= 0 or name.endswith('.plist'):
         return raw_report, 'plist'
-    if first_line and first_line[0] in ['{', '['] and first_line != '{}':
+    if raw_report:
         try:
             processed = loads(raw_report)
             return processed, 'json'
         except ValueError:
             pass
-    elif raw_report:
         if '<classycle ' in raw_report and '</classycle>' in raw_report:
             return None, None
         try:
@@ -38,7 +36,7 @@ def report_type_matching(name, raw_report):
         except ValueError:
             processed = etree.fromstring(raw_report.encode(), parser=parser)
         if processed is not None and len(processed) > 0:
-            return processed, 'xml'        
+            return processed, 'xml'
     return raw_report, 'txt'
 
 
