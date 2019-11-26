@@ -1,4 +1,4 @@
-GCR_REPO := gcr.io/codecov-enterprise-sandbox/codecov-deploy
+GCR_REPO := gcr.io/test6u3411ty6xqh462sri/codecov-deploy
 
 build:
 	docker build \

@@ -2,7 +2,7 @@ version: 2.1
 executors:
   codecov-deploy:
     docker:
-    - image: gcr.io/codecov-enterprise-sandbox/codecov-deploy:latest
+    - image: gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
       user: root
       auth:
         username: _json_key
@@ -10,7 +10,7 @@ executors:
     working_directory: /work
   codecov-worker:
     docker:
-    - image: gcr.io/codecov-enterprise-sandbox/codecov-worker:latest
+    - image: gcr.io/test6u3411ty6xqh462sri/codecov-worker:latest
       user: root
       auth:
         username: _json_key
@@ -57,7 +57,12 @@ jobs:
     - run:
         name: run tests
         command: |
-          make test || true
+          make test
+    - run:
+        name: codecov
+        command: |
+          pip install codecov
+          codecov
   deploy:
     executor: codecov-deploy
     steps:

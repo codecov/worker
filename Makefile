@@ -7,7 +7,7 @@ build:
 	docker build -f Dockerfile . -t codecov/worker:latest --build-arg SSH_PRIVATE_KEY="${ssh_private_key}"
 
 test:
-	python -m pytest
+	python -m pytest --cov=./
 
 push.worker-new:
 	docker tag codecov/worker ${_gcr}-worker:${version}-${sha}
