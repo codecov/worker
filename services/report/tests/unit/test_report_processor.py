@@ -10,3 +10,4 @@ class TestReportTypeMatching(object):
         assert report_type_matching('name', json.dumps({'value': 1}))[1] == 'json'
         assert report_type_matching('name', '<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>')[1] == 'xml'
         assert report_type_matching('name', '\uFEFF<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>')[1] == 'xml'
+        assert report_type_matching('name', 'normal file')[1] == 'txt'

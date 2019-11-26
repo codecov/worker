@@ -34,7 +34,10 @@ def report_type_matching(name, raw_report):
         try:
             processed = etree.fromstring(raw_report, parser=parser)
         except ValueError:
-            processed = etree.fromstring(raw_report.encode(), parser=parser)
+            try:
+                processed = etree.fromstring(raw_report.encode(), parser=parser)
+            except ValueError:
+                pass
         if processed is not None and len(processed) > 0:
             return processed, 'xml'
     return raw_report, 'txt'
