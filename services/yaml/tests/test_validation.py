@@ -6,7 +6,7 @@ from schema import SchemaError
 from tests.base import BaseTestCase
 from services.yaml.validation import (
     LayoutStructure, validate_yaml, PathPatternSchemaField, CoverageRangeSchemaField,
-    PercentSchemaField, CustomFixPathSchemaField
+    PercentSchemaField, CustomFixPathSchemaField, pre_process_yaml
 )
 from services.yaml.validation.helpers import (
     determine_path_pattern_type, translate_glob_to_regex
@@ -149,6 +149,8 @@ class TestPercentSchemaField(BaseTestCase):
 
     def test_simple_coverage_range(self):
         crsf = PercentSchemaField()
+        assert crsf.validate(80) == 80.0
+        assert crsf.validate(80.0) == 80.0
         assert crsf.validate('80%') == 80.0
         assert crsf.validate('80') == 80.0
         assert crsf.validate('0') == 0.0
@@ -175,6 +177,21 @@ class TestPatternTypeDetermination(BaseTestCase):
         assert determine_path_pattern_type('path/[a-z]*/folder') == 'regex'
         assert determine_path_pattern_type('*/[a-z]*/folder') == 'glob'
         assert determine_path_pattern_type("before/test-*::after/") == 'glob'
+
+
+class TestPreprocess(BaseTestCase):
+
+    def test_preprocess_empty(self):
+        user_input = {}
+        expected_result = {}
+        pre_process_yaml(user_input)
+        assert expected_result == user_input
+
+    def test_preprocess_none_in_fields(self):
+        user_input = {'codecov': None}
+        expected_result = {'codecov': None}
+        pre_process_yaml(user_input)
+        assert expected_result == user_input
 
 
 class TestUserYamlValidation(BaseTestCase):

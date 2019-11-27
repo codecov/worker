@@ -1,22 +1,27 @@
 import logging
 import re
 from json import loads
-from datetime import datetime
 
 from celery import chain
-from torngit.exceptions import TorngitObjectNotFoundError
+from redis.exceptions import LockError
+from torngit.exceptions import (
+    TorngitObjectNotFoundError, TorngitClientError, TorngitRepoNotFoundError
+)
 
-from helpers.config import get_config
 from app import celery_app
-from tasks.base import BaseCodecovTask
-from database.models import Commit, Owner
+from celery_config import upload_task_name
+from database.models import Commit
+from helpers.exceptions import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
-from services.repository import get_repo_provider_service
+from services.repository import (
+    get_repo_provider_service, update_commit_from_provider_info, create_webhook_on_provider
+)
 from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
-from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.exceptions import InvalidYamlException
-from tasks.upload_processor import upload_processor_task
+from services.yaml.fetcher import fetch_commit_yaml_from_provider
+from tasks.base import BaseCodecovTask
 from tasks.upload_finisher import upload_finisher_task
+from tasks.upload_processor import upload_processor_task
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +46,7 @@ class UploadTask(BaseCodecovTask):
     - UploadTask (this one)
         - Prepares the ground for the other tasks to run (view it as a compatibility layer between
             the old code and new)
-        - Does thinks that only need to happen once per commit, and not per upload,
+        - Does things that only need to happen once per commit, and not per upload,
             like populating commit info and webhooks
     - UploadProcessorTask
         - Process each individual upload the user did (with some possible batching)
@@ -77,10 +82,10 @@ class UploadTask(BaseCodecovTask):
         - In the end, the tasks are scheduled (sent to celery), and this task finishes
 
     """
-    name = "app.tasks.upload.Upload"
+    name = upload_task_name
 
     def write_to_db(self):
-        return False
+        return True
 
     def lists_of_arguments(self, redis_connection, uploads_list_key):
         """Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
@@ -104,33 +109,103 @@ class UploadTask(BaseCodecovTask):
                 yield loads(arguments)
 
     async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
+        log.info(
+            "Received upload task",
+            extra=dict(
+                repoid=repoid,
+                commit=commitid
+            )
+        )
         repoid = int(repoid)
         lock_name = f"upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
-        with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
-            uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
-            commit = None
-            commits = db_session.query(Commit).filter(
-                    Commit.repoid == repoid, Commit.commitid == commitid)
-            commit = commits.first()
-            assert commit, 'Commit not found in database.'
-            log.info(
-                "Starting processing of report",
-                extra=dict(repoid=repoid, commit=commitid)
+        try:
+            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
+                return await self.run_async_within_lock(
+                    db_session, redis_connection, repoid, commitid, *args, **kwargs
+                )
+        except LockError:
+            log.warning(
+                "Unable to acquire lock for key %s. Retrying", lock_name,
+                extra=dict(
+                    commit=commitid,
+                    repoid=repoid
+                )
             )
-            repository = commit.repository
+            self.retry(max_retries=3, countdown=20 * 2 ** self.request.retries)
+
+    async def run_async_within_lock(self, db_session, redis_connection, repoid, commitid, *args, **kwargs):
+        log.info(
+            "Starting processing of report",
+            extra=dict(repoid=repoid, commit=commitid)
+        )
+        uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
+        commit = None
+        commits = db_session.query(Commit).filter(
+            Commit.repoid == repoid,
+            Commit.commitid == commitid
+        )
+        commit = commits.first()
+        assert commit, 'Commit not found in database.'
+
+        repository = commit.repository
+        repository_service = None
+        was_updated, was_setup = False, False
+        try:
             repository_service = get_repo_provider_service(repository, commit)
-            was_updated = await self.possibly_update_commit_from_provider_info(db_session, commit, repository_service)
+            was_updated = await self.possibly_update_commit_from_provider_info(commit, repository_service)
             was_setup = await self.possibly_setup_webhooks(commit, repository_service)
-            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
-            argument_list = []
-            for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
-                argument_list.append(arguments)
+        except RepositoryWithoutValidBotError:
+            log.warning(
+                "Unable to reach git provider because repo doesn't have a valid bot",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                )
+            )
+        except TorngitRepoNotFoundError:
+            log.warning(
+                "Unable to reach git provider because this specific bot can't see that repository",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                )
+            )
+        except TorngitClientError:
+            log.warning(
+                "Unable to reach git provider because there was a 4xx error",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                ),
+                exc_info=True
+            )
+        argument_list = []
+        for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
+            argument_list.append(arguments)
+        if argument_list:
+            if repository_service:
+                commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
+            else:
+                commit_yaml = get_final_yaml(
+                    owner_yaml=repository.owner.yaml,
+                    repo_yaml=repository.yaml,
+                    commit_yaml=None
+                )
             self.schedule_task(commit, commit_yaml, argument_list)
-            return {
-                'was_setup': was_setup,
-                'was_updated': was_updated
-            }
+        else:
+            log.info(
+                "Not scheduling task because there were no arguments were found on redis",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    argument_list=argument_list
+                )
+            )
+        return {
+            'was_setup': was_setup,
+            'was_updated': was_updated
+        }
 
     async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
@@ -138,9 +213,17 @@ class UploadTask(BaseCodecovTask):
             commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
             save_repo_yaml_to_database_if_needed(commit, commit_yaml)
         except InvalidYamlException:
-            log.exception(
+            log.warning(
                 "Unable to use yaml from commit because it is invalid",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid)
+                extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                exc_info=True
+            )
+            commit_yaml = None
+        except TorngitClientError:
+            log.warning(
+                "Unable to use yaml from commit because it cannot be fetched",
+                extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                exc_info=True
             )
             commit_yaml = None
         return get_final_yaml(
@@ -195,28 +278,28 @@ class UploadTask(BaseCodecovTask):
     async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
         repo_data = repository_service.data
-        should_post_webhook = (not repo_data['repo']['using_integration']
+        should_post_webhook = (not repository.using_integration
                                and not repository.hookid and
                                hasattr(repository_service, 'post_webhook'))
-        should_post_webhook = False  # Temporarily while we test this
 
         # try to add webhook
         if should_post_webhook:
             try:
-                hook_result = await self.post_webhook(repository_service)
+                hook_result = await create_webhook_on_provider(repository_service)
                 hookid = hook_result['id']
                 log.info("Registered hook %s for repo %s", hookid, repository.repoid)
                 repository.hookid = hookid
                 repo_data['repo']['hookid'] = hookid
                 return True
             except Exception:
-                log.exception(
+                log.warning(
                     'Failed to create project webhook',
-                    extra=dict(repoid=repository.repoid, commit=commit.commitid)
+                    extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                    exc_info=True
                 )
         return False
 
-    async def possibly_update_commit_from_provider_info(self, db_session, commit, repository_service):
+    async def possibly_update_commit_from_provider_info(self, commit, repository_service):
         repoid = commit.repoid
         commitid = commit.commitid
         try:
@@ -225,7 +308,7 @@ class UploadTask(BaseCodecovTask):
                     "Commit does not have all needed info. Reaching provider to fetch info",
                     extra=dict(repoid=repoid, commit=commitid)
                 )
-                await self.update_commit_from_provider_info(db_session, repository_service, commit)
+                await update_commit_from_provider_info(repository_service, commit)
                 return True
         except TorngitObjectNotFoundError:
             log.warning(
@@ -238,127 +321,6 @@ class UploadTask(BaseCodecovTask):
             extra=dict(repoid=repoid, commit=commitid)
         )
         return False
-
-    def get_author_from_commit(self, db_session, service, author_id, username, email, name):
-        author = db_session.query(Owner).filter_by(service_id=author_id, service=service).first()
-        if author:
-            return author
-        author = Owner(
-            service_id=author_id, service=service,
-            username=username, name=name, email=email
-        )
-        db_session.add(author)
-        return author
-
-    async def update_commit_from_provider_info(self, db_session, repository_service, commit):
-        """
-            Takes the result from the torngit commit details, and updates the commit
-            properties with it
-
-        """
-        commitid = commit.commitid
-        git_commit = await repository_service.get_commit(commitid)
-
-        if git_commit is None:
-            log.error(
-                'Could not find commit on git provider',
-                extra=dict(repoid=commit.repoid, commit=commit.commitid)
-            )
-        else:
-            author_info = git_commit['author']
-            commit_author = self.get_author_from_commit(
-                db_session, repository_service.service, author_info['id'], author_info['username'],
-                author_info['email'], author_info['name']
-            )
-
-            # attempt to populate commit.pullid from repository_service if we don't have it
-            if not commit.pullid:
-                commit.pullid = await repository_service.find_pull_request(
-                    commit=commitid,
-                    branch=commit.branch)
-
-            # if our records or the call above returned a pullid, fetch it's details
-            if commit.pullid:
-                commit_updates = await repository_service.get_pull_request(
-                    pullid=commit.pullid
-                )
-                commit.branch = commit_updates['head']['branch']
-
-            commit.message = git_commit['message']
-            commit.parent = git_commit['parents'][0]
-            commit.merged = False
-            commit.author = commit_author
-            commit.updatestamp = datetime.now()
-
-            if repository_service.service == 'bitbucket':
-                res = merged_pull(git_commit.message)
-                if res:
-                    pullid = res.groups()[0]
-                    pullid = pullid
-                    commit.branch = (
-                        await
-                        repository_service.get_pull_request(pullid)
-                    )['base']['branch']
-            log.info(
-                'Updated commit with info from git provider',
-                extra=dict(repoid=commit.repoid, commit=commit.commitid)
-            )
-
-    async def post_webhook(self, repository_service):
-        """
-            Posts to the provider a webhook so we can receive updates from this
-            repo
-        """
-        webhook_url = (
-            get_config('setup', 'webhook_url') or get_config('setup', 'codecov_url')
-        )
-        WEBHOOK_EVENTS = {
-            "github": [
-                "pull_request", "delete", "push", "public", "status",
-                "repository"
-            ],
-            "github_enterprise": [
-                "pull_request", "delete", "push", "public", "status",
-                "repository"
-            ],
-            "bitbucket": [
-                "repo:push", "pullrequest:created", "pullrequest:updated",
-                "pullrequest:fulfilled", "repo:commit_status_created",
-                "repo:commit_status_updated"
-            ],
-            # https://confluence.atlassian.com/bitbucketserver/post-service-webhook-for-bitbucket-server-776640367.html
-            "bitbucket_server": [],
-            "gitlab": {
-                "push_events": True,
-                "issues_events": False,
-                "merge_requests_events": True,
-                "tag_push_events": False,
-                "note_events": False,
-                "job_events": False,
-                "build_events": True,
-                "pipeline_events": True,
-                "wiki_events": False
-            },
-            "gitlab_enterprise": {
-                "push_events": True,
-                "issues_events": False,
-                "merge_requests_events": True,
-                "tag_push_events": False,
-                "note_events": False,
-                "job_events": False,
-                "build_events": True,
-                "pipeline_events": True,
-                "wiki_events": False
-            }
-        }
-        return await repository_service.post_webhook(
-            f'Codecov Webhook. {webhook_url}',
-            f'{webhook_url}/webhooks/{repository_service.service}',
-            WEBHOOK_EVENTS[repository_service.service],
-            get_config(
-                repository_service.service, 'webhook_secret',
-                default='ab164bf3f7d947f2a0681b215404873e')
-            )
 
 
 RegisteredUploadTask = celery_app.register_task(UploadTask())

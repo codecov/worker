@@ -31,10 +31,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             timestamp = next(xml.iter('sessioninfo')).get('start')
             if timestamp and Date(timestamp) < read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
                 # report expired over 12 hours ago
-                raise AssertionError('Jacoco report expired %s' % timestamp)
-
-        except ReportExpiredException:
-            raise
+                raise ReportExpiredException('Jacoco report expired %s' % timestamp)
 
         except StopIteration:
             pass

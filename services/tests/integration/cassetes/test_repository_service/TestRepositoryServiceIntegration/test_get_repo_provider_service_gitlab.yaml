@@ -1,0 +1,176 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/187725/repository/commits/0028015f7fa260f5fd68f78c0deffc15183d955e
+  response:
+    body: {string: '{"id":"0028015f7fa260f5fd68f78c0deffc15183d955e","short_id":"0028015f","created_at":"2014-10-19T14:32:33.000Z","parent_ids":["5716de23b27020419d1a40dd93b469c041a1eeef"],"title":"added
+        large file","message":"added large file\n","author_name":"stevepeak","author_email":"steve@stevepeak.net","authored_date":"2014-10-19T14:32:33.000Z","committer_name":"stevepeak","committer_email":"steve@stevepeak.net","committed_date":"2014-10-19T14:32:33.000Z","stats":{"additions":816,"deletions":0,"total":816},"status":"success","last_pipeline":{"id":558130,"sha":"0028015f7fa260f5fd68f78c0deffc15183d955e","ref":null,"status":"success","web_url":"https://gitlab.com/codecov/ci-repo/pipelines/558130"},"project_id":187725}'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Fri, 27 Sep 2019 20:25:56 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['710']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"14982171f02402a9f16a64fd67c7a652"]
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Request-Id
+      - [8gMdbsH0tv5]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.062895']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['2']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['598']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1569616016']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Fri, 27 Sep 2019 20:26:56 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-10-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/projects/187725/repository/commits/0028015f7fa260f5fd68f78c0deffc15183d955e
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/users?search=steve%40stevepeak.net
+  response:
+    body: {string: '[{"id":109479,"name":"Steve Peak","username":"stevepeak","state":"active","avatar_url":"https://secure.gravatar.com/avatar/3712e9b9aee2ce5090aae58c2495cdee?s=80\u0026d=identicon","web_url":"https://gitlab.com/stevepeak"}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Fri, 27 Sep 2019 20:25:57 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['221']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"741342810fb814ea719ddb0b3c927b6d"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/users?active=false&blocked=false&external=false&page=1&per_page=20&search=steve%40stevepeak.net&skip_ldap=false&with_custom_attributes=false>;
+          rel="first", <https://gitlab.com/api/v4/users?active=false&blocked=false&external=false&page=1&per_page=20&search=steve%40stevepeak.net&skip_ldap=false&with_custom_attributes=false>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['20']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [NPfOv9UCz9]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.083548']
+    - !!python/tuple
+      - X-Total
+      - ['1']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['3']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['597']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1569616017']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Fri, 27 Sep 2019 20:26:57 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-09-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/users?search=steve%40stevepeak.net
+version: 1

@@ -7,7 +7,7 @@ class TestReportService(BaseTestCase):
 
     def test_build_report_from_commit_no_report_saved(self, mocker):
         commit = CommitFactory.create(
-            report=None
+            report_json=None
         )
         res = ReportService().build_report_from_commit(commit)
         assert res is not None

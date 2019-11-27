@@ -1,4 +1,5 @@
 import re
+import numbers
 
 from schema import SchemaError
 from covreports.encryption import EncryptorWithAlreadyGeneratedKey
@@ -63,6 +64,8 @@ class PercentSchemaField(object):
     field_regex = re.compile(r'(\d+)(\.\d+)?%?')
 
     def validate(self, value):
+        if isinstance(value, numbers.Number):
+            return float(value)
         if not self.field_regex.match(value):
             raise SchemaError(f"{value} should be a number")
         if value.endswith('%'):

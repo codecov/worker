@@ -12,7 +12,9 @@ from services.report.languages.base import BaseLanguageProcessor
 class NodeProcessor(BaseLanguageProcessor):
 
     def matches_content(self, content, first_line, name):
-        return True  # TODO: fix this
+        if not isinstance(content, dict):
+            return False
+        return all(isinstance(data, dict) for data in content.values())
 
     def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
         config = read_yaml_field(repo_yaml, ('parsers', 'javascript')) or {}

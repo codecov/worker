@@ -3,6 +3,8 @@ from lxml import etree
 import pytest
 from json import loads
 from pathlib import Path
+
+from helpers.exceptions import ReportEmptyError
 from tests.base import BaseTestCase
 from services.report import raw_upload_processor as process
 from covreports.utils.tuples import ReportTotals
@@ -84,7 +86,7 @@ class TestProcessRawUpload(BaseTestCase):
         assert ('file2' in master) is ('m' in keys and 'n' not in keys)
 
     def test_none(self):
-        with pytest.raises(AssertionError, match='No files found in report.'):
+        with pytest.raises(ReportEmptyError, match='No files found in report.'):
             process.process_raw_upload(self, {}, '', [])
 
 
@@ -200,7 +202,7 @@ class TestProcessReport(BaseTestCase):
            ('rlang.from_json', '{"uploader": "R"}'),
            ('scala.from_json', '{"fileReports": ""}'),
            ('coveralls.from_json', '{"source_files": ""}'),
-           ('node.from_json', '{"branchMap": ""}'),
+           ('node.from_json', '{"filename": {"branchMap": ""}}'),
            ('scoverage.from_xml', '<statements><data>'+u'\xf1'+'</data></statements>'),
            ('clover.from_xml', '<coverage generated="abc"><SampleTag></SampleTag></coverage>'),
            ('cobertura.from_xml', '<coverage><SampleTag></SampleTag></coverage>'),
@@ -223,22 +225,62 @@ class TestProcessReport(BaseTestCase):
             assert res == lang
             assert func.called
 
-    def test_xxe_entity_not_called(self):
+    def test_xxe_entity_not_called(self, mocker):
         report_xxe_xml = """<?xml version="1.0"?>
         <!DOCTYPE coverage [
         <!ELEMENT coverage ANY >
         <!ENTITY xxe SYSTEM "file:///config/codecov.yml" >]>
         <statements><statement>&xxe;</statement></statements>
         """
-        with patch('services.report.languages.scoverage.from_xml') as func:
+        func = mocker.patch('services.report.languages.scoverage.from_xml')
+        process.process_report(
+            report=report_xxe_xml,
+            commit_yaml=None,
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str
+        )
+        assert func.called
+        func.assert_called_with(mocker.ANY, str, {}, 0)
+        expected_xml_string = '<statements><statement>&xxe;</statement></statements>'
+        output_xml_string = etree.tostring(func.call_args_list[0][0][0]).decode()
+        assert output_xml_string == expected_xml_string
+
+    def test_format_not_recognized(self, mocker):
+        mocked = mocker.patch('services.report.report_processor.report_type_matching')
+        mocked.return_value = 'bad_processing', 'new_type'
+        result = process.process_report(
+            report="# path=/Users/path/to/app.coverage.txt\n<data>",
+            commit_yaml=None,
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str
+        )
+        assert result is None
+        assert mocked.called
+        mocked.assert_called_with('/Users/path/to/app.coverage.txt', '<data>')
+
+    def test_process_report_exception_raised(self, mocker):
+        class SpecialUnexpectedException(Exception):
+            pass
+        mock_bad_processor = mocker.MagicMock(
+            matches_content=mocker.MagicMock(
+                return_value=True
+            ),
+            process=mocker.MagicMock(
+                side_effect=SpecialUnexpectedException()
+            ),
+            name='mock_bad_processor'
+        )
+        mock_possible_list = mocker.patch(
+            'services.report.report_processor.get_possible_processors_list'
+        )
+        mock_possible_list.return_value = [mock_bad_processor]
+        with pytest.raises(SpecialUnexpectedException):
             process.process_report(
-                report=report_xxe_xml,
+                report="# path=/Users/path/to/app.coverage.txt\n<data>",
                 commit_yaml=None,
                 sessionid=0,
                 ignored_lines={},
                 path_fixer=str
             )
-            assert func.called
-            expected_xml_string = '<statements><statement>&xxe;</statement></statements>'
-            output_xml_string = etree.tostring(func.call_args_list[0][0][0]).decode()
-            assert output_xml_string == expected_xml_string

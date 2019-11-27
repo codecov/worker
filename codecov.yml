@@ -1,7 +1,2 @@
-services:
-  redis_url: redis://redis:@localhost:6379/
-  minio:
-    hash_key: 88f572f4726e4971827415efa8867978  # never change this
-    bucket: codecov
-    periodic_callback_ms: false
-    verify_ssl: false
+ignore:
+  - conftest.py

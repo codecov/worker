@@ -1,29 +1,37 @@
 from copy import deepcopy
+from celery._state import get_current_task
 
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
 from helpers.environment import get_current_env, Environment
 
 
-class CustomLocalJsonFormatter(JsonFormatter):
+class BaseLogger(JsonFormatter):
+
+    def add_fields(self, log_record, record, message_dict):
+        super(BaseLogger, self).add_fields(log_record, record, message_dict)
+        task = get_current_task()
+        if task and task.request:
+            log_record['task_name'] = task.name
+            log_record['task_id'] = task.request.id
+        else:
+            log_record['task_name'] = '???'
+            log_record['task_id'] = '???'
+
+
+class CustomLocalJsonFormatter(BaseLogger):
     def jsonify_log_record(self, log_record):
         """Returns a json string of the log record."""
         levelname = log_record.pop('levelname')
         message = log_record.pop('message')
         exc_info = log_record.pop('exc_info', '')
-        content = self.json_serializer(
-            log_record,
-            default=self.json_default,
-            cls=self.json_encoder,
-            indent=self.json_indent,
-            ensure_ascii=self.json_ensure_ascii
-        )
+        content = super().jsonify_log_record(log_record)
         if exc_info:
             return f"{levelname}: {message} --- {content}\n{exc_info}"
         return f"{levelname}: {message} --- {content}"
 
 
-class CustomDatadogJsonFormatter(JsonFormatter):
+class CustomDatadogJsonFormatter(BaseLogger):
     def add_fields(self, log_record, record, message_dict):
         super(CustomDatadogJsonFormatter, self).add_fields(log_record, record, message_dict)
         if not log_record.get('logger.name') and log_record.get('name'):

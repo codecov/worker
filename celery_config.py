@@ -5,7 +5,7 @@ import logging.config
 
 from helpers.logging_config import get_logging_config_dict
 
-from helpers.config import get_config
+from covreports.config import get_config
 from celery import signals
 
 log = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ def initialize_logging(loglevel=logging.INFO, **kwargs):
     return celery_logger
 
 
-broker_url = get_config('services', 'redis_url'),
+broker_url = get_config('services', 'celery_broker') or get_config('services', 'redis_url')
 result_backend = get_config('services', 'redis_url')
 
 task_default_queue = 'new_tasks'

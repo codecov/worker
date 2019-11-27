@@ -1,7 +1,7 @@
 import logging
 import copy
 
-from helpers.config import get_config
+from covreports.config import get_config
 
 log = logging.getLogger(__name__)
 

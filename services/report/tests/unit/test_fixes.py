@@ -3,7 +3,7 @@ import unittest
 from services.report import fixes
 
 
-class Test(unittest.TestCase):
+class TestFixes(unittest.TestCase):
     def test_fixes(self):
         res = fixes.get_fixes_from_raw('\n'.join(('./file.kt:2:/*',
                                                   '',
@@ -50,3 +50,27 @@ class Test(unittest.TestCase):
     def test_fixes_comment(self):
         res = fixes.get_fixes_from_raw('file:1:/*\nfile:5:*/', str)
         assert res == {'file': {'lines': set([1, 5, 2, 3, 4])}}
+
+    def test_get_fixes_from_raw_with_both_eof_and_lines(self):
+        content = [
+            './src/main/kotlin/codecov/index.kt:8,12,16',
+            './src/main/kotlin/codecov/Request.kt:33,37,38,40',
+            './src/test/kotlin/codecov/test_index.kt:13,16,17',
+            'EOF: 17 ./src/main/kotlin/codecov/index.kt',
+            'EOF: 40 ./src/main/kotlin/codecov/Request.kt',
+            'EOF: 18 ./src/test/kotlin/codecov/test_index.kt'
+        ]
+        content = "\n".join(content)
+        res = fixes.get_fixes_from_raw(content, lambda x: x)
+        expected_result = {
+            './src/main/kotlin/codecov/Request.kt': {
+                'eof': 40, 'lines': {40, 33, 37, 38}
+            },
+            './src/main/kotlin/codecov/index.kt': {
+                'eof': 17, 'lines': {8, 16, 12}
+            },
+            './src/test/kotlin/codecov/test_index.kt': {
+                'eof': 18, 'lines': {16, 17, 13}
+            }
+        }
+        assert expected_result == res

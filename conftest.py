@@ -3,26 +3,43 @@ from asyncio import Future
 
 import pytest
 import vcr
+from sqlalchemy.exc import OperationalError
 
 from database.base import Base
 from sqlalchemy_utils import create_database, database_exists
-from helpers.config import ConfigHelper
+from covreports.config import ConfigHelper
+from celery_config import initialize_logging
 
 
-@pytest.fixture(scope='session', autouse=True)
+def pytest_configure(config):
+    """
+    Allows plugins and conftest files to perform initial configuration.
+    This hook is called for every plugin and initial conftest
+    file after command line options have been parsed.
+    """
+    initialize_logging()
+
+
+@pytest.fixture(scope='session')
 def db(engine, sqlalchemy_connect_url):
     database_url = sqlalchemy_connect_url
-    if not database_exists(database_url):
-        create_database(database_url)
+    try:
+        if not database_exists(database_url):
+            create_database(database_url)
+    except OperationalError:
+        pytest.skip("No available db")
     connection = engine.connect()
     connection.execute('DROP SCHEMA IF EXISTS public CASCADE;')
     connection.execute('CREATE SCHEMA public;')
     Base.metadata.create_all(engine)
 
+@pytest.fixture
+def dbsession(db, dbsession):
+    return dbsession
 
 @pytest.fixture
 def mock_configuration(mocker):
-    m = mocker.patch('helpers.config._get_config_instance')
+    m = mocker.patch('covreports.config._get_config_instance')
     mock_config = ConfigHelper()
     m.return_value = mock_config
     our_config = {
@@ -72,7 +89,7 @@ def mock_redis(mocker):
 
 @pytest.fixture
 def mock_storage(mocker):
-    m = mocker.patch('services.storage.MinioStorageService')
+    m = mocker.patch('covreports.storage.MinioStorageService')
     redis_server = mocker.MagicMock()
     m.return_value = redis_server
     yield redis_server

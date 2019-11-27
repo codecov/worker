@@ -1,3 +1,5 @@
+import re
+
 from timestring import Date
 
 from services.yaml import read_yaml_field
@@ -11,7 +13,9 @@ from services.report.languages.base import BaseLanguageProcessor
 class CoberturaProcessor(BaseLanguageProcessor):
 
     def matches_content(self, content, first_line, name):
-        return True  # TODO Fix this
+        if bool(list(content.iter('coverage'))):
+            return True
+        return bool(list(content.iter('scoverage')))
 
     def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
         return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
@@ -29,8 +33,11 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     if read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
         try:
             timestamp = next(xml.iter('coverage')).get('timestamp')
-        except Exception:
-            timestamp = next(xml.iter('scoverage')).get('timestamp')
+        except StopIteration:
+            try:
+                timestamp = next(xml.iter('scoverage')).get('timestamp')
+            except StopIteration:
+                timestamp = None
         if timestamp and Date(timestamp) < read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
             # report expired over 12 hours ago
             raise ReportExpiredException("Cobertura report expired " + timestamp)
@@ -53,9 +60,10 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 sessions = None
 
                 # coverage
-                branch = _line.get('condition-coverage', '')
-                if branch and branch != 'NaN':
-                    coverage = branch.split(' ', 1)[1][1:-1]  # 1/2
+                branch = _line.get('branch','')
+                condition_coverage = _line.get('condition-coverage', '')
+                if branch == "true" and re.search("\(\d+\/\d+\)", condition_coverage) is not None:
+                    coverage = condition_coverage.split(' ', 1)[1][1:-1]  # 1/2
                     _type = 'b'
                 else:
                     coverage = Int(_line.get('hits'))

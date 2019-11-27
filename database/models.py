@@ -7,8 +7,8 @@ from sqlalchemy.dialects import postgresql
 class Owner(CodecovBaseModel):
     __tablename__ = 'owners'
     ownerid = Column(types.Integer, primary_key=True)
-    service = Column(types.String(100))
-    service_id = Column(types.Text)
+    service = Column(types.String(100), nullable=False)
+    service_id = Column(types.Text, nullable=False)
 
     name = Column(types.String(100))
     email = Column(types.String(300))
@@ -16,7 +16,7 @@ class Owner(CodecovBaseModel):
     plan_activated_users = Column(postgresql.ARRAY(types.Integer))
     admins = Column(postgresql.ARRAY(types.Integer))
     permission = Column(postgresql.ARRAY(types.Integer))
-    free = Column(types.Integer)
+    free = Column(types.Integer, nullable=False, default=0)
     integration_id = Column(types.Integer)
     yaml = Column(postgresql.JSON)
     oauth_token = Column(types.Text)
@@ -60,7 +60,7 @@ class Commit(CodecovBaseModel):
     ci_passed = Column(types.Boolean)
     pullid = Column(types.Integer)
     totals = Column(postgresql.JSON)
-    report = Column(postgresql.JSON)
+    report_json = Column("report", postgresql.JSON)
     branch = Column(types.Text)
     parent_commit_id = Column('parent', types.Text)
     state = Column(types.String(256))

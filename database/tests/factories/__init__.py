@@ -22,6 +22,7 @@ class OwnerFactory(Factory):
     name = factory.Faker('name')
     username = factory.Faker('user_name')
     plan_activated_users = []
+    service_id = factory.Sequence(lambda n: 'user%d' % n)
     admins = []
     permission = []
     service = 'github'
@@ -38,6 +39,7 @@ class RepositoryFactory(Factory):
     private = True
     name = 'example-python'
     using_integration = False
+    service_id = factory.Sequence(lambda n: 'id_%d' % n)
 
     owner = factory.SubFactory(OwnerFactory)
     bot = None
@@ -69,7 +71,7 @@ class CommitFactory(Factory):
         'p': 0,
         's': 1
     }
-    report = {
+    report_json = {
         'files': {
             'awesome/__init__.py': [
                 2,

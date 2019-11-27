@@ -1,4 +1,4 @@
-from helpers.config import load_file_from_path_at_config
+from covreports.config import load_file_from_path_at_config
 
 loaded_pems = None
 

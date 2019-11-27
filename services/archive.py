@@ -5,9 +5,10 @@ from hashlib import md5
 from base64 import b16encode
 from enum import Enum
 
-from helpers.config import get_config
-from services.storage import get_appropriate_storage_service
-from services.storage.exceptions import BucketAlreadyExistsError
+from covreports.config import get_config
+from helpers.metrics import metrics
+from covreports.storage import get_appropriate_storage_service
+from covreports.storage.exceptions import BucketAlreadyExistsError
 
 log = logging.getLogger(__name__)
 
@@ -60,12 +61,12 @@ class ArchiveService(object):
 
         # create storage based on the root, this will throw acceptable
         # exceptions if the bucket exists. ResponseError if it doesn't.
-        log.debug("Creating root storage")
-        try:
-            self.storage.create_root_storage(self.root, self.region)
-        except BucketAlreadyExistsError:
-            pass
-        log.debug("Created root storage")
+        # log.debug("Creating root storage")
+        # try:
+        #     self.storage.create_root_storage(self.root, self.region)
+        # except BucketAlreadyExistsError:
+        #     pass
+        # log.debug("Created root storage")
 
     """
     Accessor for underlying StorageService. You typically shouldn't need
@@ -148,9 +149,10 @@ class ArchiveService(object):
     """
     Generic method to read a file from the archive
     """
+    @metrics.timer('services.archive.read_file')
     def read_file(self, path):
         contents = self.storage.read_file(self.root, path)
-        return contents.decode()
+        return contents.decode(errors="replace")
 
     """
     Generic method to delete a file from the archive.

@@ -2,12 +2,9 @@ import logging
 
 from services.github import get_github_integration_token
 from services.encryption import encryptor
+from helpers.exceptions import RepositoryWithoutValidBotError
 
 log = logging.getLogger(__name__)
-
-
-class RepositoryWithoutValidBotError(Exception):
-    pass
 
 
 def get_repo_appropriate_bot_token(repo):

@@ -12,7 +12,7 @@ from celery_config import notify_task_name, status_set_pending_task_name
 
 log = logging.getLogger(__name__)
 
-regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]').search
+regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]')
 merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
 
 
@@ -32,9 +32,17 @@ class UploadFinisherTask(BaseCodecovTask):
     name = "app.tasks.upload_finisher.UploadFinisherTask"
 
     def write_to_db(self):
-        return False
+        return True
 
     async def run_async(self, db_session, processing_results, *, repoid, commitid, commit_yaml, **kwargs):
+        log.info(
+            "Received upload_finisher task",
+            extra=dict(
+                repoid=repoid,
+                commit=commitid,
+                processing_results=processing_results
+            )
+        )
         repoid = int(repoid)
         lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
         commits = db_session.query(Commit).filter(
@@ -43,20 +51,15 @@ class UploadFinisherTask(BaseCodecovTask):
         assert commit, 'Commit not found in database.'
         redis_connection = get_redis_connection()
         with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
-            log.info(
-                "Running finishing logic for commit",
-                extra=dict(repoid=repoid, commit=commitid)
-            )
-            result = await self.finish_reports_processing(db_session, commit, commit_yaml)
+            result = await self.finish_reports_processing(db_session, commit, commit_yaml, processing_results)
             self.invalidate_caches(redis_connection, commit)
         return result
 
-    async def finish_reports_processing(self, db_session, commit, commit_yaml):
+    async def finish_reports_processing(self, db_session, commit, commit_yaml, processing_results):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
         repoid = commit.repoid
         should_set_pending = self.request.retries == 0
-        should_set_pending = False
 
         if should_set_pending:
             self.app.send_task(
@@ -71,15 +74,17 @@ class UploadFinisherTask(BaseCodecovTask):
             )
 
         # always notify, let the notify handle if it should submit
-        if not regexp_ci_skip(commit.message or ''):
-            number_sessions = 0
-            if commit.report:
-                number_sessions = len(commit.report.get('sessions', {}))
-            after_n_builds = read_yaml_field(commit_yaml, ('codecov', 'notify', 'after_n_builds')) or 0
-            should_call_notifications = bool(after_n_builds <= number_sessions)
-            should_call_notifications = False  # TODO Remove this line when finishing testing
-            if should_call_notifications:
-                # we have the right number of builds
+        if not regexp_ci_skip.search(commit.message or ''):
+            if self.should_call_notifications(commit, commit_yaml, processing_results):
+                log.info(
+                    "Scheduling notify task",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        commit_yaml=commit_yaml,
+                        processing_results=processing_results
+                    )
+                )
                 self.app.send_task(
                     notify_task_name,
                     args=None,
@@ -88,10 +93,41 @@ class UploadFinisherTask(BaseCodecovTask):
                         commitid=commitid
                     )
                 )
+            else:
+                log.info(
+                    "Skipping notify task",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        commit_yaml=commit_yaml,
+                        processing_results=processing_results
+                    )
+                )
         else:
             commit.state = 'skipped'
             commit.notified = False
         return {}
+
+    def should_call_notifications(self, commit, commit_yaml, processing_results):
+        if not any(x['successful'] for x in processing_results.get('processings_so_far', [])):
+            return False
+        number_sessions = 0
+        if commit.report_json:
+            number_sessions = len(commit.report_json.get('sessions', {}))
+        after_n_builds = read_yaml_field(commit_yaml, ('codecov', 'notify', 'after_n_builds')) or 0
+        if after_n_builds > number_sessions:
+            log.info(
+                "Not scheduling notify because `after_n_builds` is %s and we only found %s builds",
+                after_n_builds, number_sessions,
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    commit_yaml=commit_yaml,
+                    processing_results=processing_results
+                )
+            )
+            return False
+        return True
 
     def invalidate_caches(self, redis_connection, commit):
         redis_connection.delete('cache/{}/tree/{}'.format(commit.repoid, commit.branch))
