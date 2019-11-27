@@ -97,7 +97,5 @@ workflows:
             - build
             - test
           filters:
-            tags:
-              only: /^release-.*/
             branches:
-              ignore: /.*/
+              only: production
