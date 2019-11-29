@@ -19,6 +19,7 @@ here = Path(__file__)
 class TestUploadProcessorTask(object):
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     async def test_upload_processor_task_call(self, mocker, mock_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         mocked_1.return_value = None
@@ -120,6 +121,7 @@ class TestUploadProcessorTask(object):
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     async def test_upload_task_call_existing_chunks(self, mocker, mock_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         with open(here.parent.parent / 'samples' / 'sample_chunks_1.txt') as f:

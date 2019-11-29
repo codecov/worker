@@ -9,6 +9,12 @@ build:
 test:
 	python -m pytest --cov=./
 
+test.unit:
+	python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml
+
+test.integration:
+	python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml
+
 push.worker-new:
 	docker tag codecov/worker ${_gcr}-worker:${version}-${sha}
 	docker push ${_gcr}-worker:${version}-${sha}
