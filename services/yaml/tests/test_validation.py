@@ -8,6 +8,7 @@ from services.yaml.validation import (
     LayoutStructure, validate_yaml, PathPatternSchemaField, CoverageRangeSchemaField,
     PercentSchemaField, CustomFixPathSchemaField, pre_process_yaml
 )
+from services.yaml.exceptions import InvalidYamlException
 from services.yaml.validation.helpers import (
     determine_path_pattern_type, translate_glob_to_regex
 )
@@ -266,6 +267,65 @@ class TestUserYamlValidation(BaseTestCase):
             }
         }
         assert validate_yaml(user_input) == expected_result
+
+    def test_invalid_yaml_case(self):
+        user_input = {
+            "coverage": {
+                "round": "down",
+                "precision": 2,
+                "range": "70...100",
+                "status": {
+                    "project": {
+                        "base": "auto",
+                        "aa": True
+                    }
+                }
+            },
+            "ignore": [
+                "Pods/.*",
+            ]
+        }
+        with pytest.raises(InvalidYamlException) as exc:
+            validate_yaml(user_input)
+        assert exc.value.error_location == 'Path: coverage->status->project->base'
+
+    def test_yaml_with_status_case(self):
+        user_input = {
+            "coverage": {
+                "round": "down",
+                "precision": 2,
+                "range": "70...100",
+                "status": {
+                    "project": {
+                        "default": {
+                            "base": "auto",
+                        }
+                    }
+                }
+            },
+            "ignore": [
+                "Pods/.*",
+            ]
+        }
+        expected_result = {
+            "coverage": {
+                "round": "down",
+                "precision": 2,
+                "range": [70.0, 100.0],
+                "status": {
+                    "project": {
+                        "default": {
+                            "base": "auto",
+                        }
+                    }
+                }
+            },
+            "ignore": [
+                "Pods/.*",
+            ]
+        }
+        result = validate_yaml(user_input)
+        assert result == expected_result
 
 
 class TestGlobToRegexTranslation(BaseTestCase):
