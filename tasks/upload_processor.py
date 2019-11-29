@@ -301,7 +301,7 @@ class UploadProcessorTask(BaseCodecovTask):
             archive=archive_url or url,
             url=build_url
         )
-        report = self.process_raw_upload(
+        report = self.process_raw_upload_on_top_of_master_report(
             commit_yaml=commit_yaml,
             master=current_report,
             reports=raw_uploaded_report,
@@ -322,7 +322,7 @@ class UploadProcessorTask(BaseCodecovTask):
         )
         return report
 
-    def process_raw_upload(self, commit_yaml, master, reports, flags, session=None):
+    def process_raw_upload_on_top_of_master_report(self, commit_yaml, master, reports, flags, session=None):
         return ReportService().build_report_from_raw_content(
             commit_yaml, master, reports, flags, session
         )
