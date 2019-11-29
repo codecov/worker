@@ -66,11 +66,11 @@ class SyncTeamsTask(BaseCodecovTask):
         ).first()
 
         if team:
-            team.username = data['username'],
-            team.name = data['name'],
-            team.email = data.get('email'),
-            team.avatar_url = data.get('avatar_url'),
-            team.parent_service_id = data.get('parent_service_id'),
+            team.username = data['username']
+            team.name = data['name']
+            team.email = data.get('email')
+            team.avatar_url = data.get('avatar_url')
+            team.parent_service_id = data.get('parent_service_id')
             team.updatestamp = datetime.now()
         else:
             team = Owner(
@@ -83,7 +83,8 @@ class SyncTeamsTask(BaseCodecovTask):
                 parent_service_id=data.get('parent_service_id')
             )
             db_session.add(team)
-        db_session.flush()
+            db_session.flush()
+
         return team.ownerid
 
 

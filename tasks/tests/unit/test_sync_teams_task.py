@@ -91,7 +91,6 @@ class TestSyncTeamsTaskUnit(object):
         assert old_team.ownerid in user.organizations
 
         # old team in db should have its data updated
-        dbsession.expire(old_team)
         assert old_team.email == 'hello@codecov.io'
         assert old_team.username == 'codecov'
         assert old_team.name == 'Codecov'

@@ -56,7 +56,10 @@ class Repository(CodecovBaseModel):
     owner = relationship(Owner, foreign_keys=[ownerid])
     bot = relationship(Owner, foreign_keys=[bot_id])
 
-    __table_args__ = (UniqueConstraint('ownerid', 'name', name='repos_slug'),)
+    __table_args__ = (
+        Index('repos_slug', 'ownerid', 'name', unique=True),
+        Index('repos_service_ids', 'ownerid', 'service_id', unique=True),
+    )
 
     @property
     def service(self):

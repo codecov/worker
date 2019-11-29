@@ -126,9 +126,9 @@ class SyncReposTask(BaseCodecovTask):
                     )
 
                     if repo['repo']['fork']['repo']['private']:
-                        private_project_ids.append(str(_repoid))
+                        private_project_ids.append(int(_repoid))
                 if repo['repo']['private']:
-                    private_project_ids.append(str(repoid))
+                    private_project_ids.append(int(repoid))
 
             log.info(
                 'updating permissions',
@@ -136,7 +136,7 @@ class SyncReposTask(BaseCodecovTask):
             )
 
             # update user permissions
-            owner.permission = sorted(map(int, list(set(owner.permission + private_project_ids))))
+            owner.permission = sorted(map(int, list(set((owner.permission or []) + private_project_ids))))
 
             #  choose a bot
             if private_project_ids:
@@ -229,33 +229,39 @@ class SyncReposTask(BaseCodecovTask):
                         repo_wrong_service_id.private = repo_data['private']
                         repo_id = repo_wrong_owner.repoid
             else:
-                # repo does not exist, create it
-                insert_data = dict(
-                    ownerid=ownerid,
-                    service_id=str(repo_data['service_id']),
-                    name=repo_data['name'],
-                    language=repo_data['language'],
-                    private=repo_data['private'],
-                    branch=repo_data['branch'],
-                    using_integration=using_integration
-                )
+                # could be correct owner but wrong service_id (repo deleted and recreated)
+                repo_correct_owner_wrong_service_id = db_session.query(Repository).filter(
+                    Repository.ownerid == ownerid,
+                    Repository.name == repo_data['name']
+                ).first()
 
-                conflict_data = dict(
-                    service_id=str(repo_data['service_id']),
-                    name=repo_data['name'],
-                    language=repo_data['language'],
-                    private=repo_data['private'],
-                    using_integration=using_integration,
-                    updatestamp=datetime.now()
-                )
+                if repo_correct_owner_wrong_service_id:
+                    log.info(
+                        'upserting repo - correct owner, wrong service_id',
+                        extra=dict(ownerid=ownerid, repo_id=repo_correct_owner_wrong_service_id.service_id)
+                    )
+                    repo_correct_owner_wrong_service_id.service_id = str(repo_data['service_id'])
+                    repo_correct_owner_wrong_service_id.name = repo_data['name']
+                    repo_correct_owner_wrong_service_id.language = repo_data['language']
+                    repo_correct_owner_wrong_service_id.private = repo_data['private']
+                    repo_correct_owner_wrong_service_id.using_integration = using_integration
+                    repo_correct_owner_wrong_service_id.updatestamp = datetime.now()
+                    repo_id = repo_correct_owner_wrong_service_id.repoid
+                else:
+                    # repo does not exist, create it
+                    new_repo = Repository(
+                        ownerid=ownerid,
+                        service_id=str(repo_data['service_id']),
+                        name=repo_data['name'],
+                        language=repo_data['language'],
+                        private=repo_data['private'],
+                        branch=repo_data['branch'],
+                        using_integration=using_integration
+                    )
+                    db_session.add(new_repo)
+                    db_session.flush()
 
-                i = insert(Repository) \
-                        .values(insert_data) \
-                        .on_conflict_do_update(constraint='repos_slug', set_=conflict_data) \
-                        .returning(Repository.repoid)
-
-                [(new_repoid,)] = db_session.execute(i).fetchall()
-                repo_id = new_repoid
+                    repo_id = new_repo.repoid
 
         return repo_id
 

@@ -204,11 +204,14 @@ class TestSyncReposTaskUnit(object):
         upserted_repoid = SyncReposTask().upsert_repo(dbsession, service, user.ownerid, repo_data)
 
         assert upserted_repoid == old_repo.repoid
+
         updated_repo = dbsession.query(Repository).filter(
             Repository.ownerid == user.ownerid,
             Repository.service_id == str(repo_service_id)
         ).first()
         assert updated_repo is not None
+        assert updated_repo.service_id == str(repo_service_id)
+        assert updated_repo.name == 'pytest'
 
         bad_service_id_repo = dbsession.query(Repository).filter(
             Repository.ownerid == user.ownerid,
