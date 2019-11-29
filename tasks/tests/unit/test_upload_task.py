@@ -14,6 +14,7 @@ from helpers.exceptions import RepositoryWithoutValidBotError
 here = Path(__file__)
 
 
+@pytest.mark.integration
 class TestUploadTaskIntegration(object):
 
     @pytest.mark.asyncio

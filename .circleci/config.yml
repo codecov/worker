@@ -57,12 +57,15 @@ jobs:
     - run:
         name: run tests
         command: |
-          make test
+          make test.unit
+          make test.integration
+
     - run:
         name: codecov
         command: |
           pip install codecov
-          codecov
+          codecov -F integration -f integration.coverage.xml  --required
+          codecov -F unit -f unit.coverage.xml  --required
   deploy:
     executor: codecov-deploy
     steps:

@@ -114,6 +114,7 @@ class TestBotsService(BaseTestCase):
         expected_result = {'key': 'not_so_simple_code', 'secret': None}
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
+    @pytest.mark.integration
     def test_get_repo_appropriate_bot_token_repo_with_user_with_integration_bot_using_it(self, mock_configuration, codecov_vcr):
         mock_configuration._params['github'] = {
             'integration': {

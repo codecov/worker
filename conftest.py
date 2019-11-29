@@ -20,6 +20,13 @@ def pytest_configure(config):
     initialize_logging()
 
 
+def pytest_itemcollected(item):
+    """ logic that runs on the test collection step """
+    if 'codecov_vcr' in item.fixturenames:
+        # Tests with codecov_vcr fixtures are automatically 'integration'
+        item.add_marker('integration')
+
+
 @pytest.fixture(scope='session')
 def db(engine, sqlalchemy_connect_url):
     database_url = sqlalchemy_connect_url
@@ -33,9 +40,11 @@ def db(engine, sqlalchemy_connect_url):
     connection.execute('CREATE SCHEMA public;')
     Base.metadata.create_all(engine)
 
+
 @pytest.fixture
 def dbsession(db, dbsession):
     return dbsession
+
 
 @pytest.fixture
 def mock_configuration(mocker):
