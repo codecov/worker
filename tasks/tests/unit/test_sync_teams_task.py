@@ -88,16 +88,14 @@ class TestSyncTeamsTaskUnit(object):
             user.ownerid,
             using_integration=False
         )
-        dbsession.expire(old_team)
-        updated_team = dbsession.query(Owner).filter(
-            Owner.ownerid == old_team.ownerid
-        ).first()
         assert old_team.ownerid in user.organizations
+
         # old team in db should have its data updated
-        assert updated_team.email == 'hello@codecov.io'
-        assert updated_team.username == 'codecov'
-        assert updated_team.name == 'Codecov'
-        assert str(updated_team.updatestamp) > last_updated
+        dbsession.expire(old_team)
+        assert old_team.email == 'hello@codecov.io'
+        assert old_team.username == 'codecov'
+        assert old_team.name == 'Codecov'
+        assert str(old_team.updatestamp) > last_updated
 
     @pytest.mark.asyncio
     async def test_gitlab_subgroups(self, mocker, mock_configuration, dbsession, codecov_vcr):

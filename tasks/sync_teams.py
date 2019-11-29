@@ -39,28 +39,52 @@ class SyncTeamsTask(BaseCodecovTask):
         updated_teams = []
 
         for team in teams:
-            data = dict(service_id=team['id'],
-                        service=service,
-                        username=team['username'],
-                        name=team['name'],
-                        email=team.get('email'),
-                        avatar_url=team.get('avatar_url'),
-                        parent_service_id=team.get('parent_id'),
-                        updatestamp=datetime.now())
-
-            i = insert(Owner) \
-                     .values(data) \
-                     .on_conflict_do_update(constraint='owner_service_ids', set_=data) \
-                     .returning(Owner.ownerid)
-
-            [(ownerid,)] = db_session.execute(i).fetchall()
-            data['ownerid'] = ownerid
-            updated_teams.append(data)
+            team_data = dict(
+                username=team['username'],
+                name=team['name'],
+                email=team.get('email'),
+                avatar_url=team.get('avatar_url'),
+                parent_service_id=team.get('parent_id')
+            )
+            team_ownerid = self.upsert_team(db_session, service, str(team['id']), team_data)
+            team_data['ownerid'] = team_ownerid
+            updated_teams.append(team_data)
 
         team_ids = [team['ownerid'] for team in updated_teams]
 
         owner.updatestamp = datetime.now()
         owner.organizations = team_ids
+
+    def upsert_team(self, db_session, service, service_id, data):
+        log.info(
+            'upserting team',
+            extra=dict(service=service, service_id=service_id, data=data)
+        )
+        team = db_session.query(Owner).filter(
+            Owner.service == service,
+            Owner.service_id == str(service_id)
+        ).first()
+
+        if team:
+            team.username = data['username'],
+            team.name = data['name'],
+            team.email = data.get('email'),
+            team.avatar_url = data.get('avatar_url'),
+            team.parent_service_id = data.get('parent_service_id'),
+            team.updatestamp = datetime.now()
+        else:
+            team = Owner(
+                service=service,
+                service_id=service_id,
+                username=data['username'],
+                name=data['name'],
+                email=data.get('email'),
+                avatar_url=data.get('avatar_url'),
+                parent_service_id=data.get('parent_service_id')
+            )
+            db_session.add(team)
+        db_session.flush()
+        return team.ownerid
 
 
 RegisteredSyncTeamsTask = celery_app.register_task(SyncTeamsTask())
