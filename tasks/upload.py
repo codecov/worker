@@ -212,10 +212,14 @@ class UploadTask(BaseCodecovTask):
         try:
             commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
             save_repo_yaml_to_database_if_needed(commit, commit_yaml)
-        except InvalidYamlException:
+        except InvalidYamlException as ex:
             log.warning(
                 "Unable to use yaml from commit because it is invalid",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                extra=dict(
+                    repoid=repository.repoid,
+                    commit=commit.commitid,
+                    error_location=ex.error_location
+                ),
                 exc_info=True
             )
             commit_yaml = None
