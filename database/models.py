@@ -2,7 +2,7 @@ from database.base import CodecovBaseModel
 from sqlalchemy import Column, types, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects import postgresql
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, Index
 
 
 class Owner(CodecovBaseModel):
@@ -30,7 +30,10 @@ class Owner(CodecovBaseModel):
 
     bot = relationship('Owner', remote_side=[ownerid])
 
-    __table_args__ = (UniqueConstraint('service', 'service_id', name='owner_service_ids'),)
+    __table_args__ = (
+        Index('owner_service_ids', 'service', 'service_id', unique=True),
+        Index('owner_service_username', 'service', 'username', unique=True),
+    )
 
 
 class Repository(CodecovBaseModel):
