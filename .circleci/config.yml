@@ -64,8 +64,8 @@ jobs:
         name: codecov
         command: |
           pip install codecov
-          codecov -F integration -f integration.coverage.xml
-          codecov -F unit -f unit.coverage.xml
+          codecov -F integration -f integration.coverage.xml  --required
+          codecov -F unit -f unit.coverage.xml  --required
   deploy:
     executor: codecov-deploy
     steps:
