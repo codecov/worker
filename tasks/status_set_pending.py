@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 class StatusSetPendingTask(BaseCodecovTask):
     """
-    Sets commit status to pending
+    Set commit status to pending
     """
     name = status_set_pending_task_name
 
@@ -31,7 +31,7 @@ class StatusSetPendingTask(BaseCodecovTask):
         # if not self.redis.sismember('beta.pending', repoid):
         #     raise gen.Return('Pending disabled. Please request to be in beta.')
 
-        repo = await get_repo(db_session, repoid, commitid)
+        repo = await get_repo(db_session, repoid)
 
         settings = walk(repo.data['yaml'], ('coverage', 'status'))
         if settings and any(settings.values()):

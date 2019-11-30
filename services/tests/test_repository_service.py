@@ -3,7 +3,7 @@ from asyncio import Future
 
 from services.repository import (
     get_repo_provider_service, fetch_appropriate_parent_for_commit, get_author_from_commit,
-    update_commit_from_provider_info
+    update_commit_from_provider_info, get_repo
 )
 from database.tests.factories import RepositoryFactory, OwnerFactory, CommitFactory
 
@@ -343,3 +343,41 @@ class TestRepositoryServiceTestCase(object):
         assert commit.state == 'complete'
         assert commit.author is not None
         assert commit.author.username == 'author_username'
+
+    @pytest.mark.asyncio
+    async def test_get_repo_gh_no_integration(self, dbsession, mocker):
+        owner = OwnerFactory.create(
+            service='github',
+            username='1nf1n1t3l00p',
+            service_id='45343385',
+            unencrypted_oauth_token='bcaa0dc0c66b4a8c8c65ac919a1a91aa'
+        )
+        dbsession.add(owner)
+
+        repo = RepositoryFactory.create(
+            private=True,
+            name='pytest',
+            using_integration=False,
+            service_id='123456',
+            owner=owner
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+
+        res = await get_repo(dbsession, repo.repoid)
+
+        expected_data = {
+            'owner': {
+                'ownerid': owner.ownerid,
+                'service_id': owner.service_id,
+                'username': owner.username
+            },
+            'repo': {
+                'name': 'pytest',
+                'using_integration': False,
+                'service_id': '123456'
+            },
+        }
+        assert res.data['repo'] == expected_data['repo']
+        assert res.data == expected_data
+        assert res.token == { 'key': 'bcaa0dc0c66b4a8c8c65ac919a1a91aa', 'secret': None }

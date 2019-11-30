@@ -6,6 +6,7 @@ from celery_config import status_set_error_task_name
 from covreports.helpers.yaml import walk, default_if_true
 from services.repository import get_repo
 from covreports.utils.urls import make_url
+from database.models import Repository
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ log = logging.getLogger(__name__)
 
 class StatusSetErrorTask(BaseCodecovTask):
     """
+    Set commit status upon error
     """
     name = status_set_error_task_name
 
@@ -25,7 +27,7 @@ class StatusSetErrorTask(BaseCodecovTask):
         # TODO: need to check for enterprise license?
         # assert license.LICENSE['valid'], ('Notifications disabled. '+(license.LICENSE['warning'] or ''))
 
-        repo = await get_repo(db_session, repoid, commitid)
+        repo = await get_repo(db_session, repoid)
 
         settings = walk(repo.data['yaml'], ('coverage', 'status'))
         if settings and any(settings.values()):
@@ -39,10 +41,10 @@ class StatusSetErrorTask(BaseCodecovTask):
                         message = message or 'Coverage not measured fully because CI failed'
                         if context in statuses:
                             await repo.set_commit_status(commit=commitid,
-                                                                    status=state,
-                                                                    context=context,
-                                                                    description=message,
-                                                                    url=url)
+                                                         status=state,
+                                                         context=context,
+                                                         description=message,
+                                                         url=url)
 
                             log.info(
                                 'Status set',

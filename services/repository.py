@@ -6,8 +6,6 @@ import torngit
 
 from covreports.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
-from services.pem import get_pem
-from services.github import get_github_integration_token
 from database.models import Owner, Commit, Repository
 
 log = logging.getLogger(__name__)
@@ -211,77 +209,11 @@ async def create_webhook_on_provider(repository_service):
             default='ab164bf3f7d947f2a0681b215404873e')
         )
 
-async def get_repo(db_session, repoid, commitid=None, use_integration=True):
-    # TODO: cache repo
-    # cache_key = 'repo@%s' % str(repoid)
-    # repo = self.redis.get(cache_key)
-    # if repo:
-    #     repo = loads(repo)
-    # else:
-    #     repo = self.db.get("SELECT get_repo(%s::int) limit 1;", repoid)['get_repo']
-    #     self.redis.setex(cache_key, 60, dumps(repo))
-
+async def get_repo(db_session, repoid, commitid=None):
     repo = db_session.query(Repository).filter(
-        Repository.repoid == str(repoid)
+        Repository.repoid == int(repoid)
     ).first()
-
-    # CREATE FUNCTION get_repo(integer) RETURNS json
-    #     LANGUAGE sql STABLE STRICT
-    #     AS $_$
-    #   with d as (select o.service, o.username, o.service_id as owner_service_id, r.ownerid::text,
-    #                     r.name, r.repoid::text, r.service_id, r.updatestamp,
-    #                     r.branch, r.private, hookid, image_token,
-    #                     r.yaml, o.yaml as org_yaml, r.using_integration, o.plan,
-    #                     (r.cache->>'yaml') as _yaml_location,
-    #                     case when r.using_integration then o.integration_id else null end as integration_id,
-    #                     get_access_token(coalesce(r.bot, o.bot, o.ownerid)) as token,
-    #                     case when private and activated is not true and forkid is not null
-    #                       then (select rr.activated from repos rr where rr.repoid = r.forkid limit 1)
-    #                       else activated end as activated
-    #              from repos r
-    #              inner join owners o using (ownerid)
-    #              where r.repoid = $1
-    #              limit 1) select json_agg(d)->0 from d;
-    # $_$;
 
     assert repo, 'repo-not-found'
 
-    service = repo['service']
-
-    # extract org_yaml TODO: do we need to do this?
-    # org_yaml = repo.pop('org_yaml')
-
-    key = None
-    if (
-        use_integration and
-        service.startswith('github') and
-        get_pem(service) and
-        repo.get('integration_id')
-    ):
-        key = get_github_integration_token(service, repo.pop('integration_id'))
-        if key:
-            repo['token'] = dict(username='n/a', key=key)
-            repo['using_integration'] = True
-
-    if not key:
-        # adjust the token
-        # encryption.adjust_token(repo['token']) TODO: ???
-        repo['using_integration'] = False
-
-    # return repo
-    # TODO: do we need to support missing yaml, org_yaml, etc... ???
-    # repo = torngit.get(service,
-    #                     owner=dict(service_id=repo.pop('owner_service_id'),
-    #                                 ownerid=repo.pop('ownerid'),
-    #                                 username=repo.pop('username')),
-    #                     _yaml_location=repo.pop('_yaml_location'),
-    #                     token=repo.pop('token') or config.get((service, 'bot')),
-    #                     yaml=yaml_join(org_yaml, repo.pop('yaml')),
-    #                     repo=repo,
-    #                     verify_ssl=config.get_verify_ssl(service),
-    #                     org_yaml=org_yaml,  # we may use it later
-    #                     timeouts=self._timeouts,
-    #                     oauth_consumer_token=dict(key=config.get((service, 'client_id')),
-    #                                                 secret=config.get((service, 'client_secret'))))
-    repo = get_repo_provider_service(repo)
-    return repo
+    return get_repo_provider_service(repo)
