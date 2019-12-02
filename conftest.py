@@ -43,29 +43,25 @@ def db(engine, sqlalchemy_connect_url):
     Base.metadata.create_all(engine)
 
 
-# @pytest.fixture
-# def dbsession(engine, db):
-#     """
-#     Returns an sqlalchemy session
-#     and tears everything down properly after the test.
-#     """
-#     connection = engine.connect()
-#     # begin the nested transaction
-#     transaction = connection.begin()
-#     # use the connection with the already started transaction
-#     session = Session(bind=connection)
-
-#     yield session
-
-#     session.close()
-#     # roll back the broader transaction
-#     transaction.rollback()
-#     # put connection back in the pool
-#     connection.close()
-
 @pytest.fixture
-def dbsession(db, dbsession):
-    return dbsession
+def dbsession(engine, db):
+    """
+    Returns an sqlalchemy session
+    and tears everything down properly after the test.
+    """
+    connection = engine.connect()
+    # begin the nested transaction
+    transaction = connection.begin()
+    # use the connection with the already started transaction
+    session = Session(bind=connection)
+
+    yield session
+
+    session.close()
+    # roll back the broader transaction
+    transaction.rollback()
+    # put connection back in the pool
+    connection.close()
 
 
 @pytest.fixture

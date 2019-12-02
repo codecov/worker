@@ -45,108 +45,114 @@ class SyncReposTask(BaseCodecovTask):
         ).first()
 
         assert owner, 'Owner not found'
-        service = owner.service
 
         git = get_owner_provider_service(owner, using_integration)
 
         if using_integration:
-            repo_service_ids = await git.list_repos_using_installation(username)
-            if repo_service_ids:
-                repo_service_ids = tuple(map(str, repo_service_ids))
-                if repo_service_ids:
-                    db_session.query(Repository).filter(
-                        Repository.ownerid == ownerid,
-                        Repository.service_id.in_(repo_service_ids),
-                        Repository.using_integration.isnot_(True)
-                    ).update({
-                        Repository.using_integration: True
-                    }, synchronize_session=False)
+            await self.sync_repos_using_integration(db_session, git, ownerid, username)
+        else:
+            await self.sync_repos(db_session, git, owner, username, using_integration)
 
-                    db_session.query(Repository).filter(
-                        Repository.ownerid == ownerid,
-                        Repository.service_id.in_(repo_service_ids),
-                        Repository.using_integration.is_(True)
-                    ).update({
-                        Repository.using_integration: False
-                    }, synchronize_session=False)
-            else:
+    async def sync_repos_using_integration(self, db_session, git, ownerid, username):
+        repo_service_ids = await git.list_repos_using_installation(username)
+        if repo_service_ids:
+            repo_service_ids = list(map(str, repo_service_ids))
+            if repo_service_ids:
                 db_session.query(Repository).filter(
                     Repository.ownerid == ownerid,
+                    Repository.service_id.in_(repo_service_ids),
+                    Repository.using_integration.isnot_(True)
+                ).update({
+                    Repository.using_integration: True
+                }, synchronize_session=False)
+
+                db_session.query(Repository).filter(
+                    Repository.ownerid == ownerid,
+                    Repository.service_id.in_(repo_service_ids),
                     Repository.using_integration.is_(True)
                 ).update({
                     Repository.using_integration: False
                 }, synchronize_session=False)
         else:
-            private_project_ids = []
+            db_session.query(Repository).filter(
+                Repository.ownerid == ownerid,
+                Repository.using_integration.is_(True)
+            ).update({
+                Repository.using_integration: False
+            }, synchronize_session=False)
 
-            # get my repos (and team repos)
-            repos = await git.list_repos()
-            owners_by_id = {}
+    async def sync_repos(self, db_session, git, owner, username, using_integration):
+        service = owner.service
+        ownerid = owner.ownerid
+        private_project_ids = []
 
-            for repo in repos:
-                _ownerid = owners_by_id.get((
+        # get my repos (and team repos)
+        repos = await git.list_repos()
+        owners_by_id = {}
+
+        for repo in repos:
+            _ownerid = owners_by_id.get((
+                service,
+                repo['owner']['service_id'],
+                repo['owner']['username']
+            ))
+            if not _ownerid:
+                _ownerid = self.upsert_owner(
+                    db_session,
                     service,
                     repo['owner']['service_id'],
                     repo['owner']['username']
-                ))
-                if not _ownerid:
-                    _ownerid = self.upsert_owner(
-                        db_session,
-                        service,
-                        repo['owner']['service_id'],
-                        repo['owner']['username']
-                    )
-                    owners_by_id[(
-                        service,
-                        repo['owner']['service_id'],
-                        repo['owner']['username']
-                    )] = _ownerid
+                )
+                owners_by_id[(
+                    service,
+                    repo['owner']['service_id'],
+                    repo['owner']['username']
+                )] = _ownerid
 
-                repoid = self.upsert_repo(
+            repoid = self.upsert_repo(
+                db_session,
+                service,
+                _ownerid,
+                repo['repo'],
+                using_integration
+            )
+
+            if repo['repo']['fork']:
+                _ownerid = self.upsert_owner(
+                    db_session,
+                    service,
+                    repo['repo']['fork']['owner']['service_id'],
+                    repo['repo']['fork']['owner']['username']
+                )
+
+                _repoid = self.upsert_repo(
                     db_session,
                     service,
                     _ownerid,
-                    repo['repo'],
-                    using_integration
+                    repo['repo']['fork']['repo']
                 )
 
-                if repo['repo']['fork']:
-                    _ownerid = self.upsert_owner(
-                        db_session,
-                        service,
-                        repo['repo']['fork']['owner']['service_id'],
-                        repo['repo']['fork']['owner']['username']
-                    )
+                if repo['repo']['fork']['repo']['private']:
+                    private_project_ids.append(int(_repoid))
+            if repo['repo']['private']:
+                private_project_ids.append(int(repoid))
 
-                    _repoid = self.upsert_repo(
-                        db_session,
-                        service,
-                        _ownerid,
-                        repo['repo']['fork']['repo']
-                    )
+        log.info(
+            'Updating permissions',
+            extra=dict(ownerid=ownerid, username=username, repoids=private_project_ids)
+        )
 
-                    if repo['repo']['fork']['repo']['private']:
-                        private_project_ids.append(int(_repoid))
-                if repo['repo']['private']:
-                    private_project_ids.append(int(repoid))
+        # update user permissions
+        owner.permission = sorted(map(int, list(set((owner.permission or []) + private_project_ids))))
 
-            log.info(
-                'updating permissions',
-                extra=dict(ownerid=ownerid, username=username, repoids=private_project_ids)
-            )
-
-            # update user permissions
-            owner.permission = sorted(map(int, list(set((owner.permission or []) + private_project_ids))))
-
-            #  choose a bot
-            if private_project_ids:
-                owner_ids_to_set = list(map(str, owners_by_id.values()))
-                self.set_bot(db_session, ownerid, service, owner_ids_to_set)
-
+        #  choose a bot
+        if private_project_ids:
+            owner_ids_to_set = list(map(str, owners_by_id.values()))
+            self.set_bot(db_session, ownerid, service, owner_ids_to_set)
 
     def upsert_owner(self, db_session, service, service_id, username):
         log.info(
-            'upserting owner',
+            'Upserting owner',
             extra=dict(service=service, service_id=service_id, username=username)
         )
         owner = db_session.query(Owner).filter(
@@ -171,7 +177,7 @@ class SyncReposTask(BaseCodecovTask):
 
     def upsert_repo(self, db_session, service, ownerid, repo_data, using_integration=None):
         log.info(
-            'upserting repo',
+            'Upserting repo',
             extra=dict(ownerid=ownerid, repo_data=repo_data)
         )
         repo = db_session.query(Repository).filter(
@@ -203,7 +209,7 @@ class SyncReposTask(BaseCodecovTask):
 
                 if repo_wrong_owner:
                     log.info(
-                        'upserting repo - wrong owner',
+                        'Upserting repo - wrong owner',
                         extra=dict(ownerid=ownerid, repo_id=repo_wrong_owner.repoid)
                     )
                     repo_wrong_owner.ownerid = ownerid
@@ -222,7 +228,7 @@ class SyncReposTask(BaseCodecovTask):
 
                     if repo_wrong_service_id:
                         log.info(
-                            'upserting repo - wrong service_id',
+                            'Upserting repo - wrong service_id',
                             extra=dict(ownerid=ownerid, repo_id=repo_wrong_service_id.service_id)
                         )
                         repo_wrong_service_id.service_id = repo_data['service_id']
@@ -237,7 +243,7 @@ class SyncReposTask(BaseCodecovTask):
 
                 if repo_correct_owner_wrong_service_id:
                     log.info(
-                        'upserting repo - correct owner, wrong service_id',
+                        'Upserting repo - correct owner, wrong service_id',
                         extra=dict(ownerid=ownerid, repo_id=repo_correct_owner_wrong_service_id.service_id)
                     )
                     repo_correct_owner_wrong_service_id.service_id = str(repo_data['service_id'])
@@ -265,7 +271,6 @@ class SyncReposTask(BaseCodecovTask):
 
         return repo_id
 
-
     def set_bot(self, db_session, ownerid, service, owner_ids):
         # remove myself
         if str(ownerid) in owner_ids:
@@ -278,7 +283,7 @@ class SyncReposTask(BaseCodecovTask):
             # we can see private repos, make me the bot
             db_session.query(Owner).filter(
                 Owner.service == service,
-                Owner.ownerid.in_(tuple(owner_ids)),
+                Owner.ownerid.in_(list(owner_ids)),
                 Owner.bot_id.is_(None),
                 Owner.oauth_token.is_(None)
             ).update({
