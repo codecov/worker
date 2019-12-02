@@ -1,6 +1,6 @@
 from enum import Enum
 import os
-from helpers.config import get_config
+from covreports.config import get_config
 
 
 class Environment(Enum):

@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app import celery_app
 from celery_config import sync_repos_task_name
-from helpers.config import get_config
+from covreports.config import get_config
 from helpers.environment import is_enterprise
 from tasks.base import BaseCodecovTask
 from database.models import Owner, Repository

@@ -13,14 +13,14 @@ from torngit.exceptions import TorngitClientError
 from app import celery_app
 from celery_config import task_default_queue
 from database.models import Commit
-from helpers.config import get_config
+from covreports.config import get_config
 from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from services.archive import ArchiveService
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService
 from services.repository import get_repo_provider_service
-from services.storage.exceptions import FileNotInStorageError
+from covreports.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -116,7 +116,12 @@ class UploadProcessorTask(BaseCodecovTask):
                 pr = arguments.get('pr')
                 log.info(
                     "Processing individual report %s", arguments.get('reportid'),
-                    extra=dict(repoid=repoid, commit=commitid, arguments=arguments)
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        arguments=arguments,
+                        commit_yaml=commit_yaml
+                    )
                 )
                 individual_info = {
                     'arguments': arguments.copy()
@@ -149,26 +154,25 @@ class UploadProcessorTask(BaseCodecovTask):
                     report = individual_info.pop('report')
                     n_processed += 1
                 processings_so_far.append(individual_info)
-            if n_processed > 0:
-                log.info(
-                    'Finishing the processing of %d reports',
-                    n_processed,
-                    extra=dict(repoid=repoid, commit=commitid)
+            log.info(
+                'Finishing the processing of %d reports',
+                n_processed,
+                extra=dict(repoid=repoid, commit=commitid)
+            )
+            results_dict = await self.save_report_results(
+                db_session, archive_service,
+                repository, commit, report, pr
+            )
+            log.info(
+                'Processed %d reports',
+                n_processed,
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    commit_yaml=commit_yaml,
+                    url=results_dict.get('url')
                 )
-                results_dict = await self.save_report_results(
-                    db_session, archive_service,
-                    repository, commit, report, pr
-                )
-                log.info(
-                    'Processed %d reports',
-                    n_processed,
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        commit_yaml=commit_yaml,
-                        url=results_dict.get('url')
-                    )
-                )
+            )
             return {
                 'processings_so_far': processings_so_far,
             }
@@ -198,19 +202,39 @@ class UploadProcessorTask(BaseCodecovTask):
                 'report': result
             }
         except ReportExpiredException:
-            return {
+            expired_report_result = {
                 'successful': False,
                 'report': None,
                 'error_type': 'report_expired',
                 'should_retry': False
             }
+            log.info(
+                "Report %s is expired", arguments.get('reportid'),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    arguments=arguments,
+                    result=expired_report_result
+                )
+            )
+            return expired_report_result
         except ReportEmptyError:
-            return {
+            empty_report_result = {
                 'successful': False,
                 'report': None,
                 'error_type': 'report_empty',
                 'should_retry': False
             }
+            log.info(
+                "Report %s is empty", arguments.get('reportid'),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    arguments=arguments,
+                    result=empty_report_result
+                )
+            )
+            return empty_report_result
         except FileNotInStorageError:
             if self.request.retries == 0:
                 log.info(

@@ -3,7 +3,7 @@ import logging
 from covreports.resources import Report
 from services.archive import ArchiveService
 from services.report.raw_upload_processor import process_raw_upload
-from services.storage.exceptions import FileNotInStorageError
+from covreports.storage.exceptions import FileNotInStorageError
 
 log = logging.getLogger(__name__)
 

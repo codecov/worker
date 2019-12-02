@@ -2,7 +2,7 @@ import logging
 
 import torngit
 
-from helpers.config import get_config, get_verify_ssl
+from covreports.config import get_config, get_verify_ssl
 from services.bots import get_owner_appropriate_bot_token
 from database.models import Owner
 

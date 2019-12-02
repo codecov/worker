@@ -109,6 +109,13 @@ class UploadTask(BaseCodecovTask):
                 yield loads(arguments)
 
     async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
+        log.info(
+            "Received upload task",
+            extra=dict(
+                repoid=repoid,
+                commit=commitid
+            )
+        )
         repoid = int(repoid)
         lock_name = f"upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
@@ -128,6 +135,10 @@ class UploadTask(BaseCodecovTask):
             self.retry(max_retries=3, countdown=20 * 2 ** self.request.retries)
 
     async def run_async_within_lock(self, db_session, redis_connection, repoid, commitid, *args, **kwargs):
+        log.info(
+            "Starting processing of report",
+            extra=dict(repoid=repoid, commit=commitid)
+        )
         uploads_list_key = 'testuploads/%s/%s' % (repoid, commitid)
         commit = None
         commits = db_session.query(Commit).filter(
@@ -136,10 +147,7 @@ class UploadTask(BaseCodecovTask):
         )
         commit = commits.first()
         assert commit, 'Commit not found in database.'
-        log.info(
-            "Starting processing of report",
-            extra=dict(repoid=repoid, commit=commitid)
-        )
+
         repository = commit.repository
         repository_service = None
         was_updated, was_setup = False, False
@@ -163,6 +171,15 @@ class UploadTask(BaseCodecovTask):
                     commit=commitid
                 )
             )
+        except TorngitClientError:
+            log.warning(
+                "Unable to reach git provider because there was a 4xx error",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                ),
+                exc_info=True
+            )
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
             argument_list.append(arguments)
@@ -176,6 +193,15 @@ class UploadTask(BaseCodecovTask):
                     commit_yaml=None
                 )
             self.schedule_task(commit, commit_yaml, argument_list)
+        else:
+            log.info(
+                "Not scheduling task because there were no arguments were found on redis",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    argument_list=argument_list
+                )
+            )
         return {
             'was_setup': was_setup,
             'was_updated': was_updated
@@ -186,10 +212,14 @@ class UploadTask(BaseCodecovTask):
         try:
             commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
             save_repo_yaml_to_database_if_needed(commit, commit_yaml)
-        except InvalidYamlException:
+        except InvalidYamlException as ex:
             log.warning(
                 "Unable to use yaml from commit because it is invalid",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                extra=dict(
+                    repoid=repository.repoid,
+                    commit=commit.commitid,
+                    error_location=ex.error_location
+                ),
                 exc_info=True
             )
             commit_yaml = None

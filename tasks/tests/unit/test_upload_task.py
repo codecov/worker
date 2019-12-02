@@ -14,6 +14,7 @@ from helpers.exceptions import RepositoryWithoutValidBotError
 here = Path(__file__)
 
 
+@pytest.mark.integration
 class TestUploadTaskIntegration(object):
 
     @pytest.mark.asyncio
@@ -294,6 +295,46 @@ class TestUploadTaskIntegration(object):
         mock_redis.lock.assert_called_with(
             f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
         )
+
+    @pytest.mark.asyncio
+    async def test_upload_task_bot_unauthorized(self, mocker, mock_configuration, dbsession, mock_redis, mock_repo_provider):
+        mocked_schedule_task = mocker.patch.object(UploadTask, 'schedule_task')
+        mock_app = mocker.patch.object(UploadTask, 'app')
+        mock_app.send_task.return_value = True
+        redis_queue = [
+            {
+                'part': 'part1'
+            },
+            {
+                'part': 'part2'
+            }
+        ]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mock_redis.exists.side_effect = [True] * 2 + [False]
+        mock_redis.lpop.side_effect = jsonified_redis_queue
+        f = Future()
+        f.set_exception(TorngitClientError(401, 'response', 'message'))
+        mock_repo_provider.get_commit.return_value = f
+        mock_repo_provider.list_top_level_files.return_value = f
+        commit = CommitFactory.create(
+            message='',
+            parent_commit_id=None,
+            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '764y ago'}}
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        result = await UploadTask().run_async_within_lock(
+            dbsession, mock_redis, commit.repoid, commit.commitid
+        )
+        assert {'was_setup': False, 'was_updated': False} == result
+        assert commit.message == ''
+        assert commit.parent_commit_id is None
+        mocked_schedule_task.assert_called_with(
+            commit, {'codecov': {'max_report_age': '764y ago'}}, redis_queue
+        )
+        mock_redis.exists.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
 
 
 class TestUploadTaskUnit(object):

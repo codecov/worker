@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from .base import Base
-from helpers.config import get_config
+from covreports.config import get_config
 
 
 def create_all(engine):
