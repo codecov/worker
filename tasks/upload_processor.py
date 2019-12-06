@@ -406,6 +406,9 @@ class UploadProcessorTask(BaseCodecovTask):
         if pr is not None:
             commit.pullid = pr
 
+        archive_data = report.to_archive().encode()
+        url = chunks_archive_service.write_chunks(commit.commitid, archive_data)
+
         commit.state = 'complete' if report else 'error'
         commit.totals = totals
         commit.report_json = network
@@ -413,14 +416,13 @@ class UploadProcessorTask(BaseCodecovTask):
         # ------------------------
         # Archive Processed Report
         # ------------------------
-        archive_data = report.to_archive().encode()
-        url = chunks_archive_service.write_chunks(commit.commitid, archive_data)
         log.info(
             'Archived report',
             extra=dict(
                 repoid=commit.repoid,
                 commit=commit.commitid,
-                url=url
+                url=url,
+                new_report_sessions=network.get('sessions')
             )
         )
         return {
