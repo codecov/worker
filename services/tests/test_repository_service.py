@@ -88,11 +88,14 @@ class TestRepositoryServiceTestCase(object):
     async def test_fetch_appropriate_parent_for_commit_grandparent(self, dbsession, mock_repo_provider):
         grandparent_commit_id = '8aa5aa054aaa21cf5a664acd504a1af6f5caafaa'
         parent_commit_id = 'a' * 32
+        repository = RepositoryFactory.create()
         parent_commit = CommitFactory.create(
-            commitid=grandparent_commit_id
+            commitid=grandparent_commit_id,
+            repository=repository
         )
         commit = CommitFactory.create(
-            parent_commit_id=None
+            parent_commit_id=None,
+            repository=repository
         )
         f = Future()
         f.set_result({
@@ -120,13 +123,60 @@ class TestRepositoryServiceTestCase(object):
         assert grandparent_commit_id == result
 
     @pytest.mark.asyncio
-    async def test_fetch_appropriate_parent_for_commit_direct_parent(self, dbsession, mock_repo_provider):
-        parent_commit_id = '8aa5be054aeb21cf5a664ecd504a1af6f5ceafba'
+    async def test_fetch_appropriate_parent_for_commit_grandparent_wrong_repo_with_same(self, dbsession, mock_repo_provider):
+        grandparent_commit_id = '8aa5aa054aaa21cf5a664acd504a1af6f5caafaa'
+        parent_commit_id = '39594a6cd3213e4a606de77486f16bbf22c4f42e'
+        repository = RepositoryFactory.create()
+        second_repository = RepositoryFactory.create()
         parent_commit = CommitFactory.create(
-            commitid=parent_commit_id
+            commitid=grandparent_commit_id,
+            repository=repository
         )
         commit = CommitFactory.create(
-            parent_commit_id=None
+            parent_commit_id=None,
+            repository=repository
+        )
+        deceiving_parent_commit = CommitFactory.create(
+            commitid=parent_commit_id,
+            repository=second_repository
+        )
+        f = Future()
+        f.set_result({
+            'commitid': commit.commitid,
+            'parents': [
+                {
+                    'commitid': parent_commit_id,
+                    'parents': [
+                        {
+                            'commitid': grandparent_commit_id,
+                            'parents': []
+                        }
+                    ]
+                }
+            ]
+        })
+        dbsession.add(parent_commit)
+        dbsession.add(commit)
+        dbsession.add(deceiving_parent_commit)
+        dbsession.flush()
+        git_commit = {
+            'parents': [parent_commit_id]
+        }
+        mock_repo_provider.get_ancestors_tree.return_value = f
+        result = await fetch_appropriate_parent_for_commit(mock_repo_provider, commit, git_commit)
+        assert grandparent_commit_id == result
+
+    @pytest.mark.asyncio
+    async def test_fetch_appropriate_parent_for_commit_direct_parent(self, dbsession, mock_repo_provider):
+        parent_commit_id = '8aa5be054aeb21cf5a664ecd504a1af6f5ceafba'
+        repository = RepositoryFactory.create()
+        parent_commit = CommitFactory.create(
+            commitid=parent_commit_id,
+            repository=repository
+        )
+        commit = CommitFactory.create(
+            parent_commit_id=None,
+            repository=repository
         )
         dbsession.add(parent_commit)
         dbsession.add(commit)
