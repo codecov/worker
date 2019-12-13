@@ -412,6 +412,7 @@ class UploadProcessorTask(BaseCodecovTask):
         commit.state = 'complete' if report else 'error'
         commit.totals = totals
         commit.report_json = network
+        db_session.commit()
 
         # ------------------------
         # Archive Processed Report
