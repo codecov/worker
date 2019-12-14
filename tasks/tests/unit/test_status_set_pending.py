@@ -14,7 +14,7 @@ here = Path(__file__)
 class TestSetPendingTaskUnit(object):
 
     @pytest.mark.asyncio
-    async def test_no_status(self, mocker, mock_configuration, dbsession):
+    async def test_no_status(self, mocker, mock_configuration, dbsession, mock_redis):
         mocked_1 = mocker.patch('tasks.status_set_pending.get_repo')
         f = Future()
         repo = mocker.MagicMock(
@@ -24,6 +24,7 @@ class TestSetPendingTaskUnit(object):
         )
         f.set_result(repo)
         mocked_1.return_value = f
+        mock_redis.sismember.side_effect = [True]
 
         repoid = '1'
         commitid = 'x'
@@ -34,7 +35,28 @@ class TestSetPendingTaskUnit(object):
         assert not repo.set_commit_status.called
 
     @pytest.mark.asyncio
-    async def test_skip_set_pending(self, mocker, mock_configuration, dbsession):
+    async def test_not_in_beta(self, mocker, mock_configuration, dbsession, mock_redis):
+        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo')
+        f = Future()
+        repo = mocker.MagicMock(
+            service='github',
+            data=dict(yaml={'coverage': {'status': None}}),
+            set_commit_status=mocker.MagicMock(return_value=None)
+        )
+        f.set_result(repo)
+        mocked_1.return_value = f
+        mock_redis.sismember.side_effect = [False]
+
+        repoid = '1'
+        commitid = 'x'
+        branch = 'master'
+        on_a_pull_request = False
+        with pytest.raises(AssertionError, match='Pending disabled. Please request to be in beta.'):
+            await StatusSetPendingTask().run_async(dbsession, repoid, commitid, branch, on_a_pull_request)
+        mock_redis.sismember.assert_called_with('beta.pending', repoid)
+
+    @pytest.mark.asyncio
+    async def test_skip_set_pending(self, mocker, mock_configuration, dbsession, mock_redis):
         mocked_1 = mocker.patch('tasks.status_set_pending.get_repo')
         get_commit_statuses = Future()
         set_commit_status = Future()
@@ -48,6 +70,7 @@ class TestSetPendingTaskUnit(object):
         f = Future()
         f.set_result(repo)
         mocked_1.return_value = f
+        mock_redis.sismember.side_effect = [True]
 
         get_commit_statuses.set_result(Status([]))
         set_commit_status.set_result(None)
@@ -61,7 +84,7 @@ class TestSetPendingTaskUnit(object):
         assert res is None
 
     @pytest.mark.asyncio
-    async def test_skip_set_pending_unknown_branch(self, mocker, mock_configuration, dbsession):
+    async def test_skip_set_pending_unknown_branch(self, mocker, mock_configuration, dbsession, mock_redis):
         mocked_1 = mocker.patch('tasks.status_set_pending.get_repo')
         get_commit_statuses = Future()
         set_commit_status = Future()
@@ -75,6 +98,7 @@ class TestSetPendingTaskUnit(object):
         f = Future()
         f.set_result(repo)
         mocked_1.return_value = f
+        mock_redis.sismember.side_effect = [True]
 
         get_commit_statuses.set_result(Status([]))
         set_commit_status.set_result(None)
@@ -101,7 +125,7 @@ class TestSetPendingTaskUnit(object):
         ('changes', 'master', True),
         ('changes', 'skip', False)
     ])
-    async def test_set_pending(self, context, branch, cc_status_exists, mocker, mock_configuration, dbsession):
+    async def test_set_pending(self, context, branch, cc_status_exists, mocker, mock_configuration, dbsession, mock_redis):
         statuses = ([{'url': None, 'state': 'pending', 'context': 'ci', 'time': '2015-12-21T16:54:13Z'}] +
                     ([{'url': None, 'state': 'pending', 'context': 'codecov/'+context+'/custom', 'time': '2015-12-21T16:54:13Z'}] if cc_status_exists else []))
 
@@ -118,6 +142,7 @@ class TestSetPendingTaskUnit(object):
         f = Future()
         f.set_result(repo)
         mocked_1.return_value = f
+        mock_redis.sismember.side_effect = [True]
 
         get_commit_statuses.set_result(Status(statuses))
         set_commit_status.set_result(None)
