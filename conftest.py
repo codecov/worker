@@ -4,9 +4,11 @@ from asyncio import Future
 import pytest
 import vcr
 from sqlalchemy.exc import OperationalError
+from sqlalchemy import event
 
 from database.base import Base
 from sqlalchemy_utils import create_database, database_exists
+from sqlalchemy.orm import Session
 from covreports.config import ConfigHelper
 from celery_config import initialize_logging
 
@@ -42,8 +44,29 @@ def db(engine, sqlalchemy_connect_url):
 
 
 @pytest.fixture
-def dbsession(db, dbsession):
-    return dbsession
+def dbsession(db, engine):
+    connection = engine.connect()
+
+    connection.begin()
+
+    # bind an individual Session to the connection
+    session = Session(bind=connection)
+
+    # start the session in a SAVEPOINT...
+    session.begin_nested()
+
+    # then each time that SAVEPOINT ends, reopen it
+    @event.listens_for(session, "after_transaction_end")
+    def restart_savepoint(session, transaction):
+        if transaction.nested and not transaction._parent.nested:
+
+            # ensure that state is expired the way
+            # session.commit() at the top level normally does
+            # (optional step)
+            session.expire_all()
+
+            session.begin_nested()
+    return session
 
 
 @pytest.fixture
