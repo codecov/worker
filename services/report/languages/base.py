@@ -5,10 +5,14 @@ from covreports.resources import Report
 
 class BaseLanguageProcessor(object):
 
+    @property
+    def name(self):
+        return self.get_processor_name()
+
     def __init__(self, *args, **kwargs):
         pass
 
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content, first_line: str, name: str) -> bool:
         pass
 
     def process(self, content: str, path_fixer: Callable, ignored_lines: Mapping[str, dict], sessionid: str) -> Report:

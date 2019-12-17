@@ -6,6 +6,8 @@ import logging
 
 from services.report.languages.helpers import remove_non_ascii
 
+from helpers.metrics import metrics
+
 from services.report.languages import (
     SCoverageProcessor, JetBrainsXMLProcessor, CloverProcessor,
     MonoProcessor, CSharpProcessor, JacocoProcessor, VbProcessor, VbTwoProcessor,
@@ -113,9 +115,10 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
     # [xcode]
     for processor in processors:
         if processor.matches_content(report, first_line, name):
-            return processor.process(
-                name, report, path_fixer, ignored_lines, sessionid, commit_yaml
-            )
+            with metrics.timer(f'new_worker.services.report.processors.{processor.name}'):
+                return processor.process(
+                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
+                )
     log.info(
         "File format could not be recognized",
         extra=dict(
