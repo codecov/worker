@@ -21,12 +21,20 @@ log = logging.getLogger(__name__)
 
 def report_type_matching(name, raw_report):
     parser = etree.XMLParser(recover=True, resolve_entities=False)
+    first_line = raw_report.split('\n', 1)[0]
+    xcode_first_line_endings = (
+        '.h:', '.m:', '.swift:', '.hpp:', '.cpp:', '.cxx:',  '.c:', '.C:', '.cc:', '.cxx:', '.c++:'
+    )
+    xcode_filename_endings = ('app.coverage.txt', 'framework.coverage.txt', 'xctest.coverage.txt')
+    if first_line.endswith(xcode_first_line_endings) or name.endswith(xcode_filename_endings):
+        return raw_report, 'txt'
     if raw_report.find('<plist version="1.0">') >= 0 or name.endswith('.plist'):
         return raw_report, 'plist'
     if raw_report:
         try:
             processed = loads(raw_report)
-            return processed, 'json'
+            if processed != dict():
+                return processed, 'json'
         except ValueError:
             pass
         if '<classycle ' in raw_report and '</classycle>' in raw_report:
@@ -66,7 +74,7 @@ def get_possible_processors_list(report_type):
             GapProcessor(),
             DLSTProcessor(),
             GoProcessor(),
-            XCodeProcessor()
+            XCodeProcessor(),
         ],
         'json': [
             SalesforceProcessor(),
