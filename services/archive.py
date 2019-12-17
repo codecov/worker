@@ -68,6 +68,9 @@ class ArchiveService(object):
         #     pass
         # log.debug("Created root storage")
 
+    def get_now(self):
+        return datetime.now()
+
     """
     Accessor for underlying StorageService. You typically shouldn't need
     this for anything.
@@ -123,7 +126,7 @@ class ArchiveService(object):
         # write the file.
         path = '/'.join((
             'v4/raw',
-            datetime.now().strftime('%Y-%m-%d'),
+            self.get_now().strftime('%Y-%m-%d'),
             self.storage_hash,
             commit_sha,
             '%s.txt' % report_id
