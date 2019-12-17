@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from asyncio import Future
+from datetime import datetime
 
 import pytest
 from torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
@@ -176,7 +177,6 @@ class TestUploadTaskIntegration(object):
             owner__unencrypted_oauth_token='testfwdxf9xgj2psfxcs6o1uar788t5ncva1rq88',
             owner__username='ThiagoCodecov',
             yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
-        
         )
 
         parent_commit = CommitFactory.create(
@@ -350,7 +350,9 @@ class TestUploadTaskUnit(object):
         }
         assert expected_result == result
 
-    def test_normalize_upload_arguments(self, dbsession, mock_redis, mock_storage):
+    def test_normalize_upload_arguments(self, dbsession, mock_redis, mock_storage, mocker):
+        mocked_now = mocker.patch.object(ArchiveService, 'get_now')
+        mocked_now.return_value = datetime(2019, 12, 3)
         mock_redis.get.return_value = b"Some weird value"
         commit = CommitFactory.create()
         dbsession.add(commit)
