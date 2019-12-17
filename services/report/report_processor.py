@@ -5,7 +5,6 @@ from lxml import etree
 import logging
 
 from services.report.languages.helpers import remove_non_ascii
-from helpers.exceptions import ReportExpiredException
 
 from services.report.languages import (
     SCoverageProcessor, JetBrainsXMLProcessor, CloverProcessor,
