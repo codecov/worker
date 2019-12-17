@@ -31,9 +31,6 @@ class UploadFinisherTask(BaseCodecovTask):
     """
     name = "app.tasks.upload_finisher.UploadFinisherTask"
 
-    def write_to_db(self):
-        return True
-
     async def run_async(self, db_session, processing_results, *, repoid, commitid, commit_yaml, **kwargs):
         log.info(
             "Received upload_finisher task",

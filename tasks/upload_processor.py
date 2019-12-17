@@ -51,9 +51,6 @@ class UploadProcessorTask(BaseCodecovTask):
     """
     name = "app.tasks.upload_processor.UploadProcessorTask"
 
-    def write_to_db(self):
-        return True
-
     def schedule_for_later_try(self):
         retry_in = FIRST_RETRY_DELAY * 3 ** self.request.retries
         self.retry(max_retries=5, countdown=retry_in, queue=task_default_queue)
