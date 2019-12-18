@@ -12,7 +12,8 @@ class TestRepositoryServiceTestCase(object):
 
     def test_get_repo_provider_service(self, dbsession):
         repo = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testyftq3ovzkb3zmt823u3t04lkrt9w'
+            owner__unencrypted_oauth_token='testyftq3ovzkb3zmt823u3t04lkrt9w',
+            name='example-python'
         )
         dbsession.add(repo)
         dbsession.flush()
@@ -37,7 +38,8 @@ class TestRepositoryServiceTestCase(object):
         )
         repo = RepositoryFactory.create(
             owner__unencrypted_oauth_token='testyftq3ovzkb3zmt823u3t04lkrt9w',
-            bot=bot
+            bot=bot,
+            name='example-python'
         )
         dbsession.add(repo)
         dbsession.add(bot)
@@ -65,7 +67,8 @@ class TestRepositoryServiceTestCase(object):
         repo = RepositoryFactory.create(
             owner__unencrypted_oauth_token='testyftq3ovzkb3zmt823u3t04lkrt9w',
             owner__bot=owner_bot,
-            bot=None
+            bot=None,
+            name='example-python'
         )
         dbsession.add(repo)
         dbsession.add(owner_bot)

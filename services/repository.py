@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
 
 
-def get_repo_provider_service(repository, commit=None):
+def get_repo_provider_service(repository, commit=None) -> torngit.base.BaseHandler:
     _timeouts = [
         get_config('setup', 'http', 'timeouts', 'connect', default=15),
         get_config('setup', 'http', 'timeouts', 'receive', default=30)
@@ -49,17 +49,18 @@ def _get_repo_provider_service_instance(service_name, **adapter_params):
     )
 
 
-async def fetch_appropriate_parent_for_commit(repository_service, commit: Commit, git_commit: dict):
+async def fetch_appropriate_parent_for_commit(repository_service, commit: Commit, git_commit=None):
     db_session = commit.get_db_session()
     commitid = commit.commitid
-    parents = git_commit['parents']
-    possible_commit_query = db_session.query(Commit).filter(
-        Commit.commitid.in_(parents),
-        Commit.repoid == commit.repoid
-    )
-    possible_commit = possible_commit_query.first()
-    if possible_commit:
-        return possible_commit.commitid
+    if git_commit:
+        parents = git_commit['parents']
+        possible_commit_query = db_session.query(Commit).filter(
+            Commit.commitid.in_(parents),
+            Commit.repoid == commit.repoid
+        )
+        possible_commit = possible_commit_query.first()
+        if possible_commit:
+            return possible_commit.commitid
     ancestors_tree = await repository_service.get_ancestors_tree(commitid)
     elements = [ancestors_tree]
     while elements:
