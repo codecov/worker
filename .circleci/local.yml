@@ -12,7 +12,7 @@ gcloud_auth: &gcloud_auth
 k8s_auth: &k8s_auth
   name: Copy k8s auth for kubectl
   command: |-
-    gcloud container clusters get-credentials --region ${GOOGLE_REGION} ${GOOGLE_PROJECT_ID}
+    gcloud container clusters get-credentials --zone ${GOOGLE_COMPUTE_ZONE} ${GOOGLE_CLUSTER_NAME}
 
 jobs:
   build:
