@@ -366,7 +366,7 @@ class TestUploadTaskUnit(object):
         }
         result = UploadTask().normalize_upload_arguments(commit, arguments_with_redis_key, mock_redis)
         expected_result = {
-            'archive_url': f'v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt',
+            'url': f'v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt',
             'reportid': '5fbeee8b-5a41-4925-b59d-470b9d171235',
             'random': 'argument'
         }
