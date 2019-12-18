@@ -347,7 +347,7 @@ class UploadTask(BaseCodecovTask):
                     path=written_path
                 )
             )
-            arguments['archive_url'] = written_path
+            arguments['url'] = written_path
         return arguments
 
 
