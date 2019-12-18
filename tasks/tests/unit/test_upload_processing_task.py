@@ -39,7 +39,8 @@ class TestUploadProcessorTask(object):
             message='dsidsahdsahdsa',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
             repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
-            repository__owner__username='ThiagoCodecov'
+            repository__owner__username='ThiagoCodecov',
+            repository__name='example-python'
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -144,6 +145,7 @@ class TestUploadProcessorTask(object):
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
             repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
             repository__owner__username='ThiagoCodecov',
+            repository__name='example-python'
         )
         dbsession.add(commit)
         dbsession.flush()
