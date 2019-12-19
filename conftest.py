@@ -48,27 +48,18 @@ def db(engine, sqlalchemy_connect_url):
 @pytest.fixture
 def dbsession(db, engine):
     connection = engine.connect()
-
-    connection.begin()
-
-    # bind an individual Session to the connection
+    # begin the nested transaction
+    transaction = connection.begin()
+    # use the connection with the already started transaction
     session = Session(bind=connection)
 
-    # start the session in a SAVEPOINT...
-    session.begin_nested()
+    yield session
 
-    # then each time that SAVEPOINT ends, reopen it
-    @event.listens_for(session, "after_transaction_end")
-    def restart_savepoint(session, transaction):
-        if transaction.nested and not transaction._parent.nested:
-
-            # ensure that state is expired the way
-            # session.commit() at the top level normally does
-            # (optional step)
-            session.expire_all()
-
-            session.begin_nested()
-    return session
+    session.close()
+    # roll back the broader transaction
+    transaction.rollback()
+    # put connection back in the pool
+    connection.close()
 
 
 @pytest.fixture
