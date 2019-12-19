@@ -25,6 +25,7 @@ class OwnerFactory(Factory):
     service_id = factory.Sequence(lambda n: 'user%d' % n)
     admins = []
     permission = []
+    organizations = []
     service = 'github'
     free = 0
     unencrypted_oauth_token = factory.LazyFunction(lambda: uuid4().hex)

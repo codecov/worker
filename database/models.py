@@ -2,6 +2,7 @@ from database.base import CodecovBaseModel
 from sqlalchemy import Column, types, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects import postgresql
+from sqlalchemy import UniqueConstraint, Index
 
 
 class Owner(CodecovBaseModel):
@@ -16,13 +17,23 @@ class Owner(CodecovBaseModel):
     plan_activated_users = Column(postgresql.ARRAY(types.Integer))
     admins = Column(postgresql.ARRAY(types.Integer))
     permission = Column(postgresql.ARRAY(types.Integer))
+    organizations = Column(postgresql.ARRAY(types.Integer))
     free = Column(types.Integer, nullable=False, default=0)
     integration_id = Column(types.Integer)
     yaml = Column(postgresql.JSON)
     oauth_token = Column(types.Text)
+    avatar_url = Column(types.Text)
+    updatestamp = Column(types.DateTime)
+    parent_service_id = Column(types.Text)
+    plan_provider = Column(types.Text)
     bot_id = Column('bot', types.Integer, ForeignKey('owners.ownerid'))
 
     bot = relationship('Owner', remote_side=[ownerid])
+
+    __table_args__ = (
+        Index('owner_service_ids', 'service', 'service_id', unique=True),
+        Index('owner_service_username', 'service', 'username', unique=True),
+    )
 
 
 class Repository(CodecovBaseModel):
@@ -38,11 +49,17 @@ class Repository(CodecovBaseModel):
     updatestamp = Column(types.DateTime)
     yaml = Column(postgresql.JSON)
     branch = Column(types.Text)
+    language = Column(types.Text)
     hookid = Column(types.Text)
     using_integration = Column(types.Boolean)
 
     owner = relationship(Owner, foreign_keys=[ownerid])
     bot = relationship(Owner, foreign_keys=[bot_id])
+
+    __table_args__ = (
+        Index('repos_slug', 'ownerid', 'name', unique=True),
+        Index('repos_service_ids', 'ownerid', 'service_id', unique=True),
+    )
 
     @property
     def service(self):

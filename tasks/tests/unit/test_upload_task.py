@@ -9,7 +9,7 @@ from torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from tasks.upload import UploadTask
 from tasks.upload_processor import upload_processor_task
 from tasks.upload_finisher import upload_finisher_task
-from database.tests.factories import CommitFactory, RepositoryFactory
+from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 
@@ -173,22 +173,30 @@ class TestUploadTaskIntegration(object):
         mocked_3 = mocker.patch.object(UploadTask, 'app')
         mocked_3.send_task.return_value = True
         mock_redis.exists.side_effect = [False]
-        repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testfwdxf9xgj2psfxcs6o1uar788t5ncva1rq88',
-            owner__username='ThiagoCodecov',
+
+        owner = OwnerFactory.create(
+            service='github',
+            username='ThiagoCodecov',
+            unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm'
+        )
+        dbsession.add(owner)
+
+        repo = RepositoryFactory.create(
+            owner=owner,
             yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
         )
+        dbsession.add(repo)
 
         parent_commit = CommitFactory.create(
             message='',
             commitid='c5b67303452bbff57cc1f49984339cde39eb1db5',
-            repository=repository
+            repository=repo
         )
 
         commit = CommitFactory.create(
             message='',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
-            repository=repository
+            repository=repo
         )
         dbsession.add(parent_commit)
         dbsession.add(commit)

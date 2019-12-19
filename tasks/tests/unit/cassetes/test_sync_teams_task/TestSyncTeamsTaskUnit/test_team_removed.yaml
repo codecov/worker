@@ -1,0 +1,88 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://api.github.com/user/orgs?page=1
+  response:
+    body: {string: '[]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [GitHub.com]
+    - !!python/tuple
+      - Date
+      - ['Thu, 24 Oct 2019 21:59:22 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json; charset=utf-8]
+    - !!python/tuple
+      - Content-Length
+      - ['2']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Status
+      - [200 OK]
+    - !!python/tuple
+      - X-Ratelimit-Limit
+      - ['5000']
+    - !!python/tuple
+      - X-Ratelimit-Remaining
+      - ['4999']
+    - !!python/tuple
+      - X-Ratelimit-Reset
+      - ['1571957962']
+    - !!python/tuple
+      - Cache-Control
+      - ['private, max-age=60, s-maxage=60']
+    - !!python/tuple
+      - Vary
+      - ['Accept, Authorization, Cookie, X-GitHub-OTP']
+    - !!python/tuple
+      - Etag
+      - ['"434be4da12c18320f824c3ba78c75d68"']
+    - !!python/tuple
+      - X-Oauth-Scopes
+      - ['repo, user']
+    - !!python/tuple
+      - X-Accepted-Oauth-Scopes
+      - ['admin:org, read:org, repo, user, write:org']
+    - !!python/tuple
+      - X-Github-Media-Type
+      - [github.v3]
+    - !!python/tuple
+      - Access-Control-Expose-Headers
+      - ['ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+          X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+          X-GitHub-Media-Type']
+    - !!python/tuple
+      - Access-Control-Allow-Origin
+      - ['*']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000; includeSubdomains; preload]
+    - !!python/tuple
+      - X-Frame-Options
+      - [deny]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Xss-Protection
+      - [1; mode=block]
+    - !!python/tuple
+      - Referrer-Policy
+      - ['origin-when-cross-origin, strict-origin-when-cross-origin']
+    - !!python/tuple
+      - Content-Security-Policy
+      - [default-src 'none']
+    - !!python/tuple
+      - X-Github-Request-Id
+      - ['94B2:1E1D:41EB78:7FD45C:5DB21EBA']
+    status: {code: 200, message: OK}
+    url: https://api.github.com/user/orgs?page=1
+version: 1
