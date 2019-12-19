@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from asyncio import Future
+from datetime import datetime
 
 import pytest
 from torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
@@ -10,6 +11,7 @@ from tasks.upload_processor import upload_processor_task
 from tasks.upload_finisher import upload_finisher_task
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
+from services.archive import ArchiveService
 
 here = Path(__file__)
 
@@ -171,6 +173,11 @@ class TestUploadTaskIntegration(object):
         mocked_3 = mocker.patch.object(UploadTask, 'app')
         mocked_3.send_task.return_value = True
         mock_redis.exists.side_effect = [False]
+        repository = RepositoryFactory.create(
+            owner__unencrypted_oauth_token='testfwdxf9xgj2psfxcs6o1uar788t5ncva1rq88',
+            owner__username='ThiagoCodecov',
+            yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+        )
 
         owner = OwnerFactory.create(
             service='github',
@@ -188,13 +195,13 @@ class TestUploadTaskIntegration(object):
         parent_commit = CommitFactory.create(
             message='',
             commitid='c5b67303452bbff57cc1f49984339cde39eb1db5',
-            repository=repo
+            repository=repository
         )
 
         commit = CommitFactory.create(
             message='',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
-            repository=repo
+            repository=repository
         )
         dbsession.add(parent_commit)
         dbsession.add(commit)
@@ -338,6 +345,53 @@ class TestUploadTaskIntegration(object):
 
 
 class TestUploadTaskUnit(object):
+
+    def test_normalize_upload_arguments_no_changes(self, dbsession, mock_redis, mock_storage):
+        mock_redis.get.return_value = b"Some weird value"
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        reportid = '5fbeee8b-5a41-4925-b59d-470b9d171235'
+        arguments_with_redis_key = {
+            'reportid': reportid,
+            'random': 'argument'
+        }
+        result = UploadTask().normalize_upload_arguments(commit, arguments_with_redis_key, mock_redis)
+        expected_result = {
+            'reportid': '5fbeee8b-5a41-4925-b59d-470b9d171235',
+            'random': 'argument'
+        }
+        assert expected_result == result
+
+    def test_normalize_upload_arguments(self, dbsession, mock_redis, mock_storage, mocker):
+        mocked_now = mocker.patch.object(ArchiveService, 'get_now')
+        mocked_now.return_value = datetime(2019, 12, 3)
+        mock_redis.get.return_value = b"Some weird value"
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        repo_hash = ArchiveService.get_archive_hash(commit.repository)
+        reportid = '5fbeee8b-5a41-4925-b59d-470b9d171235'
+        arguments_with_redis_key = {
+            'redis_key': 'commit_chunks.something',
+            'reportid': reportid,
+            'random': 'argument'
+        }
+        result = UploadTask().normalize_upload_arguments(commit, arguments_with_redis_key, mock_redis)
+        expected_result = {
+            'url': f'v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt',
+            'reportid': '5fbeee8b-5a41-4925-b59d-470b9d171235',
+            'random': 'argument'
+        }
+        assert expected_result == result
+        mock_redis.get.assert_called_with('commit_chunks.something')
+        mock_storage.write_file.assert_called_with(
+            'archive',
+            f'v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt',
+            'Some weird value',
+            gzipped=False,
+            reduced_redundancy=False
+        )
 
     def test_schedule_task_with_no_tasks(self, dbsession):
         commit = CommitFactory.create()

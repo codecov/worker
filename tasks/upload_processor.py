@@ -51,9 +51,6 @@ class UploadProcessorTask(BaseCodecovTask):
     """
     name = "app.tasks.upload_processor.UploadProcessorTask"
 
-    def write_to_db(self):
-        return True
-
     def schedule_for_later_try(self):
         retry_in = FIRST_RETRY_DELAY * 3 ** self.request.retries
         self.retry(max_retries=5, countdown=retry_in, queue=task_default_queue)
@@ -304,7 +301,7 @@ class UploadProcessorTask(BaseCodecovTask):
             archive=archive_url or url,
             url=build_url
         )
-        report = self.process_raw_upload(
+        report = self.process_raw_upload_on_top_of_master_report(
             commit_yaml=commit_yaml,
             master=current_report,
             reports=raw_uploaded_report,
@@ -325,7 +322,7 @@ class UploadProcessorTask(BaseCodecovTask):
         )
         return report
 
-    def process_raw_upload(self, commit_yaml, master, reports, flags, session=None):
+    def process_raw_upload_on_top_of_master_report(self, commit_yaml, master, reports, flags, session=None):
         return ReportService().build_report_from_raw_content(
             commit_yaml, master, reports, flags, session
         )
@@ -406,21 +403,24 @@ class UploadProcessorTask(BaseCodecovTask):
         if pr is not None:
             commit.pullid = pr
 
+        archive_data = report.to_archive().encode()
+        url = chunks_archive_service.write_chunks(commit.commitid, archive_data)
+
         commit.state = 'complete' if report else 'error'
         commit.totals = totals
         commit.report_json = network
+        db_session.commit()
 
         # ------------------------
         # Archive Processed Report
         # ------------------------
-        archive_data = report.to_archive().encode()
-        url = chunks_archive_service.write_chunks(commit.commitid, archive_data)
         log.info(
             'Archived report',
             extra=dict(
                 repoid=commit.repoid,
                 commit=commit.commitid,
-                url=url
+                url=url,
+                new_report_sessions=network.get('sessions')
             )
         )
         return {

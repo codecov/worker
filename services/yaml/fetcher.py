@@ -10,7 +10,22 @@ log = logging.getLogger(__name__)
 async def fetch_commit_yaml_from_provider(commit, repository_service):
     location = await determine_commit_yaml_location(commit, repository_service)
     if not location:
+        log.info(
+            "We were not able to find the yaml on the provider API",
+            extra=dict(
+                commit=commit.commitid,
+                repoid=commit.repository.repoid
+            )
+        )
         return None
+    log.info(
+        "Yaml was found on provider API",
+        extra=dict(
+            commit=commit.commitid,
+            repoid=commit.repository.repoid,
+            location=location
+        )
+    )
     try:
         ref = commit.commitid
         content = await repository_service.get_source(location, ref)

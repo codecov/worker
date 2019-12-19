@@ -53,7 +53,10 @@ async def fetch_appropriate_parent_for_commit(repository_service, commit: Commit
     db_session = commit.get_db_session()
     commitid = commit.commitid
     parents = git_commit['parents']
-    possible_commit_query = db_session.query(Commit).filter(Commit.commitid.in_(parents))
+    possible_commit_query = db_session.query(Commit).filter(
+        Commit.commitid.in_(parents),
+        Commit.repoid == commit.repoid
+    )
     possible_commit = possible_commit_query.first()
     if possible_commit:
         return possible_commit.commitid
@@ -62,7 +65,10 @@ async def fetch_appropriate_parent_for_commit(repository_service, commit: Commit
     while elements:
         parents = [k for el in elements for k in el['parents']]
         parent_commits = [p['commitid'] for p in parents]
-        closest_parent = db_session.query(Commit).filter(Commit.commitid.in_(parent_commits)).first()
+        closest_parent = db_session.query(Commit).filter(
+            Commit.commitid.in_(parent_commits),
+            Commit.repoid == commit.repoid
+        ).first()
         if closest_parent:
             return closest_parent.commitid
         elements = parents

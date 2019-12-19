@@ -147,6 +147,7 @@ class TestProcessRawUploadFlags(BaseTestCase):
         assert master.sessions[0].flags == ['docker']
 
 
+
 class TestProcessSessions(BaseTestCase):
     def test_sessions(self):
         master = process.process_raw_upload(commit_yaml={},
@@ -180,6 +181,18 @@ class TestProcessReport(BaseTestCase):
                                      path_fixer=str)
 
         assert res.get('file') is not None
+
+    def test_path_fixes_same_final_result(self):
+        commit_yaml = {'fixes': ['arroba::prefix', 'bingo::prefix']}
+        master = process.process_raw_upload(
+            commit_yaml=commit_yaml,
+            original_report=None,
+            session={},
+            reports='{"coverage": {"arroba/test.py": [null, 0], "bingo/test.py": [null, 1]}}',
+            flags=None
+        )
+        assert len(master.files) == 1
+        assert master.files[0] == 'prefix/test.py'
 
     @pytest.mark.parametrize("lang, report", [('go.from_txt', 'mode: atomic'),
            ('xcode.from_txt', '# path=/Users/path/to/app.coverage.txt\n<data>'),
