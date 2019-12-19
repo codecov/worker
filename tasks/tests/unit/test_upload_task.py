@@ -173,11 +173,6 @@ class TestUploadTaskIntegration(object):
         mocked_3 = mocker.patch.object(UploadTask, 'app')
         mocked_3.send_task.return_value = True
         mock_redis.exists.side_effect = [False]
-        repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testfwdxf9xgj2psfxcs6o1uar788t5ncva1rq88',
-            owner__username='ThiagoCodecov',
-            yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
-        )
 
         owner = OwnerFactory.create(
             service='github',
@@ -195,13 +190,13 @@ class TestUploadTaskIntegration(object):
         parent_commit = CommitFactory.create(
             message='',
             commitid='c5b67303452bbff57cc1f49984339cde39eb1db5',
-            repository=repository
+            repository=repo
         )
 
         commit = CommitFactory.create(
             message='',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
-            repository=repository
+            repository=repo
         )
         dbsession.add(parent_commit)
         dbsession.add(commit)
