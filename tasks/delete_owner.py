@@ -4,15 +4,30 @@ from datetime import datetime
 from app import celery_app
 from celery_config import delete_owner_task_name
 from tasks.base import BaseCodecovTask
-from database.models import Owner
+from database.models import Owner, Repository
+from services.archive import ArchiveService
 
 log = logging.getLogger(__name__)
 
 
 class DeleteOwnerTask(BaseCodecovTask):
     """
+    Delete an owner and all of their data
     """
     name = delete_owner_task_name
+
+    class RepoData(object):
+        """
+        Implements the interface of a repository expected by the ArchiveService.
+        """
+        def __init__(self, repoid, service, service_id):
+            self.service = service
+            self.data = {
+                "repo": {
+                    "repoid": repoid,
+                    "service_id": service_id
+                }
+            }
 
     async def run_async(self, db_session, ownerid):
         log.info(
@@ -24,6 +39,43 @@ class DeleteOwnerTask(BaseCodecovTask):
         ).first()
 
         assert owner, 'Owner not found'
+
+        self.delete_repo_archives(db_session, owner)
+
+        self.delete_owner_from_orgs(db_session, owner)
+
+        # finally delete the actual owner entry and depending data from other tables
+        db_session.query(Owner).filter(
+            Owner.ownerid == ownerid
+        ).delete(synchronize_session=False)
+
+    def delete_repo_archives(self, db_session, owner):
+        """
+        Delete all of the data stored in archives for owned repos
+        """
+        repos_for_owner = db_session.query(Repository).filter(
+                Repository.ownerid == owner.ownerid
+        ).all()
+
+        for repo in repos_for_owner:
+            repo_data = DeleteOwnerTask.RepoData(
+                repo.repoid,
+                owner.service,
+                repo.service_id
+            )
+            archive_service = ArchiveService(repo_data)
+            archive_service.delete_repo_files()
+
+    def delete_owner_from_orgs(self, db_session, owner):
+        """
+        Remove this owner wherever they exist in the organizations column of the owners table
+        """
+        owners_in_org = db_session.query(Owner).filter(
+            Owner.organizations.any(owner.ownerid)
+        ).all()
+
+        for owner in owners_in_org:
+            owner.organizations.remove(owner.ownerid)
 
 
 RegisteredDeleteOwnerTask = celery_app.register_task(DeleteOwnerTask())
