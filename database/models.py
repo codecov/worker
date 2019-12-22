@@ -1,6 +1,6 @@
 from database.base import CodecovBaseModel
 from sqlalchemy import Column, types, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects import postgresql
 from sqlalchemy import UniqueConstraint, Index
 
@@ -53,7 +53,7 @@ class Repository(CodecovBaseModel):
     hookid = Column(types.Text)
     using_integration = Column(types.Boolean)
 
-    owner = relationship(Owner, foreign_keys=[ownerid])
+    owner = relationship(Owner, foreign_keys=[ownerid], backref=backref("owners", cascade="delete"))
     bot = relationship(Owner, foreign_keys=[bot_id])
 
     __table_args__ = (
@@ -83,4 +83,4 @@ class Commit(CodecovBaseModel):
     state = Column(types.String(256))
 
     author = relationship(Owner)
-    repository = relationship(Repository)
+    repository = relationship(Repository, backref=backref("repos", cascade="delete"))
