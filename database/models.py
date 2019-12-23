@@ -83,4 +83,22 @@ class Commit(CodecovBaseModel):
     state = Column(types.String(256))
 
     author = relationship(Owner)
-    repository = relationship(Repository, backref=backref("repos", cascade="delete"))
+    repository = relationship(Repository, backref=backref("commits", cascade="delete"))
+
+
+class Branch(CodecovBaseModel):
+
+    __tablename__ = 'branches'
+
+    repoid = Column(types.Integer, ForeignKey('repos.repoid'), primary_key=True)
+    updatestamp = Column(types.DateTime)
+    branch = Column(types.Text, nullable=False)
+    base = Column(types.Text)
+    head = Column(types.Text, nullable=False)
+    authors = Column(postgresql.ARRAY(types.Integer))
+
+    repository = relationship(Repository, backref=backref("branches", cascade="delete"))
+
+    __table_args__ = (
+        Index('branches_repoid_branch', 'repoid', 'branch', unique=True),
+    )

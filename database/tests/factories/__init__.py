@@ -46,6 +46,17 @@ class RepositoryFactory(Factory):
     bot = None
 
 
+class BranchFactory(Factory):
+    class Meta:
+        model = models.Branch
+
+    branch = 'master'
+    head = factory.LazyAttribute(lambda o: sha1(o.branch.encode('utf-8')).hexdigest())
+    authors = []
+
+    repository = factory.SubFactory(RepositoryFactory)
+
+
 class CommitFactory(Factory):
     class Meta:
         model = models.Commit

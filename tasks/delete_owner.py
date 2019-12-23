@@ -16,19 +16,6 @@ class DeleteOwnerTask(BaseCodecovTask):
     """
     name = delete_owner_task_name
 
-    class RepoData(object):
-        """
-        Implements the interface of a repository expected by the ArchiveService.
-        """
-        def __init__(self, repoid, service, service_id):
-            self.service = service
-            self.data = {
-                "repo": {
-                    "repoid": repoid,
-                    "service_id": service_id
-                }
-            }
-
     async def run_async(self, db_session, ownerid):
         log.info(
             'Delete owner',
@@ -44,10 +31,8 @@ class DeleteOwnerTask(BaseCodecovTask):
 
         self.delete_owner_from_orgs(db_session, owner)
 
-        # finally delete the actual owner entry and depending data from other tables
-        db_session.query(Owner).filter(
-            Owner.ownerid == ownerid
-        ).delete(synchronize_session=False)
+        # finally delete the actual owner entry and depending data from other tables]
+        db_session.delete(owner)
 
     def delete_repo_archives(self, db_session, owner):
         """
@@ -58,12 +43,7 @@ class DeleteOwnerTask(BaseCodecovTask):
         ).all()
 
         for repo in repos_for_owner:
-            repo_data = DeleteOwnerTask.RepoData(
-                repo.repoid,
-                owner.service,
-                repo.service_id
-            )
-            archive_service = ArchiveService(repo_data)
+            archive_service = ArchiveService(repo)
             archive_service.delete_repo_files()
 
     def delete_owner_from_orgs(self, db_session, owner):
