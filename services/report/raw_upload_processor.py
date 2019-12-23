@@ -150,12 +150,26 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     if original_report.is_empty():
         raise ReportEmptyError('No files found in report.')
 
-    path_with_same_results = [(key, list(value)) for key, value in path_results_inverse_mapping.items() if len(value) >= 2]
+    if path_results_inverse_mapping.get(None):
+        ignored_files = sorted(path_results_inverse_mapping.pop(None))
+        log.info(
+            "Some files were ignored",
+            extra=dict(
+                number=len(ignored_files),
+                paths=ignored_files[:100],
+                session=sessionid
+            )
+        )
+
+    path_with_same_results = [
+        (key, len(value), list(value)[:10]) for key, value in path_results_inverse_mapping.items() if len(value) >= 2
+    ]
     if path_with_same_results:
         log.info(
             "Two different files went to the same result",
             extra=dict(
-                paths=path_with_same_results,
+                number_of_paths=len(path_with_same_results),
+                paths=path_with_same_results[:100],
                 session=sessionid
             )
         )
