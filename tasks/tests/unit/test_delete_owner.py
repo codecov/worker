@@ -5,8 +5,8 @@ from asyncio import Future
 import pytest
 
 from tasks.delete_owner import DeleteOwnerTask
-from database.tests.factories import OwnerFactory, RepositoryFactory, CommitFactory, BranchFactory
-from database.models import Owner, Repository, Commit, Branch
+from database.tests.factories import OwnerFactory, RepositoryFactory, CommitFactory, BranchFactory, PullFactory
+from database.models import Owner, Repository, Commit, Branch, Pull
 
 here = Path(__file__)
 
@@ -53,14 +53,12 @@ class TestDeleteOwnerTaskUnit(object):
         )
         dbsession.add(branch)
 
+        pull = PullFactory.create(
+            repository=repo
+        )
+        dbsession.add(pull)
+
         dbsession.flush()
-
-        # TODO: add pulls
-
-        # self.db.query(
-        #     "insert into pulls (repoid, pullid) values (%s, 3);",
-        #     repoid
-        # )
 
         await DeleteOwnerTask().run_async(
             dbsession,
@@ -83,10 +81,12 @@ class TestDeleteOwnerTaskUnit(object):
             Branch.repoid == repoid
         ).all()
 
-        # pulls = self.db.query("select * from pulls where repoid=%s;", repoid)
+        pulls = dbsession.query(Pull).filter(
+            Pull.repoid == repoid
+        ).all()
 
         assert owner is None
         assert repos == []
         assert commits == []
         assert branches == []
-        # assert pulls == []
+        assert pulls == []

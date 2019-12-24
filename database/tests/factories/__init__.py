@@ -57,6 +57,16 @@ class BranchFactory(Factory):
     repository = factory.SubFactory(RepositoryFactory)
 
 
+class PullFactory(Factory):
+    class Meta:
+        model = models.Pull
+
+    pullid = 1
+    state = 'open'
+
+    repository = factory.SubFactory(RepositoryFactory)
+
+
 class CommitFactory(Factory):
     class Meta:
         model = models.Commit

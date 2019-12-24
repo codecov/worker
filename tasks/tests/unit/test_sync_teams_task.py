@@ -117,7 +117,7 @@ class TestSyncTeamsTaskUnit(object):
             Owner.ownerid.in_(user.organizations)
         ).all()
         expected_owner_ids = [g.ownerid for g in gitlab_groups]
-        assert user.organizations == expected_owner_ids
+        assert sorted(user.organizations) == sorted(expected_owner_ids)
 
         expected_groups = {
             '4165904': {

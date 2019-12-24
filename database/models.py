@@ -102,3 +102,29 @@ class Branch(CodecovBaseModel):
     __table_args__ = (
         Index('branches_repoid_branch', 'repoid', 'branch', unique=True),
     )
+
+
+class Pull(CodecovBaseModel):
+
+    __tablename__ = 'pulls'
+
+    repoid = Column(types.Integer, ForeignKey('repos.repoid'), primary_key=True)
+    pullid = Column(types.Integer, nullable=False)
+    issueid = Column(types.Integer)
+    updatestamp = Column(types.DateTime)
+    state = Column(types.Text, nullable=False, default='open')
+    title = Column(types.Text)
+    base = Column(types.Text)
+    compared_to = Column(types.Text)
+    head = Column(types.Text)
+    commentid = Column(types.Text)
+    diff = Column(postgresql.JSON)
+    flare = Column(postgresql.JSON)
+    author_id = Column('author', types.Integer, ForeignKey('owners.ownerid'))
+
+    author = relationship(Owner)
+    repository = relationship(Repository, backref=backref("pulls", cascade="delete"))
+
+    __table_args__ = (
+        Index('pulls_repoid_pullid', 'repoid', 'pullid', unique=True),
+    )
