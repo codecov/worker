@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 
 def build_commit_payload(full_commit: FullCommit):
-    if full_commit is None:
+    if full_commit.commit is None:
         return None
     commit = full_commit.commit
     return {
@@ -21,7 +21,7 @@ def build_commit_payload(full_commit: FullCommit):
         },
         "url": get_commit_url(commit),
         "timestamp": commit.timestamp.isoformat(),
-        "totals": full_commit.report.totals._asdict(),
+        "totals": full_commit.report.totals._asdict() if full_commit.report is not None else None,
         "commitid": commit.commitid,
         # TODO (Thiago): Implement get_href on torngit
         "service_url": f"https://{commit.repository.service}.com/{commit.repository.slug}/commit/{commit.commitid}",
@@ -42,12 +42,12 @@ class WebhookNotifier(RequestsYamlBasedNotifier):
         if pull:
             pull_dict = {
                 "head": {
-                    "commit": pull.head_commit_sha,
+                    "commit": pull.head,
                     "branch": "master"
                 },
                 "number": str(pull.pullid),
                 "base": {
-                    "commit": pull.base_commit_sha,
+                    "commit": pull.base,
                     "branch": "master"
                 },
                 "open": pull.state == 'open',

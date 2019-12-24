@@ -1,4 +1,5 @@
 from uuid import uuid4
+from datetime import datetime
 
 import factory
 from database import models
@@ -38,7 +39,7 @@ class RepositoryFactory(Factory):
         model = models.Repository
 
     private = True
-    name = 'example-python'
+    name = factory.Faker('slug')
     using_integration = False
     service_id = factory.Sequence(lambda n: 'id_%d' % n)
 
@@ -61,7 +62,7 @@ class PullFactory(Factory):
     class Meta:
         model = models.Pull
 
-    pullid = 1
+    pullid = factory.Sequence(lambda n: 3 * n + 10)
     state = 'open'
 
     repository = factory.SubFactory(RepositoryFactory)
@@ -76,6 +77,7 @@ class CommitFactory(Factory):
     commitid = factory.LazyAttribute(lambda o: sha1(o.message.encode('utf-8')).hexdigest())
     ci_passed = True
     pullid = 1
+    timestamp = datetime(2019, 2, 1, 17, 59, 47)
     author = factory.SubFactory(OwnerFactory)
     repository = factory.SubFactory(RepositoryFactory)
     totals = {

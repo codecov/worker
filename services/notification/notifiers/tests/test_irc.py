@@ -19,7 +19,7 @@ class TestIRCNotifier(object):
         result = notifier.build_payload(comparison)
         commit = comparison.head.commit
         repository = commit.repository
-        text = f"Coverage for {repository.slug} *increased* `+60.00%` on `new_branch` is `60.00000%` via `{commit.commitid[:7]}`"
+        text = f"Coverage for {repository.slug} *increased* `+10.00%` on `new_branch` is `60.00000%` via `{commit.commitid[:7]}`"
         expected_result = {
             'message': text
         }
@@ -63,7 +63,7 @@ class TestIRCNotifier(object):
         )
         commit = comparison.head.commit
         repository = commit.repository
-        text = f"Coverage for {repository.slug} *increased* `+60.00%` on `new_branch` is `60.00000%` via `{commit.commitid[:7]}`"
+        text = f"Coverage for {repository.slug} *increased* `+10.00%` on `new_branch` is `60.00000%` via `{commit.commitid[:7]}`"
         data = {
             'message': text
         }

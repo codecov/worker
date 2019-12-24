@@ -27,12 +27,8 @@ class StatusNotifier(AbstractBaseNotifier):
         repository_service = self._get_repository_service()
         head = comparison.head.commit
         base = comparison.base.commit
-        pull = comparison.pull
-        if self.notifier_yaml_settings.get('base') in ('auto', None, 'pr') and pull:
-            pull_diff = await repository_service.get_compare(base.commitid, head.commitid, with_commits=False)
-            return pull_diff['diff']
-        else:
-            return await repository_service.get_commit_diff(head.commitid, context=False)
+        pull_diff = await repository_service.get_compare(base.commitid, head.commitid, with_commits=False)
+        return pull_diff['diff']
 
     def _get_repository_service(self):
         if not self._repository_service:

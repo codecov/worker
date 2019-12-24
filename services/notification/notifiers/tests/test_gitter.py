@@ -18,7 +18,7 @@ class TestGitterkNotifier(object):
         result = notifier.build_payload(comparison)
         commit = comparison.head.commit
         repository = commit.repository
-        text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* +60.00% on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
+        text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* +10.00% on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
         expected_result = {
             'message': text,
             "branch": 'new_branch',
@@ -29,7 +29,7 @@ class TestGitterkNotifier(object):
             "commit_url": None,
             "codecov_url": f'test.example.br/gh/{repository.slug}/commit/{commit.commitid}',
             "coverage": '60.00000',
-            "coverage_change": Decimal('60.00'),
+            "coverage_change": Decimal('10.00'),
         }
         assert result['message'] == expected_result['message']
         assert result == expected_result

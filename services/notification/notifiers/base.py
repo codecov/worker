@@ -1,10 +1,19 @@
 from typing import Mapping, Any
 import logging
+from dataclasses import dataclass
 
 from database.models import Repository
 from services.notification.types import Comparison
 
 log = logging.getLogger(__name__)
+
+
+@dataclass
+class NotificationResult(object):
+    notification_attempted: bool
+    notification_successful: bool
+    explanation: str
+    data_sent: Mapping[str, Any]
 
 
 class AbstractBaseNotifier(object):
@@ -33,7 +42,7 @@ class AbstractBaseNotifier(object):
     def name(self) -> str:
         raise NotImplementedError()
 
-    async def notify(self, comparison: Comparison, **extra_data) -> dict:
+    async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
         raise NotImplementedError()
 
     def is_enabled(self) -> bool:

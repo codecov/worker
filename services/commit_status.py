@@ -40,11 +40,8 @@ CI_EXCLUDE = set(('styleci', ))
 class RepositoryCIFilter(object):
 
     def __init__(self, commit_yaml):
-        ci = read_yaml_field(commit_yaml, ('codecov', 'ci'))
-        if ci:
-            ci = set(ci) | ENTERPRISE_DEFAULTS
-        else:
-            ci = ENTERPRISE_DEFAULTS
+        ci = read_yaml_field(commit_yaml, ('codecov', 'ci')) or []
+        ci = set(ci) | ENTERPRISE_DEFAULTS
         self.exclude = set(map(lambda a: a[1:], filter(lambda ci: ci[0] == '!', ci)) if ci else []) | CI_EXCLUDE
         self.include = set(filter(lambda ci: ci[0] != '!', ci) if ci else []) | CI_DOMAINS
 

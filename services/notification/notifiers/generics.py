@@ -9,7 +9,7 @@ from helpers.metrics import metrics
 from services.report.match import match
 from services.yaml.reader import round_number, get_paths_from_flags
 from services.urls import get_compare_url, get_commit_url
-from services.notification.notifiers.base import AbstractBaseNotifier
+from services.notification.notifiers.base import AbstractBaseNotifier, NotificationResult
 from services.notification.types import Comparison
 
 
@@ -93,10 +93,16 @@ class StandardNotifier(AbstractBaseNotifier):
                 with (base_full_commit.report.filter(**_filters) if (base_full_commit.report is not None) else WithNone()):
                     if self.should_notify_comparison(comparison):
                         result = self.do_notify(comparison, **extra_data)
+                    else:
+                        result = NotificationResult(
+                            notification_attempted=False,
+                            notification_successful=None,
+                            explanation='Did not fit criteria'
+                        )
             log.info(
                 "Finishing notification on %s. Result was %s",
                 self.name,
-                'success' if result.get('successful') else 'failure',
+                'success' if result.notification_successful else 'failure',
                 extra=dict(
                     result=result,
                     repoid=head_full_commit.commit.repoid,
@@ -116,7 +122,13 @@ class StandardNotifier(AbstractBaseNotifier):
 
     def do_notify(self, comparison):
         data = self.build_payload(comparison)
-        return self.send_actual_notification(comparison, data)
+        result = self.send_actual_notification(data)
+        return NotificationResult(
+            notification_attempted=result['notification_attempted'],
+            notification_successful=result['notification_successful'],
+            explanation=result['explanation'],
+            data_sent=data
+        )
 
     def is_above_threshold(self, comparison: Comparison):
         head_full_commit = comparison.head
@@ -140,16 +152,18 @@ class StandardNotifier(AbstractBaseNotifier):
     def generate_compare_dict(self, comparison: Comparison):
         head_full_commit = comparison.head
         base_full_commit = comparison.base
-        if base_full_commit.report is not None:
+        if comparison.has_base_report():
             difference = Decimal(head_full_commit.report.totals.coverage) - Decimal(base_full_commit.report.totals.coverage)
             message = 'no change' if difference == 0 else 'increased' if difference > 0 else 'decreased'
             notation = '' if difference == 0 else '+' if difference > 0 else '-'
+            comparison_url = get_compare_url(base_full_commit.commit, head_full_commit.commit)
         else:
             difference = None
             message = 'unknown'
             notation = ''
+            comparison_url = None
         return {
-            "url": get_compare_url(base_full_commit.commit, head_full_commit.commit),
+            "url": comparison_url,
             "message": message,
             "coverage": round_number(self.current_yaml, difference) if difference is not None else None,
             "notation": notation
@@ -160,7 +174,7 @@ class StandardNotifier(AbstractBaseNotifier):
             return self.notifier_yaml_settings.get('message')
         commit = comparison.head.commit
         comparison_string = ""
-        if comparison.base.report is not None:
+        if comparison.has_base_report():
             compare = self.generate_compare_dict(comparison)
             comparison_string = self.COMPARISON_STRING.format(
                 compare_message=compare['message'],

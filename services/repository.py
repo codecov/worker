@@ -6,7 +6,8 @@ import torngit
 
 from covreports.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
-from database.models import Owner, Commit
+from database.models import Owner, Commit, Pull
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -215,3 +216,65 @@ async def create_webhook_on_provider(repository_service):
             repository_service.service, 'webhook_secret',
             default='ab164bf3f7d947f2a0681b215404873e')
         )
+
+
+async def fetch_and_update_pull_request_information(repository_service, commit, current_yaml):
+    db_session = commit.get_db_session()
+    pullid = commit.pullid
+    if not commit.pullid:
+        pullid = await repository_service.find_pull_request(
+            commit=commit.commitid,
+            branch=commit.branch
+        )
+    if not pullid:
+        return None
+    compared_to = None
+    pull_information = await repository_service.get_pull_request(pullid=pullid)
+    pull_base_sha = pull_information['base']['commitid']
+    base_commit = db_session.query(Commit).filter_by(commitid=pull_base_sha, repoid=commit.repoid).first()
+    if base_commit:
+        compared_to = base_commit.commitid
+    else:
+        # Copying from legacy-code. We should take a look and redecide
+        commit_dict = await repository_service.get_commit(pull_information['base']['commitid'])
+        new_base_query = db_session.query(Commit).filter(
+            Commit.repoid == commit.repoid,
+            Commit.branch == pull_information['base']['branch'],
+            (Commit.pullid.is_(None) | Commit.merged),
+            Commit.timestamp < commit_dict['timestamp']
+        )
+        if read_yaml_field(current_yaml, ('codecov', 'require_ci_to_pass'), True):
+            new_base_query = new_base_query.filter(Commit.ci_passed)
+        new_base_query.order_by(Commit.timestamp.desc())
+        new_base = new_base_query.first()
+        if new_base:
+            compared_to = new_base.commitid
+
+    pull_query = db_session.query(Pull).filter_by(
+        pullid=pullid,
+        repoid=commit.repoid
+    )
+    pull = pull_query.first()
+    if pull:
+        pull.issueid = pull_information['id']
+        pull.state = pull_information['state']
+        pull.title = pull_information['title']
+        pull.base = pull_information['base']['commitid']
+        pull.head = pull_information['head']['commitid']
+        pull.compared_to = compared_to
+        pull.author = commit.author  # TODO (Thiago): This matches legacy, but should be different
+    else:
+        pull = Pull(
+            pullid=pullid,
+            repoid=commit.repoid,
+            issueid=pull_information['id'],
+            state=pull_information['state'],
+            title=pull_information['title'],
+            base=pull_information['base']['commitid'],
+            head=pull_information['head']['commitid'],
+            compared_to=compared_to,
+            author=commit.author  # TODO (Thiago): This matches legacy, but should be different
+        )
+        db_session.add(pull)
+    db_session.flush()
+    return pull

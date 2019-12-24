@@ -114,11 +114,52 @@ class TestProjectStatusNotifier(object):
         base_commit = sample_comparison.base.commit
         head_commit = sample_comparison.head.commit
         expected_result = {
-            'message': f'60.00000% (+60.00%) compared to {base_commit.commitid[:7]}',
+            'message': f'60.00000% (+10.00%) compared to {base_commit.commitid[:7]}',
             'state': 'success',
             'url': f'test.example.br/gh/{head_commit.repository.slug}/compare/{base_commit.commitid}...{head_commit.commitid}'
         }
         result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_not_auto(self, sample_comparison, mock_repo_provider, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'target': '57%'},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        expected_result = {
+            'message': '60.00% (target 57.00%',
+            'state': 'success',
+            'url': f'test.example.br/gh/{head_commit.repository.slug}/compare/{base_commit.commitid}...{head_commit.commitid}'
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_no_base_report(self, sample_comparison_without_base_report, mock_repo_provider, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        comparison = sample_comparison_without_base_report
+        notifier = ProjectStatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        base_commit = comparison.base.commit
+        head_commit = comparison.head.commit
+        expected_result = {
+            'message': 'No report found to compare against',
+            'state': 'success',
+            'url': f'test.example.br/gh/{head_commit.repository.slug}/compare/{base_commit.commitid}...{head_commit.commitid}'
+        }
+        result = await notifier.build_payload(comparison)
         assert expected_result == result
 
     @pytest.mark.asyncio
@@ -139,7 +180,7 @@ class TestProjectStatusNotifier(object):
         base_commit = sample_comparison.base.commit
         expected_result = {
             'notification_result': {
-                'message': f'60.00000% (+60.00%) compared to {base_commit.commitid[:7]}',
+                'message': f'60.00000% (+10.00%) compared to {base_commit.commitid[:7]}',
                 'response': {'id': 'some_id'},
                 'state': 'success',
                 'title': 'codecov/project/title'

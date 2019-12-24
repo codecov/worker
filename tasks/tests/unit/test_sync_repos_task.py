@@ -303,7 +303,7 @@ class TestSyncReposTaskUnit(object):
         )
         expected_owners_with_bot_set = dbsession.query(Owner.bot_id).filter(
             Owner.service == 'gitlab',
-            Owner.service_id.in_(('5542118', '4255344', '4165904', '4570071', '4165905', '5608536')) # 1nf1n1t3l00p groups and subgroups
+            Owner.service_id.in_(('5542118', '4255344', '4165904', '4570071', '4165905', '5608536'))
         ).all()
         for o in expected_owners_with_bot_set:
             assert o.bot_id == user.ownerid

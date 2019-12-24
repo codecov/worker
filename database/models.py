@@ -35,6 +35,10 @@ class Owner(CodecovBaseModel):
         Index('owner_service_username', 'service', 'username', unique=True),
     )
 
+    @property
+    def slug(self):
+        return self.username.replace(':', '/')
+
 
 class Repository(CodecovBaseModel):
 
@@ -62,6 +66,10 @@ class Repository(CodecovBaseModel):
     )
 
     @property
+    def slug(self):
+        return f"{self.owner.slug}/{self.name}"
+
+    @property
     def service(self):
         return self.owner.service
 
@@ -70,17 +78,19 @@ class Commit(CodecovBaseModel):
 
     __tablename__ = 'commits'
 
-    commitid = Column(types.Text, primary_key=True)
-    repoid = Column(types.Integer, ForeignKey('repos.repoid'), primary_key=True)
     author_id = Column('author', types.Integer, ForeignKey('owners.ownerid'))
-    message = Column(types.Text)
-    ci_passed = Column(types.Boolean)
-    pullid = Column(types.Integer)
-    totals = Column(postgresql.JSON)
-    report_json = Column("report", postgresql.JSON)
     branch = Column(types.Text)
+    ci_passed = Column(types.Boolean)
+    commitid = Column(types.Text, primary_key=True)
+    message = Column(types.Text)
+    merged = Column(types.Boolean)
     parent_commit_id = Column('parent', types.Text)
+    pullid = Column(types.Integer)
+    repoid = Column(types.Integer, ForeignKey('repos.repoid'), primary_key=True)
+    report_json = Column("report", postgresql.JSON)
     state = Column(types.String(256))
+    timestamp = Column(types.DateTime, nullable=False)
+    totals = Column(postgresql.JSON)
 
     author = relationship(Owner)
     repository = relationship(Repository, backref=backref("commits", cascade="delete"))

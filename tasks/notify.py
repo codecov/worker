@@ -5,11 +5,11 @@ from covreports.config import get_config
 
 from celery_config import pulls_task_name
 from celery_config import status_set_error_task_name
-from database.models import Commit, PullRequest
+from database.models import Commit
 from services.commit_status import RepositoryCIFilter
 from services.notification.notifiers import get_all_notifier_classes_mapping, get_status_notifier_class
 from services.report import ReportService
-from services.repository import get_repo_provider_service
+from services.repository import get_repo_provider_service, fetch_and_update_pull_request_information
 from services.yaml import read_yaml_field
 from services.notification.types import Comparison, FullCommit
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
@@ -44,8 +44,24 @@ class NotifyTask(BaseCodecovTask):
             current_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
         assert commit, 'Commit not found in database.'
         ci_results = await self.fetch_and_update_whether_ci_passed(repository_service, commit, current_yaml)
+        if self.should_wait_longer(current_yaml, commit, ci_results):
+            if commit.repository.using_integration or commit.repository.hookid:
+                # rely on the webhook, but still retry in case we miss the webhook
+                max_retries = 5
+                countdown = (60 * 3) * 2**self.request.retries
+            else:
+                max_retries = 10
+                countdown = 15 * 2**self.request.retries
+            log.info(
+                'Not sending notifications yet because we are waiting for CI to finish',
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid
+                )
+            )
+            self.retry(max_retries=max_retries, countdown=countdown)
         if self.should_send_notifications(current_yaml, commit, ci_results):
-            pull = await self.fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+            pull = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
             if pull:
                 base_commit = self.fetch_pull_request_base(pull)
                 self.app.send_task(
@@ -125,7 +141,7 @@ class NotifyTask(BaseCodecovTask):
         db_session = pull.get_db_session()
         # TODO: The legacy code uses pull.base. Check whether true, and why, since
         # pull.base is not guaranteed to be in the database
-        return db_session.query(Commit).filter_by(commitid=pull.compared_to_sha).first()
+        return db_session.query(Commit).filter_by(commitid=pull.compared_to).first()
 
     def fetch_parent(self, commit):
         db_session = commit.get_db_session()
@@ -175,32 +191,13 @@ class NotifyTask(BaseCodecovTask):
                     )
                 )
                 return False
-
-        # exit if pending CI
-        if (
-            read_yaml_field(current_yaml, ('codecov', 'notify', 'wait_for_ci'), True) and
-            ci_passed is None
-        ):
-            self.log('info', 'Waiting for CI to complete')
-
-            if commit.repository.using_integration or commit.repository.hookid:
-                # rely on the webhook, but still retry in case we miss the webhook
-                max_retries = 5
-                countdown = (60 * 3) * 2**self.request.retries
-            else:
-                max_retries = 10
-                countdown = 15 * 2**self.request.retries
-            log.info(
-                'Not sending notifications yet because we are waiting for CI to finish',
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    after_n_builds=after_n_builds,
-                    number_sessions=number_sessions
-                )
-            )
-            self.retry(max_retries=max_retries, countdown=countdown)
         return True
+
+    def should_wait_longer(self, current_yaml, commit, ci_results):
+        return (
+            read_yaml_field(current_yaml, ('codecov', 'notify', 'wait_for_ci'), True) and
+            ci_results is None
+        )
 
     async def fetch_and_update_whether_ci_passed(self, repository_service, commit, current_yaml):
         all_statuses = await repository_service.get_commit_statuses(commit.commitid)
@@ -214,60 +211,3 @@ class NotifyTask(BaseCodecovTask):
         if ci_passed != commit.ci_passed:
             commit.ci_passed = ci_passed
         return ci_passed
-
-    async def fetch_and_update_pull_request_information(self, repository_service, commit, current_yaml):
-        db_session = commit.get_db_session()
-        pullid = commit.pullid
-        if not commit.pullid:
-            pullid = await repository_service.find_pull_request(
-                commit=commit.commitid,
-                branch=commit.branch
-            )
-        if not pullid:
-            return None
-        compared_to = None
-        pull_information = await repository_service.get_pull_request(pullid=pullid)
-        pull_base_sha = pull_information['base']['commitid']
-        base_commit = db_session.query(Commit).filter_by(commitid=pull_base_sha, repoid=commit.repoid).first()
-        if base_commit:
-            compared_to = base_commit.commitid
-        else:
-            # Copying from legacy-code. We should take a look and redecide
-            commit_dict = await repository_service.get_commit(pull_information['base']['commitid'])
-            new_base_query = db_session.query(Commit).filter(
-                Commit.repoid == commit.repoid,
-                Commit.branch == pull_information['base']['branch'],
-                (Commit.pullid.is_(None) | Commit.merged),
-                Commit.timestamp < commit_dict['timestamp']
-            )
-            if read_yaml_field(current_yaml, ('codecov', 'require_ci_to_pass'), True):
-                new_base_query = new_base_query.filter(Commit.ci_passed)
-            new_base_query.order_by(Commit.timestamp.desc())
-            new_base = new_base_query.first()
-            if new_base:
-                compared_to = new_base.commitid
-
-        pull_query = db_session.query(PullRequest).filter_by(
-            pullid=pullid,
-            repoid=commit.repoid
-        )
-        pull = pull_query.first()
-        if pull:
-            pull.issueid = pull_information['id']
-            pull.state = pull_information['state']
-            pull.title = pull_information['title']
-            pull.base = pull_information['base']['commitid']
-            pull.compared_to = compared_to
-        else:
-            pull = PullRequest(
-                pullid=pullid,
-                repoid=commit.repoid,
-                issueid=pull_information['id'],
-                state=pull_information['state'],
-                title=pull_information['title'],
-                base_commit_sha=pull_information['base']['commitid'],
-                compared_to_sha=compared_to
-            )
-            db_session.add(pull)
-            db_session.flush()
-        return pull

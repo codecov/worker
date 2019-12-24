@@ -184,8 +184,7 @@ class TestUploadTaskIntegration(object):
         dbsession.add(owner)
 
         repo = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testfwdxf9xgj2psfxcs6o1uar788t5ncva1rq88',
-            owner__username='ThiagoCodecov',
+            owner=owner,
             yaml={'codecov': {'max_report_age': '1y ago'}},
             name='example-python'
         )

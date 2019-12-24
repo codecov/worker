@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from covreports.resources import Report
 
-from database.models import Commit, PullRequest
+from database.models import Commit, Pull
 
 
 @dataclass
@@ -14,4 +14,7 @@ class FullCommit(object):
 class Comparison(object):
     head: FullCommit
     base: FullCommit
-    pull: PullRequest
+    pull: Pull
+
+    def has_base_report(self):
+        return bool(self.base is not None and self.base.report is not None)

@@ -3,7 +3,6 @@ from collections import defaultdict
 from typing import Mapping, Any, List
 
 from covreports.utils.merge import line_type
-from covreports.utils.totals import agg_totals
 from covreports.utils.tuples import ReportTotals
 from covreports.resources import Report
 from covreports.helpers.numeric import ratio
@@ -68,25 +67,6 @@ def get_segment_offsets(segments):
                 additions.append(ln + offset_r)
 
     return dict([(k, v) for k, v in offsets.items() if v != 0]), additions
-
-
-def get_totals_from_changes(changes):
-    """changes totals are different, they are +/- based
-    """
-    if not changes:
-        return ReportTotals()
-
-    # filter out ones with no totals changes
-    def z(value):
-        return value if value > 0 else 0
-
-    def _get_totals():
-        for individual_change in changes:
-            totals = individual_change.totals
-            if totals:
-                yield (1, z(totals[2]) + z(totals[3]) + z(totals[4]), z(totals[2]), z(totals[3]), z(totals[4]), 0)
-
-    return agg_totals(_get_totals())
 
 
 def get_changes(base_report: Report, head_report: Report, diff_json: Mapping[str, Any]) -> List[Change]:

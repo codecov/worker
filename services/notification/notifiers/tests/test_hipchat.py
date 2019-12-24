@@ -17,7 +17,7 @@ class TestHipchatkNotifier(object):
         result = notifier.build_payload(comparison)
         commit = comparison.head.commit
         repository = commit.repository
-        text = f"Coverage for <a href=\"test.example.br/gh/{repository.slug}/commit/{commit.commitid}\">{repository.slug}</a> <strong>increased</strong> <code>+60.00%</code> on <code>new_branch</code> is <code>60.00000%</code> # via <a href=\"test.example.br/gh/{repository.slug}/commit/{commit.commitid}\">{commit.commitid[:7]}</a>"
+        text = f"Coverage for <a href=\"test.example.br/gh/{repository.slug}/commit/{commit.commitid}\">{repository.slug}</a> <strong>increased</strong> <code>+10.00%</code> on <code>new_branch</code> is <code>60.00000%</code> # via <a href=\"test.example.br/gh/{repository.slug}/commit/{commit.commitid}\">{commit.commitid[:7]}</a>"
         expected_result = {
             'card': None,
             'color': 'green',
@@ -69,7 +69,7 @@ class TestHipchatkNotifier(object):
         result = notifier.build_payload(sample_comparison)
         commit = sample_comparison.head.commit
         repository = commit.repository
-        text = f"Coverage for <a href=\"test.example.br/gh/{repository.slug}/commit/{commit.commitid}\">{repository.slug}</a> <strong>increased</strong> <code>+60.00%</code> on <code>new_branch</code> is <code>60.00000%</code> # via <a href=\"test.example.br/gh/{repository.slug}/commit/{commit.commitid}\">{commit.commitid[:7]}</a>"
+        text = f"Coverage for <a href=\"test.example.br/gh/{repository.slug}/commit/{commit.commitid}\">{repository.slug}</a> <strong>increased</strong> <code>+10.00%</code> on <code>new_branch</code> is <code>60.00000%</code> # via <a href=\"test.example.br/gh/{repository.slug}/commit/{commit.commitid}\">{commit.commitid[:7]}</a>"
         expected_result = {
             'card': {
                 'attributes': [
@@ -90,7 +90,7 @@ class TestHipchatkNotifier(object):
                     {
                         'label': 'Compare',
                         'value': {
-                            'label': '+60.00%',
+                            'label': '+10.00%',
                             'style': 'lozenge-success'
                         }
                     }

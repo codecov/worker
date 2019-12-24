@@ -1,7 +1,6 @@
 import pytest
 
 from tasks.notify import NotifyTask
-from services.repository import get_repo_provider_service
 from database.tests.factories import CommitFactory, RepositoryFactory
 
 
