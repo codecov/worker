@@ -62,6 +62,7 @@ _default_queue = get_config('setup', 'tasks', 'celery', 'default_queue', default
 
 sync_teams_task_name = 'app.tasks.sync_teams.SyncTeams'
 sync_repos_task_name = 'app.tasks.sync_repos.SyncRepos'
+delete_owner_task_name = 'app.tasks.delete_owner.DeleteOwner'
 notify_task_name = 'app.tasks.notify.Notify'
 pulls_task_name = 'app.tasks.pulls.Sync'
 status_set_error_task_name = 'app.tasks.status.SetError'
@@ -82,6 +83,9 @@ task_routes = {
     },
     sync_repos_task_name: {
         'queue': get_config('setup', 'tasks', 'sync_repos', 'queue', default=_default_queue)
+    },
+    delete_owner_task_name: {
+        'queue': get_config('setup', 'tasks', 'delete_owner', 'queue', default=_default_queue)
     },
     notify_task_name: {
         'queue': get_config('setup', 'tasks', 'notify', 'queue', default=_default_queue),
