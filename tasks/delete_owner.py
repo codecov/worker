@@ -12,7 +12,10 @@ log = logging.getLogger(__name__)
 
 class DeleteOwnerTask(BaseCodecovTask):
     """
-    Delete an owner and all of their data
+    Delete an owner and their data:
+    - Repo archive data for each of their owned repos
+    - Owner entry from db
+    - Cascading deletes of repos, pulls, and branches for the owner
     """
     name = delete_owner_task_name
 
