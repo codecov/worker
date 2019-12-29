@@ -11,6 +11,7 @@ from services.yaml.reader import round_number, get_paths_from_flags
 from services.urls import get_compare_url, get_commit_url
 from services.notification.notifiers.base import AbstractBaseNotifier, NotificationResult
 from services.notification.types import Comparison
+from services.repository import get_repo_provider_service
 
 
 log = logging.getLogger(__name__)
@@ -34,6 +35,16 @@ class StandardNotifier(AbstractBaseNotifier):
         - Filters the reports according to the given paths and flags
         - Check that the threshold of the webhook is satisfied on this comparison
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._repository_service = None
+
+    @property
+    def repository_service(self):
+        if not self._repository_service:
+            self._repository_service = get_repo_provider_service(self.repository)
+        return self._repository_service
 
     @property
     def name(self):

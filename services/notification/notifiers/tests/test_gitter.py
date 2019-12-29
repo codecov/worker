@@ -26,7 +26,7 @@ class TestGitterkNotifier(object):
             "commit": commit.commitid,
             "commit_short": commit.commitid[:7],
             "text": 'increased',
-            "commit_url": None,
+            "commit_url": f'https://github.com/{repository.slug}/commit/{commit.commitid}',
             "codecov_url": f'test.example.br/gh/{repository.slug}/commit/{commit.commitid}',
             "coverage": '60.00000',
             "coverage_change": Decimal('10.00'),

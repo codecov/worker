@@ -1,3 +1,5 @@
+from torngit.enums import Endpoints
+
 from services.notification.notifiers.generics import RequestsYamlBasedNotifier, Comparison
 from services.urls import get_commit_url
 
@@ -16,16 +18,18 @@ class GitterNotifier(RequestsYamlBasedNotifier):
     def build_payload(self, comparison: Comparison):
         compare_dict = self.generate_compare_dict(comparison)
         message = self.generate_message(comparison)
+        head_commit = comparison.head.commit
         return {
             "message": message,
-            "branch": comparison.head.commit.branch,
+            "branch": head_commit.branch,
             "pr": comparison.pull.pullid if comparison.pull else None,
-            "commit": comparison.head.commit.commitid,
-            "commit_short": comparison.head.commit.commitid[:7],
+            "commit": head_commit.commitid,
+            "commit_short": head_commit.commitid[:7],
             "text": compare_dict['message'],
-            # TODO (Thiago): Implement with get_href
-            "commit_url": None,
-            "codecov_url": get_commit_url(comparison.head.commit),
+            "commit_url": self.repository_service.get_href(
+                Endpoints.commit_detail, commitid=head_commit.commitid
+            ),
+            "codecov_url": get_commit_url(head_commit),
             "coverage": comparison.head.report.totals.coverage,
             "coverage_change": compare_dict['coverage']
         }
