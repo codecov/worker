@@ -8,9 +8,9 @@ class GitterNotifier(RequestsYamlBasedNotifier):
 
     # TODO (Thiago): Fix base message
     BASE_MESSAGE = " ".join([
-        "Coverage for <{head_url}|{owner_username}/{repo_name}>",
+        "Coverage "
         "{comparison_string}on `{head_branch}` is `{head_totals_c}%`",
-        "via `<{head_url}|{head_short_commitid}>`"
+        "via {head_url}"
     ])
 
     COMPARISON_STRING = "*{compare_message}* {compare_notation}{compare_coverage}% "

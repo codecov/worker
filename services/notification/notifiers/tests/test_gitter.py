@@ -18,7 +18,7 @@ class TestGitterkNotifier(object):
         result = notifier.build_payload(comparison)
         commit = comparison.head.commit
         repository = commit.repository
-        text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* +10.00% on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
+        text = f"Coverage *increased* +10.00% on `new_branch` is `60.00000%` via test.example.br/gh/{repository.slug}/commit/{commit.commitid}"
         expected_result = {
             'message': text,
             "branch": 'new_branch',
