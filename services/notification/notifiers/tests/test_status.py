@@ -1,8 +1,160 @@
 import pytest
 from asyncio import Future
 
+from covreports.resources import ReportLine, ReportFile, Report
+
 from services.notification.notifiers.status import ProjectStatusNotifier, PatchStatusNotifier, ChangesStatusNotifier
+from services.notification.notifiers.base import NotificationResult
 from torngit.status import Status
+
+
+@pytest.fixture
+def multiple_diff_changes():
+    return {
+        'files': {
+            'modified.py': {
+                'before': None,
+                'segments': [
+                    {
+                        'header': [
+                            '20', '8', '20', '8'
+                        ],
+                        'lines': [
+                            '     return k * k',
+                            ' ',
+                            ' ',
+                            '-def k(l):',
+                            '-    return 2 * l',
+                            '+def k(var):',
+                            '+    return 2 * var',
+                            ' ',
+                            ' ',
+                            ' def sample_function():'
+                        ]
+                    }
+                ],
+                'stats': {
+                    'added': 2, 'removed': 2
+                },
+                'type': 'modified'
+            },
+            'renamed.py': {
+                'before': 'old_renamed.py',
+                'segments': [],
+                'stats': {'added': 0, 'removed': 0},
+                'type': 'modified'
+            },
+            'renamed_with_changes.py': {
+                'before': 'old_renamed_with_changes.py',
+                'segments': [],
+                'stats': {'added': 0, 'removed': 0},
+                'type': 'modified'
+            },
+            'added.py': {
+                'before': None,
+                'segments': [
+                    {
+                        'header': ['0', '0', '1', ''],
+                        'lines': [
+                            '+This is an explanation'
+                        ]
+                    }
+                ],
+                'stats': {'added': 1, 'removed': 0},
+                'type': 'new'
+            },
+            'deleted.py': {
+                'before': 'tests/test_sample.py',
+                'stats': {'added': 0, 'removed': 0},
+                'type': 'deleted'
+            }
+        }
+    }
+
+
+@pytest.fixture
+def comparison_with_multiple_changes(sample_comparison):
+    first_report = Report()
+    second_report = Report()
+    # DELETED FILE
+    first_deleted_file = ReportFile('deleted.py')
+    first_deleted_file.append(10, ReportLine(coverage=1))
+    first_deleted_file.append(12, ReportLine(coverage=0))
+    first_report.append(first_deleted_file)
+    # ADDED FILE
+    second_added_file = ReportFile('added.py')
+    second_added_file.append(99, ReportLine(coverage=1))
+    second_added_file.append(101, ReportLine(coverage=0))
+    second_report.append(second_added_file)
+    # MODIFIED FILE
+    first_modified_file = ReportFile('modified.py')
+    first_modified_file.append(17, ReportLine(coverage=1))
+    first_modified_file.append(18, ReportLine(coverage=1))
+    first_modified_file.append(19, ReportLine(coverage=1))
+    first_modified_file.append(20, ReportLine(coverage=0))
+    first_modified_file.append(21, ReportLine(coverage=1))
+    first_modified_file.append(22, ReportLine(coverage=1))
+    first_modified_file.append(23, ReportLine(coverage=1))
+    first_modified_file.append(24, ReportLine(coverage=1))
+    first_report.append(first_modified_file)
+    second_modified_file = ReportFile('modified.py')
+    second_modified_file.append(18, ReportLine(coverage=1))
+    second_modified_file.append(19, ReportLine(coverage=0))
+    second_modified_file.append(20, ReportLine(coverage=0))
+    second_modified_file.append(21, ReportLine(coverage=1))
+    second_modified_file.append(22, ReportLine(coverage=0))
+    second_modified_file.append(23, ReportLine(coverage=0))
+    second_modified_file.append(24, ReportLine(coverage=1))
+    second_report.append(second_modified_file)
+    # RENAMED WITHOUT CHANGES
+    first_renamed_without_changes_file = ReportFile('old_renamed.py')
+    first_renamed_without_changes_file.append(1, ReportLine(coverage=1))
+    first_renamed_without_changes_file.append(2, ReportLine(coverage=1))
+    first_renamed_without_changes_file.append(3, ReportLine(coverage=0))
+    first_renamed_without_changes_file.append(4, ReportLine(coverage=1))
+    first_renamed_without_changes_file.append(5, ReportLine(coverage=0))
+    first_report.append(first_renamed_without_changes_file)
+    second_renamed_without_changes_file = ReportFile('renamed.py')
+    second_renamed_without_changes_file.append(1, ReportLine(coverage=1))
+    second_renamed_without_changes_file.append(2, ReportLine(coverage=1))
+    second_renamed_without_changes_file.append(3, ReportLine(coverage=0))
+    second_renamed_without_changes_file.append(4, ReportLine(coverage=1))
+    second_renamed_without_changes_file.append(5, ReportLine(coverage=0))
+    second_report.append(second_renamed_without_changes_file)
+    # RENAMED WITH COVERAGE CHANGES FILE
+    first_renamed_file = ReportFile('old_renamed_with_changes.py')
+    first_renamed_file.append(2, ReportLine(coverage=1))
+    first_renamed_file.append(3, ReportLine(coverage=1))
+    first_renamed_file.append(5, ReportLine(coverage=0))
+    first_renamed_file.append(8, ReportLine(coverage=1))
+    first_renamed_file.append(13, ReportLine(coverage=1))
+    first_report.append(first_renamed_file)
+    second_renamed_file = ReportFile('renamed_with_changes.py')
+    second_renamed_file.append(5, ReportLine(coverage=1))
+    second_renamed_file.append(8, ReportLine(coverage=0))
+    second_renamed_file.append(13, ReportLine(coverage=1))
+    second_renamed_file.append(21, ReportLine(coverage=1))
+    second_renamed_file.append(34, ReportLine(coverage=0))
+    second_report.append(second_renamed_file)
+    # UNRELATED FILE
+    first_unrelated_file = ReportFile('unrelated.py')
+    first_unrelated_file.append(1, ReportLine(coverage=1))
+    first_unrelated_file.append(2, ReportLine(coverage=1))
+    first_unrelated_file.append(4, ReportLine(coverage=1))
+    first_unrelated_file.append(16, ReportLine(coverage=0))
+    first_unrelated_file.append(256, ReportLine(coverage=1))
+    first_unrelated_file.append(65556, ReportLine(coverage=1))
+    first_report.append(first_unrelated_file)
+    second_unrelated_file = ReportFile('unrelated.py')
+    second_unrelated_file.append(2, ReportLine(coverage=1))
+    second_unrelated_file.append(4, ReportLine(coverage=0))
+    second_unrelated_file.append(8, ReportLine(coverage=0))
+    second_unrelated_file.append(16, ReportLine(coverage=1))
+    second_unrelated_file.append(32, ReportLine(coverage=0))
+    second_report.append(second_unrelated_file)
+    sample_comparison.base.report = first_report
+    sample_comparison.head.report = second_report
+    return sample_comparison
 
 
 @pytest.fixture
@@ -16,13 +168,15 @@ def mock_repo_provider(mock_repo_provider):
                     'before': None,
                     'segments': [
                         {
-                            'header': ['9', '7', '9', '8'],
+                            'header': ['5', '8', '5', '9'],
                             'lines': [
                                 ' Overview',
                                 ' --------',
                                 ' ',
                                 '-Main website: `Codecov <https://codecov.io/>`_.',
+                                '-Main website: `Codecov <https://codecov.io/>`_.',
                                 '+',
+                                '+website: `Codecov <https://codecov.io/>`_.',
                                 '+website: `Codecov <https://codecov.io/>`_.',
                                 ' ',
                                 ' .. code-block:: shell-session',
@@ -116,7 +270,6 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             'message': f'60.00000% (+10.00%) compared to {base_commit.commitid[:7]}',
             'state': 'success',
-            'url': f'test.example.br/gh/{head_commit.repository.slug}/compare/{base_commit.commitid}...{head_commit.commitid}'
         }
         result = await notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -136,7 +289,6 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             'message': '60.00% (target 57.00%',
             'state': 'success',
-            'url': f'test.example.br/gh/{head_commit.repository.slug}/compare/{base_commit.commitid}...{head_commit.commitid}'
         }
         result = await notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -157,7 +309,6 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             'message': 'No report found to compare against',
             'state': 'success',
-            'url': f'test.example.br/gh/{head_commit.repository.slug}/compare/{base_commit.commitid}...{head_commit.commitid}'
         }
         result = await notifier.build_payload(comparison)
         assert expected_result == result
@@ -178,16 +329,17 @@ class TestProjectStatusNotifier(object):
             current_yaml={}
         )
         base_commit = sample_comparison.base.commit
-        expected_result = {
-            'notification_result': {
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
                 'message': f'60.00000% (+10.00%) compared to {base_commit.commitid[:7]}',
-                'response': {'id': 'some_id'},
                 'state': 'success',
                 'title': 'codecov/project/title'
             },
-            'notified': True,
-            'success': True
-        }
+            data_received={'id': 'some_id'}
+        )
         result = await notifier.notify(sample_comparison)
         assert expected_result == result
 
@@ -196,6 +348,94 @@ class TestPatchStatusNotifier(object):
 
     @pytest.mark.asyncio
     async def test_build_payload(self, sample_comparison, mock_repo_provider, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        notifier = PatchStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': '66.67% of diff hit (target 50.00%)',
+            'state': 'success'
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_target_coverage_failure(self, sample_comparison, mock_repo_provider, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        notifier = PatchStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'target': '70%'},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': '66.67% of diff hit (target 70.00%)',
+            'state': 'failure'
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_target_coverage_failure_witinh_threshold(self, sample_comparison, mock_repo_provider, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        third_file = ReportFile('file_3.c')
+        third_file.append(100, ReportLine(coverage=1, sessions=[[0, 1]]))
+        third_file.append(101, ReportLine(coverage=1, sessions=[[0, 1]]))
+        third_file.append(102, ReportLine(coverage=1, sessions=[[0, 1]]))
+        third_file.append(103, ReportLine(coverage=1, sessions=[[0, 1]]))
+        sample_comparison.base.report.append(third_file)
+        notifier = PatchStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'threshold': '5'},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': '66.67% of diff hit (within 5.00% threshold of 70.00%)',
+            'state': 'success'
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_no_diff(self, sample_comparison, mock_repo_provider, mock_configuration):
+        f = Future()
+        mock_repo_provider.get_compare.return_value = f
+        f.set_result({
+            'diff': {
+                'files': {
+                    'file_1.go': {
+                        'type': 'modified',
+                        'before': None,
+                        'segments': [
+                            {
+                                'header': ['15', '8', '15', '9'],
+                                'lines': [
+                                    ' Overview',
+                                    ' --------',
+                                    ' ',
+                                    '-Main website: `Codecov <https://codecov.io/>`_.',
+                                    '-Main website: `Codecov <https://codecov.io/>`_.',
+                                    '+',
+                                    '+website: `Codecov <https://codecov.io/>`_.',
+                                    '+website: `Codecov <https://codecov.io/>`_.',
+                                    ' ',
+                                    ' .. code-block:: shell-session',
+                                    ' '
+                                ]
+                            },
+                        ],
+                        'stats': {'added': 11, 'removed': 4}
+                    }
+                }
+            }
+        })
         mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
         notifier = PatchStatusNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -213,6 +453,95 @@ class TestPatchStatusNotifier(object):
         result = await notifier.build_payload(sample_comparison)
         assert expected_result == result
 
+    @pytest.mark.asyncio
+    async def test_build_payload_no_diff_no_base_report(self, sample_comparison_without_base, mock_repo_provider, mock_configuration):
+        f = Future()
+        mock_repo_provider.get_compare.return_value = f
+        f.set_result({
+            'diff': {
+                'files': {
+                    'file_1.go': {
+                        'type': 'modified',
+                        'before': None,
+                        'segments': [
+                            {
+                                'header': ['15', '8', '15', '9'],
+                                'lines': [
+                                    ' Overview',
+                                    ' --------',
+                                    ' ',
+                                    '-Main website: `Codecov <https://codecov.io/>`_.',
+                                    '-Main website: `Codecov <https://codecov.io/>`_.',
+                                    '+',
+                                    '+website: `Codecov <https://codecov.io/>`_.',
+                                    '+website: `Codecov <https://codecov.io/>`_.',
+                                    ' ',
+                                    ' .. code-block:: shell-session',
+                                    ' '
+                                ]
+                            },
+                        ],
+                        'stats': {'added': 11, 'removed': 4}
+                    }
+                }
+            }
+        })
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        comparison = sample_comparison_without_base
+        notifier = PatchStatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': f'Coverage not affected',
+            'state': 'success'
+        }
+        result = await notifier.build_payload(comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_without_base_report(self, sample_comparison_without_base_report, mock_repo_provider, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        comparison = sample_comparison_without_base_report
+        notifier = PatchStatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': f'No report found to compare against',
+            'state': 'success'
+        }
+        result = await notifier.build_payload(comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_with_multiple_changes(self, comparison_with_multiple_changes, mock_repo_provider, mock_configuration, multiple_diff_changes):
+        json_diff = multiple_diff_changes
+        f = Future()
+        mock_repo_provider.get_compare.return_value = f
+        f.set_result({'diff': json_diff})
+
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        notifier = PatchStatusNotifier(
+            repository=comparison_with_multiple_changes.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': '50.00% of diff hit (target 76.92%)',
+            'state': 'failure'
+        }
+        result = await notifier.build_payload(comparison_with_multiple_changes)
+        assert expected_result == result
+
 
 class TestChangesStatusNotifier(object):
 
@@ -227,8 +556,48 @@ class TestChangesStatusNotifier(object):
             current_yaml={}
         )
         expected_result = {
-            'message': 'No unexpected coverage changes found.',
+            'message': 'No unexpected coverage changes found',
             'state': 'success'
         }
         result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_with_multiple_changes(self, comparison_with_multiple_changes, mock_repo_provider, mock_configuration, multiple_diff_changes):
+        json_diff = multiple_diff_changes
+        f = Future()
+        mock_repo_provider.get_compare.return_value = f
+        f.set_result({'diff': json_diff})
+
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        notifier = ChangesStatusNotifier(
+            repository=comparison_with_multiple_changes.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': '3 files have unexpected coverage changes not visible in diff',
+            'state': 'failure'
+        }
+        result = await notifier.build_payload(comparison_with_multiple_changes)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_without_base_report(self, sample_comparison_without_base_report, mock_repo_provider, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        comparison = sample_comparison_without_base_report
+        notifier = ChangesStatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': 'Unable to determine changes, no report found at pull request base',
+            'state': 'success'
+        }
+        result = await notifier.build_payload(comparison)
         assert expected_result == result

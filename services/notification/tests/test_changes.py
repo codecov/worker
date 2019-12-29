@@ -1,5 +1,6 @@
 from services.notification.changes import get_changes, Change
 from covreports.utils.tuples import ReportTotals
+from covreports.resources import Report, ReportFile, ReportLine
 
 
 class TestChanges(object):
@@ -65,7 +66,6 @@ class TestChanges(object):
                 }
             }
         }
-        from covreports.resources import Report, ReportFile, ReportLine
 
         first_report = Report()
         second_report = Report()

@@ -18,8 +18,8 @@ class SlackNotifier(RequestsYamlBasedNotifier):
         color = 'good' if compare_dict['notation'] in ('', '+') else 'bad'
         attachments = []
         if self.notifier_yaml_settings.get('attachments'):
-            for what in self.notifier_yaml_settings['attachments']:
-                if what == 'sunburst':
+            for attachment_type in self.notifier_yaml_settings['attachments']:
+                if attachment_type == 'sunburst':
                     attachments.append({
                         'fallback': 'Commit sunburst attachment',
                         'color': color,

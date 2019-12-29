@@ -128,7 +128,7 @@ class TestNotifyTask(object):
         result = await task.run_async(
             dbsession, commit.repoid, commit.commitid, current_yaml={}
         )
-        assert result == {'notified': False}
+        assert result == {'notified': False, 'notifications': None}
         mocked_should_send_notifications.assert_called_with(
             {}, commit, fetch_and_update_whether_ci_passed_result.result()
         )

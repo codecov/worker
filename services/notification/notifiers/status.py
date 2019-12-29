@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from helpers.match import match
 from services.notification.changes import get_changes
-from services.notification.notifiers.base import AbstractBaseNotifier, Comparison
+from services.notification.notifiers.base import AbstractBaseNotifier, Comparison, NotificationResult
 from services.repository import get_repo_provider_service
 from services.urls import get_commit_url, get_compare_url
 from services.yaml.reader import round_number
@@ -20,33 +20,54 @@ class StatusNotifier(AbstractBaseNotifier):
     def is_enabled(self):
         return True
 
+    @property
+    def name(self):
+        return f"status-{self.context}"
+
     async def build_payload(comparison):
         raise NotImplementedError()
 
+    def can_we_set_this_status(self, comparison):
+        head = comparison.head.commit
+        pull = comparison.pull
+        if (self.notifier_yaml_settings.get('only_pulls') or self.notifier_yaml_settings.get('base') == 'pr') and not pull:
+            return False
+        if not match(self.notifier_yaml_settings.get('branches'), head.branch):
+            return False
+        return True
+
     async def get_diff(self, comparison: Comparison):
-        repository_service = self._get_repository_service()
+        repository_service = self.repository_service
         head = comparison.head.commit
         base = comparison.base.commit
+        if base is None:
+            return None
         pull_diff = await repository_service.get_compare(base.commitid, head.commitid, with_commits=False)
         return pull_diff['diff']
 
-    def _get_repository_service(self):
+    @property
+    def repository_service(self):
         if not self._repository_service:
             self._repository_service = get_repo_provider_service(self.repository)
         return self._repository_service
 
     async def notify(self, comparison: Comparison):
         if not self.can_we_set_this_status(comparison):
-            return {
-                'notified': False,
-                'reason': 'not_fit_criteria'
-            }
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation='not_fit_criteria',
+                data_sent=None
+            )
         payload = await self.build_payload(comparison)
+        commit_url = get_commit_url(comparison.head.commit)
+        pull_url = get_compare_url(comparison.base.commit, comparison.head.commit)
+        payload['url'] = pull_url if comparison.pull and self.notifier_yaml_settings.get('base') in ('pr', 'auto', None) else commit_url
         return await self.send_notification(comparison, payload)
 
     async def status_already_exists(self, comparison, title, state, description):
         head = comparison.head.commit
-        repository_service = self._get_repository_service()
+        repository_service = self.repository_service
         statuses = await repository_service.get_commit_statuses(head.commitid)
         if statuses:
             exists = statuses.get(title)
@@ -63,7 +84,7 @@ class StatusNotifier(AbstractBaseNotifier):
 
     async def send_notification(self, comparison: Comparison, payload):
         title = self.get_status_external_name()
-        repository_service = self._get_repository_service()
+        repository_service = self.repository_service
         head = comparison.head.commit
         head_report = comparison.head.report
         state = payload['state']
@@ -83,13 +104,14 @@ class StatusNotifier(AbstractBaseNotifier):
                 'title': title,
                 'state': state,
                 'message': message,
-                'response': res
             }
-            return {
-                'notified': True,
-                'success': True,
-                'notification_result': notification_result
-            }
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=True,
+                explanation=None,
+                data_sent=notification_result,
+                data_received={'id': res['id']}
+            )
         else:
             log.info(
                 'Status already set',
@@ -99,16 +121,17 @@ class StatusNotifier(AbstractBaseNotifier):
                     state=state
                 )
             )
-            return {
-                'notified': False,
-                'success': None,
-                'reason': 'already_done'
-            }
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation='already_done',
+                data_sent={'title': title, 'state': state, 'message': message}
+            )
 
 
 class ProjectStatusNotifier(StatusNotifier):
 
-    """Summary
+    """
 
     Attributes:
         context (str): The context
@@ -124,15 +147,6 @@ class ProjectStatusNotifier(StatusNotifier):
     """
 
     context = 'project'
-
-    def can_we_set_this_status(self, comparison):
-        head = comparison.head.commit
-        pull = comparison.pull
-        if (self.notifier_yaml_settings.get('only_pulls') or self.notifier_yaml_settings.get('base') == 'pr') and not pull:
-            return False
-        if not match(self.notifier_yaml_settings.get('branches'), head.branch):
-            return False
-        return True
 
     def _get_project_status(self, comparison):
         threshold = Decimal(self.notifier_yaml_settings.get('threshold') or '0.0')
@@ -159,18 +173,25 @@ class ProjectStatusNotifier(StatusNotifier):
         return (state, message)
 
     async def build_payload(self, comparison: Comparison):
-        commit_url = get_commit_url(comparison.head.commit)
-        pull_url = get_compare_url(comparison.base.commit, comparison.head.commit)
-        url = pull_url if comparison.pull and self.notifier_yaml_settings.get('base') in ('pr', 'auto', None) else commit_url
         state, message = self._get_project_status(comparison)
         return {
             'state': state,
             'message': message,
-            'url': url
         }
 
 
 class PatchStatusNotifier(StatusNotifier):
+
+    """This status analyzes the git patch and sees covered lines within it
+
+    Attributes:
+        context (str): The context
+
+    Possible results
+        - No report found to compare against
+        - f'{coverage_str}% of diff hit (within {threshold_str}% threshold of {target_str}%)'
+        - {coverage_str}% of diff hit (target {target_str}%)
+    """
 
     context = 'patch'
 
@@ -181,15 +202,14 @@ class PatchStatusNotifier(StatusNotifier):
         if self.notifier_yaml_settings.get('target') not in ('auto', None):
             target_coverage = Decimal(self.notifier_yaml_settings.get('target').replace('%', ''))
         else:
-            target_coverage = Decimal(comparison.base.report.totals.coverage)
+            target_coverage = Decimal(comparison.base.report.totals.coverage) if comparison.has_base_report() else None
         if totals and totals.lines > 0:
-            coverage = float(totals.coverage)
+            coverage = Decimal(totals.coverage)
             if target_coverage is None:
                 state = self.notifier_yaml_settings.get('if_not_found', 'success')
                 message = 'No report found to compare against'
             else:
                 state = 'success' if coverage >= target_coverage else 'failure'
-
                 if state == 'failure' and threshold is not None and coverage >= (target_coverage - threshold):
                     state = 'success'
                     coverage_str = round_number(self.current_yaml, coverage)
@@ -210,7 +230,7 @@ class PatchStatusNotifier(StatusNotifier):
                 comparison.base.commit.commitid[:7], comparison.head.commit.commitid[:7]
             )
         else:
-            description = 'Coverage not affected.'
+            description = 'Coverage not affected'
 
         return {
             'state': 'success',
@@ -219,6 +239,20 @@ class PatchStatusNotifier(StatusNotifier):
 
 
 class ChangesStatusNotifier(StatusNotifier):
+
+    """This status analyzes the "unexpected changes" (see services/notification/changes.py
+        for a better description) and covered lines within it
+
+    Attributes:
+        context (str): The context
+
+    Possible results
+        - 'No unexpected coverage changes found.'
+        - {0} {1} unexpected coverage changes not visible in diff
+        - Unable to determine changes, no report found at pull request base
+    """
+
+    context = 'changes'
 
     def is_a_change_worth_noting(self, change):
         if not change.new and not change.deleted:
@@ -232,10 +266,8 @@ class ChangesStatusNotifier(StatusNotifier):
     async def build_payload(self, comparison):
         pull = comparison.pull
         if self.notifier_yaml_settings.get('base') in ('auto', None, 'pr') and pull:
-            base = comparison.base.commit
-            if not base or comparison.base.report is None:
-                # must be exact hit otherwise results are wrong
-                description = 'Unable to determine changes, no report found at pull request base.'
+            if not comparison.has_base_report():
+                description = 'Unable to determine changes, no report found at pull request base'
                 state = 'success'
                 return {
                     'state': state,
@@ -252,13 +284,13 @@ class ChangesStatusNotifier(StatusNotifier):
         if changes:
             lpc = len(changes)
             eng = 'files have' if lpc > 1 else 'file has'
-            description = '{0} {1} unexpected coverage changes not visible in diff.'.format(lpc, eng)
+            description = '{0} {1} unexpected coverage changes not visible in diff'.format(lpc, eng)
             return {
                 'state': 'success' if self.notifier_yaml_settings.get('informational') else 'failure',
                 'message': description
             }
 
-        description = 'No unexpected coverage changes found.'
+        description = 'No unexpected coverage changes found'
         return {
             'state': 'success',
             'message': description

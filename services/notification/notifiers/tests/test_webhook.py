@@ -50,9 +50,9 @@ class TestWebhookNotifier(object):
                 'timestamp': '2019-02-01T17:59:47',
                 'totals': {
                     'files': 2,
-                    'lines': 5,
-                    'hits': 3,
-                    'misses': 1,
+                    'lines': 10,
+                    'hits': 6,
+                    'misses': 3,
                     'partials': 1,
                     'coverage': '60.00000',
                     'branches': 1,
@@ -80,9 +80,9 @@ class TestWebhookNotifier(object):
                 'timestamp': '2019-02-01T17:59:47',
                 'totals': {
                     'files': 2,
-                    'lines': 4,
-                    'hits': 2,
-                    'misses': 2,
+                    'lines': 6,
+                    'hits': 3,
+                    'misses': 3,
                     'partials': 0,
                     'coverage': '50.00000',
                     'branches': 0,
@@ -126,6 +126,7 @@ class TestWebhookNotifier(object):
         }
 
         assert result['repo'] == expected_result['repo']
+        assert result['head']['totals'] == expected_result['head']['totals']
         assert result['head'] == expected_result['head']
         assert result['base']['totals'] == expected_result['base']['totals']
         assert result['base'] == expected_result['base']
@@ -178,9 +179,9 @@ class TestWebhookNotifier(object):
                 'timestamp': '2019-02-01T17:59:47',
                 'totals': {
                     'files': 2,
-                    'lines': 5,
-                    'hits': 3,
-                    'misses': 1,
+                    'lines': 10,
+                    'hits': 6,
+                    'misses': 3,
                     'partials': 1,
                     'coverage': '60.00000',
                     'branches': 1,
@@ -208,9 +209,9 @@ class TestWebhookNotifier(object):
                 'timestamp': '2019-02-01T17:59:47',
                 'totals': {
                     'files': 2,
-                    'lines': 4,
-                    'hits': 2,
-                    'misses': 2,
+                    'lines': 6,
+                    'hits': 3,
+                    'misses': 3,
                     'partials': 0,
                     'coverage': '50.00000',
                     'branches': 0,
@@ -296,9 +297,9 @@ class TestWebhookNotifier(object):
                 'timestamp': '2019-02-01T17:59:47',
                 'totals': {
                     'files': 2,
-                    'lines': 5,
-                    'hits': 3,
-                    'misses': 1,
+                    'lines': 10,
+                    'hits': 6,
+                    'misses': 3,
                     'partials': 1,
                     'coverage': '60.00000',
                     'branches': 1,
@@ -326,9 +327,9 @@ class TestWebhookNotifier(object):
                 'timestamp': '2019-02-01T17:59:47',
                 'totals': {
                     'files': 2,
-                    'lines': 4,
-                    'hits': 2,
-                    'misses': 2,
+                    'lines': 6,
+                    'hits': 3,
+                    'misses': 3,
                     'partials': 0,
                     'coverage': '50.00000',
                     'branches': 0,
@@ -402,9 +403,9 @@ class TestWebhookNotifier(object):
                 'timestamp': '2019-02-01T17:59:47',
                 'totals': {
                     'files': 2,
-                    'lines': 5,
-                    'hits': 3,
-                    'misses': 1,
+                    'lines': 10,
+                    'hits': 6,
+                    'misses': 3,
                     'partials': 1,
                     'coverage': '60.00000',
                     'branches': 1,
@@ -506,9 +507,9 @@ class TestWebhookNotifier(object):
                 'timestamp': '2019-02-01T17:59:47',
                 'totals': {
                     'files': 2,
-                    'lines': 5,
-                    'hits': 3,
-                    'misses': 1,
+                    'lines': 10,
+                    'hits': 6,
+                    'misses': 3,
                     'partials': 1,
                     'coverage': '60.00000',
                     'branches': 1,

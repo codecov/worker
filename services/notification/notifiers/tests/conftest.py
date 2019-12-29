@@ -10,12 +10,15 @@ def get_small_report():
     first_file = ReportFile('file_1.go')
     first_file.append(1, ReportLine(coverage=1, sessions=[[0, 1]]))
     first_file.append(3, ReportLine(coverage=0, sessions=[[0, 1]]))
+    first_file.append(5, ReportLine(coverage=1, sessions=[[0, 1]]))
+    first_file.append(6, ReportLine(coverage=0, sessions=[[0, 1]]))
     second_file = ReportFile('file_2.py')
     second_file.append(12, ReportLine(coverage=1, sessions=[[0, 1]]))
     second_file.append(51, ReportLine(coverage=0, sessions=[[0, 1]]))
     report.append(first_file)
     report.append(second_file)
     return report
+
 
 @pytest.fixture
 def sample_report():
@@ -24,6 +27,11 @@ def sample_report():
     first_file.append(1, ReportLine(coverage=1, sessions=[[0, 1]]))
     first_file.append(2, ReportLine(coverage=0, sessions=[[0, 1]]))
     first_file.append(3, ReportLine(coverage=1, sessions=[[0, 1]]))
+    first_file.append(5, ReportLine(coverage=1, sessions=[[0, 1]]))
+    first_file.append(6, ReportLine(coverage=0, sessions=[[0, 1]]))
+    first_file.append(8, ReportLine(coverage=1, sessions=[[0, 1]]))
+    first_file.append(9, ReportLine(coverage=1, sessions=[[0, 1]]))
+    first_file.append(10, ReportLine(coverage=0, sessions=[[0, 1]]))
     second_file = ReportFile('file_2.py')
     second_file.append(12, ReportLine(coverage=1, sessions=[[0, 1]]))
     second_file.append(51, ReportLine(coverage='1/2', type='b', sessions=[[0, 1]]))

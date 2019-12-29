@@ -14,6 +14,7 @@ class NotificationResult(object):
     notification_successful: bool
     explanation: str
     data_sent: Mapping[str, Any]
+    data_received: Mapping[str, Any] = None
 
 
 class AbstractBaseNotifier(object):

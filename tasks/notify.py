@@ -78,9 +78,18 @@ class NotifyTask(BaseCodecovTask):
             report_service = ReportService()
             base_report = report_service.build_report_from_commit(base_commit)
             head_report = report_service.build_report_from_commit(commit)
-            await self.submit_third_party_notifications(current_yaml, base_commit, commit, base_report, head_report, pull)
+            notifications = await self.submit_third_party_notifications(current_yaml, base_commit, commit, base_report, head_report, pull)
+            log.info(
+                "Notifications done",
+                extra=dict(
+                    notifications=notifications,
+                    commitid=commit.commitid,
+                    repoid=commit.repoid
+                )
+            )
             return {
-                'notified': True
+                'notified': True,
+                'notifications': notifications
             }
         else:
             log.info(
@@ -91,7 +100,8 @@ class NotifyTask(BaseCodecovTask):
                 )
             )
             return {
-                'notified': False
+                'notified': False,
+                'notifications': None
             }
 
     async def submit_third_party_notifications(self, current_yaml, base_commit, commit, base_report, head_report, pull):
@@ -106,9 +116,14 @@ class NotifyTask(BaseCodecovTask):
                 report=base_report
             ),
         )
+        notifications = []
         for notifier in self.get_notifiers_instances(commit.repository, current_yaml):
             if notifier.is_enabled():
-                await notifier.notify(comparison)
+                res = await notifier.notify(comparison)
+                notifications.append(
+                    {'notifier': notifier.name, 'title': notifier.title, 'result': res}
+                )
+        return notifications
 
     def get_notifiers_instances(self, repository, current_yaml):
         mapping = get_all_notifier_classes_mapping()
