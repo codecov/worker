@@ -3,6 +3,8 @@ import copy
 
 from covreports.config import get_config
 
+from services.yaml.reader import read_yaml_field
+
 log = logging.getLogger(__name__)
 
 
@@ -70,16 +72,3 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
             repository.yaml = new_yaml
             return True
     return False
-
-
-def read_yaml_field(yaml_dict, keys, _else=None):
-    log.debug("Field %s requested", keys)
-    try:
-        for key in keys:
-            if hasattr(yaml_dict, '__getitem__'):
-                yaml_dict = yaml_dict[key]
-            else:
-                yaml_dict = getattr(yaml_dict, key)
-        return yaml_dict
-    except (AttributeError, KeyError):
-        return _else

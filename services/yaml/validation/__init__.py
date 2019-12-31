@@ -102,18 +102,19 @@ notification_standard_attributes = {
 }
 
 status_standard_attributes = {
+    Optional('base'): base_structure,
     Optional('branches'): Or(None, [user_given_regex]),
+    Optional('disable_approx'): bool,
+    Optional('enabled'): bool,
+    Optional('flags'): Or(None, [flag_name]),
+    Optional('if_ci_failed'): Or('success', 'failure', 'error', 'ignore'),
     Optional('if_no_uploads'): Or('success', 'failure', 'error', 'ignore'),
     Optional('if_not_found'): Or('success', 'failure', 'error', 'ignore'),
-    Optional('if_ci_failed'): Or('success', 'failure', 'error', 'ignore'),
-    Optional('skip_if_assumes'): bool,
     Optional('informational'): bool,
-    Optional('disable_approx'): bool,
-    Optional('only_pulls'): bool,
-    Optional('base'): base_structure,
     Optional('measurement'): Or(None, 'line', 'statement', 'branch', 'method', 'complexity'),
-    Optional('flags'): Or(None, [flag_name]),
-    Optional('paths'): Or(None, [path_structure])
+    Optional('only_pulls'): bool,
+    Optional('paths'): Or(None, [path_structure]),
+    Optional('skip_if_assumes'): bool,
 }
 
 user_yaml_schema = Schema(
