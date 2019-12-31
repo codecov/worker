@@ -3,6 +3,7 @@ import logging
 from urllib.parse import urlparse
 from decimal import Decimal
 import requests
+import json
 
 
 from helpers.metrics import metrics
@@ -87,7 +88,7 @@ class StandardNotifier(AbstractBaseNotifier):
             return False
         return True
 
-    def notify(self, comparison: Comparison, **extra_data):
+    async def notify(self, comparison: Comparison, **extra_data):
         head_full_commit = comparison.head
         base_full_commit = comparison.base
         with metrics.timer(f'new-worker.services.notify.{self.name}.run'):
@@ -204,6 +205,13 @@ class StandardNotifier(AbstractBaseNotifier):
         )
 
 
+class EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return str(o)
+        return super().default(o)
+
+
 class RequestsYamlBasedNotifier(StandardNotifier):
     """
         This class is a small implementation detail for using `requests` package to communicate with
@@ -218,8 +226,13 @@ class RequestsYamlBasedNotifier(StandardNotifier):
 
     def send_actual_notification(self, data: Mapping[str, Any]):
         kwargs = dict(timeout=30, headers=self.json_headers)
-        res = requests.post(url=self.notifier_yaml_settings['url'], json=data, **kwargs)
+        res = requests.post(
+            url=self.notifier_yaml_settings['url'],
+            data=json.dumps(data, cls=EnhancedJSONEncoder),
+            **kwargs
+        )
         return {
-            'successful': res.status_code < 400,
-            'reason': None if res.status_code else res.message
+            'notification_attempted': True,
+            'notification_successful': res.status_code < 400,
+            'explanation': None if res.status_code else res.message
         }
