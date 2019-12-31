@@ -16,9 +16,6 @@ class SyncTeamsTask(BaseCodecovTask):
     """
     name = sync_teams_task_name
 
-    def write_to_db(self):
-        return True
-
     async def run_async(self, db_session, ownerid, *, username=None, using_integration=False, **kwargs):
         log.info(
             'Sync teams',
