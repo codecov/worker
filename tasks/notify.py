@@ -3,8 +3,8 @@ import logging
 from sqlalchemy.orm.session import Session
 from covreports.config import get_config
 
-from celery_config import pulls_task_name
-from celery_config import status_set_error_task_name
+from app import celery_app
+from celery_config import pulls_task_name, notify_task_name, status_set_error_task_name
 from database.models import Commit
 from services.commit_status import RepositoryCIFilter
 from services.notification.notifiers import get_all_notifier_classes_mapping, get_status_notifier_class
@@ -34,6 +34,8 @@ def default_if_true(value):
 
 
 class NotifyTask(BaseCodecovTask):
+
+    name = notify_task_name
 
     async def run_async(self, db_session: Session, repoid: int, commitid: str, current_yaml=None, *args, **kwargs):
         commits_query = db_session.query(Commit).filter(
@@ -87,6 +89,7 @@ class NotifyTask(BaseCodecovTask):
                     repoid=commit.repoid
                 )
             )
+            commit.notified = True
             return {
                 'notified': True,
                 'notifications': notifications
@@ -226,3 +229,7 @@ class NotifyTask(BaseCodecovTask):
         if ci_passed != commit.ci_passed:
             commit.ci_passed = ci_passed
         return ci_passed
+
+
+RegisteredNotifyTask = celery_app.register_task(NotifyTask())
+notify_task = celery_app.tasks[RegisteredNotifyTask.name]

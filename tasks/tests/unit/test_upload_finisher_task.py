@@ -46,7 +46,7 @@ class TestUploadFinisherTask(object):
             dbsession, previous_results,
             repoid=commit.repoid, commitid=commit.commitid, commit_yaml={}
         )
-        expected_result = {}
+        expected_result = {'notifications_called': True}
         assert expected_result == result
         assert commit.message == 'dsidsahdsahdsa'
 
@@ -151,3 +151,84 @@ class TestUploadFinisherTask(object):
         assert UploadFinisherTask().should_call_notifications(
              commit, commit_yaml, processing_results
         )
+
+    @pytest.mark.asyncio
+    async def test_finish_reports_processing(self, dbsession, mocker):
+        mocker.patch.object(UploadFinisherTask, 'should_send_notify_task_to_new_worker', return_value=True)
+        commit_yaml = {}
+        mocked_app = mocker.patch.object(UploadFinisherTask, 'app')
+        commit = CommitFactory.create(
+            message='dsidsahdsahdsa',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml=commit_yaml,
+        )
+        processing_results = {'processings_so_far': [{'successful': True}]}
+        dbsession.add(commit)
+        dbsession.flush()
+        res = await UploadFinisherTask().finish_reports_processing(
+             dbsession, commit, commit_yaml, processing_results
+        )
+        assert res == {'notifications_called': True}
+        mocked_app.tasks['app.tasks.notify.Notify'].apply_async.assert_called_with(
+            queue='new_tasks',
+            kwargs=dict(
+                commitid=commit.commitid,
+                current_yaml=commit_yaml,
+                repoid=commit.repoid
+            )
+        )
+        assert mocked_app.send_task.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_finish_reports_processing_legacy_worker(self, dbsession, mocker):
+        mocker.patch.object(UploadFinisherTask, 'should_send_notify_task_to_new_worker', return_value=False)
+        commit_yaml = {}
+        mocked_app = mocker.patch.object(UploadFinisherTask, 'app')
+        commit = CommitFactory.create(
+            message='dsidsahdsahdsa',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml=commit_yaml,
+        )
+        processing_results = {'processings_so_far': [{'successful': True}]}
+        dbsession.add(commit)
+        dbsession.flush()
+        res = await UploadFinisherTask().finish_reports_processing(
+             dbsession, commit, commit_yaml, processing_results
+        )
+        assert res == {'notifications_called': True}
+        mocked_app.send_task.assert_called_with(
+            'app.tasks.notify.Notify',
+            args=None,
+            kwargs=dict(
+                commitid=commit.commitid,
+                repoid=commit.repoid
+            )
+        )
+        assert mocked_app.send_task.call_count == 2
+        assert not mocked_app.tasks['app.tasks.notify.Notify'].apply_async.called
+
+    @pytest.mark.asyncio
+    async def test_finish_reports_processing_no_notification(self, dbsession, mocker):
+        mocker.patch.object(UploadFinisherTask, 'should_send_notify_task_to_new_worker', return_value=False)
+        commit_yaml = {}
+        mocked_app = mocker.patch.object(UploadFinisherTask, 'app')
+        commit = CommitFactory.create(
+            message='dsidsahdsahdsa',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml=commit_yaml,
+        )
+        processing_results = {'processings_so_far': [{'successful': False}]}
+        dbsession.add(commit)
+        dbsession.flush()
+        res = await UploadFinisherTask().finish_reports_processing(
+             dbsession, commit, commit_yaml, processing_results
+        )
+        assert res == {'notifications_called': False}
+        assert mocked_app.send_task.call_count == 1
+        assert not mocked_app.tasks['app.tasks.notify.Notify'].apply_async.called

@@ -1,5 +1,7 @@
 import logging
 import re
+import random
+import os
 
 from app import celery_app
 from tasks.base import BaseCodecovTask
@@ -8,7 +10,7 @@ from database.models import Commit
 from services.redis import get_redis_connection
 from services.yaml import read_yaml_field
 
-from celery_config import notify_task_name, status_set_pending_task_name
+from celery_config import notify_task_name, status_set_pending_task_name, task_default_queue
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +75,7 @@ class UploadFinisherTask(BaseCodecovTask):
         # always notify, let the notify handle if it should submit
         if not regexp_ci_skip.search(commit.message or ''):
             if self.should_call_notifications(commit, commit_yaml, processing_results):
+                notifications_called = True
                 log.info(
                     "Scheduling notify task",
                     extra=dict(
@@ -82,15 +85,40 @@ class UploadFinisherTask(BaseCodecovTask):
                         processing_results=processing_results
                     )
                 )
-                self.app.send_task(
-                    notify_task_name,
-                    args=None,
-                    kwargs=dict(
-                        repoid=repoid,
-                        commitid=commitid
+                if self.should_send_notify_task_to_new_worker():
+                    log.info(
+                        "Sending task to new worker notify",
+                        extra=dict(
+                            repoid=repoid,
+                            commitid=commitid,
+                        )
                     )
-                )
+                    self.app.tasks[notify_task_name].apply_async(
+                        queue=task_default_queue,
+                        kwargs=dict(
+                            repoid=repoid,
+                            commitid=commitid,
+                            current_yaml=commit_yaml
+                        )
+                    )
+                else:
+                    log.info(
+                        "Sending task to legacy worker notify",
+                        extra=dict(
+                            repoid=repoid,
+                            commitid=commitid,
+                        )
+                    )
+                    self.app.send_task(
+                        notify_task_name,
+                        args=None,
+                        kwargs=dict(
+                            repoid=repoid,
+                            commitid=commitid
+                        )
+                    )
             else:
+                notifications_called = False
                 log.info(
                     "Skipping notify task",
                     extra=dict(
@@ -103,7 +131,10 @@ class UploadFinisherTask(BaseCodecovTask):
         else:
             commit.state = 'skipped'
             commit.notified = False
-        return {}
+        return {'notifications_called': notifications_called}
+
+    def should_send_notify_task_to_new_worker(self):
+        return random.random() < float(os.getenv('NOTIFY_PERCENTAGE', '0.00'))
 
     def should_call_notifications(self, commit, commit_yaml, processing_results):
         if not any(x['successful'] for x in processing_results.get('processings_so_far', [])):
