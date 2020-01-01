@@ -16,7 +16,7 @@ def get_redis_url():
     return f'redis://redis:@{hostname}:{port}'
 
 
-def get_redis_connection():
+def get_redis_connection() -> Redis:
     url = get_redis_url()
     return _get_redis_instance_from_url(url)
 

@@ -1,4 +1,5 @@
 import logging
+import re
 
 from schema import Schema, Optional, Or, And, SchemaError, Regex
 from services.yaml.exceptions import InvalidYamlException
@@ -28,11 +29,18 @@ def validate_yaml(inputted_yaml_dict):
         result = user_yaml_schema.validate(inputted_yaml_dict)
         return post_process(result)
     except SchemaError as e:
+        good_messages = []
+        for message in e.autos:
+            if message:
+                match = re.match(r"Key '(\w+)?' error:", message)
+                if match:
+                    good_messages.append(match.group(1))
         log.warning(
             "Unable to validate yaml", extra=dict(user_input=inputted_yaml_dict),
             exc_info=True
         )
-        raise InvalidYamlException(e)
+        readable_messages = "->".join(good_messages)
+        raise InvalidYamlException(f"Path: {readable_messages}", e)
 
 
 def post_process(validated_yaml_dict):
@@ -94,21 +102,19 @@ notification_standard_attributes = {
 }
 
 status_standard_attributes = {
+    Optional('base'): base_structure,
     Optional('branches'): Or(None, [user_given_regex]),
+    Optional('disable_approx'): bool,
+    Optional('enabled'): bool,
+    Optional('flags'): Or(None, [flag_name]),
+    Optional('if_ci_failed'): Or('success', 'failure', 'error', 'ignore'),
     Optional('if_no_uploads'): Or('success', 'failure', 'error', 'ignore'),
     Optional('if_not_found'): Or('success', 'failure', 'error', 'ignore'),
-    Optional('if_ci_failed'): Or('success', 'failure', 'error', 'ignore'),
-    Optional('skip_if_assumes'): bool,
     Optional('informational'): bool,
-    Optional('disable_approx'): bool,
-    Optional('target'): Or('auto', percent_type),
-    Optional('threshold'): Or(None, percent_type),
-    Optional('only_pulls'): bool,
-    Optional('include_changes'): bool,
-    Optional('base'): base_structure,
     Optional('measurement'): Or(None, 'line', 'statement', 'branch', 'method', 'complexity'),
-    Optional('flags'): Or(None, [flag_name]),
-    Optional('paths'): Or(None, [path_structure])
+    Optional('only_pulls'): bool,
+    Optional('paths'): Or(None, [path_structure]),
+    Optional('skip_if_assumes'): bool,
 }
 
 user_yaml_schema = Schema(

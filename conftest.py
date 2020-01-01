@@ -1,12 +1,16 @@
+from sqlalchemy.orm import Session
+
 from pathlib import Path
 from asyncio import Future
 
 import pytest
 import vcr
 from sqlalchemy.exc import OperationalError
+from sqlalchemy import event
 
 from database.base import Base
 from sqlalchemy_utils import create_database, database_exists
+from sqlalchemy.orm import Session
 from covreports.config import ConfigHelper
 from celery_config import initialize_logging
 
@@ -18,6 +22,13 @@ def pytest_configure(config):
     file after command line options have been parsed.
     """
     initialize_logging()
+
+
+def pytest_itemcollected(item):
+    """ logic that runs on the test collection step """
+    if 'codecov_vcr' in item.fixturenames:
+        # Tests with codecov_vcr fixtures are automatically 'integration'
+        item.add_marker('integration')
 
 
 @pytest.fixture(scope='session')
@@ -33,9 +44,36 @@ def db(engine, sqlalchemy_connect_url):
     connection.execute('CREATE SCHEMA public;')
     Base.metadata.create_all(engine)
 
+
 @pytest.fixture
-def dbsession(db, dbsession):
-    return dbsession
+def dbsession(db, engine):
+    connection = engine.connect()
+
+    connection_transaction = connection.begin()
+
+    # bind an individual Session to the connection
+    session = Session(bind=connection)
+
+    # start the session in a SAVEPOINT...
+    session.begin_nested()
+
+    # then each time that SAVEPOINT ends, reopen it
+    @event.listens_for(session, "after_transaction_end")
+    def restart_savepoint(session, transaction):
+        if transaction.nested and not transaction._parent.nested:
+
+            # ensure that state is expired the way
+            # session.commit() at the top level normally does
+            # (optional step)
+            session.expire_all()
+
+            session.begin_nested()
+    yield session
+
+    session.close()
+    connection_transaction.rollback()
+    connection.close()
+
 
 @pytest.fixture
 def mock_configuration(mocker):

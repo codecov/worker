@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from collections import defaultdict
 
 from pathmap import resolve_by_method
 
@@ -79,10 +80,13 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     path_matcher = patterns_to_func(set(path_patterns))
     resolver = resolve_by_method(toc) if toc else None
     disable_default_path_fixes = read_yaml_field(commit_yaml, ('codecov', 'disable_default_path_fixes'))
+    path_results_inverse_mapping = defaultdict(set)
 
     def path_fixer(p):
-        return clean_path(custom_fixes, path_matcher, resolver, p,
+        res = clean_path(custom_fixes, path_matcher, resolver, p,
                           disable_default_path_fixes=disable_default_path_fixes)
+        path_results_inverse_mapping[res].add(p)
+        return res
 
     # ------------------
     # Extract bash fixes
@@ -145,5 +149,29 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     # exit if empty
     if original_report.is_empty():
         raise ReportEmptyError('No files found in report.')
+
+    if path_results_inverse_mapping.get(None):
+        ignored_files = sorted(path_results_inverse_mapping.pop(None))
+        log.info(
+            "Some files were ignored",
+            extra=dict(
+                number=len(ignored_files),
+                paths=ignored_files[:100],
+                session=sessionid
+            )
+        )
+
+    path_with_same_results = [
+        (key, len(value), list(value)[:10]) for key, value in path_results_inverse_mapping.items() if len(value) >= 2
+    ]
+    if path_with_same_results:
+        log.info(
+            "Two different files went to the same result",
+            extra=dict(
+                number_of_paths=len(path_with_same_results),
+                paths=path_with_same_results[:100],
+                session=sessionid
+            )
+        )
 
     return original_report

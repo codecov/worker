@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from asyncio import Future
+from datetime import datetime
 
 import pytest
 from torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
@@ -8,12 +9,14 @@ from torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from tasks.upload import UploadTask
 from tasks.upload_processor import upload_processor_task
 from tasks.upload_finisher import upload_finisher_task
-from database.tests.factories import CommitFactory
+from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
+from services.archive import ArchiveService
 
 here = Path(__file__)
 
 
+@pytest.mark.integration
 class TestUploadTaskIntegration(object):
 
     @pytest.mark.asyncio
@@ -36,7 +39,8 @@ class TestUploadTaskIntegration(object):
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
             repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
             repository__owner__username='ThiagoCodecov',
-            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},
+            repository__name='example-python'
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -108,7 +112,8 @@ class TestUploadTaskIntegration(object):
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
             repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
             repository__owner__username='ThiagoCodecov',
-            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},
+            repository__name='example-python'
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -171,20 +176,30 @@ class TestUploadTaskIntegration(object):
         mocked_3.send_task.return_value = True
         mock_redis.exists.side_effect = [False]
 
+        owner = OwnerFactory.create(
+            service='github',
+            username='ThiagoCodecov',
+            unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm'
+        )
+        dbsession.add(owner)
+
+        repo = RepositoryFactory.create(
+            owner=owner,
+            yaml={'codecov': {'max_report_age': '1y ago'}},
+            name='example-python'
+        )
+        dbsession.add(repo)
+
         parent_commit = CommitFactory.create(
             message='',
             commitid='c5b67303452bbff57cc1f49984339cde39eb1db5',
-            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
-            repository__owner__username='ThiagoCodecov',
-            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+            repository=repo
         )
 
         commit = CommitFactory.create(
             message='',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
-            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
-            repository__owner__username='ThiagoCodecov',
-            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+            repository=repo
         )
         dbsession.add(parent_commit)
         dbsession.add(commit)
@@ -226,7 +241,8 @@ class TestUploadTaskIntegration(object):
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
             repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
             repository__owner__username='ThiagoCodecov',
-            repository__yaml={'codecov': {'max_report_age': '764y ago'}},  # Sorry, this is a timebomb now
+            repository__yaml={'codecov': {'max_report_age': '764y ago'}},
+            repository__name='example-python'
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -268,7 +284,8 @@ class TestUploadTaskIntegration(object):
             parent_commit_id=None,
             repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
             repository__owner__username='ThiagoCodecov',
-            repository__yaml={'codecov': {'max_report_age': '764y ago'}},  # Sorry, this is a timebomb now
+            repository__yaml={'codecov': {'max_report_age': '764y ago'}},
+            repository__name='example-python'
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -286,8 +303,95 @@ class TestUploadTaskIntegration(object):
             f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
         )
 
+    @pytest.mark.asyncio
+    async def test_upload_task_bot_unauthorized(self, mocker, mock_configuration, dbsession, mock_redis, mock_repo_provider):
+        mocked_schedule_task = mocker.patch.object(UploadTask, 'schedule_task')
+        mock_app = mocker.patch.object(UploadTask, 'app')
+        mock_app.send_task.return_value = True
+        redis_queue = [
+            {
+                'part': 'part1'
+            },
+            {
+                'part': 'part2'
+            }
+        ]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mock_redis.exists.side_effect = [True] * 2 + [False]
+        mock_redis.lpop.side_effect = jsonified_redis_queue
+        f = Future()
+        f.set_exception(TorngitClientError(401, 'response', 'message'))
+        mock_repo_provider.get_commit.return_value = f
+        mock_repo_provider.list_top_level_files.return_value = f
+        commit = CommitFactory.create(
+            message='',
+            parent_commit_id=None,
+            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '764y ago'}}
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        result = await UploadTask().run_async_within_lock(
+            dbsession, mock_redis, commit.repoid, commit.commitid
+        )
+        assert {'was_setup': False, 'was_updated': False} == result
+        assert commit.message == ''
+        assert commit.parent_commit_id is None
+        mocked_schedule_task.assert_called_with(
+            commit, {'codecov': {'max_report_age': '764y ago'}}, redis_queue
+        )
+        mock_redis.exists.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
+
 
 class TestUploadTaskUnit(object):
+
+    def test_normalize_upload_arguments_no_changes(self, dbsession, mock_redis, mock_storage):
+        mock_redis.get.return_value = b"Some weird value"
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        reportid = '5fbeee8b-5a41-4925-b59d-470b9d171235'
+        arguments_with_redis_key = {
+            'reportid': reportid,
+            'random': 'argument'
+        }
+        result = UploadTask().normalize_upload_arguments(commit, arguments_with_redis_key, mock_redis)
+        expected_result = {
+            'reportid': '5fbeee8b-5a41-4925-b59d-470b9d171235',
+            'random': 'argument'
+        }
+        assert expected_result == result
+
+    def test_normalize_upload_arguments(self, dbsession, mock_redis, mock_storage, mocker):
+        mocked_now = mocker.patch.object(ArchiveService, 'get_now')
+        mocked_now.return_value = datetime(2019, 12, 3)
+        mock_redis.get.return_value = b"Some weird value"
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        repo_hash = ArchiveService.get_archive_hash(commit.repository)
+        reportid = '5fbeee8b-5a41-4925-b59d-470b9d171235'
+        arguments_with_redis_key = {
+            'redis_key': 'commit_chunks.something',
+            'reportid': reportid,
+            'random': 'argument'
+        }
+        result = UploadTask().normalize_upload_arguments(commit, arguments_with_redis_key, mock_redis)
+        expected_result = {
+            'url': f'v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt',
+            'reportid': '5fbeee8b-5a41-4925-b59d-470b9d171235',
+            'random': 'argument'
+        }
+        assert expected_result == result
+        mock_redis.get.assert_called_with('commit_chunks.something')
+        mock_storage.write_file.assert_called_with(
+            'archive',
+            f'v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt',
+            'Some weird value',
+            gzipped=False,
+            reduced_redundancy=False
+        )
 
     def test_schedule_task_with_no_tasks(self, dbsession):
         commit = CommitFactory.create()

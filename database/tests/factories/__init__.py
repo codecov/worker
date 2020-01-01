@@ -1,4 +1,5 @@
 from uuid import uuid4
+from datetime import datetime
 
 import factory
 from database import models
@@ -25,6 +26,7 @@ class OwnerFactory(Factory):
     service_id = factory.Sequence(lambda n: 'user%d' % n)
     admins = []
     permission = []
+    organizations = []
     service = 'github'
     free = 0
     unencrypted_oauth_token = factory.LazyFunction(lambda: uuid4().hex)
@@ -37,12 +39,33 @@ class RepositoryFactory(Factory):
         model = models.Repository
 
     private = True
-    name = 'example-python'
+    name = factory.Faker('slug')
     using_integration = False
     service_id = factory.Sequence(lambda n: 'id_%d' % n)
 
     owner = factory.SubFactory(OwnerFactory)
     bot = None
+
+
+class BranchFactory(Factory):
+    class Meta:
+        model = models.Branch
+
+    branch = 'master'
+    head = factory.LazyAttribute(lambda o: sha1(o.branch.encode('utf-8')).hexdigest())
+    authors = []
+
+    repository = factory.SubFactory(RepositoryFactory)
+
+
+class PullFactory(Factory):
+    class Meta:
+        model = models.Pull
+
+    pullid = factory.Sequence(lambda n: 3 * n + 10)
+    state = 'open'
+
+    repository = factory.SubFactory(RepositoryFactory)
 
 
 class CommitFactory(Factory):
@@ -54,6 +77,7 @@ class CommitFactory(Factory):
     commitid = factory.LazyAttribute(lambda o: sha1(o.message.encode('utf-8')).hexdigest())
     ci_passed = True
     pullid = 1
+    timestamp = datetime(2019, 2, 1, 17, 59, 47)
     author = factory.SubFactory(OwnerFactory)
     repository = factory.SubFactory(RepositoryFactory)
     totals = {

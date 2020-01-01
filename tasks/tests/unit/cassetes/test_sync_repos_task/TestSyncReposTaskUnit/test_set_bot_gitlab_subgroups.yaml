@@ -1,0 +1,1284 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/user
+  response:
+    body: {string: '{"id":3215137,"name":"Infinite Loop","username":"1nf1n1t3l00p","state":"active","avatar_url":"https://assets.gitlab-static.net/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p","created_at":"2018-12-01T19:43:16.121Z","bio":"","location":"","public_email":"","skype":"","linkedin":"","twitter":"","website_url":"","organization":"","last_sign_in_at":"2019-10-20T22:24:28.741Z","confirmed_at":"2018-12-01T19:43:33.397Z","last_activity_on":"2019-11-07","email":"tjbiii.photo@gmail.com","theme_id":1,"color_scheme_id":1,"projects_limit":100000,"current_sign_in_at":"2019-11-07T22:23:23.652Z","identities":[],"can_create_group":true,"can_create_project":true,"two_factor_enabled":false,"external":false,"private_profile":false,"shared_runners_minutes_limit":null,"extra_shared_runners_minutes_limit":null}'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:48 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['843']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"2b4a569af963e5456798e07f62cbb19c"]
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Request-Id
+      - [Tu1X3IMfcQ]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.033973']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['1']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['599']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165548']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:48 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-22-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/user
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups?per_page=100
+  response:
+    body: {string: '[{"id":5608536,"web_url":"https://gitlab.com/groups/bevera","name":"Bevera","path":"bevera","description":"Bevera
+        Code and Issues.","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"Bevera","full_path":"bevera","parent_id":null,"ldap_cn":null,"ldap_access":null},{"id":4165904,"web_url":"https://gitlab.com/groups/l00p_group_1","name":"My
+        Awesome Group","path":"l00p_group_1","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"My
+        Awesome Group","full_path":"l00p_group_1","parent_id":null,"ldap_cn":null,"ldap_access":null},{"id":5542118,"web_url":"https://gitlab.com/groups/sm-package-zen","name":"Package
+        Zen","path":"sm-package-zen","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"Package
+        Zen","full_path":"sm-package-zen","parent_id":null,"ldap_cn":null,"ldap_access":null},{"id":4570068,"web_url":"https://gitlab.com/groups/falco-group-1","name":"falco-group-1","path":"falco-group-1","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"falco-group-1","full_path":"falco-group-1","parent_id":null,"ldap_cn":null,"ldap_access":null},{"id":4570071,"web_url":"https://gitlab.com/groups/falco-group-1/falco-subgroup-1","name":"falco-subgroup-1","path":"falco-subgroup-1","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"falco-group-1
+        / falco-subgroup-1","full_path":"falco-group-1/falco-subgroup-1","parent_id":4570068,"ldap_cn":null,"ldap_access":null},{"id":4165905,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup1","name":"subgroup1","path":"subgroup1","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"My
+        Awesome Group / subgroup1","full_path":"l00p_group_1/subgroup1","parent_id":4165904,"ldap_cn":null,"ldap_access":null},{"id":4165907,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup2","name":"subgroup2","path":"subgroup2","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"My
+        Awesome Group / subgroup2","full_path":"l00p_group_1/subgroup2","parent_id":4165904,"ldap_cn":null,"ldap_access":null},{"id":4255344,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup2/subsub","name":"subsub","path":"subsub","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"My
+        Awesome Group / subgroup2 / subsub","full_path":"l00p_group_1/subgroup2/subsub","parent_id":4165907,"ldap_cn":null,"ldap_access":null}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:49 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['4554']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"52ac61adbb1454a98c89845aa24cd882"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups?order_by=name&owned=false&page=1&per_page=100&sort=asc&statistics=false&with_custom_attributes=false>;
+          rel="first", <https://gitlab.com/api/v4/groups?order_by=name&owned=false&page=1&per_page=100&sort=asc&statistics=false&with_custom_attributes=false>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['100']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [xwbyurHqRK9]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.081314']
+    - !!python/tuple
+      - X-Total
+      - ['8']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['2']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['598']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165549']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:49 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-20-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups?per_page=100
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups/5608536/projects?per_page=50&page=1
+  response:
+    body: {string: '[{"id":13258489,"description":"by Michael G. Scott","name":"BeVera","name_with_namespace":"Bevera
+        / BeVera","path":"BeVera","path_with_namespace":"bevera/BeVera","created_at":"2019-07-10T15:35:54.122Z","default_branch":"0_0_dev","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:bevera/BeVera.git","http_url_to_repo":"https://gitlab.com/bevera/BeVera.git","web_url":"https://gitlab.com/bevera/BeVera","readme_url":"https://gitlab.com/bevera/BeVera/blob/0_0_dev/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-07-10T20:30:54.406Z","namespace":{"id":5608536,"name":"Bevera","path":"bevera","kind":"group","full_path":"bevera","parent_id":null,"avatar_url":null,"web_url":"https://gitlab.com/groups/bevera"},"_links":{"self":"https://gitlab.com/api/v4/projects/13258489","issues":"https://gitlab.com/api/v4/projects/13258489/issues","merge_requests":"https://gitlab.com/api/v4/projects/13258489/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/13258489/repository/branches","labels":"https://gitlab.com/api/v4/projects/13258489/labels","events":"https://gitlab.com/api/v4/projects/13258489/events","members":"https://gitlab.com/api/v4/projects/13258489/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":4097368,"import_status":"finished","open_issues_count":10,"ci_default_git_depth":50,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:49 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['2347']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"534deb57432ec2fc7653caf5920639ac"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups/5608536/projects?archived=false&id=5608536&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="first", <https://gitlab.com/api/v4/groups/5608536/projects?archived=false&id=5608536&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['50']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [NzUp1dkiVL9]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.125837']
+    - !!python/tuple
+      - X-Total
+      - ['1']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['3']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['597']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165549']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:49 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-06-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups/5608536/projects?per_page=50&page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups/4165904/projects?per_page=50&page=1
+  response:
+    body: {string: '[{"id":9715859,"description":"","name":"loop proj","name_with_namespace":"My
+        Awesome Group / loop proj","path":"loop-proj","path_with_namespace":"l00p_group_1/loop-proj","created_at":"2018-12-01T19:48:07.749Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/loop-proj.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/loop-proj.git","web_url":"https://gitlab.com/l00p_group_1/loop-proj","readme_url":"https://gitlab.com/l00p_group_1/loop-proj/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-03-01T01:09:11.939Z","namespace":{"id":4165904,"name":"My
+        Awesome Group","path":"l00p_group_1","kind":"group","full_path":"l00p_group_1","parent_id":null,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1"},"_links":{"self":"https://gitlab.com/api/v4/projects/9715859","issues":"https://gitlab.com/api/v4/projects/9715859/issues","merge_requests":"https://gitlab.com/api/v4/projects/9715859/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/9715859/repository/branches","labels":"https://gitlab.com/api/v4/projects/9715859/labels","events":"https://gitlab.com/api/v4/projects/9715859/events","members":"https://gitlab.com/api/v4/projects/9715859/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:49 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['2407']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"37b44e954132f63b61f0e7e8f7e91c8d"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups/4165904/projects?archived=false&id=4165904&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="first", <https://gitlab.com/api/v4/groups/4165904/projects?archived=false&id=4165904&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['50']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [kOkvJLi5D74]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.101962']
+    - !!python/tuple
+      - X-Total
+      - ['1']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['4']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['596']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165549']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:49 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-22-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups/4165904/projects?per_page=50&page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups/5542118/projects?per_page=50&page=1
+  response:
+    body: {string: '[{"id":13279607,"description":"","name":"match","name_with_namespace":"Package
+        Zen / match","path":"match","path_with_namespace":"sm-package-zen/match","created_at":"2019-07-11T22:39:19.412Z","default_branch":null,"tag_list":[],"ssh_url_to_repo":"git@gitlab.com:sm-package-zen/match.git","http_url_to_repo":"https://gitlab.com/sm-package-zen/match.git","web_url":"https://gitlab.com/sm-package-zen/match","readme_url":null,"avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-07-11T22:39:19.412Z","namespace":{"id":5542118,"name":"Package
+        Zen","path":"sm-package-zen","kind":"group","full_path":"sm-package-zen","parent_id":null,"avatar_url":null,"web_url":"https://gitlab.com/groups/sm-package-zen"},"_links":{"self":"https://gitlab.com/api/v4/projects/13279607","issues":"https://gitlab.com/api/v4/projects/13279607/issues","merge_requests":"https://gitlab.com/api/v4/projects/13279607/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/13279607/repository/branches","labels":"https://gitlab.com/api/v4/projects/13279607/labels","events":"https://gitlab.com/api/v4/projects/13279607/events","members":"https://gitlab.com/api/v4/projects/13279607/members"},"empty_repo":true,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":50,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""},{"id":13264968,"description":"","name":"matcher","name_with_namespace":"Package
+        Zen / matcher","path":"matcher","path_with_namespace":"sm-package-zen/matcher","created_at":"2019-07-11T03:07:21.270Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:sm-package-zen/matcher.git","http_url_to_repo":"https://gitlab.com/sm-package-zen/matcher.git","web_url":"https://gitlab.com/sm-package-zen/matcher","readme_url":"https://gitlab.com/sm-package-zen/matcher/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-08-28T00:30:16.095Z","namespace":{"id":5542118,"name":"Package
+        Zen","path":"sm-package-zen","kind":"group","full_path":"sm-package-zen","parent_id":null,"avatar_url":null,"web_url":"https://gitlab.com/groups/sm-package-zen"},"_links":{"self":"https://gitlab.com/api/v4/projects/13264968","issues":"https://gitlab.com/api/v4/projects/13264968/issues","merge_requests":"https://gitlab.com/api/v4/projects/13264968/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/13264968/repository/branches","labels":"https://gitlab.com/api/v4/projects/13264968/labels","events":"https://gitlab.com/api/v4/projects/13264968/events","members":"https://gitlab.com/api/v4/projects/13264968/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":50,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""},{"id":13122097,"description":"","name":"Matcherino
+        - ML","name_with_namespace":"Package Zen / Matcherino - ML","path":"pz-matcherino-ml","path_with_namespace":"sm-package-zen/pz-matcherino-ml","created_at":"2019-07-01T19:58:31.736Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:sm-package-zen/pz-matcherino-ml.git","http_url_to_repo":"https://gitlab.com/sm-package-zen/pz-matcherino-ml.git","web_url":"https://gitlab.com/sm-package-zen/pz-matcherino-ml","readme_url":null,"avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-07-01T19:58:31.736Z","namespace":{"id":5542118,"name":"Package
+        Zen","path":"sm-package-zen","kind":"group","full_path":"sm-package-zen","parent_id":null,"avatar_url":null,"web_url":"https://gitlab.com/groups/sm-package-zen"},"_links":{"self":"https://gitlab.com/api/v4/projects/13122097","issues":"https://gitlab.com/api/v4/projects/13122097/issues","merge_requests":"https://gitlab.com/api/v4/projects/13122097/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/13122097/repository/branches","labels":"https://gitlab.com/api/v4/projects/13122097/labels","events":"https://gitlab.com/api/v4/projects/13122097/events","members":"https://gitlab.com/api/v4/projects/13122097/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":4097368,"import_status":"finished","open_issues_count":0,"ci_default_git_depth":50,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:49 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['7131']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"e6060726c18bdefaf574e7bff2b230ed"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups/5542118/projects?archived=false&id=5542118&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="first", <https://gitlab.com/api/v4/groups/5542118/projects?archived=false&id=5542118&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['50']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [MrGPWpWuzM1]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.183865']
+    - !!python/tuple
+      - X-Total
+      - ['3']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['5']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['595']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165549']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:49 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-20-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups/5542118/projects?per_page=50&page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups/4570068/projects?per_page=50&page=1
+  response:
+    body: {string: '[]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:50 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['2']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"4f53cda18c2baa0c0354bb5f9a3ecbe5"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups/4570068/projects?archived=false&id=4570068&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="first", <https://gitlab.com/api/v4/groups/4570068/projects?archived=false&id=4570068&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['50']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [VVsLlWfpEe2]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.053084']
+    - !!python/tuple
+      - X-Total
+      - ['0']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['6']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['594']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165550']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:50 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-11-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups/4570068/projects?per_page=50&page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups/4570071/projects?per_page=50&page=1
+  response:
+    body: {string: '[{"id":10754567,"description":"","name":"falco-subgroup-1-proj","name_with_namespace":"falco-group-1
+        / falco-subgroup-1 / falco-subgroup-1-proj","path":"falco-subgroup-1-proj","path_with_namespace":"falco-group-1/falco-subgroup-1/falco-subgroup-1-proj","created_at":"2019-02-08T15:21:22.591Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:falco-group-1/falco-subgroup-1/falco-subgroup-1-proj.git","http_url_to_repo":"https://gitlab.com/falco-group-1/falco-subgroup-1/falco-subgroup-1-proj.git","web_url":"https://gitlab.com/falco-group-1/falco-subgroup-1/falco-subgroup-1-proj","readme_url":"https://gitlab.com/falco-group-1/falco-subgroup-1/falco-subgroup-1-proj/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-02-08T15:21:22.591Z","namespace":{"id":4570071,"name":"falco-subgroup-1","path":"falco-subgroup-1","kind":"group","full_path":"falco-group-1/falco-subgroup-1","parent_id":4570068,"avatar_url":null,"web_url":"https://gitlab.com/groups/falco-group-1/falco-subgroup-1"},"_links":{"self":"https://gitlab.com/api/v4/projects/10754567","issues":"https://gitlab.com/api/v4/projects/10754567/issues","merge_requests":"https://gitlab.com/api/v4/projects/10754567/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/10754567/repository/branches","labels":"https://gitlab.com/api/v4/projects/10754567/labels","events":"https://gitlab.com/api/v4/projects/10754567/events","members":"https://gitlab.com/api/v4/projects/10754567/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3235271,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:50 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['2660']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"bf2d147c7eadd4e264368ae31cef5d9f"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups/4570071/projects?archived=false&id=4570071&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="first", <https://gitlab.com/api/v4/groups/4570071/projects?archived=false&id=4570071&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['50']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [dCjTwhJi9T6]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.127661']
+    - !!python/tuple
+      - X-Total
+      - ['1']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['7']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['593']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165550']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:50 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-16-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups/4570071/projects?per_page=50&page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups/4165905/projects?per_page=50&page=1
+  response:
+    body: {string: '[{"id":12071992,"description":"","name":"proj-c","name_with_namespace":"My
+        Awesome Group / subgroup1 / proj-c","path":"proj-c","path_with_namespace":"l00p_group_1/subgroup1/proj-c","created_at":"2019-04-28T17:45:14.077Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/subgroup1/proj-c.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/subgroup1/proj-c.git","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-c","readme_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-c/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-04-28T17:45:14.077Z","namespace":{"id":4165905,"name":"subgroup1","path":"subgroup1","kind":"group","full_path":"l00p_group_1/subgroup1","parent_id":4165904,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup1"},"_links":{"self":"https://gitlab.com/api/v4/projects/12071992","issues":"https://gitlab.com/api/v4/projects/12071992/issues","merge_requests":"https://gitlab.com/api/v4/projects/12071992/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/12071992/repository/branches","labels":"https://gitlab.com/api/v4/projects/12071992/labels","events":"https://gitlab.com/api/v4/projects/12071992/events","members":"https://gitlab.com/api/v4/projects/12071992/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""},{"id":11087339,"description":"","name":"proj-b","name_with_namespace":"My
+        Awesome Group / subgroup1 / proj-b","path":"proj-b","path_with_namespace":"l00p_group_1/subgroup1/proj-b","created_at":"2019-03-01T01:27:29.582Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/subgroup1/proj-b.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/subgroup1/proj-b.git","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b","readme_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":1,"last_activity_at":"2019-04-28T17:48:06.317Z","namespace":{"id":4165905,"name":"subgroup1","path":"subgroup1","kind":"group","full_path":"l00p_group_1/subgroup1","parent_id":4165904,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup1"},"_links":{"self":"https://gitlab.com/api/v4/projects/11087339","issues":"https://gitlab.com/api/v4/projects/11087339/issues","merge_requests":"https://gitlab.com/api/v4/projects/11087339/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/11087339/repository/branches","labels":"https://gitlab.com/api/v4/projects/11087339/labels","events":"https://gitlab.com/api/v4/projects/11087339/events","members":"https://gitlab.com/api/v4/projects/11087339/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"private","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""},{"id":9715852,"description":"","name":"proj-A","name_with_namespace":"My
+        Awesome Group / subgroup1 / proj-A","path":"proj-a","path_with_namespace":"l00p_group_1/subgroup1/proj-a","created_at":"2018-12-01T19:47:18.634Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/subgroup1/proj-a.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/subgroup1/proj-a.git","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-a","readme_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-a/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-03-01T01:16:00.572Z","namespace":{"id":4165905,"name":"subgroup1","path":"subgroup1","kind":"group","full_path":"l00p_group_1/subgroup1","parent_id":4165904,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup1"},"_links":{"self":"https://gitlab.com/api/v4/projects/9715852","issues":"https://gitlab.com/api/v4/projects/9715852/issues","merge_requests":"https://gitlab.com/api/v4/projects/9715852/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/9715852/repository/branches","labels":"https://gitlab.com/api/v4/projects/9715852/labels","events":"https://gitlab.com/api/v4/projects/9715852/events","members":"https://gitlab.com/api/v4/projects/9715852/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:50 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['7388']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"db77be3ee470349828761cf7c06240a4"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups/4165905/projects?archived=false&id=4165905&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="first", <https://gitlab.com/api/v4/groups/4165905/projects?archived=false&id=4165905&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['50']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [nVk7owu1012]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.249399']
+    - !!python/tuple
+      - X-Total
+      - ['3']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['8']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['592']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165550']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:50 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-18-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups/4165905/projects?per_page=50&page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups/4165907/projects?per_page=50&page=1
+  response:
+    body: {string: '[]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:50 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['2']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"4f53cda18c2baa0c0354bb5f9a3ecbe5"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups/4165907/projects?archived=false&id=4165907&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="first", <https://gitlab.com/api/v4/groups/4165907/projects?archived=false&id=4165907&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['50']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [gAtHhP3pV47]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.054930']
+    - !!python/tuple
+      - X-Total
+      - ['0']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['9']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['591']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165550']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:50 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-19-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups/4165907/projects?per_page=50&page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/groups/4255344/projects?per_page=50&page=1
+  response:
+    body: {string: '[{"id":9950231,"description":"","name":"subsub-proj","name_with_namespace":"My
+        Awesome Group / subgroup2 / subsub / subsub-proj","path":"subsub-proj","path_with_namespace":"l00p_group_1/subgroup2/subsub/subsub-proj","created_at":"2018-12-16T17:02:52.619Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/subgroup2/subsub/subsub-proj.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/subgroup2/subsub/subsub-proj.git","web_url":"https://gitlab.com/l00p_group_1/subgroup2/subsub/subsub-proj","readme_url":"https://gitlab.com/l00p_group_1/subgroup2/subsub/subsub-proj/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2018-12-16T17:02:52.619Z","namespace":{"id":4255344,"name":"subsub","path":"subsub","kind":"group","full_path":"l00p_group_1/subgroup2/subsub","parent_id":4165907,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup2/subsub"},"_links":{"self":"https://gitlab.com/api/v4/projects/9950231","issues":"https://gitlab.com/api/v4/projects/9950231/issues","merge_requests":"https://gitlab.com/api/v4/projects/9950231/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/9950231/repository/branches","labels":"https://gitlab.com/api/v4/projects/9950231/labels","events":"https://gitlab.com/api/v4/projects/9950231/events","members":"https://gitlab.com/api/v4/projects/9950231/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","mirror":false,"external_authorization_classification_label":""}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:51 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['2550']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"19d9f6aac48ea8194ee887f78ec0cebd"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/groups/4255344/projects?archived=false&id=4255344&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="first", <https://gitlab.com/api/v4/groups/4255344/projects?archived=false&id=4255344&include_subgroups=false&order_by=created_at&owned=false&page=1&per_page=50&simple=false&sort=desc&starred=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false&with_security_reports=false&with_shared=true>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['50']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [XWMjJLM4n51]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.143526']
+    - !!python/tuple
+      - X-Total
+      - ['1']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['10']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['590']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165551']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:51 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-14-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/groups/4255344/projects?per_page=50&page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/projects?owned=true&per_page=50&page=1
+  response:
+    body: {string: '[{"id":12071992,"description":"","name":"proj-c","name_with_namespace":"My
+        Awesome Group / subgroup1 / proj-c","path":"proj-c","path_with_namespace":"l00p_group_1/subgroup1/proj-c","created_at":"2019-04-28T17:45:14.077Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/subgroup1/proj-c.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/subgroup1/proj-c.git","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-c","readme_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-c/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-04-28T17:45:14.077Z","namespace":{"id":4165905,"name":"subgroup1","path":"subgroup1","kind":"group","full_path":"l00p_group_1/subgroup1","parent_id":4165904,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup1"},"_links":{"self":"https://gitlab.com/api/v4/projects/12071992","issues":"https://gitlab.com/api/v4/projects/12071992/issues","merge_requests":"https://gitlab.com/api/v4/projects/12071992/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/12071992/repository/branches","labels":"https://gitlab.com/api/v4/projects/12071992/labels","events":"https://gitlab.com/api/v4/projects/12071992/events","members":"https://gitlab.com/api/v4/projects/12071992/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":null,"group_access":{"access_level":50,"notification_level":3}},"mirror":false,"external_authorization_classification_label":""},{"id":11087339,"description":"","name":"proj-b","name_with_namespace":"My
+        Awesome Group / subgroup1 / proj-b","path":"proj-b","path_with_namespace":"l00p_group_1/subgroup1/proj-b","created_at":"2019-03-01T01:27:29.582Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/subgroup1/proj-b.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/subgroup1/proj-b.git","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b","readme_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":1,"last_activity_at":"2019-04-28T17:48:06.317Z","namespace":{"id":4165905,"name":"subgroup1","path":"subgroup1","kind":"group","full_path":"l00p_group_1/subgroup1","parent_id":4165904,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup1"},"_links":{"self":"https://gitlab.com/api/v4/projects/11087339","issues":"https://gitlab.com/api/v4/projects/11087339/issues","merge_requests":"https://gitlab.com/api/v4/projects/11087339/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/11087339/repository/branches","labels":"https://gitlab.com/api/v4/projects/11087339/labels","events":"https://gitlab.com/api/v4/projects/11087339/events","members":"https://gitlab.com/api/v4/projects/11087339/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"private","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":null,"group_access":{"access_level":50,"notification_level":3}},"mirror":false,"external_authorization_classification_label":""},{"id":10797587,"description":"","name":"test-ngrok","name_with_namespace":"Infinite
+        Loop / test-ngrok","path":"test-ngrok","path_with_namespace":"1nf1n1t3l00p/test-ngrok","created_at":"2019-02-11T23:57:46.167Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:1nf1n1t3l00p/test-ngrok.git","http_url_to_repo":"https://gitlab.com/1nf1n1t3l00p/test-ngrok.git","web_url":"https://gitlab.com/1nf1n1t3l00p/test-ngrok","readme_url":"https://gitlab.com/1nf1n1t3l00p/test-ngrok/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-02-11T23:57:46.167Z","namespace":{"id":4165899,"name":"Infinite
+        Loop","path":"1nf1n1t3l00p","kind":"user","full_path":"1nf1n1t3l00p","parent_id":null,"avatar_url":"/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"_links":{"self":"https://gitlab.com/api/v4/projects/10797587","issues":"https://gitlab.com/api/v4/projects/10797587/issues","merge_requests":"https://gitlab.com/api/v4/projects/10797587/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/10797587/repository/branches","labels":"https://gitlab.com/api/v4/projects/10797587/labels","events":"https://gitlab.com/api/v4/projects/10797587/events","members":"https://gitlab.com/api/v4/projects/10797587/members"},"empty_repo":false,"archived":false,"visibility":"private","owner":{"id":3215137,"name":"Infinite
+        Loop","username":"1nf1n1t3l00p","state":"active","avatar_url":"https://assets.gitlab-static.net/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":{"access_level":40,"notification_level":3},"group_access":null},"mirror":false,"external_authorization_classification_label":""},{"id":10337453,"description":"The
+        pytest framework makes it easy to write small tests, yet scales to support
+        complex functional testing","name":"pytest","name_with_namespace":"Infinite
+        Loop / pytest","path":"pytest","path_with_namespace":"1nf1n1t3l00p/pytest","created_at":"2019-01-12T23:04:33.294Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:1nf1n1t3l00p/pytest.git","http_url_to_repo":"https://gitlab.com/1nf1n1t3l00p/pytest.git","web_url":"https://gitlab.com/1nf1n1t3l00p/pytest","readme_url":"https://gitlab.com/1nf1n1t3l00p/pytest/blob/master/README.rst","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-01-30T01:35:29.409Z","namespace":{"id":4165899,"name":"Infinite
+        Loop","path":"1nf1n1t3l00p","kind":"user","full_path":"1nf1n1t3l00p","parent_id":null,"avatar_url":"/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"_links":{"self":"https://gitlab.com/api/v4/projects/10337453","issues":"https://gitlab.com/api/v4/projects/10337453/issues","merge_requests":"https://gitlab.com/api/v4/projects/10337453/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/10337453/repository/branches","labels":"https://gitlab.com/api/v4/projects/10337453/labels","events":"https://gitlab.com/api/v4/projects/10337453/events","members":"https://gitlab.com/api/v4/projects/10337453/members"},"empty_repo":false,"archived":false,"visibility":"public","owner":{"id":3215137,"name":"Infinite
+        Loop","username":"1nf1n1t3l00p","state":"active","avatar_url":"https://assets.gitlab-static.net/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"forked_from_project":{"id":9422960,"description":"The
+        pytest framework makes it easy to write small tests, yet scales to support
+        complex functional testing","name":"pytest","name_with_namespace":"Eli Hooten
+        / pytest","path":"pytest","path_with_namespace":"hootener/pytest","created_at":"2018-11-15T16:52:55.486Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:hootener/pytest.git","http_url_to_repo":"https://gitlab.com/hootener/pytest.git","web_url":"https://gitlab.com/hootener/pytest","readme_url":"https://gitlab.com/hootener/pytest/blob/master/README.rst","avatar_url":null,"star_count":0,"forks_count":2,"last_activity_at":"2018-11-15T22:43:29.619Z","namespace":{"id":3969537,"name":"Eli
+        Hooten","path":"hootener","kind":"user","full_path":"hootener","parent_id":null,"avatar_url":"https://secure.gravatar.com/avatar/ab022b5adf4e3edc9ea77fe7fd561837?s=80\u0026d=identicon","web_url":"https://gitlab.com/hootener"}},"import_status":"finished","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":{"access_level":40,"notification_level":3},"group_access":null},"approvals_before_merge":0,"mirror":false,"external_authorization_classification_label":"","packages_enabled":true},{"id":9950231,"description":"","name":"subsub-proj","name_with_namespace":"My
+        Awesome Group / subgroup2 / subsub / subsub-proj","path":"subsub-proj","path_with_namespace":"l00p_group_1/subgroup2/subsub/subsub-proj","created_at":"2018-12-16T17:02:52.619Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/subgroup2/subsub/subsub-proj.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/subgroup2/subsub/subsub-proj.git","web_url":"https://gitlab.com/l00p_group_1/subgroup2/subsub/subsub-proj","readme_url":"https://gitlab.com/l00p_group_1/subgroup2/subsub/subsub-proj/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2018-12-16T17:02:52.619Z","namespace":{"id":4255344,"name":"subsub","path":"subsub","kind":"group","full_path":"l00p_group_1/subgroup2/subsub","parent_id":4165907,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup2/subsub"},"_links":{"self":"https://gitlab.com/api/v4/projects/9950231","issues":"https://gitlab.com/api/v4/projects/9950231/issues","merge_requests":"https://gitlab.com/api/v4/projects/9950231/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/9950231/repository/branches","labels":"https://gitlab.com/api/v4/projects/9950231/labels","events":"https://gitlab.com/api/v4/projects/9950231/events","members":"https://gitlab.com/api/v4/projects/9950231/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":null,"group_access":null},"mirror":false,"external_authorization_classification_label":""},{"id":9862840,"description":"","name":"assume-flag","name_with_namespace":"Infinite
+        Loop / assume-flag","path":"assume-flag","path_with_namespace":"1nf1n1t3l00p/assume-flag","created_at":"2018-12-10T23:24:07.415Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:1nf1n1t3l00p/assume-flag.git","http_url_to_repo":"https://gitlab.com/1nf1n1t3l00p/assume-flag.git","web_url":"https://gitlab.com/1nf1n1t3l00p/assume-flag","readme_url":"https://gitlab.com/1nf1n1t3l00p/assume-flag/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2018-12-17T02:31:08.694Z","namespace":{"id":4165899,"name":"Infinite
+        Loop","path":"1nf1n1t3l00p","kind":"user","full_path":"1nf1n1t3l00p","parent_id":null,"avatar_url":"/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"_links":{"self":"https://gitlab.com/api/v4/projects/9862840","issues":"https://gitlab.com/api/v4/projects/9862840/issues","merge_requests":"https://gitlab.com/api/v4/projects/9862840/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/9862840/repository/branches","labels":"https://gitlab.com/api/v4/projects/9862840/labels","events":"https://gitlab.com/api/v4/projects/9862840/events","members":"https://gitlab.com/api/v4/projects/9862840/members"},"empty_repo":false,"archived":false,"visibility":"private","owner":{"id":3215137,"name":"Infinite
+        Loop","username":"1nf1n1t3l00p","state":"active","avatar_url":"https://assets.gitlab-static.net/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":{"access_level":40,"notification_level":3},"group_access":null},"mirror":false,"external_authorization_classification_label":""},{"id":9715862,"description":"","name":"inf
+        proj","name_with_namespace":"Infinite Loop / inf proj","path":"inf-proj","path_with_namespace":"1nf1n1t3l00p/inf-proj","created_at":"2018-12-01T19:48:26.216Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:1nf1n1t3l00p/inf-proj.git","http_url_to_repo":"https://gitlab.com/1nf1n1t3l00p/inf-proj.git","web_url":"https://gitlab.com/1nf1n1t3l00p/inf-proj","readme_url":"https://gitlab.com/1nf1n1t3l00p/inf-proj/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2018-12-01T19:48:26.216Z","namespace":{"id":4165899,"name":"Infinite
+        Loop","path":"1nf1n1t3l00p","kind":"user","full_path":"1nf1n1t3l00p","parent_id":null,"avatar_url":"/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"_links":{"self":"https://gitlab.com/api/v4/projects/9715862","issues":"https://gitlab.com/api/v4/projects/9715862/issues","merge_requests":"https://gitlab.com/api/v4/projects/9715862/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/9715862/repository/branches","labels":"https://gitlab.com/api/v4/projects/9715862/labels","events":"https://gitlab.com/api/v4/projects/9715862/events","members":"https://gitlab.com/api/v4/projects/9715862/members"},"empty_repo":false,"archived":false,"visibility":"private","owner":{"id":3215137,"name":"Infinite
+        Loop","username":"1nf1n1t3l00p","state":"active","avatar_url":"https://assets.gitlab-static.net/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":{"access_level":40,"notification_level":3},"group_access":null},"mirror":false,"external_authorization_classification_label":""},{"id":9715859,"description":"","name":"loop
+        proj","name_with_namespace":"My Awesome Group / loop proj","path":"loop-proj","path_with_namespace":"l00p_group_1/loop-proj","created_at":"2018-12-01T19:48:07.749Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/loop-proj.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/loop-proj.git","web_url":"https://gitlab.com/l00p_group_1/loop-proj","readme_url":"https://gitlab.com/l00p_group_1/loop-proj/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-03-01T01:09:11.939Z","namespace":{"id":4165904,"name":"My
+        Awesome Group","path":"l00p_group_1","kind":"group","full_path":"l00p_group_1","parent_id":null,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1"},"_links":{"self":"https://gitlab.com/api/v4/projects/9715859","issues":"https://gitlab.com/api/v4/projects/9715859/issues","merge_requests":"https://gitlab.com/api/v4/projects/9715859/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/9715859/repository/branches","labels":"https://gitlab.com/api/v4/projects/9715859/labels","events":"https://gitlab.com/api/v4/projects/9715859/events","members":"https://gitlab.com/api/v4/projects/9715859/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":null,"group_access":{"access_level":50,"notification_level":3}},"mirror":false,"external_authorization_classification_label":""},{"id":9715852,"description":"","name":"proj-A","name_with_namespace":"My
+        Awesome Group / subgroup1 / proj-A","path":"proj-a","path_with_namespace":"l00p_group_1/subgroup1/proj-a","created_at":"2018-12-01T19:47:18.634Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:l00p_group_1/subgroup1/proj-a.git","http_url_to_repo":"https://gitlab.com/l00p_group_1/subgroup1/proj-a.git","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-a","readme_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-a/blob/master/README.md","avatar_url":null,"star_count":0,"forks_count":0,"last_activity_at":"2019-03-01T01:16:00.572Z","namespace":{"id":4165905,"name":"subgroup1","path":"subgroup1","kind":"group","full_path":"l00p_group_1/subgroup1","parent_id":4165904,"avatar_url":null,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup1"},"_links":{"self":"https://gitlab.com/api/v4/projects/9715852","issues":"https://gitlab.com/api/v4/projects/9715852/issues","merge_requests":"https://gitlab.com/api/v4/projects/9715852/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/9715852/repository/branches","labels":"https://gitlab.com/api/v4/projects/9715852/labels","events":"https://gitlab.com/api/v4/projects/9715852/events","members":"https://gitlab.com/api/v4/projects/9715852/members"},"empty_repo":false,"archived":false,"visibility":"private","resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3215137,"import_status":"none","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":null,"group_access":{"access_level":50,"notification_level":3}},"mirror":false,"external_authorization_classification_label":""}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:51 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Transfer-Encoding
+      - [chunked]
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Vary
+      - [Accept-Encoding, Origin]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"10256f8121b8fac2f9050e5ab329c827"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/projects?membership=false&order_by=created_at&owned=true&page=1&per_page=50&repository_checksum_failed=false&simple=false&sort=desc&starred=false&statistics=false&wiki_checksum_failed=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false>;
+          rel="first", <https://gitlab.com/api/v4/projects?membership=false&order_by=created_at&owned=true&page=1&per_page=50&repository_checksum_failed=false&simple=false&sort=desc&starred=false&statistics=false&wiki_checksum_failed=false&with_custom_attributes=false&with_issues_enabled=false&with_merge_requests_enabled=false>;
+          rel="last"']
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['50']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [uEI6ejunue6]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.508830']
+    - !!python/tuple
+      - X-Total
+      - ['9']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['11']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['589']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165551']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:51 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-18-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    - !!python/tuple
+      - X-Consumed-Content-Encoding
+      - [gzip]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/projects?owned=true&per_page=50&page=1
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/users?username=hootener
+  response:
+    body: {string: '[{"id":3108129,"name":"Eli Hooten","username":"hootener","state":"active","avatar_url":"https://secure.gravatar.com/avatar/ab022b5adf4e3edc9ea77fe7fd561837?s=80\u0026d=identicon","web_url":"https://gitlab.com/hootener"}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:51 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['220']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"55b9059f7864ce342c8bd96c5c8e5b5a"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/users?active=false&blocked=false&external=false&page=1&per_page=20&skip_ldap=false&username=hootener&with_custom_attributes=false>;
+          rel="first", <https://gitlab.com/api/v4/users?active=false&blocked=false&external=false&page=1&per_page=20&skip_ldap=false&username=hootener&with_custom_attributes=false>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['20']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [ZyuoVpLDm2]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.024654']
+    - !!python/tuple
+      - X-Total
+      - ['1']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['12']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['588']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165551']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:51 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-14-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/users?username=hootener
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/9422960
+  response:
+    body: {string: '{"id":9422960,"description":"The pytest framework makes it easy
+        to write small tests, yet scales to support complex functional testing","name":"pytest","name_with_namespace":"Eli
+        Hooten / pytest","path":"pytest","path_with_namespace":"hootener/pytest","created_at":"2018-11-15T16:52:55.486Z","default_branch":"master","tag_list":[],"ssh_url_to_repo":"git@gitlab.com:hootener/pytest.git","http_url_to_repo":"https://gitlab.com/hootener/pytest.git","web_url":"https://gitlab.com/hootener/pytest","readme_url":"https://gitlab.com/hootener/pytest/blob/master/README.rst","avatar_url":null,"star_count":0,"forks_count":2,"last_activity_at":"2018-11-15T22:43:29.619Z","namespace":{"id":3969537,"name":"Eli
+        Hooten","path":"hootener","kind":"user","full_path":"hootener","parent_id":null,"avatar_url":"https://secure.gravatar.com/avatar/ab022b5adf4e3edc9ea77fe7fd561837?s=80\u0026d=identicon","web_url":"https://gitlab.com/hootener"},"_links":{"self":"https://gitlab.com/api/v4/projects/9422960","issues":"https://gitlab.com/api/v4/projects/9422960/issues","merge_requests":"https://gitlab.com/api/v4/projects/9422960/merge_requests","repo_branches":"https://gitlab.com/api/v4/projects/9422960/repository/branches","labels":"https://gitlab.com/api/v4/projects/9422960/labels","events":"https://gitlab.com/api/v4/projects/9422960/events","members":"https://gitlab.com/api/v4/projects/9422960/members"},"empty_repo":false,"archived":false,"visibility":"public","owner":{"id":3108129,"name":"Eli
+        Hooten","username":"hootener","state":"active","avatar_url":"https://secure.gravatar.com/avatar/ab022b5adf4e3edc9ea77fe7fd561837?s=80\u0026d=identicon","web_url":"https://gitlab.com/hootener"},"resolve_outdated_diff_discussions":false,"container_registry_enabled":true,"issues_enabled":true,"merge_requests_enabled":true,"wiki_enabled":true,"jobs_enabled":true,"snippets_enabled":true,"issues_access_level":"enabled","repository_access_level":"enabled","merge_requests_access_level":"enabled","wiki_access_level":"enabled","builds_access_level":"enabled","snippets_access_level":"enabled","shared_runners_enabled":true,"lfs_enabled":true,"creator_id":3108129,"import_status":"finished","open_issues_count":0,"ci_default_git_depth":null,"public_jobs":true,"build_timeout":3600,"auto_cancel_pending_pipelines":"enabled","build_coverage_regex":null,"ci_config_path":null,"shared_with_groups":[],"only_allow_merge_if_pipeline_succeeds":false,"request_access_enabled":false,"only_allow_merge_if_all_discussions_are_resolved":false,"remove_source_branch_after_merge":null,"printing_merge_request_link_enabled":true,"merge_method":"merge","auto_devops_enabled":false,"auto_devops_deploy_strategy":"continuous","permissions":{"project_access":null,"group_access":null},"approvals_before_merge":0,"mirror":false,"external_authorization_classification_label":"","packages_enabled":true}'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Thu, 07 Nov 2019 22:24:52 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['2861']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"cf19f5c5b0edd5ce2cb42ae8697c628b"]
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Request-Id
+      - [56Ue1EoORk2]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.078179']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['13']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['587']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1573165552']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Thu, 07 Nov 2019 22:25:52 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-09-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/projects/9422960
+version: 1

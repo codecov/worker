@@ -7,7 +7,13 @@ build:
 	docker build -f Dockerfile . -t codecov/worker:latest --build-arg SSH_PRIVATE_KEY="${ssh_private_key}"
 
 test:
-	python -m pytest
+	python -m pytest --cov=./
+
+test.unit:
+	python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml
+
+test.integration:
+	python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml
 
 push.worker-new:
 	docker tag codecov/worker ${_gcr}-worker:${version}-${sha}

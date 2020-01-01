@@ -1,6 +1,7 @@
 import logging
 import re
 from json import loads
+from typing import Mapping, Any
 
 from celery import chain
 from redis.exceptions import LockError
@@ -12,7 +13,8 @@ from app import celery_app
 from celery_config import upload_task_name
 from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.redis import get_redis_connection
+from services.archive import ArchiveService
+from services.redis import get_redis_connection, download_archive_from_redis, Redis
 from services.repository import (
     get_repo_provider_service, update_commit_from_provider_info, create_webhook_on_provider
 )
@@ -83,9 +85,6 @@ class UploadTask(BaseCodecovTask):
 
     """
     name = upload_task_name
-
-    def write_to_db(self):
-        return True
 
     def lists_of_arguments(self, redis_connection, uploads_list_key):
         """Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
@@ -171,9 +170,21 @@ class UploadTask(BaseCodecovTask):
                     commit=commitid
                 )
             )
+        except TorngitClientError:
+            log.warning(
+                "Unable to reach git provider because there was a 4xx error",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                ),
+                exc_info=True
+            )
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
-            argument_list.append(arguments)
+            normalized_arguments = self.normalize_upload_arguments(
+                commit, arguments, redis_connection
+            )
+            argument_list.append(normalized_arguments)
         if argument_list:
             if repository_service:
                 commit_yaml = await self.fetch_commit_yaml_and_possibly_store(commit, repository_service)
@@ -184,6 +195,15 @@ class UploadTask(BaseCodecovTask):
                     commit_yaml=None
                 )
             self.schedule_task(commit, commit_yaml, argument_list)
+        else:
+            log.info(
+                "Not scheduling task because there were no arguments were found on redis",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    argument_list=argument_list
+                )
+            )
         return {
             'was_setup': was_setup,
             'was_updated': was_updated
@@ -194,10 +214,14 @@ class UploadTask(BaseCodecovTask):
         try:
             commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
             save_repo_yaml_to_database_if_needed(commit, commit_yaml)
-        except InvalidYamlException:
+        except InvalidYamlException as ex:
             log.warning(
                 "Unable to use yaml from commit because it is invalid",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                extra=dict(
+                    repoid=repository.repoid,
+                    commit=commit.commitid,
+                    error_location=ex.error_location
+                ),
                 exc_info=True
             )
             commit_yaml = None
@@ -303,6 +327,28 @@ class UploadTask(BaseCodecovTask):
             extra=dict(repoid=repoid, commit=commitid)
         )
         return False
+
+    def normalize_upload_arguments(self, commit: Commit, arguments: Mapping[str, Any], redis_connection: Redis):
+        """
+            Normalizes and validates the argument list from the user
+        """
+        commit_sha = commit.commitid
+        reportid = arguments.get('reportid')
+        if arguments.get('redis_key'):
+            archive_service = ArchiveService(commit.repository)
+            redis_key = arguments.pop('redis_key')
+            content = download_archive_from_redis(redis_connection, redis_key)
+            written_path = archive_service.write_raw_upload(commit_sha, reportid, content)
+            log.info(
+                "Writing report content from redis to storage",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    path=written_path
+                )
+            )
+            arguments['url'] = written_path
+        return arguments
 
 
 RegisteredUploadTask = celery_app.register_task(UploadTask())

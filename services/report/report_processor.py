@@ -5,7 +5,8 @@ from lxml import etree
 import logging
 
 from services.report.languages.helpers import remove_non_ascii
-from helpers.exceptions import ReportExpiredException
+
+from helpers.metrics import metrics
 
 from services.report.languages import (
     SCoverageProcessor, JetBrainsXMLProcessor, CloverProcessor,
@@ -22,27 +23,32 @@ log = logging.getLogger(__name__)
 def report_type_matching(name, raw_report):
     parser = etree.XMLParser(recover=True, resolve_entities=False)
     first_line = raw_report.split('\n', 1)[0]
+    xcode_first_line_endings = (
+        '.h:', '.m:', '.swift:', '.hpp:', '.cpp:', '.cxx:',  '.c:', '.C:', '.cc:', '.cxx:', '.c++:'
+    )
+    xcode_filename_endings = ('app.coverage.txt', 'framework.coverage.txt', 'xctest.coverage.txt')
+    if first_line.endswith(xcode_first_line_endings) or name.endswith(xcode_filename_endings):
+        return raw_report, 'txt'
     if raw_report.find('<plist version="1.0">') >= 0 or name.endswith('.plist'):
         return raw_report, 'plist'
-    if raw_report and (
-        (first_line and first_line[0] == '<' and len(first_line) > 1 and first_line[1] in 'csCrR') or
-        raw_report[:5] == '<?xml'
-    ):
+    if raw_report:
+        try:
+            processed = loads(raw_report)
+            if processed != dict():
+                return processed, 'json'
+        except ValueError:
+            pass
         if '<classycle ' in raw_report and '</classycle>' in raw_report:
             return None, None
         try:
             processed = etree.fromstring(raw_report, parser=parser)
         except ValueError:
-            processed = etree.fromstring(raw_report.encode(), parser=parser)
-        if processed is not None and len(processed) > 0:
-            return processed, 'xml'
-    else:
-        if first_line and first_line[0] in ['{', '['] and first_line != '{}':
             try:
-                processed = loads(raw_report)
-                return processed, 'json'
+                processed = etree.fromstring(raw_report.encode(), parser=parser)
             except ValueError:
                 pass
+        if processed is not None and len(processed) > 0:
+            return processed, 'xml'
     return raw_report, 'txt'
 
 
@@ -69,7 +75,7 @@ def get_possible_processors_list(report_type):
             GapProcessor(),
             DLSTProcessor(),
             GoProcessor(),
-            XCodeProcessor()
+            XCodeProcessor(),
         ],
         'json': [
             SalesforceProcessor(),
@@ -109,9 +115,10 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
     # [xcode]
     for processor in processors:
         if processor.matches_content(report, first_line, name):
-            return processor.process(
-                name, report, path_fixer, ignored_lines, sessionid, commit_yaml
-            )
+            with metrics.timer(f'new_worker.services.report.processors.{processor.name}'):
+                return processor.process(
+                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
+                )
     log.info(
         "File format could not be recognized",
         extra=dict(

@@ -60,7 +60,9 @@ task_time_limit = int(get_config('setup', 'tasks', 'celery', 'hard_timelimit', d
 
 _default_queue = get_config('setup', 'tasks', 'celery', 'default_queue', default='celery')
 
-refresh_task_name = 'app.tasks.refresh.Refresh'
+sync_teams_task_name = 'app.tasks.sync_teams.SyncTeams'
+sync_repos_task_name = 'app.tasks.sync_repos.SyncRepos'
+delete_owner_task_name = 'app.tasks.delete_owner.DeleteOwner'
 notify_task_name = 'app.tasks.notify.Notify'
 pulls_task_name = 'app.tasks.pulls.Sync'
 status_set_error_task_name = 'app.tasks.status_set_error.StatusSetError'
@@ -76,8 +78,14 @@ synchronize_task_name = 'app.tasks.synchronize.Synchronize'
 
 
 task_routes = {
-    refresh_task_name: {
-        'queue': get_config('setup', 'tasks', 'refresh', 'queue', default=_default_queue)
+    sync_teams_task_name: {
+        'queue': get_config('setup', 'tasks', 'sync_teams', 'queue', default=_default_queue)
+    },
+    sync_repos_task_name: {
+        'queue': get_config('setup', 'tasks', 'sync_repos', 'queue', default=_default_queue)
+    },
+    delete_owner_task_name: {
+        'queue': get_config('setup', 'tasks', 'delete_owner', 'queue', default=_default_queue)
     },
     notify_task_name: {
         'queue': get_config('setup', 'tasks', 'notify', 'queue', default=_default_queue),

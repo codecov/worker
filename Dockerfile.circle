@@ -1,0 +1,6 @@
+ARG REQUIREMENTS_IMAGE
+
+FROM $REQUIREMENTS_IMAGE
+
+COPY            . /worker
+WORKDIR         /worker

@@ -19,6 +19,7 @@ here = Path(__file__)
 class TestUploadProcessorTask(object):
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     async def test_upload_processor_task_call(self, mocker, mock_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         mocked_1.return_value = None
@@ -38,7 +39,8 @@ class TestUploadProcessorTask(object):
             message='dsidsahdsahdsa',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
             repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
-            repository__owner__username='ThiagoCodecov'
+            repository__owner__username='ThiagoCodecov',
+            repository__name='example-python'
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -120,6 +122,7 @@ class TestUploadProcessorTask(object):
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     async def test_upload_task_call_existing_chunks(self, mocker, mock_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         with open(here.parent.parent / 'samples' / 'sample_chunks_1.txt') as f:
@@ -142,6 +145,7 @@ class TestUploadProcessorTask(object):
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
             repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
             repository__owner__username='ThiagoCodecov',
+            repository__name='example-python'
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -308,6 +312,7 @@ class TestUploadProcessorTask(object):
             ]
         }
         assert expected_result == result
+        assert commit.state == 'complete'
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_empty_report(self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage, mock_redis):
@@ -365,6 +370,64 @@ class TestUploadProcessorTask(object):
             ]
         }
         assert expected_result == result
+        assert commit.state == 'complete'
+
+    @pytest.mark.asyncio
+    async def test_upload_task_call_no_succesful_report(self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage, mock_redis):
+        mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
+        mocked_1.return_value = None
+        mocked_2 = mocker.patch.object(UploadProcessorTask, 'do_process_individual_report')
+        mocked_2.side_effect = [ReportEmptyError(), ReportExpiredException()]
+        # Mocking retry to also raise the exception so we can see how it is called
+        mocked_4 = mocker.patch.object(UploadProcessorTask, 'app')
+        mocked_4.send_task.return_value = True
+        commit = CommitFactory.create(
+            message='',
+            commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry for the timebomb
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        redis_queue = [
+            {
+                'url': 'url',
+                'what': 'huh'
+            },
+            {
+                'url': 'url2',
+                'extra_param': 45
+            },
+        ]
+        result = await UploadProcessorTask().run_async(
+            dbsession,
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={},
+            arguments_list=redis_queue
+        )
+        expected_result = {
+            'processings_so_far': [
+                {
+                    'arguments': {'url': 'url', 'what': 'huh'},
+                    'error_type': 'report_empty',
+                    'report': None,
+                    'should_retry': False,
+                    'successful': False
+                },
+                {
+                    'arguments': {'extra_param': 45, 'url': 'url2'},
+                    'error_type': 'report_expired',
+                    'report': None,
+                    'should_retry': False,
+                    'successful': False
+                }
+            ]
+        }
+        assert expected_result == result
+        assert commit.state == 'error'
 
     @pytest.mark.asyncio
     async def test_save_report_results_apply_diff_not_there(self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage):
@@ -510,3 +573,47 @@ class TestUploadProcessorTask(object):
             diff=0
         )
         assert report.diff_totals == expected_diff_totals
+
+    @pytest.mark.asyncio
+    async def test_save_report_results_empty_report(self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage):
+        commit = CommitFactory.create(
+            message='',
+            repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry for the timebomb
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        report = Report()
+        chunks_archive_service = ArchiveService(commit.repository)
+        f = Future()
+        f.set_result({
+            'files': {
+                'path/to/first.py': {
+                    'type': 'modified',
+                    'before': None,
+                    'segments': [
+                        {
+                            'header': ['9', '3', '9', '5'],
+                            'lines': ['+sudo: false', '+', ' language: python', ' ', ' python:']
+                        }
+                    ],
+                    'stats': {'added': 2, 'removed': 0}
+                }
+            }
+        })
+        mock_repo_provider.get_commit_diff.return_value = f
+        result = await UploadProcessorTask().save_report_results(
+            db_session=dbsession,
+            chunks_archive_service=chunks_archive_service,
+            commit=commit,
+            repository=commit.repository,
+            report=report,
+            pr=None
+        )
+        expected_result = {
+            'url': f'v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt'
+        }
+        assert expected_result == result
+        assert report.diff_totals is None
+        assert commit.state == 'error'
