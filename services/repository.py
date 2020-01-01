@@ -209,7 +209,7 @@ async def create_webhook_on_provider(repository_service):
             default='ab164bf3f7d947f2a0681b215404873e')
         )
 
-async def get_repo(db_session, repoid, commitid=None):
+def get_repo_provider_service_by_id(db_session, repoid, commitid=None):
     repo = db_session.query(Repository).filter(
         Repository.repoid == int(repoid)
     ).first()

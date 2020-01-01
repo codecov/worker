@@ -3,7 +3,7 @@ from asyncio import Future
 
 from services.repository import (
     get_repo_provider_service, fetch_appropriate_parent_for_commit, get_author_from_commit,
-    update_commit_from_provider_info, get_repo
+    update_commit_from_provider_info, get_repo_provider_service_by_id
 )
 from database.tests.factories import RepositoryFactory, OwnerFactory, CommitFactory
 
@@ -364,7 +364,7 @@ class TestRepositoryServiceTestCase(object):
         dbsession.add(repo)
         dbsession.flush()
 
-        res = await get_repo(dbsession, repo.repoid)
+        res = get_repo_provider_service_by_id(dbsession, repo.repoid)
 
         expected_data = {
             'owner': {

@@ -4,7 +4,7 @@ import re
 from app import celery_app
 from celery_config import status_set_pending_task_name
 from covreports.helpers.yaml import walk, default_if_true
-from services.repository import get_repo
+from services.repository import get_repo_provider_service_by_id
 from services.redis import get_redis_connection
 from covreports.utils.match import match
 from covreports.utils.urls import make_url
@@ -25,14 +25,14 @@ class StatusSetPendingTask(BaseCodecovTask):
             extra=dict(repoid=repoid, commitid=commitid, branch=branch, on_a_pull_request=on_a_pull_request)
         )
 
-        # TODO: need to check for enterprise license?
+        # TODO: need to check for enterprise license once licences are implemented
         # assert license.LICENSE['valid'], ('Notifications disabled. '+(license.LICENSE['warning'] or ''))
 
         # check that repo is in beta
         redis_connection = get_redis_connection()
         assert redis_connection.sismember('beta.pending', repoid), 'Pending disabled. Please request to be in beta.'
 
-        repo = await get_repo(db_session, repoid)
+        repo = get_repo_provider_service_by_id(db_session, repoid)
 
         settings = walk(repo.data['yaml'], ('coverage', 'status'))
         if settings and any(settings.values()):

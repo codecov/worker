@@ -4,7 +4,7 @@ import re
 from app import celery_app
 from celery_config import status_set_error_task_name
 from covreports.helpers.yaml import walk, default_if_true
-from services.repository import get_repo
+from services.repository import get_repo_provider_service_by_id
 from covreports.utils.urls import make_url
 from database.models import Repository
 from tasks.base import BaseCodecovTask
@@ -24,10 +24,10 @@ class StatusSetErrorTask(BaseCodecovTask):
             extra=dict(repoid=repoid, commitid=commitid, description=message)
         )
 
-        # TODO: need to check for enterprise license?
+        # TODO: need to check for enterprise license once licences are implemented
         # assert license.LICENSE['valid'], ('Notifications disabled. '+(license.LICENSE['warning'] or ''))
 
-        repo = await get_repo(db_session, repoid)
+        repo = get_repo_provider_service_by_id(db_session, repoid)
 
         settings = walk(repo.data['yaml'], ('coverage', 'status'))
         if settings and any(settings.values()):

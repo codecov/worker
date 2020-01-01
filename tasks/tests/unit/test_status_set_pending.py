@@ -15,15 +15,13 @@ class TestSetPendingTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_no_status(self, mocker, mock_configuration, dbsession, mock_redis):
-        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo')
-        f = Future()
+        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo_provider_service_by_id')
         repo = mocker.MagicMock(
             service='github',
             data=dict(yaml={'coverage': {'status': None}}),
             set_commit_status=mocker.MagicMock(return_value=None)
         )
-        f.set_result(repo)
-        mocked_1.return_value = f
+        mocked_1.return_value = repo
         mock_redis.sismember.side_effect = [True]
 
         repoid = '1'
@@ -36,15 +34,13 @@ class TestSetPendingTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_not_in_beta(self, mocker, mock_configuration, dbsession, mock_redis):
-        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo')
-        f = Future()
+        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo_provider_service_by_id')
         repo = mocker.MagicMock(
             service='github',
             data=dict(yaml={'coverage': {'status': None}}),
             set_commit_status=mocker.MagicMock(return_value=None)
         )
-        f.set_result(repo)
-        mocked_1.return_value = f
+        mocked_1.return_value = repo
         mock_redis.sismember.side_effect = [False]
 
         repoid = '1'
@@ -57,7 +53,7 @@ class TestSetPendingTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_skip_set_pending(self, mocker, mock_configuration, dbsession, mock_redis):
-        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo')
+        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo_provider_service_by_id')
         get_commit_statuses = Future()
         set_commit_status = Future()
         repo = mocker.MagicMock(
@@ -67,9 +63,7 @@ class TestSetPendingTaskUnit(object):
             get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
             set_commit_status=mocker.MagicMock(return_value=set_commit_status)
         )
-        f = Future()
-        f.set_result(repo)
-        mocked_1.return_value = f
+        mocked_1.return_value = repo
         mock_redis.sismember.side_effect = [True]
 
         get_commit_statuses.set_result(Status([]))
@@ -85,7 +79,7 @@ class TestSetPendingTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_skip_set_pending_unknown_branch(self, mocker, mock_configuration, dbsession, mock_redis):
-        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo')
+        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo_provider_service_by_id')
         get_commit_statuses = Future()
         set_commit_status = Future()
         repo = mocker.MagicMock(
@@ -95,9 +89,7 @@ class TestSetPendingTaskUnit(object):
             get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
             set_commit_status=mocker.MagicMock(return_value=set_commit_status)
         )
-        f = Future()
-        f.set_result(repo)
-        mocked_1.return_value = f
+        mocked_1.return_value = repo
         mock_redis.sismember.side_effect = [True]
 
         get_commit_statuses.set_result(Status([]))
@@ -129,7 +121,7 @@ class TestSetPendingTaskUnit(object):
         statuses = ([{'url': None, 'state': 'pending', 'context': 'ci', 'time': '2015-12-21T16:54:13Z'}] +
                     ([{'url': None, 'state': 'pending', 'context': 'codecov/'+context+'/custom', 'time': '2015-12-21T16:54:13Z'}] if cc_status_exists else []))
 
-        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo')
+        mocked_1 = mocker.patch('tasks.status_set_pending.get_repo_provider_service_by_id')
         get_commit_statuses = Future()
         set_commit_status = Future()
         repo = mocker.MagicMock(
@@ -139,9 +131,7 @@ class TestSetPendingTaskUnit(object):
             get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
             set_commit_status=mocker.MagicMock(return_value=set_commit_status)
         )
-        f = Future()
-        f.set_result(repo)
-        mocked_1.return_value = f
+        mocked_1.return_value = repo
         mock_redis.sismember.side_effect = [True]
 
         get_commit_statuses.set_result(Status(statuses))
