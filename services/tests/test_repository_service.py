@@ -437,6 +437,7 @@ class TestRepositoryServiceTestCase(object):
         assert res.data == expected_data
         assert res.token == { 'key': 'bcaa0dc0c66b4a8c8c65ac919a1a91aa', 'secret': None }
 
+    @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_new_pull_commits_in_place(self, dbsession, mocker):
         commit = CommitFactory.create(
             message='',
