@@ -31,7 +31,6 @@ def round_number(yaml_dict: Mapping[str, Any], number: Decimal):
         return number.quantize(quantizer, rounding=ROUND_CEILING)
     if rounding == 'down':
         return number.quantize(quantizer, rounding=ROUND_FLOOR)
-    print(quantizer)
     return number.quantize(quantizer, rounding=ROUND_HALF_EVEN)
 
 

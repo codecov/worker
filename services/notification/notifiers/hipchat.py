@@ -71,7 +71,6 @@ class HipchatNotifier(RequestsYamlBasedNotifier):
                 }
             }
         message = self.generate_message(comparison)
-        print(comparison_dict)
         return {
             'from': 'Codecov',
             'card': card,
