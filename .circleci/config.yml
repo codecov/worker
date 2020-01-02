@@ -78,8 +78,8 @@ jobs:
     - run:
         name: deploy to k8s
         command: |-
-          make -f Makefile.circle tag VERSION=$CIRCLE_TAG
-          make -f Makefile.circle deploy VERSION=$CIRCLE_TAG
+          make -f Makefile.circle tag
+          make -f Makefile.circle deploy
 
 workflows:
   version: 2

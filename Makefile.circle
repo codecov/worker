@@ -47,8 +47,8 @@ tag:
 # job: deploy
 # deploys tagged version to production k8s
 deploy:
-	kubectl set image deployment/worker workers=${GCR_REPO}:${VERSION}
-	kubectl rollout status deployments worker
+	kubectl set image deployment/worker-new-standard worker-new-standard=${GCR_REPO}:${VERSION}
+	kubectl rollout status deployments worker-new-standard
 
 # LOCAL
 # used to test circleci jobs
