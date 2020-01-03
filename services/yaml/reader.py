@@ -23,10 +23,14 @@ def read_yaml_field(yaml_dict, keys, _else=None):
         return _else
 
 
-def round_number(yaml_dict: Mapping[str, Any], number: Decimal):
+def get_minimum_precision(yaml_dict: Mapping[str, Any]) -> Decimal:
     precision = read_yaml_field(yaml_dict, ('coverage', 'precision'), 2)
+    return Decimal('0.1')**precision
+
+
+def round_number(yaml_dict: Mapping[str, Any], number: Decimal):
     rounding = read_yaml_field(yaml_dict, ('coverage', 'round'), 'nearest')
-    quantizer = Decimal('0.1')**precision
+    quantizer = get_minimum_precision(yaml_dict)
     if rounding == 'up':
         return number.quantize(quantizer, rounding=ROUND_CEILING)
     if rounding == 'down':

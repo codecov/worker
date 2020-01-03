@@ -1,4 +1,4 @@
-from database.models import Commit, Repository
+from database.models import Commit, Repository, Pull
 from enum import Enum
 from urllib.parse import urlencode
 from covreports.config import get_config
@@ -18,6 +18,8 @@ class SiteUrls(Enum):
     compare_url = "{base_url}/{service_short}/{username}/{project_name}/compare/{base_sha}...{head_sha}"
     repository_url = "{base_url}/{service_short}/{username}/{project_name}"
     graph_url = "{base_url}/{service_short}/{username}/{project_name}/commit/{commit_sha}/graphs/{graph_filename}"
+    pull_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}"
+    pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
 
     def get_url(self, **kwargs):
         return self.value.format(**kwargs)
@@ -68,3 +70,28 @@ def get_repository_url(repository: Repository) -> str:
         username=repository.owner.username.replace(':', '/'),
         project_name=repository.name
     )
+
+
+def get_pull_url(pull: Pull) -> str:
+    repository = pull.repository
+    return SiteUrls.pull_url.get_url(
+        base_url=get_base_url(),
+        service_short=services_short_dict.get(repository.service),
+        username=repository.owner.username.replace(':', '/'),
+        project_name=repository.name,
+        pull_id=pull.pullid
+    )
+
+
+def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
+    repository = pull.repository
+    url = SiteUrls.pull_graph_url.get_url(
+        base_url=get_base_url(),
+        service_short=services_short_dict.get(repository.service),
+        username=repository.owner.username.replace(':', '/'),
+        project_name=repository.name,
+        pull_id=pull.pullid,
+        graph_filename=graph_filename
+    )
+    encoded_kwargs = urlencode(kwargs)
+    return f"{url}?{encoded_kwargs}"

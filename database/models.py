@@ -1,3 +1,6 @@
+import random
+import string
+
 from database.base import CodecovBaseModel
 from sqlalchemy import Column, types, ForeignKey
 from sqlalchemy.orm import relationship, backref
@@ -53,6 +56,7 @@ class Repository(CodecovBaseModel):
     updatestamp = Column(types.DateTime)
     yaml = Column(postgresql.JSON)
     branch = Column(types.Text)
+    image_token = Column(types.Text, default=lambda: ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10)))
     language = Column(types.Text)
     hookid = Column(types.Text)
     using_integration = Column(types.Boolean)
