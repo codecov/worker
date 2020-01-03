@@ -385,13 +385,10 @@ class TestUploadTaskUnit(object):
         }
         assert expected_result == result
         mock_redis.get.assert_called_with('commit_chunks.something')
-        mock_storage.write_file.assert_called_with(
-            'archive',
-            f'v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt',
-            'Some weird value',
-            gzipped=False,
-            reduced_redundancy=False
-        )
+        assert 'archive' in mock_storage.storage
+        assert f'v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt' in mock_storage.storage['archive']
+        content = mock_storage.storage['archive'][f'v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt']
+        assert b'Some weird value' == content
 
     def test_schedule_task_with_no_tasks(self, dbsession):
         commit = CommitFactory.create()

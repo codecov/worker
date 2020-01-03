@@ -10,8 +10,8 @@ from sqlalchemy import event
 
 from database.base import Base
 from sqlalchemy_utils import create_database, database_exists
-from sqlalchemy.orm import Session
 from covreports.config import ConfigHelper
+from covreports.storage.memory import MemoryStorageService
 from celery_config import initialize_logging
 
 
@@ -128,10 +128,10 @@ def mock_redis(mocker):
 
 @pytest.fixture
 def mock_storage(mocker):
-    m = mocker.patch('covreports.storage.MinioStorageService')
-    redis_server = mocker.MagicMock()
-    m.return_value = redis_server
-    yield redis_server
+    m = mocker.patch('covreports.storage._get_appropriate_storage_service_given_storage')
+    storage_server = MemoryStorageService({})
+    m.return_value = storage_server
+    yield storage_server
 
 
 @pytest.fixture
