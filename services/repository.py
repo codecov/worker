@@ -6,7 +6,7 @@ import torngit
 
 from covreports.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
-from database.models import Owner, Commit, Pull
+from database.models import Owner, Commit, Pull, Repository
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -216,6 +216,16 @@ async def create_webhook_on_provider(repository_service):
             repository_service.service, 'webhook_secret',
             default='ab164bf3f7d947f2a0681b215404873e')
         )
+
+
+def get_repo_provider_service_by_id(db_session, repoid, commitid=None):
+    repo = db_session.query(Repository).filter(
+        Repository.repoid == int(repoid)
+    ).first()
+
+    assert repo, 'repo-not-found'
+
+    return get_repo_provider_service(repo)
 
 
 async def fetch_and_update_pull_request_information(repository_service, commit, current_yaml):
