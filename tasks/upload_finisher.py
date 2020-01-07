@@ -85,7 +85,7 @@ class UploadFinisherTask(BaseCodecovTask):
                         processing_results=processing_results
                     )
                 )
-                if self.should_send_notify_task_to_new_worker():
+                if self.should_send_notify_task_to_new_worker(commit):
                     log.info(
                         "Sending task to new worker notify",
                         extra=dict(
@@ -133,7 +133,10 @@ class UploadFinisherTask(BaseCodecovTask):
             commit.notified = False
         return {'notifications_called': notifications_called}
 
-    def should_send_notify_task_to_new_worker(self):
+    def should_send_notify_task_to_new_worker(self, commit):
+        whitelisted_owners = [int(x.strip()) for x in os.getenv('NOTIFY_WHITELISTED_OWNERS', '').split()]
+        if commit.repository.ownerid in whitelisted_owners:
+            return True
         return random.random() < float(os.getenv('NOTIFY_PERCENTAGE', '0.00'))
 
     def should_call_notifications(self, commit, commit_yaml, processing_results):
