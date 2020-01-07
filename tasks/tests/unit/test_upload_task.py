@@ -69,7 +69,7 @@ class TestUploadTaskIntegration(object):
         mock_redis.lpop.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
         mock_redis.exists.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
         mock_redis.lock.assert_called_with(
-            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300
         )
 
     @pytest.mark.asyncio
@@ -166,7 +166,7 @@ class TestUploadTaskIntegration(object):
         # )
         # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
-            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300
         )
 
     @pytest.mark.asyncio
@@ -213,7 +213,7 @@ class TestUploadTaskIntegration(object):
         assert not mock_redis.lpop.called
         mock_redis.exists.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
         mock_redis.lock.assert_called_with(
-            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300
         )
 
     @pytest.mark.asyncio
@@ -257,7 +257,7 @@ class TestUploadTaskIntegration(object):
         assert not mocked_fetch_yaml.called
         mock_redis.exists.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
         mock_redis.lock.assert_called_with(
-            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300
         )
 
     @pytest.mark.asyncio
@@ -300,7 +300,7 @@ class TestUploadTaskIntegration(object):
         assert not mocked_fetch_yaml.called
         mock_redis.exists.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
         mock_redis.lock.assert_called_with(
-            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+            f"upload_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300
         )
 
     @pytest.mark.asyncio

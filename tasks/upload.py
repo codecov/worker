@@ -119,7 +119,7 @@ class UploadTask(BaseCodecovTask):
         lock_name = f"upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
         try:
-            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=30):
+            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
                 return await self.run_async_within_lock(
                     db_session, redis_connection, repoid, commitid, *args, **kwargs
                 )
