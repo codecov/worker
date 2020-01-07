@@ -3,16 +3,18 @@ import dataclasses
 
 from sqlalchemy.orm.session import Session
 from covreports.config import get_config
+from torngit.exceptions import TorngitClientError
 
 from app import celery_app
 from celery_config import pulls_task_name, notify_task_name, status_set_error_task_name
 from database.models import Commit
+from helpers.metrics import metrics
 from services.commit_status import RepositoryCIFilter
 from services.notification.notifiers import get_all_notifier_classes_mapping, get_status_notifier_class
+from services.notification.types import Comparison, FullCommit
 from services.report import ReportService
 from services.repository import get_repo_provider_service, fetch_and_update_pull_request_information
 from services.yaml import read_yaml_field
-from services.notification.types import Comparison, FullCommit
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 
@@ -53,7 +55,24 @@ class NotifyTask(BaseCodecovTask):
         if current_yaml is None:
             current_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
         assert commit, 'Commit not found in database.'
-        ci_results = await self.fetch_and_update_whether_ci_passed(repository_service, commit, current_yaml)
+        try:
+            ci_results = await self.fetch_and_update_whether_ci_passed(
+                repository_service, commit, current_yaml
+            )
+        except TorngitClientError as ex:
+            log.info(
+                "Unable to fetch CI results. Not notifying user",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    code=ex.code
+                )
+            )
+            return {
+                'notified': False,
+                'notifications': None,
+                'reason': 'not_able_fetch_ci_result'
+            }
         if self.should_wait_longer(current_yaml, commit, ci_results):
             log.info(
                 'Not sending notifications yet because we are waiting for CI to finish',
@@ -78,7 +97,9 @@ class NotifyTask(BaseCodecovTask):
                     repoid=commit.repoid
                 )
             )
-            pull = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+            pull = await fetch_and_update_pull_request_information(
+                repository_service, commit, current_yaml
+            )
             if pull:
                 base_commit = self.fetch_pull_request_base(pull)
                 log.info(
@@ -109,7 +130,9 @@ class NotifyTask(BaseCodecovTask):
             report_service = ReportService()
             base_report = report_service.build_report_from_commit(base_commit)
             head_report = report_service.build_report_from_commit(commit)
-            notifications = await self.submit_third_party_notifications(current_yaml, base_commit, commit, base_report, head_report, pull)
+            notifications = await self.submit_third_party_notifications(
+                current_yaml, base_commit, commit, base_report, head_report, pull
+            )
             log.info(
                 "Notifications done",
                 extra=dict(
@@ -161,7 +184,8 @@ class NotifyTask(BaseCodecovTask):
                         notifier_title=notifier.title
                     )
                 )
-                res = await notifier.notify(comparison)
+                with metrics.timer(f'new_worker.services.notifications.notifiers.{notifier.name}'):
+                    res = await notifier.notify(comparison)
                 individual_result = {
                     'notifier': notifier.name,
                     'title': notifier.title,

@@ -1,6 +1,10 @@
 import pytest
 from asyncio import Future
+
+
 from celery.exceptions import Retry
+from torngit.exceptions import TorngitClientError
+
 from tasks.notify import default_if_true, NotifyTask
 from database.tests.factories import RepositoryFactory, CommitFactory, OwnerFactory
 
@@ -197,3 +201,31 @@ class TestNotifyTask(object):
         mocked_should_wait_longer.assert_called_with(
             {}, commit, fetch_and_update_whether_ci_passed_result.result()
         )
+
+    @pytest.mark.asyncio
+    async def test_simple_call_not_able_fetch_ci(self, dbsession, mocker, mock_storage, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'https://codecov.io'
+        mocker.patch.object(NotifyTask, 'app')
+        fetch_and_update_whether_ci_passed_result = Future()
+        fetch_and_update_whether_ci_passed_result.set_exception(TorngitClientError(401, 'response', 'message'))
+        mocker.patch.object(
+            NotifyTask, 'fetch_and_update_whether_ci_passed',
+            return_value=fetch_and_update_whether_ci_passed_result
+        )
+        commit = CommitFactory.create(
+            message='',
+            pullid=None,
+            branch='test-branch-1',
+            commitid='649eaaf2924e92dc7fd8d370ddb857033231e67a',
+            repository__using_integration=True
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        task = NotifyTask()
+        res = await task.run_async(
+            dbsession, commit.repoid, commit.commitid, current_yaml={}
+        )
+        expected_result = {
+            'notifications': None, 'notified': False, 'reason': 'not_able_fetch_ci_result'
+        }
+        assert expected_result == res
