@@ -158,7 +158,7 @@ class NotifyTask(BaseCodecovTask):
                         base_commit=base_commit.commitid,
                         repoid=commit.repoid,
                         notifier=notifier.name,
-                        title=notifier.title
+                        notifier_title=notifier.title
                     )
                 )
                 res = await notifier.notify(comparison)
