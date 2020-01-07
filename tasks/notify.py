@@ -39,6 +39,13 @@ class NotifyTask(BaseCodecovTask):
     name = notify_task_name
 
     async def run_async(self, db_session: Session, repoid: int, commitid: str, current_yaml=None, *args, **kwargs):
+        log.info(
+            "Starting notifications",
+            extra=dict(
+                commit=commitid,
+                repoid=repoid
+            )
+        )
         commits_query = db_session.query(Commit).filter(
                 Commit.repoid == repoid, Commit.commitid == commitid)
         commit = commits_query.first()
@@ -48,13 +55,6 @@ class NotifyTask(BaseCodecovTask):
         assert commit, 'Commit not found in database.'
         ci_results = await self.fetch_and_update_whether_ci_passed(repository_service, commit, current_yaml)
         if self.should_wait_longer(current_yaml, commit, ci_results):
-            if commit.repository.using_integration or commit.repository.hookid:
-                # rely on the webhook, but still retry in case we miss the webhook
-                max_retries = 5
-                countdown = (60 * 3) * 2**self.request.retries
-            else:
-                max_retries = 10
-                countdown = 15 * 2**self.request.retries
             log.info(
                 'Not sending notifications yet because we are waiting for CI to finish',
                 extra=dict(
@@ -62,8 +62,22 @@ class NotifyTask(BaseCodecovTask):
                     commit=commit.commitid
                 )
             )
+            if commit.repository.using_integration or commit.repository.hookid:
+                # rely on the webhook, but still retry in case we miss the webhook
+                max_retries = 5
+                countdown = (60 * 3) * 2**self.request.retries
+            else:
+                max_retries = 10
+                countdown = 15 * 2**self.request.retries
             self.retry(max_retries=max_retries, countdown=countdown)
         if self.should_send_notifications(current_yaml, commit, ci_results):
+            log.info(
+                "We are going to be sending notifications",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid
+                )
+            )
             pull = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
             if pull:
                 base_commit = self.fetch_pull_request_base(pull)
@@ -97,7 +111,7 @@ class NotifyTask(BaseCodecovTask):
             }
         else:
             log.info(
-                "Not sending notifications",
+                "Not sending notifications at all",
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid
@@ -123,6 +137,16 @@ class NotifyTask(BaseCodecovTask):
         notifications = []
         for notifier in self.get_notifiers_instances(commit.repository, current_yaml):
             if notifier.is_enabled():
+                log.info(
+                    "Attempting individual notification",
+                    extra=dict(
+                        commit=commit.commitid,
+                        base_commit=base_commit.commitid,
+                        repoid=commit.repoid,
+                        notifier=notifier.name,
+                        title=notifier.title
+                    )
+                )
                 res = await notifier.notify(comparison)
                 individual_result = {
                     'notifier': notifier.name,
