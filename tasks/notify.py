@@ -81,6 +81,13 @@ class NotifyTask(BaseCodecovTask):
             pull = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
             if pull:
                 base_commit = self.fetch_pull_request_base(pull)
+                log.info(
+                    "Using pull base for notify",
+                    extra=dict(
+                        commit=commit.commitid,
+                        repoid=commit.repoid
+                    )
+                )
                 self.app.send_task(
                     pulls_task_name,
                     args=None,
@@ -92,6 +99,13 @@ class NotifyTask(BaseCodecovTask):
                 )
             else:
                 base_commit = self.fetch_parent(commit)
+                log.info(
+                    "Using commit parent for notify",
+                    extra=dict(
+                        commit=commit.commitid,
+                        repoid=commit.repoid
+                    )
+                )
             report_service = ReportService()
             base_report = report_service.build_report_from_commit(base_commit)
             head_report = report_service.build_report_from_commit(commit)
