@@ -118,7 +118,7 @@ class TestUploadProcessorTask(object):
         # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
             f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=30, timeout=300
+            blocking_timeout=5, timeout=300
         )
 
     @pytest.mark.asyncio
@@ -177,7 +177,7 @@ class TestUploadProcessorTask(object):
         # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
             f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=30, timeout=300
+            blocking_timeout=5, timeout=300
         )
 
     @pytest.mark.asyncio

@@ -52,7 +52,7 @@ class TestUploadFinisherTask(object):
         assert commit.message == 'dsidsahdsahdsa'
 
         mock_redis.lock.assert_called_with(
-            f"upload_finisher_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=30, timeout=300
+            f"upload_finisher_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300
         )
 
     @pytest.mark.asyncio
