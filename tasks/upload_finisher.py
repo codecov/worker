@@ -73,6 +73,7 @@ class UploadFinisherTask(BaseCodecovTask):
             )
 
         # always notify, let the notify handle if it should submit
+        notifications_called = False
         if not regexp_ci_skip.search(commit.message or ''):
             if self.should_call_notifications(commit, commit_yaml, processing_results):
                 notifications_called = True

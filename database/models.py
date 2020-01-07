@@ -119,7 +119,7 @@ class Pull(CodecovBaseModel):
     __tablename__ = 'pulls'
 
     repoid = Column(types.Integer, ForeignKey('repos.repoid'), primary_key=True)
-    pullid = Column(types.Integer, nullable=False)
+    pullid = Column(types.Integer, nullable=False, primary_key=True)
     issueid = Column(types.Integer)
     updatestamp = Column(types.DateTime)
     state = Column(types.Text, nullable=False, default='open')
