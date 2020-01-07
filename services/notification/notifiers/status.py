@@ -164,12 +164,13 @@ class ProjectStatusNotifier(StatusNotifier):
             return (state, message)
         target_coverage = Decimal(comparison.base.report.totals.coverage)
         head_coverage = Decimal(comparison.head.report.totals.coverage)
+        head_coverage_rounded = round_number(self.current_yaml, head_coverage)
         if head_coverage == target_coverage:
             state = 'success'
-            message = f'{head_coverage}% remains the same compared to {comparison.base.commit.commitid[:7]}'
+            message = f'{head_coverage_rounded}% remains the same compared to {comparison.base.commit.commitid[:7]}'
         state = 'success' if head_coverage + threshold >= target_coverage else 'failure'
         change_coverage = round_number(self.current_yaml, head_coverage - target_coverage)
-        message = f"{head_coverage}% (+{change_coverage}%) compared to {comparison.base.commit.commitid[:7]}"
+        message = f"{head_coverage_rounded}% (+{change_coverage}%) compared to {comparison.base.commit.commitid[:7]}"
         return (state, message)
 
     async def build_payload(self, comparison: Comparison):

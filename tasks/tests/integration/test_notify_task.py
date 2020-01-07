@@ -94,14 +94,14 @@ class TestNotifyTask(object):
                 {
                     'notifier': 'status-project',
                     'title': 'default',
-                    'result': NotificationResult(
+                    'result': dict(
                         notification_attempted=False,
                         notification_successful=None,
                         explanation='already_done',
                         data_sent={
                             'title': 'codecov/project',
                             'state': 'success',
-                            'message': '85.00000% (+0.00%) compared to 17a71a9'
+                            'message': '85.00% (+0.00%) compared to 17a71a9'
                         },
                         data_received=None
                     )
@@ -168,14 +168,14 @@ class TestNotifyTask(object):
             'notifications': [
                 {
                     'notifier': 'status-project',
-                    'result': NotificationResult(
+                    'result': dict(
                         notification_attempted=True,
                         notification_successful=True,
                         explanation=None,
                         data_sent={
                             'title': 'codecov/project',
                             'state': 'success',
-                            'message': '85.00000% (+0.00%) compared to 598a170'
+                            'message': '85.00% (+0.00%) compared to 598a170'
                         },
                         data_received={'id': 8459148187}
                     ),
@@ -183,7 +183,7 @@ class TestNotifyTask(object):
                 },
                 {
                     'notifier': 'status-patch',
-                    'result': NotificationResult(
+                    'result': dict(
                         notification_attempted=True,
                         notification_successful=True,
                         explanation=None,
@@ -197,7 +197,7 @@ class TestNotifyTask(object):
                     'title': 'default'},
                 {
                     'notifier': 'status-changes',
-                    'result': NotificationResult(
+                    'result': dict(
                         notification_attempted=True,
                         notification_successful=True,
                         explanation=None,
@@ -263,22 +263,43 @@ class TestNotifyTask(object):
             'notifications': [
                 {
                     'notifier': 'status-project',
-                    'result': NotificationResult(
-                        notification_attempted=True, notification_successful=True, explanation=None, data_sent={'title': 'codecov/project', 'state': 'success', 'message': '85.00000% (+0.00%) compared to 30cc1ed'}, data_received={'id': 8459159593}
+                    'result': dict(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
+                            'title': 'codecov/project',
+                            'state': 'success',
+                            'message': '85.00% (+0.00%) compared to 30cc1ed'},
+                        data_received={'id': 8459159593}
                     ),
                     'title': 'default'
                 },
                 {
                     'notifier': 'status-patch',
-                    'result': NotificationResult(
-                        notification_attempted=True, notification_successful=True, explanation=None, data_sent={'title': 'codecov/patch', 'state': 'success', 'message': 'Coverage not affected when comparing 30cc1ed...2e2600a'}, data_received={'id': 8459159678}
+                    'result': dict(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
+                            'title': 'codecov/patch',
+                            'state': 'success',
+                            'message': 'Coverage not affected when comparing 30cc1ed...2e2600a'},
+                        data_received={'id': 8459159678}
                     ),
                     'title': 'default'
                 },
                 {
                     'notifier': 'status-changes',
-                    'result': NotificationResult(
-                        notification_attempted=True, notification_successful=True, explanation=None, data_sent={'title': 'codecov/changes', 'state': 'success', 'message': 'No unexpected coverage changes found'}, data_received={'id': 8459159753}
+                    'result': dict(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
+                            'title': 'codecov/changes',
+                            'state': 'success',
+                            'message': 'No unexpected coverage changes found'},
+                        data_received={'id': 8459159753}
                     ),
                     'title': 'default'
                 }]
@@ -359,7 +380,7 @@ class TestNotifyTask(object):
             'notifications': [
                 {
                     'notifier': 'WebhookNotifier',
-                    'result': NotificationResult(
+                    'result': dict(
                         notification_attempted=True,
                         notification_successful=True,
                         explanation=None,
@@ -398,7 +419,7 @@ class TestNotifyTask(object):
                 },
                 {
                     'notifier': 'SlackNotifier',
-                    'result': NotificationResult(
+                    'result': dict(
                         notification_attempted=True,
                         notification_successful=True,
                         explanation=None,
@@ -411,12 +432,12 @@ class TestNotifyTask(object):
                 },
                 {
                     'notifier': 'status-project',
-                    'result': NotificationResult(
+                    'result': dict(
                         notification_attempted=False,
                         notification_successful=None,
                         explanation='already_done',
                         data_sent={
-                            'title': 'codecov/project', 'state': 'success', 'message': '85.00000% (+0.00%) compared to 30cc1ed'
+                            'title': 'codecov/project', 'state': 'success', 'message': '85.00% (+0.00%) compared to 30cc1ed'
                         },
                         data_received=None
                     ),
@@ -424,7 +445,7 @@ class TestNotifyTask(object):
                 },
                 {
                     'notifier': 'status-patch',
-                    'result': NotificationResult(
+                    'result': dict(
                         notification_attempted=False,
                         notification_successful=None,
                         explanation='already_done',
@@ -437,7 +458,7 @@ class TestNotifyTask(object):
                 },
                 {
                     'notifier': 'status-changes',
-                    'result': NotificationResult(
+                    'result': dict(
                         notification_attempted=False,
                         notification_successful=None,
                         explanation='already_done',

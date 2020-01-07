@@ -1,4 +1,5 @@
 import logging
+import dataclasses
 
 from sqlalchemy.orm.session import Session
 from covreports.config import get_config
@@ -123,8 +124,20 @@ class NotifyTask(BaseCodecovTask):
         for notifier in self.get_notifiers_instances(commit.repository, current_yaml):
             if notifier.is_enabled():
                 res = await notifier.notify(comparison)
-                notifications.append(
-                    {'notifier': notifier.name, 'title': notifier.title, 'result': res}
+                individual_result = {
+                    'notifier': notifier.name,
+                    'title': notifier.title,
+                    'result': dataclasses.asdict(res)
+                }
+                notifications.append(individual_result)
+                log.info(
+                    "Individual notification done",
+                    extra=dict(
+                        individual_result=individual_result,
+                        commit=commit.commitid,
+                        base_commit=base_commit.commitid,
+                        repoid=commit.repoid
+                    )
                 )
         return notifications
 

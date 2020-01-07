@@ -268,7 +268,7 @@ class TestProjectStatusNotifier(object):
         base_commit = sample_comparison.base.commit
         head_commit = sample_comparison.head.commit
         expected_result = {
-            'message': f'60.00000% (+10.00%) compared to {base_commit.commitid[:7]}',
+            'message': f'60.00% (+10.00%) compared to {base_commit.commitid[:7]}',
             'state': 'success',
         }
         result = await notifier.build_payload(sample_comparison)
@@ -334,7 +334,7 @@ class TestProjectStatusNotifier(object):
             notification_successful=True,
             explanation=None,
             data_sent={
-                'message': f'60.00000% (+10.00%) compared to {base_commit.commitid[:7]}',
+                'message': f'60.00% (+10.00%) compared to {base_commit.commitid[:7]}',
                 'state': 'success',
                 'title': 'codecov/project/title'
             },
