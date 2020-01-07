@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import os
 
 import pytest
 
@@ -180,6 +181,28 @@ class TestUploadFinisherTask(object):
             )
         )
         assert mocked_app.send_task.call_count == 1
+
+    def test_should_send_notify_task_to_new_worker(self, dbsession, mocker):
+        first_commit = CommitFactory.create()
+        second_commit = CommitFactory.create()
+        third_commit = CommitFactory.create(repository=first_commit.repository)
+        fourth_commit = CommitFactory.create(repository__owner=first_commit.repository.owner)
+        fifth_commit = CommitFactory.create()
+        dbsession.add(first_commit)
+        dbsession.add(second_commit)
+        dbsession.add(third_commit)
+        dbsession.add(fourth_commit)
+        dbsession.add(fifth_commit)
+        dbsession.flush()
+        whitelist = f'{first_commit.repository.ownerid} {fifth_commit.repository.ownerid}'
+        mocker.patch.dict(os.environ, {'NOTIFY_WHITELISTED_OWNERS': whitelist})
+        task = UploadFinisherTask()
+        assert task.should_send_notify_task_to_new_worker(first_commit)
+        assert not task.should_send_notify_task_to_new_worker(second_commit)
+        assert task.should_send_notify_task_to_new_worker(third_commit)
+        assert task.should_send_notify_task_to_new_worker(fourth_commit)
+        assert task.should_send_notify_task_to_new_worker(fifth_commit)
+
 
     @pytest.mark.asyncio
     async def test_finish_reports_processing_legacy_worker(self, dbsession, mocker):

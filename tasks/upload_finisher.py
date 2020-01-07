@@ -134,8 +134,8 @@ class UploadFinisherTask(BaseCodecovTask):
         return {'notifications_called': notifications_called}
 
     def should_send_notify_task_to_new_worker(self, commit):
-        available_owners = [int(x.strip()) for x in os.getenv('NOTIFY_WHITELISTED_REPOS', '').split()]
-        if commit.repoid in available_owners:
+        whitelisted_owners = [int(x.strip()) for x in os.getenv('NOTIFY_WHITELISTED_OWNERS', '').split()]
+        if commit.repository.ownerid in whitelisted_owners:
             return True
         return random.random() < float(os.getenv('NOTIFY_PERCENTAGE', '0.00'))
 
