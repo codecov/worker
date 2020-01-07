@@ -210,7 +210,7 @@ class NotifyTask(BaseCodecovTask):
         db_session = pull.get_db_session()
         # TODO: The legacy code uses pull.base. Check whether true, and why, since
         # pull.base is not guaranteed to be in the database
-        return db_session.query(Commit).filter_by(commitid=pull.compared_to).first()
+        return db_session.query(Commit).filter_by(repoid=pull.repoid, commitid=pull.compared_to).first()
 
     def fetch_parent(self, commit):
         db_session = commit.get_db_session()
