@@ -569,6 +569,88 @@ class TestRepositoryServiceTestCase(object):
         assert res.author == commit.author
 
     @pytest.mark.asyncio
+    async def test_fetch_and_update_pull_request_multiple_pulls_same_repo(self, dbsession, mocker):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(
+            repository=repository
+        )
+        second_pull = PullFactory.create(
+            repository=repository
+        )
+        commit = CommitFactory.create(
+            message='',
+            pullid=pull.pullid,
+            totals=None,
+            report_json=None,
+            repository=repository
+        )
+        base_commit = CommitFactory.create(
+            repository=repository,
+            branch='master'
+        )
+        dbsession.add(pull)
+        dbsession.add(second_pull)
+        dbsession.add(commit)
+        dbsession.add(base_commit)
+        dbsession.flush()
+        current_yaml = {}
+        f = Future()
+        f.set_result({
+            'author': {
+                'id': 'author_id', 'username': 'author_username',
+                'email': 'email@email.com', 'name': 'Mario'
+            },
+            'message': 'Merged in aaaa/coverage.py (pull request #99) Fix #123: crash',
+            'timestamp': datetime(2019, 10, 10),
+            'parents': []
+        })
+        get_pull_request_result = Future()
+        get_pull_request_result.set_result(
+            {
+                'base': {
+                    'branch': 'master',
+                    'commitid': base_commit.commitid
+                },
+                'head': {
+                    'branch': 'reason/some-testing',
+                    'commitid': commit.commitid
+                },
+                'number': str(pull.pullid),
+                'id': str(pull.pullid),
+                'state': 'open',
+                'title': 'Creating new code for reasons no one knows',
+            }
+        )
+        repository_service = mocker.MagicMock(
+            get_commit=mocker.MagicMock(
+                return_value=f
+            ),
+            get_pull_request=mocker.MagicMock(
+                return_value=get_pull_request_result
+            ),
+        )
+        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+        dbsession.refresh(res)
+        assert res is not None
+        assert res == pull
+        assert res != second_pull
+        assert res.repoid == commit.repoid
+        assert res.pullid == pull.pullid
+        assert res.issueid == pull.pullid
+        assert res.updatestamp is None
+        assert res.state == 'open'
+        assert res.title == 'Creating new code for reasons no one knows'
+        assert res.base == base_commit.commitid
+        assert res.compared_to == base_commit.commitid
+        assert res.head == commit.commitid
+        assert res.commentid is None
+        assert res.diff is None
+        assert res.flare is None
+        assert res.author == commit.author
+
+    @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_different_compared_to(self, dbsession, mocker):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
