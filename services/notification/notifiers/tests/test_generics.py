@@ -1,3 +1,5 @@
+import pytest
+
 from services.notification.notifiers.generics import StandardNotifier
 from database.tests.factories import RepositoryFactory
 
@@ -158,7 +160,8 @@ class TestStandardkNotifier(object):
         )
         assert notifier.should_notify_comparison(sample_comparison)
 
-    def test_notify(self, sample_comparison):
+    @pytest.mark.asyncio
+    async def test_notify(self, sample_comparison):
         notifier = SampleNotifierForTest(
             repository=sample_comparison.head.commit.repository,
             title='title',
@@ -169,4 +172,29 @@ class TestStandardkNotifier(object):
             notifier_site_settings=True,
             current_yaml={}
         )
-        assert notifier.notify(sample_comparison)
+        res = await notifier.notify(sample_comparison)
+        assert res.notification_attempted
+        assert res.notification_successful
+        assert res.explanation is None
+        assert res.data_sent == {'commitid': sample_comparison.head.commit.commitid}
+        assert res.data_received is None
+
+    @pytest.mark.asyncio
+    async def test_notify_should_not_notify(self, sample_comparison, mocker):
+        notifier = SampleNotifierForTest(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'url': 'https://example.com/myexample',
+                'threshold': 8.0
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        mocker.patch.object(SampleNotifierForTest, 'should_notify_comparison', return_value=False)
+        res = await notifier.notify(sample_comparison)
+        assert not res.notification_attempted
+        assert res.notification_successful is None
+        assert res.explanation == 'Did not fit criteria'
+        assert res.data_sent is None
+        assert res.data_received is None

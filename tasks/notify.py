@@ -181,7 +181,7 @@ class NotifyTask(BaseCodecovTask):
                     "Attempting individual notification",
                     extra=dict(
                         commit=commit.commitid,
-                        base_commit=base_commit.commitid,
+                        base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
                         repoid=commit.repoid,
                         notifier=notifier.name,
                         notifier_title=notifier.title
@@ -200,7 +200,7 @@ class NotifyTask(BaseCodecovTask):
                     extra=dict(
                         individual_result=individual_result,
                         commit=commit.commitid,
-                        base_commit=base_commit.commitid,
+                        base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
                         repoid=commit.repoid
                     )
                 )

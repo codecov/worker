@@ -109,7 +109,8 @@ class StandardNotifier(AbstractBaseNotifier):
                         result = NotificationResult(
                             notification_attempted=False,
                             notification_successful=None,
-                            explanation='Did not fit criteria'
+                            explanation='Did not fit criteria',
+                            data_sent=None
                         )
             log.info(
                 "Finishing notification on %s. Result was %s",
