@@ -6,11 +6,15 @@ from covreports.config import get_config
 from torngit.exceptions import TorngitClientError
 
 from app import celery_app
-from celery_config import pulls_task_name, notify_task_name, status_set_error_task_name
+from celery_config import (
+    pulls_task_name, notify_task_name, status_set_error_task_name, task_default_queue
+)
 from database.models import Commit
 from helpers.metrics import metrics
 from services.commit_status import RepositoryCIFilter
-from services.notification.notifiers import get_all_notifier_classes_mapping, get_status_notifier_class
+from services.notification.notifiers import (
+    get_all_notifier_classes_mapping, get_status_notifier_class
+)
 from services.notification.types import Comparison, FullCommit
 from services.report import ReportService
 from services.repository import get_repo_provider_service, fetch_and_update_pull_request_information
@@ -252,14 +256,14 @@ class NotifyTask(BaseCodecovTask):
             ci_passed is False
         ):
             # we can exit, ci failed.
-            self.app.send_task(
-                status_set_error_task_name,
+            self.app.tasks[status_set_error_task_name].apply_async(
                 args=None,
                 kwargs=dict(
                     repoid=commit.repoid,
                     commitid=commit.commitid,
                     message='CI failed.'
-                )
+                ),
+                queue=task_default_queue
             )
             log.info(
                 'Not sending notifications because CI failed',

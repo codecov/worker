@@ -301,3 +301,35 @@ class TestNotifyTask(object):
             'notifications': None, 'notified': False, 'reason': 'not_able_fetch_ci_result'
         }
         assert expected_result == res
+
+    def test_should_send_notifications_ci_did_not_pass(self, dbsession, mocker):
+        commit = CommitFactory.create(
+            message='',
+            pullid=None,
+            branch='test-branch-1',
+            commitid='649eaaf2924e92dc7fd8d370ddb857033231e67a',
+            repository__using_integration=True
+        )
+        mocked_app = mocker.patch.object(NotifyTask, 'app')
+        set_error_task_caller = mocker.MagicMock()
+        mocked_app.tasks = {
+            'app.tasks.status.SetError': set_error_task_caller
+        }
+        dbsession.add(commit)
+        dbsession.flush()
+        ci_passed = False
+        current_yaml = {'codecov': {'require_ci_to_pass': True}}
+        task = NotifyTask()
+        res = task.should_send_notifications(
+            current_yaml, commit, ci_passed
+        )
+        assert not res
+        set_error_task_caller.apply_async.assert_called_with(
+            args=None,
+            kwargs=dict(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                message='CI failed.'
+            ),
+            queue='new_tasks'
+        )
