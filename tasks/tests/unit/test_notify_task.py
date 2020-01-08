@@ -6,6 +6,7 @@ from celery.exceptions import Retry
 from torngit.exceptions import TorngitClientError
 
 from tasks.notify import default_if_true, NotifyTask
+from services.notification.notifiers.base import NotificationResult
 from database.tests.factories import RepositoryFactory, CommitFactory, OwnerFactory
 
 
@@ -139,9 +140,31 @@ class TestNotifyTask(object):
 
     @pytest.mark.asyncio
     async def test_simple_call_yes_notifications_no_base(self, dbsession, mocker, mock_storage, mock_configuration):
+        fake_notifier = mocker.MagicMock(
+            notify=mocker.MagicMock(
+                return_value=Future()
+            ),
+            is_enabled=mocker.MagicMock(
+                return_value=True
+            ),
+            title='the_title',
+        )
+        fake_notifier.name = 'fake_hahaha'
+        fake_notifier.notify.return_value.set_result(
+            NotificationResult(
+                notification_attempted=True,
+                notification_successful=True,
+                explanation='',
+                data_sent={'all': ['The', 1, 'data']}
+            )
+        )
+        mocker.patch.object(
+            NotifyTask, 'get_notifiers_instances',
+            return_value=[fake_notifier]
+        )
         mock_configuration.params['setup']['codecov_url'] = 'https://codecov.io'
         mocker.patch.object(NotifyTask, 'app')
-        mocked_should_send_notifications = mocker.patch.object(
+        mocker.patch.object(
             NotifyTask, 'should_send_notifications', return_value=True
         )
         fetch_and_update_whether_ci_passed_result = Future()
@@ -163,12 +186,28 @@ class TestNotifyTask(object):
         dbsession.flush()
         task = NotifyTask()
         result = await task.run_async(
-            dbsession, commit.repoid, commit.commitid, current_yaml={}
+            dbsession, commit.repoid, commit.commitid,
+            current_yaml={'coverage': {'status': {'patch': True}}}
         )
-        assert result == {'notified': True, 'notifications': []}
-        mocked_should_send_notifications.assert_called_with(
-            {}, commit, fetch_and_update_whether_ci_passed_result.result()
-        )
+        expected_result = {
+            'notified': True,
+            'notifications': [
+                {
+                    'notifier': 'fake_hahaha',
+                    'title': 'the_title',
+                    'result': {
+                        'data_sent': {'all': ['The', 1, 'data']},
+                        'notification_successful': True,
+                        'notification_attempted': True,
+                        'data_received': None,
+                        'explanation': ''
+                    }
+                }
+            ]
+        }
+        assert result['notifications'][0] == expected_result['notifications'][0]
+        assert result['notifications'] == expected_result['notifications']
+        assert result == expected_result
 
     @pytest.mark.asyncio
     async def test_simple_call_should_delay(self, dbsession, mocker, mock_storage, mock_configuration):

@@ -109,7 +109,7 @@ class StatusNotifier(AbstractBaseNotifier):
                 notification_successful=True,
                 explanation=None,
                 data_sent=notification_result,
-                data_received={'id': res['id']}
+                data_received={'id': res.get('id', 'NO_ID')}
             )
         else:
             log.info(
