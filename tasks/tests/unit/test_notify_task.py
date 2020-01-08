@@ -138,6 +138,39 @@ class TestNotifyTask(object):
         )
 
     @pytest.mark.asyncio
+    async def test_simple_call_yes_notifications_no_base(self, dbsession, mocker, mock_storage, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'https://codecov.io'
+        mocker.patch.object(NotifyTask, 'app')
+        mocked_should_send_notifications = mocker.patch.object(
+            NotifyTask, 'should_send_notifications', return_value=True
+        )
+        fetch_and_update_whether_ci_passed_result = Future()
+        fetch_and_update_whether_ci_passed_result.set_result({})
+        mocker.patch.object(
+            NotifyTask, 'fetch_and_update_whether_ci_passed',
+            return_value=fetch_and_update_whether_ci_passed_result
+        )
+        mocked_fetch_pull = mocker.patch(
+            'tasks.notify.fetch_and_update_pull_request_information',
+            return_value=Future()
+        )
+        mocked_fetch_pull.return_value.set_result(None)
+        commit = CommitFactory.create(
+            message='',
+            pullid=None,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        task = NotifyTask()
+        result = await task.run_async(
+            dbsession, commit.repoid, commit.commitid, current_yaml={}
+        )
+        assert result == {'notified': True, 'notifications': []}
+        mocked_should_send_notifications.assert_called_with(
+            {}, commit, fetch_and_update_whether_ci_passed_result.result()
+        )
+
+    @pytest.mark.asyncio
     async def test_simple_call_should_delay(self, dbsession, mocker, mock_storage, mock_configuration):
         mock_configuration.params['setup']['codecov_url'] = 'https://codecov.io'
         mocker.patch.object(NotifyTask, 'app')

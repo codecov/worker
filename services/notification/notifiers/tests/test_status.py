@@ -3,7 +3,10 @@ from asyncio import Future
 
 from covreports.resources import ReportLine, ReportFile, Report
 
-from services.notification.notifiers.status import ProjectStatusNotifier, PatchStatusNotifier, ChangesStatusNotifier
+from services.notification.notifiers.status import (
+    ProjectStatusNotifier, PatchStatusNotifier, ChangesStatusNotifier
+)
+from services.notification.notifiers.status.base import StatusNotifier
 from services.notification.notifiers.base import NotificationResult
 from torngit.status import Status
 
@@ -253,6 +256,64 @@ def mock_repo_provider(mock_repo_provider):
     return mock_repo_provider
 
 
+class TestBaseStatusNotifier(object):
+
+    def test_can_we_set_this_status_no_pull(self, sample_comparison_without_pull):
+        comparison = sample_comparison_without_pull
+        only_pulls_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'only_pulls': True},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        assert not only_pulls_notifier.can_we_set_this_status(comparison)
+        wrong_branch_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'only_pulls': False, 'branches': ['old.*']},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        assert not wrong_branch_notifier.can_we_set_this_status(comparison)
+        right_branch_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'only_pulls': False, 'branches': ['new.*']},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        assert right_branch_notifier.can_we_set_this_status(comparison)
+        no_settings_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        assert no_settings_notifier.can_we_set_this_status(comparison)
+
+    @pytest.mark.asyncio
+    async def test_notify_cannot_set_status(self, sample_comparison, mocker):
+        comparison = sample_comparison
+        no_settings_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        mocker.patch.object(
+            StatusNotifier, 'can_we_set_this_status', return_value=False
+        )
+        result = await no_settings_notifier.notify(comparison)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == 'not_fit_criteria'
+        assert result.data_sent is None
+        assert result.data_received is None
+
+
 class TestProjectStatusNotifier(object):
 
     @pytest.mark.asyncio
@@ -266,7 +327,6 @@ class TestProjectStatusNotifier(object):
             current_yaml={}
         )
         base_commit = sample_comparison.base.commit
-        head_commit = sample_comparison.head.commit
         expected_result = {
             'message': f'60.00% (+10.00%) compared to {base_commit.commitid[:7]}',
             'state': 'success',
@@ -284,10 +344,25 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml={}
         )
-        base_commit = sample_comparison.base.commit
-        head_commit = sample_comparison.head.commit
         expected_result = {
-            'message': '60.00% (target 57.00%',
+            'message': '60.00% (target 57.00%)',
+            'state': 'success',
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_not_auto_not_string(self, sample_comparison, mock_repo_provider, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'target': 57.0},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': '60.00% (target 57.00%)',
             'state': 'success',
         }
         result = await notifier.build_payload(sample_comparison)
@@ -376,6 +451,23 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             'message': '66.67% of diff hit (target 70.00%)',
             'state': 'failure'
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_not_auto_not_string(self, sample_comparison, mock_repo_provider, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        notifier = PatchStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'target': 57.0},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        expected_result = {
+            'message': '66.67% of diff hit (target 57.00%)',
+            'state': 'success',
         }
         result = await notifier.build_payload(sample_comparison)
         assert expected_result == result
