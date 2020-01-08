@@ -41,7 +41,8 @@ class TestBotsService(BaseTestCase):
                 )
             )
         )
-        assert get_repo_appropriate_bot_token(repo) == {'key': 'simple_code', 'secret': None}
+        expected_result = {'username': repo.bot.username, 'key': 'simple_code', 'secret': None}
+        assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_invalid_bot_valid_owner_bot(self):
         repo = RepositoryFactory.create(
@@ -56,7 +57,9 @@ class TestBotsService(BaseTestCase):
                 )
             )
         )
-        expected_result = {'key': 'now_that_code_is_complex', 'secret': None}
+        expected_result = {
+            'username': repo.owner.bot.username, 'key': 'now_that_code_is_complex', 'secret': None
+        }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_no_bot_valid_owner_bot(self):
@@ -70,7 +73,9 @@ class TestBotsService(BaseTestCase):
                 )
             )
         )
-        expected_result = {'key': 'now_that_code_is_complex', 'secret': None}
+        expected_result = {
+            'username': repo.owner.bot.username, 'key': 'now_that_code_is_complex', 'secret': None
+        }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_no_bot_invalid_owner_bot(self):
@@ -84,7 +89,9 @@ class TestBotsService(BaseTestCase):
                 )
             )
         )
-        expected_result = {'key': 'not_so_simple_code', 'secret': None}
+        expected_result = {
+            'username': repo.owner.username, 'key': 'not_so_simple_code', 'secret': None
+        }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_no_oauth_token_at_all(self):
@@ -113,7 +120,9 @@ class TestBotsService(BaseTestCase):
                 )
             )
         )
-        expected_result = {'key': 'not_so_simple_code', 'secret': None}
+        expected_result = {
+            'username': repo.owner.username, 'key': 'not_so_simple_code', 'secret': None
+        }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     @pytest.mark.integration

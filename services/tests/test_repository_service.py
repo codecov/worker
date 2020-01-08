@@ -31,7 +31,9 @@ class TestRepositoryServiceTestCase(object):
             },
         }
         assert res.data == expected_data
-        assert res.token == {'key': 'testyftq3ovzkb3zmt823u3t04lkrt9w', 'secret': None}
+        assert res.token == {
+            'username': repo.owner.username, 'key': 'testyftq3ovzkb3zmt823u3t04lkrt9w', 'secret': None
+        }
 
     def test_get_repo_provider_service_different_bot(self, dbsession):
         bot_token = 'bcaa0dc0c66b4a8c8c65ac919a1a91aa'
@@ -59,7 +61,7 @@ class TestRepositoryServiceTestCase(object):
         }
         assert res.data['repo'] == expected_data['repo']
         assert res.data == expected_data
-        assert res.token == {'key': bot_token, 'secret': None}
+        assert res.token == {'username': repo.bot.username, 'key': bot_token, 'secret': None}
 
     def test_get_repo_provider_service_no_bot(self, dbsession):
         bot_token = 'bcaa0dc0c66b4a8c8c65ac919a1a91aa'
@@ -87,7 +89,7 @@ class TestRepositoryServiceTestCase(object):
             },
         }
         assert res.data == expected_data
-        assert res.token == {'key': bot_token, 'secret': None}
+        assert res.token == {'username': repo.owner.bot.username, 'key': bot_token, 'secret': None}
 
     @pytest.mark.asyncio
     async def test_fetch_appropriate_parent_for_commit_grandparent(self, dbsession, mock_repo_provider):
@@ -435,7 +437,9 @@ class TestRepositoryServiceTestCase(object):
         }
         assert res.data['repo'] == expected_data['repo']
         assert res.data == expected_data
-        assert res.token == { 'key': 'bcaa0dc0c66b4a8c8c65ac919a1a91aa', 'secret': None }
+        assert res.token == {
+            'username': '1nf1n1t3l00p',  'key': 'bcaa0dc0c66b4a8c8c65ac919a1a91aa', 'secret': None
+        }
 
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_new_pull_commits_in_place(self, dbsession, mocker):
