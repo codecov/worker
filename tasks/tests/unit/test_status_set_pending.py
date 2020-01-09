@@ -18,10 +18,16 @@ class TestSetPendingTaskUnit(object):
         mocked_1 = mocker.patch('tasks.status_set_pending.get_repo_provider_service_by_id')
         repo = mocker.MagicMock(
             service='github',
-            data=dict(yaml={'coverage': {'status': None}}),
+            data=dict(repo=dict(repoid=123)),
             set_commit_status=mocker.MagicMock(return_value=None)
         )
         mocked_1.return_value = repo
+
+        mocked_2 = mocker.patch('tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference')
+        fetch_current_yaml = Future()
+        fetch_current_yaml.set_result({'coverage': {'status': None}})
+        mocked_2.return_value = fetch_current_yaml
+
         mock_redis.sismember.side_effect = [True]
 
         repoid = '1'
@@ -29,7 +35,7 @@ class TestSetPendingTaskUnit(object):
         branch = 'master'
         on_a_pull_request = False
         res = await StatusSetPendingTask().run_async(dbsession, repoid, commitid, branch, on_a_pull_request)
-        assert res is None
+        assert res['status_set'] == False
         assert not repo.set_commit_status.called
 
     @pytest.mark.asyncio
@@ -37,10 +43,16 @@ class TestSetPendingTaskUnit(object):
         mocked_1 = mocker.patch('tasks.status_set_pending.get_repo_provider_service_by_id')
         repo = mocker.MagicMock(
             service='github',
-            data=dict(yaml={'coverage': {'status': None}}),
+            data=dict(repo=dict(repoid=123)),
             set_commit_status=mocker.MagicMock(return_value=None)
         )
         mocked_1.return_value = repo
+
+        mocked_2 = mocker.patch('tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference')
+        fetch_current_yaml = Future()
+        fetch_current_yaml.set_result({'coverage': {'status': None}})
+        mocked_2.return_value = fetch_current_yaml
+
         mock_redis.sismember.side_effect = [False]
 
         repoid = '1'
@@ -59,11 +71,17 @@ class TestSetPendingTaskUnit(object):
         repo = mocker.MagicMock(
             service='github',
             slug='owner/repo',
-            data=dict(yaml={'coverage': {'status': {'project': {'custom': {'target': 80, 'set_pending': False}}}}}),
+            data=dict(repo=dict(repoid=123)),
             get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
             set_commit_status=mocker.MagicMock(return_value=set_commit_status)
         )
         mocked_1.return_value = repo
+
+        mocked_2 = mocker.patch('tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference')
+        fetch_current_yaml = Future()
+        fetch_current_yaml.set_result({'coverage': {'status': {'project': {'custom': {'target': 80, 'set_pending': False}}}}})
+        mocked_2.return_value = fetch_current_yaml
+
         mock_redis.sismember.side_effect = [True]
 
         get_commit_statuses.set_result(Status([]))
@@ -75,7 +93,7 @@ class TestSetPendingTaskUnit(object):
         on_a_pull_request = False
         res = await StatusSetPendingTask().run_async(dbsession, repoid, commitid, branch, on_a_pull_request)
         assert not repo.set_commit_status.called
-        assert res is None
+        assert res['status_set'] == False
 
     @pytest.mark.asyncio
     async def test_skip_set_pending_unknown_branch(self, mocker, mock_configuration, dbsession, mock_redis):
@@ -85,11 +103,17 @@ class TestSetPendingTaskUnit(object):
         repo = mocker.MagicMock(
             service='github',
             slug='owner/repo',
-            data=dict(yaml={'coverage': {'status': {'project': {'custom': {'target': 80, 'branches': ['master']}}}}}),
+            data=dict(repo=dict(repoid=123)),
             get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
             set_commit_status=mocker.MagicMock(return_value=set_commit_status)
         )
         mocked_1.return_value = repo
+
+        mocked_2 = mocker.patch('tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference')
+        fetch_current_yaml = Future()
+        fetch_current_yaml.set_result({'coverage': {'status': {'project': {'custom': {'target': 80, 'branches': ['master']}}}}})
+        mocked_2.return_value = fetch_current_yaml
+
         mock_redis.sismember.side_effect = [True]
 
         get_commit_statuses.set_result(Status([]))
@@ -101,7 +125,7 @@ class TestSetPendingTaskUnit(object):
         on_a_pull_request = False
         res = await StatusSetPendingTask().run_async(dbsession, repoid, commitid, branch, on_a_pull_request)
         assert not repo.set_commit_status.called
-        assert res is None
+        assert res['status_set'] == False
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize('context, branch, cc_status_exists', [
@@ -127,11 +151,17 @@ class TestSetPendingTaskUnit(object):
         repo = mocker.MagicMock(
             service='github',
             slug='owner/repo',
-            data=dict(yaml={'coverage': {'status': {context: {'custom': {'target': 80, 'branches': ['!skip']}}}}}),
+            data=dict(repo=dict(repoid=123)),
             get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
             set_commit_status=mocker.MagicMock(return_value=set_commit_status)
         )
         mocked_1.return_value = repo
+
+        mocked_2 = mocker.patch('tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference')
+        fetch_current_yaml = Future()
+        fetch_current_yaml.set_result({'coverage': {'status': {context: {'custom': {'target': 80, 'branches': ['!skip']}}}}})
+        mocked_2.return_value = fetch_current_yaml
+
         mock_redis.sismember.side_effect = [True]
 
         get_commit_statuses.set_result(Status(statuses))
