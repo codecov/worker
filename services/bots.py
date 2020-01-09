@@ -11,7 +11,10 @@ def get_repo_appropriate_bot_token(repo):
     if repo.using_integration and repo.owner.integration_id:
         github_token = get_github_integration_token(repo.owner.service, repo.owner.integration_id)
         return dict(key=github_token)
-    return encryptor.decrypt_token(_get_repo_appropriate_bot(repo).oauth_token)
+    appropriate_bot = _get_repo_appropriate_bot(repo)
+    token_dict = encryptor.decrypt_token(appropriate_bot.oauth_token)
+    token_dict['username'] = appropriate_bot.username
+    return token_dict
 
 
 def _get_repo_appropriate_bot(repo):
