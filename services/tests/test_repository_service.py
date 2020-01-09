@@ -27,7 +27,10 @@ class TestRepositoryServiceTestCase(object):
                 'username': repo.owner.username
             },
             'repo': {
-                'name': 'example-python', 'using_integration': False, 'service_id': repo.service_id
+                'name': 'example-python',
+                'using_integration': False,
+                'service_id': repo.service_id,
+                'repoid': repo.repoid
             },
         }
         assert res.data == expected_data
@@ -56,7 +59,10 @@ class TestRepositoryServiceTestCase(object):
                 'username': repo.owner.username
             },
             'repo': {
-                'name': 'example-python', 'using_integration': False, 'service_id': repo.service_id
+                'name': 'example-python',
+                'using_integration': False,
+                'service_id': repo.service_id,
+                'repoid': repo.repoid
             },
         }
         assert res.data['repo'] == expected_data['repo']
@@ -85,7 +91,10 @@ class TestRepositoryServiceTestCase(object):
                 'username': repo.owner.username
             },
             'repo': {
-                'name': 'example-python', 'using_integration': False, 'service_id': repo.service_id
+                'name': 'example-python',
+                'using_integration': False,
+                'service_id': repo.service_id,
+                'repoid': repo.repoid
             },
         }
         assert res.data == expected_data
@@ -432,7 +441,8 @@ class TestRepositoryServiceTestCase(object):
             'repo': {
                 'name': 'pytest',
                 'using_integration': False,
-                'service_id': '123456'
+                'service_id': '123456',
+                'repoid': repo.repoid
             },
         }
         assert res.data['repo'] == expected_data['repo']

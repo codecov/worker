@@ -18,10 +18,15 @@ class TestSetErrorTaskUnit(object):
         mocked_1 = mocker.patch('tasks.status_set_error.get_repo_provider_service_by_id')
         repo = mocker.MagicMock(
             service='github',
-            data=dict(yaml={'coverage': {'status': None}}),
+            data=dict(repo=dict(repoid=123)),
             set_commit_status=mocker.MagicMock(return_value=None)
         )
         mocked_1.return_value = repo
+
+        mocked_2 = mocker.patch('tasks.status_set_error.fetch_current_yaml_from_provider_via_reference')
+        fetch_current_yaml = Future()
+        fetch_current_yaml.set_result({'coverage': {'status': None}})
+        mocked_2.return_value = fetch_current_yaml
 
         repoid = '1'
         commitid = 'x'
@@ -49,7 +54,7 @@ class TestSetErrorTaskUnit(object):
             service='github',
             slug='owner/repo',
             token={'username': 'bot'},
-            data=dict(yaml={'coverage': {'status': {context: {'default': {'target': 80}}}}}),
+            data=dict(repo=dict(repoid=123)),
             get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
             set_commit_status=mocker.MagicMock(return_value=set_commit_status)
         )
@@ -57,6 +62,11 @@ class TestSetErrorTaskUnit(object):
 
         get_commit_statuses.set_result(Status(statuses))
         set_commit_status.set_result(None)
+
+        mocked_2 = mocker.patch('tasks.status_set_error.fetch_current_yaml_from_provider_via_reference')
+        fetch_current_yaml = Future()
+        fetch_current_yaml.set_result({'coverage': {'status': {context: {'default': {'target': 80}}}}})
+        mocked_2.return_value = fetch_current_yaml
 
         repoid = 1
         commitid = 'a'
@@ -83,11 +93,16 @@ class TestSetErrorTaskUnit(object):
             service='github',
             slug='owner/repo',
             token={'username': 'bot'},
-            data=dict(yaml={'coverage': {'status': {context: {'default': {'target': 80}}}}}),
+            data=dict(repo=dict(repoid=123)),
             get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
             set_commit_status=mocker.MagicMock(return_value=set_commit_status)
         )
         mocked_1.return_value = repo
+
+        mocked_2 = mocker.patch('tasks.status_set_error.fetch_current_yaml_from_provider_via_reference')
+        fetch_current_yaml = Future()
+        fetch_current_yaml.set_result({'coverage': {'status': {context: {'default': {'target': 80}}}}})
+        mocked_2.return_value = fetch_current_yaml
 
         get_commit_statuses.set_result(Status(statuses))
         set_commit_status.set_result(None)

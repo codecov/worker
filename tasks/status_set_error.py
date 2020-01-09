@@ -4,9 +4,11 @@ import re
 from app import celery_app
 from celery_config import status_set_error_task_name
 from covreports.helpers.yaml import walk, default_if_true
-from services.repository import get_repo_provider_service_by_id
-from covreports.utils.urls import make_url
 from database.models import Repository
+from covreports.utils.urls import make_url
+from services.repository import get_repo_provider_service_by_id
+from services.yaml.fetcher import fetch_current_yaml_from_provider_via_reference
+from services.yaml.reader import read_yaml_field
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -29,7 +31,9 @@ class StatusSetErrorTask(BaseCodecovTask):
 
         repo = get_repo_provider_service_by_id(db_session, repoid)
 
-        settings = walk(repo.data['yaml'], ('coverage', 'status'))
+        current_yaml = await fetch_current_yaml_from_provider_via_reference(commitid, repo)
+        settings = read_yaml_field(current_yaml, ('coverage', 'status'))
+
         if settings and any(settings.values()):
             statuses = await repo.get_commit_statuses(commitid)
             url = make_url(repo, 'commit', commitid)
