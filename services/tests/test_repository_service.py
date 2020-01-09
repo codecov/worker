@@ -275,7 +275,8 @@ class TestRepositoryServiceTestCase(object):
                 'id': None, 'username': None, 'email': 'email@email.com', 'name': 'Mario'
             },
             'message': 'This message is brought to you by',
-            'parents': [possible_parent_commit.commitid]
+            'parents': [possible_parent_commit.commitid],
+            'timestamp': '2018-07-09T23:39:20Z'
         })
         get_pull_request_result = Future()
         get_pull_request_result.set_result({
@@ -290,12 +291,15 @@ class TestRepositoryServiceTestCase(object):
             ),
         )
         await update_commit_from_provider_info(repository_service, commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
         assert commit.author is None
         assert commit.message == 'This message is brought to you by'
         assert commit.pullid == 1
         assert commit.totals is None
         assert commit.report_json is None
         assert commit.branch == 'newbranchyeah'
+        assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
         assert commit.parent_commit_id == possible_parent_commit.commitid
         assert commit.state == 'complete'
 
@@ -324,7 +328,8 @@ class TestRepositoryServiceTestCase(object):
                 'email': 'email@email.com', 'name': 'Mario'
             },
             'message': 'This message is brought to you by',
-            'parents': [possible_parent_commit.commitid]
+            'parents': [possible_parent_commit.commitid],
+            'timestamp': '2018-07-09T23:39:20Z'
         })
         get_pull_request_result = Future()
         get_pull_request_result.set_result({
@@ -339,6 +344,8 @@ class TestRepositoryServiceTestCase(object):
             ),
         )
         await update_commit_from_provider_info(repository_service, commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
         assert commit.message == 'This message is brought to you by'
         assert commit.pullid == 1
         assert commit.totals is None
@@ -347,6 +354,7 @@ class TestRepositoryServiceTestCase(object):
         assert commit.parent_commit_id == possible_parent_commit.commitid
         assert commit.state == 'complete'
         assert commit.author is not None
+        assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
         assert commit.author.username == 'author_username'
 
     @pytest.mark.asyncio
@@ -375,7 +383,8 @@ class TestRepositoryServiceTestCase(object):
                 'email': 'email@email.com', 'name': 'Mario'
             },
             'message': 'Merged in aaaa/coverage.py (pull request #99) Fix #123: crash',
-            'parents': [possible_parent_commit.commitid]
+            'parents': [possible_parent_commit.commitid],
+            'timestamp': '2018-07-09T23:39:20Z'
         })
         get_pull_request_result = Future()
         get_pull_request_result.set_result({
@@ -391,6 +400,8 @@ class TestRepositoryServiceTestCase(object):
             ),
         )
         await update_commit_from_provider_info(repository_service, commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
         assert commit.message == 'Merged in aaaa/coverage.py (pull request #99) Fix #123: crash'
         assert commit.pullid == 1
         assert commit.totals is None
@@ -399,6 +410,7 @@ class TestRepositoryServiceTestCase(object):
         assert commit.parent_commit_id == possible_parent_commit.commitid
         assert commit.state == 'complete'
         assert commit.author is not None
+        assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
         assert commit.author.username == 'author_username'
 
     @pytest.mark.asyncio

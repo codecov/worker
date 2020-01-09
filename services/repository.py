@@ -130,6 +130,7 @@ async def update_commit_from_provider_info(repository_service, commit):
         commit.merged = False
         commit.author = commit_author
         commit.updatestamp = datetime.now()
+        commit.timestamp = git_commit['timestamp']
 
         if commit.repository.service == 'bitbucket':
             res = merged_pull(git_commit['message'])
