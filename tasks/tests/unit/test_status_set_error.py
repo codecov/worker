@@ -31,8 +31,8 @@ class TestSetErrorTaskUnit(object):
         repoid = '1'
         commitid = 'x'
         res = await StatusSetErrorTask().run_async(dbsession, repoid, commitid)
-        assert res is None
         assert not repo.set_commit_status.called
+        assert res == { 'status_set': False }
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize('context, cc_status_exists', [

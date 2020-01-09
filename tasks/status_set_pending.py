@@ -39,6 +39,8 @@ class StatusSetPendingTask(BaseCodecovTask):
         current_yaml = await fetch_current_yaml_from_provider_via_reference(commitid, repo)
         settings = read_yaml_field(current_yaml, ('coverage', 'status'))
 
+        status_set = False
+
         if settings and any(settings.values()):
             statuses = await repo.get_commit_statuses(commitid)
             url = make_url(repo, 'commit', commitid)
@@ -58,6 +60,7 @@ class StatusSetPendingTask(BaseCodecovTask):
                                                          context=title,
                                                          description='Collecting reports and waiting for CI to complete',
                                                          url=url)
+                            status_set = True
                             log.info(
                                 'Status set',
                                 extra=dict(context=title, state='pending')
@@ -67,6 +70,10 @@ class StatusSetPendingTask(BaseCodecovTask):
                                 str(e),
                                 extra=dict(context=context)
                             )
+
+        return {
+            'status_set': status_set
+        }
 
 RegisteredStatusSetPendingTask = celery_app.register_task(StatusSetPendingTask())
 status_set_pending_task = celery_app.tasks[StatusSetPendingTask.name]

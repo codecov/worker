@@ -34,6 +34,8 @@ class StatusSetErrorTask(BaseCodecovTask):
         current_yaml = await fetch_current_yaml_from_provider_via_reference(commitid, repo)
         settings = read_yaml_field(current_yaml, ('coverage', 'status'))
 
+        status_set = False
+
         if settings and any(settings.values()):
             statuses = await repo.get_commit_statuses(commitid)
             url = make_url(repo, 'commit', commitid)
@@ -49,11 +51,15 @@ class StatusSetErrorTask(BaseCodecovTask):
                                                          context=context,
                                                          description=message,
                                                          url=url)
-
+                            status_set = True
                             log.info(
                                 'Status set',
                                 extra=dict(context=context, description=message, state=state)
                             )
+
+        return {
+            'status_set': status_set
+        }
 
 RegisteredStatusSetErrorTask = celery_app.register_task(StatusSetErrorTask())
 status_set_error_task = celery_app.tasks[StatusSetErrorTask.name]

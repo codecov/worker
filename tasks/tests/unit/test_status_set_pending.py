@@ -35,7 +35,7 @@ class TestSetPendingTaskUnit(object):
         branch = 'master'
         on_a_pull_request = False
         res = await StatusSetPendingTask().run_async(dbsession, repoid, commitid, branch, on_a_pull_request)
-        assert res is None
+        assert res['status_set'] == False
         assert not repo.set_commit_status.called
 
     @pytest.mark.asyncio
@@ -93,7 +93,7 @@ class TestSetPendingTaskUnit(object):
         on_a_pull_request = False
         res = await StatusSetPendingTask().run_async(dbsession, repoid, commitid, branch, on_a_pull_request)
         assert not repo.set_commit_status.called
-        assert res is None
+        assert res['status_set'] == False
 
     @pytest.mark.asyncio
     async def test_skip_set_pending_unknown_branch(self, mocker, mock_configuration, dbsession, mock_redis):
@@ -125,7 +125,7 @@ class TestSetPendingTaskUnit(object):
         on_a_pull_request = False
         res = await StatusSetPendingTask().run_async(dbsession, repoid, commitid, branch, on_a_pull_request)
         assert not repo.set_commit_status.called
-        assert res is None
+        assert res['status_set'] == False
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize('context, branch, cc_status_exists', [
