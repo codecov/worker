@@ -31,8 +31,9 @@ class SyncReposTask(BaseCodecovTask):
            service (GitHub, Gitlab, Bitbucket, ...).
     """
     name = sync_repos_task_name
+    ignore_result = False
 
-    async def run_async(self, db_session, ownerid, *, username=None, using_integration=False, **kwargs):
+    async def run_async(self, db_session, previous_results = None, *, ownerid, username=None, using_integration=False, **kwargs):
         log.info(
             'Sync repos',
             extra=dict(ownerid=ownerid, username=username, using_integration=using_integration)

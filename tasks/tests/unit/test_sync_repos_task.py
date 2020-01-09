@@ -18,7 +18,7 @@ class TestSyncReposTaskUnit(object):
         with pytest.raises(AssertionError, match='Owner not found'):
             await SyncReposTask().run_async(
                 dbsession,
-                unknown_ownerid,
+                ownerid=unknown_ownerid,
                 username=None,
                 using_integration=False
             )
@@ -272,7 +272,7 @@ class TestSyncReposTaskUnit(object):
         dbsession.flush()
         await SyncReposTask().run_async(
             dbsession,
-            user.ownerid,
+            ownerid=user.ownerid,
             using_integration=False
         )
         expected_owners = dbsession.query(Owner.ownerid).filter(
@@ -298,7 +298,7 @@ class TestSyncReposTaskUnit(object):
         dbsession.flush()
         await SyncReposTask().run_async(
             dbsession,
-            user.ownerid,
+            ownerid=user.ownerid,
             using_integration=False
         )
         expected_owners_with_bot_set = dbsession.query(Owner.bot_id).filter(
@@ -349,7 +349,7 @@ class TestSyncReposTaskUnit(object):
 
         await SyncReposTask().run_async(
             dbsession,
-            user.ownerid,
+            ownerid=user.ownerid,
             using_integration=False
         )
         repos = dbsession.query(Repository).filter(
@@ -376,7 +376,7 @@ class TestSyncReposTaskUnit(object):
         dbsession.flush()
         await SyncReposTask().run_async(
             dbsession,
-            user.ownerid,
+            ownerid=user.ownerid,
             using_integration=False
         )
 
