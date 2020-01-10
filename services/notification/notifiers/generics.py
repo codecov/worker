@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 from decimal import Decimal
 import requests
 import json
-
+from contextlib import nullcontext
 
 from services.report.match import match
 from services.yaml.reader import round_number, get_paths_from_flags
@@ -15,14 +15,6 @@ from services.repository import get_repo_provider_service
 
 
 log = logging.getLogger(__name__)
-
-
-class WithNone:
-    def __enter__(self):
-        pass
-
-    def __exit__(self, *args):
-        pass
 
 
 class StandardNotifier(AbstractBaseNotifier):
@@ -92,7 +84,7 @@ class StandardNotifier(AbstractBaseNotifier):
         base_full_commit = comparison.base
         _filters = self.get_notifier_filters()
         with head_full_commit.report.filter(**_filters):
-            with (base_full_commit.report.filter(**_filters) if (base_full_commit.report is not None) else WithNone()):
+            with (base_full_commit.report.filter(**_filters) if (base_full_commit.report is not None) else nullcontext()):
                 if self.should_notify_comparison(comparison):
                     result = self.do_notify(comparison, **extra_data)
                 else:

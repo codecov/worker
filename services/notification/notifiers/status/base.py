@@ -1,4 +1,5 @@
 import logging
+from contextlib import nullcontext
 
 from helpers.match import match
 from services.notification.notifiers.base import (
@@ -72,7 +73,7 @@ class StatusNotifier(AbstractBaseNotifier):
         _filters = self.get_notifier_filters()
         base_full_commit = comparison.base
         with comparison.head.report.filter(**_filters):
-            with (base_full_commit.report.filter(**_filters) if (comparison.has_base_report() is not None) else WithNone()):
+            with (base_full_commit.report.filter(**_filters) if (comparison.has_base_report() is not None) else nullcontext()):
                 payload = await self.build_payload(comparison)
         commit_url = get_commit_url(comparison.head.commit)
         pull_url = get_compare_url(comparison.base.commit, comparison.head.commit)
