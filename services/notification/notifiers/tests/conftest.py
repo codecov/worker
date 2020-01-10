@@ -118,7 +118,7 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
 
 
 @pytest.fixture
-def sample_comparison_without_base(dbsession, request, sample_report):
+def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
     repository = RepositoryFactory.create(
         owner__username=request.node.name,
     )

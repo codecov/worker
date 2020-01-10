@@ -316,6 +316,52 @@ class TestBaseStatusNotifier(object):
         assert result.data_received is None
 
     @pytest.mark.asyncio
+    async def test_notify_no_base(self, sample_comparison_without_base_with_pull, mocker, mock_repo_provider):
+        comparison = sample_comparison_without_base_with_pull
+        no_settings_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        no_settings_notifier.context = 'fake'
+        mocker.patch.object(
+            StatusNotifier, 'can_we_set_this_status', return_value=True
+        )
+        mocked_build_payload = mocker.patch.object(
+            StatusNotifier, 'build_payload', return_value=Future()
+        )
+        mocked_send_notification = mocker.patch.object(
+            StatusNotifier, 'send_notification', return_value=Future()
+        )
+        mocked_build_payload.return_value.set_result(
+            {
+                'state': 'success',
+                'message': 'somemessage'
+            }
+        )
+        mocked_send_notification.return_value.set_result(
+            NotificationResult(
+                notification_attempted=True,
+                notification_successful=True,
+                explanation=None,
+                data_sent={
+                    'message': 'somemessage',
+                    'state': 'success',
+                    'title': 'codecov/project/title'
+                },
+                data_received={'id': 'some_id'}
+            )
+        )
+        result = await no_settings_notifier.notify(comparison)
+        assert result.notification_attempted
+        assert result.notification_successful
+        assert result.explanation is None
+        assert result.data_sent == {'message': 'somemessage', 'state': 'success', 'title': 'codecov/project/title'}
+        assert result.data_received == {'id': 'some_id'}
+
+    @pytest.mark.asyncio
     async def test_send_notification(self, sample_comparison, mocker, mock_repo_provider):
         comparison = sample_comparison
         no_settings_notifier = StatusNotifier(
@@ -584,7 +630,7 @@ class TestPatchStatusNotifier(object):
         assert expected_result == result
 
     @pytest.mark.asyncio
-    async def test_build_payload_no_diff_no_base_report(self, sample_comparison_without_base, mock_repo_provider, mock_configuration):
+    async def test_build_payload_no_diff_no_base_report(self, sample_comparison_without_base_with_pull, mock_repo_provider, mock_configuration):
         f = Future()
         mock_repo_provider.get_compare.return_value = f
         f.set_result({
@@ -617,7 +663,7 @@ class TestPatchStatusNotifier(object):
             }
         })
         mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
-        comparison = sample_comparison_without_base
+        comparison = sample_comparison_without_base_with_pull
         notifier = PatchStatusNotifier(
             repository=comparison.head.commit.repository,
             title='title',

@@ -28,7 +28,7 @@ class StatusNotifier(AbstractBaseNotifier):
     def name(self):
         return f"status-{self.context}"
 
-    async def build_payload(comparison):
+    async def build_payload(self, comparison):
         raise NotImplementedError()
 
     def can_we_set_this_status(self, comparison):
@@ -75,11 +75,12 @@ class StatusNotifier(AbstractBaseNotifier):
         _filters = self.get_notifier_filters()
         base_full_commit = comparison.base
         with comparison.head.report.filter(**_filters):
-            with (base_full_commit.report.filter(**_filters) if (comparison.has_base_report() is not None) else nullcontext()):
+            with (base_full_commit.report.filter(**_filters) if comparison.has_base_report() else nullcontext()):
                 payload = await self.build_payload(comparison)
-        commit_url = get_commit_url(comparison.head.commit)
-        pull_url = get_compare_url(comparison.base.commit, comparison.head.commit)
-        payload['url'] = pull_url if comparison.pull and self.notifier_yaml_settings.get('base') in ('pr', 'auto', None) else commit_url
+        if comparison.pull and self.notifier_yaml_settings.get('base') in ('pr', 'auto', None) and comparison.base.commit is not None:
+            payload['url'] = get_compare_url(comparison.base.commit, comparison.head.commit)
+        else:
+            payload['url'] = get_commit_url(comparison.head.commit)
         return await self.send_notification(comparison, payload)
 
     async def status_already_exists(self, comparison, title, state, description):
