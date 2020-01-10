@@ -112,6 +112,7 @@ def codecov_vcr(request):
     casset_file_path = str(cassete_path / f"{current_name}.yaml")
     with vcr.use_cassette(
             casset_file_path,
+            record_mode='once',
             filter_headers=['authorization'],
             match_on=['method', 'scheme', 'host', 'port', 'path']) as cassete_maker:
         yield cassete_maker

@@ -13,7 +13,7 @@ class TestNotifyTask(object):
         mock_configuration.params['setup']['codecov_url'] = 'https://codecov.io'
         mocked_app = mocker.patch.object(NotifyTask, 'app')
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             owner__username='ThiagoCodecov',
             yaml={'codecov': {'max_report_age': '1y ago'}},
             name='example-python'
@@ -61,7 +61,7 @@ class TestNotifyTask(object):
         mock_configuration.params['setup']['codecov_url'] = 'https://codecov.io'
         mocked_app = mocker.patch.object(NotifyTask, 'app')
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             owner__username='ThiagoCodecov',
             name='example-python'
         )
@@ -124,7 +124,7 @@ class TestNotifyTask(object):
     async def test_simple_call_only_status_notifiers_no_pull_request(self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration):
         mock_configuration.params['setup']['codecov_url'] = 'https://myexamplewebsite.io'
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testfwdxf9xgj2psfxcs6o1uar788t5ncva1rq88',
+            owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             owner__username='ThiagoCodecov',
             name='example-python'
         )
@@ -219,7 +219,7 @@ class TestNotifyTask(object):
         mock_configuration.params['setup']['codecov_url'] = 'https://myexamplewebsite.io'
         mocked_app = mocker.patch.object(NotifyTask, 'app')
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testfwdxf9xgj2psfxcs6o1uar788t5ncva1rq88',
+            owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             owner__username='ThiagoCodecov',
             name='example-python'
         )
@@ -317,7 +317,7 @@ class TestNotifyTask(object):
         mock_configuration.params['setup']['codecov_url'] = 'https://myexamplewebsite.io'
         mocked_app = mocker.patch.object(NotifyTask, 'app')
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testfwdxf9xgj2psfxcs6o1uar788t5ncva1rq88',
+            owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             owner__username='ThiagoCodecov',
             name='example-python'
         )

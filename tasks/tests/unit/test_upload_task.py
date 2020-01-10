@@ -37,7 +37,7 @@ class TestUploadTaskIntegration(object):
         commit = CommitFactory.create(
             message='',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
-            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             repository__owner__username='ThiagoCodecov',
             repository__yaml={'codecov': {'max_report_age': '1y ago'}},
             repository__name='example-python'
@@ -110,7 +110,7 @@ class TestUploadTaskIntegration(object):
         commit = CommitFactory.create(
             message='',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
-            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             repository__owner__username='ThiagoCodecov',
             repository__yaml={'codecov': {'max_report_age': '1y ago'}},
             repository__name='example-python'
@@ -179,7 +179,7 @@ class TestUploadTaskIntegration(object):
         owner = OwnerFactory.create(
             service='github',
             username='ThiagoCodecov',
-            unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm'
+            unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy'
         )
         dbsession.add(owner)
 
@@ -239,7 +239,7 @@ class TestUploadTaskIntegration(object):
             message='',
             parent_commit_id=None,
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
-            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             repository__owner__username='ThiagoCodecov',
             repository__yaml={'codecov': {'max_report_age': '764y ago'}},
             repository__name='example-python'
@@ -282,7 +282,7 @@ class TestUploadTaskIntegration(object):
         commit = CommitFactory.create(
             message='',
             parent_commit_id=None,
-            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             repository__owner__username='ThiagoCodecov',
             repository__yaml={'codecov': {'max_report_age': '764y ago'}},
             repository__name='example-python'
@@ -326,7 +326,7 @@ class TestUploadTaskIntegration(object):
         commit = CommitFactory.create(
             message='',
             parent_commit_id=None,
-            repository__owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
+            repository__owner__unencrypted_oauth_token='test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy',
             repository__owner__username='ThiagoCodecov',
             repository__yaml={'codecov': {'max_report_age': '764y ago'}}
         )

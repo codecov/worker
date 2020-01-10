@@ -1127,4 +1127,102 @@ interactions:
       - ['0C7A:62D4:C4F13A:1180C21:5E09E07A']
     status: {code: 201, message: Created}
     url: https://api.github.com/repos/ThiagoCodecov/example-python/statuses/2e2600aa09525e2e1e1d98b09de61454d29c94bb
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://api.github.com/repos/ThiagoCodecov/example-python/pulls/15/commits
+  response:
+    body: {string: '[{"sha":"e022f588e40269f8ab1c568080dc4a7662ff2335","node_id":"MDY6Q29tbWl0MTU2NjE3Nzc3OmUwMjJmNTg4ZTQwMjY5ZjhhYjFjNTY4MDgwZGM0YTc2NjJmZjIzMzU=","commit":{"author":{"name":"Thiago
+        Ramos","email":"thiago@codecov.io","date":"2019-12-09T12:17:44Z"},"committer":{"name":"Thiago
+        Ramos","email":"thiago@codecov.io","date":"2019-12-09T12:17:44Z"},"message":"69E76A1D-FD86-4A90-A6CE-6A66BEEE75CA","tree":{"sha":"6188b6c086ebf6c63626abca649d2596b145c84c","url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees/6188b6c086ebf6c63626abca649d2596b145c84c"},"url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/commits/e022f588e40269f8ab1c568080dc4a7662ff2335","comment_count":0,"verification":{"verified":false,"reason":"unsigned","signature":null,"payload":null}},"url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/e022f588e40269f8ab1c568080dc4a7662ff2335","html_url":"https://github.com/ThiagoCodecov/example-python/commit/e022f588e40269f8ab1c568080dc4a7662ff2335","comments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/e022f588e40269f8ab1c568080dc4a7662ff2335/comments","author":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"committer":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"parents":[{"sha":"30cc1ed751a59fa9e7ad8e79fff41a6fe11ef5dd","url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/30cc1ed751a59fa9e7ad8e79fff41a6fe11ef5dd","html_url":"https://github.com/ThiagoCodecov/example-python/commit/30cc1ed751a59fa9e7ad8e79fff41a6fe11ef5dd"}]},{"sha":"c2a05aa15ecad5bec37e29b9fe51ef30120f8642","node_id":"MDY6Q29tbWl0MTU2NjE3Nzc3OmMyYTA1YWExNWVjYWQ1YmVjMzdlMjliOWZlNTFlZjMwMTIwZjg2NDI=","commit":{"author":{"name":"Thiago
+        Ramos","email":"thiago@codecov.io","date":"2019-12-09T12:17:47Z"},"committer":{"name":"Thiago
+        Ramos","email":"thiago@codecov.io","date":"2019-12-09T12:17:47Z"},"message":"81905186-E567-4E4E-A5CB-3E5BFB820E57","tree":{"sha":"dd944d7739d5d429f264709345fe481c1e602be8","url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees/dd944d7739d5d429f264709345fe481c1e602be8"},"url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/commits/c2a05aa15ecad5bec37e29b9fe51ef30120f8642","comment_count":0,"verification":{"verified":false,"reason":"unsigned","signature":null,"payload":null}},"url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/c2a05aa15ecad5bec37e29b9fe51ef30120f8642","html_url":"https://github.com/ThiagoCodecov/example-python/commit/c2a05aa15ecad5bec37e29b9fe51ef30120f8642","comments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/c2a05aa15ecad5bec37e29b9fe51ef30120f8642/comments","author":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"committer":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"parents":[{"sha":"e022f588e40269f8ab1c568080dc4a7662ff2335","url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/e022f588e40269f8ab1c568080dc4a7662ff2335","html_url":"https://github.com/ThiagoCodecov/example-python/commit/e022f588e40269f8ab1c568080dc4a7662ff2335"}]},{"sha":"2e2600aa09525e2e1e1d98b09de61454d29c94bb","node_id":"MDY6Q29tbWl0MTU2NjE3Nzc3OjJlMjYwMGFhMDk1MjVlMmUxZTFkOThiMDlkZTYxNDU0ZDI5Yzk0YmI=","commit":{"author":{"name":"Thiago
+        Ramos","email":"thiago@codecov.io","date":"2019-12-09T12:17:49Z"},"committer":{"name":"Thiago
+        Ramos","email":"thiago@codecov.io","date":"2019-12-09T12:17:49Z"},"message":"AE0A9904-3B05-405A-B8F7-A5DD3B38C92D","tree":{"sha":"f64d89541a0899881da6764081991e70ed43bfea","url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees/f64d89541a0899881da6764081991e70ed43bfea"},"url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/commits/2e2600aa09525e2e1e1d98b09de61454d29c94bb","comment_count":0,"verification":{"verified":false,"reason":"unsigned","signature":null,"payload":null}},"url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/2e2600aa09525e2e1e1d98b09de61454d29c94bb","html_url":"https://github.com/ThiagoCodecov/example-python/commit/2e2600aa09525e2e1e1d98b09de61454d29c94bb","comments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/2e2600aa09525e2e1e1d98b09de61454d29c94bb/comments","author":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"committer":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"parents":[{"sha":"c2a05aa15ecad5bec37e29b9fe51ef30120f8642","url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/c2a05aa15ecad5bec37e29b9fe51ef30120f8642","html_url":"https://github.com/ThiagoCodecov/example-python/commit/c2a05aa15ecad5bec37e29b9fe51ef30120f8642"}]}]'}
+    headers:
+    - !!python/tuple
+      - Date
+      - ['Fri, 10 Jan 2020 03:14:49 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json; charset=utf-8]
+    - !!python/tuple
+      - Transfer-Encoding
+      - [chunked]
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Server
+      - [GitHub.com]
+    - !!python/tuple
+      - Status
+      - [200 OK]
+    - !!python/tuple
+      - X-Ratelimit-Limit
+      - ['5000']
+    - !!python/tuple
+      - X-Ratelimit-Remaining
+      - ['4997']
+    - !!python/tuple
+      - X-Ratelimit-Reset
+      - ['1578629688']
+    - !!python/tuple
+      - Cache-Control
+      - ['private, max-age=60, s-maxage=60']
+    - !!python/tuple
+      - Vary
+      - ['Accept, Authorization, Cookie, X-GitHub-OTP', Accept-Encoding]
+    - !!python/tuple
+      - Etag
+      - [W/"7e4abf3d102fce2a40bfbe4df0ef5228"]
+    - !!python/tuple
+      - Last-Modified
+      - ['Thu, 09 Jan 2020 19:23:25 GMT']
+    - !!python/tuple
+      - X-Oauth-Scopes
+      - ['admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion']
+    - !!python/tuple
+      - X-Accepted-Oauth-Scopes
+      - ['']
+    - !!python/tuple
+      - X-Github-Media-Type
+      - [github.v3]
+    - !!python/tuple
+      - Access-Control-Expose-Headers
+      - ['ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+          X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+          X-GitHub-Media-Type']
+    - !!python/tuple
+      - Access-Control-Allow-Origin
+      - ['*']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000; includeSubdomains; preload]
+    - !!python/tuple
+      - X-Frame-Options
+      - [deny]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Xss-Protection
+      - [1; mode=block]
+    - !!python/tuple
+      - Referrer-Policy
+      - ['origin-when-cross-origin, strict-origin-when-cross-origin']
+    - !!python/tuple
+      - Content-Security-Policy
+      - [default-src 'none']
+    - !!python/tuple
+      - X-Github-Request-Id
+      - ['13EF:5E01:767A8:A948B:5E17EC29']
+    - !!python/tuple
+      - X-Consumed-Content-Encoding
+      - [gzip]
+    status: {code: 200, message: OK}
+    url: https://api.github.com/repos/ThiagoCodecov/example-python/pulls/15/commits
 version: 1
