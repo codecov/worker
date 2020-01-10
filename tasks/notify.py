@@ -11,6 +11,7 @@ from celery_config import (
 )
 from database.models import Commit
 from helpers.metrics import metrics
+from helpers.exceptions import RepositoryWithoutValidBotError
 from services.commit_status import RepositoryCIFilter
 from services.notification.notifiers import (
     get_all_notifier_classes_mapping, get_status_notifier_class
@@ -55,7 +56,21 @@ class NotifyTask(BaseCodecovTask):
         commits_query = db_session.query(Commit).filter(
                 Commit.repoid == repoid, Commit.commitid == commitid)
         commit = commits_query.first()
-        repository_service = get_repo_provider_service(commit.repository)
+        try:
+            repository_service = get_repo_provider_service(commit.repository)
+        except RepositoryWithoutValidBotError:
+            log.warning(
+                "Unable to start notifications because repo doesn't have a valid bot",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid
+                )
+            )
+            return {
+                'notified': False,
+                'notifications': None,
+                'reason': 'no_valid_bot'
+            }
         if current_yaml is None:
             current_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
         assert commit, 'Commit not found in database.'
@@ -191,23 +206,40 @@ class NotifyTask(BaseCodecovTask):
                         notifier_title=notifier.title
                     )
                 )
-                with metrics.timer(f'new_worker.services.notifications.notifiers.{notifier.name}'):
-                    res = await notifier.notify(comparison)
-                individual_result = {
-                    'notifier': notifier.name,
-                    'title': notifier.title,
-                    'result': dataclasses.asdict(res)
-                }
-                notifications.append(individual_result)
-                log.info(
-                    "Individual notification done",
-                    extra=dict(
-                        individual_result=individual_result,
-                        commit=commit.commitid,
-                        base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
-                        repoid=commit.repoid
+                try:
+                    with metrics.timer(f'new_worker.services.notifications.notifiers.{notifier.name}'):
+                        res = await notifier.notify(comparison)
+                    individual_result = {
+                        'notifier': notifier.name,
+                        'title': notifier.title,
+                        'result': dataclasses.asdict(res)
+                    }
+                    notifications.append(individual_result)
+                    log.info(
+                        "Individual notification done",
+                        extra=dict(
+                            individual_result=individual_result,
+                            commit=commit.commitid,
+                            base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
+                            repoid=commit.repoid
+                        )
                     )
-                )
+                except Exception:
+                    individual_result = {
+                        'notifier': notifier.name,
+                        'title': notifier.title,
+                        'result': None
+                    }
+                    notifications.append(individual_result)
+                    log.exception(
+                        "Individual notifier failed",
+                        extra=dict(
+                            repoid=commit.repoid,
+                            commit=commit.commitid,
+                            individual_result=individual_result,
+                            base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
+                        )
+                    )
         return notifications
 
     def get_notifiers_instances(self, repository, current_yaml):

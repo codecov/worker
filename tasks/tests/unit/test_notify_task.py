@@ -1,13 +1,14 @@
 import pytest
 from asyncio import Future
 
-
+from covreports.resources import Report
 from celery.exceptions import Retry
 from torngit.exceptions import TorngitClientError
+from helpers.exceptions import RepositoryWithoutValidBotError
 
 from tasks.notify import default_if_true, NotifyTask
 from services.notification.notifiers.base import NotificationResult
-from database.tests.factories import RepositoryFactory, CommitFactory, OwnerFactory
+from database.tests.factories import RepositoryFactory, CommitFactory, OwnerFactory, PullFactory
 
 
 class TestNotifyTaskHelpers(object):
@@ -333,3 +334,98 @@ class TestNotifyTask(object):
             ),
             queue='new_tasks'
         )
+
+    @pytest.mark.asyncio
+    async def test_notify_task_no_bot(self, dbsession, mocker):
+        get_repo_provider_service = mocker.patch('tasks.notify.get_repo_provider_service')
+        get_repo_provider_service.side_effect = RepositoryWithoutValidBotError()
+        commit = CommitFactory.create(
+            message='',
+            pullid=None,
+            branch='test-branch-1',
+            commitid='649eaaf2924e92dc7fd8d370ddb857033231e67a',
+            repository__using_integration=True
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        current_yaml = {'codecov': {'require_ci_to_pass': True}}
+        task = NotifyTask()
+        res = await task.run_async(
+            dbsession, commit.repoid, commit.commitid, current_yaml=current_yaml
+        )
+        expected_result = {'notifications': None, 'notified': False, 'reason': 'no_valid_bot'}
+        assert expected_result == res
+
+    @pytest.mark.asyncio
+    async def test_submit_third_party_notifications_exception(self, mocker, dbsession):
+        current_yaml = {}
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        base_commit = CommitFactory.create(repository=repository)
+        head_commit = CommitFactory.create(repository=repository, branch='new_branch')
+        pull = PullFactory.create(
+            repository=repository,
+            base=base_commit.commitid,
+            head=head_commit.commitid
+        )
+        dbsession.add(base_commit)
+        dbsession.add(head_commit)
+        dbsession.add(pull)
+        dbsession.flush()
+        repository = base_commit.repository
+        base_report = Report()
+        head_report = Report()
+        good_notifier = mocker.MagicMock(
+            is_enabled=mocker.MagicMock(return_value=True),
+            notify=mocker.MagicMock(return_value=Future()),
+            title='good_notifier'
+        )
+        bad_notifier = mocker.MagicMock(
+            is_enabled=mocker.MagicMock(return_value=True),
+            notify=mocker.MagicMock(return_value=Future()),
+            title='bad_notifier'
+        )
+        disabled_notifier = mocker.MagicMock(
+            is_enabled=mocker.MagicMock(return_value=False),
+            title='disabled_notifier'
+        )
+        good_notifier.notify.return_value.set_result(
+            NotificationResult(
+                notification_attempted=True,
+                notification_successful=True,
+                explanation='',
+                data_sent={'some': 'data'}
+            )
+        )
+        good_notifier.name = 'good_name'
+        bad_notifier.name = 'bad_name'
+        disabled_notifier.name = 'disabled_notifier_name'
+        bad_notifier.notify.return_value.set_exception(Exception("This is bad"))
+        mocker.patch.object(
+            NotifyTask, 'get_notifiers_instances',
+            return_value=[bad_notifier, good_notifier, disabled_notifier]
+        )
+        task = NotifyTask()
+        expected_result = [
+            {
+                'notifier': 'bad_name',
+                'title': 'bad_notifier',
+                'result': None
+            },
+            {
+                'notifier': 'good_name',
+                'title': 'good_notifier',
+                'result': {
+                    'notification_attempted': True,
+                    'notification_successful': True,
+                    'explanation': '',
+                    'data_sent': {'some': 'data'},
+                    'data_received': None
+                }
+            }
+        ]
+        res = await task.submit_third_party_notifications(
+            current_yaml, base_commit, head_commit, base_report, head_report, pull
+        )
+        assert expected_result == res
