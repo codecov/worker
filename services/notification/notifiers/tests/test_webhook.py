@@ -473,9 +473,9 @@ class TestWebhookNotifier(object):
         assert result['pull'] == expected_result['pull']
         assert result == expected_result
 
-    def test_build_payload_without_base(self, sample_comparison_without_base, mock_configuration):
+    def test_build_payload_without_base(self, sample_comparison_without_base_with_pull, mock_configuration):
         mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
-        comparison = sample_comparison_without_base
+        comparison = sample_comparison_without_base_with_pull
         commit = comparison.head.commit
         repository = commit.repository
         notifier = WebhookNotifier(
