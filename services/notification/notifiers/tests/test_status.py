@@ -2,6 +2,8 @@ import pytest
 from asyncio import Future
 
 from covreports.resources import ReportLine, ReportFile, Report
+from torngit.exceptions import TorngitClientError
+
 
 from services.notification.notifiers.status import (
     ProjectStatusNotifier, PatchStatusNotifier, ChangesStatusNotifier
@@ -311,6 +313,42 @@ class TestBaseStatusNotifier(object):
         assert result.notification_successful is None
         assert result.explanation == 'not_fit_criteria'
         assert result.data_sent is None
+        assert result.data_received is None
+
+    @pytest.mark.asyncio
+    async def test_send_notification(self, sample_comparison, mocker, mock_repo_provider):
+        comparison = sample_comparison
+        no_settings_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        no_settings_notifier.context = 'fake'
+        mocked_status_already_exists = mocker.patch.object(
+            StatusNotifier, 'status_already_exists', return_value=Future()
+        )
+        mocked_status_already_exists.return_value.set_result(False)
+        mock_repo_provider.set_commit_status.return_value = Future()
+        mock_repo_provider.set_commit_status.return_value.set_exception(
+            TorngitClientError(403, 'response', 'message')
+        )
+        payload = {
+            'message': 'something to say',
+            'state': 'success',
+            'url': 'url'
+        }
+        result = await no_settings_notifier.send_notification(comparison, payload)
+        assert result.notification_attempted
+        assert not result.notification_successful
+        assert result.explanation == 'no_write_permission'
+        expected_data_sent = {
+            'message': 'something to say',
+            'state': 'success',
+            'title': 'codecov/fake/title'
+        }
+        assert result.data_sent == expected_data_sent
         assert result.data_received is None
 
 
