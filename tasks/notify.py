@@ -121,13 +121,6 @@ class NotifyTask(BaseCodecovTask):
             )
             if pull:
                 base_commit = self.fetch_pull_request_base(pull)
-                log.info(
-                    "Using pull base for notify",
-                    extra=dict(
-                        commit=commit.commitid,
-                        repoid=commit.repoid
-                    )
-                )
                 self.app.send_task(
                     pulls_task_name,
                     args=None,
@@ -139,13 +132,6 @@ class NotifyTask(BaseCodecovTask):
                 )
             else:
                 base_commit = self.fetch_parent(commit)
-                log.info(
-                    "Using commit parent for notify",
-                    extra=dict(
-                        commit=commit.commitid,
-                        repoid=commit.repoid
-                    )
-                )
             report_service = ReportService()
             if base_commit is not None:
                 base_report = report_service.build_report_from_commit(base_commit)
@@ -160,7 +146,8 @@ class NotifyTask(BaseCodecovTask):
                 extra=dict(
                     notifications=notifications,
                     commitid=commit.commitid,
-                    repoid=commit.repoid
+                    repoid=commit.repoid,
+                    pullid=pull.pullid if pull is not None else None
                 )
             )
             commit.notified = True

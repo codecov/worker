@@ -1,5 +1,7 @@
 import logging
 
+from torngit.exceptions import TorngitClientError
+
 from helpers.match import match
 from services.notification.notifiers.base import (
     AbstractBaseNotifier, Comparison, NotificationResult
@@ -91,24 +93,41 @@ class StatusNotifier(AbstractBaseNotifier):
         url = payload['url']
         if not await self.status_already_exists(comparison, title, state, message):
             state = 'success' if self.notifier_yaml_settings.get('informational') else state
-            res = await repository_service.set_commit_status(
-                commit=head.commitid,
-                status=state,
-                context=title,
-                coverage=float(head_report.totals.coverage),
-                description=message,
-                url=url
-            )
-            notification_result = {
+            notification_result_data_sent = {
                 'title': title,
                 'state': state,
                 'message': message,
             }
+            try:
+                res = await repository_service.set_commit_status(
+                    commit=head.commitid,
+                    status=state,
+                    context=title,
+                    coverage=float(head_report.totals.coverage),
+                    description=message,
+                    url=url
+                )
+            except TorngitClientError:
+                log.warning(
+                    "Status not posted because this user can see but not set statuses on this repo",
+                    extra=dict(
+                        data_sent=notification_result_data_sent,
+                        commitid=comparison.head.commit.commitid,
+                        repoid=comparison.head.commit.repoid
+                    )
+                )
+                return NotificationResult(
+                    notification_attempted=True,
+                    notification_successful=False,
+                    explanation='no_write_permission',
+                    data_sent=notification_result_data_sent,
+                    data_received=None
+                )
             return NotificationResult(
                 notification_attempted=True,
                 notification_successful=True,
                 explanation=None,
-                data_sent=notification_result,
+                data_sent=notification_result_data_sent,
                 data_received={'id': res.get('id', 'NO_ID')}
             )
         else:
