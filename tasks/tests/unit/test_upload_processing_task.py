@@ -23,10 +23,10 @@ class TestUploadProcessorTask(object):
     async def test_upload_processor_task_call(self, mocker, mock_configuration, dbsession, codecov_vcr, mock_storage, mock_redis):
         mocked_1 = mocker.patch.object(ArchiveService, 'read_chunks')
         mocked_1.return_value = None
+        url = 'v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt'
         with open(here.parent.parent / 'samples' / 'sample_uploaded_report_1.txt') as f:
             content = f.read()
-            mock_storage.read_file.return_value.decode.return_value = content
-        url = 'v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt'
+            mock_storage.write_file('archive', url, content)
         redis_queue = [
             {
                 'url': url
@@ -52,7 +52,6 @@ class TestUploadProcessorTask(object):
             commit_yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
             arguments_list=redis_queue
         )
-        mock_storage.read_file.assert_called_with('archive', url)
         expected_result = {
             'processings_so_far': [
                 {
@@ -128,10 +127,10 @@ class TestUploadProcessorTask(object):
         with open(here.parent.parent / 'samples' / 'sample_chunks_1.txt') as f:
             content = f.read()
             mocked_1.return_value = content
+        url = 'v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt'
         with open(here.parent.parent / 'samples' / 'sample_uploaded_report_1.txt') as f:
             content = f.read()
-            mock_storage.read_file.return_value.decode.return_value = content
-        url = 'v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt'
+            mock_storage.write_file('archive', url, content)
         redis_queue = [
             {
                 'url': url
@@ -157,7 +156,6 @@ class TestUploadProcessorTask(object):
             commit_yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
             arguments_list=redis_queue
         )
-        mock_storage.read_file.assert_called_with('archive', url)
         expected_result = {
             'processings_so_far': [
                 {

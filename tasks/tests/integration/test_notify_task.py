@@ -3,6 +3,7 @@ from decimal import Decimal
 from tasks.notify import NotifyTask
 from database.tests.factories import CommitFactory, RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
+from services.archive import ArchiveService
 
 
 @pytest.mark.integration
@@ -85,6 +86,13 @@ class TestNotifyTask(object):
         dbsession.add(master_commit)
         dbsession.flush()
         task = NotifyTask()
+        with open('tasks/tests/samples/sample_chunks_1.txt') as f:
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            chunks_url = f'v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt'
+            mock_storage.write_file('archive', chunks_url, content)
+            master_chunks_url = f'v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt'
+            mock_storage.write_file('archive', master_chunks_url, content)
         result = await task.run_async(
             dbsession, commit.repoid, commit.commitid, current_yaml={'coverage': {'status': {'project': True}}}
         )
@@ -150,7 +158,12 @@ class TestNotifyTask(object):
         dbsession.flush()
         task = NotifyTask()
         with open('tasks/tests/samples/sample_chunks_1.txt') as f:
-            mock_storage.read_file.return_value = f.read().encode()
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            chunks_url = f'v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt'
+            mock_storage.write_file('archive', chunks_url, content)
+            master_chunks_url = f'v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt'
+            mock_storage.write_file('archive', master_chunks_url, content)
         result = await task.run_async(
             dbsession, commit.repoid, commit.commitid,
             current_yaml={
@@ -245,7 +258,12 @@ class TestNotifyTask(object):
         dbsession.flush()
         task = NotifyTask()
         with open('tasks/tests/samples/sample_chunks_1.txt') as f:
-            mock_storage.read_file.return_value = f.read().encode()
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            chunks_url = f'v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt'
+            mock_storage.write_file('archive', chunks_url, content)
+            master_chunks_url = f'v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt'
+            mock_storage.write_file('archive', master_chunks_url, content)
         result = await task.run_async(
             dbsession, commit.repoid, commit.commitid,
             current_yaml={
@@ -345,7 +363,12 @@ class TestNotifyTask(object):
         dbsession.flush()
         task = NotifyTask()
         with open('tasks/tests/samples/sample_chunks_1.txt') as f:
-            mock_storage.read_file.return_value = f.read().encode()
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            chunks_url = f'v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt'
+            mock_storage.write_file('archive', chunks_url, content)
+            master_chunks_url = f'v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt'
+            mock_storage.write_file('archive', master_chunks_url, content)
         result = await task.run_async(
             dbsession, commit.repoid, commit.commitid,
             current_yaml={
@@ -450,7 +473,9 @@ class TestNotifyTask(object):
                         notification_successful=None,
                         explanation='already_done',
                         data_sent={
-                            'title': 'codecov/patch', 'state': 'success', 'message': 'Coverage not affected when comparing 30cc1ed...05732bb'
+                            'title': 'codecov/patch',
+                            'state': 'success',
+                            'message': 'Coverage not affected when comparing 30cc1ed...05732bb'
                         },
                         data_received=None
                     ),
@@ -463,7 +488,9 @@ class TestNotifyTask(object):
                         notification_successful=None,
                         explanation='already_done',
                         data_sent={
-                            'title': 'codecov/changes', 'state': 'success', 'message': 'No unexpected coverage changes found'
+                            'title': 'codecov/changes',
+                            'state': 'success',
+                            'message': 'No unexpected coverage changes found'
                         },
                         data_received=None
                     ),
