@@ -6,6 +6,8 @@ from services.notification.notifiers.base import (
 )
 from services.repository import get_repo_provider_service
 from services.urls import get_commit_url, get_compare_url
+from services.yaml.reader import get_paths_from_flags
+
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +52,15 @@ class StatusNotifier(AbstractBaseNotifier):
             self._repository_service = get_repo_provider_service(self.repository)
         return self._repository_service
 
+    def get_notifier_filters(self):
+        return dict(
+            paths=set(
+                get_paths_from_flags(self.current_yaml, self.notifier_yaml_settings.get('flags')) +
+                (self.notifier_yaml_settings.get('paths') or [])
+            ),
+            flags=self.notifier_yaml_settings.get('flags')
+        )
+
     async def notify(self, comparison: Comparison):
         if not self.can_we_set_this_status(comparison):
             return NotificationResult(
@@ -58,7 +69,11 @@ class StatusNotifier(AbstractBaseNotifier):
                 explanation='not_fit_criteria',
                 data_sent=None
             )
-        payload = await self.build_payload(comparison)
+        _filters = self.get_notifier_filters()
+        base_full_commit = comparison.base
+        with comparison.head.report.filter(**_filters):
+            with (base_full_commit.report.filter(**_filters) if (comparison.has_base_report() is not None) else WithNone()):
+                payload = await self.build_payload(comparison)
         commit_url = get_commit_url(comparison.head.commit)
         pull_url = get_compare_url(comparison.base.commit, comparison.head.commit)
         payload['url'] = pull_url if comparison.pull and self.notifier_yaml_settings.get('base') in ('pr', 'auto', None) else commit_url
