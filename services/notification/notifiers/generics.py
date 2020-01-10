@@ -4,9 +4,8 @@ from urllib.parse import urlparse
 from decimal import Decimal
 import requests
 import json
+from contextlib import nullcontext
 
-
-from helpers.metrics import metrics
 from services.report.match import match
 from services.yaml.reader import round_number, get_paths_from_flags
 from services.urls import get_compare_url, get_commit_url
@@ -16,14 +15,6 @@ from services.repository import get_repo_provider_service
 
 
 log = logging.getLogger(__name__)
-
-
-class WithNone:
-    def __enter__(self):
-        pass
-
-    def __exit__(self, *args):
-        pass
 
 
 class StandardNotifier(AbstractBaseNotifier):
@@ -91,38 +82,19 @@ class StandardNotifier(AbstractBaseNotifier):
     async def notify(self, comparison: Comparison, **extra_data):
         head_full_commit = comparison.head
         base_full_commit = comparison.base
-        with metrics.timer(f'new-worker.services.notify.{self.name}.run'):
-            log.info(
-                "Starting notification on %s",
-                self.name,
-                extra=dict(
-                    repoid=head_full_commit.commit.repoid,
-                    commit=head_full_commit.commit.commitid
-                )
-            )
-            _filters = self.get_notifier_filters()
-            with head_full_commit.report.filter(**_filters):
-                with (base_full_commit.report.filter(**_filters) if (base_full_commit.report is not None) else WithNone()):
-                    if self.should_notify_comparison(comparison):
-                        result = self.do_notify(comparison, **extra_data)
-                    else:
-                        result = NotificationResult(
-                            notification_attempted=False,
-                            notification_successful=None,
-                            explanation='Did not fit criteria',
-                            data_sent=None
-                        )
-            log.info(
-                "Finishing notification on %s. Result was %s",
-                self.name,
-                'success' if result.notification_successful else 'failure',
-                extra=dict(
-                    result=result,
-                    repoid=head_full_commit.commit.repoid,
-                    commit=head_full_commit.commit.commitid
-                )
-            )
-            return result
+        _filters = self.get_notifier_filters()
+        with head_full_commit.report.filter(**_filters):
+            with (base_full_commit.report.filter(**_filters) if (base_full_commit.report is not None) else nullcontext()):
+                if self.should_notify_comparison(comparison):
+                    result = self.do_notify(comparison, **extra_data)
+                else:
+                    result = NotificationResult(
+                        notification_attempted=False,
+                        notification_successful=None,
+                        explanation='Did not fit criteria',
+                        data_sent=None
+                    )
+        return result
 
     def get_notifier_filters(self):
         return dict(
