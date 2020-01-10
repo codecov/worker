@@ -2,6 +2,7 @@
 
 import logging
 from collections import defaultdict
+import random
 
 from pathmap import resolve_by_method
 
@@ -156,7 +157,7 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
             "Some files were ignored",
             extra=dict(
                 number=len(ignored_files),
-                paths=ignored_files[:100],
+                paths=random.sample(ignored_files, min(100, len(ignored_files))),
                 session=sessionid
             )
         )
