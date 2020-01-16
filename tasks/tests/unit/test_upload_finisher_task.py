@@ -29,6 +29,9 @@ class TestUploadFinisherTask(object):
         commit = CommitFactory.create(
             message='dsidsahdsahdsa',
             commitid='abf6d4df662c47e32460020ab14abf9303581429',
+            branch='thisbranch',
+            ci_passed=True,
+            repository__branch='thisbranch',
             repository__owner__unencrypted_oauth_token='testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8',
             repository__owner__username='ThiagoCodecov',
             repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
@@ -49,7 +52,39 @@ class TestUploadFinisherTask(object):
         )
         expected_result = {'notifications_called': True}
         assert expected_result == result
+        dbsession.refresh(commit)
         assert commit.message == 'dsidsahdsahdsa'
+        expected_cache = {
+            "commit": {
+                "author": {
+                    "name": commit.author.name,
+                    "email": commit.author.email,
+                    "service": "github",
+                    "username": commit.author.username,
+                    "service_id": commit.author.service_id,
+                },
+                "totals": {
+                    'C': 0,
+                    'M': 0,
+                    'N': 0,
+                    'b': 0,
+                    'c': '85.00000',
+                    'd': 0,
+                    'diff': [1, 2, 1, 1, 0, '50.00000', 0, 0, 0, 0, 0, 0, 0],
+                    'f': 3,
+                    'h': 17,
+                    'm': 3,
+                    'n': 20,
+                    'p': 0,
+                    's': 1
+                },
+                "message": commit.message,
+                "commitid": commit.commitid,
+                "ci_passed": True,
+                "timestamp": commit.timestamp.isoformat()
+            }
+        }
+        assert commit.repository.cache_do_not_use == expected_cache
 
         mock_redis.lock.assert_called_with(
             f"upload_finisher_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300

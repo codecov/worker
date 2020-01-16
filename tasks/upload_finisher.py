@@ -2,6 +2,7 @@ import logging
 import re
 import random
 import os
+from copy import deepcopy
 
 from app import celery_app
 from tasks.base import BaseCodecovTask
@@ -52,6 +53,24 @@ class UploadFinisherTask(BaseCodecovTask):
         with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
             result = await self.finish_reports_processing(db_session, commit, commit_yaml, processing_results)
             self.invalidate_caches(redis_connection, commit)
+            if commit.repository.branch == commit.branch:
+                commit_dict = {
+                    'timestamp': commit.timestamp.isoformat() if commit.timestamp else None,
+                    'commitid': commit.commitid,
+                    'ci_passed': commit.ci_passed,
+                    'message': commit.message,
+                    'author': {
+                        'service': commit.author.service,
+                        'service_id': commit.author.service_id,
+                        'username': commit.author.username,
+                        'email': commit.author.email,
+                        'name': commit.author.name
+                    },
+                    'totals': commit.totals
+                }
+                new_cache = deepcopy(commit.repository.cache_do_not_use) or {}
+                new_cache['commit'] = commit_dict
+                commit.repository.cache_do_not_use = new_cache
         return result
 
     async def finish_reports_processing(self, db_session, commit, commit_yaml, processing_results):
