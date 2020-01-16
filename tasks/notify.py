@@ -246,14 +246,23 @@ class NotifyTask(BaseCodecovTask):
         status_fields = read_yaml_field(current_yaml, ('coverage', 'status'))
         if status_fields:
             for key, value in status_fields.items():
-                for title, status_config in default_if_true(value):
-                    notifier_class = get_status_notifier_class(key)
-                    yield notifier_class(
-                        repository=repository,
-                        title=title,
-                        notifier_yaml_settings=status_config,
-                        notifier_site_settings={},
-                        current_yaml=current_yaml
+                if key in ['patch', 'project', 'changes']:
+                    for title, status_config in default_if_true(value):
+                        notifier_class = get_status_notifier_class(key)
+                        yield notifier_class(
+                            repository=repository,
+                            title=title,
+                            notifier_yaml_settings=status_config,
+                            notifier_site_settings={},
+                            current_yaml=current_yaml
+                        )
+                else:
+                    log.warning(
+                        "User has unexpected status type",
+                        extra=dict(
+                            repoid=repository.repoid,
+                            current_yaml=current_yaml
+                        )
                     )
 
     def fetch_pull_request_base(self, pull):
