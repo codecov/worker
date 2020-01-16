@@ -2,10 +2,10 @@ import pytest
 from asyncio import Future
 
 from covreports.resources import Report
-from celery.exceptions import Retry
+from celery.exceptions import Retry, MaxRetriesExceededError
 from torngit.exceptions import TorngitClientError
-from helpers.exceptions import RepositoryWithoutValidBotError
 
+from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.notify import default_if_true, NotifyTask
 from services.notification.notifiers.base import NotificationResult
 from database.tests.factories import RepositoryFactory, CommitFactory, OwnerFactory, PullFactory
@@ -428,4 +428,34 @@ class TestNotifyTask(object):
         res = await task.submit_third_party_notifications(
             current_yaml, base_commit, head_commit, base_report, head_report, pull
         )
+        assert expected_result == res
+
+    @pytest.mark.asyncio
+    async def test_notify_task_max_retries_exceeded(
+        self, dbsession, mocker, mock_repo_provider
+    ):
+        mocker.patch.object(NotifyTask, "should_wait_longer", return_value=True)
+        mocker.patch.object(NotifyTask, "retry", side_effect=MaxRetriesExceededError())
+        mocked_fetch_and_update_whether_ci_passed = mocker.patch.object(
+            NotifyTask, "fetch_and_update_whether_ci_passed", return_value=Future()
+        )
+        mocked_fetch_and_update_whether_ci_passed.return_value.set_result(True)
+        commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="test-branch-1",
+            repository__using_integration=True,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        current_yaml = {"codecov": {"require_ci_to_pass": True}}
+        task = NotifyTask()
+        res = await task.run_async(
+            dbsession, commit.repoid, commit.commitid, current_yaml=current_yaml
+        )
+        expected_result = {
+            "notifications": None,
+            "notified": False,
+            "reason": "too_many_retries",
+        }
         assert expected_result == res

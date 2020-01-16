@@ -4,6 +4,7 @@ import dataclasses
 from sqlalchemy.orm.session import Session
 from covreports.config import get_config
 from torngit.exceptions import TorngitClientError
+from celery.exceptions import MaxRetriesExceededError
 
 from app import celery_app
 from celery_config import (
@@ -107,7 +108,24 @@ class NotifyTask(BaseCodecovTask):
             else:
                 max_retries = 10
                 countdown = 15 * 2**self.request.retries
-            self.retry(max_retries=max_retries, countdown=countdown)
+            try:
+                self.retry(max_retries=max_retries, countdown=countdown)
+            except MaxRetriesExceededError:
+                log.warning(
+                    "Not attempting to retry notifications since we already retried too many times",
+                    extra=dict(
+                        repoid=commit.repoid,
+                        commit=commit.commitid,
+                        max_retries=max_retries,
+                        next_countdown_would_be=countdown,
+                        current_yaml=current_yaml
+                    )
+                )
+                return {
+                    'notified': False,
+                    'notifications': None,
+                    'reason': 'too_many_retries'
+                }
         if self.should_send_notifications(current_yaml, commit, ci_results):
             log.info(
                 "We are going to be sending notifications",
