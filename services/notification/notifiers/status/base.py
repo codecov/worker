@@ -1,7 +1,7 @@
 import logging
 from contextlib import nullcontext
 
-from torngit.exceptions import TorngitClientError
+from torngit.exceptions import TorngitClientError, TorngitError
 
 from helpers.match import match
 from services.notification.notifiers.base import (
@@ -65,6 +65,7 @@ class StatusNotifier(AbstractBaseNotifier):
         )
 
     async def notify(self, comparison: Comparison):
+        payload = None
         if not self.can_we_set_this_status(comparison):
             return NotificationResult(
                 notification_attempted=False,
@@ -74,14 +75,47 @@ class StatusNotifier(AbstractBaseNotifier):
             )
         _filters = self.get_notifier_filters()
         base_full_commit = comparison.base
-        with comparison.head.report.filter(**_filters):
-            with (base_full_commit.report.filter(**_filters) if comparison.has_base_report() else nullcontext()):
-                payload = await self.build_payload(comparison)
-        if comparison.pull and self.notifier_yaml_settings.get('base') in ('pr', 'auto', None) and comparison.base.commit is not None:
-            payload['url'] = get_compare_url(comparison.base.commit, comparison.head.commit)
-        else:
-            payload['url'] = get_commit_url(comparison.head.commit)
-        return await self.send_notification(comparison, payload)
+        try:
+            with comparison.head.report.filter(**_filters):
+                with (base_full_commit.report.filter(**_filters) if comparison.has_base_report() else nullcontext()):
+                    payload = await self.build_payload(comparison)
+            if comparison.pull and self.notifier_yaml_settings.get('base') in ('pr', 'auto', None) and comparison.base.commit is not None:
+                payload['url'] = get_compare_url(comparison.base.commit, comparison.head.commit)
+            else:
+                payload['url'] = get_commit_url(comparison.head.commit)
+            return await self.send_notification(comparison, payload)
+        except TorngitClientError:
+            log.warning(
+                "Unable to send status notification to user due to a client-side error",
+                exc_info=True,
+                extra=dict(
+                    repoid=comparison.head.commit.repoid,
+                    commit=comparison.head.commit.commitid,
+                    notifier_name=self.name
+                )
+            )
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=False,
+                explanation='client_side_error_provider',
+                data_sent=payload
+            )
+        except TorngitError:
+            log.warning(
+                "Unable to send status notification to user due to an unexpected error",
+                exc_info=True,
+                extra=dict(
+                    repoid=comparison.head.commit.repoid,
+                    commit=comparison.head.commit.commitid,
+                    notifier_name=self.name
+                )
+            )
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=False,
+                explanation='server_side_error_provider',
+                data_sent=payload
+            )
 
     async def status_already_exists(self, comparison, title, state, description):
         head = comparison.head.commit
