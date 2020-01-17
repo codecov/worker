@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import os
+from asyncio import Future
 
 import pytest
 
@@ -85,6 +86,127 @@ class TestUploadFinisherTask(object):
             }
         }
         assert commit.repository.cache_do_not_use == expected_cache
+
+        mock_redis.lock.assert_called_with(
+            f"upload_finisher_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_finisher_task_call_no_author(self, mocker, mock_configuration, dbsession, mock_storage, mock_redis):
+        url = 'v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt'
+        redis_queue = [
+            {
+                'url': url
+            }
+        ]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mocked_3 = mocker.patch.object(UploadFinisherTask, 'app')
+        mock_finish_reports_processing = mocker.patch.object(UploadFinisherTask, 'finish_reports_processing', return_value=Future())
+        mock_finish_reports_processing.return_value.set_result({'notifications_called': True})
+        mocked_3.send_task.return_value = True
+        mock_redis.exists.side_effect = [True, False]
+        mock_redis.lpop.side_effect = jsonified_redis_queue
+
+        commit = CommitFactory.create(
+            message='dsidsahdsahdsa',
+            author=None,
+            branch='thisbranch',
+            ci_passed=True,
+            repository__branch='thisbranch',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        previous_results = {
+            'processings_so_far': [
+                {
+                    'arguments': {'url': url},
+                    'successful': True
+                }
+            ]
+        }
+        result = await UploadFinisherTask().run_async(
+            dbsession, previous_results,
+            repoid=commit.repoid, commitid=commit.commitid, commit_yaml={}
+        )
+        expected_result = {'notifications_called': True}
+        assert expected_result == result
+        dbsession.refresh(commit)
+        assert commit.message == 'dsidsahdsahdsa'
+        expected_cache = {
+            "commit": {
+                "author": None,
+                "totals": {
+                    'C': 0,
+                    'M': 0,
+                    'N': 0,
+                    'b': 0,
+                    'c': '85.00000',
+                    'd': 0,
+                    'diff': [1, 2, 1, 1, 0, '50.00000', 0, 0, 0, 0, 0, 0, 0],
+                    'f': 3,
+                    'h': 17,
+                    'm': 3,
+                    'n': 20,
+                    'p': 0,
+                    's': 1
+                },
+                "message": commit.message,
+                "commitid": commit.commitid,
+                "ci_passed": True,
+                "timestamp": commit.timestamp.isoformat()
+            }
+        }
+        assert commit.repository.cache_do_not_use == expected_cache
+
+        mock_redis.lock.assert_called_with(
+            f"upload_finisher_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_finisher_task_call_different_branch(self, mocker, mock_configuration, dbsession, mock_storage, mock_redis):
+        url = 'v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt'
+        redis_queue = [
+            {
+                'url': url
+            }
+        ]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mocked_3 = mocker.patch.object(UploadFinisherTask, 'app')
+        mock_finish_reports_processing = mocker.patch.object(UploadFinisherTask, 'finish_reports_processing', return_value=Future())
+        mock_finish_reports_processing.return_value.set_result({'notifications_called': True})
+        mocked_3.send_task.return_value = True
+        mock_redis.exists.side_effect = [True, False]
+        mock_redis.lpop.side_effect = jsonified_redis_queue
+
+        commit = CommitFactory.create(
+            message='dsidsahdsahdsa',
+            branch='other_branch',
+            ci_passed=True,
+            repository__branch='thisbranch',
+            repository__owner__username='ThiagoCodecov',
+            repository__yaml={'codecov': {'max_report_age': '1y ago'}},  # Sorry, this is a timebomb now
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        previous_results = {
+            'processings_so_far': [
+                {
+                    'arguments': {'url': url},
+                    'successful': True
+                }
+            ]
+        }
+        result = await UploadFinisherTask().run_async(
+            dbsession, previous_results,
+            repoid=commit.repoid, commitid=commit.commitid, commit_yaml={}
+        )
+        expected_result = {'notifications_called': True}
+        assert expected_result == result
+        dbsession.refresh(commit)
+        assert commit.message == 'dsidsahdsahdsa'
+        assert commit.repository.cache_do_not_use is None
 
         mock_redis.lock.assert_called_with(
             f"upload_finisher_lock_{commit.repoid}_{commit.commitid}", blocking_timeout=5, timeout=300
