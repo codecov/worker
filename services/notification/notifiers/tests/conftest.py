@@ -1,5 +1,6 @@
 import pytest
 from covreports.resources import Report, ReportFile, ReportLine
+from covreports.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.notification.types import FullCommit, Comparison
@@ -8,7 +9,7 @@ from services.notification.types import FullCommit, Comparison
 def get_small_report():
     report = Report()
     first_file = ReportFile('file_1.go')
-    first_file.append(1, ReportLine(coverage=1, sessions=[[0, 1]]))
+    first_file.append(1, ReportLine(coverage=1, sessions=[[0, 1]], complexity=(11, 20)))
     first_file.append(3, ReportLine(coverage=0, sessions=[[0, 1]]))
     first_file.append(5, ReportLine(coverage=1, sessions=[[0, 1]]))
     first_file.append(6, ReportLine(coverage=0, sessions=[[0, 1]]))
@@ -17,14 +18,20 @@ def get_small_report():
     second_file.append(51, ReportLine(coverage=0, sessions=[[0, 1]]))
     report.append(first_file)
     report.append(second_file)
+    report.add_session(Session(flags=['integration']))
     return report
+
+
+@pytest.fixture
+def small_report():
+    return get_small_report()
 
 
 @pytest.fixture
 def sample_report():
     report = Report()
     first_file = ReportFile('file_1.go')
-    first_file.append(1, ReportLine(coverage=1, sessions=[[0, 1]]))
+    first_file.append(1, ReportLine(coverage=1, sessions=[[0, 1]], complexity=(10, 2)))
     first_file.append(2, ReportLine(coverage=0, sessions=[[0, 1]]))
     first_file.append(3, ReportLine(coverage=1, sessions=[[0, 1]]))
     first_file.append(5, ReportLine(coverage=1, sessions=[[0, 1]]))
@@ -37,6 +44,7 @@ def sample_report():
     second_file.append(51, ReportLine(coverage='1/2', type='b', sessions=[[0, 1]]))
     report.append(first_file)
     report.append(second_file)
+    report.add_session(Session(flags=['unit']))
     return report
 
 
