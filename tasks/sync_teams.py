@@ -15,6 +15,7 @@ class SyncTeamsTask(BaseCodecovTask):
     """This task syncs the orgs/teams that a user belongs to
     """
     name = sync_teams_task_name
+    ignore_result = False
 
     async def run_async(self, db_session, ownerid, *, username=None, using_integration=False, **kwargs):
         log.info(
