@@ -3,6 +3,7 @@ from datetime import datetime
 import re
 
 import torngit
+from torngit.exceptions import TorngitClientError
 
 from covreports.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
@@ -234,10 +235,20 @@ async def fetch_and_update_pull_request_information(repository_service, commit, 
     db_session = commit.get_db_session()
     pullid = commit.pullid
     if not commit.pullid:
-        pullid = await repository_service.find_pull_request(
-            commit=commit.commitid,
-            branch=commit.branch
-        )
+        try:
+            pullid = await repository_service.find_pull_request(
+                commit=commit.commitid,
+                branch=commit.branch
+            )
+        except TorngitClientError:
+            log.warning(
+                "Unable to fetch what pull request the commit belongs to",
+                exc_info=True,
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid
+                )
+            )
     if not pullid:
         return None
     compared_to = None
