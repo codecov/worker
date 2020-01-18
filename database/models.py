@@ -93,6 +93,7 @@ class Commit(CodecovBaseModel):
     branch = Column(types.Text)
     ci_passed = Column(types.Boolean)
     commitid = Column(types.Text, primary_key=True)
+    deleted = Column(types.Boolean)
     message = Column(types.Text)
     merged = Column(types.Boolean)
     parent_commit_id = Column('parent', types.Text)
@@ -101,6 +102,7 @@ class Commit(CodecovBaseModel):
     report_json = Column("report", postgresql.JSON)
     state = Column(types.String(256))
     timestamp = Column(types.DateTime, nullable=False)
+    updatestamp = Column(types.DateTime, nullable=True)
     totals = Column(postgresql.JSON)
 
     author = relationship(Owner)
@@ -162,3 +164,19 @@ class Pull(CodecovBaseModel):
 
     def __repr__(self):
         return f"Pull<{self.pullid}@repo<{self.repoid}>>"
+
+    def get_head_commit(self):
+        return (
+            self.get_db_session()
+            .query(Commit)
+            .filter_by(repoid=self.repoid, commitid=self.head)
+            .first()
+        )
+
+    def get_comparedto_commit(self):
+        return (
+            self.get_db_session()
+            .query(Commit)
+            .filter_by(repoid=self.repoid, commitid=self.compared_to)
+            .first()
+        )

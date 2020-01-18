@@ -1,8 +1,6 @@
 import logging
-import dataclasses
 
 from sqlalchemy.orm.session import Session
-from covreports.config import get_config
 from torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from celery.exceptions import MaxRetriesExceededError
 
@@ -10,17 +8,15 @@ from app import celery_app
 from celery_config import (
     notify_task_name, status_set_error_task_name, task_default_queue
 )
-from database.models import Commit
-from helpers.metrics import metrics
+from database.models import Commit, Pull
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.commit_status import RepositoryCIFilter
-from services.notification.notifiers import (
-    get_all_notifier_classes_mapping, get_status_notifier_class, get_pull_request_notifiers
-)
 from services.notification.types import Comparison, FullCommit
 from services.notification import NotificationService
 from services.report import ReportService
-from services.repository import get_repo_provider_service, fetch_and_update_pull_request_information
+from services.repository import (
+    get_repo_provider_service, fetch_and_update_pull_request_information_from_commit
+)
 from services.yaml import read_yaml_field
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
@@ -148,12 +144,14 @@ class NotifyTask(BaseCodecovTask):
                     repoid=commit.repoid
                 )
             )
-            pull = await fetch_and_update_pull_request_information(
+            enriched_pull = await fetch_and_update_pull_request_information_from_commit(
                 repository_service, commit, current_yaml
             )
-            if pull:
+            if enriched_pull:
+                pull = enriched_pull.database_pull
                 base_commit = self.fetch_pull_request_base(pull)
             else:
+                pull = None
                 base_commit = self.fetch_parent(commit)
             report_service = ReportService(current_yaml)
             if base_commit is not None:
@@ -206,11 +204,8 @@ class NotifyTask(BaseCodecovTask):
         notifications_service = NotificationService(commit.repository, current_yaml)
         return await notifications_service.notify(comparison)
 
-    def fetch_pull_request_base(self, pull):
-        db_session = pull.get_db_session()
-        # TODO: The legacy code uses pull.base. Check whether true, and why, since
-        # pull.base is not guaranteed to be in the database
-        return db_session.query(Commit).filter_by(repoid=pull.repoid, commitid=pull.compared_to).first()
+    def fetch_pull_request_base(self, pull: Pull) -> Commit:
+        return pull.get_comparedto_commit()
 
     def fetch_parent(self, commit):
         db_session = commit.get_db_session()

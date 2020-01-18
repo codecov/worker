@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime
 import re
+from typing import Mapping, Any
+from dataclasses import dataclass
 
 import torngit
 from torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError
@@ -208,53 +210,69 @@ async def create_webhook_on_provider(repository_service):
             "job_events": False,
             "build_events": True,
             "pipeline_events": True,
-            "wiki_events": False
-        }
+            "wiki_events": False,
+        },
     }
     return await repository_service.post_webhook(
-        f'Codecov Webhook. {webhook_url}',
-        f'{webhook_url}/webhooks/{repository_service.service}',
+        f"Codecov Webhook. {webhook_url}",
+        f"{webhook_url}/webhooks/{repository_service.service}",
         WEBHOOK_EVENTS[repository_service.service],
         get_config(
-            repository_service.service, 'webhook_secret',
-            default='ab164bf3f7d947f2a0681b215404873e')
-        )
+            repository_service.service,
+            "webhook_secret",
+            default="ab164bf3f7d947f2a0681b215404873e",
+        ),
+    )
 
 
 def get_repo_provider_service_by_id(db_session, repoid, commitid=None):
-    repo = db_session.query(Repository).filter(
-        Repository.repoid == int(repoid)
-    ).first()
+    repo = db_session.query(Repository).filter(Repository.repoid == int(repoid)).first()
 
-    assert repo, 'repo-not-found'
+    assert repo, "repo-not-found"
 
     return get_repo_provider_service(repo)
 
 
-async def fetch_and_update_pull_request_information(repository_service, commit, current_yaml):
+@dataclass
+class EnrichedPull(object):
+    database_pull: Pull
+    provider_pull: Mapping[str, Any]
+
+
+async def fetch_and_update_pull_request_information_from_commit(
+    repository_service, commit, current_yaml
+) -> EnrichedPull:
     db_session = commit.get_db_session()
     pullid = commit.pullid
     if not commit.pullid:
         try:
             pullid = await repository_service.find_pull_request(
-                commit=commit.commitid,
-                branch=commit.branch
+                commit=commit.commitid, branch=commit.branch
             )
         except TorngitClientError:
             log.warning(
                 "Unable to fetch what pull request the commit belongs to",
                 exc_info=True,
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid
-                )
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
     if not pullid:
         return None
-    pull_query = db_session.query(Pull).filter_by(
-        pullid=pullid,
-        repoid=commit.repoid
+    enriched_pull = await fetch_and_update_pull_request_information(
+        repository_service, db_session, commit.repoid, pullid, current_yaml
     )
+    pull = enriched_pull.database_pull
+    if pull is not None:
+        pull.author = (
+            commit.author
+        )
+        pull.head = commit.commitid
+    return enriched_pull
+
+
+async def fetch_and_update_pull_request_information(
+    repository_service, db_session, repoid, pullid, current_yaml
+) -> EnrichedPull:
+    pull_query = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid)
     pull = pull_query.first()
     compared_to = None
     try:
@@ -262,26 +280,29 @@ async def fetch_and_update_pull_request_information(repository_service, commit, 
     except TorngitObjectNotFoundError:
         log.warning(
             "Unable to find pull request information on provider to update it",
-            extra=dict(
-                repoid=commit.repoid,
-                commit=commit.commitid
-            )
+            extra=dict(repoid=repoid, pullid=pullid),
         )
-        return pull
-    pull_base_sha = pull_information['base']['commitid']
-    base_commit = db_session.query(Commit).filter_by(commitid=pull_base_sha, repoid=commit.repoid).first()
+        return EnrichedPull(database_pull=pull, provider_pull=None)
+    pull_base_sha = pull_information["base"]["commitid"]
+    base_commit = (
+        db_session.query(Commit)
+        .filter_by(commitid=pull_base_sha, repoid=repoid)
+        .first()
+    )
     if base_commit:
         compared_to = base_commit.commitid
     else:
         # Copying from legacy-code. We should take a look and redecide
-        commit_dict = await repository_service.get_commit(pull_information['base']['commitid'])
-        new_base_query = db_session.query(Commit).filter(
-            Commit.repoid == commit.repoid,
-            Commit.branch == pull_information['base']['branch'],
-            (Commit.pullid.is_(None) | Commit.merged),
-            Commit.timestamp < commit_dict['timestamp']
+        commit_dict = await repository_service.get_commit(
+            pull_information["base"]["commitid"]
         )
-        if read_yaml_field(current_yaml, ('codecov', 'require_ci_to_pass'), True):
+        new_base_query = db_session.query(Commit).filter(
+            Commit.repoid == repoid,
+            Commit.branch == pull_information["base"]["branch"],
+            (Commit.pullid.is_(None) | Commit.merged),
+            Commit.timestamp < commit_dict["timestamp"],
+        )
+        if read_yaml_field(current_yaml, ("codecov", "require_ci_to_pass"), True):
             new_base_query = new_base_query.filter(Commit.ci_passed)
         new_base_query.order_by(Commit.timestamp.desc())
         new_base = new_base_query.first()
@@ -289,25 +310,22 @@ async def fetch_and_update_pull_request_information(repository_service, commit, 
             compared_to = new_base.commitid
 
     if pull:
-        pull.issueid = pull_information['id']
-        pull.state = pull_information['state']
-        pull.title = pull_information['title']
-        pull.base = pull_information['base']['commitid']
-        pull.head = pull_information['head']['commitid']
+        pull.issueid = pull_information["id"]
+        pull.state = pull_information["state"]
+        pull.title = pull_information["title"]
+        pull.base = pull_information["base"]["commitid"]
         pull.compared_to = compared_to
-        pull.author = commit.author  # TODO (Thiago): This matches legacy, but should be different
     else:
         pull = Pull(
             pullid=pullid,
-            repoid=commit.repoid,
-            issueid=pull_information['id'],
-            state=pull_information['state'],
-            title=pull_information['title'],
-            base=pull_information['base']['commitid'],
-            head=pull_information['head']['commitid'],
+            repoid=repoid,
+            issueid=pull_information["id"],
+            state=pull_information["state"],
+            title=pull_information["title"],
+            base=pull_information["base"]["commitid"],
+            head=pull_information["head"]["commitid"],
             compared_to=compared_to,
-            author=commit.author  # TODO (Thiago): This matches legacy, but should be different
         )
         db_session.add(pull)
     db_session.flush()
-    return pull
+    return EnrichedPull(database_pull=pull, provider_pull=pull_information)

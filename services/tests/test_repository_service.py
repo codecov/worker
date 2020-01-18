@@ -7,7 +7,7 @@ from torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError
 from services.repository import (
     get_repo_provider_service, fetch_appropriate_parent_for_commit, get_author_from_commit,
     update_commit_from_provider_info, get_repo_provider_service_by_id,
-    fetch_and_update_pull_request_information
+    fetch_and_update_pull_request_information_from_commit
 )
 from database.tests.factories import RepositoryFactory, OwnerFactory, CommitFactory, PullFactory
 
@@ -466,7 +466,9 @@ class TestRepositoryServiceTestCase(object):
         }
 
     @pytest.mark.asyncio
-    async def test_fetch_and_update_pull_request_information_new_pull_commits_in_place(self, dbsession, mocker):
+    async def test_fetch_and_update_pull_request_information_from_commit_new_pull_commits_in_place(
+        self, dbsession, mocker
+    ):
         commit = CommitFactory.create(
             message='',
             pullid=1,
@@ -502,7 +504,11 @@ class TestRepositoryServiceTestCase(object):
                 return_value=get_pull_request_result
             ),
         )
-        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+        enriched_pull = await fetch_and_update_pull_request_information_from_commit(
+            repository_service, commit, current_yaml
+        )
+        res = enriched_pull.database_pull
+        dbsession.flush()
         dbsession.refresh(res)
         assert res is not None
         assert res.repoid == commit.repoid
@@ -520,7 +526,7 @@ class TestRepositoryServiceTestCase(object):
         assert res.author == commit.author
 
     @pytest.mark.asyncio
-    async def test_fetch_and_update_pull_request_information_existing_pull_commits_in_place(self, dbsession, mocker):
+    async def test_fetch_and_update_pull_request_information_from_commit_existing_pull_commits_in_place(self, dbsession, mocker):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -578,7 +584,9 @@ class TestRepositoryServiceTestCase(object):
                 return_value=get_pull_request_result
             ),
         )
-        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+        enriched_pull = await fetch_and_update_pull_request_information_from_commit(repository_service, commit, current_yaml)
+        res = enriched_pull.database_pull
+        dbsession.flush()
         dbsession.refresh(res)
         assert res is not None
         assert res == pull
@@ -659,7 +667,9 @@ class TestRepositoryServiceTestCase(object):
                 return_value=get_pull_request_result
             ),
         )
-        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+        enriched_pull = await fetch_and_update_pull_request_information_from_commit(repository_service, commit, current_yaml)
+        res = enriched_pull.database_pull
+        dbsession.flush()
         dbsession.refresh(res)
         assert res is not None
         assert res == pull
@@ -679,7 +689,7 @@ class TestRepositoryServiceTestCase(object):
         assert res.author == commit.author
 
     @pytest.mark.asyncio
-    async def test_fetch_and_update_pull_request_information_different_compared_to(self, dbsession, mocker):
+    async def test_fetch_and_update_pull_request_information_from_commit_different_compared_to(self, dbsession, mocker):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -738,7 +748,11 @@ class TestRepositoryServiceTestCase(object):
                 return_value=get_pull_request_result
             ),
         )
-        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+        enriched_pull = await fetch_and_update_pull_request_information_from_commit(
+            repository_service, commit, current_yaml
+        )
+        res = enriched_pull.database_pull
+        dbsession.flush()
         dbsession.refresh(res)
         assert res is not None
         assert res == pull
@@ -784,7 +798,7 @@ class TestRepositoryServiceTestCase(object):
                 return_value=find_pull_request_result
             ),
         )
-        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+        res = await fetch_and_update_pull_request_information_from_commit(repository_service, commit, current_yaml)
         assert res is None
 
     @pytest.mark.asyncio
@@ -817,8 +831,11 @@ class TestRepositoryServiceTestCase(object):
                 return_value=find_pull_request_result
             ),
         )
-        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
-        assert res is None
+        res = await fetch_and_update_pull_request_information_from_commit(
+            repository_service, commit, current_yaml
+        )
+        assert res.database_pull is None
+        assert res.provider_pull is None
 
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_notfound_pull_already_exists(
@@ -854,5 +871,5 @@ class TestRepositoryServiceTestCase(object):
                 return_value=find_pull_request_result
             ),
         )
-        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
-        assert res == pull
+        res = await fetch_and_update_pull_request_information_from_commit(repository_service, commit, current_yaml)
+        assert res.database_pull == pull
