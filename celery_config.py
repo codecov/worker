@@ -72,7 +72,7 @@ archive_task_name = 'app.tasks.archive.MigrateToArchive'
 bot_task_name = 'app.tasks.bot.VerifyBot'
 comment_task_name = 'app.tasks.comment.Comment'
 flush_repo_task_name = 'app.tasks.flush_repo.FlushRepo'
-github_marketplace_task_name = 'app.tasks.github_marketplace.SyncPlans'
+ghm_sync_plans_task_name = 'app.tasks.ghm_sync_plans.SyncPlans'
 remove_webhook_task_name = 'app.tasks.remove_webhook.RemoveOldHook'
 synchronize_task_name = 'app.tasks.synchronize.Synchronize'
 
@@ -116,7 +116,7 @@ task_routes = {
     flush_repo_task_name: {
         'queue': get_config('setup', 'tasks', 'flush_repo', 'queue', default=_default_queue)
     },
-    github_marketplace_task_name: {
+    ghm_sync_plans_task_name: {
         'queue': get_config('setup', 'tasks', 'sync_plans', 'queue', default=_default_queue)
     },
     remove_webhook_task_name: {
