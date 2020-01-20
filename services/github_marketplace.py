@@ -2,6 +2,7 @@ import logging
 import requests
 
 import torngit
+from covreports.config import get_config
 from services.github import get_github_integration_token
 
 log = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class GitHubMarketplaceService(object):
             res.raise_for_status()
         except requests.exceptions.HTTPError:
             log.exception(
-                'Github Marketplace Error',
+                'Github Marketplace Service Error',
                 extra=dict(
                     code=res.status_code,
                     text=res.text
@@ -55,14 +56,32 @@ class GitHubMarketplaceService(object):
         return self._token
 
     def get_sender_plans(self, account_id):
+        """
+        Check if a GitHub account is associated with any Marketplace listing.
+
+        Shows whether the user or organization account actively subscribes to a
+        Codecov plan. When someone submits a plan change that won't be processed until
+        the end of their billing cycle, you will also see the upcoming pending change.
+        """
         return self.api('get', '/marketplace_listing/accounts/{}'.format(account_id))
     
     def get_codecov_plans(self):
+        """
+        List all plans for Codecov Marketplace listing
+        """
         return self.api('get', '/marketplace_listing/plans')
     
     def get_plan_accounts(self, page, plan_id):
+        """
+        List all GitHub accounts (user or organization) on a specific plan.
+        """
         params = dict(page=page)
         return self.api('get', '/marketplace_listing/plans/{}/accounts'.format(plan_id), params=params)
+
+    def get_user(self, service_id):
+        params = dict(client_id=get_config('github', 'client_id'),
+                      client_secret=get_config('github', 'client_secret'))
+        return self.api('get', '/user/{}'.format(service_id), params=params)
 
     @property
     def plan_ids(self):
