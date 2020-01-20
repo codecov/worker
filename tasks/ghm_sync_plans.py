@@ -4,7 +4,7 @@ from datetime import datetime
 
 from app import celery_app
 from celery_config import ghm_sync_plans_task_name
-from database.models import Owner
+from database.models import Owner, Repository
 from services.github_marketplace import GitHubMarketplaceService
 from tasks.base import BaseCodecovTask
 
@@ -33,7 +33,7 @@ class SyncPlansTask(BaseCodecovTask):
         ghm_service = GitHubMarketplaceService()
 
         if account:
-            # TODO sync all team members - probably need to ask eli if this is needed
+            # TODO sync all team members - 3 year old todo...
 
             # Get all the sender plans
             try:
@@ -62,10 +62,9 @@ class SyncPlansTask(BaseCodecovTask):
 
             # get codecov plans
             plans = ghm_service.get_codecov_plans()
-            plans = [plan['id'] for plan in plans]
+            plan_ids = [plan['id'] for plan in plans]
 
-            # loop through the plans
-            for plan_id in plans:
+            for plan_id in plan_ids:
                 page = 0
                 # loop through all plan accounts
                 while True:
@@ -100,67 +99,10 @@ class SyncPlansTask(BaseCodecovTask):
             self.remove_plan(db_session, ghm_service, service_id)
 
         elif action != 'cancelled' and purchase_object['plan']['id'] in ghm_service.plan_ids:
-            # TODO: move this to add_or_update_plan method
-            owner = db_session.query(Owner).filter(
-                Owner.service == 'github',
-                Owner.service_id == str(service_id)
-            ).first()
+            self.create_or_update_plan(db_session, ghm_service, service_id, purchase_object)
 
-            if owner:
-                owner.plan = 'users'
-                owner.plan_provider = 'github'
-                owner.plan_auto_activate = True
-                owner.plan_user_count = purchase_object['unit_count']
-
-                if owner.stripe_customer_id and owner.stripe_subscription_id:
-                    # end stripe subscription
-                    # TODO:
-                    pass
-                    # stripe = Stripe(config.get(('services', 'stripe', 'api_key')))
-                    # status, data = yield stripe.customers[res['stripe_customer_id']]\
-                    #                         .subscriptions[res['stripe_subscription_id']]\
-                    #                         .delete()
-                    # self.db.query("""UPDATE owners
-                    #                 set stripe_subscription_id = null
-                    #                 where ownerid = %s;""",
-                    #             res['ownerid'])
-            else:
-                # create the user
-                user_data = ghm_service.get_user(service_id)
-                new_owner = self.create_owner(db_session, service_id, user_data['login'], user_data['name'], user_data['email'])
-
-                # set plan info
-                new_owner.plan = 'users'
-                new_owner.plan = 'github'
-                new_owner.plan_auto_activate = True
-                new_owner.plan_user_count = purchase_object['unit_count']
         else:
-            # TODO: self.create_or_update_free_plan(db_session)
-
-            # NOTE: need to ask eli about change here:
-            # https://github.com/codecov/codecov.io/commit/9db7549f5112b5f6615aa9d8436fe7fa9c9f304e#diff-baba3eb256c972c718dca6134b5a4cf4L180-R184
-            pass
-            # # free plan -- occurs when the plan isn't known or the action is cancelled.
-            # res = self.db.get("""UPDATE owners
-            #                      set plan = case when plan = 'users' then 'users-free' else plan end,
-            #                          plan_user_count = 5
-            #                      where service = null
-            #                        and service_id = null
-            #                      returning ownerid;""")
-            # if res:
-            #     # deactivate repos and remove all activated users for this owner
-            #     self.db.query("UPDATE owners set plan_activated_users=null where ownerid=%s", res['ownerid'])
-            #     self.db.query("UPDATE repos set activated=false where ownerid=%s;",
-            #                   res['ownerid'])
-            # else:
-            #     res = requests.get('https://api.github.com/user/{}?{}'.format(service_id, oauth_args),
-            #                        headers=oauth_headers)
-            #     # create the user
-            #     data = res.json()
-            #     self.db.query("""INSERT INTO owners (service, service_id, username, name, email, plan_provider, plan_auto_activate)
-            #                      values ('github', %s, %s, %s, %s, 'github', true);""",
-            #                   service_id, data['login'], data['name'], data['email'])
-
+            self.create_or_update_free_plan(db_session, ghm_service, service_id)
 
     def upsert_owner(self, db_session, service_id, username):
         log.info(
@@ -209,11 +151,14 @@ class SyncPlansTask(BaseCodecovTask):
         }, synchronize_session=False)
 
     def deactivate_repos(self, db_session, ownerid):
-        # TODO
-        self.db.query("""UPDATE repos
-                                set activated = false
-                                where ownerid = %s;""",
-                            owner['ownerid'])
+        """
+        Deactivate all repos for given ownerid
+        """
+        db_session.query(Repository).filter(
+            Repository.ownerid == ownerid
+        ).update({
+            Repository.activated: False
+        }, synchronize_session=False)
 
     def remove_plan(self, db_session, ghm_service, service_id):
         owner = db_session.query(Owner).filter(
@@ -229,6 +174,65 @@ class SyncPlansTask(BaseCodecovTask):
             self.deactivate_repos(db_session, owner.ownerid)
         else:
             # get user data from GitHub and add to owners table
+            user_data = ghm_service.get_user(service_id)
+            self.create_owner(db_session, service_id, user_data['login'], user_data['name'], user_data['email'])
+
+    def create_or_update_plan(self, db_session, ghm_service, service_id, purchase_object):
+        owner = db_session.query(Owner).filter(
+            Owner.service == 'github',
+            Owner.service_id == str(service_id)
+        ).first()
+
+        if owner:
+            owner.plan = 'users'
+            owner.plan_provider = 'github'
+            owner.plan_auto_activate = True
+            owner.plan_user_count = purchase_object['unit_count']
+
+            if owner.stripe_customer_id and owner.stripe_subscription_id:
+                # end stripe subscription
+                # TODO:
+                pass
+                # stripe = Stripe(config.get(('services', 'stripe', 'api_key')))
+                # status, data = yield stripe.customers[res['stripe_customer_id']]\
+                #                         .subscriptions[res['stripe_subscription_id']]\
+                #                         .delete()
+                # self.db.query("""UPDATE owners
+                #                 set stripe_subscription_id = null
+                #                 where ownerid = %s;""",
+                #             res['ownerid'])
+        else:
+            # create the user
+            user_data = ghm_service.get_user(service_id)
+            new_owner = self.create_owner(db_session, service_id, user_data['login'], user_data['name'], user_data['email'])
+
+            # set plan info
+            new_owner.plan = 'users'
+            new_owner.plan = 'github'
+            new_owner.plan_auto_activate = True
+            new_owner.plan_user_count = purchase_object['unit_count']
+
+    def create_or_update_free_plan(self, db_session, ghm_service, service_id):
+        # free plan -- occurs when the plan isn't known or the action is cancelled.
+        owner = db_session.query(Owner).filter(
+            Owner.service == 'github',
+            Owner.service_id == str(service_id)
+        ).first()
+
+        if owner:
+            # deactivate repos and remove all activated users for this owner
+
+            # NOTE: when we went to per user billing, we also needed to preserve legacy behavior, so we created a
+            # free trial per user plan which is represented as `users-free` since `null` is used by legacy
+            # to denote free trial of per repo billing
+            plan = owner.plan
+            owner.plan = 'users-free' if plan == 'users' else plan
+            owner.plan_user_count = 5
+            owner.plan_activated_users = None
+
+            self.deactivate_repos(db_session, owner.ownerid)
+        else:
+            # create the user
             user_data = ghm_service.get_user(service_id)
             self.create_owner(db_session, service_id, user_data['login'], user_data['name'], user_data['email'])
 
