@@ -33,7 +33,7 @@ class SyncPlansTask(BaseCodecovTask):
         ghm_service = GitHubMarketplaceService()
 
         if account:
-            # TODO sync all team members - 3 year old todo...
+            # TODO sync all team members - 3 year old todo from legacy...
 
             # Get all the sender plans
             try:

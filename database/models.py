@@ -29,6 +29,8 @@ class Owner(CodecovBaseModel):
     updatestamp = Column(types.DateTime)
     parent_service_id = Column(types.Text)
     plan_provider = Column(types.Text)
+    plan = Column(types.Text)
+    plan_user_count = Column(types.SmallInteger)
     bot_id = Column('bot', types.Integer, ForeignKey('owners.ownerid'))
 
     bot = relationship('Owner', remote_side=[ownerid])
@@ -59,6 +61,7 @@ class Repository(CodecovBaseModel):
     image_token = Column(types.Text, default=lambda: ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10)))
     language = Column(types.Text)
     hookid = Column(types.Text)
+    activated = Column(types.Boolean, default=False)
     using_integration = Column(types.Boolean)
     cache_do_not_use = Column('cache', postgresql.JSON)
 

@@ -30,7 +30,9 @@ class GitHubMarketplaceService(object):
            'Authorization': 'Bearer %s' % self.get_integration_token()
         }
         _headers.update(headers or {})
+
         method = (method or 'GET').upper()
+
         base_url = torngit.Github.api_url
         if url.startswith('/'): 
             url = base_url + url
@@ -50,10 +52,17 @@ class GitHubMarketplaceService(object):
         return res.json()
 
     def get_integration_token(self):
+        """
+        Get GitHub app token
+        """
         if not self._token:
             self._token = get_github_integration_token('github')
 
         return self._token
+
+    @property
+    def plan_ids(self):
+        return list(self.LEGACY_PLAN_ID, self.CURRENT_PLAN_ID, self.PER_USER_PLAN_ID)
 
     def get_sender_plans(self, account_id):
         """
@@ -79,10 +88,9 @@ class GitHubMarketplaceService(object):
         return self.api('get', '/marketplace_listing/plans/{}/accounts'.format(plan_id), params=params)
 
     def get_user(self, service_id):
+        """
+        Get GitHub user details
+        """
         params = dict(client_id=get_config('github', 'client_id'),
                       client_secret=get_config('github', 'client_secret'))
         return self.api('get', '/user/{}'.format(service_id), params=params)
-
-    @property
-    def plan_ids(self):
-        return list(self.LEGACY_PLAN_ID, self.CURRENT_PLAN_ID, self.PER_USER_PLAN_ID)
