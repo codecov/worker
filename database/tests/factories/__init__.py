@@ -134,7 +134,7 @@ class CommitFactory(Factory):
                 'c': None,
                 'd': 1547084427,
                 'e': None,
-                'f': None,
+                'f': ['unit'],
                 'j': None,
                 'n': None,
                 'p': None,

@@ -53,6 +53,22 @@ class CommentNotifier(AbstractBaseNotifier):
         return pull_diff['diff']
 
     async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
+        if comparison.pull is None:
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation='no_pull_request',
+                data_sent=None,
+                data_received=None
+            )
+        if comparison.pull.state != 'open':
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation='pull_request_closed',
+                data_sent=None,
+                data_received=None
+            )
         message = await self.build_message(comparison)
         pull = comparison.pull
         data = {
