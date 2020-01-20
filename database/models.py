@@ -42,6 +42,9 @@ class Owner(CodecovBaseModel):
     def slug(self):
         return self.username.replace(':', '/')
 
+    def __repr__(self):
+        return f"Owner<{self.ownerid}@service<{self.service}>>"
+
 
 class Repository(CodecovBaseModel):
 
@@ -78,6 +81,9 @@ class Repository(CodecovBaseModel):
     def service(self):
         return self.owner.service
 
+    def __repr__(self):
+        return f"Repo<{self.repoid}>"
+
 
 class Commit(CodecovBaseModel):
 
@@ -100,6 +106,9 @@ class Commit(CodecovBaseModel):
     author = relationship(Owner)
     repository = relationship(Repository, backref=backref("commits", cascade="delete"))
 
+    def __repr__(self):
+        return f"Commit<{self.commitid}@repo<{self.repoid}>>"
+
 
 class Branch(CodecovBaseModel):
 
@@ -117,6 +126,9 @@ class Branch(CodecovBaseModel):
     __table_args__ = (
         Index('branches_repoid_branch', 'repoid', 'branch', unique=True),
     )
+
+    def __repr__(self):
+        return f"Branch<{self.branch}@repo<{self.repoid}>>"
 
 
 class Pull(CodecovBaseModel):
@@ -143,3 +155,6 @@ class Pull(CodecovBaseModel):
     __table_args__ = (
         Index('pulls_repoid_pullid', 'repoid', 'pullid', unique=True),
     )
+
+    def __repr__(self):
+        return f"Pull<{self.pullid}@repo<{self.repoid}>>"
