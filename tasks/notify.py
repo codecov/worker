@@ -15,7 +15,7 @@ from helpers.metrics import metrics
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.commit_status import RepositoryCIFilter
 from services.notification.notifiers import (
-    get_all_notifier_classes_mapping, get_status_notifier_class
+    get_all_notifier_classes_mapping, get_status_notifier_class, get_pull_request_notifiers
 )
 from services.notification.types import Comparison, FullCommit
 from services.report import ReportService
@@ -139,15 +139,6 @@ class NotifyTask(BaseCodecovTask):
             )
             if pull:
                 base_commit = self.fetch_pull_request_base(pull)
-                self.app.send_task(
-                    pulls_task_name,
-                    args=None,
-                    kwargs=dict(
-                        repoid=repoid,
-                        pullid=pull.pullid,
-                        force=True
-                    )
-                )
             else:
                 base_commit = self.fetch_parent(commit)
             report_service = ReportService()
@@ -282,6 +273,17 @@ class NotifyTask(BaseCodecovTask):
                             current_yaml=current_yaml
                         )
                     )
+        comment_yaml_field = read_yaml_field(current_yaml, ("comment",))
+        comment_config = get_config("site", "comment")
+        if comment_config or comment_yaml_field:
+            for pull_notifier_class in get_pull_request_notifiers():
+                yield pull_notifier_class(
+                    repository=repository,
+                    title="comment",
+                    notifier_yaml_settings=comment_yaml_field,
+                    notifier_site_settings=comment_config,
+                    current_yaml=current_yaml,
+                )
 
     def fetch_pull_request_base(self, pull):
         db_session = pull.get_db_session()

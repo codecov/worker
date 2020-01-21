@@ -650,3 +650,44 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, '12345', 'message')
         mock_repo_provider.post_comment.assert_called_with(98, 'message')
         assert not mock_repo_provider.delete_comment.called
+
+    @pytest.mark.asyncio
+    async def test_notify_no_pull_request(self, dbsession, sample_comparison_without_pull):
+        notifier = CommentNotifier(
+            repository=sample_comparison_without_pull.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'layout': "reach, diff, flags, files, footer",
+                'behavior': 'default'
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        result = await notifier.notify(sample_comparison_without_pull)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "no_pull_request"
+        assert result.data_sent is None
+        assert result.data_received is None
+
+    @pytest.mark.asyncio
+    async def test_notify_closed_pull_request(self, dbsession, sample_comparison):
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'layout': "reach, diff, flags, files, footer",
+                'behavior': 'default'
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        sample_comparison.pull.state = 'closed'
+        dbsession.flush()
+        dbsession.refresh(sample_comparison.pull)
+        result = await notifier.notify(sample_comparison)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "pull_request_closed"
+        assert result.data_sent is None
+        assert result.data_received is None
