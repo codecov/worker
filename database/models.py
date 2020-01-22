@@ -31,6 +31,9 @@ class Owner(CodecovBaseModel):
     plan_provider = Column(types.Text)
     plan = Column(types.Text)
     plan_user_count = Column(types.SmallInteger)
+    plan_auto_activate = Column(types.Boolean)
+    stripe_customer_id = Column(types.Text)
+    stripe_subscription_id = Column(types.Text)
     bot_id = Column('bot', types.Integer, ForeignKey('owners.ownerid'))
 
     bot = relationship('Owner', remote_side=[ownerid])
