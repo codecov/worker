@@ -1,0 +1,48 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/vnd.github.valkyrie-preview+json]
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [Codecov]
+    method: GET
+    uri: https://api.github.com/marketplace_listing/stubbed/accounts/8226205
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAAA31STW/cIBD9KxZne413K7XrU6KcckoPOTWKEIaxjYIB8SHVWe1/z2A7m0ZpVuIA
+        M8N7b+bNiSSvSUvGGF1o65o7tRtUHFO3E3aqrR9Cvb5JSeLsAGsf/MCNeuVRWYNRJUn7oyTaDspg
+        9lINE1cIbZLWJUGgyx/WKa2VGdhWQbb3zQcxwk7cv0B0mgtgDozMH8TIzYASVsxPFcljMmDu9A7H
+        xCx01jtZE0c9I6aBv/HCLnnM2T3d04ruK9o8UtouZ0cp/YPl1rDeA7DoFcdOeq4DlOQjxFBWYDiE
+        TVAyKjJhk4mXiMssknGMbExN1Ry+MGGbiHK6bsa//WoVIk6kzh9DfUSxXCzMgV019ApG/Y6weXrE
+        eaWpA0/aA175lKf121tMSwjCK7csQEtuC+dtDyHgk+tq8FxCcXdfBKvTtiObBcx5hXYqwwSgVNI2
+        9Ig0M3Cv56/J5tdPWhK09X82rFCTlZD3t9c8Vj47WpIQV2dd6nBMI0iMLdasPazL0+FaQpbwRB5H
+        FQo8cYSiVz7EYk0Wtl9i2HOxGFR+Kg0grJHf1T6fz+c3q9/G6F0DAAA=
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
+          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
+      Cache-Control: ['public, max-age=60, s-maxage=60']
+      Content-Encoding: [gzip]
+      Content-Security-Policy: [default-src 'none']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Fri, 24 Jan 2020 00:13:35 GMT']
+      ETag: [W/"275358a665064f66410393b9de134be6"]
+      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      Server: [GitHub.com]
+      Status: [200 OK]
+      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
+      Transfer-Encoding: [chunked]
+      Vary: [Accept]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [deny]
+      X-GitHub-Media-Type: [github.v3; param=valkyrie-preview; format=json]
+      X-GitHub-Request-Id: ['B4A6:56CB:126D6B:2D5556:5E2A36AF']
+      X-RateLimit-Limit: ['5000']
+      X-RateLimit-Remaining: ['4992']
+      X-RateLimit-Reset: ['1579825791']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
+version: 1

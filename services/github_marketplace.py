@@ -16,37 +16,36 @@ class GitHubMarketplaceService(object):
 
     def __init__(self):
         self._token = None
+        self.use_stubbed = get_config('services', 'github_marketplace', 'use_stubbed', default=False)
 
-    async def api(self,
-                  method,
-                  url,
-                  body=None,
-                  headers=None,
-                  params=None,
-                  **args):
+    def api(self, method, url, body=None, headers=None, params=None, **args):
         _headers = {
-           'Accept': 'application/vnd.github.valkyrie-preview+json',
-           'User-Agent': 'Codecov',
-           'Authorization': 'Bearer %s' % self.get_integration_token()
+            "Accept": "application/vnd.github.valkyrie-preview+json",
+            "User-Agent": "Codecov",
+            "Authorization": "Bearer %s" % self.get_integration_token(),
         }
         _headers.update(headers or {})
 
-        method = (method or 'GET').upper()
+        print(_headers)
+
+        method = (method or "GET").upper()
 
         base_url = torngit.Github.api_url
-        if url.startswith('/'): 
+        if url.startswith("/"):
             url = base_url + url
-        
+
+        if self.use_stubbed:
+            # use stubbed endpoints for testing
+            # https://developer.github.com/v3/apps/marketplace/#testing-with-stubbed-endpoints
+            url = url.replace("marketplace_listing/", "marketplace_listing/stubbed/", 1)
+
         res = requests.request(method, url, headers=_headers, params=params)
         try:
             res.raise_for_status()
         except requests.exceptions.HTTPError:
             log.exception(
-                'Github Marketplace Service Error',
-                extra=dict(
-                    code=res.status_code,
-                    text=res.text
-                )
+                "Github Marketplace Service Error",
+                extra=dict(code=res.status_code, text=res.text),
             )
             raise
         return res.json()
@@ -56,13 +55,13 @@ class GitHubMarketplaceService(object):
         Get GitHub app token
         """
         if not self._token:
-            self._token = get_github_integration_token('github')
+            self._token = get_github_integration_token("github")
 
         return self._token
 
     @property
     def plan_ids(self):
-        return list(self.LEGACY_PLAN_ID, self.CURRENT_PLAN_ID, self.PER_USER_PLAN_ID)
+        return [self.LEGACY_PLAN_ID, self.CURRENT_PLAN_ID, self.PER_USER_PLAN_ID]
 
     def get_sender_plans(self, account_id):
         """
@@ -72,25 +71,31 @@ class GitHubMarketplaceService(object):
         Codecov plan. When someone submits a plan change that won't be processed until
         the end of their billing cycle, you will also see the upcoming pending change.
         """
-        return self.api('get', '/marketplace_listing/accounts/{}'.format(account_id))
-    
+        return self.api("get", "/marketplace_listing/accounts/{}".format(account_id))
+
     def get_codecov_plans(self):
         """
         List all plans for Codecov Marketplace listing
         """
-        return self.api('get', '/marketplace_listing/plans')
-    
+        return self.api("get", "/marketplace_listing/plans")
+
     def get_plan_accounts(self, page, plan_id):
         """
         List all GitHub accounts (user or organization) on a specific plan.
         """
         params = dict(page=page)
-        return self.api('get', '/marketplace_listing/plans/{}/accounts'.format(plan_id), params=params)
+        return self.api(
+            "get",
+            "/marketplace_listing/plans/{}/accounts".format(plan_id),
+            params=params,
+        )
 
     def get_user(self, service_id):
         """
         Get GitHub user details
         """
-        params = dict(client_id=get_config('github', 'client_id'),
-                      client_secret=get_config('github', 'client_secret'))
-        return self.api('get', '/user/{}'.format(service_id), params=params)
+        params = dict(
+            client_id=get_config("github", "client_id"),
+            client_secret=get_config("github", "client_secret"),
+        )
+        return self.api("get", "/user/{}".format(service_id), params=params)

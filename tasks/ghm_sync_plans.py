@@ -25,7 +25,7 @@ class SyncPlansTask(BaseCodecovTask):
             extra=dict(sender=sender, account=account, action=action),
         )
 
-        # Make sure sender and account owner entries exist
+        # make sure sender and account owner entries exist
         if sender:
             self.upsert_owner(db_session, sender["id"], sender["login"])
 
@@ -37,18 +37,17 @@ class SyncPlansTask(BaseCodecovTask):
         if account:
             # TODO sync all team members - 3 year old todo from legacy...
 
-            # Get all the sender plans
             try:
                 plans = ghm_service.get_sender_plans(account["id"])
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 404:
                     # account has not purchased the listing
-                    await self.sync_plan(
+                    self.sync_plan(
                         db_session, ghm_service, account["id"], None, action=action
                     )
                 raise
 
-            await self.sync_plan(
+            self.sync_plan(
                 db_session,
                 ghm_service,
                 account["id"],
@@ -56,37 +55,9 @@ class SyncPlansTask(BaseCodecovTask):
                 action=action,
             )
         else:
-            has_a_plan = []
+            self.sync_all(db_session, ghm_service, action)
 
-            # get codecov plans
-            plans = ghm_service.get_codecov_plans()
-            plan_ids = [plan["id"] for plan in plans]
-
-            for plan_id in plan_ids:
-                page = 0
-                # loop through all plan accounts
-                while True:
-                    page = page + 1
-                    accounts = ghm_service.get_plan_accounts(page, plan_id)
-
-                    if len(accounts) == 0:
-                        # next plan
-                        break
-
-                    # sync each plan
-                    for customers in accounts:
-                        has_a_plan.append(str(customers["id"]))
-                        await self.sync_plan(
-                            db_session,
-                            ghm_service,
-                            customers["id"],
-                            customers["marketplace_purchase"],
-                            action=action,
-                        )
-
-            self.disable_all_inactive(db_session, has_a_plan)
-
-    async def sync_plan(
+    def sync_plan(
         self, db_session, ghm_service, service_id, purchase_object, action=None
     ):
         log.info(
@@ -110,10 +81,43 @@ class SyncPlansTask(BaseCodecovTask):
         else:
             self.create_or_update_free_plan(db_session, ghm_service, service_id)
 
-    def upsert_owner(self, db_session, service_id, username):
+    def sync_all(self, db_session, ghm_service, action):
         log.info(
-            "Upserting owner", extra=dict(service_id=service_id, username=username)
+            "Sync all", extra=dict(action=action),
         )
+
+        has_a_plan = []
+
+        # get codecov plans
+        plans = ghm_service.get_codecov_plans()
+        plan_ids = [plan["id"] for plan in plans]
+
+        for plan_id in plan_ids:
+            page = 0
+            # loop through all plan accounts
+            while True:
+                page = page + 1
+                accounts = ghm_service.get_plan_accounts(page, plan_id)
+
+                if len(accounts) == 0:
+                    # next plan
+                    break
+
+                # sync each plan
+                for customers in accounts:
+                    has_a_plan.append(str(customers["id"]))
+                    self.sync_plan(
+                        db_session,
+                        ghm_service,
+                        customers["id"],
+                        customers["marketplace_purchase"],
+                        action=action,
+                    )
+
+        self.disable_all_inactive(db_session, has_a_plan)
+
+    def upsert_owner(self, db_session, service_id, username):
+        log.info("Upsert owner", extra=dict(service_id=service_id, username=username))
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == "github", Owner.service_id == str(service_id))
@@ -143,7 +147,7 @@ class SyncPlansTask(BaseCodecovTask):
 
     def disable_all_inactive(self, db_session, active_account_ids):
         """
-        Disable plans that are no longer active
+        Disable all plans that are no longer active
         """
         active_account_ids = list(map(str, active_account_ids))
 
@@ -163,6 +167,9 @@ class SyncPlansTask(BaseCodecovTask):
         )
 
     def remove_plan(self, db_session, ghm_service, service_id):
+        """
+        Remove plan for existing owner or create new owner entry
+        """
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == "github", Owner.service_id == str(service_id))
@@ -189,6 +196,10 @@ class SyncPlansTask(BaseCodecovTask):
     def create_or_update_plan(
         self, db_session, ghm_service, service_id, purchase_object
     ):
+        """
+        Create or update plan from GitHub marketplace purchase info. Cancel Stripe
+        subscription if owner currently has one.
+        """
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == "github", Owner.service_id == str(service_id))
@@ -223,7 +234,9 @@ class SyncPlansTask(BaseCodecovTask):
             new_owner.plan_user_count = purchase_object["unit_count"]
 
     def create_or_update_free_plan(self, db_session, ghm_service, service_id):
-        # free plan -- occurs when the plan isn't known or the action is cancelled.
+        """
+        Create or update free plan for when plan isn't known or the action is "cancelled"
+        """
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == "github", Owner.service_id == str(service_id))
