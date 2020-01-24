@@ -4,6 +4,7 @@ from decimal import Decimal
 from services.notification.notifiers.comment import (
     CommentNotifier, diff_to_string, format_number_to_str
 )
+from services.notification.notifiers.base import NotificationResult
 from covreports.utils.tuples import ReportTotals
 from torngit.exceptions import TorngitObjectNotFoundError
 
@@ -669,6 +670,58 @@ class TestCommentNotifier(object):
         assert result.explanation == "no_pull_request"
         assert result.data_sent is None
         assert result.data_received is None
+
+    @pytest.mark.asyncio
+    async def test_store_results(self, dbsession, sample_comparison):
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'layout': "reach, diff, flags, files, footer",
+                'behavior': 'default'
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent=None,
+            data_received={'id': 578263422}
+        )
+        notifier.store_results(sample_comparison, result)
+        assert sample_comparison.pull.commentid == 578263422
+        dbsession.flush()
+        assert sample_comparison.pull.commentid == 578263422
+        dbsession.refresh(sample_comparison.pull)
+        assert sample_comparison.pull.commentid == "578263422"
+
+    @pytest.mark.asyncio
+    async def test_store_results_no_succesfull_result(self, dbsession, sample_comparison):
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'layout': "reach, diff, flags, files, footer",
+                'behavior': 'default'
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=False,
+            explanation=None,
+            data_sent=None,
+            data_received={'id': 'yadayada'}
+        )
+        notifier.store_results(sample_comparison, result)
+        assert sample_comparison.pull.commentid is None
+        dbsession.flush()
+        assert sample_comparison.pull.commentid is None
+        dbsession.refresh(sample_comparison.pull)
+        assert sample_comparison.pull.commentid is None
 
     @pytest.mark.asyncio
     async def test_notify_closed_pull_request(self, dbsession, sample_comparison):

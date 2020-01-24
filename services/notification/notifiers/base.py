@@ -28,8 +28,6 @@ class AbstractBaseNotifier(object):
                 <notifier_title>:
                     ... <notifier_fields>
 
-        The only real piece of logic on this class is that it checks whether
-            this notifier is enabled on the site-wide settings
     """
 
     def __init__(self, repository: Repository, title: str, notifier_yaml_settings: Mapping[str, Any], notifier_site_settings: Mapping[str, Any], current_yaml: Mapping[str, Any]):
@@ -47,4 +45,15 @@ class AbstractBaseNotifier(object):
         raise NotImplementedError()
 
     def is_enabled(self) -> bool:
+        raise NotImplementedError()
+
+    def store_results(self, comparison: Comparison, result: NotificationResult):
+        """
+            This function stores the result in the notification wherever it needs to be saved
+            This is the only function in this class allowed to have side-effects in the database
+
+        Args:
+            comparison (Comparison): The comparison with which this notify ran
+            result (NotificationResult): The results of the notificaiton
+        """
         raise NotImplementedError()

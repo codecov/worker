@@ -38,6 +38,9 @@ class StandardNotifier(AbstractBaseNotifier):
             self._repository_service = get_repo_provider_service(self.repository)
         return self._repository_service
 
+    def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
+        pass
+
     @property
     def name(self):
         return self.__class__.__name__
