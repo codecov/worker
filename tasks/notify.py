@@ -210,6 +210,7 @@ class NotifyTask(BaseCodecovTask):
                         'title': notifier.title,
                         'result': dataclasses.asdict(res)
                     }
+                    notifier.store_results(comparison, res)
                     notifications.append(individual_result)
                     log.info(
                         "Individual notification done",

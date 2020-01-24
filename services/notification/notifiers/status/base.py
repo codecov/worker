@@ -24,6 +24,9 @@ class StatusNotifier(AbstractBaseNotifier):
     def is_enabled(self):
         return True
 
+    def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
+        pass
+
     @property
     def name(self):
         return f"status-{self.context}"

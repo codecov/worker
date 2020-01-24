@@ -37,6 +37,14 @@ class CommentNotifier(AbstractBaseNotifier):
             self._repository_service = get_repo_provider_service(self.repository)
         return self._repository_service
 
+    def store_results(self, comparison: Comparison, result: NotificationResult):
+        pull = comparison.pull
+        if not result.notification_attempted or not result.notification_successful:
+            return
+        data_received = result.data_received
+        if data_received and data_received.get('id'):
+            pull.commentid = data_received.get('id')
+
     @property
     def name(self) -> str:
         return 'comment'
