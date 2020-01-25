@@ -16,22 +16,32 @@ class GitHubMarketplaceService(object):
 
     def __init__(self):
         self._token = None
-        self.use_stubbed = get_config('services', 'github_marketplace', 'use_stubbed', default=False)
+        self.use_stubbed = get_config(
+            "services", "github_marketplace", "use_stubbed", default=False
+        )
 
-    def api(self, method, url, body=None, headers=None, params=None, **args):
+    def api(
+        self,
+        method,
+        url,
+        body=None,
+        headers=None,
+        params=None,
+        auth_with_integration_token=True,
+        **args,
+    ):
         _headers = {
             "Accept": "application/vnd.github.valkyrie-preview+json",
             "User-Agent": "Codecov",
-            "Authorization": "Bearer %s" % self.get_integration_token(),
         }
+        if auth_with_integration_token:
+            _headers["Authorization"] = f"Bearer {self.get_integration_token()}"
         _headers.update(headers or {})
-
-        print(_headers)
 
         method = (method or "GET").upper()
 
-        base_url = torngit.Github.api_url
         if url.startswith("/"):
+            base_url = torngit.Github.api_url
             url = base_url + url
 
         if self.use_stubbed:
@@ -98,4 +108,9 @@ class GitHubMarketplaceService(object):
             client_id=get_config("github", "client_id"),
             client_secret=get_config("github", "client_secret"),
         )
-        return self.api("get", "/user/{}".format(service_id), params=params)
+        return self.api(
+            "get",
+            "/user/{}".format(service_id),
+            params=params,
+            auth_with_integration_token=False,
+        )

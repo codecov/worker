@@ -1,0 +1,205 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/vnd.github.valkyrie-preview+json]
+      Connection: [keep-alive]
+      User-Agent: [Codecov]
+    method: GET
+    uri: https://api.github.com/marketplace_listing/stubbed/plans
+  response:
+    body: { string: '[{"url":"https://api.github.com/marketplace_listing/plans/3267","accounts_url":"https://api.github.com/marketplace_listing/plans/3267/accounts","id":3267,"number":3,"name":"Pro","description":"A professional-grade CI solution","monthly_price_in_cents":1099,"yearly_price_in_cents":11870,"has_free_trial":false,"price_model":"flat-rate","state":"published","unit_name":null,"bullets":["This is the first bullet of the Pro plan","This is the second bullet of the Pro plan"]}]'}
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
+          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
+      Cache-Control: ['public, max-age=60, s-maxage=60']
+      Content-Security-Policy: [default-src 'none']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Sat, 25 Jan 2020 18:52:32 GMT']
+      ETag: [W/"f730eb63a60ae54aa937da5aa61c0d54"]
+      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      Server: [GitHub.com]
+      Status: [200 OK]
+      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
+      Transfer-Encoding: [chunked]
+      Vary: [Accept]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [deny]
+      X-GitHub-Media-Type: [github.v3; param=valkyrie-preview; format=json]
+      X-GitHub-Request-Id: ['9E24:7972:48F77:AD2EF:5E2C8E70']
+      X-RateLimit-Limit: ['5000']
+      X-RateLimit-Remaining: ['4996']
+      X-RateLimit-Reset: ['1579978815']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: [application/vnd.github.valkyrie-preview+json]
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [Codecov]
+    method: GET
+    uri: https://api.github.com/marketplace_listing/stubbed/plans/3267/accounts?page=1
+  response:
+    body: { string: '[{"url":"https://api.github.com/orgs/github","type":"Organization","id":4,"login":"github","email":null,"organization_billing_email":"billing@github.com","marketplace_pending_change":null,"marketplace_purchase":{"billing_cycle":"monthly","next_billing_date":"2020-02-01T00:00:00.000Z","on_free_trial":false,"free_trial_ends_on":null,"unit_count":12,"updated_at":"2020-01-13T00:00:00.000Z","plan":{"url":"https://api.github.com/marketplace_listing/plans/3267","accounts_url":"https://api.github.com/marketplace_listing/plans/3267/accounts","id":3267,"number":3,"name":"Pro","description":"A professional-grade CI solution","monthly_price_in_cents":1099,"yearly_price_in_cents":11870,"has_free_trial":false,"price_model":"flat-rate","state":"published","unit_name":null,"bullets":["This is the first bullet of the Pro plan","This is the second bullet of the Pro plan"]}}},{"url":"https://api.github.com/users/test","type":"User","id":2,"login":"test","email":"test@example.com","marketplace_pending_change":{"id":12,"unit_count":12,"plan":{"url":"https://api.github.com/marketplace_listing/plans/2147","accounts_url":"https://api.github.com/marketplace_listing/plans/2147/accounts","id":2147,"number":2,"name":"Hobby","description":"A hobby-grade CI solution","monthly_price_in_cents":1099,"yearly_price_in_cents":11870,"has_free_trial":false,"price_model":"per-unit","state":"published","unit_name":"seat","bullets":["This is the first bullet of the Hobby plan","This is the second bullet of the Hobby plan"]},"effective_date":"2020-02-01T00:00:00.000Z"},"marketplace_purchase":{"billing_cycle":"monthly","next_billing_date":"2020-02-01T00:00:00.000Z","on_free_trial":false,"free_trial_ends_on":null,"unit_count":12,"updated_at":"2020-01-13T00:00:00.000Z","plan":{"url":"https://api.github.com/marketplace_listing/plans/2147","accounts_url":"https://api.github.com/marketplace_listing/plans/2147/accounts","id":2147,"number":2,"name":"Hobby","description":"A hobby-grade CI solution","monthly_price_in_cents":1099,"yearly_price_in_cents":11870,"has_free_trial":false,"price_model":"per-unit","state":"published","unit_name":"seat","bullets":["This is the first bullet of the Hobby plan","This is the second bullet of the Hobby plan"]}}}]'}
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
+          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
+      Cache-Control: ['public, max-age=60, s-maxage=60']
+      Content-Security-Policy: [default-src 'none']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Sat, 25 Jan 2020 20:57:30 GMT']
+      ETag: [W/"6ac56d589bf99d5d30030d9c200d5ea5"]
+      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      Server: [GitHub.com]
+      Status: [200 OK]
+      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
+      Transfer-Encoding: [chunked]
+      Vary: [Accept]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [deny]
+      X-GitHub-Media-Type: [github.v3; param=valkyrie-preview; format=json]
+      X-GitHub-Request-Id: ['8CEA:380D:A89C66:183FF07:5E2CABB9']
+      X-RateLimit-Limit: ['5000']
+      X-RateLimit-Remaining: ['3200']
+      X-RateLimit-Reset: ['1579987188']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: [application/vnd.github.valkyrie-preview+json]
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [Codecov]
+    method: GET
+    uri: https://api.github.com/marketplace_listing/stubbed/plans/3267/accounts?page=2
+  response:
+    body: { string: '[]'}
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
+          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
+      Cache-Control: ['public, max-age=60, s-maxage=60']
+      Content-Security-Policy: [default-src 'none']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Sat, 25 Jan 2020 20:57:30 GMT']
+      ETag: [W/"6ac56d589bf99d5d30030d9c200d5ea5"]
+      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      Server: [GitHub.com]
+      Status: [200 OK]
+      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
+      Transfer-Encoding: [chunked]
+      Vary: [Accept]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [deny]
+      X-GitHub-Media-Type: [github.v3; param=valkyrie-preview; format=json]
+      X-GitHub-Request-Id: ['8CEC:714A:20FF6A0:3BF8875:5E2CABBA']
+      X-RateLimit-Limit: ['5000']
+      X-RateLimit-Remaining: ['3199']
+      X-RateLimit-Reset: ['1579987188']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: [application/vnd.github.valkyrie-preview+json]
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [Codecov]
+    method: GET
+    uri: https://api.github.com/user/4?client_id=testiouu71gdynyqxzk4&client_secret=3b4ab5b18be7155fdbb739e7f1ae277222fb12db
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAAA5VUXWvbMBT9K0HPaeQ4H+0EpX0YgzE2KMtG15cgy6qtTZaMJDu4pv99R7YbusAe
+        /GT56p5zT47vSU+0LZQhjJw6wYMnS6JywrZLYmwuj/FMvn582P98/KbF74db3POWB+6OjdO4K0Oo
+        PaN0LPpkVahQNlnjpRPWBGnCStiKNnR7195ugS7chB+oUbjgqdVEMeLA4+lZWhkqfTF4nDc0n9ue
+        rdb2BOSlyP+T0zMGksazMsVsPDA9taGU8AfSX+MPVj7METL09zQ+YH9k8LDbyXyGmAkBKScDFT11
+        srYDVZN54VQdlDVzRP2DA491BTfqhc/lAS6uWJQzZ/zQD5xssVBzgCOgp7VTLRddtMBJIVULO2eT
+        XSDBFbpaYot/4FNHc1WQR55XMU7PXHuJEPEqNvySZZPzxRceXtCHXa256VA/KJ3L5eKzESvUM0Rx
+        ihQS1Q2YP4DE5ca1tggovhtavnOz+OS4EcoLG32puIppHBNwX8TXCVUqJ3mmocI0WmOIsm/Husm0
+        EsfRXJamuyWZSsMOEna9W7+FAWEi7MN2f/0uHcPfhAB9gJs8YH6aJDdXyfpqnR6SHdvcsM3mCfKa
+        On/fkyaxJ00OacqSPUvXT+T1L90oNXiIBAAA
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
+          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
+      Cache-Control: ['public, max-age=60, s-maxage=60']
+      Content-Encoding: [gzip]
+      Content-Security-Policy: [default-src 'none']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Sat, 25 Jan 2020 20:57:29 GMT']
+      ETag: [W/"0fe5c11b8816ba2e6280232d653389b9"]
+      Last-Modified: ['Mon, 20 Jan 2020 22:06:21 GMT']
+      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      Server: [GitHub.com]
+      Status: [200 OK]
+      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
+      Transfer-Encoding: [chunked]
+      Vary: [Accept]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [deny]
+      X-GitHub-Media-Type: [github.v3; param=valkyrie-preview; format=json]
+      X-GitHub-Request-Id: ['8CD0:174F:137AB68:2BEAA82:5E2CABB8']
+      X-RateLimit-Limit: ['5000']
+      X-RateLimit-Remaining: ['4975']
+      X-RateLimit-Reset: ['1579988452']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: [application/vnd.github.valkyrie-preview+json]
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [Codecov]
+    method: GET
+    uri: https://api.github.com/user/2?client_id=testiouu71gdynyqxzk4&client_secret=3b4ab5b18be7155fdbb739e7f1ae277222fb12db
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAAA5WTzW6cMBSFX6XyeiY2NJlJkKIu2k0XrVQp/VE2I2M84NbYyD+MpiiP0F33fcU+
+        Qo+Byc8sKrECzP3OPVzuGYi2tTKkIJXcR/MjkBVRFSnyFTG2krt0Tz68+7T58u2jFt/f3+I973ng
+        bhedxrsmhM4XlE6Hnl3UKjSxjF46YU2QJlwI29JI8zf97SXo2s38KI2DM51OzRITBx1Pn7w1odVn
+        naeGY/VT3d5qbQ9gz23+R54+QnA13StTLxcANFAbGokZwf5D+mjlwyIrIzDQdME/SBIeM3eyWmJn
+        RmDmYOBjoE52dtSKpRdOdUFZs8jWCxBC1tXcqJ98sRBADz4ZWmRgBADKHpu1iJyIgXZO9Vwc0xic
+        FFL1mOlytTMUYuHYSSz0Z/zxNGEV5I5XbYrWnmsvkSfepoK3jVP+1VdufHA8NKjF5nbcHElhotYr
+        UiKRc7CQK5HKD6fqccuBaCvGmZ8Y2XKFNE4CjXKSlxrNZkFloff3z6/fILtYaiV20xyLjG0fj8aV
+        Q/K3r0/bj/jgmV1fb57lAScZg2n0CBgdD9DOGduuM7bO2R27KvLLIru5R6/YVc9rspt1lq1Zdpdn
+        xdWmYOyePPwDTU2zRYAEAAA=
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
+          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
+      Cache-Control: ['public, max-age=60, s-maxage=60']
+      Content-Encoding: [gzip]
+      Content-Security-Policy: [default-src 'none']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Sat, 25 Jan 2020 20:57:29 GMT']
+      ETag: [W/"56aa96e0a95e5e099af95553b894cf5e"]
+      Last-Modified: ['Fri, 01 Nov 2019 21:56:00 GMT']
+      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      Server: [GitHub.com]
+      Status: [200 OK]
+      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
+      Transfer-Encoding: [chunked]
+      Vary: [Accept]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [deny]
+      X-GitHub-Media-Type: [github.v3; param=valkyrie-preview; format=json]
+      X-GitHub-Request-Id: ['8CD2:5922:13298D6:2B0DDA4:5E2CABB9']
+      X-RateLimit-Limit: ['5000']
+      X-RateLimit-Remaining: ['4974']
+      X-RateLimit-Reset: ['1579988452']
+      X-XSS-Protection: [1; mode=block]
+    status: {code: 200, message: OK}
+version: 1

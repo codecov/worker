@@ -20,6 +20,12 @@ class SyncPlansTask(BaseCodecovTask):
     name = ghm_sync_plans_task_name
 
     async def run_async(self, db_session, sender=None, account=None, action=None):
+        """
+        Sender: The person who took the action that triggered the webhook.
+        Account: The organization or user account associated with the subscription.
+        Action: The action performed to generate the webhook. Can be `purchased`,
+                `cancelled`, `pending_change`, `pending_change_cancelled`, or `changed`.
+        """
         log.info(
             "GitHub marketplace sync plans",
             extra=dict(sender=sender, account=account, action=action),
@@ -36,18 +42,18 @@ class SyncPlansTask(BaseCodecovTask):
 
         if account:
             # TODO sync all team members - 3 year old todo from legacy...
-
             try:
                 plans = ghm_service.get_sender_plans(account["id"])
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 404:
                     # account has not purchased the listing
-                    self.sync_plan(
+                    return self.sync_plan(
                         db_session, ghm_service, account["id"], None, action=action
                     )
-                raise
+                else:
+                    raise
 
-            self.sync_plan(
+            return self.sync_plan(
                 db_session,
                 ghm_service,
                 account["id"],
@@ -55,7 +61,8 @@ class SyncPlansTask(BaseCodecovTask):
                 action=action,
             )
         else:
-            self.sync_all(db_session, ghm_service, action)
+            # manual sync of all plan accounts
+            return self.sync_all(db_session, ghm_service, action)
 
     def sync_plan(
         self, db_session, ghm_service, service_id, purchase_object, action=None
@@ -67,9 +74,12 @@ class SyncPlansTask(BaseCodecovTask):
             ),
         )
 
+        plan_type_synced = None
+        plan_removed = False
+
         if not purchase_object:
             self.remove_plan(db_session, ghm_service, service_id)
-
+            plan_removed = True
         elif (
             action != "cancelled"
             and purchase_object["plan"]["id"] in ghm_service.plan_ids
@@ -77,11 +87,18 @@ class SyncPlansTask(BaseCodecovTask):
             self.create_or_update_plan(
                 db_session, ghm_service, service_id, purchase_object
             )
+            plan_type_synced = "paid"
 
         else:
             self.create_or_update_free_plan(db_session, ghm_service, service_id)
+            plan_type_synced = "free"
+
+        return dict(plan_type_synced=plan_type_synced, plan_removed=plan_removed)
 
     def sync_all(self, db_session, ghm_service, action):
+        """
+        This is carried over from legacy to sync all plan accounts
+        """
         log.info(
             "Sync all", extra=dict(action=action),
         )
@@ -118,6 +135,7 @@ class SyncPlansTask(BaseCodecovTask):
 
     def upsert_owner(self, db_session, service_id, username):
         log.info("Upsert owner", extra=dict(service_id=service_id, username=username))
+
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == "github", Owner.service_id == str(service_id))
@@ -170,6 +188,8 @@ class SyncPlansTask(BaseCodecovTask):
         """
         Remove plan for existing owner or create new owner entry
         """
+        log.info("Remove plan", extra=dict(service_id=service_id))
+
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == "github", Owner.service_id == str(service_id))
@@ -200,6 +220,8 @@ class SyncPlansTask(BaseCodecovTask):
         Create or update plan from GitHub marketplace purchase info. Cancel Stripe
         subscription if owner currently has one.
         """
+        log.info("Create or update plan", extra=dict(service_id=service_id))
+
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == "github", Owner.service_id == str(service_id))
@@ -237,6 +259,8 @@ class SyncPlansTask(BaseCodecovTask):
         """
         Create or update free plan for when plan isn't known or the action is "cancelled"
         """
+        log.info("Create or update free plan", extra=dict(service_id=service_id))
+
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == "github", Owner.service_id == str(service_id))

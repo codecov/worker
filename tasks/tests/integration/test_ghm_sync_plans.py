@@ -1,42 +1,34 @@
 import pytest
 
-from database.tests.factories import OwnerFactory
+from database.tests.factories import OwnerFactory, RepositoryFactory
+from database.models import Owner, Repository
 from tasks.ghm_sync_plans import SyncPlansTask
 
+# DONT WORRY, this is generated for the purposes of validation
+# and is not the real one on which the code ran
 fake_private_key = """-----BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEA0szMfBZ4kn9q+puMA5YETxdjj/claRhyCQXZGLXzxI8eY5OQ
-2CXpa27got7wh05xRnstaH4LEvlRo50kwKdM4bNRumCT8tZXSGe+2H76WNP+ePrP
-mdYhrtld2FpKh6ssK1lgw1dxZR5eezV+7z+BzBATqjFqYvSENXpEnZ16QKNLWtOJ
-55EzKVgFQ+012Zf/RF111Xs0t2VRpMHIdsZ8+2EmAw44d9UonvYPvFoUD+HscIab
-RW4s4S1Sn/RFL2AkwD9Urn8XSeclHd7AoOfUm2ssngHdqon6Ko55ETDw1lOXpw3a
-S9+7lJJ+9OP8nd2nvn9xetyFgMvuJhqXpR7auQIDAQABAoIBAG+jbpg4/ln3iRx3
-zEsJ4/ZPGLdh2Do0bBBDPJpNom/yq9FokUknqtruuaEIGLJP5MXC7mVse0jtKUNR
-MemlsJ3Hbf0asL/mrAr4hqX5eXQZsac4jUGXmfcTvxOZnecDzDyY9Rn+8VrwHnF5
-/2ONapw7125HBWSqwmnf+v7OK7SWz89K4dBAfbExssmmBAyHMVpAA3qBAONNE5xr
-voEp7oiulaR44su2hOoQmmcPh5QfENv+ps4HnGMPGoZZ2HpXcubWgNrHJt+qDUR3
-2fG/LezTQrcQO2M/CCqa8RGfWr20UBWxHvE6avoiE0tuorBy8YAk/FwfUNfJR4g/
-75GlHxECgYEA+lLYjAIdmw4rGxEdh51J33sAhd8jPbdEp6EGJQjZEJVj47HERGL7
-uAML6y/xpZKGfRg4/2VhYwvQo1CY4xXekCPyVEA/cEos2CP5iAaT+N8BeNaBlq/2
-ZTELlPpJmIu+9sqQZVC6Js8aojPcNCYPFUPzhQ4FszEZYfLQhAjMzp8CgYEA15SD
-pJEVq74vguH+7q51f0cvOVkO3DWSs8xy1QwXYRveaTW203JGzc48bIn5c0WTkoyd
-uBrVCfQyXYuwPkgA/vuG6zzjvMf1rxXiwSlpA74ObChePezW8TgnQZTKhHq8prAq
-0EbA8aTFU9FzEiT6qktpV4scphAhuJdtbEGfT6cCgYBFgT1ZWrkHtZ5obI8reZPq
-dofFpBhv6XQpqz8+hz9mKGTM8y4Q4v8Lr+TeT7ikBZRMJa6l02uACebLgfSBkS/0
-C9ccZ551ulLLTOnbSCBMCPeqqrzer0sV+9FAc2J99cd3VPVU/F5Dqlu1z/qDjFHB
-0NVMC4GvqKFonfghwSPE9wKBgF9u62fqokFJDBdQnF5k9LbHeGxWtHFfdfYKR7tw
-gtkGUUsZ8DlimV16Mt2JptgUsONrRFa/6hdh9vnaYMbxcR9vkaaJafekPWqosZz5
-C/gQJqpSpIWdVvmp9hbeG1jSTLktu4ZADCHs4z3btqkNnbnNcHDEsIYDFip1Podx
-9Wh5AoGBAO14GjlVcMMvrjB1Aitn9YZqQCt3owecvvYpKhZyQP5f/7bjQV0WgWpX
-QGmaM7pFvAq0mxD8ocVdH/AC22U1L77re9V3h/AXCZjmOiouo+rrO8cj6tO6/AtA
-Du117djXnAUavnjRWM27JncX5DW6x+FWl/WfHKfSUife5QZdNz+a
------END RSA PRIVATE KEY-----
-"""
+MIICXAIBAAKBgQDCFqq2ygFh9UQU/6PoDJ6L9e4ovLPCHtlBt7vzDwyfwr3XGxln
+0VbfycVLc6unJDVEGZ/PsFEuS9j1QmBTTEgvCLR6RGpfzmVuMO8wGVEO52pH73h9
+rviojaheX/u3ZqaA0di9RKy8e3L+T0ka3QYgDx5wiOIUu1wGXCs6PhrtEwICBAEC
+gYBu9jsi0eVROozSz5dmcZxUAzv7USiUcYrxX007SUpm0zzUY+kPpWLeWWEPaddF
+VONCp//0XU8hNhoh0gedw7ZgUTG6jYVOdGlaV95LhgY6yXaQGoKSQNNTY+ZZVT61
+zvHOlPynt3GZcaRJOlgf+3hBF5MCRoWKf+lDA5KiWkqOYQJBAMQp0HNVeTqz+E0O
+6E0neqQDQb95thFmmCI7Kgg4PvkS5mz7iAbZa5pab3VuyfmvnVvYLWejOwuYSp0U
+9N8QvUsCQQD9StWHaVNM4Lf5zJnB1+lJPTXQsmsuzWvF3HmBkMHYWdy84N/TdCZX
+Cxve1LR37lM/Vijer0K77wAx2RAN/ppZAkB8+GwSh5+mxZKydyPaPN29p6nC6aLx
+3DV2dpzmhD0ZDwmuk8GN+qc0YRNOzzJ/2UbHH9L/lvGqui8I6WLOi8nDAkEA9CYq
+ewfdZ9LcytGz7QwPEeWVhvpm0HQV9moetFWVolYecqBP4QzNyokVnpeUOqhIQAwe
+Z0FJEQ9VWsG+Df0noQJBALFjUUZEtv4x31gMlV24oiSWHxIRX4fEND/6LpjleDZ5
+C/tY+lZIEO1Gg/FxSMB+hwwhwfSuE3WohZfEcSy+R48=
+-----END RSA PRIVATE KEY-----"""
 
 
 @pytest.mark.integration
 class TestGHMarketplaceSyncPlansTask(object):
     @pytest.mark.asyncio
-    async def test_purchase(self, dbsession, mocker, mock_configuration, codecov_vcr):
+    async def test_purchase_by_existing_owner(
+        self, dbsession, mocker, mock_configuration, codecov_vcr
+    ):
         mock_configuration.loaded_files[
             ("github", "integration", "pem")
         ] = fake_private_key
@@ -68,17 +60,262 @@ class TestGHMarketplaceSyncPlansTask(object):
             "id": 3877742,
         }
         account = {
-            "type": "Organization",
-            "id": 8226205,
-            "login": "codecov",
-            "organization_billing_email": "hello@codecov.io",
+            "type": "User",
+            "id": 3877742,
+            "login": "cc-test",
         }
         action = "purchased"
 
         task = SyncPlansTask()
-        await task.run_async(dbsession, sender=sender, account=account, action=action)
+        result = await task.run_async(
+            dbsession, sender=sender, account=account, action=action
+        )
+        assert result["plan_type_synced"] == "paid"
 
         assert owner.plan == "users"
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate is True
         assert owner.plan_user_count == 10
+
+    @pytest.mark.asyncio
+    async def test_purchase_new_owner(
+        self, dbsession, mocker, mock_configuration, codecov_vcr
+    ):
+        mock_configuration.loaded_files[
+            ("github", "integration", "pem")
+        ] = fake_private_key
+
+        mock_configuration.params["github"] = {
+            "integration": {
+                "pem": "/home/src/certs/github.pem",
+                "id": 51984,  # Fake integration id, tested with a real one
+            }
+        }
+        mock_configuration.params["services"]["github_marketplace"] = dict(
+            use_stubbed=True
+        )
+
+        sender = {
+            "login": "cc-test",
+            "id": 3877742,
+        }
+        account = {
+            "type": "User",
+            "id": 3877742,
+            "login": "cc-test",
+        }
+        action = "purchased"
+
+        task = SyncPlansTask()
+        result = await task.run_async(
+            dbsession, sender=sender, account=account, action=action
+        )
+        assert result["plan_type_synced"] == "paid"
+
+        owner = (
+            dbsession.query(Owner)
+            .filter(Owner.service == "github", Owner.service_id == "3877742")
+            .first()
+        )
+
+        assert owner is not None
+        assert owner.username == "cc-test"
+        assert owner.plan == "users"
+        assert owner.plan_provider == "github"
+        assert owner.plan_auto_activate is True
+        assert owner.plan_user_count == 10
+
+    @pytest.mark.asyncio
+    async def test_purchase_listing_not_found(
+        self, dbsession, mocker, mock_configuration, codecov_vcr
+    ):
+        mock_configuration.loaded_files[
+            ("github", "integration", "pem")
+        ] = fake_private_key
+
+        mock_configuration.params["github"] = {
+            "integration": {
+                "pem": "/home/src/certs/github.pem",
+                "id": 51984,  # Fake integration id, tested with a real one
+            }
+        }
+        mock_configuration.params["services"]["github_marketplace"] = dict(
+            use_stubbed=True
+        )
+
+        sender = {
+            "login": "cc-test",
+            "id": 3877742,
+        }
+        account = {
+            "type": "Organization",
+            "id": 123456,
+            "login": "some-org",
+        }
+        action = "purchased"
+
+        task = SyncPlansTask()
+        result = await task.run_async(
+            dbsession, sender=sender, account=account, action=action
+        )
+        assert result["plan_type_synced"] is None
+        assert result["plan_removed"] is True
+
+        owner = (
+            dbsession.query(Owner)
+            .filter(Owner.service == "github", Owner.service_id == "123456")
+            .first()
+        )
+
+        assert owner is not None
+        assert owner.username == "some-org"
+        assert owner.plan_provider == "github"
+        assert owner.plan is None
+        assert owner.plan_user_count == 0
+        assert owner.plan_activated_users == None
+
+    @pytest.mark.asyncio
+    async def test_cancelled(self, dbsession, mocker, mock_configuration, codecov_vcr):
+        mock_configuration.loaded_files[
+            ("github", "integration", "pem")
+        ] = fake_private_key
+
+        mock_configuration.params["github"] = {
+            "integration": {
+                "pem": "/home/src/certs/github.pem",
+                "id": 51984,  # Fake integration id, tested with a real one
+            }
+        }
+        mock_configuration.params["services"]["github_marketplace"] = dict(
+            use_stubbed=True
+        )
+
+        owner = OwnerFactory.create(
+            username="cc-test",
+            service="github",
+            service_id="3877742",
+            plan="users",
+            plan_provider="github",
+            plan_auto_activate=True,
+            plan_user_count=10,
+        )
+        dbsession.add(owner)
+        repo_pub = RepositoryFactory.create(
+            private=False,
+            name="pub",
+            using_integration=False,
+            service_id="159090647",
+            activated=True,
+            owner=owner,
+        )
+        repo_pytest = RepositoryFactory.create(
+            private=False,
+            name="pytest",
+            using_integration=False,
+            service_id="159089634",
+            activated=True,
+            owner=owner,
+        )
+        repo_spack = RepositoryFactory.create(
+            private=False,
+            name="spack",
+            using_integration=False,
+            service_id="164948070",
+            activated=True,
+            owner=owner,
+        )
+        dbsession.add(repo_pub)
+        dbsession.add(repo_pytest)
+        dbsession.add(repo_spack)
+        dbsession.flush()
+
+        sender = {
+            "login": "cc-test",
+            "id": 3877742,
+        }
+        account = {
+            "type": "User",
+            "id": 3877742,
+            "login": "cc-test",
+        }
+        action = "cancelled"
+
+        task = SyncPlansTask()
+        result = await task.run_async(
+            dbsession, sender=sender, account=account, action=action
+        )
+        assert result["plan_type_synced"] == "free"
+
+        dbsession.commit()
+        owner = (
+            dbsession.query(Owner)
+            .filter(Owner.service == "github", Owner.service_id == "3877742")
+            .first()
+        )
+        assert owner is not None
+        assert owner.username == "cc-test"
+        assert owner.plan_provider == "github"
+        assert owner.plan == "users-free"
+        assert owner.plan_user_count == 5
+        assert owner.plan_activated_users == None
+
+        repos = (
+            dbsession.query(Repository)
+            .filter(Repository.ownerid == owner.ownerid)
+            .all()
+        )
+        assert len(repos) == 3
+        for repo in repos:
+            assert repo.activated is False
+
+    @pytest.mark.asyncio
+    async def test_sync_all_plans(
+        self, dbsession, mocker, mock_configuration, codecov_vcr
+    ):
+        mock_configuration.loaded_files[
+            ("github", "integration", "pem")
+        ] = fake_private_key
+        mock_configuration.params["github"] = {
+            "integration": {
+                "pem": "/home/src/certs/github.pem",
+                "id": 51984,  # Fake integration id, tested with a real one
+            },
+            "client_id": "testiouu71gdynyqxzk4",
+            "client_secret": "3b4ab5b18be7155fdbb739e7f1ae277222fb12db",
+        }
+        mock_configuration.params["services"]["github_marketplace"] = dict(
+            use_stubbed=True
+        )
+
+        # create owner whose plan is actually inactive
+        owner = OwnerFactory.create(
+            username="test2",
+            service="github",
+            service_id="781233",
+            plan="users",
+            plan_provider="github",
+            plan_auto_activate=True,
+            plan_user_count=10,
+        )
+        dbsession.add(owner)
+        dbsession.flush()
+
+        sender = None
+        account = None
+        action = "purchased"
+
+        task = SyncPlansTask()
+        await task.run_async(dbsession, sender=sender, account=account, action=action)
+
+        # inactive plan disabled
+        dbsession.commit()
+        assert owner.plan is None
+
+        # active plans - service ids 2 and 4
+        owners = dbsession.query(Owner).filter(Owner.service_id.in_(["2", "4"])).all()
+        for owner in owners:
+            assert owner.plan == "users"
+            assert owner.plan_provider == "github"
+            assert owner.plan_auto_activate == True
+            assert owner.plan_user_count == 12
+
