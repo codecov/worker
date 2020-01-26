@@ -275,14 +275,13 @@ class NotifyTask(BaseCodecovTask):
                         )
                     )
         comment_yaml_field = read_yaml_field(current_yaml, ("comment",))
-        comment_config = get_config("site", "comment")
-        if comment_config or comment_yaml_field:
+        if comment_yaml_field:
             for pull_notifier_class in get_pull_request_notifiers():
                 yield pull_notifier_class(
                     repository=repository,
                     title="comment",
                     notifier_yaml_settings=comment_yaml_field,
-                    notifier_site_settings=comment_config,
+                    notifier_site_settings=None,
                     current_yaml=current_yaml,
                 )
 

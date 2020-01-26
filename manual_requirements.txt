@@ -1,4 +1,4 @@
--e git+https://github.com/codecov/report.git@f12bf1bc0b998d16bb0d7a98356e573eeaa0b8fc#egg=covreports
+-e git+https://github.com/codecov/report.git@c73d44518541a62be73b1f493e3ecefb3897d232#egg=covreports
 -e git+https://github.com/codecov/torngit.git@3b0756a4a6ccc8a452f88419c94aa4122204ba71#egg=torngit
 boto3==1.9.218
 celery==4.3

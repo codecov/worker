@@ -4,6 +4,7 @@ from decimal import Decimal
 from services.notification.notifiers.comment import (
     CommentNotifier, diff_to_string, format_number_to_str
 )
+from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
 from covreports.utils.tuples import ReportTotals
 from torngit.exceptions import TorngitObjectNotFoundError
@@ -224,6 +225,62 @@ class TestCommentNotifierHelpers(object):
 
 
 class TestCommentNotifier(object):
+
+    @pytest.mark.asyncio
+    async def test_is_enabled_settings_individual_settings_false(self, dbsession):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        notifier = CommentNotifier(
+            repository=repository,
+            title='some_title',
+            notifier_yaml_settings=False,
+            notifier_site_settings=None,
+            current_yaml={}
+        )
+        assert not notifier.is_enabled()
+
+    @pytest.mark.asyncio
+    async def test_is_enabled_settings_individual_settings_none(self, dbsession):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        notifier = CommentNotifier(
+            repository=repository,
+            title='some_title',
+            notifier_yaml_settings=None,
+            notifier_site_settings=None,
+            current_yaml={}
+        )
+        assert not notifier.is_enabled()
+
+    @pytest.mark.asyncio
+    async def test_is_enabled_settings_individual_settings_true(self, dbsession):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        notifier = CommentNotifier(
+            repository=repository,
+            title='some_title',
+            notifier_yaml_settings=True,
+            notifier_site_settings=None,
+            current_yaml={}
+        )
+        assert not notifier.is_enabled()
+
+    @pytest.mark.asyncio
+    async def test_is_enabled_settings_individual_settings_dict(self, dbsession):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        notifier = CommentNotifier(
+            repository=repository,
+            title='some_title',
+            notifier_yaml_settings={'layout': "reach, diff, flags, files, footer"},
+            notifier_site_settings=None,
+            current_yaml={}
+        )
+        assert notifier.is_enabled()
 
     @pytest.mark.asyncio
     async def test_build_message(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
@@ -448,6 +505,73 @@ class TestCommentNotifier(object):
         mock_repo_provider.post_comment.assert_called_with(98, 'message')
         assert not mock_repo_provider.edit_comment.called
         assert not mock_repo_provider.delete_comment.called
+
+    @pytest.mark.asyncio
+    async def test_build_message_no_flags(self, dbsession, mock_configuration, mock_repo_provider, sample_report_without_flags, sample_comparison):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        pull = sample_comparison.pull
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'layout': "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        sample_comparison.head.report = sample_report_without_flags
+        repository = sample_comparison.head.commit.repository
+        result = await notifier.build_message(sample_comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}&el=desc) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `n/a`.",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"```diff",
+            f"@@              Coverage Diff              @@",
+            f"##             master      #{pull.pullid}       +/-   ##",
+            f"=============================================",
+            f"+ Coverage     50.00%   60.00%   +10.00%     ",
+            f"+ Complexity       11       10        -1     ",
+            f"=============================================",
+            f"  Files             2        2               ",
+            f"  Lines             6       10        +4     ",
+            f"  Branches          0        1        +1     ",
+            f"=============================================",
+            f"+ Hits              3        6        +3     ",
+            f"  Misses            3        3               ",
+            f"- Partials          0        1        +1     ",
+            f"```",
+            f"",
+            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| #integration | `?` | `?` | |",
+            f"",
+            f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | :arrow_up: |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |",
+            f'',
+            f'------',
+            f'',
+            f'[Continue to review full report at '
+            f'Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).',
+            f'> **Legend** - [Click here to learn '
+            f'more](https://docs.codecov.io/docs/codecov-delta)',
+            f'> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`',
+            f'> Powered by '
+            f'[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). '
+            f'Last update '
+            f'[b92edba...a06aef4](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). '
+            f'Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).',
+            f""
+        ]
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
 
     @pytest.mark.asyncio
     async def test_send_actual_notification_new(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
