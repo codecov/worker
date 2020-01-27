@@ -1,6 +1,6 @@
 import logging
 
-from covreports.resources import Report
+from covreports.reports.resources import Report
 from services.archive import ArchiveService
 from services.report.raw_upload_processor import process_raw_upload
 from covreports.storage.exceptions import FileNotInStorageError

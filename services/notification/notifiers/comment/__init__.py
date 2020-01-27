@@ -4,7 +4,7 @@ from decimal import Decimal
 from collections import namedtuple
 import logging
 
-from covreports.resources import Report, ReportTotals
+from covreports.reports.resources import Report, ReportTotals
 from covreports.helpers.yaml import walk
 
 from torngit.exceptions import TorngitObjectNotFoundError, TorngitClientError, TorngitServerFailureError

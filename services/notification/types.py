@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from covreports.resources import Report
+from covreports.reports.resources import Report
 
 from database.models import Commit, Pull
 

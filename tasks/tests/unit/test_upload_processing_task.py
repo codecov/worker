@@ -4,7 +4,7 @@ import pytest
 import celery
 from redis.exceptions import LockError
 from torngit.exceptions import TorngitObjectNotFoundError
-from covreports.resources import Report, ReportFile, ReportLine, ReportTotals
+from covreports.reports.resources import Report, ReportFile, ReportLine, ReportTotals
 
 from tasks.upload_processor import UploadProcessorTask
 from database.tests.factories import CommitFactory

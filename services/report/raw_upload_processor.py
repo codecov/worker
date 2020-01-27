@@ -7,7 +7,7 @@ import random
 from pathmap import resolve_by_method
 
 from covreports.utils.sessions import Session
-from covreports.resources import Report
+from covreports.reports.resources import Report
 
 from helpers.exceptions import ReportEmptyError
 from services.report.fixes import get_fixes_from_raw

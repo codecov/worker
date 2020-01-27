@@ -1,7 +1,7 @@
 import pytest
 from asyncio import Future
 
-from covreports.resources import ReportLine, ReportFile, Report
+from covreports.reports.resources import ReportLine, ReportFile, Report
 from torngit.exceptions import (
     TorngitClientError,
     TorngitServerUnreachableError,

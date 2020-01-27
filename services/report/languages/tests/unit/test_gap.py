@@ -40,13 +40,13 @@ class TestGap(BaseTestCase):
         # pprint.pprint(processed_report['archive'])
         expected_result_archive = {
             'lib/error.g': [
-                (1, 0, None, [[0, 0]], None, None),
-                (2, 1, None, [[0, 1]], None, None),
-                (3, 0, None, [[0, 0]], None, None),
-                (4, 0, None, [[0, 0]], None, None)
+                (1, 0, None, [[0, 0, None, None, None]], None, None),
+                (2, 1, None, [[0, 1, None, None, None]], None, None),
+                (3, 0, None, [[0, 0, None, None, None]], None, None),
+                (4, 0, None, [[0, 0, None, None, None]], None, None)
             ],
             'lib/test.g': [
-                (1, 0, None, [[0, 0]], None, None)
+                (1, 0, None, [[0, 0, None, None, None]], None, None)
             ]
         }
 

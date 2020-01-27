@@ -1,5 +1,5 @@
 import pytest
-from covreports.resources import Report, ReportFile, ReportLine
+from covreports.reports.resources import Report, ReportFile, ReportLine
 from covreports.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory

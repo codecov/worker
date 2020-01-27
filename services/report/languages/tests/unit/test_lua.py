@@ -57,16 +57,16 @@ class TestLua(BaseTestCase):
         pprint.pprint(processed_report['archive'])
         expected_result_archive = {
             'file.lua': [
-                (1, 1, None, [[0, 1]], None, None),
-                (3, 1, None, [[0, 1]], None, None),
-                (4, 0, None, [[0, 0]], None, None),
-                (5, 0, None, [[0, 0]], None, None)
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (3, 1, None, [[0, 1, None, None, None]], None, None),
+                (4, 0, None, [[0, 0, None, None, None]], None, None),
+                (5, 0, None, [[0, 0, None, None, None]], None, None)
             ],
             'source.lua': [
-                (2, 0, None, [[0, 0]], None, None),
-                (3, 1, None, [[0, 1]], None, None),
-                (4, 0, None, [[0, 0]], None, None),
-                (5, 1, None, [[0, 1]], None, None)
+                (2, 0, None, [[0, 0, None, None, None]], None, None),
+                (3, 1, None, [[0, 1, None, None, None]], None, None),
+                (4, 0, None, [[0, 0, None, None, None]], None, None),
+                (5, 1, None, [[0, 1, None, None, None]], None, None)
             ]
         }
 

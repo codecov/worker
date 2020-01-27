@@ -1,7 +1,7 @@
 import pytest
 from asyncio import Future
 
-from covreports.resources import Report
+from covreports.reports.resources import Report
 from celery.exceptions import Retry, MaxRetriesExceededError
 from torngit.exceptions import TorngitClientError
 

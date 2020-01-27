@@ -2,8 +2,8 @@ from timestring import Date
 from collections import defaultdict
 
 from services.yaml import read_yaml_field
-from covreports.resources import Report, ReportFile
-from covreports.utils.tuples import ReportLine
+from covreports.reports.resources import Report, ReportFile
+from covreports.reports.types import ReportLine
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor

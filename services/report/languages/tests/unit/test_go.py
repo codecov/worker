@@ -25,14 +25,14 @@ class TestGo(BaseTestCase):
         pprint.pprint(processed_report['archive'])
         expected_result_archive = {
             'source': [
-                (1, 1, None, [[0, 1]], None, None),
-                (7, 1, None, [[0, 1]], None, None),
-                (8, 1, None, [[0, 1]], None, None),
-                (9, 1, None, [[0, 1]], None, None),
-                (11, 1, None, [[0, 1]], None, None),
-                (12, 1, None, [[0, 1]], None, None),
-                (15, 1, None, [[0, 1]], None, None),
-                (16, 1, None, [[0, 1]], None, None)
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (7, 1, None, [[0, 1, None, None, None]], None, None),
+                (8, 1, None, [[0, 1, None, None, None]], None, None),
+                (9, 1, None, [[0, 1, None, None, None]], None, None),
+                (11, 1, None, [[0, 1, None, None, None]], None, None),
+                (12, 1, None, [[0, 1, None, None, None]], None, None),
+                (15, 1, None, [[0, 1, None, None, None]], None, None),
+                (16, 1, None, [[0, 1, None, None, None]], None, None)
             ]
         }
 

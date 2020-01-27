@@ -3,7 +3,7 @@ from decimal import Decimal
 import re
 import logging
 
-from covreports.resources import ReportTotals
+from covreports.reports.resources import ReportTotals
 
 from services.notification.changes import Change
 from services.yaml.reader import round_number, get_minimum_precision
@@ -189,7 +189,7 @@ def diff_to_string(current_yaml,
 def sort_by_importance(changes: Sequence[Change]):
     return sorted(
         changes or [],
-        key=lambda c: (float((c.totals or ReportTotals())[5]), c.new, c.deleted)
+        key=lambda c: (float((c.totals or ReportTotals()).coverage), c.new, c.deleted)
     )
 
 

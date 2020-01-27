@@ -79,19 +79,19 @@ class TestCobertura(BaseTestCase):
         expected_result = {
             'archive': {
                 'file': [
-                    (1, 0, 'm', [[0, 0]], None, None),
-                    (2, 1, 'b', [[0, 1]], None, None),
-                    (3, 1, None, [[0, 1]], None, None)
+                    (1, 0, 'm', [[0, 0, None, None, None]], None, None),
+                    (2, 1, 'b', [[0, 1, None, None, None]], None, None),
+                    (3, 1, None, [[0, 1, None, None, None]], None, None)
                 ],
                 'source': [
-                    (1, 1, None, [[0, 1]], None, None),
-                    (2, '0/2', 'b', [[0, '0/2', ['exit']]], None, None),
-                    (3, '1/2', 'b', [[0, '1/2', ['30']]], None, None),
-                    (4, '2/2', 'b', [[0, '2/2']], None, None),
-                    (5, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump']]], None, None),
-                    (6, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump']]], None, None),
-                    (7, '0/2', 'b', [[0, '0/2', ['loop', 'exit']]], None, None),
-                    (8, 1, None, [[0, 1]], None, None)
+                    (1, 1, None, [[0, 1, None, None, None]], None, None),
+                    (2, '0/2', 'b', [[0, '0/2', ['exit'], None, None]], None, None),
+                    (3, '1/2', 'b', [[0, '1/2', ['30'], None, None]], None, None),
+                    (4, '2/2', 'b', [[0, '2/2', None, None, None]], None, None),
+                    (5, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump'], None, None]], None, None),
+                    (6, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump'], None, None]], None, None),
+                    (7, '0/2', 'b', [[0, '0/2', ['loop', 'exit'], None, None]], None, None),
+                    (8, 1, None, [[0, 1, None, None, None]], None, None)
                 ]
             },
             'report': {
@@ -127,6 +127,9 @@ class TestCobertura(BaseTestCase):
                 's': 0
             }
         }
+        assert processed_report['archive'] == expected_result['archive']
+        assert processed_report['report'] == expected_result['report']
+        assert processed_report['totals'] == expected_result['totals']
         assert processed_report == expected_result
 
     @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])

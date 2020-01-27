@@ -1,6 +1,6 @@
 from services.report.languages.helpers import remove_non_ascii
-from covreports.resources import Report, ReportFile
-from covreports.utils.tuples import ReportLine, LineSession
+from covreports.reports.resources import Report, ReportFile
+from covreports.reports.types import ReportLine, LineSession
 from covreports.helpers.numeric import maxint
 
 START_PARTIAL = '\033[0;41m'

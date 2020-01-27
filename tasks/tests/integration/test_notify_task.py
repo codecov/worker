@@ -1,6 +1,7 @@
 import pytest
 from decimal import Decimal
 from tasks.notify import NotifyTask
+from database.models import Pull
 from database.tests.factories import CommitFactory, RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
 from services.archive import ArchiveService
@@ -641,6 +642,8 @@ class TestNotifyTask(object):
             ],
         }
         import pprint
+        pull = dbsession.query(Pull).filter_by(pullid=17, repoid=commit.repoid).first()
+        assert pull.commentid == '572315846'
 
         pprint.pprint(result)
         assert len(result["notifications"]) == len(expected_result["notifications"])

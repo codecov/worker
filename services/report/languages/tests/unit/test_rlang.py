@@ -33,11 +33,11 @@ class TestRlang(BaseTestCase):
         pprint.pprint(processed_report['archive'])
         expected_result_archive = {
             'source/app.r': [
-                (1, 1, None, [[0, 1]], None, None)
+                (1, 1, None, [[0, 1, None, None, None]], None, None)
             ],
             'source/cov.r': [
-                (1, 1, None, [[0, 1]], None, None),
-                (2, 0, None, [[0, 0]], None, None)
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (2, 0, None, [[0, 0, None, None, None]], None, None)
             ]
         }
 
