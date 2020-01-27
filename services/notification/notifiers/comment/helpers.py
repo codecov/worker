@@ -1,5 +1,6 @@
 from typing import Sequence
 from decimal import Decimal
+import re
 import logging
 
 from covreports.resources import ReportTotals
@@ -9,6 +10,8 @@ from services.yaml.reader import round_number, get_minimum_precision
 
 
 log = logging.getLogger(__name__)
+
+zero_change_regex = re.compile('0.0+%?')
 
 
 def format_number_to_str(yml, value, if_zero=None, if_null=None, plus=False, style='{0}'):
@@ -33,7 +36,7 @@ def format_number_to_str(yml, value, if_zero=None, if_null=None, plus=False, sty
 
 
 def add_plus_sign(value):
-    if value in ('', '0', '0%'):
+    if value in ('', '0', '0%') or zero_change_regex.fullmatch(value):
         return ''
     elif value[0] != '-':
         return ('+%s' % value)
@@ -88,6 +91,7 @@ def diff_to_string(current_yaml,
      'stable', {},
      ('ui', before, after), ...})
     """
+
     def F(value):
         if value is None:
             return '?'
@@ -107,7 +111,8 @@ def diff_to_string(current_yaml,
                 change = F(str(float(c2) - float(c1)))
             else:
                 change = str(c2 - c1)
-            sign = neutral if change in ('0', '0%', '') else plus if change[0] != '-' else minus
+            change_is_zero = change in ('0', '0%', '') or zero_change_regex.fullmatch(change)
+            sign = neutral if change_is_zero else plus if change[0] != '-' else minus
             return (
                 '%s %s' % (sign, title),
                 '%s|' % F(c1),

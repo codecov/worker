@@ -180,7 +180,7 @@ class CommentNotifier(AbstractBaseNotifier):
         }
 
     def is_enabled(self) -> bool:
-        return True
+        return bool(self.notifier_yaml_settings) and isinstance(self.notifier_yaml_settings, dict)
 
     async def build_message(self, comparison: Comparison) -> str:
         pull = comparison.pull
@@ -194,8 +194,6 @@ class CommentNotifier(AbstractBaseNotifier):
         head_report = comparison.head.report
         pull = comparison.pull
         settings = self.notifier_yaml_settings
-        if settings in (None, True):
-            settings = self.site_settings
 
         yaml = self.current_yaml
         current_yaml = self.current_yaml
@@ -203,7 +201,7 @@ class CommentNotifier(AbstractBaseNotifier):
         # TODO (Thiago): get links dict
         links = {
             'pull': get_pull_url(pull),
-            'base': get_commit_url(comparison.base.commit)
+            'base': get_commit_url(comparison.base.commit) if comparison.base.commit is not None else None
         }
 
         # flags
