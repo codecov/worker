@@ -183,9 +183,18 @@ class UploadFinisherTask(BaseCodecovTask):
             return False
         return True
 
-    def invalidate_caches(self, redis_connection, commit):
+    def invalidate_caches(self, redis_connection, commit: Commit):
         redis_connection.delete('cache/{}/tree/{}'.format(commit.repoid, commit.branch))
         redis_connection.delete('cache/{0}/tree/{1}'.format(commit.repoid, commit.commitid))
+        repository = commit.repository
+        key = ':'.join((
+            repository.service,
+            repository.owner.username,
+            repository.name))
+        if commit.branch:
+            redis_connection.hdel('badge', ('%s:%s' % (key, (commit.branch))).lower())
+            if commit.branch == repository.branch:
+                redis_connection.hdel('badge', ('%s:' % key).lower())
 
 
 RegisteredUploadTask = celery_app.register_task(UploadFinisherTask())
