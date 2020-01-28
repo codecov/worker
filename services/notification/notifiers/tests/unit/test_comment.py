@@ -4,6 +4,7 @@ from decimal import Decimal
 from services.notification.notifiers.comment import (
     CommentNotifier, diff_to_string, format_number_to_str
 )
+from services.notification.notifiers.comment.helpers import sort_by_importance, Change
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
 from covreports.utils.tuples import ReportTotals
@@ -127,6 +128,93 @@ def mock_repo_provider(mock_repo_provider):
 
 
 class TestCommentNotifierHelpers(object):
+
+    def test_sort_by_importance(self):
+        modified_change = Change(
+            path='modified.py',
+            in_diff=True,
+            totals=ReportTotals(
+                files=0,
+                lines=0,
+                hits=-2,
+                misses=1,
+                partials=0,
+                coverage=-23.333330000000004,
+                branches=0,
+                methods=0,
+                messages=0,
+                sessions=0,
+                complexity=0,
+                complexity_total=0,
+                diff=0
+            )
+        )
+        renamed_with_changes_change = Change(
+            path='renamed_with_changes.py',
+            in_diff=True,
+            old_path='old_renamed_with_changes.py',
+            totals=ReportTotals(
+                files=0,
+                lines=0,
+                hits=-1,
+                misses=1,
+                partials=0,
+                coverage=-20.0,
+                branches=0,
+                methods=0,
+                messages=0,
+                sessions=0,
+                complexity=0,
+                complexity_total=0,
+                diff=0
+            )
+        )
+        unrelated_change = Change(
+            path='unrelated.py',
+            in_diff=False,
+            totals=ReportTotals(
+                files=0,
+                lines=0,
+                hits=-3,
+                misses=2,
+                partials=0,
+                coverage=-43.333330000000004,
+                branches=0,
+                methods=0,
+                messages=0,
+                sessions=0,
+                complexity=0,
+                complexity_total=0,
+                diff=0
+            )
+        )
+        added_change = Change(
+            path='added.py',
+            new=True,
+            in_diff=None,
+            old_path=None,
+            totals=None
+        )
+        deleted_change = Change(
+            path='deleted.py',
+            deleted=True
+        )
+        changes = [
+            modified_change,
+            renamed_with_changes_change,
+            unrelated_change,
+            added_change,
+            deleted_change
+        ]
+        res = sort_by_importance(changes)
+        expected_result = [
+            unrelated_change,
+            modified_change,
+            renamed_with_changes_change,
+            deleted_change,
+            added_change
+        ]
+        assert expected_result == res
 
     def test_format_number_to_str(self):
         assert '<0.1' == format_number_to_str({'coverage': {'precision': 1}}, Decimal('0.001'))

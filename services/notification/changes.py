@@ -11,8 +11,8 @@ from covreports.helpers.numeric import ratio
 @dataclass
 class Change(object):
     path: str = None
-    new: bool = None
-    deleted: bool = None
+    new: bool = False
+    deleted: bool = False
     in_diff: bool = None
     old_path: str = None
     totals: ReportTotals = None
