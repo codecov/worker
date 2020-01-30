@@ -109,6 +109,10 @@ class Commit(CodecovBaseModel):
     def __repr__(self):
         return f"Commit<{self.commitid}@repo<{self.repoid}>>"
 
+    def get_parent_commit(self):
+        db_session = self.get_db_session()
+        return db_session.query(Commit).filter_by(repoid=self.repoid, commitid=self.parent_commit_id).first()
+
 
 class Branch(CodecovBaseModel):
 
