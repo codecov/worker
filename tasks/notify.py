@@ -141,7 +141,7 @@ class NotifyTask(BaseCodecovTask):
                 base_commit = self.fetch_pull_request_base(pull)
             else:
                 base_commit = self.fetch_parent(commit)
-            report_service = ReportService()
+            report_service = ReportService(current_yaml)
             if base_commit is not None:
                 base_report = report_service.build_report_from_commit(base_commit)
             else:
