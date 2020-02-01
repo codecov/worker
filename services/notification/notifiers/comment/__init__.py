@@ -7,7 +7,7 @@ import logging
 from covreports.resources import Report, ReportTotals
 from covreports.helpers.yaml import walk
 
-from torngit.exceptions import TorngitObjectNotFoundError
+from torngit.exceptions import TorngitObjectNotFoundError, TorngitClientError, TorngitServerFailureError
 from services.notification.notifiers.base import NotificationResult, AbstractBaseNotifier
 from services.notification.types import Comparison
 from typing import Any, Mapping
@@ -79,12 +79,24 @@ class CommentNotifier(AbstractBaseNotifier):
             )
         message = await self.build_message(comparison)
         pull = comparison.pull
-        data = {
-            'message': message,
-            'commentid': pull.commentid,
-            'pullid': pull.pullid
-        }
-        return await self.send_actual_notification(data)
+        data = {"message": message, "commentid": pull.commentid, "pullid": pull.pullid}
+        try:
+            return await self.send_actual_notification(data)
+        except TorngitServerFailureError:
+            log.warning(
+                "Unable to send comments because the provider server was not reachable or errored",
+                extra=dict(
+                    service=self.repository.service,
+                ),
+                exc_info=True
+            )
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=False,
+                explanation='provider_issue',
+                data_sent=data,
+                data_received=None
+            )
 
     async def send_actual_notification(self, data: Mapping[str, Any]):
         message = '\n'.join(data['message'])
@@ -120,8 +132,13 @@ class CommentNotifier(AbstractBaseNotifier):
                     'data_received': {'id': res['id']}
                 }
             except TorngitObjectNotFoundError:
-                log.info(
+                log.warning(
                     "Comment was not found to be edited"
+                )
+            except TorngitClientError:
+                log.warning(
+                    "Comment could not be edited due to client permissions",
+                    exc_info=True
                 )
         res = await self.repository_service.post_comment(pullid, message)
         return {
@@ -142,10 +159,24 @@ class CommentNotifier(AbstractBaseNotifier):
                     'data_received': {'id': res['id']}
                 }
             except TorngitObjectNotFoundError:
+                log.warning(
+                    "Comment was not found to be edited"
+                )
                 return {
                     'notification_attempted': False,
                     'notification_successful': None,
                     'explanation': 'comment_deleted',
+                    'data_received': None
+                }
+            except TorngitClientError:
+                log.warning(
+                    "Comment could not be edited due to client permissions",
+                    exc_info=True
+                )
+                return {
+                    'notification_attempted': True,
+                    'notification_successful': False,
+                    'explanation': 'no_permissions',
                     'data_received': None
                 }
         res = await self.repository_service.post_comment(pullid, message)
@@ -162,6 +193,17 @@ class CommentNotifier(AbstractBaseNotifier):
                 await self.repository_service.delete_comment(pullid, commentid)
             except TorngitObjectNotFoundError:
                 log.info("Comment was already deleted")
+            except TorngitClientError:
+                log.warning(
+                    "Comment could not be deleted due to client permissions",
+                    exc_info=True,
+                )
+                return {
+                    "notification_attempted": True,
+                    "notification_successful": False,
+                    "explanation": "no_permissions",
+                    "data_received": None,
+                }
         res = await self.repository_service.post_comment(pullid, message)
         return {
             'notification_attempted': True,

@@ -8,7 +8,9 @@ from services.notification.notifiers.comment.helpers import sort_by_importance, 
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
 from covreports.utils.tuples import ReportTotals
-from torngit.exceptions import TorngitObjectNotFoundError
+from torngit.exceptions import (
+    TorngitObjectNotFoundError, TorngitServerUnreachableError, TorngitClientError
+)
 
 
 @pytest.fixture
@@ -662,6 +664,35 @@ class TestCommentNotifier(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_send_actual_notification_new_no_permissions(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'layout': "reach, diff, flags, files, footer",
+                'behavior': 'new'
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        data = {
+            'message': ['message'],
+            'commentid': '12345',
+            'pullid': 98
+        }
+        mock_repo_provider.post_comment.return_value.set_result({'id': 9865})
+        mock_repo_provider.delete_comment.return_value.set_exception(TorngitClientError('code', 'response', 'message'))
+        result = await notifier.send_actual_notification(data)
+        assert result.notification_attempted
+        assert not result.notification_successful
+        assert result.explanation == 'no_permissions'
+        assert result.data_sent == data
+        assert result.data_received is None
+        mock_repo_provider.delete_comment.assert_called_with(98, '12345')
+        assert not mock_repo_provider.post_comment.called
+        assert not mock_repo_provider.edit_comment.called
+
+    @pytest.mark.asyncio
     async def test_send_actual_notification_new(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -807,6 +838,37 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.delete_comment.called
 
     @pytest.mark.asyncio
+    async def test_send_actual_notification_once_no_permissions(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'layout': "reach, diff, flags, files, footer",
+                'behavior': 'once'
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        data = {
+            'message': ['message'],
+            'commentid': '12345',
+            'pullid': 98
+        }
+        mock_repo_provider.post_comment.return_value.set_result({'id': 9865})
+        mock_repo_provider.edit_comment.return_value.set_exception(TorngitClientError('code', 'response', 'message'))
+        result = await notifier.send_actual_notification(data)
+        assert result.notification_attempted
+        assert not result.notification_successful
+        assert result.explanation == 'no_permissions'
+        assert result.data_sent == data
+        assert result.data_received is None
+        assert not mock_repo_provider.post_comment.called
+        mock_repo_provider.edit_comment.assert_called_with(98, '12345', 'message')
+        assert not mock_repo_provider.delete_comment.called
+
+    @pytest.mark.asyncio
     async def test_send_actual_notification_default(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -832,6 +894,35 @@ class TestCommentNotifier(object):
         assert result.data_sent == data
         assert result.data_received == {'id': '49'}
         assert not mock_repo_provider.post_comment.called
+        mock_repo_provider.edit_comment.assert_called_with(98, '12345', 'message')
+        assert not mock_repo_provider.delete_comment.called
+
+    @pytest.mark.asyncio
+    async def test_send_actual_notification_default_no_permissions(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'layout': "reach, diff, flags, files, footer",
+                'behavior': 'default'
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        data = {
+            'message': ['message'],
+            'commentid': '12345',
+            'pullid': 98
+        }
+        mock_repo_provider.post_comment.return_value.set_result({'id': 9865})
+        mock_repo_provider.edit_comment.return_value.set_exception(TorngitClientError('code', 'response', 'message'))
+        result = await notifier.send_actual_notification(data)
+        assert result.notification_attempted
+        assert result.notification_successful
+        assert result.explanation is None
+        assert result.data_sent == data
+        assert result.data_received == {'id': 9865}
+        mock_repo_provider.post_comment.assert_called_with(98, 'message')
         mock_repo_provider.edit_comment.assert_called_with(98, '12345', 'message')
         assert not mock_repo_provider.delete_comment.called
 
@@ -881,6 +972,37 @@ class TestCommentNotifier(object):
         assert result.notification_successful is None
         assert result.explanation == "no_pull_request"
         assert result.data_sent is None
+        assert result.data_received is None
+
+    @pytest.mark.asyncio
+    async def test_notify_server_unreachable(self, mocker, dbsession, sample_comparison):
+        mocked_send_actual_notification = mocker.patch.object(
+            CommentNotifier, 'send_actual_notification', return_value=Future()
+        )
+        mocked_build_message = mocker.patch.object(
+            CommentNotifier, 'build_message', return_value=Future()
+        )
+        mocked_send_actual_notification.return_value.set_exception(TorngitServerUnreachableError())
+        mocked_build_message.return_value.set_result(['title', 'content'])
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'layout': "reach, diff, flags, files, footer",
+                'behavior': 'default'
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_attempted
+        assert not result.notification_successful
+        assert result.explanation == "provider_issue"
+        assert result.data_sent == {
+            'commentid': None,
+            'message': ['title', 'content'],
+            'pullid': sample_comparison.pull.pullid
+        }
         assert result.data_received is None
 
     @pytest.mark.asyncio
