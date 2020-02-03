@@ -77,13 +77,6 @@ class Test(BaseTestCase):
         report_dict = loads(report_dict)
         archive = report.to_archive()
         expected_result = loads(self.readfile('node/node%s-result.json' % i))
-        # expected_result = {
-        #     'archive': archive.split("<<<<< end_of_chunk >>>>>"),
-        #     'totals': totals_dict,
-        #     'report': report_dict,
-        # }
-        # with open(folder / ('node/node%s-result.json' % i), 'w') as w:
-        #     w.write(dumps(expected_result))
         assert expected_result['report'] == report_dict
         assert expected_result['totals'] == totals_dict
         assert expected_result['archive'] == archive.split("<<<<< end_of_chunk >>>>>")
