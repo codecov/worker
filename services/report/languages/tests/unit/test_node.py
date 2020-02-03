@@ -1,5 +1,7 @@
 from json import loads, dumps, JSONEncoder
 from fractions import Fraction
+import dataclasses
+
 import pytest
 from pathlib import Path
 from tests.base import BaseTestCase
@@ -28,6 +30,8 @@ base_report = {
 class OwnEncoder(JSONEncoder):
 
     def default(self, o):
+        if dataclasses.is_dataclass(o):
+            return dataclasses.astuple(o)
         if isinstance(o, Fraction):
             return str(o)
         return super().default(o)
@@ -73,7 +77,6 @@ class Test(BaseTestCase):
         report_dict = loads(report_dict)
         archive = report.to_archive()
         expected_result = loads(self.readfile('node/node%s-result.json' % i))
-        # print(dumps({'totals': totals_dict, 'report': report_dict , 'archive': archive.split("<<<<< end_of_chunk >>>>>")}))
         assert expected_result['report'] == report_dict
         assert expected_result['totals'] == totals_dict
         assert expected_result['archive'] == archive.split("<<<<< end_of_chunk >>>>>")
@@ -84,7 +87,7 @@ class Test(BaseTestCase):
         report = node.from_json(record['report'], str, {}, 0, {'enable_partials': True})
         for filename, lines in record['result'].items():
             for ln, result in lines.items():
-                assert loads(dumps(report[filename][int(ln)])) == result
+                assert loads(dumps(report[filename][int(ln)], cls=OwnEncoder)) == result
 
     def test_matches_content_bad_user_input(self):
         processor = node.NodeProcessor()

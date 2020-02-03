@@ -1,8 +1,8 @@
 from collections import defaultdict
 from itertools import chain, repeat
 
-from covreports.resources import Report, ReportFile
-from covreports.utils.tuples import ReportLine
+from covreports.reports.resources import Report, ReportFile
+from covreports.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
 
 

@@ -54,12 +54,12 @@ class TestVBTwo(BaseTestCase):
         pprint.pprint(processed_report['archive'])
         expected_result_archive = {
             'Source/Mobius/csharp/Tests.Common/RowHelper.cs': [
-                (260, 1, None, [[0, 1]], None, None),
-                (261, 0, None, [[0, 0]], None, None),
-                (262, 0, None, [[0, 0]], None, None)
+                (260, 1, None, [[0, 1, None, None, None]], None, None),
+                (261, 0, None, [[0, 0, None, None, None]], None, None),
+                (262, 0, None, [[0, 0, None, None, None]], None, None)
             ],
             'source/mobius/cpp/riosock/riosock.cpp': [
-                (258, True, None, [[0, True]], None, None)
+                (258, True, None, [[0, True, None, None, None]], None, None)
             ]
         }
 

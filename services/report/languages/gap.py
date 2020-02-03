@@ -1,7 +1,7 @@
 from json import loads, dumps
 
-from covreports.resources import Report, ReportFile
-from covreports.utils.tuples import ReportLine
+from covreports.reports.resources import Report, ReportFile
+from covreports.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
 
 

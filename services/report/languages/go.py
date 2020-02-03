@@ -2,9 +2,9 @@ from collections import defaultdict
 
 from services.report.languages.helpers import combine_partials
 from services.yaml import read_yaml_field
-from covreports.resources import Report, ReportFile
+from covreports.reports.resources import Report, ReportFile
 from covreports.utils.merge import partials_to_line
-from covreports.utils.tuples import ReportLine
+from covreports.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
 
 

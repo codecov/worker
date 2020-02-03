@@ -1,6 +1,6 @@
 from services.notification.changes import get_changes, Change
-from covreports.utils.tuples import ReportTotals
-from covreports.resources import Report, ReportFile, ReportLine
+from covreports.reports.types import ReportTotals
+from covreports.reports.resources import Report, ReportFile, ReportLine
 
 
 class TestChanges(object):

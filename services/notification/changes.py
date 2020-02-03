@@ -1,14 +1,14 @@
-from dataclasses import dataclass
+import dataclasses
 from collections import defaultdict
 from typing import Mapping, Any, List
 
 from covreports.utils.merge import line_type
-from covreports.utils.tuples import ReportTotals
-from covreports.resources import Report
+from covreports.reports.types import ReportTotals
+from covreports.reports.resources import Report
 from covreports.helpers.numeric import ratio
 
 
-@dataclass
+@dataclasses.dataclass
 class Change(object):
     path: str = None
     new: bool = False
@@ -28,16 +28,21 @@ def diff_totals(base, head, absolute=None):
     elif base == head:
         return None  # same same
 
-    diff = [(int(float(head[i] or 0)) - int(float(base[i] or 0)))
-            for i in (0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11)]
+    head_tuple = dataclasses.astuple(head)
+    base_tuple = dataclasses.astuple(base)
 
+    diff_tuple = [
+        (int(float(head_tuple[i] or 0)) - int(float(base_tuple[i] or 0)))
+        for i in (0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11)
+    ]
+    diff = ReportTotals(*diff_tuple)
     if absolute:
         # ratio(before.hits + changed.hits, before.lines, changed.lines) - coverage before
         #   = actual coveage change
-        hits = absolute[2] + diff[2]
-        diff[5] = float(ratio(hits, (hits + absolute[3] + diff[3] + absolute[4] + diff[4]))) - float(absolute[5])
+        hits = absolute.hits + diff.hits
+        diff.coverage = float(ratio(hits, (hits + absolute.misses + diff.misses + absolute.partials + diff.partials))) - float(absolute.coverage)
     else:
-        diff[5] = float(head.coverage) - float(base.coverage)
+        diff.coverage = float(head.coverage) - float(base.coverage)
     return ReportTotals(*diff)
 
 

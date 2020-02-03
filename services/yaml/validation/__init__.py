@@ -260,6 +260,7 @@ user_yaml_schema = Schema(
         Optional('flags'): {
             user_given_title: {
                 Optional('joined'): bool,
+                Optional('carryforward'): bool,
                 Optional('required'): bool,
                 Optional('ignore'): Or(None, [path_structure]),
                 Optional('paths'): Or(None, [path_structure]),

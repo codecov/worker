@@ -33,13 +33,13 @@ class TestVOne(BaseTestCase):
         pprint.pprint(processed_report['archive'])
         expected_result_archive = {
             'file': [
-                (1, 1, None, [[0, 1]], None, None),
-                (2, 1, None, [[0, 1]], None, None),
-                (3, True, 'b', [[0, True]], None, None),
-                (4, '1/2', 'b', [[0, '1/2']], None, None)
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (2, 1, None, [[0, 1, None, None, None]], None, None),
+                (3, True, 'b', [[0, True, None, None, None]], None, None),
+                (4, '1/2', 'b', [[0, '1/2', None, None, None]], None, None)
             ],
             'source': [
-                (1, 1, None, [[0, 1]], None, None)
+                (1, 1, None, [[0, 1, None, None, None]], None, None)
             ]
         }
 

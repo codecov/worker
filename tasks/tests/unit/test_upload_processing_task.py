@@ -4,7 +4,7 @@ import pytest
 import celery
 from redis.exceptions import LockError
 from torngit.exceptions import TorngitObjectNotFoundError
-from covreports.resources import Report, ReportFile, ReportLine, ReportTotals
+from covreports.reports.resources import Report, ReportFile, ReportLine, ReportTotals
 
 from tasks.upload_processor import UploadProcessorTask
 from database.tests.factories import CommitFactory
@@ -103,7 +103,8 @@ class TestUploadProcessorTask(object):
                     'p': None,
                     't': [3, 24, 19, 5, 0, '79.16667', 0, 0, 0, 0, 0, 0, 0],
                     'u': None,
-                    'd': commit.report_json['sessions']['0']['d']  # This is not deterministic
+                    'd': commit.report_json['sessions']['0']['d'],
+                    'st': 'uploaded'  # This is not deterministic
                 }
             }
         }

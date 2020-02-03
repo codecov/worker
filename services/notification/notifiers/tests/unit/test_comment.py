@@ -7,7 +7,7 @@ from services.notification.notifiers.comment import (
 from services.notification.notifiers.comment.helpers import sort_by_importance, Change
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
-from covreports.utils.tuples import ReportTotals
+from covreports.reports.types import ReportTotals
 from torngit.exceptions import (
     TorngitObjectNotFoundError, TorngitServerUnreachableError, TorngitClientError
 )

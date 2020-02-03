@@ -1,4 +1,5 @@
 import logging
+import dataclasses
 
 from torngit.enums import Endpoints
 
@@ -25,7 +26,7 @@ class WebhookNotifier(RequestsYamlBasedNotifier):
             },
             "url": get_commit_url(commit),
             "timestamp": commit.timestamp.isoformat(),
-            "totals": full_commit.report.totals._asdict() if full_commit.report is not None else None,
+            "totals": dataclasses.asdict(full_commit.report.totals) if full_commit.report is not None else None,
             "commitid": commit.commitid,
             "service_url": self.repository_service.get_href(Endpoints.commit_detail, commitid=commit.commitid),
             "branch": commit.branch,

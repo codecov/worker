@@ -42,12 +42,12 @@ class TestXCode(BaseTestCase):
         pprint.pprint(processed_report['archive'])
         expected_result_archive = {
             'file': [
-                (2, 1000, None, [[0, 1000]], None, None),
-                (3, 99999, None, [[0, 99999]], None, None)
+                (2, 1000, None, [[0, 1000, None, None, None]], None, None),
+                (3, 99999, None, [[0, 99999, None, None, None]], None, None)
             ],
             'source': [
-                (2, 1, None, [[0, 1]], None, None),
-                (3, 0, None, [[0, 0]], None, None)
+                (2, 1, None, [[0, 1, None, None, None]], None, None),
+                (3, 0, None, [[0, 0, None, None, None]], None, None)
             ]
         }
 

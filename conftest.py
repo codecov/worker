@@ -9,6 +9,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy import event
 
 from database.base import Base
+from database.engine import json_dumps
 from sqlalchemy_utils import create_database, database_exists
 from covreports.config import ConfigHelper
 from covreports.storage.memory import MemoryStorageService
@@ -29,6 +30,40 @@ def pytest_itemcollected(item):
     if 'codecov_vcr' in item.fixturenames:
         # Tests with codecov_vcr fixtures are automatically 'integration'
         item.add_marker('integration')
+
+
+@pytest.fixture(scope="session")
+def engine(request, sqlalchemy_connect_url, app_config):
+    """Engine configuration.
+    See http://docs.sqlalchemy.org/en/latest/core/engines.html
+    for more details.
+    :sqlalchemy_connect_url: Connection URL to the database. E.g
+    postgresql://scott:tiger@localhost:5432/mydatabase 
+    :app_config: Path to a ini config file containing the sqlalchemy.url
+    config variable in the DEFAULT section.
+    :returns: Engine instance
+    """
+    if app_config:
+        from sqlalchemy import engine_from_config
+        engine = engine_from_config(app_config)
+    elif sqlalchemy_connect_url:
+        from sqlalchemy.engine import create_engine
+        engine = create_engine(sqlalchemy_connect_url, json_serializer=json_dumps)
+    else:
+        raise RuntimeError("Can not establish a connection to the database")
+
+    # Put a suffix like _gw0, _gw1 etc on xdist processes
+    xdist_suffix = getattr(request.config, 'slaveinput', {}).get('slaveid')
+    if engine.url.database != ':memory:' and xdist_suffix is not None:
+        engine.url.database = '{}_{}'.format(engine.url.database, xdist_suffix)
+        engine = create_engine(engine.url)  # override engine
+
+    def fin():
+        print("Disposing engine")
+        engine.dispose()
+
+    request.addfinalizer(fin)
+    return engine
 
 
 @pytest.fixture(scope='session')

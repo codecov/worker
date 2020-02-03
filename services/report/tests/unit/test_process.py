@@ -7,9 +7,9 @@ from pathlib import Path
 from helpers.exceptions import ReportEmptyError
 from tests.base import BaseTestCase
 from services.report import raw_upload_processor as process
-from covreports.utils.tuples import ReportTotals
+from covreports.reports.types import ReportTotals
 from covreports.utils.sessions import Session
-from covreports.resources import Report
+from covreports.reports.resources import Report
 
 here = Path(__file__)
 folder = here.parent

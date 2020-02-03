@@ -129,14 +129,14 @@ class TestLcov(BaseTestCase):
         pprint.pprint(processed_report['archive'])
         expected_result_archive = {
             'file.cpp': [
-                (1, 1, None, [[0, 1]], None, None),
-                (2, '1/3', 'm', [[0, '1/3', ['1:1', '1:3']]], None, None),
-                (5, '2/2', 'b', [[0, '2/2', None]], None, None),
-                (77, '0/4', 'b', [[0, '0/4', ['3:0', '3:1', '4:0', '4:1']]], None, None)
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (2, '1/3', 'm', [[0, '1/3', ['1:1', '1:3'], None, None]], None, None),
+                (5, '2/2', 'b', [[0, '2/2', None, None, None]], None, None),
+                (77, '0/4', 'b', [[0, '0/4', ['3:0', '3:1', '4:0', '4:1'], None, None]], None, None)
                 # TODO (Thiago): This is out f order compared to the original, verify what happened
             ],
             'file.js': [(1, 1, None, [[0, 1, None, None, None]], None, None)],
-            'file.ts': [(2, 1, None, [[0, 1]], None, None)]
+            'file.ts': [(2, 1, None, [[0, 1, None, None, None]], None, None)]
         }
 
         assert expected_result_archive == processed_report['archive']
