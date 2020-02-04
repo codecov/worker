@@ -9,7 +9,7 @@ from covreports.reports.carryforward import generate_carryforward_report
 from database.models import Commit
 from services.archive import ArchiveService
 from services.report.raw_upload_processor import process_raw_upload
-from services.yaml.reader import read_yaml_field
+from services.yaml.reader import read_yaml_field, get_paths_from_flags
 
 log = logging.getLogger(__name__)
 
@@ -55,16 +55,19 @@ class ReportService(object):
         if recursion_limit <= 0:
             return Report()
         flags_to_carryforward = []
-        flags = read_yaml_field(self.current_yaml, ('flags', ))
-        if flags:
-            for flag_name, flag_info in flags.items():
+        all_flags = read_yaml_field(self.current_yaml, ('flags', ))
+        if all_flags:
+            for flag_name, flag_info in all_flags.items():
                 if flag_info.get('carryforward'):
                     flags_to_carryforward.append(flag_name)
+        paths_to_carryforward = get_paths_from_flags(self.current_yaml, flags_to_carryforward)
         parent_commit = commit.get_parent_commit()
         if parent_commit is None:
             return Report()
         parent_report = self._do_build_report_from_commit(parent_commit, recursion_limit - 1)
-        return generate_carryforward_report(parent_report, flags_to_carryforward)
+        return generate_carryforward_report(
+            parent_report, flags_to_carryforward, paths_to_carryforward
+        )
 
     def build_report_from_raw_content(self, commit_yaml, master, reports, flags, session):
         return process_raw_upload(commit_yaml, master, reports, flags, session)
