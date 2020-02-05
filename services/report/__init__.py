@@ -20,7 +20,7 @@ class ReportService(object):
         self.current_yaml = current_yaml
 
     def build_report(self, chunks, files, sessions, totals):
-        return EditableReport(chunks=chunks, files=files, sessions=sessions, totals=totals)
+        return Report(chunks=chunks, files=files, sessions=sessions, totals=totals)
 
     def build_report_from_commit(self, commit):
         return self._do_build_report_from_commit(commit, recursion_limit=1)
