@@ -1827,3 +1827,131 @@ class TestReportService(BaseTestCase):
         assert expected_results["report"] == readable_report["report"]
         assert expected_results["totals"] == readable_report["totals"]
         assert expected_results == readable_report
+
+    def test_create_new_report_for_commit_no_flags(
+        self, dbsession, sample_commit_with_report_big
+    ):
+        parent_commit = sample_commit_with_report_big
+        commit = CommitFactory.create(
+            repository=parent_commit.repository,
+            parent_commit_id=parent_commit.commitid,
+            report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        yaml_dict = {
+            "flags": {
+                "enterprise": {"paths": ["file_1.*"]},
+                "special_flag": {"paths": ["file_0.*"]},
+            }
+        }
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit, 1)
+        assert report is not None
+        assert sorted(report.files) == []
+        assert report.totals == ReportTotals(
+            files=0,
+            lines=0,
+            hits=0,
+            misses=0,
+            partials=0,
+            coverage=0,
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        readable_report = self.convert_report_to_better_readable(report)
+        expected_results = {
+            "archive": {},
+            "report": {
+                "files": {},
+                "sessions": {},
+            },
+            "totals": {
+                "C": 0,
+                "M": 0,
+                "N": 0,
+                "b": 0,
+                "c": 0,
+                "d": 0,
+                "diff": None,
+                "f": 0,
+                "h": 0,
+                "m": 0,
+                "n": 0,
+                "p": 0,
+                "s": 0,
+            },
+        }
+        assert expected_results["report"]["sessions"] == readable_report["report"]["sessions"]
+        assert expected_results["report"]["files"] == readable_report["report"]["files"]
+        assert expected_results["report"] == readable_report["report"]
+        assert expected_results["totals"] == readable_report["totals"]
+        assert expected_results == readable_report
+
+    def test_create_new_report_for_commit_no_parent(
+        self, dbsession, sample_commit_with_report_big
+    ):
+        parent_commit = sample_commit_with_report_big
+        commit = CommitFactory.create(
+            repository=parent_commit.repository,
+            parent_commit_id=None,
+            report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        yaml_dict = {
+            "flags": {
+                "enterprise": {"paths": ["file_1.*"]},
+                "special_flag": {"paths": ["file_0.*"]},
+            }
+        }
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit, 1)
+        assert report is not None
+        assert sorted(report.files) == []
+        assert report.totals == ReportTotals(
+            files=0,
+            lines=0,
+            hits=0,
+            misses=0,
+            partials=0,
+            coverage=0,
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        readable_report = self.convert_report_to_better_readable(report)
+        expected_results = {
+            "archive": {},
+            "report": {
+                "files": {},
+                "sessions": {},
+            },
+            "totals": {
+                "C": 0,
+                "M": 0,
+                "N": 0,
+                "b": 0,
+                "c": 0,
+                "d": 0,
+                "diff": None,
+                "f": 0,
+                "h": 0,
+                "m": 0,
+                "n": 0,
+                "p": 0,
+                "s": 0,
+            },
+        }
+        assert expected_results["report"]["sessions"] == readable_report["report"]["sessions"]
+        assert expected_results["report"]["files"] == readable_report["report"]["files"]
+        assert expected_results["report"] == readable_report["report"]
+        assert expected_results["totals"] == readable_report["totals"]
+        assert expected_results == readable_report
