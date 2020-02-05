@@ -60,11 +60,14 @@ class ReportService(object):
             for flag_name, flag_info in all_flags.items():
                 if flag_info.get('carryforward'):
                     flags_to_carryforward.append(flag_name)
+        if not flags_to_carryforward:
+            return Report()
         paths_to_carryforward = get_paths_from_flags(self.current_yaml, flags_to_carryforward)
         parent_commit = commit.get_parent_commit()
         if parent_commit is None:
             return Report()
         parent_report = self._do_build_report_from_commit(parent_commit, recursion_limit - 1)
+        log.info("Generating carryforwarded report", extra=dict(commit=commit.commitid, repoid=commit.repoid))
         return generate_carryforward_report(
             parent_report, flags_to_carryforward, paths_to_carryforward
         )
