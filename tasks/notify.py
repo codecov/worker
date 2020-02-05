@@ -3,12 +3,12 @@ import dataclasses
 
 from sqlalchemy.orm.session import Session
 from covreports.config import get_config
-from torngit.exceptions import TorngitClientError
+from torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from celery.exceptions import MaxRetriesExceededError
 
 from app import celery_app
 from celery_config import (
-    pulls_task_name, notify_task_name, status_set_error_task_name, task_default_queue
+    notify_task_name, status_set_error_task_name, task_default_queue
 )
 from database.models import Commit
 from helpers.metrics import metrics
@@ -81,7 +81,7 @@ class NotifyTask(BaseCodecovTask):
             )
         except TorngitClientError as ex:
             log.info(
-                "Unable to fetch CI results. Not notifying user",
+                "Unable to fetch CI results due to a client problem. Not notifying user",
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
@@ -92,6 +92,19 @@ class NotifyTask(BaseCodecovTask):
                 'notified': False,
                 'notifications': None,
                 'reason': 'not_able_fetch_ci_result'
+            }
+        except TorngitServerFailureError:
+            log.info(
+                "Unable to fetch CI results due to server issues. Not notifying user",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                )
+            )
+            return {
+                'notified': False,
+                'notifications': None,
+                'reason': 'server_issues_ci_result'
             }
         if self.should_wait_longer(current_yaml, commit, ci_results):
             log.info(

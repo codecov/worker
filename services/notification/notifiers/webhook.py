@@ -16,14 +16,17 @@ class WebhookNotifier(RequestsYamlBasedNotifier):
         if full_commit.commit is None:
             return None
         commit = full_commit.commit
-        return {
-            "author": {
+        author_dict = None
+        if commit.author is not None:
+            author_dict = {
                 "username": commit.author.username,
                 "service_id": commit.author.service_id,
                 "email": commit.author.email,
                 "service": commit.author.service,
                 "name": commit.author.name
-            },
+            }
+        return {
+            "author": author_dict,
             "url": get_commit_url(commit),
             "timestamp": commit.timestamp.isoformat(),
             "totals": dataclasses.asdict(full_commit.report.totals) if full_commit.report is not None else None,
