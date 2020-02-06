@@ -8,6 +8,7 @@ from torngit.exceptions import TorngitClientError, TorngitServer5xxCodeError
 from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.notify import default_if_true, NotifyTask
 from services.notification.notifiers.base import NotificationResult
+from services.notification import NotificationService
 from database.tests.factories import RepositoryFactory, CommitFactory, OwnerFactory, PullFactory
 
 
@@ -21,37 +22,6 @@ class TestNotifyTaskHelpers(object):
         assert list(default_if_true({'custom': False})) == []
         assert list(default_if_true({'custom': True})) == [('custom', {})]
         assert list(default_if_true({'custom': {'enabled': True}})) == [('custom', {'enabled': True})]
-
-    def test_get_notifiers_instances_only_third_party(self, dbsession, mock_configuration):
-        mock_configuration.params['services'] = {'notifications': {'slack': ['slack.com']}}
-        task = NotifyTask()
-        repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
-            owner__username='ThiagoCodecov',
-            yaml={'codecov': {'max_report_age': '1y ago'}},
-            name='example-python'
-        )
-        dbsession.add(repository)
-        dbsession.flush()
-        current_yaml = {
-            'coverage': {
-                'notify': {
-                    'slack': {
-                        'default': {
-                            'field': '1y ago'
-                        }
-                    }
-                }
-            }
-        }
-        instances = list(task.get_notifiers_instances(repository, current_yaml))
-        assert len(instances) == 1
-        instance = instances[0]
-        assert instance.repository == repository
-        assert instance.title == 'default'
-        assert instance.notifier_yaml_settings == {'field': '1y ago'}
-        assert instance.site_settings == ['slack.com']
-        assert instance.current_yaml == current_yaml
 
     def test_fetch_parent(self, dbsession):
         task = NotifyTask()
@@ -160,7 +130,7 @@ class TestNotifyTask(object):
             )
         )
         mocker.patch.object(
-            NotifyTask, 'get_notifiers_instances',
+            NotificationService, 'get_notifiers_instances',
             return_value=[fake_notifier]
         )
         mock_configuration.params['setup']['codecov_url'] = 'https://codecov.io'
@@ -431,7 +401,7 @@ class TestNotifyTask(object):
         disabled_notifier.name = 'disabled_notifier_name'
         bad_notifier.notify.return_value.set_exception(Exception("This is bad"))
         mocker.patch.object(
-            NotifyTask, 'get_notifiers_instances',
+            NotificationService, 'get_notifiers_instances',
             return_value=[bad_notifier, good_notifier, disabled_notifier]
         )
         task = NotifyTask()

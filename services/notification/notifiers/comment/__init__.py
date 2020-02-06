@@ -3,14 +3,17 @@ from itertools import starmap
 from decimal import Decimal
 from collections import namedtuple
 import logging
+from typing import Any, Mapping
 
 from covreports.reports.resources import Report, ReportTotals
 from covreports.helpers.yaml import walk
+from torngit.exceptions import (
+    TorngitObjectNotFoundError, TorngitClientError, TorngitServerFailureError
+)
 
-from torngit.exceptions import TorngitObjectNotFoundError, TorngitClientError, TorngitServerFailureError
 from services.notification.notifiers.base import NotificationResult, AbstractBaseNotifier
 from services.notification.types import Comparison
-from typing import Any, Mapping
+from helpers.metrics import metrics
 
 from services.yaml.reader import read_yaml_field, round_number
 from services.notification.changes import get_changes
@@ -77,11 +80,13 @@ class CommentNotifier(AbstractBaseNotifier):
                 data_sent=None,
                 data_received=None
             )
-        message = await self.build_message(comparison)
+        with metrics.timer("new_worker.services.notifications.notifiers.comment.build_message"):
+            message = await self.build_message(comparison)
         pull = comparison.pull
         data = {"message": message, "commentid": pull.commentid, "pullid": pull.pullid}
         try:
-            return await self.send_actual_notification(data)
+            with metrics.timer("new_worker.services.notifications.notifiers.comment.send_notifications"):
+                return await self.send_actual_notification(data)
         except TorngitServerFailureError:
             log.warning(
                 "Unable to send comments because the provider server was not reachable or errored",
