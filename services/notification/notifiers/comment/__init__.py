@@ -124,29 +124,43 @@ class CommentNotifier(AbstractBaseNotifier):
     async def send_comment_default_behavior(self, pullid, commentid, message):
         if commentid:
             try:
-                res = await self.repository_service.edit_comment(pullid, commentid, message)
+                res = await self.repository_service.edit_comment(
+                    pullid, commentid, message
+                )
                 return {
-                    'notification_attempted': True,
-                    'notification_successful': True,
-                    'explanation': None,
-                    'data_received': {'id': res['id']}
+                    "notification_attempted": True,
+                    "notification_successful": True,
+                    "explanation": None,
+                    "data_received": {"id": res["id"]},
                 }
             except TorngitObjectNotFoundError:
-                log.warning(
-                    "Comment was not found to be edited"
-                )
+                log.warning("Comment was not found to be edited")
             except TorngitClientError:
                 log.warning(
                     "Comment could not be edited due to client permissions",
-                    exc_info=True
+                    exc_info=True,
+                    extra=dict(pullid=pullid, commentid=commentid),
                 )
-        res = await self.repository_service.post_comment(pullid, message)
-        return {
-            'notification_attempted': True,
-            'notification_successful': True,
-            'explanation': None,
-            'data_received': {'id': res['id']}
-        }
+        try:
+            res = await self.repository_service.post_comment(pullid, message)
+            return {
+                "notification_attempted": True,
+                "notification_successful": True,
+                "explanation": None,
+                "data_received": {"id": res["id"]},
+            }
+        except TorngitClientError:
+            log.warning(
+                "Comment could not be posted due to client permissions",
+                exc_info=True,
+                extra=dict(pullid=pullid, commentid=commentid),
+            )
+            return {
+                "notification_attempted": True,
+                "notification_successful": False,
+                "explanation": "comment_posting_permissions",
+                "data_received": None,
+            }
 
     async def send_comment_once_behavior(self, pullid, commentid, message):
         if commentid:

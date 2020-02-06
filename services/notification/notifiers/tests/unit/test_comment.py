@@ -898,7 +898,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.delete_comment.called
 
     @pytest.mark.asyncio
-    async def test_send_actual_notification_default_no_permissions(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
+    async def test_send_actual_notification_default_no_permissions_edit(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
             title='title',
@@ -922,6 +922,35 @@ class TestCommentNotifier(object):
         assert result.explanation is None
         assert result.data_sent == data
         assert result.data_received == {'id': 9865}
+        mock_repo_provider.post_comment.assert_called_with(98, 'message')
+        mock_repo_provider.edit_comment.assert_called_with(98, '12345', 'message')
+        assert not mock_repo_provider.delete_comment.called
+
+    @pytest.mark.asyncio
+    async def test_send_actual_notification_default_no_permissions_twice(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'layout': "reach, diff, flags, files, footer",
+                'behavior': 'default'
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        data = {
+            'message': ['message'],
+            'commentid': '12345',
+            'pullid': 98
+        }
+        mock_repo_provider.post_comment.return_value.set_exception(TorngitClientError('code', 'response', 'message'))
+        mock_repo_provider.edit_comment.return_value.set_exception(TorngitClientError('code', 'response', 'message'))
+        result = await notifier.send_actual_notification(data)
+        assert result.notification_attempted
+        assert not result.notification_successful
+        assert result.explanation == "comment_posting_permissions"
+        assert result.data_sent == data
+        assert result.data_received is None
         mock_repo_provider.post_comment.assert_called_with(98, 'message')
         mock_repo_provider.edit_comment.assert_called_with(98, '12345', 'message')
         assert not mock_repo_provider.delete_comment.called
