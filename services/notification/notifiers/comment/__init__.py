@@ -245,8 +245,10 @@ class CommentNotifier(AbstractBaseNotifier):
 
     async def build_message(self, comparison: Comparison) -> str:
         pull = comparison.pull
-        diff = await self.get_diff(comparison)
-        changes = get_changes(comparison.base.report, comparison.head.report, diff)
+        with metrics.timer("new_worker.services.notifications.notifiers.comment.get_diff"):
+            diff = await self.get_diff(comparison)
+        with metrics.timer("new_worker.services.notifications.notifiers.comment.get_changes"):
+            changes = get_changes(comparison.base.report, comparison.head.report, diff)
         pull_dict = await self.repository_service.get_pull_request(pullid=pull.pullid)
         return self._create_message(comparison, diff, changes, pull_dict)
 
