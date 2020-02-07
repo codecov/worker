@@ -91,7 +91,7 @@ branch = BranchSchemaField()
 url = Regex(r'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)')
 
 notification_standard_attributes = {
-    Optional('url'): Or(None, UserGivenSecret()),
+    Optional('url'): Or(None, UserGivenSecret(show_secret=True)),
     Optional('branches'): Or(None, [branches_regexp]),
     Optional('threshold'): Or(None, percent_type),
     Optional('message'): str,  # TODO (Thiago): Convert this to deal with handlebars
@@ -160,38 +160,38 @@ user_yaml_schema = Schema(
                     user_given_title: {
                         Optional('channel'): str,
                         Optional('server'): str,
-                        Optional('password'): UserGivenSecret(),
-                        Optional('nickserv_password'): UserGivenSecret(),
+                        Optional('password'): UserGivenSecret(show_secret=True),
+                        Optional('nickserv_password'): UserGivenSecret(show_secret=True),
                         Optional('notice'): bool,
                         **notification_standard_attributes
                     }
-                },  # TODO (Thiago): Implement this
+                },
                 Optional('slack'): {
                     user_given_title: {
                         Optional('attachments'): layout_structure,
                         **notification_standard_attributes
                     }
-                },  # TODO (Thiago): Implement this
+                },
                 Optional('gitter'): {
                     user_given_title: {**notification_standard_attributes}
-                },  # TODO (Thiago): Implement this
+                },
                 Optional('hipchat'): {
                     user_given_title: {
                         Optional('card'): bool,
                         Optional('notify'): bool,
                         **notification_standard_attributes
                     }
-                },  # TODO (Thiago): Implement this
+                },
                 Optional('webhook'): {
                     user_given_title: {**notification_standard_attributes}
-                },  # TODO (Thiago): Implement this
+                },
                 Optional('email'): {
                     user_given_title: {
                         Optional('layout'): layout_structure,
-                        'to': [And(str, UserGivenSecret())],
+                        'to': [And(str, UserGivenSecret(show_secret=True))],
                         **notification_standard_attributes
                     }
-                },  # TODO (Thiago): Implement this
+                },
             },
             Optional('status'): Or(
                 bool,
