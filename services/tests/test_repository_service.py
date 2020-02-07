@@ -2,7 +2,7 @@ import pytest
 from asyncio import Future
 from datetime import datetime
 
-from torngit.exceptions import TorngitClientError
+from torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError
 
 from services.repository import (
     get_repo_provider_service, fetch_appropriate_parent_for_commit, get_author_from_commit,
@@ -786,3 +786,73 @@ class TestRepositoryServiceTestCase(object):
         )
         res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
         assert res is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_and_update_pull_request_information_torngitexception_getting_pull(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        commit = CommitFactory.create(
+            message='',
+            pullid='123',
+            totals=None,
+            report_json=None,
+            repository=repository
+        )
+        compared_to_commit = CommitFactory.create(
+            repository=repository,
+            branch='master',
+            merged=True
+        )
+        dbsession.add(commit)
+        dbsession.add(compared_to_commit)
+        dbsession.flush()
+        current_yaml = {}
+        find_pull_request_result = Future()
+        find_pull_request_result.set_exception(TorngitObjectNotFoundError('response', 'message'))
+        repository_service = mocker.MagicMock(
+            get_pull_request=mocker.MagicMock(
+                return_value=find_pull_request_result
+            ),
+        )
+        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+        assert res is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_and_update_pull_request_information_notfound_pull_already_exists(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(
+            repository=repository
+        )
+        dbsession.add(pull)
+        commit = CommitFactory.create(
+            message='',
+            pullid=pull.pullid,
+            totals=None,
+            report_json=None,
+            repository=repository
+        )
+        compared_to_commit = CommitFactory.create(
+            repository=repository,
+            branch='master',
+            merged=True
+        )
+        dbsession.add(commit)
+        dbsession.add(compared_to_commit)
+        dbsession.flush()
+        current_yaml = {}
+        find_pull_request_result = Future()
+        find_pull_request_result.set_exception(TorngitObjectNotFoundError('response', 'message'))
+        repository_service = mocker.MagicMock(
+            get_pull_request=mocker.MagicMock(
+                return_value=find_pull_request_result
+            ),
+        )
+        res = await fetch_and_update_pull_request_information(repository_service, commit, current_yaml)
+        assert res == pull

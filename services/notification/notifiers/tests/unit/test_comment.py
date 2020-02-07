@@ -569,6 +569,66 @@ class TestCommentNotifier(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_build_message_no_base_commit(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison_without_base_with_pull):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        comparison = sample_comparison_without_base_with_pull
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'layout': "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> :exclamation: No coverage uploaded for pull request base (`master@b92edba`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> The diff coverage is `n/a`.",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"```diff",
+            f"@@            Coverage Diff            @@",
+            f"##             master      #{pull.pullid}   +/-   ##",
+            f"=========================================",
+            f"  Coverage          ?   60.00%           ",
+            f"  Complexity        ?       10           ",
+            f"=========================================",
+            f"  Files             ?        2           ",
+            f"  Lines             ?       10           ",
+            f"  Branches          ?        1           ",
+            f"=========================================",
+            f"  Hits              ?        6           ",
+            f"  Misses            ?        3           ",
+            f"  Partials          ?        1           ",
+            f"```",
+            f"",
+            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| #unit | `100.00% <0.00%> (?)` | `0.00% <0.00%> (?%)` | |",
+            f"",
+            f"",
+            f'------',
+            f'',
+            f'[Continue to review full report at '
+            f'Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).',
+            f'> **Legend** - [Click here to learn '
+            f'more](https://docs.codecov.io/docs/codecov-delta)',
+            f'> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`',
+            f'> Powered by '
+            f'[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). '
+            f'Last update '
+            f'[b92edba...a06aef4](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). '
+            f'Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).',
+            f""
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
     async def test_send_actual_notification_spammy(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,

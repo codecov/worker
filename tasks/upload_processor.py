@@ -3,7 +3,6 @@ from time import time
 import logging
 import re
 
-import minio.error
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from covreports.utils.sessions import Session
 from redis.exceptions import LockError
@@ -401,15 +400,7 @@ class UploadProcessorTask(BaseCodecovTask):
         """
         log.debug("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
         if archive_url:
-            try:
-                return archive_service.read_file(archive_url)
-            except minio.error.NoSuchKey:
-                log.exception(
-                    "File could not be found on %s for commit %s",
-                    archive_url,
-                    commit_sha,
-                )
-                raise
+            return archive_service.read_file(archive_url)
         else:
             return download_archive_from_redis(redis_connection, redis_key)
 
