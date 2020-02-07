@@ -2,9 +2,11 @@ from typing import Mapping, Any
 import logging
 from urllib.parse import urlparse
 from decimal import Decimal
-import requests
 import json
 from contextlib import nullcontext
+
+import requests
+from requests.exceptions import RequestException
 
 from services.report.match import match
 from services.yaml.reader import round_number, get_paths_from_flags
@@ -202,13 +204,24 @@ class RequestsYamlBasedNotifier(StandardNotifier):
 
     def send_actual_notification(self, data: Mapping[str, Any]):
         kwargs = dict(timeout=30, headers=self.json_headers)
-        res = requests.post(
-            url=self.notifier_yaml_settings['url'],
-            data=json.dumps(data, cls=EnhancedJSONEncoder),
-            **kwargs
-        )
-        return {
-            'notification_attempted': True,
-            'notification_successful': res.status_code < 400,
-            'explanation': None if res.status_code else res.message
-        }
+        try:
+            res = requests.post(
+                url=self.notifier_yaml_settings['url'],
+                data=json.dumps(data, cls=EnhancedJSONEncoder),
+                **kwargs
+            )
+            return {
+                'notification_attempted': True,
+                'notification_successful': res.status_code < 400,
+                'explanation': None if res.status_code else res.message
+            }
+        except RequestException:
+            log.warning(
+                "Unable to send notification to server due to a connection error",
+                exc_info=True
+            )
+            return {
+                'notification_attempted': True,
+                'notification_successful': False,
+                'explanation': 'connection_issue'
+            }

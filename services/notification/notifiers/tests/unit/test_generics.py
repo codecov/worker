@@ -1,6 +1,7 @@
 import pytest
+import requests
 
-from services.notification.notifiers.generics import StandardNotifier
+from services.notification.notifiers.generics import StandardNotifier, RequestsYamlBasedNotifier
 from database.tests.factories import RepositoryFactory
 
 
@@ -198,3 +199,28 @@ class TestStandardkNotifier(object):
         assert res.explanation == 'Did not fit criteria'
         assert res.data_sent is None
         assert res.data_received is None
+
+
+class TestRequestsYamlBasedNotifier(object):
+
+    @pytest.mark.asyncio
+    async def test_send_notification_exception(self, mocker, sample_comparison):
+        mocked_post = mocker.patch('requests.post')
+        mocked_post.side_effect = requests.exceptions.RequestException()
+        notifier = RequestsYamlBasedNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'url': 'https://example.com/myexample',
+                'threshold': 8.0
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        data = {}
+        res = notifier.send_actual_notification(data)
+        assert res == {
+            'notification_attempted': True,
+            'notification_successful': False,
+            'explanation': 'connection_issue'
+        }
