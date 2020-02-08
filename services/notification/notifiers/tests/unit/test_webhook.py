@@ -1,10 +1,115 @@
 from decimal import Decimal
 
 from services.notification.notifiers.webhook import WebhookNotifier
-from database.tests.factories import RepositoryFactory
+from database.tests.factories import RepositoryFactory, CommitFactory
+from services.notification.types import FullCommit
 
 
 class TestWebhookNotifier(object):
+
+    def test_build_commit_payload(self, dbsession, mock_configuration, sample_comparison):
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        repository = RepositoryFactory.create(
+            owner__username='TestWebhookNotifier',
+            name='test_build_payload'
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        pull = sample_comparison.pull
+        dbsession.add(base_commit)
+        dbsession.add(head_commit)
+        dbsession.add(pull)
+        dbsession.flush()
+        notifier = WebhookNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        repository = base_commit.repository
+        comparison = sample_comparison
+        result = notifier.build_commit_payload(comparison.head)
+        expected_result = {
+            'author': {
+                'username': head_commit.author.username,
+                'service_id': head_commit.author.service_id,
+                'email': head_commit.author.email,
+                'service': head_commit.author.service,
+                'name': head_commit.author.name
+            },
+            'url': f'test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}',
+            'timestamp': '2019-02-01T17:59:47',
+            'totals': {
+                'files': 2,
+                'lines': 10,
+                'hits': 6,
+                'misses': 3,
+                'partials': 1,
+                'coverage': '60.00000',
+                'branches': 1,
+                'methods': 0,
+                'messages': 0,
+                'sessions': 1,
+                'complexity': 10,
+                'complexity_total': 2,
+                'diff': 0,
+            },
+            'commitid': head_commit.commitid,
+            'service_url': f'https://github.com/{repository.slug}/commit/{head_commit.commitid}',
+            'branch': 'new_branch',
+            'message': head_commit.message
+        }
+        assert result == expected_result
+
+    def test_build_commit_payload_no_author(self, dbsession, mock_configuration, sample_report):
+        repository = RepositoryFactory.create(
+            owner__username='test_build_commit_payload_no_author',
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        head_commit = CommitFactory.create(
+            repository=repository, branch='new_branch', author=None
+        )
+        head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+        dbsession.add(head_commit)
+        dbsession.flush()
+        notifier = WebhookNotifier(
+            repository=repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        result = notifier.build_commit_payload(head_full_commit)
+        expected_result = {
+            'author': None,
+            'url': f'test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}',
+            'timestamp': '2019-02-01T17:59:47',
+            'totals': {
+                'files': 2,
+                'lines': 10,
+                'hits': 6,
+                'misses': 3,
+                'partials': 1,
+                'coverage': '60.00000',
+                'branches': 1,
+                'methods': 0,
+                'messages': 0,
+                'sessions': 1,
+                'complexity': 10,
+                'complexity_total': 2,
+                'diff': 0,
+            },
+            'commitid': head_commit.commitid,
+            'service_url': f'https://github.com/{repository.slug}/commit/{head_commit.commitid}',
+            'branch': 'new_branch',
+            'message': head_commit.message
+        }
+        assert result == expected_result
 
     def test_build_payload(self, dbsession, mock_configuration, sample_comparison):
         mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
@@ -124,7 +229,6 @@ class TestWebhookNotifier(object):
                 'merged': False
             }
         }
-
         assert result['repo'] == expected_result['repo']
         assert result['head']['totals'] == expected_result['head']['totals']
         assert result['head'] == expected_result['head']

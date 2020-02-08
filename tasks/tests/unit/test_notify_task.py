@@ -1,13 +1,14 @@
 import pytest
 from asyncio import Future
 
-from covreports.resources import Report
+from covreports.reports.resources import Report
 from celery.exceptions import Retry, MaxRetriesExceededError
-from torngit.exceptions import TorngitClientError
+from torngit.exceptions import TorngitClientError, TorngitServer5xxCodeError
 
 from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.notify import default_if_true, NotifyTask
 from services.notification.notifiers.base import NotificationResult
+from services.notification import NotificationService
 from database.tests.factories import RepositoryFactory, CommitFactory, OwnerFactory, PullFactory
 
 
@@ -21,37 +22,6 @@ class TestNotifyTaskHelpers(object):
         assert list(default_if_true({'custom': False})) == []
         assert list(default_if_true({'custom': True})) == [('custom', {})]
         assert list(default_if_true({'custom': {'enabled': True}})) == [('custom', {'enabled': True})]
-
-    def test_get_notifiers_instances_only_third_party(self, dbsession, mock_configuration):
-        mock_configuration.params['services'] = {'notifications': {'slack': ['slack.com']}}
-        task = NotifyTask()
-        repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token='testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm',
-            owner__username='ThiagoCodecov',
-            yaml={'codecov': {'max_report_age': '1y ago'}},
-            name='example-python'
-        )
-        dbsession.add(repository)
-        dbsession.flush()
-        current_yaml = {
-            'coverage': {
-                'notify': {
-                    'slack': {
-                        'default': {
-                            'field': '1y ago'
-                        }
-                    }
-                }
-            }
-        }
-        instances = list(task.get_notifiers_instances(repository, current_yaml))
-        assert len(instances) == 1
-        instance = instances[0]
-        assert instance.repository == repository
-        assert instance.title == 'default'
-        assert instance.notifier_yaml_settings == {'field': '1y ago'}
-        assert instance.site_settings == ['slack.com']
-        assert instance.current_yaml == current_yaml
 
     def test_fetch_parent(self, dbsession):
         task = NotifyTask()
@@ -160,7 +130,7 @@ class TestNotifyTask(object):
             )
         )
         mocker.patch.object(
-            NotifyTask, 'get_notifiers_instances',
+            NotificationService, 'get_notifiers_instances',
             return_value=[fake_notifier]
         )
         mock_configuration.params['setup']['codecov_url'] = 'https://codecov.io'
@@ -303,6 +273,34 @@ class TestNotifyTask(object):
         }
         assert expected_result == res
 
+    @pytest.mark.asyncio
+    async def test_simple_call_not_able_fetch_ci_server_issues(self, dbsession, mocker, mock_storage, mock_configuration):
+        mock_configuration.params['setup']['codecov_url'] = 'https://codecov.io'
+        mocker.patch.object(NotifyTask, 'app')
+        fetch_and_update_whether_ci_passed_result = Future()
+        fetch_and_update_whether_ci_passed_result.set_exception(TorngitServer5xxCodeError())
+        mocker.patch.object(
+            NotifyTask, 'fetch_and_update_whether_ci_passed',
+            return_value=fetch_and_update_whether_ci_passed_result
+        )
+        commit = CommitFactory.create(
+            message='',
+            pullid=None,
+            branch='test-branch-1',
+            commitid='649eaaf2924e92dc7fd8d370ddb857033231e67a',
+            repository__using_integration=True
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        task = NotifyTask()
+        res = await task.run_async(
+            dbsession, commit.repoid, commit.commitid, current_yaml={}
+        )
+        expected_result = {
+            'notifications': None, 'notified': False, 'reason': 'server_issues_ci_result'
+        }
+        assert expected_result == res
+
     def test_should_send_notifications_ci_did_not_pass(self, dbsession, mocker):
         commit = CommitFactory.create(
             message='',
@@ -403,7 +401,7 @@ class TestNotifyTask(object):
         disabled_notifier.name = 'disabled_notifier_name'
         bad_notifier.notify.return_value.set_exception(Exception("This is bad"))
         mocker.patch.object(
-            NotifyTask, 'get_notifiers_instances',
+            NotificationService, 'get_notifiers_instances',
             return_value=[bad_notifier, good_notifier, disabled_notifier]
         )
         task = NotifyTask()

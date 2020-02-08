@@ -1,5 +1,6 @@
 import re
 import numbers
+import binascii
 
 from schema import SchemaError
 from covreports.encryption import EncryptorWithAlreadyGeneratedKey
@@ -346,13 +347,26 @@ class BranchSchemaField(object):
 
 
 class UserGivenSecret(object):
+
+    class InvalidSecret(Exception):
+        pass
+
     encryptor = EncryptorWithAlreadyGeneratedKey(
         b']\xbb\x13\xf9}\xb3\xb7\x03)*0Kv\xb2\xcet'  # Same secret as in the main app
     )
 
+    def __init__(self, show_secret):
+        self.show_secret = show_secret
+
     def validate(self, value):
         if value is not None and value.startswith('secret:'):
-            return self.decode(value)
+            try:
+                secret_value = self.decode(value)
+            except UserGivenSecret.InvalidSecret:
+                return value
+            if self.show_secret:
+                return secret_value
+            return "<secret>"
         return value
 
     @classmethod
@@ -361,4 +375,11 @@ class UserGivenSecret(object):
 
     @classmethod
     def decode(cls, value):
-        return cls.encryptor.decode(value[7:])
+        try:
+            decoded_value = cls.encryptor.decode(value[7:])
+        except binascii.Error:
+            raise UserGivenSecret.InvalidSecret()
+        except ValueError:
+            raise UserGivenSecret.InvalidSecret()
+        service, ownerid, repoid, clean_value = decoded_value.split("/", 3)
+        return clean_value

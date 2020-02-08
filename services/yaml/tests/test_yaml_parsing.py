@@ -117,7 +117,7 @@ class TestYamlSavingService(BaseTestCase):
                         'default': {
                             'only_pulls': False, 'branches': None, 'attachments': 'sunburst, diff',
                             'paths': None,
-                            'url': 'github/44376991/156617777/http://test.thiago.website',
+                            'url': 'http://test.thiago.website',
                             'flags': None, 'threshold': 1.0,
                             'message': 'Coverage {{changed}} for {{owner}}/{{repo}}'
                         }
@@ -125,7 +125,7 @@ class TestYamlSavingService(BaseTestCase):
                     'hipchat': {
                         'default': {
                             'paths': None, 'branches': None,
-                            'url': 'github/44376991/156617777/http://test.thiago.website',
+                            'url': 'http://test.thiago.website',
                             'flags': None, 'notify': False, 'threshold': 1.0,
                             'message': 'Coverage {{changed}} for {{owner}}/{{repo}}'
                         }
@@ -139,7 +139,7 @@ class TestYamlSavingService(BaseTestCase):
                     },
                     'webhook': {
                         '_name_': {
-                            'url': 'github/44376991/156617777/http://test.thiago.website',
+                            'url': 'http://test.thiago.website',
                             'threshold': 1.0, 'branches': None
                         }
                     },
@@ -152,7 +152,7 @@ class TestYamlSavingService(BaseTestCase):
                     },
                     'gitter': {
                         'default': {
-                            'url': 'github/44376991/156617777/http://test.thiago.website',
+                            'url': 'http://test.thiago.website',
                             'threshold': 1.0,
                             'message': 'Coverage {{changed}} for {{owner}}/{{repo}}',
                             'branches': None

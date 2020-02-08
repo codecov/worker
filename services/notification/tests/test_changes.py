@@ -1,6 +1,6 @@
 from services.notification.changes import get_changes, Change
-from covreports.utils.tuples import ReportTotals
-from covreports.resources import Report, ReportFile, ReportLine
+from covreports.reports.types import ReportTotals
+from covreports.reports.resources import Report, ReportFile, ReportLine
 
 
 class TestChanges(object):
@@ -147,8 +147,8 @@ class TestChanges(object):
         expected_result = [
             Change(
                 path='modified.py',
-                new=None,
-                deleted=None,
+                new=False,
+                deleted=False,
                 in_diff=True,
                 old_path=None,
                 totals=ReportTotals(
@@ -169,8 +169,8 @@ class TestChanges(object):
             ),
             Change(
                 path='renamed_with_changes.py',
-                new=None,
-                deleted=None,
+                new=False,
+                deleted=False,
                 in_diff=True,
                 old_path='old_renamed_with_changes.py',
                 totals=ReportTotals(
@@ -191,8 +191,8 @@ class TestChanges(object):
             ),
             Change(
                 path='unrelated.py',
-                new=None,
-                deleted=None,
+                new=False,
+                deleted=False,
                 in_diff=False,
                 old_path=None,
                 totals=ReportTotals(
@@ -214,7 +214,7 @@ class TestChanges(object):
             Change(
                 path='added.py',
                 new=True,
-                deleted=None,
+                deleted=False,
                 in_diff=None,
                 old_path=None,
                 totals=None

@@ -1,6 +1,6 @@
 from typing import Callable, Mapping
 
-from covreports.resources import Report
+from covreports.reports.resources import Report
 
 
 class BaseLanguageProcessor(object):

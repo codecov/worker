@@ -1,8 +1,8 @@
 from collections import defaultdict
 from fractions import Fraction
 
-from covreports.resources import Report, ReportFile
-from covreports.utils.tuples import ReportLine
+from covreports.reports.resources import Report, ReportFile
+from covreports.reports.types import ReportLine
 from covreports.utils.merge import partials_to_line
 from services.yaml import read_yaml_field
 
@@ -146,7 +146,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
             partials = sorted(filter(None, partials), key=lambda p: p[0])
             cov = line_cov[ln][0]
             line = _file.get(ln)
-            if line and line.sessions[0][3] is not None:
+            if line and line.sessions[0].partials is not None:
                 continue
             else:
                 _file.append(ln, ReportLine(cov, None, [[sessionid, cov, None, partials]]))
@@ -165,7 +165,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                     if line:
                         inline_part = inlines.pop(sl, None)
                         if inline_part:
-                            cur_partials = line.sessions[-1][3]
+                            cur_partials = line.sessions[-1].partials
                             if not cur_partials:
                                 _, cov, partials = get_line_coverage(branch, cov, 'b')
                                 _file[sl] = ReportLine(cov, 'b', [[sessionid, cov, mb, partials]])
@@ -194,7 +194,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                         else:
                             # if ( exp && expr )
                             # change to branch
-                            _file[sl] = ReportLine(cov, 'b', [[sessionid, cov, mb, _file[sl].sessions[-1][3]]])
+                            _file[sl] = ReportLine(cov, 'b', [[sessionid, cov, mb, _file[sl].sessions[-1].partials]])
 
                     else:
                         _file.append(sl, ReportLine(cov, 'b', [[sessionid, cov, mb, None]]))

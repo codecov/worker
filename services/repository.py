@@ -3,7 +3,7 @@ from datetime import datetime
 import re
 
 import torngit
-from torngit.exceptions import TorngitClientError
+from torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError
 
 from covreports.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
@@ -251,8 +251,23 @@ async def fetch_and_update_pull_request_information(repository_service, commit, 
             )
     if not pullid:
         return None
+    pull_query = db_session.query(Pull).filter_by(
+        pullid=pullid,
+        repoid=commit.repoid
+    )
+    pull = pull_query.first()
     compared_to = None
-    pull_information = await repository_service.get_pull_request(pullid=pullid)
+    try:
+        pull_information = await repository_service.get_pull_request(pullid=pullid)
+    except TorngitObjectNotFoundError:
+        log.warning(
+            "Unable to find pull request information on provider to update it",
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid
+            )
+        )
+        return pull
     pull_base_sha = pull_information['base']['commitid']
     base_commit = db_session.query(Commit).filter_by(commitid=pull_base_sha, repoid=commit.repoid).first()
     if base_commit:
@@ -273,11 +288,6 @@ async def fetch_and_update_pull_request_information(repository_service, commit, 
         if new_base:
             compared_to = new_base.commitid
 
-    pull_query = db_session.query(Pull).filter_by(
-        pullid=pullid,
-        repoid=commit.repoid
-    )
-    pull = pull_query.first()
     if pull:
         pull.issueid = pull_information['id']
         pull.state = pull_information['state']

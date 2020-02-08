@@ -1,4 +1,5 @@
 import re
+from base64 import b64encode
 
 import pytest
 from schema import SchemaError
@@ -6,7 +7,7 @@ from schema import SchemaError
 from tests.base import BaseTestCase
 from services.yaml.validation import (
     LayoutStructure, validate_yaml, PathPatternSchemaField, CoverageRangeSchemaField,
-    PercentSchemaField, CustomFixPathSchemaField, pre_process_yaml
+    PercentSchemaField, CustomFixPathSchemaField, pre_process_yaml, UserGivenSecret
 )
 from services.yaml.exceptions import InvalidYamlException
 from services.yaml.validation.helpers import (
@@ -391,3 +392,32 @@ class TestCustomFixPathSchemaField(BaseTestCase):
         assert processing_func('before/tests-oranges/test.js') == 'after/test.js'
         assert processing_func('before/app-apples/app.js') == 'before/app-apples/app.js'
         assert processing_func('unrelated/path/taken.py') == 'unrelated/path/taken.py'
+
+
+class TestUserGivenSecret(BaseTestCase):
+
+    def test_simple_user_given_secret(self):
+        value = "github/11934774/154468867/https://hooks.slack.com/services/first_key/BE7FWCVHV/dkbfscprianc7wrb"
+        encoded_value = UserGivenSecret.encode(value)
+        ugs = UserGivenSecret(show_secret=True)
+        assert ugs.validate(value) == value
+        assert ugs.validate(encoded_value) == 'https://hooks.slack.com/services/first_key/BE7FWCVHV/dkbfscprianc7wrb'
+
+    def test_pseudosecret_user_given_secret(self):
+        value = "secret:arriba"
+        ugs = UserGivenSecret(show_secret=True)
+        assert ugs.validate(value) == value
+
+    def test_b64encoded_pseudosecret_user_given_secret(self):
+        encoded_value = b64encode("arriba".encode())
+        value = b"secret:" + encoded_value
+        value = value.decode()
+        ugs = UserGivenSecret(show_secret=True)
+        assert ugs.validate(value) == value
+
+    def test_simple_user_dont_show_secret(self):
+        value = "github/11934774/154468867/https://hooks.slack.com/services/first_key/BE7FWCVHV/dkbfscprianc7wrb"
+        encoded_value = UserGivenSecret.encode(value)
+        ugs = UserGivenSecret(show_secret=False)
+        assert ugs.validate(value) == value
+        assert ugs.validate(encoded_value) == "<secret>"

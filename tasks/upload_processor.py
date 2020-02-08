@@ -3,7 +3,6 @@ from time import time
 import logging
 import re
 
-import minio.error
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from covreports.utils.sessions import Session
 from redis.exceptions import LockError
@@ -26,8 +25,8 @@ from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
-regexp_ci_skip = re.compile(r'\[(ci|skip| |-){3,}\]').search
-merged_pull = re.compile(r'.*Merged in [^\s]+ \(pull request \#(\d+)\).*').match
+regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]").search
+merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 FIRST_RETRY_DELAY = 20
 
 
@@ -49,13 +48,24 @@ class UploadProcessorTask(BaseCodecovTask):
         with as many as possible. But it is not expected that this task will receive a big
         number of `uploads` to be processed
     """
+
     name = "app.tasks.upload_processor.UploadProcessorTask"
 
     def schedule_for_later_try(self):
         retry_in = FIRST_RETRY_DELAY * 3 ** self.request.retries
         self.retry(max_retries=5, countdown=retry_in, queue=task_default_queue)
 
-    async def run_async(self, db_session, previous_results, *, repoid, commitid, commit_yaml, arguments_list, **kwargs):
+    async def run_async(
+        self,
+        db_session,
+        previous_results,
+        *,
+        repoid,
+        commitid,
+        commit_yaml,
+        arguments_list,
+        **kwargs,
+    ):
         repoid = int(repoid)
         log.debug("In run_async for repoid %d and commit %s", repoid, commitid)
         lock_name = f"upload_processing_lock_{repoid}_{commitid}"
@@ -70,33 +80,44 @@ class UploadProcessorTask(BaseCodecovTask):
                     commitid=commitid,
                     commit_yaml=commit_yaml,
                     arguments_list=arguments_list,
-                    **kwargs
+                    **kwargs,
                 )
         except LockError:
             log.warning(
-                "Unable to acquire lock for key %s. Retrying", lock_name,
-                extra=dict(commit=commitid, repoid=repoid)
+                "Unable to acquire lock for key %s. Retrying",
+                lock_name,
+                extra=dict(commit=commitid, repoid=repoid),
             )
             self.schedule_for_later_try()
 
-    async def process_async_within_lock(self, *, db_session, redis_connection, previous_results, repoid, commitid, commit_yaml, arguments_list, **kwargs):
+    async def process_async_within_lock(
+        self,
+        *,
+        db_session,
+        redis_connection,
+        previous_results,
+        repoid,
+        commitid,
+        commit_yaml,
+        arguments_list,
+        **kwargs,
+    ):
         log.debug("Obtained lock for repoid %d and commit %s", repoid, commitid)
-        processings_so_far = previous_results.get('processings_so_far', [])
+        processings_so_far = previous_results.get("processings_so_far", [])
         commit = None
         n_processed = 0
         commits = db_session.query(Commit).filter(
-                Commit.repoid == repoid, Commit.commitid == commitid)
+            Commit.repoid == repoid, Commit.commitid == commitid
+        )
         commit = commits.first()
-        assert commit, 'Commit not found in database.'
+        assert commit, "Commit not found in database."
         repository = commit.repository
         pr = None
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         archive_service = ArchiveService(repository)
         try:
-            report = ReportService().build_report_from_commit(
-                commit, chunks_archive_service=archive_service
-            )
+            report = ReportService(commit_yaml).build_report_from_commit(commit)
         except Exception:
             log.exception(
                 "Unable to fetch current report for commit",
@@ -104,32 +125,36 @@ class UploadProcessorTask(BaseCodecovTask):
                     repoid=repoid,
                     commit=commitid,
                     arguments_list=arguments_list,
-                    commit_yaml=commit_yaml
-                )
+                    commit_yaml=commit_yaml,
+                ),
             )
             raise
         try:
             for arguments in arguments_list:
-                pr = arguments.get('pr')
+                pr = arguments.get("pr")
                 log.info(
-                    "Processing individual report %s", arguments.get('reportid'),
+                    "Processing individual report %s",
+                    arguments.get("reportid"),
                     extra=dict(
                         repoid=repoid,
                         commit=commitid,
                         arguments=arguments,
-                        commit_yaml=commit_yaml
-                    )
+                        commit_yaml=commit_yaml,
+                    ),
                 )
-                individual_info = {
-                    'arguments': arguments.copy()
-                }
+                individual_info = {"arguments": arguments.copy()}
                 try:
-                    arguments_commitid = arguments.pop('commit', None)
+                    arguments_commitid = arguments.pop("commit", None)
                     if arguments_commitid:
                         assert arguments_commitid == commit.commitid
                     result = self.process_individual_report(
-                        archive_service, redis_connection, commit_yaml,
-                        commit, report, should_delete_archive, **arguments
+                        archive_service,
+                        redis_connection,
+                        commit_yaml,
+                        commit,
+                        report,
+                        should_delete_archive,
+                        **arguments,
                     )
                     individual_info.update(result)
                 except (CeleryError, SoftTimeLimitExceeded):
@@ -138,98 +163,106 @@ class UploadProcessorTask(BaseCodecovTask):
                     raise
                 except Exception:
                     log.exception(
-                        "Unable to process report %s", arguments.get('reportid'),
+                        "Unable to process report %s",
+                        arguments.get("reportid"),
                         extra=dict(
                             commit_yaml=commit_yaml,
                             repoid=repoid,
                             commit=commitid,
-                            arguments=arguments
-                        )
+                            arguments=arguments,
+                        ),
                     )
                     self.schedule_for_later_try()
-                if individual_info.get('successful'):
-                    report = individual_info.pop('report')
+                if individual_info.get("successful"):
+                    report = individual_info.pop("report")
                     n_processed += 1
                 processings_so_far.append(individual_info)
             log.info(
-                'Finishing the processing of %d reports',
+                "Finishing the processing of %d reports",
                 n_processed,
-                extra=dict(repoid=repoid, commit=commitid)
+                extra=dict(repoid=repoid, commit=commitid),
             )
             results_dict = await self.save_report_results(
-                db_session, archive_service,
-                repository, commit, report, pr
+                db_session, archive_service, repository, commit, report, pr
             )
             log.info(
-                'Processed %d reports',
+                "Processed %d reports",
                 n_processed,
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
                     commit_yaml=commit_yaml,
-                    url=results_dict.get('url')
-                )
+                    url=results_dict.get("url"),
+                ),
             )
             return {
-                'processings_so_far': processings_so_far,
+                "processings_so_far": processings_so_far,
             }
         except CeleryError:
             raise
         except Exception:
-            commit.state = 'error'
+            commit.state = "error"
             log.exception(
-                'Could not properly process commit',
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    arguments=try_later
-                )
+                "Could not properly process commit",
+                extra=dict(repoid=repoid, commit=commitid, arguments=try_later),
             )
             raise
 
     def process_individual_report(
-            self, archive_service, redis_connection, commit_yaml,
-            commit, report, *args, **arguments):
+        self,
+        archive_service,
+        redis_connection,
+        commit_yaml,
+        commit,
+        report,
+        *args,
+        **arguments,
+    ):
         try:
             result = self.do_process_individual_report(
-                archive_service, redis_connection, commit_yaml, commit, report, *args, **arguments
+                archive_service,
+                redis_connection,
+                commit_yaml,
+                commit,
+                report,
+                *args,
+                **arguments,
             )
-            return {
-                'successful': True,
-                'report': result
-            }
+            return {"successful": True, "report": result}
         except ReportExpiredException:
             expired_report_result = {
-                'successful': False,
-                'report': None,
-                'error_type': 'report_expired',
-                'should_retry': False
+                "successful": False,
+                "report": None,
+                "error_type": "report_expired",
+                "should_retry": False,
             }
             log.info(
-                "Report %s is expired", arguments.get('reportid'),
+                "Report %s is expired",
+                arguments.get("reportid"),
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
                     arguments=arguments,
-                    result=expired_report_result
-                )
+                    result=expired_report_result,
+                ),
             )
             return expired_report_result
         except ReportEmptyError:
             empty_report_result = {
-                'successful': False,
-                'report': None,
-                'error_type': 'report_empty',
-                'should_retry': False
+                "successful": False,
+                "report": None,
+                "error_type": "report_empty",
+                "should_retry": False,
             }
             log.info(
-                "Report %s is empty", arguments.get('reportid'),
+                "Report %s is empty",
+                arguments.get("reportid"),
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
                     arguments=arguments,
-                    result=empty_report_result
-                )
+                    result=empty_report_result,
+                ),
             )
             return empty_report_result
         except FileNotInStorageError:
@@ -240,51 +273,67 @@ class UploadProcessorTask(BaseCodecovTask):
                     extra=dict(
                         repoid=commit.repoid,
                         commit=commit.commitid,
-                        arguments=arguments
-                    )
+                        arguments=arguments,
+                    ),
                 )
                 self.schedule_for_later_try()
             log.info(
                 "File did not arrive within the expected time, skipping it",
                 extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    arguments=arguments
-                )
+                    repoid=commit.repoid, commit=commit.commitid, arguments=arguments
+                ),
             )
             return {
-                'successful': False,
-                'report': None,
-                'error_type': 'file_not_in_storage',
-                'should_retry': False
+                "successful": False,
+                "report": None,
+                "error_type": "file_not_in_storage",
+                "should_retry": False,
             }
 
     def do_process_individual_report(
-            self, archive_service, redis_connection,
-            commit_yaml, commit, current_report, should_delete_archive, *,
-            flags=None, service=None, build_url=None,
-            build=None, job=None, name=None, url=None,
-            redis_key=None, reportid=None, **kwargs):
+        self,
+        archive_service,
+        redis_connection,
+        commit_yaml,
+        commit,
+        current_report,
+        should_delete_archive,
+        *,
+        flags=None,
+        service=None,
+        build_url=None,
+        build=None,
+        job=None,
+        name=None,
+        url=None,
+        redis_key=None,
+        reportid=None,
+        **kwargs,
+    ):
         """Takes a `current_report (Report)`, runs a raw_uploaded_report (str) against
             it and generates a new report with the result
         """
         raw_uploaded_report = None
-        flags = (flags.split(',') if flags else None)
+        flags = flags.split(",") if flags else None
 
         archive_url = url
         raw_uploaded_report = self.fetch_raw_uploaded_report(
-            archive_service, redis_connection, archive_url, commit.commitid, reportid, redis_key)
-        log.debug('Retrieved report for processing from url %s', archive_url)
+            archive_service,
+            redis_connection,
+            archive_url,
+            commit.commitid,
+            reportid,
+            redis_key,
+        )
+        log.debug("Retrieved report for processing from url %s", archive_url)
         if redis_key and not raw_uploaded_report:
             log.error(
                 "Report is not available on redis",
-                extra=dict(
-                    commit=commit.commitid, repo=commit.repoid
-                )
+                extra=dict(commit=commit.commitid, repo=commit.repoid),
             )
 
         # delete from archive is desired
-        if should_delete_archive and archive_url and not archive_url.startswith('http'):
+        if should_delete_archive and archive_url and not archive_url.startswith("http"):
             archive_service.delete_file(archive_url)
             archive_url = None
 
@@ -299,36 +348,45 @@ class UploadProcessorTask(BaseCodecovTask):
             time=int(time()),
             flags=flags,
             archive=archive_url or url,
-            url=build_url
+            url=build_url,
         )
         report = self.process_raw_upload_on_top_of_master_report(
             commit_yaml=commit_yaml,
             master=current_report,
             reports=raw_uploaded_report,
             flags=flags,
-            session=session
+            session=session,
         )
 
         log.info(
-            'Successfully processed report',
+            "Successfully processed report",
             extra=dict(
                 session=session.id,
-                ci=f'{session.provider}:{session.build}:{session.job}',
+                ci=f"{session.provider}:{session.build}:{session.job}",
                 repoid=commit.repoid,
                 commit=commit.commitid,
                 reportid=reportid,
-                commit_yaml=commit_yaml
-            )
+                commit_yaml=commit_yaml,
+            ),
         )
         return report
 
-    def process_raw_upload_on_top_of_master_report(self, commit_yaml, master, reports, flags, session=None):
+    def process_raw_upload_on_top_of_master_report(
+        self, commit_yaml, master, reports, flags, session=None
+    ):
         return ReportService().build_report_from_raw_content(
             commit_yaml, master, reports, flags, session
         )
 
     def fetch_raw_uploaded_report(
-            self, archive_service, redis_connection, archive_url, commit_sha, reportid, redis_key):
+        self,
+        archive_service,
+        redis_connection,
+        archive_url,
+        commit_sha,
+        reportid,
+        redis_key,
+    ):
         """
             Downloads the raw report, wherever it is (it's either a path on minio or redis)
 
@@ -342,27 +400,20 @@ class UploadProcessorTask(BaseCodecovTask):
         """
         log.debug("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
         if archive_url:
-            try:
-                return archive_service.read_file(archive_url)
-            except minio.error.NoSuchKey:
-                log.exception(
-                    "File could not be found on %s for commit %s", archive_url, commit_sha
-                )
-                raise
+            return archive_service.read_file(archive_url)
         else:
             return download_archive_from_redis(redis_connection, redis_key)
 
     def should_delete_archive(self, commit_yaml):
-        if get_config('services', 'minio', 'expire_raw_after_n_days'):
+        if get_config("services", "minio", "expire_raw_after_n_days"):
             return True
         return not read_yaml_field(
-            commit_yaml,
-            ('codecov', 'archive', 'uploads'),
-            _else=True
+            commit_yaml, ("codecov", "archive", "uploads"), _else=True
         )
 
     async def save_report_results(
-            self, db_session, chunks_archive_service, repository, commit, report, pr):
+        self, db_session, chunks_archive_service, repository, commit, report, pr
+    ):
         """Saves the result of `report` to the commit database and chunks archive
         
         This method only takes care of getting a processed Report to the database and archive.
@@ -382,20 +433,14 @@ class UploadProcessorTask(BaseCodecovTask):
             # alternative of refusing an otherwise "good" report because of the lack of diff
             log.warning(
                 "Could not apply diff to report because there was a 4xx error",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                ),
-                exc_info=True
+                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+                exc_info=True,
             )
         except RepositoryWithoutValidBotError:
             log.warning(
-                'Could not apply diff to report because there is no valid bot found for that repo',
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid
-                ),
-                exc_info=True
+                "Could not apply diff to report because there is no valid bot found for that repo",
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+                exc_info=True,
             )
         totals, network_json_str = report.to_database()
         network = loads(network_json_str)
@@ -406,7 +451,7 @@ class UploadProcessorTask(BaseCodecovTask):
         archive_data = report.to_archive().encode()
         url = chunks_archive_service.write_chunks(commit.commitid, archive_data)
 
-        commit.state = 'complete' if report else 'error'
+        commit.state = "complete" if report else "error"
         commit.totals = totals
         commit.report_json = network
         db_session.commit()
@@ -415,17 +460,15 @@ class UploadProcessorTask(BaseCodecovTask):
         # Archive Processed Report
         # ------------------------
         log.info(
-            'Archived report',
+            "Archived report",
             extra=dict(
                 repoid=commit.repoid,
                 commit=commit.commitid,
                 url=url,
-                new_report_sessions=network.get('sessions')
-            )
+                new_report_sessions=network.get("sessions"),
+            ),
         )
-        return {
-            'url': url
-        }
+        return {"url": url}
 
 
 RegisteredUploadTask = celery_app.register_task(UploadProcessorTask())
