@@ -72,7 +72,7 @@ archive_task_name = 'app.tasks.archive.MigrateToArchive'
 bot_task_name = 'app.tasks.bot.VerifyBot'
 comment_task_name = 'app.tasks.comment.Comment'
 flush_repo_task_name = 'app.tasks.flush_repo.FlushRepo'
-ghm_sync_plans_task_name = 'app.tasks.ghm_sync_plans.SyncPlans'
+ghm_sync_plans_task_name = 'app.tasks.github_marketplace.SyncPlans'
 remove_webhook_task_name = 'app.tasks.remove_webhook.RemoveOldHook'
 synchronize_task_name = 'app.tasks.synchronize.Synchronize'
 

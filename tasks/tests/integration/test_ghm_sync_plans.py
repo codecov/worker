@@ -2,7 +2,7 @@ import pytest
 
 from database.tests.factories import OwnerFactory, RepositoryFactory
 from database.models import Owner, Repository
-from tasks.ghm_sync_plans import SyncPlansTask
+from tasks.github_marketplace import SyncPlansTask
 
 # DONT WORRY, this is generated for the purposes of validation
 # and is not the real one on which the code ran

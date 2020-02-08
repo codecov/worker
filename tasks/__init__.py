@@ -1,6 +1,6 @@
 from tasks.delete_owner import delete_owner_task
 from tasks.flush_repo import flush_repo
-from tasks.ghm_sync_plans import ghm_sync_plans_task
+from tasks.github_marketplace import ghm_sync_plans_task
 from tasks.status_set_error import status_set_error_task
 from tasks.status_set_pending import status_set_pending_task
 from tasks.sync_repos import sync_repos_task

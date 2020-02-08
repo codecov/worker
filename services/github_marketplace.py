@@ -10,6 +10,9 @@ log = logging.getLogger(__name__)
 
 class GitHubMarketplaceService(object):
 
+    """
+    Static ids for each of Codecov's plans on GitHub marketplace
+    """
     LEGACY_PLAN_ID = 18
     CURRENT_PLAN_ID = 2147
     PER_USER_PLAN_ID = 3267
@@ -73,7 +76,7 @@ class GitHubMarketplaceService(object):
     def plan_ids(self):
         return [self.LEGACY_PLAN_ID, self.CURRENT_PLAN_ID, self.PER_USER_PLAN_ID]
 
-    def get_sender_plans(self, account_id):
+    def get_account_plans(self, account_id):
         """
         Check if a GitHub account is associated with any Marketplace listing.
 

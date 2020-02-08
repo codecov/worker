@@ -21,7 +21,8 @@ class SyncPlansTask(BaseCodecovTask):
 
     async def run_async(self, db_session, sender=None, account=None, action=None):
         """
-        Sender: The person who took the action that triggered the webhook.
+        Sender: The person who took the action that triggered the webhook. Ex:
+        { "login":"username", "id":3877742, "type":"User", ...,  "email":"username@email.com" }
         Account: The organization or user account associated with the subscription.
         Action: The action performed to generate the webhook. Can be `purchased`,
                 `cancelled`, `pending_change`, `pending_change_cancelled`, or `changed`.
@@ -43,7 +44,7 @@ class SyncPlansTask(BaseCodecovTask):
         if account:
             # TODO sync all team members - 3 year old todo from legacy...
             try:
-                plans = ghm_service.get_sender_plans(account["id"])
+                plans = ghm_service.get_account_plans(account["id"])
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 404:
                     # account has not purchased the listing
@@ -90,7 +91,7 @@ class SyncPlansTask(BaseCodecovTask):
             plan_type_synced = "paid"
 
         else:
-            self.create_or_update_free_plan(db_session, ghm_service, service_id)
+            self.create_or_update_to_free_plan(db_session, ghm_service, service_id)
             plan_type_synced = "free"
 
         return dict(plan_type_synced=plan_type_synced, plan_removed=plan_removed)
@@ -255,11 +256,11 @@ class SyncPlansTask(BaseCodecovTask):
             new_owner.plan_auto_activate = True
             new_owner.plan_user_count = purchase_object["unit_count"]
 
-    def create_or_update_free_plan(self, db_session, ghm_service, service_id):
+    def create_or_update_to_free_plan(self, db_session, ghm_service, service_id):
         """
-        Create or update free plan for when plan isn't known or the action is "cancelled"
+        Create or update user to free plan for when plan isn't known or the action is "cancelled"
         """
-        log.info("Create or update free plan", extra=dict(service_id=service_id))
+        log.info("Create or update to free plan", extra=dict(service_id=service_id))
 
         owner = (
             db_session.query(Owner)
