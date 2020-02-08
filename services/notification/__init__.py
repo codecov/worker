@@ -69,53 +69,56 @@ class NotificationService(object):
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
         notifications = []
-        commit = comparison.head.commit
-        base_commit = comparison.base.commit
         for notifier in self.get_notifiers_instances():
             if notifier.is_enabled():
-                log.info(
-                    "Attempting individual notification",
-                    extra=dict(
-                        commit=commit.commitid,
-                        base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
-                        repoid=commit.repoid,
-                        notifier=notifier.name,
-                        notifier_title=notifier.title
-                    )
-                )
-                try:
-                    with metrics.timer(f'new_worker.services.notifications.notifiers.{notifier.name}'):
-                        res = await notifier.notify(comparison)
-                    individual_result = {
-                        'notifier': notifier.name,
-                        'title': notifier.title,
-                        'result': dataclasses.asdict(res)
-                    }
-                    notifier.store_results(comparison, res)
-                    notifications.append(individual_result)
-                    log.info(
-                        "Individual notification done",
-                        extra=dict(
-                            individual_result=individual_result,
-                            commit=commit.commitid,
-                            base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
-                            repoid=commit.repoid
-                        )
-                    )
-                except Exception:
-                    individual_result = {
-                        'notifier': notifier.name,
-                        'title': notifier.title,
-                        'result': None
-                    }
-                    notifications.append(individual_result)
-                    log.exception(
-                        "Individual notifier failed",
-                        extra=dict(
-                            repoid=commit.repoid,
-                            commit=commit.commitid,
-                            individual_result=individual_result,
-                            base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
-                        )
-                    )
+                notifications.append(await self.notify_individual_notifier(notifier, comparison))
         return notifications
+
+    async def notify_individual_notifier(self, notifier, comparison) -> NotificationResult:
+        commit = comparison.head.commit
+        base_commit = comparison.base.commit
+        log.info(
+            "Attempting individual notification",
+            extra=dict(
+                commit=commit.commitid,
+                base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
+                repoid=commit.repoid,
+                notifier=notifier.name,
+                notifier_title=notifier.title
+            )
+        )
+        try:
+            with metrics.timer(f'new_worker.services.notifications.notifiers.{notifier.name}'):
+                res = await notifier.notify(comparison)
+            individual_result = {
+                'notifier': notifier.name,
+                'title': notifier.title,
+                'result': dataclasses.asdict(res)
+            }
+            notifier.store_results(comparison, res)
+            log.info(
+                "Individual notification done",
+                extra=dict(
+                    individual_result=individual_result,
+                    commit=commit.commitid,
+                    base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
+                    repoid=commit.repoid
+                )
+            )
+            return individual_result
+        except Exception:
+            individual_result = {
+                'notifier': notifier.name,
+                'title': notifier.title,
+                'result': None
+            }
+            log.exception(
+                "Individual notifier failed",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    individual_result=individual_result,
+                    base_commit=base_commit.commitid if base_commit is not None else 'NO_BASE',
+                )
+            )
+            return individual_result
