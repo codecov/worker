@@ -80,8 +80,25 @@ class CommentNotifier(AbstractBaseNotifier):
                 data_sent=None,
                 data_received=None
             )
-        with metrics.timer("new_worker.services.notifications.notifiers.comment.build_message"):
-            message = await self.build_message(comparison)
+        try:
+            with metrics.timer("new_worker.services.notifications.notifiers.comment.build_message"):
+                message = await self.build_message(comparison)
+        except TorngitClientError:
+            log.warning(
+                "Unable to fetch enough information to build message for comment",
+                extra=dict(
+                    commit=comparison.head.commit.commitid,
+                    pullid=comparison.pull.pullid
+                ),
+                exc_info=True
+            )
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation='unable_build_message',
+                data_sent=None,
+                data_received=None
+            )
         pull = comparison.pull
         data = {"message": message, "commentid": pull.commentid, "pullid": pull.pullid}
         try:
@@ -223,13 +240,26 @@ class CommentNotifier(AbstractBaseNotifier):
                     "explanation": "no_permissions",
                     "data_received": None,
                 }
-        res = await self.repository_service.post_comment(pullid, message)
-        return {
-            'notification_attempted': True,
-            'notification_successful': True,
-            'explanation': None,
-            'data_received': {'id': res['id']}
-        }
+        try:
+            res = await self.repository_service.post_comment(pullid, message)
+            return {
+                'notification_attempted': True,
+                'notification_successful': True,
+                'explanation': None,
+                'data_received': {'id': res['id']}
+            }
+        except TorngitClientError:
+            log.warning(
+                "Comment could not be posted due to client permissions",
+                exc_info=True,
+                extra=dict(pullid=pullid, commentid=commentid),
+            )
+            return {
+                "notification_attempted": True,
+                "notification_successful": False,
+                "explanation": "comment_posting_permissions",
+                "data_received": None,
+            }
 
     async def send_comment_spammy_behavior(self, pullid, commentid, message):
         res = await self.repository_service.post_comment(pullid, message)
@@ -247,12 +277,12 @@ class CommentNotifier(AbstractBaseNotifier):
         pull = comparison.pull
         with metrics.timer("new_worker.services.notifications.notifiers.comment.get_diff"):
             diff = await self.get_diff(comparison)
-        with metrics.timer("new_worker.services.notifications.notifiers.comment.get_changes"):
-            changes = get_changes(comparison.base.report, comparison.head.report, diff)
-        pull_dict = await self.repository_service.get_pull_request(pullid=pull.pullid)
-        return self._create_message(comparison, diff, changes, pull_dict)
+        with metrics.timer("new_worker.services.notifications.notifiers.comment.get_pull"):
+            pull_dict = await self.repository_service.get_pull_request(pullid=pull.pullid)
+        return self._create_message(comparison, diff, pull_dict)
 
-    def _create_message(self, comparison, diff, changes, pull_dict):
+    def _create_message(self, comparison, diff, pull_dict):
+        changes = get_changes(comparison.base.report, comparison.head.report, diff)
         base_report = comparison.base.report
         head_report = comparison.head.report
         pull = comparison.pull
@@ -261,7 +291,6 @@ class CommentNotifier(AbstractBaseNotifier):
         yaml = self.current_yaml
         current_yaml = self.current_yaml
 
-        # TODO (Thiago): get links dict
         links = {
             'pull': get_pull_url(pull),
             'base': get_commit_url(comparison.base.commit) if comparison.base.commit is not None else None
