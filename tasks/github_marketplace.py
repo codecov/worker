@@ -233,6 +233,7 @@ class SyncPlansTask(BaseCodecovTask):
             owner.plan = "users"
             owner.plan_provider = "github"
             owner.plan_auto_activate = True
+            owner.plan_activated_users = None
             owner.plan_user_count = purchase_object["unit_count"]
 
             if owner.stripe_customer_id and owner.stripe_subscription_id:
