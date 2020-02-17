@@ -148,6 +148,19 @@ class TestStandardkNotifier(object):
         )
         assert not notifier.should_notify_comparison(sample_comparison)
 
+    def test_should_notify_comparison_no_base(self, sample_comparison_without_base_report):
+        notifier = StandardNotifier(
+            repository=sample_comparison_without_base_report.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={
+                'url': 'https://example.com/myexample',
+                'threshold': 80.0
+            },
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        assert not notifier.should_notify_comparison(sample_comparison_without_base_report)
+
     def test_should_notify_comparison_is_above_threshold(self, sample_comparison):
         notifier = StandardNotifier(
             repository=sample_comparison.head.commit.repository,

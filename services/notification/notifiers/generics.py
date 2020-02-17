@@ -126,12 +126,12 @@ class StandardNotifier(AbstractBaseNotifier):
         threshold = self.notifier_yaml_settings.get('threshold')
         if threshold is None:
             return True
-        if base_full_commit.report is None:
+        if not comparison.has_base_report():
             log.info(
                 "Cannot compare commits because base commit does not have a report",
                 extra=dict(
                     commit=head_full_commit.commit.commitid,
-                    base_commit=base_full_commit.commit.commitid,
+                    base_commit=base_full_commit.commit.commitid if base_full_commit.commit else None,
                 )
             )
             return False
