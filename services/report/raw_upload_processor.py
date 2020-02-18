@@ -11,7 +11,7 @@ from covreports.reports.resources import Report
 
 from helpers.exceptions import ReportEmptyError
 from services.report.fixes import get_fixes_from_raw
-from services.report.fixpaths import fixpaths_to_func, clean_toc, clean_path
+from services.path_fixer.fixpaths import fixpaths_to_func, clean_toc, clean_path
 from services.report.match import patterns_to_func
 from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
