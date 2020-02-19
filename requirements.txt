@@ -13,6 +13,7 @@ chardet==3.0.4
 colour==0.1.5
 contextlib2==0.5.5
 coverage==4.5
+#TODO update this!
 -e git+https://github.com/codecov/report.git@edce9111096208c5126fb64232af2e5045b4f541#egg=covreports
 cryptography==2.7
 docutils==0.15.2
@@ -64,7 +65,6 @@ requests==2.22.0
 requests-oauthlib==1.2.0
 rsa==4.0
 s3transfer==0.2.1
-schema==0.7.0
 sentry-sdk==0.14.0
 six==1.11.0
 SQLAlchemy==1.2.14
