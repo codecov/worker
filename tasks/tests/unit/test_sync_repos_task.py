@@ -355,8 +355,6 @@ class TestSyncReposTaskUnit(object):
         repos = dbsession.query(Repository).filter(
             Repository.service_id.in_(('159090647', '159089634', '164948070'))
         ).all()
-        for repo in repos:
-            print(repo.__dict__)
 
         assert user.permission == [] # there were no private repos to add
         assert len(repos) == 3
@@ -389,3 +387,109 @@ class TestSyncReposTaskUnit(object):
         assert len(repos) == 1
         assert repos[0].service_id == public_repo_service_id
         assert repos[0].ownerid == user.ownerid
+
+
+    @pytest.mark.asyncio
+    async def test_sync_repos_using_integration(self, mocker, mock_configuration, dbsession, codecov_vcr):
+        token = 'ecd73a086eadc85db68747a66bdbd662a785a072'
+        user = OwnerFactory.create(
+            organizations=[],
+            service='github',
+            username='1nf1n1t3l00p',
+            unencrypted_oauth_token=token,
+            permission=[],
+            service_id='45343385'
+        )
+        dbsession.add(user)
+
+        repo_pytest = RepositoryFactory.create(
+            private=False,
+            name='pytest',
+            using_integration=False,
+            service_id='159089634',
+            owner=user
+        )
+        repo_spack = RepositoryFactory.create(
+            private=False,
+            name='spack',
+            using_integration=True,
+            service_id='164948070',
+            owner=user
+        )
+        repo_pub = RepositoryFactory.create(
+            private=False,
+            name='pub',
+            using_integration=None,
+            service_id='213786132',
+            owner=user
+        )
+        dbsession.add(repo_pytest)
+        dbsession.add(repo_spack)
+        dbsession.add(repo_pub)
+        dbsession.flush()
+
+        await SyncReposTask().run_async(
+            dbsession,
+            ownerid=user.ownerid,
+            using_integration=True
+        )
+
+        dbsession.commit()
+
+        repos = dbsession.query(Repository).filter(
+            Repository.service_id.in_((repo_pytest.service_id, repo_spack.service_id, repo_pub.service_id))
+        ).all()
+        assert len(repos) == 3
+
+        assert user.permission == [] # there were no private repos
+        for repo in repos:
+            assert repo.using_integration is True
+
+    @pytest.mark.asyncio
+    async def test_sync_repos_using_integration_no_repos(self, mocker, mock_configuration, dbsession, codecov_vcr):
+        token = 'ecd73a086eadc85db68747a66bdbd662a785a072'
+        user = OwnerFactory.create(
+            organizations=[],
+            service='github',
+            username='1nf1n1t3l00p',
+            unencrypted_oauth_token=token,
+            permission=[],
+            service_id='45343385'
+        )
+        dbsession.add(user)
+
+        repo_pytest = RepositoryFactory.create(
+            private=False,
+            name='pytest',
+            using_integration=True,
+            service_id='159089634',
+            owner=user
+        )
+        repo_spack = RepositoryFactory.create(
+            private=False,
+            name='spack',
+            using_integration=True,
+            service_id='164948070',
+            owner=user
+        )
+        dbsession.add(repo_pytest)
+        dbsession.add(repo_spack)
+        dbsession.flush()
+
+        await SyncReposTask().run_async(
+            dbsession,
+            ownerid=user.ownerid,
+            using_integration=True
+        )
+
+        dbsession.commit()
+
+        repos = dbsession.query(Repository).filter(
+            Repository.service_id.in_((repo_pytest.service_id, repo_spack.service_id))
+        ).all()
+        assert len(repos) == 2
+
+        assert user.permission == [] # there were no private repos
+        for repo in repos:
+            # repos are no longer using integration
+            assert repo.using_integration is False

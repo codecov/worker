@@ -59,17 +59,9 @@ class SyncReposTask(BaseCodecovTask):
                 db_session.query(Repository).filter(
                     Repository.ownerid == ownerid,
                     Repository.service_id.in_(repo_service_ids),
-                    Repository.using_integration.isnot_(True)
+                    Repository.using_integration.isnot(True)
                 ).update({
                     Repository.using_integration: True
-                }, synchronize_session=False)
-
-                db_session.query(Repository).filter(
-                    Repository.ownerid == ownerid,
-                    Repository.service_id.in_(repo_service_ids),
-                    Repository.using_integration.is_(True)
-                ).update({
-                    Repository.using_integration: False
                 }, synchronize_session=False)
         else:
             db_session.query(Repository).filter(
