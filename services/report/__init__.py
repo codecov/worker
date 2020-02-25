@@ -67,7 +67,7 @@ class ReportService(object):
         if parent_commit is None:
             return Report()
         parent_report = self._do_build_report_from_commit(parent_commit, recursion_limit - 1)
-        log.info("Generating carryforwarded report", extra=dict(commit=commit.commitid, repoid=commit.repoid))
+        log.info("Generating carriedforward report", extra=dict(commit=commit.commitid, repoid=commit.repoid))
         return generate_carryforward_report(
             parent_report, flags_to_carryforward, paths_to_carryforward
         )
