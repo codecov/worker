@@ -418,7 +418,7 @@ class CommentNotifier(AbstractBaseNotifier):
                         )
                         
                         show_up_arrow = coverage_good and complexity_good
-                        show_down_arrow = (coverage_good and coverage_change != 0) and (complexity_good and complexity_change != 0)
+                        show_down_arrow = (coverage_good is False and coverage_change != 0) and (complexity_good is False and complexity_change != 0)
                         icon = ' :arrow_up: |' if show_up_arrow else ' :arrow_down: |' if show_down_arrow else ' |'
 
                     else:
