@@ -366,7 +366,8 @@ class CommentNotifier(AbstractBaseNotifier):
 
         if head_report:
             def make_metrics(before, after, relative):
-                good = None
+                coverage_good = None
+                icon = ' |'
                 if after is None:
                     # e.g. missing flags
                     coverage = u' `?` |'
@@ -385,8 +386,8 @@ class CommentNotifier(AbstractBaseNotifier):
 
                     layout = u' `{absolute} <{relative}> ({impact})` |'
 
-                    change = (float(after.coverage) - float(before.coverage)) if before else None
-                    good = (change >= 0) if before else None
+                    coverage_change = (float(after.coverage) - float(before.coverage)) if before else None
+                    coverage_good = (coverage_change > 0) if before else None
                     coverage = layout.format(
                         absolute=format_number_to_str(
                             yaml, after.coverage, style='{0}%'
@@ -395,15 +396,15 @@ class CommentNotifier(AbstractBaseNotifier):
                             yaml, relative.coverage if relative else 0, style='{0}%', if_null=u'\xF8'
                         ),
                         impact=format_number_to_str(
-                            yaml, change, style='{0}%', if_zero=u'\xF8', if_null=u'\xF8', plus=True
+                            yaml, coverage_change, style='{0}%', if_zero=u'\xF8', if_null=u'\xF8', plus=True
                         ) if before else '?' if before is None else u'\xF8'
                     )
 
                     if show_complexity:
                         is_string = isinstance(relative.complexity if relative else '', str)
                         style = '{0}%' if is_string else '{0}'
-                        change = Decimal(after.complexity) - Decimal(before.complexity) if before else None
-                        good = (change <= 0) if before and good else None
+                        complexity_change = Decimal(after.complexity) - Decimal(before.complexity) if before else None
+                        complexity_good = (complexity_change < 0) if before and coverage_good else None
                         complexity = layout.format(
                             absolute=style.format(
                                 format_number_to_str(yaml, after.complexity)
@@ -412,14 +413,17 @@ class CommentNotifier(AbstractBaseNotifier):
                                 format_number_to_str(yaml, relative.complexity if relative else 0, if_null=u'\xF8')
                             ),
                             impact=style.format(
-                                format_number_to_str(yaml, change, if_zero=u'\xF8', if_null=u'\xF8', plus=True) if before else '?'
+                                format_number_to_str(yaml, complexity_change, if_zero=u'\xF8', if_null=u'\xF8', plus=True) if before else '?'
                             )
                         )
+                        
+                        show_up_arrow = coverage_good and complexity_good
+                        show_down_arrow = (coverage_good and coverage_change != 0) and (complexity_good and complexity_change != 0)
+                        icon = ' :arrow_up: |' if show_up_arrow else ' :arrow_down: |' if show_down_arrow else ' |'
 
                     else:
                         complexity = ''
-
-                icon = ' :arrow_up: |' if good else ' :arrow_down: |' if good is False else ' |'
+                        icon = ' :arrow_up: |' if coverage_good else ' :arrow_down: |' if coverage_good is False and coverage_change != 0 else ' |'
 
                 return ''.join(('|', coverage, complexity, icon))
 
