@@ -7,7 +7,9 @@ import logging
 
 import requests
 from requests.exceptions import RequestException
+from covreports.config import get_config
 
+from helpers.metrics import metrics
 from helpers.match import match
 from services.notification.notifiers.base import AbstractBaseNotifier, NotificationResult
 from services.notification.types import Comparison
@@ -203,13 +205,15 @@ class RequestsYamlBasedNotifier(StandardNotifier):
     }
 
     def send_actual_notification(self, data: Mapping[str, Any]):
-        kwargs = dict(timeout=30, headers=self.json_headers)
+        _timeouts = get_config('setup', 'http', 'timeouts', 'external', default=10)
+        kwargs = dict(timeout=_timeouts, headers=self.json_headers)
         try:
-            res = requests.post(
-                url=self.notifier_yaml_settings['url'],
-                data=json.dumps(data, cls=EnhancedJSONEncoder),
-                **kwargs
-            )
+            with metrics.timer(f"new_worker.services.notifications.notifiers.{self.name}.actual_connection"):
+                res = requests.post(
+                    url=self.notifier_yaml_settings['url'],
+                    data=json.dumps(data, cls=EnhancedJSONEncoder),
+                    **kwargs
+                )
             return {
                 'notification_attempted': True,
                 'notification_successful': res.status_code < 400,

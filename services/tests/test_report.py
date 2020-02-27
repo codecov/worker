@@ -1222,7 +1222,7 @@ class TestReportService(BaseTestCase):
                 },
                 "sessions": {
                     "0": {
-                        "N": "Carryforwarded",
+                        "N": "Carriedforward",
                         "a": None,
                         "c": None,
                         "d": readable_report["report"]["sessions"]["0"]["d"],
@@ -1231,12 +1231,12 @@ class TestReportService(BaseTestCase):
                         "j": None,
                         "n": None,
                         "p": None,
-                        "st": "carryforwarded",
+                        "st": "carriedforward",
                         "t": None,
                         "u": None,
                     },
                     "1": {
-                        "N": "Carryforwarded",
+                        "N": "Carriedforward",
                         "a": None,
                         "c": None,
                         "d": readable_report["report"]["sessions"]["1"]["d"],
@@ -1245,7 +1245,7 @@ class TestReportService(BaseTestCase):
                         "j": None,
                         "n": None,
                         "p": None,
-                        "st": "carryforwarded",
+                        "st": "carriedforward",
                         "t": None,
                         "u": None,
                     },
@@ -1286,7 +1286,7 @@ class TestReportService(BaseTestCase):
         report = report_service.build_report_from_commit(commit)
         assert report == mocked_create_new_report_for_commit.return_value
 
-    def test_build_report_from_commit_carryforwarded_add_sessions(
+    def test_build_report_from_commit_carriedforward_add_sessions(
         self, dbsession, sample_commit_with_report_big
     ):
         parent_commit = sample_commit_with_report_big
@@ -1776,7 +1776,7 @@ class TestReportService(BaseTestCase):
                 },
                 "sessions": {
                     "0": {
-                        "N": "Carryforwarded",
+                        "N": "Carriedforward",
                         "a": None,
                         "c": None,
                         "d": readable_report["report"]["sessions"]["0"]["d"],
@@ -1785,12 +1785,12 @@ class TestReportService(BaseTestCase):
                         "j": None,
                         "n": None,
                         "p": None,
-                        "st": "carryforwarded",
+                        "st": "carriedforward",
                         "t": None,
                         "u": None,
                     },
                     "1": {
-                        "N": "Carryforwarded",
+                        "N": "Carriedforward",
                         "a": None,
                         "c": None,
                         "d": readable_report["report"]["sessions"]["1"]["d"],
@@ -1799,7 +1799,7 @@ class TestReportService(BaseTestCase):
                         "j": None,
                         "n": None,
                         "p": None,
-                        "st": "carryforwarded",
+                        "st": "carriedforward",
                         "t": None,
                         "u": None,
                     },

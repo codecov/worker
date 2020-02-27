@@ -1,12 +1,11 @@
--e git+https://github.com/codecov/report.git@8918382462b89c598c280c08a304b471e1309312#egg=covreports
--e git+https://github.com/codecov/torngit.git@3b0756a4a6ccc8a452f88419c94aa4122204ba71#egg=torngit
+-e git+https://github.com/codecov/report.git@1b5b6703829de1f5554a42f1c2106c0463ea122c#egg=covreports
+-e git+https://github.com/codecov/torngit.git@0f9c4c001ddeaf1fd8c1285f26264defdaf76127#egg=torngit
 boto3==1.9.218
 celery==4.3
 cryptography==2.7
 factory-boy==2.11.1
 google-cloud-storage==1.18.0
 lxml==4.3.1
-minio==4.0.19
 pathmap==0.1.5
 psycopg2==2.7.6.1
 PyJWT==1.7.1

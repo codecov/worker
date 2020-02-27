@@ -13,7 +13,7 @@ chardet==3.0.4
 colour==0.1.5
 contextlib2==0.5.5
 coverage==4.5
--e git+https://github.com/codecov/report.git@8918382462b89c598c280c08a304b471e1309312#egg=covreports
+-e git+https://github.com/codecov/report.git@1b5b6703829de1f5554a42f1c2106c0463ea122c#egg=covreports
 cryptography==2.7
 docutils==0.15.2
 ecdsa==0.13.2
@@ -73,7 +73,7 @@ text-unidecode==1.3
 timestring==1.6.2
 tlslite-ng==0.7.5
 tornado==6.0.3
--e git+https://github.com/codecov/torngit.git@3b0756a4a6ccc8a452f88419c94aa4122204ba71#egg=torngit
+-e git+https://github.com/codecov/torngit.git@0f9c4c001ddeaf1fd8c1285f26264defdaf76127#egg=torngit
 urllib3==1.25.6
 vcrpy==2.1.0
 vine==1.3.0
