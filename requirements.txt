@@ -13,8 +13,7 @@ chardet==3.0.4
 colour==0.1.5
 contextlib2==0.5.5
 coverage==4.5
-#TODO update this!
--e git+https://github.com/codecov/report.git@edce9111096208c5126fb64232af2e5045b4f541#egg=covreports
+-e git+https://github.com/codecov/report.git@8918382462b89c598c280c08a304b471e1309312#egg=covreports
 cryptography==2.7
 docutils==0.15.2
 ecdsa==0.13.2
