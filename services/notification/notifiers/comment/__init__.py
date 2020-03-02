@@ -404,7 +404,7 @@ class CommentNotifier(AbstractBaseNotifier):
                         is_string = isinstance(relative.complexity if relative else '', str)
                         style = '{0}%' if is_string else '{0}'
                         complexity_change = Decimal(after.complexity) - Decimal(before.complexity) if before else None
-                        complexity_good = (complexity_change < 0) if before and coverage_good else None
+                        complexity_good = (complexity_change < 0) if before else None
                         complexity = layout.format(
                             absolute=style.format(
                                 format_number_to_str(yaml, after.complexity)
@@ -416,7 +416,7 @@ class CommentNotifier(AbstractBaseNotifier):
                                 format_number_to_str(yaml, complexity_change, if_zero=u'\xF8', if_null=u'\xF8', plus=True) if before else '?'
                             )
                         )
-                        
+
                         show_up_arrow = coverage_good and complexity_good
                         show_down_arrow = (coverage_good is False and coverage_change != 0) and (complexity_good is False and complexity_change != 0)
                         icon = ' :arrow_up: |' if show_up_arrow else ' :arrow_down: |' if show_down_arrow else ' |'
