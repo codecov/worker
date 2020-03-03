@@ -1,6 +1,7 @@
 import logging
 import dataclasses
 from typing import List
+import asyncio
 
 from covreports.config import get_config
 from covreports.helpers.yaml import default_if_true
@@ -68,11 +69,11 @@ class NotificationService(object):
                 )
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
-        notifications = []
+        notification_tasks = []
         for notifier in self.get_notifiers_instances():
             if notifier.is_enabled():
-                notifications.append(await self.notify_individual_notifier(notifier, comparison))
-        return notifications
+                notification_tasks.append(self.notify_individual_notifier(notifier, comparison))
+        return await asyncio.gather(*notification_tasks)
 
     async def notify_individual_notifier(self, notifier, comparison) -> NotificationResult:
         commit = comparison.head.commit

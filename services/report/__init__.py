@@ -20,7 +20,11 @@ class ReportService(object):
         self.current_yaml = current_yaml
 
     def build_report(self, chunks, files, sessions, totals):
-        return Report(chunks=chunks, files=files, sessions=sessions, totals=totals)
+        report_class = Report
+        for sess in sessions.values():
+            if sess.get('st') == 'carriedforward':
+                report_class = EditableReport
+        return report_class(chunks=chunks, files=files, sessions=sessions, totals=totals)
 
     def build_report_from_commit(self, commit):
         return self._do_build_report_from_commit(commit, recursion_limit=1)
@@ -67,7 +71,7 @@ class ReportService(object):
         if parent_commit is None:
             return Report()
         parent_report = self._do_build_report_from_commit(parent_commit, recursion_limit - 1)
-        log.info("Generating carryforwarded report", extra=dict(commit=commit.commitid, repoid=commit.repoid))
+        log.info("Generating carriedforward report", extra=dict(commit=commit.commitid, repoid=commit.repoid))
         return generate_carryforward_report(
             parent_report, flags_to_carryforward, paths_to_carryforward
         )
