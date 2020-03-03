@@ -120,10 +120,10 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
                     res = processor.process(
                         name, report, path_fixer, ignored_lines, sessionid, commit_yaml
                     )
-                    metrics.timer(f"new_worker.services.report.processors.{processor.name}.success")
+                    metrics.incr(f"new_worker.services.report.processors.{processor.name}.success")
                     return res
                 except Exception:
-                    metrics.timer(f"new_worker.services.report.processors.{processor.name}.failure")
+                    metrics.incr(f"new_worker.services.report.processors.{processor.name}.failure")
                     raise
     log.info(
         "File format could not be recognized",

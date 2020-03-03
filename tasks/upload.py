@@ -164,7 +164,7 @@ class UploadTask(BaseCodecovTask):
             )
         except TorngitRepoNotFoundError:
             log.warning(
-                "Unable to reach git provider because this specific bot can't see that repository",
+                "Unable to reach git provider because this specific bot/integration can't see that repository",
                 extra=dict(
                     repoid=repoid,
                     commit=commitid
