@@ -7,8 +7,7 @@ from enum import Enum
 
 from covreports.config import get_config
 from helpers.metrics import metrics
-from covreports.storage import get_appropriate_storage_service
-from covreports.storage.exceptions import BucketAlreadyExistsError
+from services.storage import get_storage_client
 
 log = logging.getLogger(__name__)
 
@@ -55,7 +54,7 @@ class ArchiveService(object):
         self.region = get_config('services', 'minio', 'region', default='us-east-1')
         self.enterprise = bool(get_config('setup', 'enterprise_license'))
 
-        self.storage = get_appropriate_storage_service()
+        self.storage = get_storage_client()
         log.debug("Getting archive hash")
         self.storage_hash = self.get_archive_hash(repository)
 
