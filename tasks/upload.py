@@ -251,7 +251,6 @@ class UploadTask(BaseCodecovTask):
                         commit_yaml=commit_yaml,
                         arguments_list=chunk,
                     ),
-                    countdown=10
                 )
                 chain_to_call.append(sig)
         if chain_to_call:
@@ -261,7 +260,6 @@ class UploadTask(BaseCodecovTask):
                     commitid=commit.commitid,
                     commit_yaml=commit_yaml
                 ),
-                countdown=10
             )
             chain_to_call.append(finish_sig)
             log.info(

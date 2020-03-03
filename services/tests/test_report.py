@@ -19,39 +19,6 @@ def powerset(iterable):
     return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
 
 
-def weird_report():
-    filenames = ["file_%s.py" % n for n in range(15)]
-    files = [ReportFile(fn) for fn in filenames]
-    session_numbers = list(range(4))
-    flags = ["unit", "enterprise"]
-    flags = powerset(flags)
-    sessions = [Session(flags=f) for f in flags]
-    report = Report()
-    for s in sessions:
-        report.add_session(s)
-    possible_coverages = [0, 1, "1/2", "1/3"]
-    count = 0
-    for pwsets in powerset(possible_coverages):
-        if pwsets:
-            for sn in permutations(session_numbers, len(pwsets)):
-                sessions = [LineSession(coverage=i, id=p) for i, p in zip(pwsets, sn)]
-                line = ReportLine(
-                    coverage=get_coverage_from_sessions(sessions), sessions=sessions
-                )
-                file_to_add = random.randint(0, 14)
-                files[file_to_add].append(len(files[file_to_add]._lines) + 1, line)
-                count += 1
-    for f in files:
-        report.append(f)
-    chunks = report.to_archive()
-    totals, file_summaries = report.to_database()
-    file_summaries = json.loads(file_summaries)
-    pprint.pprint(totals)
-    pprint.pprint(file_summaries["files"])
-    pprint.pprint(file_summaries["sessions"])
-    return chunks
-
-
 @pytest.fixture
 def sample_commit_with_report_big(dbsession, mock_storage):
     sessions_dict = {
@@ -216,6 +183,170 @@ def sample_commit_with_report_big(dbsession, mock_storage):
         mock_storage.write_file("archive", chunks_url, content)
     return commit
 
+
+@pytest.fixture
+def sample_commit_with_report_big_already_carriedforward(dbsession, mock_storage):
+    sessions_dict = {
+        "0": {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": [],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "uploaded",
+            "t": None,
+            "u": None,
+        },
+        "1": {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": ["unit"],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "uploaded",
+            "t": None,
+            "u": None,
+        },
+        "2": {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": ["enterprise"],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "carriedforward",
+            "t": None,
+            "u": None,
+        },
+        "3": {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": ["unit", "enterprise"],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "carriedforward",
+            "t": None,
+            "u": None,
+        },
+    }
+    file_headers = {
+        "file_00.py": [
+            0,
+            [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_01.py": [
+            1,
+            [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_10.py": [
+            10,
+            [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_11.py": [
+            11,
+            [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_12.py": [
+            12,
+            [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_13.py": [
+            13,
+            [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_14.py": [
+            14,
+            [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_02.py": [
+            2,
+            [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_03.py": [
+            3,
+            [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_04.py": [
+            4,
+            [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_05.py": [
+            5,
+            [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_06.py": [
+            6,
+            [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_07.py": [
+            7,
+            [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_08.py": [
+            8,
+            [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_09.py": [
+            9,
+            [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+    }
+    commit = CommitFactory.create(
+        report_json={"sessions": sessions_dict, "files": file_headers}
+    )
+    dbsession.add(commit)
+    dbsession.flush()
+    with open("tasks/tests/samples/sample_chunks_4_sessions.txt") as f:
+        content = f.read().encode()
+        archive_hash = ArchiveService.get_archive_hash(commit.repository)
+        chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
+        mock_storage.write_file("archive", chunks_url, content)
+    return commit
 
 class TestReportService(BaseTestCase):
     def test_build_report_from_commit_no_report_saved(self, mocker):
@@ -1222,7 +1353,7 @@ class TestReportService(BaseTestCase):
                 },
                 "sessions": {
                     "0": {
-                        "N": "Carryforwarded",
+                        "N": "Carriedforward",
                         "a": None,
                         "c": None,
                         "d": readable_report["report"]["sessions"]["0"]["d"],
@@ -1231,12 +1362,12 @@ class TestReportService(BaseTestCase):
                         "j": None,
                         "n": None,
                         "p": None,
-                        "st": "carryforwarded",
+                        "st": "carriedforward",
                         "t": None,
                         "u": None,
                     },
                     "1": {
-                        "N": "Carryforwarded",
+                        "N": "Carriedforward",
                         "a": None,
                         "c": None,
                         "d": readable_report["report"]["sessions"]["1"]["d"],
@@ -1245,7 +1376,7 @@ class TestReportService(BaseTestCase):
                         "j": None,
                         "n": None,
                         "p": None,
-                        "st": "carryforwarded",
+                        "st": "carriedforward",
                         "t": None,
                         "u": None,
                     },
@@ -1286,7 +1417,7 @@ class TestReportService(BaseTestCase):
         report = report_service.build_report_from_commit(commit)
         assert report == mocked_create_new_report_for_commit.return_value
 
-    def test_build_report_from_commit_carryforwarded_add_sessions(
+    def test_build_report_from_commit_carriedforward_add_sessions(
         self, dbsession, sample_commit_with_report_big
     ):
         parent_commit = sample_commit_with_report_big
@@ -1342,6 +1473,89 @@ class TestReportService(BaseTestCase):
         }
         pprint.pprint(readable_report)
         assert readable_report == expected_results
+
+    def test_build_report_from_commit_already_carriedforward_add_sessions(
+        self, dbsession, sample_commit_with_report_big_already_carriedforward
+    ):
+        commit = sample_commit_with_report_big_already_carriedforward
+        dbsession.add(commit)
+        dbsession.flush()
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
+        report = ReportService(yaml_dict).build_report_from_commit(commit)
+        assert report is not None
+        assert len(report.files) == 15
+        report.add_session(Session(flags=["enterprise"]))
+        readable_report = self.convert_report_to_better_readable(report)
+        sessions_dict = {
+            "0": {
+                "N": None,
+                "a": None,
+                "c": None,
+                "d": None,
+                "e": None,
+                "f": None,
+                "j": None,
+                "n": None,
+                "p": None,
+                "st": "uploaded",
+                "t": None,
+                "u": None,
+            },
+            "1": {
+                "N": None,
+                "a": None,
+                "c": None,
+                "d": None,
+                "e": None,
+                "f": ["unit"],
+                "j": None,
+                "n": None,
+                "p": None,
+                "st": "uploaded",
+                "t": None,
+                "u": None,
+            },
+            "2": {
+                "N": None,
+                "a": None,
+                "c": None,
+                "d": None,
+                "e": None,
+                "f": ["enterprise"],
+                "j": None,
+                "n": None,
+                "p": None,
+                "st": "uploaded",
+                "t": None,
+                "u": None,
+            },
+        }
+
+        assert readable_report["report"]["sessions"]["0"] == sessions_dict["0"]
+        assert readable_report["report"]["sessions"]["1"] == sessions_dict["1"]
+        assert readable_report["report"]["sessions"]["2"] == sessions_dict["2"]
+        assert readable_report["report"]["sessions"] == sessions_dict
+        newly_added_session = {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": ["unit"],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "uploaded",
+            "t": None,
+            "u": None,
+        }
+        report.add_session(Session(flags=["unit"]))
+        new_readable_report = self.convert_report_to_better_readable(report)
+        assert len(new_readable_report["report"]["sessions"]) == 4
+        assert new_readable_report["report"]["sessions"]["0"] == sessions_dict["0"]
+        assert new_readable_report["report"]["sessions"]["1"] == sessions_dict["1"]
+        assert new_readable_report["report"]["sessions"]["2"] == sessions_dict["2"]
+        assert new_readable_report["report"]["sessions"]["3"] == newly_added_session
 
     def test_create_new_report_for_commit_with_path_filters(
         self, dbsession, sample_commit_with_report_big
@@ -1776,7 +1990,7 @@ class TestReportService(BaseTestCase):
                 },
                 "sessions": {
                     "0": {
-                        "N": "Carryforwarded",
+                        "N": "Carriedforward",
                         "a": None,
                         "c": None,
                         "d": readable_report["report"]["sessions"]["0"]["d"],
@@ -1785,12 +1999,12 @@ class TestReportService(BaseTestCase):
                         "j": None,
                         "n": None,
                         "p": None,
-                        "st": "carryforwarded",
+                        "st": "carriedforward",
                         "t": None,
                         "u": None,
                     },
                     "1": {
-                        "N": "Carryforwarded",
+                        "N": "Carriedforward",
                         "a": None,
                         "c": None,
                         "d": readable_report["report"]["sessions"]["1"]["d"],
@@ -1799,7 +2013,7 @@ class TestReportService(BaseTestCase):
                         "j": None,
                         "n": None,
                         "p": None,
-                        "st": "carryforwarded",
+                        "st": "carriedforward",
                         "t": None,
                         "u": None,
                     },

@@ -57,7 +57,6 @@ class TestUploadTaskIntegration(object):
                 commit_yaml={'codecov': {'max_report_age': '1y ago'}},
                 arguments_list=redis_queue
             ),
-            countdown=10
         )
         t2 = upload_finisher_task.signature(
             kwargs=dict(
@@ -65,7 +64,6 @@ class TestUploadTaskIntegration(object):
                 commitid='abf6d4df662c47e32460020ab14abf9303581429',
                 commit_yaml={'codecov': {'max_report_age': '1y ago'}}
             ),
-            countdown=10
         )
         mocked_1.assert_called_with(t1, t2)
         mock_redis.lpop.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
@@ -132,7 +130,6 @@ class TestUploadTaskIntegration(object):
                 commit_yaml={'codecov': {'max_report_age': '1y ago'}},
                 arguments_list=redis_queue[0:3]
             ),
-            countdown=10
         )
         t2 = upload_processor_task.signature(
             args=(),
@@ -142,7 +139,6 @@ class TestUploadTaskIntegration(object):
                 commit_yaml={'codecov': {'max_report_age': '1y ago'}},
                 arguments_list=redis_queue[3:6]
             ),
-            countdown=10
         )
         t3 = upload_processor_task.signature(
             args=(),
@@ -152,7 +148,6 @@ class TestUploadTaskIntegration(object):
                 commit_yaml={'codecov': {'max_report_age': '1y ago'}},
                 arguments_list=redis_queue[6:]
             ),
-            countdown=10
         )
         t_final = upload_finisher_task.signature(
             kwargs=dict(
@@ -160,7 +155,6 @@ class TestUploadTaskIntegration(object):
                 commitid='abf6d4df662c47e32460020ab14abf9303581429',
                 commit_yaml={'codecov': {'max_report_age': '1y ago'}}
             ),
-            countdown=10
         )
         mocked_1.assert_called_with(t1, t2, t3, t_final)
         mock_redis.lpop.assert_called_with('testuploads/%s/%s' % (commit.repoid, commit.commitid))
@@ -423,7 +417,6 @@ class TestUploadTaskUnit(object):
                 commit_yaml=commit_yaml,
                 arguments_list=argument_list
             ),
-            countdown=10
         )
         t2 = upload_finisher_task.signature(
             kwargs=dict(
@@ -431,7 +424,6 @@ class TestUploadTaskUnit(object):
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml
             ),
-            countdown=10
         )
         mocked_chain.assert_called_with(t1, t2)
 
