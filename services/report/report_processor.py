@@ -115,10 +115,16 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
     # [xcode]
     for processor in processors:
         if processor.matches_content(report, first_line, name):
-            with metrics.timer(f'new_worker.services.report.processors.{processor.name}'):
-                return processor.process(
-                    name, report, path_fixer, ignored_lines, sessionid, commit_yaml
-                )
+            with metrics.timer(f'new_worker.services.report.processors.{processor.name}.run'):
+                try:
+                    res = processor.process(
+                        name, report, path_fixer, ignored_lines, sessionid, commit_yaml
+                    )
+                    metrics.incr(f"new_worker.services.report.processors.{processor.name}.success")
+                    return res
+                except Exception:
+                    metrics.incr(f"new_worker.services.report.processors.{processor.name}.failure")
+                    raise
     log.info(
         "File format could not be recognized",
         extra=dict(

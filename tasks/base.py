@@ -1,10 +1,13 @@
 import asyncio
 import logging
 
+from celery.exceptions import SoftTimeLimitExceeded
+from sqlalchemy.exc import SQLAlchemyError
+
 from app import celery_app
 from database.engine import get_db_session
-from sqlalchemy.exc import SQLAlchemyError
 from helpers.metrics import metrics
+
 
 log = logging.getLogger('worker')
 
@@ -24,6 +27,9 @@ class BaseCodecovTask(celery_app.Task):
             )
             db_session.rollback()
             self.retry()
+        except SoftTimeLimitExceeded:
+            metrics.incr(f'new-worker.task.{self.name}.softimeout')
+            raise
         finally:
             if self.write_to_db():
                 db_session.commit()

@@ -2,7 +2,8 @@ from pathlib import Path
 
 from sqlalchemy.exc import DBAPIError
 import pytest
-from celery.exceptions import Retry
+from celery.exceptions import Retry, SoftTimeLimitExceeded
+
 
 from tasks.base import BaseCodecovTask
 
@@ -31,6 +32,12 @@ class SampleTaskWithError(BaseCodecovTask):
         raise Retry()
 
 
+class SampleTaskWithSoftTimeout(BaseCodecovTask):
+
+    async def run_async(self, dbsession):
+        raise SoftTimeLimitExceeded()
+
+
 class TestBaseTask(object):
 
     def test_sample_run(self, mocker, dbsession):
@@ -44,3 +51,9 @@ class TestBaseTask(object):
         mocked_get_db_session.return_value = dbsession
         with pytest.raises(Retry):
             SampleTaskWithError().run()
+
+    def test_sample_run_softimeout(self, mocker, dbsession):
+        mocked_get_db_session = mocker.patch('tasks.base.get_db_session')
+        mocked_get_db_session.return_value = dbsession
+        with pytest.raises(SoftTimeLimitExceeded):
+            SampleTaskWithSoftTimeout().run()
