@@ -349,16 +349,18 @@ class CommentNotifier(AbstractBaseNotifier):
                 branch=pull_dict['base' if not base_report else 'head']['branch'],
                 commit=pull_dict['base' if not base_report else 'head']['commitid'][:7]
             )
+        diff_totals = head_report.apply_diff(diff, _save=False)
         message = [
             f'# [Codecov]({links["pull"]}?src=pr&el=h1) Report',
             message_internal,
             (
                 "> The diff coverage is `{0}%`.".format(
-                    round_number(yaml, diff['totals'].coverage)
-                ) if walk(diff, ('totals', 'coverage')) is not None else '> The diff coverage is `n/a`.'
+                    round_number(yaml, Decimal(diff_totals.coverage))
+                ) if diff_totals and diff_totals.coverage is not None else '> The diff coverage is `n/a`.'
             ),
             ''
         ]
+        print(message)
         write = message.append
 
         if base_report is None:
