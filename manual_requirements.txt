@@ -1,4 +1,4 @@
--e git+https://github.com/codecov/report.git@e31b039a22616e660c1af2805a050fbef2dc6102#egg=covreports
+-e git+https://github.com/codecov/report.git@v0.2.8#egg=covreports
 -e git+https://github.com/codecov/torngit.git@0f9c4c001ddeaf1fd8c1285f26264defdaf76127#egg=torngit
 boto3==1.9.218
 celery==4.3
@@ -19,7 +19,6 @@ PyYAML==3.13
 redis==3.2.0
 requests==2.22.0
 sentry-sdk==0.14.0
-schema==0.7.0
 SQLAlchemy-Utils==0.33.9
 SQLAlchemy==1.2.14
 statsd==3.3.0

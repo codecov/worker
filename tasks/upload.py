@@ -19,7 +19,7 @@ from services.repository import (
     get_repo_provider_service, update_commit_from_provider_info, create_webhook_on_provider
 )
 from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
-from services.yaml.exceptions import InvalidYamlException
+from covreports.validation.exceptions import InvalidYamlException
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 from tasks.upload_finisher import upload_finisher_task
