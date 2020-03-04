@@ -88,7 +88,7 @@ class TestCommentNotifierIntegration(object):
             '',
             '| [Impacted Files](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree) | Coverage Δ | Complexity Δ | |',
             '|---|---|---|---|',
-            '| [file\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | :arrow_up: |',
+            '| [file\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |',
             '| [file\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |',
             '',
             '------',

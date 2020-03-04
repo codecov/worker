@@ -615,7 +615,7 @@ class TestNotifyTask(object):
                                 "",
                                 "| Flag | Coverage Δ | |",
                                 "|---|---|---|",
-                                "| #unit | `85.00% <ø> (ø)` | :arrow_up: |",
+                                "| #unit | `85.00% <ø> (ø)` | |",
                                 "",
                                 "",
                                 "------",
