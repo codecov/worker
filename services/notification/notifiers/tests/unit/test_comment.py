@@ -389,7 +389,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}&el=desc) will **increase** coverage by `10.00%`.",
-            f"> The diff coverage is `n/a`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -457,7 +457,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}&el=desc) will **increase** coverage by `10.00%`.",
-            f"> The diff coverage is `n/a`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -525,7 +525,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"> :exclamation: No coverage uploaded for pull request base (`master@b92edba`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
-            f"> The diff coverage is `n/a`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -742,7 +742,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}&el=desc) will **increase** coverage by `10.00%`.",
-            f"> The diff coverage is `n/a`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
