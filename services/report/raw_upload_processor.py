@@ -50,7 +50,6 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     if not original_report:
         original_report = Report()
 
-    # callable custom ignore
     path_fixer = PathFixer.init_from_user_yaml(
         commit_yaml=commit_yaml, toc=toc, flags=flags, base_path=None
     )
