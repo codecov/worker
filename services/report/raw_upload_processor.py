@@ -12,6 +12,7 @@ from covreports.reports.resources import Report
 from helpers.exceptions import ReportEmptyError
 from services.report.fixes import get_fixes_from_raw
 from services.path_fixer.fixpaths import fixpaths_to_func, clean_toc, clean_path
+from services.path_fixer import PathFixer
 from services.report.match import patterns_to_func
 from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
@@ -82,11 +83,30 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     resolver = resolve_by_method(toc) if toc else None
     disable_default_path_fixes = read_yaml_field(commit_yaml, ('codecov', 'disable_default_path_fixes'))
     path_results_inverse_mapping = defaultdict(set)
+    general_path_fixer = PathFixer.init_from_user_yaml(
+        commit_yaml=commit_yaml, toc=toc, flags=flags, base_path=None
+    )
 
     def path_fixer(p):
-        res = clean_path(custom_fixes, path_matcher, resolver, p,
-                          disable_default_path_fixes=disable_default_path_fixes)
+        res = clean_path(
+            custom_fixes, path_matcher, resolver, p,
+            disable_default_path_fixes=disable_default_path_fixes
+        )
         path_results_inverse_mapping[res].add(p)
+        try:
+            new_result = general_path_fixer(p)
+            if new_result != res:
+                log.info(
+                    "Different results between old pathfixer and refactored pathfixer",
+                    extra=dict(
+                        input_value=p,
+                        old_result=res,
+                        new_result=new_result,
+                        current_yaml=commit_yaml
+                    )
+                )
+        except Exception:
+            log.exception("Refactored pathfixer did not properly work")
         return res
 
     # ------------------
