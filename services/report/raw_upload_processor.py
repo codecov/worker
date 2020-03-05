@@ -1,19 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from collections import defaultdict
 import random
 
-from pathmap import resolve_by_method
 
 from covreports.utils.sessions import Session
 from covreports.reports.resources import Report
 
 from helpers.exceptions import ReportEmptyError
 from services.report.fixes import get_fixes_from_raw
-from services.path_fixer.fixpaths import fixpaths_to_func, clean_toc, clean_path
+from services.path_fixer.fixpaths import clean_toc
 from services.path_fixer import PathFixer
-from services.report.match import patterns_to_func
 from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
 
@@ -53,61 +50,9 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     if not original_report:
         original_report = Report()
 
-    # -------------------
-    # Make custom_fixes()
-    # -------------------
-    custom_fixes = fixpaths_to_func(read_yaml_field(commit_yaml, ('fixes', )) or [])
-
-    # -------------
-    # Make ignore[]
-    # -------------
-    path_patterns = list(
-        map(
-            invert_pattern,
-            read_yaml_field(commit_yaml, ('ignore', )) or []
-        )
-    )
-
-    # flag ignore
-    if flags:
-        for flag in flags:
-            path_patterns.extend(list(map(invert_pattern,
-                                     read_yaml_field(commit_yaml,
-                                          ('flags', flag, 'ignore')) or [])))
-
-            path_patterns.extend(read_yaml_field(commit_yaml,
-                                      ('flags', flag, 'paths')) or [])
-
-    # callable custom ignore
-    path_matcher = patterns_to_func(set(path_patterns))
-    resolver = resolve_by_method(toc) if toc else None
-    disable_default_path_fixes = read_yaml_field(commit_yaml, ('codecov', 'disable_default_path_fixes'))
-    path_results_inverse_mapping = defaultdict(set)
-    general_path_fixer = PathFixer.init_from_user_yaml(
+    path_fixer = PathFixer.init_from_user_yaml(
         commit_yaml=commit_yaml, toc=toc, flags=flags, base_path=None
     )
-
-    def path_fixer(p):
-        res = clean_path(
-            custom_fixes, path_matcher, resolver, p,
-            disable_default_path_fixes=disable_default_path_fixes
-        )
-        path_results_inverse_mapping[res].add(p)
-        try:
-            new_result = general_path_fixer(p)
-            if new_result != res:
-                log.info(
-                    "Different results between old pathfixer and refactored pathfixer",
-                    extra=dict(
-                        input_value=p,
-                        old_result=res,
-                        new_result=new_result,
-                        current_yaml=commit_yaml
-                    )
-                )
-        except Exception:
-            log.exception("Refactored pathfixer did not properly work")
-        return res
 
     # ------------------
     # Extract bash fixes
@@ -171,8 +116,8 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     if original_report.is_empty():
         raise ReportEmptyError('No files found in report.')
 
-    if path_results_inverse_mapping.get(None):
-        ignored_files = sorted(path_results_inverse_mapping.pop(None))
+    if path_fixer.calculated_paths.get(None):
+        ignored_files = sorted(path_fixer.calculated_paths.pop(None))
         log.info(
             "Some files were ignored",
             extra=dict(
@@ -183,14 +128,14 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
         )
 
     path_with_same_results = [
-        (key, len(value), list(value)[:10]) for key, value in path_results_inverse_mapping.items() if len(value) >= 2
+        (key, len(value), list(value)[:10]) for key, value in path_fixer.calculated_paths.items() if len(value) >= 2
     ]
     if path_with_same_results:
         log.info(
             "Two different files went to the same result",
             extra=dict(
                 number_of_paths=len(path_with_same_results),
-                paths=path_with_same_results[:100],
+                paths=path_with_same_results[:50],
                 session=sessionid
             )
         )
