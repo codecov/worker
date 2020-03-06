@@ -349,7 +349,7 @@ class CommentNotifier(AbstractBaseNotifier):
                 branch=pull_dict['base' if not base_report else 'head']['branch'],
                 commit=pull_dict['base' if not base_report else 'head']['commitid'][:7]
             )
-        diff_totals = head_report.apply_diff(diff, _save=False)
+        diff_totals = head_report.apply_diff(diff)
         message = [
             f'# [Codecov]({links["pull"]}?src=pr&el=h1) Report',
             message_internal,
