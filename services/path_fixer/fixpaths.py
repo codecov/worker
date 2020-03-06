@@ -1,6 +1,5 @@
 import logging
 import re
-from os.path import relpath
 
 log = logging.getLogger(__name__)
 
@@ -64,39 +63,6 @@ def clean_toc(toc):
         return toc
 
 
-def clean_path(custom_fixes, path_matcher, resolver, path,
-               disable_default_path_fixes=False):
-
-    if not path:
-        return None
-
-    path = relpath(
-        path.replace('\\', '/')
-            .lstrip('./')
-            .lstrip('../')
-    )
-    if custom_fixes:
-        # applies pre
-        path = custom_fixes(path, False)
-
-    if resolver and not disable_default_path_fixes:
-        path = resolver(path, ancestors=1)
-        if not path:
-            return None
-
-    elif resolver is None:
-        path = _remove_known_bad_paths('', path)
-
-    if custom_fixes:
-        # applied pre and post
-        path = custom_fixes(path, True)
-
-    if not path_matcher(path):
-        return None
-
-    return path
-
-
 def first_not_null_index(_list):
     """return key of the first not null value in list
     """
@@ -116,32 +82,3 @@ def _fixpaths_regs(fix):
     # a/*/b => a/[^\/\n]+/b
     key = _star_to_glob(r'[^\/\n]+', key)
     return key.lstrip('/')
-
-
-def fixpaths_to_func(custom_fixes):
-    if not custom_fixes:
-        return None
-
-    _prefix = set(filter(lambda a: a[:2] == '::', custom_fixes))
-    custom_fixes = list(set(custom_fixes) - _prefix)
-    if _prefix:
-        _prefix = '/'.join(list(map(lambda p: p[2:].rstrip('/'), _prefix))[::-1])
-    if custom_fixes:
-        # regestry = [result, result]
-        regestry = list(map(lambda fix: tuple(fix.split('::'))[1], custom_fixes))
-        sub = re.compile(r'^(%s)' % ')|('.join(map(_fixpaths_regs, custom_fixes))).sub
-    else:
-        sub = None
-
-    def func(path, prefix=True):
-        if path:
-            if prefix and _prefix:
-                # apply prefix
-                path = '%s/%s' % (_prefix, path)
-
-            if sub:
-                path = sub(lambda m: regestry[first_not_null_index(m.groups())], path, count=1)
-
-            return path.replace('//', '/').lstrip('/')
-
-    return func

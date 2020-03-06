@@ -51,7 +51,7 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
         original_report = Report()
 
     path_fixer = PathFixer.init_from_user_yaml(
-        commit_yaml=commit_yaml, toc=toc, flags=flags, base_path=None
+        commit_yaml=commit_yaml, toc=toc, flags=flags
     )
 
     # ------------------
@@ -87,16 +87,19 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
     for report in reports.split('<<<<<< EOF'):
         report = report.strip()
         if report:
-            if report.startswith('# path=') and report.split('\n', 1)[0].split('# path=')[1] in skip_files:
-                log.info('Skipping file %s', report.split('\n', 1)[0].split('# path=')[1])
-                continue
+            current_filename = None
+            if report.startswith('# path='):
+                current_filename = report.split('\n', 1)[0].split('# path=')[1]
+                if current_filename in skip_files:
+                    log.info('Skipping file %s', report.split('\n', 1)[0].split('# path=')[1])
+                    continue
 
             report = process_report(
                 report=report,
                 commit_yaml=commit_yaml,
                 sessionid=sessionid,
                 ignored_lines=ignored_file_lines or {},
-                path_fixer=path_fixer
+                path_fixer=path_fixer.get_relative_path_aware_pathfixer(current_filename)
             )
 
             if report:

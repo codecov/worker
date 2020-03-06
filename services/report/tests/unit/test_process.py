@@ -85,6 +85,52 @@ class TestProcessRawUpload(BaseTestCase):
             assert master['file'][1].coverage == 1
         assert ('file2' in master) is ('m' in keys and 'n' not in keys)
 
+    def test_process_raw_upload_skipped_files(self):
+        lcov_section = [
+            "TN:",
+            "SF:file.js",
+            "FNDA:76,jsx",
+            "FN:76,(anonymous_1)",
+            "removed",
+            "DA:0,skipped",
+            "DA:null,skipped",
+            "DA:1,1",
+            "DA:=,=",
+            "BRDA:0,1,0,1",
+            "BRDA:0,1,0,1",
+            "BRDA:1,1,0,1",
+            "BRDA:1,1,1,1",
+            "end_of_record"
+        ]
+        json_section = [
+            '{',
+            '    "coverage": {',
+            '        "source": [null, 1],',
+            '        "file": {"1": 1, "2": "1", "3": true, "4": "1/2"},',
+            '        "empty": {}',
+            '    },',
+            '    "messages": {',
+            '        "source": {',
+            '            "1": "Message"',
+            '        }',
+            '    }',
+            '}',
+        ]
+        report = []
+        report.append('# path=coverage/coverage.lcov')
+        report.extend(lcov_section)
+        report.append('<<<<<< EOF')
+        report.append('# path=coverage/coverage.json')
+        report.extend(json_section)
+
+        master = process.process_raw_upload(
+            commit_yaml=None,
+            original_report=None,
+            reports='\n'.join(report),
+            flags=[]
+        )
+        assert master.files == ['source', 'file']
+
     def test_none(self):
         with pytest.raises(ReportEmptyError, match='No files found in report.'):
             process.process_raw_upload(self, {}, '', [])
