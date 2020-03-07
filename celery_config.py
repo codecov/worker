@@ -4,6 +4,8 @@ import logging
 import logging.config
 
 from helpers.logging_config import get_logging_config_dict
+from helpers.cache import cache, RedisBackend
+from services.redis import get_redis_connection
 
 from covreports.config import get_config
 from celery import signals
@@ -19,6 +21,13 @@ def initialize_logging(loglevel=logging.INFO, **kwargs):
     celery_logger.setLevel(loglevel)
     log.info("Initialized celery logging")
     return celery_logger
+
+
+@signals.worker_process_init.connect
+def initialize_cache(**kwargs):
+    log.info("Initialized cache")
+    redis_cache_backend = RedisBackend(get_redis_connection(), 120)
+    cache.configure(redis_cache_backend)
 
 
 broker_url = get_config("services", "celery_broker") or get_config(
