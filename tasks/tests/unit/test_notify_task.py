@@ -145,7 +145,7 @@ class TestNotifyTask(object):
             return_value=fetch_and_update_whether_ci_passed_result
         )
         mocked_fetch_pull = mocker.patch(
-            'tasks.notify.fetch_and_update_pull_request_information',
+            'tasks.notify.fetch_and_update_pull_request_information_from_commit',
             return_value=Future()
         )
         mocked_fetch_pull.return_value.set_result(None)

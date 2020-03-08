@@ -3,19 +3,9 @@ from collections import defaultdict
 from typing import Mapping, Any, List
 
 from covreports.utils.merge import line_type
-from covreports.reports.types import ReportTotals
+from covreports.reports.types import ReportTotals, Change
 from covreports.reports.resources import Report
 from covreports.helpers.numeric import ratio
-
-
-@dataclasses.dataclass
-class Change(object):
-    path: str = None
-    new: bool = False
-    deleted: bool = False
-    in_diff: bool = None
-    old_path: str = None
-    totals: ReportTotals = None
 
 
 def diff_totals(base, head, absolute=None):
