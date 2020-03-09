@@ -360,7 +360,6 @@ class CommentNotifier(AbstractBaseNotifier):
             ),
             ''
         ]
-        print(message)
         write = message.append
 
         if base_report is None:
@@ -458,14 +457,17 @@ class CommentNotifier(AbstractBaseNotifier):
                 elif layout.startswith(('files', 'tree')):
 
                     # create list of files changed in diff
-                    files_in_diff = [(_diff['type'],
-                                      path,
-                                      make_metrics(base_report.get(path, null).totals or False,
-                                                   head_report.get(path, null).totals or False,
-                                                   _diff['totals']),
-                                      _diff['totals'].coverage)
-                                     for path, _diff in (diff['files'] if diff else {}).items()
-                                     if _diff.get('totals')]
+                    files_in_diff = [
+                        (
+                            _diff['type'],
+                            path,
+                            make_metrics(
+                                base_report.get(path, null).totals or False,
+                                head_report.get(path, null).totals or False,
+                                _diff['totals']
+                            ),
+                            Decimal(_diff['totals'].coverage) if _diff['totals'].coverage is not None else None,
+                        ) for path, _diff in (diff['files'] if diff else {}).items() if _diff.get('totals')]
 
                     if files_in_diff or changes:
                         # add table headers
@@ -488,7 +490,7 @@ class CommentNotifier(AbstractBaseNotifier):
                                                metrics=metrics)
 
                         # add to comment
-                        for line in starmap(tree_cell,sorted(files_in_diff, key=lambda a: a[3])[:limit]):
+                        for line in starmap(tree_cell, sorted(files_in_diff, key=lambda a: a[3] or Decimal('0'))[:limit]):
                             write(line)
 
                         # reduce limit

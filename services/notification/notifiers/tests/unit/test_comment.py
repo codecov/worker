@@ -365,24 +365,166 @@ class TestCommentNotifier(object):
         dbsession.flush()
         notifier = CommentNotifier(
             repository=repository,
-            title='some_title',
-            notifier_yaml_settings={'layout': "reach, diff, flags, files, footer"},
+            title="some_title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=None,
-            current_yaml={}
+            current_yaml={},
         )
         assert notifier.is_enabled()
 
+    def test_create_message_files_section(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        comparison = sample_comparison
+        diff = {
+            "files": {
+                "file_1.go": {
+                    "type": "modified",
+                    "before": None,
+                    "segments": [
+                        {
+                            "header": ["105", "8", "105", "9"],
+                            "lines": [
+                                " Overview",
+                                " --------",
+                                " ",
+                                "-Main website: `Codecov <https://codecov.io/>`_.",
+                                "-Main website: `Codecov <https://codecov.io/>`_.",
+                                "+",
+                                "+website: `Codecov <https://codecov.io/>`_.",
+                                "+website: `Codecov <https://codecov.io/>`_.",
+                                " ",
+                                " .. code-block:: shell-session",
+                                " ",
+                            ],
+                        },
+                        {
+                            "header": ["1046", "12", "1047", "19"],
+                            "lines": [
+                                " ",
+                                " You may need to configure a ``.coveragerc`` file. Learn more",
+                                " ",
+                                "-We highly suggest adding `source` to your ``.coveragerc``",
+                                "+We highly suggest adding ``source`` to your ``.coveragerc`",
+                                " ",
+                                " .. code-block:: ini",
+                                " ",
+                                "    [run]",
+                                "    source=your_package_name",
+                                "+   ",
+                                "+If there are multiple sources, you instead should add ``include",
+                                "+",
+                                "+.. code-block:: ini",
+                                "+",
+                                "+   [run]",
+                                "+   include=your_package_name/*",
+                                " ",
+                                " unittests",
+                                " ---------",
+                            ],
+                        },
+                        {
+                            "header": ["10150", "5", "10158", "4"],
+                            "lines": [
+                                " * Twitter: `@codecov <https://twitter.com/codecov>`_.",
+                                " * Email: `hello@codecov.io <hello@codecov.io>`_.",
+                                " ",
+                                "-We are happy to help if you have any questions. ",
+                                "-",
+                                "+We are happy to help if you have any questions. .",
+                            ],
+                        },
+                    ],
+                    "stats": {"added": 11, "removed": 4},
+                },
+                "file_2.py": {
+                    "type": "modified",
+                    "before": None,
+                    "segments": [
+                        {
+                            "header": ["10", "8", "10", "9"],
+                            "lines": [
+                                " Overview",
+                                " --------",
+                                " ",
+                                "-Main website: `Codecov <https://codecov.io/>`_.",
+                                "-Main website: `Codecov <https://codecov.io/>`_.",
+                                "+",
+                                "+website: `Codecov <https://codecov.io/>`_.",
+                                "+website: `Codecov <https://codecov.io/>`_.",
+                                " ",
+                                " .. code-block:: shell-session",
+                                " ",
+                            ],
+                        },
+                        {
+                            "header": ["50", "12", "51", "19"],
+                            "lines": [
+                                " ",
+                                " You may need to configure a ``.coveragerc`` file. Learn more `here <http://coverage.readthedocs.org/en/latest/config.html>`_. Start with this `generic .coveragerc <https://gist.github.com/codecov-io/bf15bde2c7db1a011b6e>`_ for example.",
+                                " ",
+                                "-We highly suggest adding `source` to your ``.coveragerc`` which solves a number of issues collecting coverage.",
+                                "+We highly suggest adding ``source`` to your ``.coveragerc``, which solves a number of issues collecting coverage.",
+                                " ",
+                                " .. code-block:: ini",
+                                " ",
+                                "    [run]",
+                                "    source=your_package_name",
+                                "+   ",
+                                "+If there are multiple sources, you instead should add ``include`` to your ``.coveragerc``",
+                                "+",
+                                "+.. code-block:: ini",
+                                "+",
+                                "+   [run]",
+                                "+   include=your_package_name/*",
+                                " ",
+                                " unittests",
+                                " ---------",
+                            ],
+                        },
+                    ],
+                    "stats": {"added": 11, "removed": 4},
+                },
+            }
+        }
+        pull_dict = {"base": {"branch": "master"}}
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "files"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        pull = comparison.pull
+        repository = sample_comparison.head.commit.repository
+        expected_result = [
+            f"# [Codecov](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}&el=desc) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `n/a`.",
+            f"",
+            f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"",
+        ]
+        res = notifier._create_message(comparison, diff, pull_dict)
+        print(res)
+        assert expected_result == res
+
     @pytest.mark.asyncio
-    async def test_build_message(self, dbsession, mock_configuration, mock_repo_provider, sample_comparison):
-        mock_configuration.params['setup']['codecov_url'] = 'test.example.br'
+    async def test_build_message(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
         comparison = sample_comparison
         pull = comparison.pull
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
-            title='title',
-            notifier_yaml_settings={'layout': "reach, diff, flags, files, footer"},
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
-            current_yaml={}
+            current_yaml={},
         )
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(comparison)
