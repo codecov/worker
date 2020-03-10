@@ -1,21 +1,10 @@
-import os
-
-import sentry_sdk
-from sentry_sdk.integrations.celery import CeleryIntegration
-from sentry_sdk.integrations.redis import RedisIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from helpers.sentry import is_sentry_enabled, initialize_sentry
 from celery import Celery
 
 import celery_config
-from covreports.config import get_config
 
-sentry_dsn = get_config("services", "sentry", "server_dsn")
-if sentry_dsn:
-    sentry_sdk.init(
-        sentry_dsn,
-        sample_rate=float(os.getenv('SENTRY_PERCENTAGE', 1.0)),
-        integrations=[CeleryIntegration(), SqlalchemyIntegration(), RedisIntegration()],
-    )
+if is_sentry_enabled():
+    initialize_sentry()
 
 
 celery_app = Celery("tasks")
