@@ -72,7 +72,7 @@ async def determine_commit_yaml_location(
     top_level_yaml = _search_among_files(possible_locations, top_level_files)
     if top_level_yaml is not None:
         return top_level_yaml
-    all_folders = set(f["name"] for f in top_level_files if f["type"] == "folder")
+    all_folders = set(f["path"] for f in top_level_files if f["type"] == "folder")
     possible_folders = all_folders & acceptable_folders
     for folder in possible_folders:
         files_inside_folder = await repository_service.list_files(ref, folder)
@@ -88,6 +88,6 @@ def _search_among_files(
     desired_filenames: Sequence[str], all_files: Sequence[Mapping[str, Any]]
 ) -> str:
     for file in all_files:
-        if file["name"] in desired_filenames:
+        if file.get("name") in desired_filenames or file.get("path").split("/")[-1] in desired_filenames:
             return file["path"]
     return None
