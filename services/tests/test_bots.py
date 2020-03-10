@@ -27,6 +27,42 @@ C/tY+lZIEO1Gg/FxSMB+hwwhwfSuE3WohZfEcSy+R48=
 
 class TestBotsService(BaseTestCase):
 
+    def test_get_repo_appropriate_bot_token_public_bot(self, mock_configuration):
+        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
+        repo = RepositoryFactory.create(
+            private=False,
+            using_integration=False,
+            bot=OwnerFactory.create(
+                unencrypted_oauth_token='simple_code'
+            ),
+            owner=OwnerFactory.create(
+                unencrypted_oauth_token='not_so_simple_code',
+                bot=OwnerFactory.create(
+                    unencrypted_oauth_token='now_that_code_is_complex'
+                )
+            )
+        )
+        expected_result = {'key': 'somekey'}
+        assert get_repo_appropriate_bot_token(repo) == expected_result
+
+    def test_get_repo_appropriate_bot_token_public_bot_without_key(self, mock_configuration):
+        mock_configuration.set_params({"github": {"bot": {"other": "field"}}})
+        repo = RepositoryFactory.create(
+            private=False,
+            using_integration=False,
+            bot=OwnerFactory.create(
+                unencrypted_oauth_token='simple_code'
+            ),
+            owner=OwnerFactory.create(
+                unencrypted_oauth_token='not_so_simple_code',
+                bot=OwnerFactory.create(
+                    unencrypted_oauth_token='now_that_code_is_complex'
+                )
+            )
+        )
+        expected_result = {'username': repo.bot.username, 'key': 'simple_code', 'secret': None}
+        assert get_repo_appropriate_bot_token(repo) == expected_result
+
     def test_get_repo_appropriate_bot_token_repo_with_valid_bot(self):
 
         repo = RepositoryFactory.create(
