@@ -53,5 +53,4 @@ def from_json(json, fix, ignored_lines, sessionid, config):
                                                     messages=None)
 
                 report.append(_file)
-
         return report

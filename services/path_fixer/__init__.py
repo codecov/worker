@@ -1,6 +1,8 @@
-from os.path import relpath
+import os.path
 import typing
 from collections import defaultdict
+import logging
+from pathlib import PurePath
 
 from pathmap import _resolve_path
 from pathmap.tree import Tree
@@ -9,6 +11,8 @@ from services.path_fixer.fixpaths import _remove_known_bad_paths
 from services.path_fixer.user_path_fixes import UserPathFixes
 from services.path_fixer.user_path_includes import UserPathIncludes
 from services.yaml import read_yaml_field
+
+log = logging.getLogger(__name__)
 
 
 def invert_pattern(string: str) -> str:
@@ -21,7 +25,7 @@ def invert_pattern(string: str) -> str:
 class PathFixer(object):
 
     @classmethod
-    def init_from_user_yaml(cls, commit_yaml: dict, toc: str, flags: typing.Sequence, base_path: str):
+    def init_from_user_yaml(cls, commit_yaml: dict, toc: str, flags: typing.Sequence):
         path_patterns = list(
             map(
                 invert_pattern,
@@ -46,15 +50,13 @@ class PathFixer(object):
             path_patterns=path_patterns,
             toc=toc,
             should_disable_default_pathfixes=disable_default_path_fixes,
-            base_path=base_path
         )
 
-    def __init__(self, yaml_fixes, path_patterns, toc, should_disable_default_pathfixes=False, base_path=None):
+    def __init__(self, yaml_fixes, path_patterns, toc, should_disable_default_pathfixes=False):
         self.yaml_fixes = yaml_fixes or []
         self.path_patterns = set(path_patterns) or set([])
         self.toc = toc or []
         self.should_disable_default_pathfixes = should_disable_default_pathfixes
-        self.base_path = base_path
         self.initialize()
 
     def initialize(self):
@@ -67,7 +69,7 @@ class PathFixer(object):
     def clean_path(self, path: str) -> str:
         if not path:
             return None
-        path = relpath(
+        path = os.path.relpath(
             path.replace('\\', '/')
                 .lstrip('./')
                 .lstrip('../')
@@ -95,3 +97,34 @@ class PathFixer(object):
         res = self.clean_path(path)
         self.calculated_paths[res].add(path)
         return res
+
+    def get_relative_path_aware_pathfixer(self, base_path):
+        return BasePathAwarePathFixer(
+            original_path_fixer=self,
+            base_path=base_path
+        )
+
+
+class BasePathAwarePathFixer(PathFixer):
+
+    def __init__(self, original_path_fixer, base_path):
+        self.original_path_fixer = original_path_fixer
+        self.base_path = PurePath(base_path).parent if base_path is not None else None
+
+    def __call__(self, path: str) -> str:
+        adjusted_path = path
+        if not os.path.isabs(path) and self.base_path is not None:
+            adjusted_path = os.path.join(self.base_path, path)
+        possible_different_result = self.original_path_fixer(adjusted_path)
+        current_result = self.original_path_fixer(path)
+        if current_result != possible_different_result:
+            log.info(
+                "Paths would not match due to the relative path calculation",
+                extra=dict(
+                    input_path=path,
+                    result_without_rel=current_result,
+                    result_with_rel=possible_different_result,
+                    base=self.base_path
+                )
+            )
+        return current_result

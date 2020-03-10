@@ -56,8 +56,7 @@ class TestPathFixer(BaseTestCase):
         }
         toc = []
         flags = ["flagone"]
-        base_path = "/home"
-        pf = PathFixer.init_from_user_yaml(commit_yaml, toc, flags, base_path)
+        pf = PathFixer.init_from_user_yaml(commit_yaml, toc, flags)
         assert pf("notsimple/path/to/something.py") == "notsimple/path/to/something.py"
         assert pf("complex/path/to/something.py") is None
         assert pf("before/tests-apples/test.js") == "after/test.js"
@@ -67,3 +66,20 @@ class TestPathFixer(BaseTestCase):
             == "after/before/path/to/something.py"
         )
         assert pf("simple/notapath/to/something.py") is None
+
+
+class TestBasePathAwarePathFixer(object):
+
+    def test_basepath_uses_main_result_when_disagreement(self):
+        commit_yaml = {
+            "fixes": [r"(?s:home/thiago)::root/"],
+            "ignore": ["complex/path"]
+        }
+        toc = "path.c,another/path.py,root/another/path.py"
+        flags = []
+        pf = PathFixer.init_from_user_yaml(commit_yaml, toc, flags)
+        base_path = "/home/thiago/testing"
+        base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)
+        assert base_aware_pf("sample/path.c") == "path.c"
+        assert base_aware_pf("another/path.py") == "another/path.py"
+        assert base_aware_pf("/another/path.py") == "another/path.py"
