@@ -93,13 +93,13 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
                 if current_filename in skip_files:
                     log.info('Skipping file %s', report.split('\n', 1)[0].split('# path=')[1])
                     continue
-
+            path_fixer_to_use = path_fixer.get_relative_path_aware_pathfixer(current_filename)
             report = process_report(
                 report=report,
                 commit_yaml=commit_yaml,
                 sessionid=sessionid,
                 ignored_lines=ignored_file_lines or {},
-                path_fixer=path_fixer.get_relative_path_aware_pathfixer(current_filename)
+                path_fixer=path_fixer_to_use
             )
 
             if report:
@@ -114,6 +114,7 @@ def process_raw_upload(commit_yaml, original_report, reports, flags, session=Non
 
                 # merge the new report into maaster
                 original_report.merge(report, joined=joined)
+            path_fixer_to_use.log_abnormalities()
 
     # exit if empty
     if original_report.is_empty():

@@ -4,10 +4,9 @@ from services.path_fixer import PathFixer, invert_pattern
 
 
 class TestPathFixerHelpers(BaseTestCase):
-
     def test_invert_pattern(self):
-        assert invert_pattern('aaaa') == '!aaaa'
-        assert invert_pattern('!aaaa') == 'aaaa'
+        assert invert_pattern("aaaa") == "!aaaa"
+        assert invert_pattern("!aaaa") == "aaaa"
 
 
 class TestPathFixer(BaseTestCase):
@@ -15,10 +14,10 @@ class TestPathFixer(BaseTestCase):
         pf = PathFixer([], [], [])
         assert pf("simple/path/to/something.py") == "simple/path/to/something.py"
         assert pf("") is None
-        assert pf("bower_components/sample.js") == ''
+        assert pf("bower_components/sample.js") == ""
 
     def test_path_fixer_with_toc(self):
-        pf = PathFixer([], [], ",".join(['file_1.py', 'folder/file_2.py']))
+        pf = PathFixer([], [], ",".join(["file_1.py", "folder/file_2.py"]))
         assert pf("fafafa/file_2.py") is None
         assert pf("folder/file_2.py") == "folder/file_2.py"
         assert pf("file_1.py") == "file_1.py"
@@ -69,11 +68,10 @@ class TestPathFixer(BaseTestCase):
 
 
 class TestBasePathAwarePathFixer(object):
-
     def test_basepath_uses_main_result_when_disagreement(self):
         commit_yaml = {
             "fixes": [r"(?s:home/thiago)::root/"],
-            "ignore": ["complex/path"]
+            "ignore": ["complex/path"],
         }
         toc = "path.c,another/path.py,root/another/path.py"
         flags = []
@@ -83,3 +81,11 @@ class TestBasePathAwarePathFixer(object):
         assert base_aware_pf("sample/path.c") == "path.c"
         assert base_aware_pf("another/path.py") == "another/path.py"
         assert base_aware_pf("/another/path.py") == "another/path.py"
+        assert len(base_aware_pf.unexpected_results) == 1
+        assert base_aware_pf.log_abnormalities()
+        assert base_aware_pf.unexpected_results.pop() == (
+            "another/path.py",
+            "another/path.py",
+            "root/another/path.py",
+        )
+        assert not base_aware_pf.log_abnormalities()
