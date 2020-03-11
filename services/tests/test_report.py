@@ -2117,12 +2117,7 @@ class TestReportService(BaseTestCase):
         )
         dbsession.add(commit)
         dbsession.flush()
-        yaml_dict = {
-            "flags": {
-                "enterprise": {"paths": ["file_1.*"]},
-                "special_flag": {"paths": ["file_0.*"]},
-            }
-        }
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         report = ReportService(yaml_dict).create_new_report_for_commit(commit, 1)
         assert report is not None
         assert sorted(report.files) == []
