@@ -54,6 +54,13 @@ class ReportService(object):
         return res
 
     def create_new_report_for_commit(self, commit: Commit, recursion_limit=0):
+        log.info(
+            "Creating new report for commit",
+            extra=dict(
+                commit=commit.commitid,
+                repoid=commit.repoid,
+            )
+        )
         if not self.current_yaml:
             return Report()
         if recursion_limit <= 0:
@@ -66,12 +73,37 @@ class ReportService(object):
                     flags_to_carryforward.append(flag_name)
         if not flags_to_carryforward:
             return Report()
+        log.info(
+            "Flags were found to be carriedforward",
+            extra=dict(
+                commit=commit.commitid,
+                repoid=commit.repoid,
+                flags_to_carryforward=flags_to_carryforward
+            )
+        )
         paths_to_carryforward = get_paths_from_flags(self.current_yaml, flags_to_carryforward)
         parent_commit = commit.get_parent_commit()
         if parent_commit is None:
+            log.warning(
+                "No parent commit was found to be carriedforward from",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    flags_to_carryforward=flags_to_carryforward,
+                    paths_to_carryforward=paths_to_carryforward
+                )
+            )
             return Report()
+        log.info(
+            "Generating carriedforward report",
+            extra=dict(
+                commit=commit.commitid,
+                repoid=commit.repoid,
+                flags_to_carryforward=flags_to_carryforward,
+                paths_to_carryforward=paths_to_carryforward
+            )
+        )
         parent_report = self._do_build_report_from_commit(parent_commit, recursion_limit - 1)
-        log.info("Generating carriedforward report", extra=dict(commit=commit.commitid, repoid=commit.repoid))
         return generate_carryforward_report(
             parent_report, flags_to_carryforward, paths_to_carryforward
         )
