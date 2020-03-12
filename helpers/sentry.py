@@ -14,7 +14,7 @@ def before_send(event, hint):
         exc_type, exc_value, tb = hint['exc_info']
         if isinstance(exc_value, SoftTimeLimitExceeded):
             return None
-        return event
+    return event
 
 
 def is_sentry_enabled() -> bool:
