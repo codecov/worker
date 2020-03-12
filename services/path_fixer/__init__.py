@@ -1,8 +1,9 @@
 import os.path
 import typing
-from collections import defaultdict
 import logging
+import random
 from pathlib import PurePath
+from collections import defaultdict
 
 from pathmap import _resolve_path
 from pathmap.tree import Tree
@@ -99,32 +100,44 @@ class PathFixer(object):
         return res
 
     def get_relative_path_aware_pathfixer(self, base_path):
-        return BasePathAwarePathFixer(
-            original_path_fixer=self,
-            base_path=base_path
-        )
+        return BasePathAwarePathFixer(original_path_fixer=self, base_path=base_path)
 
 
 class BasePathAwarePathFixer(PathFixer):
-
     def __init__(self, original_path_fixer, base_path):
         self.original_path_fixer = original_path_fixer
         self.base_path = PurePath(base_path).parent if base_path is not None else None
+        self.unexpected_results = set()
 
     def __call__(self, path: str) -> str:
-        adjusted_path = path
-        if not os.path.isabs(path) and self.base_path is not None:
-            adjusted_path = os.path.join(self.base_path, path)
-        possible_different_result = self.original_path_fixer(adjusted_path)
         current_result = self.original_path_fixer(path)
-        if current_result != possible_different_result:
-            log.info(
-                "Paths would not match due to the relative path calculation",
-                extra=dict(
-                    input_path=path,
-                    result_without_rel=current_result,
-                    result_with_rel=possible_different_result,
-                    base=self.base_path
-                )
-            )
+        if not self.base_path or not self.original_path_fixer.toc:
+            return current_result
+        if not os.path.isabs(path):
+            adjusted_path = os.path.join(self.base_path, path)
+            possible_different_result = self.original_path_fixer(adjusted_path)
+            if current_result != possible_different_result:
+                event_data = tuple([path, current_result, possible_different_result])
+                self.unexpected_results.add(event_data)
         return current_result
+
+    def log_abnormalities(self) -> bool:
+        """
+            Analyze whether there were abnormalities in this pathfixer processing.
+        Returns:
+            bool: Whether abnormalities were noted or not
+        """
+        if self.unexpected_results:
+            log.info(
+                "Paths would not match due to the relative path calculation (no real effect yet)",
+                extra=dict(
+                    base=self.base_path,
+                    path_patterns=self.original_path_fixer.path_patterns,
+                    yaml_fixes=self.original_path_fixer.yaml_fixes,
+                    some_cases=random.sample(
+                        self.unexpected_results, min(50, len(self.unexpected_results))
+                    ),
+                ),
+            )
+            return True
+        return False
