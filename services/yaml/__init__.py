@@ -1,9 +1,13 @@
 import logging
 import copy
 
+from database.models import Commit
 from covreports.config import get_config
+from covreports.validation.exceptions import InvalidYamlException
+from torngit.exceptions import TorngitClientError, TorngitError
 
 from services.yaml.reader import read_yaml_field
+from services.yaml.fetcher import fetch_commit_yaml_from_provider
 
 log = logging.getLogger(__name__)
 
@@ -20,6 +24,56 @@ def merge_yamls(d1, d2):
         return d2
     d1.update(dict([(k, merge_yamls(d1.get(k, {}), v)) for k, v in d2.items()]))
     return d1
+
+
+async def get_current_yaml(commit: Commit, repository_service) -> dict:
+    """
+        Fetches what the current yaml is supposed to be
+
+        This function wraps the whole logic of fetching the current yaml for a given commit
+            - It makes best effort in trying to fetch and parse the data from the repo
+            - It merges it with the owner YAML and with the default system YAML as needed
+            - It handles possible exceptions that come from fetching data from the repository
+
+    Args:
+        commit (Commit): The commit we want to get the provider from
+        repository_service : The service (as fetched from get_repo_provider_service) that we can use
+            to fetch the YAML data. If None, we just pretend the YAML data isn't fetchable
+
+    Returns:
+        dict: The yaml, parsed, processed and ready to use as the final yaml
+    """
+    commit_yaml = None
+    repository = commit.repository
+    try:
+        commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
+    except InvalidYamlException as ex:
+        log.warning(
+            "Unable to use yaml from commit because it is invalid",
+            extra=dict(
+                repoid=repository.repoid,
+                commit=commit.commitid,
+                error_location=ex.error_location
+            ),
+            exc_info=True
+        )
+    except TorngitClientError:
+        log.warning(
+            "Unable to use yaml from commit because it cannot be fetched due to client issues",
+            extra=dict(repoid=repository.repoid, commit=commit.commitid),
+            exc_info=True
+        )
+    except TorngitError:
+        log.warning(
+            "Unable to use yaml from commit because it cannot be fetched due unknown issues",
+            extra=dict(repoid=repository.repoid, commit=commit.commitid),
+            exc_info=True
+        )
+    return get_final_yaml(
+        owner_yaml=repository.owner.yaml,
+        repo_yaml=repository.yaml,
+        commit_yaml=commit_yaml
+    )
 
 
 def get_final_yaml(*, owner_yaml, repo_yaml, commit_yaml=None):
