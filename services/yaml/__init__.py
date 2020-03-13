@@ -65,7 +65,7 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
         )
     except TorngitError:
         log.warning(
-            "Unable to use yaml from commit because it cannot be fetched due unknown issues",
+            "Unable to use yaml from commit because it cannot be fetched due to unknown issues",
             extra=dict(repoid=repository.repoid, commit=commit.commitid),
             exc_info=True
         )
