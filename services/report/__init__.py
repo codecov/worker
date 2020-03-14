@@ -89,6 +89,7 @@ class ReportService(object):
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
+                    would_be_parent=commit.parent_commit_id,
                     flags_to_carryforward=flags_to_carryforward,
                     paths_to_carryforward=paths_to_carryforward
                 )
