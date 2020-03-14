@@ -194,6 +194,7 @@ class UploadTask(BaseCodecovTask):
                     repo_yaml=repository.yaml,
                     commit_yaml=None
                 )
+            db_session.commit()
             self.schedule_task(commit, commit_yaml, argument_list)
         else:
             log.info(
