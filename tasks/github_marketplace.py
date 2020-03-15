@@ -62,8 +62,10 @@ class SyncPlansTask(BaseCodecovTask):
                 action=action,
             )
         else:
-            # manual sync of all plan accounts
-            return self.sync_all(db_session, ghm_service, action)
+            log.warning(
+                "No account provided for GitHub Marketplace sync",
+                extra=dict(sender=sender, account=account, action=action),
+            )
 
     def sync_plan(
         self, db_session, ghm_service, service_id, purchase_object, action=None
@@ -98,7 +100,7 @@ class SyncPlansTask(BaseCodecovTask):
 
     def sync_all(self, db_session, ghm_service, action):
         """
-        This is carried over from legacy to sync all plan accounts
+        This is carried over from legacy to sync all plan accounts - it is not currently used
         """
         log.info(
             "Sync all", extra=dict(action=action),

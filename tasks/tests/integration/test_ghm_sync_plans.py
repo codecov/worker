@@ -2,6 +2,7 @@ import pytest
 
 from database.tests.factories import OwnerFactory, RepositoryFactory
 from database.models import Owner, Repository
+from services.github_marketplace import GitHubMarketplaceService
 from tasks.github_marketplace import SyncPlansTask
 
 # DONT WORRY, this is generated for the purposes of validation
@@ -300,12 +301,10 @@ class TestGHMarketplaceSyncPlansTask(object):
         dbsession.add(owner)
         dbsession.flush()
 
-        sender = None
-        account = None
         action = "purchased"
+        ghm_service = GitHubMarketplaceService()
 
-        task = SyncPlansTask()
-        await task.run_async(dbsession, sender=sender, account=account, action=action)
+        SyncPlansTask().sync_all(dbsession, ghm_service=ghm_service, action=action)
 
         # inactive plan disabled
         dbsession.commit()
@@ -313,6 +312,7 @@ class TestGHMarketplaceSyncPlansTask(object):
 
         # active plans - service ids 2 and 4
         owners = dbsession.query(Owner).filter(Owner.service_id.in_(["2", "4"])).all()
+        assert owners is not None
         for owner in owners:
             assert owner.plan == "users"
             assert owner.plan_provider == "github"
