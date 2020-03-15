@@ -43,7 +43,9 @@ class NotifyTask(BaseCodecovTask):
 
     name = notify_task_name
 
-    async def run_async(self, db_session: Session, repoid: int, commitid: str, current_yaml=None, *args, **kwargs):
+    async def run_async(
+        self, db_session: Session, repoid: int, commitid: str, current_yaml=None, *args, **kwargs
+    ):
         log.info(
             "Starting notifications",
             extra=dict(
@@ -189,7 +191,9 @@ class NotifyTask(BaseCodecovTask):
                 'notifications': None
             }
 
-    async def submit_third_party_notifications(self, current_yaml, base_commit, commit, base_report, head_report, pull):
+    async def submit_third_party_notifications(
+        self, current_yaml, base_commit, commit, base_report, head_report, pull
+    ):
         comparison = Comparison(
             head=FullCommit(
                 commit=commit,

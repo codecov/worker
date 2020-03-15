@@ -1431,3 +1431,66 @@ class TestCommentNotifier(object):
         assert result.explanation == "unable_build_message"
         assert result.data_sent is None
         assert result.data_received is None
+
+    @pytest.mark.asyncio
+    async def test_notify_not_enough_builds(self, dbsession, sample_comparison):
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "reach, diff, flags, files, footer",
+                "behavior": "default",
+                "after_n_builds": 5,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.notify(sample_comparison)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "not_enough_builds"
+        assert result.data_sent is None
+        assert result.data_received is None
+
+    @pytest.mark.asyncio
+    async def test_notify_with_enough_builds(
+        self, dbsession, sample_comparison, mocker
+    ):
+        build_message_mocker = mocker.patch.object(
+            CommentNotifier, "build_message", return_value=Future()
+        )
+        send_comment_default_behavior_mocker = mocker.patch.object(
+            CommentNotifier, "send_comment_default_behavior", return_value=Future()
+        )
+        build_message_mocker.return_value.set_result(
+            "message_test_notify_with_enough_builds"
+        )
+        send_comment_default_behavior_mocker.return_value.set_result(
+            dict(
+                notification_attempted=True,
+                notification_successful=True,
+                explanation=None,
+                data_received=None,
+            )
+        )
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "reach, diff, flags, files, footer",
+                "behavior": "default",
+                "after_n_builds": 1,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_attempted
+        assert result.notification_successful
+        assert result.explanation is None
+        assert result.data_sent == {
+            "commentid": None,
+            "message": "message_test_notify_with_enough_builds",
+            "pullid": sample_comparison.pull.pullid,
+        }
+        assert result.data_received is None
