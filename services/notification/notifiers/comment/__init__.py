@@ -80,6 +80,16 @@ class CommentNotifier(AbstractBaseNotifier):
                 data_sent=None,
                 data_received=None
             )
+        if self.notifier_yaml_settings.get("after_n_builds") is not None:
+            n_builds_present = len(comparison.head.report.sessions)
+            if n_builds_present < self.notifier_yaml_settings.get("after_n_builds"):
+                return NotificationResult(
+                    notification_attempted=False,
+                    notification_successful=None,
+                    explanation='not_enough_builds',
+                    data_sent=None,
+                    data_received=None
+                )
         try:
             with metrics.timer("new_worker.services.notifications.notifiers.comment.build_message"):
                 message = await self.build_message(comparison)
