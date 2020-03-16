@@ -30,7 +30,18 @@ def diff_totals(base, head, absolute=None):
         # ratio(before.hits + changed.hits, before.lines, changed.lines) - coverage before
         #   = actual coveage change
         hits = absolute.hits + diff.hits
-        diff.coverage = float(ratio(hits, (hits + absolute.misses + diff.misses + absolute.partials + diff.partials))) - float(absolute.coverage)
+        diff.coverage = float(
+            ratio(
+                hits,
+                (
+                    hits
+                    + absolute.misses
+                    + diff.misses
+                    + absolute.partials
+                    + diff.partials
+                ),
+            )
+        ) - float(absolute.coverage)
     else:
         diff.coverage = float(head.coverage) - float(base.coverage)
     return ReportTotals(*diff)
@@ -42,17 +53,17 @@ def get_segment_offsets(segments):
     # loop through the segments
     for seg in segments:
         # get the starting line number
-        start = int(seg['header'][2]) or 1
+        start = int(seg["header"][2]) or 1
         offset_l = 0  # used to offset the segment line number (not real line numbers)
         offset_r = 0  # used to offset the segment line number (not real line numbers)
         # loop through all the lines
-        for ln, line in enumerate(seg['lines'], start=start):
+        for ln, line in enumerate(seg["lines"], start=start):
             l0 = line[0]
-            if l0 == '-':
+            if l0 == "-":
                 offsets[ln + offset_r] += 1
                 offset_r -= 1
 
-            elif l0 == '+':
+            elif l0 == "+":
                 additions.append(ln + offset_r)
                 offsets[ln + offset_r] -= 1
                 offset_l -= 1
@@ -64,7 +75,9 @@ def get_segment_offsets(segments):
     return dict([(k, v) for k, v in offsets.items() if v != 0]), additions
 
 
-def get_changes(base_report: Report, head_report: Report, diff_json: Mapping[str, Any]) -> List[Change]:
+def get_changes(
+    base_report: Report, head_report: Report, diff_json: Mapping[str, Any]
+) -> List[Change]:
     """
 
     Please bear with me because I didnt write the function, so what I know is from using it
@@ -101,10 +114,14 @@ def get_changes(base_report: Report, head_report: Report, diff_json: Mapping[str
     changes = []
     base_files = set(base_report.files)
     head_files = set(head_report.files)
-    diff_keys = set(diff_json['files'].keys()) if diff_json else set()
+    diff_keys = set(diff_json["files"].keys()) if diff_json else set()
 
     # moved files
-    moved_files = set([d['before'] for k, d in diff_json['files'].items() if d.get('before')]) if diff_json else set()
+    moved_files = (
+        set([d["before"] for k, d in diff_json["files"].items() if d.get("before")])
+        if diff_json
+        else set()
+    )
     # deleted files
     missing_files = base_files - head_files - diff_keys - moved_files
     # added files
@@ -117,16 +134,22 @@ def get_changes(base_report: Report, head_report: Report, diff_json: Mapping[str
         if filename in missing_files or filename in new_files:
             continue
 
-        diff = diff_json['files'].get(filename)
-        base_report_file = base_report.get((diff.get('before') or filename) if diff else filename)
+        diff = diff_json["files"].get(filename)
+        base_report_file = base_report.get(
+            (diff.get("before") or filename) if diff else filename
+        )
         if not base_report_file:
             new_files.add(filename)
             continue
 
-        lines = list(iter_changed_lines(base_report_file=base_report_file,
-                                        head_report_file=_file,
-                                        diff=diff,
-                                        yield_line_numbers=False))
+        lines = list(
+            iter_changed_lines(
+                base_report_file=base_report_file,
+                head_report_file=_file,
+                diff=diff,
+                yield_line_numbers=False,
+            )
+        )
 
         if any(lines):
             # only if there are any lines that changed
@@ -135,12 +158,12 @@ def get_changes(base_report: Report, head_report: Report, diff_json: Mapping[str
                 Change(
                     path=filename,
                     in_diff=bool(diff),
-                    old_path=diff.get('before') if diff else None,
+                    old_path=diff.get("before") if diff else None,
                     totals=diff_totals(
                         get_totals_from_list(next(lines)),
                         get_totals_from_list(next(lines)),
-                        base_report_file.totals
-                    )
+                        base_report_file.totals,
+                    ),
                 )
             )
 
@@ -164,20 +187,19 @@ def get_totals_from_list(lst):
     IN [1,0,"1/2"] => OUT ReportTotals(hits=1, misses=1, partials=1)
     """
     lst = list(map(line_type, lst))
-    return ReportTotals(hits=lst.count(0),
-                        misses=lst.count(1),
-                        partials=lst.count(2))
+    return ReportTotals(hits=lst.count(0), misses=lst.count(1), partials=lst.count(2))
 
 
-def iter_changed_lines(base_report_file,
-                       head_report_file,
-                       diff=None,
-                       yield_line_numbers=True):
+def iter_changed_lines(
+    base_report_file, head_report_file, diff=None, yield_line_numbers=True
+):
     """
     streams line numbers that changed as integers > 0
     """
-    if not diff or diff['type'] == 'modified':
-        offsets, skip_lines = get_segment_offsets(diff['segments']) if diff else (None, None)
+    if not diff or diff["type"] == "modified":
+        offsets, skip_lines = (
+            get_segment_offsets(diff["segments"]) if diff else (None, None)
+        )
         base_ln = 0
         for ln in range(1, max((base_report_file.eof, head_report_file.eof)) + 1):
             if offsets:
@@ -195,7 +217,10 @@ def iter_changed_lines(base_report_file,
                         # we have a head line
                         if line_has_changed(base_line, head_line):
                             # unexpected: coverage data changed
-                            yield ln if yield_line_numbers else (base_line.coverage, head_line.coverage)
+                            yield ln if yield_line_numbers else (
+                                base_line.coverage,
+                                head_line.coverage,
+                            )
                         # coverage data remains the same
                     else:
                         # unexpected: coverage data disappeared

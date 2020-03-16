@@ -1,35 +1,46 @@
-from services.notification.notifiers.generics import RequestsYamlBasedNotifier, Comparison
+from services.notification.notifiers.generics import (
+    RequestsYamlBasedNotifier,
+    Comparison,
+)
 from services.urls import get_commit_url, get_graph_url
 
 
 class SlackNotifier(RequestsYamlBasedNotifier):
 
-    BASE_MESSAGE = " ".join([
-        "Coverage for <{head_url}|{owner_username}/{repo_name}>",
-        "{comparison_string}on `{head_branch}` is `{head_totals_c}%`",
-        "via `<{head_url}|{head_short_commitid}>`"
-    ])
+    BASE_MESSAGE = " ".join(
+        [
+            "Coverage for <{head_url}|{owner_username}/{repo_name}>",
+            "{comparison_string}on `{head_branch}` is `{head_totals_c}%`",
+            "via `<{head_url}|{head_short_commitid}>`",
+        ]
+    )
 
-    COMPARISON_STRING = "*{compare_message}* `<{compare_url}|{compare_notation}{compare_coverage}%>` "
+    COMPARISON_STRING = (
+        "*{compare_message}* `<{compare_url}|{compare_notation}{compare_coverage}%>` "
+    )
 
     def build_payload(self, comparison: Comparison):
         message = self.generate_message(comparison)
         compare_dict = self.generate_compare_dict(comparison)
-        color = 'good' if compare_dict['notation'] in ('', '+') else 'bad'
+        color = "good" if compare_dict["notation"] in ("", "+") else "bad"
         attachments = []
-        if self.notifier_yaml_settings.get('attachments'):
-            for attachment_type in self.notifier_yaml_settings['attachments']:
-                if attachment_type == 'sunburst':
-                    attachments.append({
-                        'fallback': 'Commit sunburst attachment',
-                        'color': color,
-                        'title': 'Commit Sunburst',
-                        'title_link': get_commit_url(comparison.head.commit),
-                        'image_url': get_graph_url(comparison.head.commit, 'sunburst.svg', size=100)
-                    })
+        if self.notifier_yaml_settings.get("attachments"):
+            for attachment_type in self.notifier_yaml_settings["attachments"]:
+                if attachment_type == "sunburst":
+                    attachments.append(
+                        {
+                            "fallback": "Commit sunburst attachment",
+                            "color": color,
+                            "title": "Commit Sunburst",
+                            "title_link": get_commit_url(comparison.head.commit),
+                            "image_url": get_graph_url(
+                                comparison.head.commit, "sunburst.svg", size=100
+                            ),
+                        }
+                    )
         return {
-            'text': message,
-            'author_name': 'Codecov',
-            'author_link': get_commit_url(comparison.head.commit),
-            'attachments': attachments
+            "text": message,
+            "author_name": "Codecov",
+            "author_link": get_commit_url(comparison.head.commit),
+            "attachments": attachments,
         }

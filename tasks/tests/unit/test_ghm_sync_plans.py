@@ -110,7 +110,9 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
                 return_value=dict(login=username, name=name, email=email)
             )
         )
-        SyncPlansTask().create_or_update_to_free_plan(dbsession, ghm_service, service_id)
+        SyncPlansTask().create_or_update_to_free_plan(
+            dbsession, ghm_service, service_id
+        )
 
         assert ghm_service.get_user.called
 
@@ -126,7 +128,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
     def test_create_or_update_plan_known_user_with_plan(self, dbsession, mocker):
         owner = OwnerFactory.create(
             service="github",
-            plan='some-plan',
+            plan="some-plan",
             plan_user_count=10,
             plan_activated_users=[34123, 231, 2314212],
             stripe_customer_id="cus_123",
@@ -139,7 +141,9 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         dbsession.add(repo)
         dbsession.flush()
 
-        stripe_mock = mocker.patch("tasks.github_marketplace.stripe.Subscription.delete")
+        stripe_mock = mocker.patch(
+            "tasks.github_marketplace.stripe.Subscription.delete"
+        )
         ghm_service = mocker.MagicMock(get_user=mocker.MagicMock())
         SyncPlansTask().create_or_update_plan(
             dbsession, ghm_service, owner.service_id, dict(unit_count=5)
@@ -173,7 +177,9 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         dbsession.add(repo)
         dbsession.flush()
 
-        stripe_mock = mocker.patch("tasks.github_marketplace.stripe.Subscription.delete")
+        stripe_mock = mocker.patch(
+            "tasks.github_marketplace.stripe.Subscription.delete"
+        )
         ghm_service = mocker.MagicMock(get_user=mocker.MagicMock())
         SyncPlansTask().create_or_update_plan(
             dbsession, ghm_service, owner.service_id, dict(unit_count=5)

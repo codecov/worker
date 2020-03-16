@@ -9,9 +9,8 @@ from services.report.languages.base import BaseLanguageProcessor
 
 
 class GoProcessor(BaseLanguageProcessor):
-
     def matches_content(self, content, first_line, name):
-        return content[:6] == 'mode: ' or '.go:' in first_line
+        return content[:6] == "mode: " or ".go:" in first_line
 
     def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
         return from_txt(content, path_fixer, ignored_lines, sessionid, repo_yaml)
@@ -43,18 +42,20 @@ def from_txt(string, fix, ignored_lines, sessionid, yaml):
     ignored_files = []
     file_name_replacement = {}  # {old_name: new_name}
     files = {}  # {new_name: <lines defaultdict(list)>}
-    disable_default_path_fixes = read_yaml_field(yaml, ('codecov', 'disable_default_path_fixes'), False)
+    disable_default_path_fixes = read_yaml_field(
+        yaml, ("codecov", "disable_default_path_fixes"), False
+    )
 
     for line in string.splitlines():
         if not line:
             continue
 
-        elif line[:6] == 'mode: ':
+        elif line[:6] == "mode: ":
             continue
 
         # prepare data
-        filename, data = line.split(':', 1)
-        if data.endswith('%'):
+        filename, data = line.split(":", 1)
+        if data.endswith("%"):
             # File outline e.g., "github.com/nfisher/rsqf/rsqf.go:19: calcP 100.0%"
             continue
 
@@ -77,11 +78,11 @@ def from_txt(string, fix, ignored_lines, sessionid, yaml):
 
             lines = files.setdefault(filename, defaultdict(list))
 
-        columns, _, hits = data.split(' ', 2)
+        columns, _, hits = data.split(" ", 2)
         hits = int(hits)
-        sl, el = columns.split(',', 1)
-        sl, sc = list(map(int, sl.split('.', 1)))
-        el, ec = list(map(int, el.split('.', 1)))
+        sl, el = columns.split(",", 1)
+        sl, sc = list(map(int, sl.split(".", 1)))
+        el, ec = list(map(int, el.split(".", 1)))
 
         # add start of line
         if sl == el:
@@ -109,7 +110,9 @@ def from_txt(string, fix, ignored_lines, sessionid, yaml):
                     # partials
                     _file[ln] = ReportLine(cov, None, [[sessionid, cov]])
             else:
-                _file[ln] = ReportLine(best_in_partials, None, [[sessionid, best_in_partials]])
+                _file[ln] = ReportLine(
+                    best_in_partials, None, [[sessionid, best_in_partials]]
+                )
 
         report.append(_file)
 

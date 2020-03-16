@@ -348,6 +348,7 @@ def sample_commit_with_report_big_already_carriedforward(dbsession, mock_storage
         mock_storage.write_file("archive", chunks_url, content)
     return commit
 
+
 class TestReportService(BaseTestCase):
     def test_build_report_from_commit_no_report_saved(self, mocker):
         commit = CommitFactory.create(report_json=None)
@@ -1398,8 +1399,14 @@ class TestReportService(BaseTestCase):
                 "s": 2,
             },
         }
-        assert expected_results["report"]["sessions"]["0"] == readable_report["report"]["sessions"]["0"]
-        assert expected_results["report"]["sessions"] == readable_report["report"]["sessions"]
+        assert (
+            expected_results["report"]["sessions"]["0"]
+            == readable_report["report"]["sessions"]["0"]
+        )
+        assert (
+            expected_results["report"]["sessions"]
+            == readable_report["report"]["sessions"]
+        )
         assert expected_results["report"] == readable_report["report"]
         assert expected_results == readable_report
 
@@ -1577,13 +1584,7 @@ class TestReportService(BaseTestCase):
         report = ReportService(yaml_dict).create_new_report_for_commit(commit, 1)
         assert report is not None
         assert sorted(report.files) == sorted(
-            [
-                "file_10.py",
-                "file_11.py",
-                "file_12.py",
-                "file_13.py",
-                "file_14.py",
-            ]
+            ["file_10.py", "file_11.py", "file_12.py", "file_13.py", "file_14.py",]
         )
         assert report.totals == ReportTotals(
             files=5,
@@ -2035,8 +2036,14 @@ class TestReportService(BaseTestCase):
                 "s": 2,
             },
         }
-        assert expected_results["report"]["sessions"]["0"] == readable_report["report"]["sessions"]["0"]
-        assert expected_results["report"]["sessions"] == readable_report["report"]["sessions"]
+        assert (
+            expected_results["report"]["sessions"]["0"]
+            == readable_report["report"]["sessions"]["0"]
+        )
+        assert (
+            expected_results["report"]["sessions"]
+            == readable_report["report"]["sessions"]
+        )
         assert expected_results["report"]["files"] == readable_report["report"]["files"]
         assert expected_results["report"] == readable_report["report"]
         assert expected_results["totals"] == readable_report["totals"]
@@ -2080,10 +2087,7 @@ class TestReportService(BaseTestCase):
         readable_report = self.convert_report_to_better_readable(report)
         expected_results = {
             "archive": {},
-            "report": {
-                "files": {},
-                "sessions": {},
-            },
+            "report": {"files": {}, "sessions": {},},
             "totals": {
                 "C": 0,
                 "M": 0,
@@ -2100,7 +2104,10 @@ class TestReportService(BaseTestCase):
                 "s": 0,
             },
         }
-        assert expected_results["report"]["sessions"] == readable_report["report"]["sessions"]
+        assert (
+            expected_results["report"]["sessions"]
+            == readable_report["report"]["sessions"]
+        )
         assert expected_results["report"]["files"] == readable_report["report"]["files"]
         assert expected_results["report"] == readable_report["report"]
         assert expected_results["totals"] == readable_report["totals"]
@@ -2139,10 +2146,7 @@ class TestReportService(BaseTestCase):
         readable_report = self.convert_report_to_better_readable(report)
         expected_results = {
             "archive": {},
-            "report": {
-                "files": {},
-                "sessions": {},
-            },
+            "report": {"files": {}, "sessions": {},},
             "totals": {
                 "C": 0,
                 "M": 0,
@@ -2159,7 +2163,10 @@ class TestReportService(BaseTestCase):
                 "s": 0,
             },
         }
-        assert expected_results["report"]["sessions"] == readable_report["report"]["sessions"]
+        assert (
+            expected_results["report"]["sessions"]
+            == readable_report["report"]["sessions"]
+        )
         assert expected_results["report"]["files"] == readable_report["report"]["files"]
         assert expected_results["report"] == readable_report["report"]
         assert expected_results["totals"] == readable_report["totals"]

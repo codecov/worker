@@ -7,7 +7,7 @@ from helpers.exceptions import ReportExpiredException
 from services.report.languages import cobertura
 
 
-xml = '''<?xml version="1.0" ?>
+xml = """<?xml version="1.0" ?>
 <!DOCTYPE coverage
   SYSTEM 'http://cobertura.sourceforge.net/xml/coverage-03.dtd'>
 <%scoverage branch-rate="0.07143" line-rate="0.5506" timestamp="%s" version="3.7.1">
@@ -61,95 +61,128 @@ xml = '''<?xml version="1.0" ?>
         </package>
     </packages>
 </%scoverage>
-'''
+"""
 
 
 class TestCobertura(BaseTestCase):
     def test_report(self):
         def fixes(path):
-            if path == 'ignore':
+            if path == "ignore":
                 return None
-            assert path in ('source', 'empty', 'file', 'nolines')
+            assert path in ("source", "empty", "file", "nolines")
             return path
 
-        report = cobertura.from_xml(etree.fromstring(xml % ('', int(time()), '')), fixes, {}, 0, {'codecov': {'max_report_age': None}})
+        report = cobertura.from_xml(
+            etree.fromstring(xml % ("", int(time()), "")),
+            fixes,
+            {},
+            0,
+            {"codecov": {"max_report_age": None}},
+        )
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
+
         pprint.pprint(processed_report)
         expected_result = {
-            'archive': {
-                'file': [
-                    (1, 0, 'm', [[0, 0, None, None, None]], None, None),
-                    (2, 1, 'b', [[0, 1, None, None, None]], None, None),
-                    (3, 1, None, [[0, 1, None, None, None]], None, None)
+            "archive": {
+                "file": [
+                    (1, 0, "m", [[0, 0, None, None, None]], None, None),
+                    (2, 1, "b", [[0, 1, None, None, None]], None, None),
+                    (3, 1, None, [[0, 1, None, None, None]], None, None),
                 ],
-                'source': [
+                "source": [
                     (1, 1, None, [[0, 1, None, None, None]], None, None),
-                    (2, '0/2', 'b', [[0, '0/2', ['exit'], None, None]], None, None),
-                    (3, '1/2', 'b', [[0, '1/2', ['30'], None, None]], None, None),
-                    (4, '2/2', 'b', [[0, '2/2', None, None, None]], None, None),
-                    (5, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump'], None, None]], None, None),
-                    (6, '2/4', 'b', [[0, '2/4', ['0:jump', '1:jump'], None, None]], None, None),
-                    (7, '0/2', 'b', [[0, '0/2', ['loop', 'exit'], None, None]], None, None),
-                    (8, 1, None, [[0, 1, None, None, None]], None, None)
-                ]
+                    (2, "0/2", "b", [[0, "0/2", ["exit"], None, None]], None, None),
+                    (3, "1/2", "b", [[0, "1/2", ["30"], None, None]], None, None),
+                    (4, "2/2", "b", [[0, "2/2", None, None, None]], None, None),
+                    (
+                        5,
+                        "2/4",
+                        "b",
+                        [[0, "2/4", ["0:jump", "1:jump"], None, None]],
+                        None,
+                        None,
+                    ),
+                    (
+                        6,
+                        "2/4",
+                        "b",
+                        [[0, "2/4", ["0:jump", "1:jump"], None, None]],
+                        None,
+                        None,
+                    ),
+                    (
+                        7,
+                        "0/2",
+                        "b",
+                        [[0, "0/2", ["loop", "exit"], None, None]],
+                        None,
+                        None,
+                    ),
+                    (8, 1, None, [[0, 1, None, None, None]], None, None),
+                ],
             },
-            'report': {
-                'files': {
-                    'file': [
+            "report": {
+                "files": {
+                    "file": [
                         1,
-                        [0, 3, 2, 1, 0, '66.66667', 1, 1, 0, 0, 0, 0, 0],
-                        [[0, 3, 2, 1, 0, '66.66667', 1, 1, 0, 0, 0, 0, 0]],
-                        None
+                        [0, 3, 2, 1, 0, "66.66667", 1, 1, 0, 0, 0, 0, 0],
+                        [[0, 3, 2, 1, 0, "66.66667", 1, 1, 0, 0, 0, 0, 0]],
+                        None,
                     ],
-                    'source': [
+                    "source": [
                         0,
-                        [0, 8, 3, 2, 3, '37.50000', 6, 0, 0, 0, 0, 0, 0],
-                        [[0, 8, 3, 2, 3, '37.50000', 6, 0, 0, 0, 0, 0, 0]],
-                        None
-                    ]
+                        [0, 8, 3, 2, 3, "37.50000", 6, 0, 0, 0, 0, 0, 0],
+                        [[0, 8, 3, 2, 3, "37.50000", 6, 0, 0, 0, 0, 0, 0]],
+                        None,
+                    ],
                 },
-                'sessions': {}
+                "sessions": {},
             },
-            'totals': {
-                'C': 0,
-                'M': 0,
-                'N': 0,
-                'b': 7,
-                'c': '45.45455',
-                'd': 1,
-                'diff': None,
-                'f': 2,
-                'h': 5,
-                'm': 3,
-                'n': 11,
-                'p': 3,
-                's': 0
-            }
+            "totals": {
+                "C": 0,
+                "M": 0,
+                "N": 0,
+                "b": 7,
+                "c": "45.45455",
+                "d": 1,
+                "diff": None,
+                "f": 2,
+                "h": 5,
+                "m": 3,
+                "n": 11,
+                "p": 3,
+                "s": 0,
+            },
         }
-        assert processed_report['archive'] == expected_result['archive']
-        assert processed_report['report'] == expected_result['report']
-        assert processed_report['totals'] == expected_result['totals']
+        assert processed_report["archive"] == expected_result["archive"]
+        assert processed_report["report"] == expected_result["report"]
+        assert processed_report["totals"] == expected_result["totals"]
         assert processed_report == expected_result
 
-    @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
+    @pytest.mark.parametrize("date", [(int(time()) - 172800), "01-01-2014"])
     def test_expired(self, date):
-        with pytest.raises(ReportExpiredException, match='Cobertura report expired'):
-            cobertura.from_xml(etree.fromstring(xml % ('', date, '')), None, {}, None, None)
+        with pytest.raises(ReportExpiredException, match="Cobertura report expired"):
+            cobertura.from_xml(
+                etree.fromstring(xml % ("", date, "")), None, {}, None, None
+            )
 
-        with pytest.raises(ReportExpiredException, match='Cobertura report expired'):
-            cobertura.from_xml(etree.fromstring(xml % ('s', date, 's')), None, {}, None, None)
+        with pytest.raises(ReportExpiredException, match="Cobertura report expired"):
+            cobertura.from_xml(
+                etree.fromstring(xml % ("s", date, "s")), None, {}, None, None
+            )
 
     def test_matches_content(self):
         processor = cobertura.CoberturaProcessor()
-        content = etree.fromstring(xml % ('', int(time()), ''))
+        content = etree.fromstring(xml % ("", int(time()), ""))
         first_line = xml.split("\n", 1)[0]
         name = "coverage.xml"
         assert processor.matches_content(content, first_line, name)
 
     def test_not_matches_content(self):
         processor = cobertura.CoberturaProcessor()
-        content = etree.fromstring("""<?xml version="1.0" standalone="yes"?>
+        content = etree.fromstring(
+            """<?xml version="1.0" standalone="yes"?>
             <CoverageDSPriv>
               <Lines>
                 <LnStart>258</LnStart>
@@ -160,7 +193,8 @@ class TestCobertura(BaseTestCase):
                 <SourceFileID>1</SourceFileID>
                 <LineID>0</LineID>
               </Lines>
-            </CoverageDSPriv>""")
+            </CoverageDSPriv>"""
+        )
         first_line = xml.split("\n", 1)[0]
         name = "coverage.xml"
         assert not processor.matches_content(content, first_line, name)

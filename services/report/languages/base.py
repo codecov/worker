@@ -4,7 +4,6 @@ from covreports.reports.resources import Report
 
 
 class BaseLanguageProcessor(object):
-
     @property
     def name(self):
         return self.get_processor_name()
@@ -15,7 +14,13 @@ class BaseLanguageProcessor(object):
     def matches_content(self, content, first_line: str, name: str) -> bool:
         pass
 
-    def process(self, content: str, path_fixer: Callable, ignored_lines: Mapping[str, dict], sessionid: str) -> Report:
+    def process(
+        self,
+        content: str,
+        path_fixer: Callable,
+        ignored_lines: Mapping[str, dict],
+        sessionid: str,
+    ) -> Report:
         """Processes a report uploaded by the user, returning a `Report`
 
         This is the base function which we need to implement

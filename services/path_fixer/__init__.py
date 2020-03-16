@@ -17,21 +17,17 @@ log = logging.getLogger(__name__)
 
 
 def invert_pattern(string: str) -> str:
-    if string.startswith('!'):
+    if string.startswith("!"):
         return string[1:]
     else:
-        return '!%s' % string
+        return "!%s" % string
 
 
 class PathFixer(object):
-
     @classmethod
     def init_from_user_yaml(cls, commit_yaml: dict, toc: str, flags: typing.Sequence):
         path_patterns = list(
-            map(
-                invert_pattern,
-                read_yaml_field(commit_yaml, ('ignore', )) or []
-            )
+            map(invert_pattern, read_yaml_field(commit_yaml, ("ignore",)) or [])
         )
         if flags:
             for flag in flags:
@@ -39,21 +35,27 @@ class PathFixer(object):
                     list(
                         map(
                             invert_pattern,
-                            read_yaml_field(commit_yaml, ('flags', flag, 'ignore')) or []
+                            read_yaml_field(commit_yaml, ("flags", flag, "ignore"))
+                            or [],
                         )
                     )
-
                 )
-                path_patterns.extend(read_yaml_field(commit_yaml, ('flags', flag, 'paths')) or [])
-        disable_default_path_fixes = read_yaml_field(commit_yaml, ('codecov', 'disable_default_path_fixes'))
+                path_patterns.extend(
+                    read_yaml_field(commit_yaml, ("flags", flag, "paths")) or []
+                )
+        disable_default_path_fixes = read_yaml_field(
+            commit_yaml, ("codecov", "disable_default_path_fixes")
+        )
         return cls(
-            yaml_fixes=read_yaml_field(commit_yaml, ('fixes', )),
+            yaml_fixes=read_yaml_field(commit_yaml, ("fixes",)),
             path_patterns=path_patterns,
             toc=toc,
             should_disable_default_pathfixes=disable_default_path_fixes,
         )
 
-    def __init__(self, yaml_fixes, path_patterns, toc, should_disable_default_pathfixes=False):
+    def __init__(
+        self, yaml_fixes, path_patterns, toc, should_disable_default_pathfixes=False
+    ):
         self.yaml_fixes = yaml_fixes or []
         self.path_patterns = set(path_patterns) or set([])
         self.toc = toc or []
@@ -70,11 +72,7 @@ class PathFixer(object):
     def clean_path(self, path: str) -> str:
         if not path:
             return None
-        path = os.path.relpath(
-            path.replace('\\', '/')
-                .lstrip('./')
-                .lstrip('../')
-        )
+        path = os.path.relpath(path.replace("\\", "/").lstrip("./").lstrip("../"))
         if self.yaml_fixes:
             # applies pre
             path = self.custom_fixes(path, False)
@@ -83,7 +81,7 @@ class PathFixer(object):
             if not path:
                 return None
         elif not self.toc:
-            path = _remove_known_bad_paths('', path)
+            path = _remove_known_bad_paths("", path)
         if self.yaml_fixes:
             # applied pre and post
             path = self.custom_fixes(path, True)

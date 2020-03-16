@@ -1,8 +1,11 @@
 import pytest
 
 from tests.base import BaseTestCase
-from services.bots import ( get_repo_appropriate_bot_token, RepositoryWithoutValidBotError,
-    get_owner_appropriate_bot_token, OwnerWithoutValidBotError
+from services.bots import (
+    get_repo_appropriate_bot_token,
+    RepositoryWithoutValidBotError,
+    get_owner_appropriate_bot_token,
+    OwnerWithoutValidBotError,
 )
 from database.tests.factories import RepositoryFactory, OwnerFactory
 
@@ -26,75 +29,78 @@ C/tY+lZIEO1Gg/FxSMB+hwwhwfSuE3WohZfEcSy+R48=
 
 
 class TestBotsService(BaseTestCase):
-
     def test_get_repo_appropriate_bot_token_public_bot(self, mock_configuration):
         mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
         repo = RepositoryFactory.create(
             private=False,
             using_integration=False,
-            bot=OwnerFactory.create(
-                unencrypted_oauth_token='simple_code'
-            ),
+            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
             owner=OwnerFactory.create(
-                unencrypted_oauth_token='not_so_simple_code',
+                unencrypted_oauth_token="not_so_simple_code",
                 bot=OwnerFactory.create(
-                    unencrypted_oauth_token='now_that_code_is_complex'
-                )
-            )
+                    unencrypted_oauth_token="now_that_code_is_complex"
+                ),
+            ),
         )
-        expected_result = {'key': 'somekey'}
+        expected_result = {"key": "somekey"}
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
-    def test_get_repo_appropriate_bot_token_public_bot_without_key(self, mock_configuration):
+    def test_get_repo_appropriate_bot_token_public_bot_without_key(
+        self, mock_configuration
+    ):
         mock_configuration.set_params({"github": {"bot": {"other": "field"}}})
         repo = RepositoryFactory.create(
             private=False,
             using_integration=False,
-            bot=OwnerFactory.create(
-                unencrypted_oauth_token='simple_code'
-            ),
+            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
             owner=OwnerFactory.create(
-                unencrypted_oauth_token='not_so_simple_code',
+                unencrypted_oauth_token="not_so_simple_code",
                 bot=OwnerFactory.create(
-                    unencrypted_oauth_token='now_that_code_is_complex'
-                )
-            )
+                    unencrypted_oauth_token="now_that_code_is_complex"
+                ),
+            ),
         )
-        expected_result = {'username': repo.bot.username, 'key': 'simple_code', 'secret': None}
+        expected_result = {
+            "username": repo.bot.username,
+            "key": "simple_code",
+            "secret": None,
+        }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_valid_bot(self):
 
         repo = RepositoryFactory.create(
             using_integration=False,
-            bot=OwnerFactory.create(
-                unencrypted_oauth_token='simple_code'
-            ),
+            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
             owner=OwnerFactory.create(
-                unencrypted_oauth_token='not_so_simple_code',
+                unencrypted_oauth_token="not_so_simple_code",
                 bot=OwnerFactory.create(
-                    unencrypted_oauth_token='now_that_code_is_complex'
-                )
-            )
+                    unencrypted_oauth_token="now_that_code_is_complex"
+                ),
+            ),
         )
-        expected_result = {'username': repo.bot.username, 'key': 'simple_code', 'secret': None}
+        expected_result = {
+            "username": repo.bot.username,
+            "key": "simple_code",
+            "secret": None,
+        }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_invalid_bot_valid_owner_bot(self):
         repo = RepositoryFactory.create(
             using_integration=False,
-            bot=OwnerFactory.create(
-                unencrypted_oauth_token=None
-            ),
+            bot=OwnerFactory.create(unencrypted_oauth_token=None),
             owner=OwnerFactory.create(
-                unencrypted_oauth_token='not_so_simple_code',
+                unencrypted_oauth_token="not_so_simple_code",
                 bot=OwnerFactory.create(
-                    unencrypted_oauth_token='now_that_code_is_complex'
-                )
-            )
+                    unencrypted_oauth_token="now_that_code_is_complex"
+                ),
+            ),
         )
         expected_result = {
-            'username': repo.owner.bot.username, 'key': 'now_that_code_is_complex', 'secret': None
+            "username": repo.owner.bot.username,
+            "key": "now_that_code_is_complex",
+            "secret": None,
         }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
@@ -103,14 +109,16 @@ class TestBotsService(BaseTestCase):
             using_integration=False,
             bot=None,
             owner=OwnerFactory.create(
-                unencrypted_oauth_token='not_so_simple_code',
+                unencrypted_oauth_token="not_so_simple_code",
                 bot=OwnerFactory.create(
-                    unencrypted_oauth_token='now_that_code_is_complex'
-                )
-            )
+                    unencrypted_oauth_token="now_that_code_is_complex"
+                ),
+            ),
         )
         expected_result = {
-            'username': repo.owner.bot.username, 'key': 'now_that_code_is_complex', 'secret': None
+            "username": repo.owner.bot.username,
+            "key": "now_that_code_is_complex",
+            "secret": None,
         }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
@@ -119,14 +127,14 @@ class TestBotsService(BaseTestCase):
             using_integration=False,
             bot=None,
             owner=OwnerFactory.create(
-                unencrypted_oauth_token='not_so_simple_code',
-                bot=OwnerFactory.create(
-                    unencrypted_oauth_token=None
-                )
-            )
+                unencrypted_oauth_token="not_so_simple_code",
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
         )
         expected_result = {
-            'username': repo.owner.username, 'key': 'not_so_simple_code', 'secret': None
+            "username": repo.owner.username,
+            "key": "not_so_simple_code",
+            "secret": None,
         }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
@@ -136,105 +144,112 @@ class TestBotsService(BaseTestCase):
             bot=None,
             owner=OwnerFactory.create(
                 unencrypted_oauth_token=None,
-                bot=OwnerFactory.create(
-                    unencrypted_oauth_token=None
-                )
-            )
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
         )
         with pytest.raises(RepositoryWithoutValidBotError):
             get_repo_appropriate_bot_token(repo)
 
-    def test_get_repo_appropriate_bot_token_repo_with_user_with_integration_bot_not_using_it(self):
+    def test_get_repo_appropriate_bot_token_repo_with_user_with_integration_bot_not_using_it(
+        self,
+    ):
         repo = RepositoryFactory.create(
             using_integration=False,
             bot=None,
             owner=OwnerFactory.create(
-                integration_id='integration_id',
-                unencrypted_oauth_token='not_so_simple_code',
-                bot=OwnerFactory.create(
-                    unencrypted_oauth_token=None
-                )
-            )
+                integration_id="integration_id",
+                unencrypted_oauth_token="not_so_simple_code",
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
         )
         expected_result = {
-            'username': repo.owner.username, 'key': 'not_so_simple_code', 'secret': None
+            "username": repo.owner.username,
+            "key": "not_so_simple_code",
+            "secret": None,
         }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     @pytest.mark.integration
-    def test_get_repo_appropriate_bot_token_repo_with_user_with_integration_bot_using_it(self, mock_configuration, codecov_vcr):
-        mock_configuration._params['github'] = {
-            'integration': {
-                'pem': '/home/src/certs/github.pem',
-                'id': 251234  # Fake integration id, tested with a real one
+    def test_get_repo_appropriate_bot_token_repo_with_user_with_integration_bot_using_it(
+        self, mock_configuration, codecov_vcr
+    ):
+        mock_configuration._params["github"] = {
+            "integration": {
+                "pem": "/home/src/certs/github.pem",
+                "id": 251234,  # Fake integration id, tested with a real one
             }
         }
-        mock_configuration.loaded_files[('github', 'integration', 'pem')] = fake_private_key
+        mock_configuration.loaded_files[
+            ("github", "integration", "pem")
+        ] = fake_private_key
         repo = RepositoryFactory.create(
             using_integration=True,
             bot=None,
             owner=OwnerFactory.create(
-                service='github',
+                service="github",
                 integration_id=1654873,  # 'ThiagoCodecov' integration id, for testing,
-                unencrypted_oauth_token='not_so_simple_code',
-                bot=OwnerFactory.create(
-                    unencrypted_oauth_token=None
-                )
-            )
+                unencrypted_oauth_token="not_so_simple_code",
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
         )
         expected_result = {
-            'key': 'v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp',
+            "key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp",
         }
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_owner_appropriate_bot_token_owner_no_bot_no_integration(self):
         owner = OwnerFactory.create(
-            unencrypted_oauth_token='owner_token',
-            integration_id=None,
-            bot=None
+            unencrypted_oauth_token="owner_token", integration_id=None, bot=None
         )
-        assert get_owner_appropriate_bot_token(owner, using_integration=False) == {'key': 'owner_token', 'secret': None}
+        assert get_owner_appropriate_bot_token(owner, using_integration=False) == {
+            "key": "owner_token",
+            "secret": None,
+        }
 
     def test_get_owner_appropriate_bot_token_owner_has_bot_no_integration(self):
         owner = OwnerFactory.create(
-            unencrypted_oauth_token='owner_token',
+            unencrypted_oauth_token="owner_token",
             integration_id=None,
-            bot=OwnerFactory.create(
-                unencrypted_oauth_token='bot_token'
-            )
+            bot=OwnerFactory.create(unencrypted_oauth_token="bot_token"),
         )
-        assert get_owner_appropriate_bot_token(owner, using_integration=False) == {'key': 'bot_token', 'secret': None}
+        assert get_owner_appropriate_bot_token(owner, using_integration=False) == {
+            "key": "bot_token",
+            "secret": None,
+        }
 
     def test_get_owner_appropriate_bot_token_repo_with_no_oauth_token_at_all(self):
         owner = OwnerFactory.create(
             unencrypted_oauth_token=None,
             integration_id=None,
-            bot=OwnerFactory.create(
-                unencrypted_oauth_token=None
-            )
+            bot=OwnerFactory.create(unencrypted_oauth_token=None),
         )
         with pytest.raises(OwnerWithoutValidBotError):
             get_owner_appropriate_bot_token(owner, using_integration=False)
 
-    def test_get_owner_appropriate_bot_token_with_user_with_integration_bot_using_it(self, mock_configuration, codecov_vcr):
-        mock_configuration._params['github'] = {
-            'integration': {
-                'pem': '/home/src/certs/github.pem',
-                'id': 251234  # Fake integration id, tested with a real one
+    def test_get_owner_appropriate_bot_token_with_user_with_integration_bot_using_it(
+        self, mock_configuration, codecov_vcr
+    ):
+        mock_configuration._params["github"] = {
+            "integration": {
+                "pem": "/home/src/certs/github.pem",
+                "id": 251234,  # Fake integration id, tested with a real one
             }
         }
-        mock_configuration.loaded_files[('github', 'integration', 'pem')] = fake_private_key
+        mock_configuration.loaded_files[
+            ("github", "integration", "pem")
+        ] = fake_private_key
 
         owner = OwnerFactory.create(
-            service='github',
+            service="github",
             integration_id=1654873,  # 'ThiagoCodecov' integration id, for testing,
-            unencrypted_oauth_token='owner_token',
-            bot=OwnerFactory.create(
-                unencrypted_oauth_token=None
-            )
+            unencrypted_oauth_token="owner_token",
+            bot=OwnerFactory.create(unencrypted_oauth_token=None),
         )
 
         expected_result = {
-            'key': 'v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp',
+            "key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp",
         }
-        assert get_owner_appropriate_bot_token(owner, using_integration=True) == expected_result
+        assert (
+            get_owner_appropriate_bot_token(owner, using_integration=True)
+            == expected_result
+        )

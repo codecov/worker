@@ -318,4 +318,3 @@ class TestGHMarketplaceSyncPlansTask(object):
             assert owner.plan_provider == "github"
             assert owner.plan_auto_activate == True
             assert owner.plan_user_count == 12
-

@@ -11,7 +11,6 @@ log = logging.getLogger(__name__)
 
 
 class WebhookNotifier(RequestsYamlBasedNotifier):
-
     def build_commit_payload(self, full_commit: FullCommit):
         if full_commit.commit is None:
             return None
@@ -23,17 +22,21 @@ class WebhookNotifier(RequestsYamlBasedNotifier):
                 "service_id": commit.author.service_id,
                 "email": commit.author.email,
                 "service": commit.author.service,
-                "name": commit.author.name
+                "name": commit.author.name,
             }
         return {
             "author": author_dict,
             "url": get_commit_url(commit),
             "timestamp": commit.timestamp.isoformat(),
-            "totals": dataclasses.asdict(full_commit.report.totals) if full_commit.report is not None else None,
+            "totals": dataclasses.asdict(full_commit.report.totals)
+            if full_commit.report is not None
+            else None,
             "commitid": commit.commitid,
-            "service_url": self.repository_service.get_href(Endpoints.commit_detail, commitid=commit.commitid),
+            "service_url": self.repository_service.get_href(
+                Endpoints.commit_detail, commitid=commit.commitid
+            ),
             "branch": commit.branch,
-            "message": commit.message
+            "message": commit.message,
         }
 
     def build_payload(self, comparison: Comparison):
@@ -45,25 +48,19 @@ class WebhookNotifier(RequestsYamlBasedNotifier):
         pull_dict = None
         if pull:
             pull_dict = {
-                "head": {
-                    "commit": pull.head,
-                    "branch": "master"
-                },
+                "head": {"commit": pull.head, "branch": "master"},
                 "number": str(pull.pullid),
-                "base": {
-                    "commit": pull.base,
-                    "branch": "master"
-                },
-                "open": pull.state == 'open',
+                "base": {"commit": pull.base, "branch": "master"},
+                "open": pull.state == "open",
                 "id": pull.pullid,
-                "merged": pull.state == 'merged'
+                "merged": pull.state == "merged",
             }
         return {
             "repo": {
                 "url": get_repository_url(head_commit.repository),
                 "service_id": repository.service_id,
                 "name": repository.name,
-                "private": repository.private
+                "private": repository.private,
             },
             "head": self.build_commit_payload(head_full_commit),
             "base": self.build_commit_payload(base_full_commit),
@@ -71,7 +68,7 @@ class WebhookNotifier(RequestsYamlBasedNotifier):
             "owner": {
                 "username": repository.owner.username,
                 "service_id": repository.owner.service_id,
-                "service": repository.owner.service
+                "service": repository.owner.service,
             },
-            "pull": pull_dict
+            "pull": pull_dict,
         }

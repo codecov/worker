@@ -10,7 +10,9 @@ here = Path(__file__)
 
 class TestPullSyncTask(object):
     @pytest.mark.asyncio
-    async def test_call_task(self, dbsession, codecov_vcr, mock_storage, mocker, mock_redis):
+    async def test_call_task(
+        self, dbsession, codecov_vcr, mock_storage, mocker, mock_redis
+    ):
         mocker.patch.object(PullSyncTask, "app")
         task = PullSyncTask()
         repository = RepositoryFactory.create(
@@ -86,7 +88,7 @@ class TestPullSyncTask(object):
         res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert {
             "notifier_called": True,
-            "commit_updates_done": {'merged_count': 0, 'soft_deleted_count': 0}
+            "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
         } == res
         assert len(pull.flare) == 1
         expected_flare = {

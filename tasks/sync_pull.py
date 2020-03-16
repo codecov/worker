@@ -81,15 +81,11 @@ class PullSyncTask(BaseCodecovTask):
         commits = await repository_service.get_pull_request_commits(pull.pullid)
         commit_updates_done = self.update_pull_commits(enriched_pull, commits)
         self.app.tasks[notify_task_name].apply_async(
-            queue=task_default_queue,
-            kwargs=dict(
-                repoid=repoid,
-                commitid=pull.head,
-            )
+            queue=task_default_queue, kwargs=dict(repoid=repoid, commitid=pull.head,)
         )
         redis_connection = get_redis_connection()
         self.clear_pull_related_caches(redis_connection, enriched_pull)
-        return {"notifier_called": True, 'commit_updates_done': commit_updates_done}
+        return {"notifier_called": True, "commit_updates_done": commit_updates_done}
 
     def clear_pull_related_caches(self, redis_connection, enriched_pull: EnrichedPull):
         pull = enriched_pull.database_pull
@@ -103,7 +99,9 @@ class PullSyncTask(BaseCodecovTask):
                 if base_branch == repository.branch:
                     redis_connection.hdel("badge", (f"{key}:").lower())
 
-    def update_pull_commits(self, enriched_pull: EnrichedPull, commits: Sequence) -> dict:
+    def update_pull_commits(
+        self, enriched_pull: EnrichedPull, commits: Sequence
+    ) -> dict:
         """Updates commits considering what the new PR situation is.
 
             For example, if a pull is merged, it makes sense that their commits switch to
@@ -131,31 +129,36 @@ class PullSyncTask(BaseCodecovTask):
             commits.append(pull.head)
             if pull.state == "merged":
                 # merge the branch in
-                merged_count = db_session.query(Commit).filter(
-                    Commit.repoid == repoid,
-                    Commit.pullid == pullid,
-                    Commit.commitid.in_(commits),
-                    ~Commit.merged,
-                ).update(
-                    {
-                        Commit.branch: pull_dict["base"]["branch"],
-                        Commit.updatestamp: datetime.now(),
-                        Commit.merged: True,
-                        Commit.deleted: False,
-                    },
-                    synchronize_session=False,
+                merged_count = (
+                    db_session.query(Commit)
+                    .filter(
+                        Commit.repoid == repoid,
+                        Commit.pullid == pullid,
+                        Commit.commitid.in_(commits),
+                        ~Commit.merged,
+                    )
+                    .update(
+                        {
+                            Commit.branch: pull_dict["base"]["branch"],
+                            Commit.updatestamp: datetime.now(),
+                            Commit.merged: True,
+                            Commit.deleted: False,
+                        },
+                        synchronize_session=False,
+                    )
                 )
 
             # set the rest of the commits to deleted (do not show in the UI)
-            deleted_count = db_session.query(Commit).filter(
-                Commit.repoid == repoid,
-                Commit.pullid == pullid,
-                ~Commit.commitid.in_(commits),
-            ).update({Commit.deleted: True}, synchronize_session=False)
-        return {
-            'soft_deleted_count': deleted_count,
-            'merged_count': merged_count
-        }
+            deleted_count = (
+                db_session.query(Commit)
+                .filter(
+                    Commit.repoid == repoid,
+                    Commit.pullid == pullid,
+                    ~Commit.commitid.in_(commits),
+                )
+                .update({Commit.deleted: True}, synchronize_session=False)
+            )
+        return {"soft_deleted_count": deleted_count, "merged_count": merged_count}
 
 
 RegisteredPullSyncTask = celery_app.register_task(PullSyncTask())

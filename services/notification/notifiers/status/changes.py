@@ -20,7 +20,7 @@ class ChangesStatusNotifier(StatusNotifier):
         - Unable to determine changes, no report found at pull request base
     """
 
-    context = 'changes'
+    context = "changes"
 
     def is_a_change_worth_noting(self, change):
         if not change.new and not change.deleted:
@@ -33,14 +33,13 @@ class ChangesStatusNotifier(StatusNotifier):
 
     async def build_payload(self, comparison):
         pull = comparison.pull
-        if self.notifier_yaml_settings.get('base') in ('auto', None, 'pr') and pull:
+        if self.notifier_yaml_settings.get("base") in ("auto", None, "pr") and pull:
             if not comparison.has_base_report():
-                description = 'Unable to determine changes, no report found at pull request base'
-                state = 'success'
-                return {
-                    'state': state,
-                    'message': description
-                }
+                description = (
+                    "Unable to determine changes, no report found at pull request base"
+                )
+                state = "success"
+                return {"state": state, "message": description}
 
         # filter changes
         diff_json = await self.get_diff(comparison)
@@ -51,15 +50,16 @@ class ChangesStatusNotifier(StatusNotifier):
         # remove new additions
         if changes:
             lpc = len(changes)
-            eng = 'files have' if lpc > 1 else 'file has'
-            description = '{0} {1} unexpected coverage changes not visible in diff'.format(lpc, eng)
+            eng = "files have" if lpc > 1 else "file has"
+            description = "{0} {1} unexpected coverage changes not visible in diff".format(
+                lpc, eng
+            )
             return {
-                'state': 'success' if self.notifier_yaml_settings.get('informational') else 'failure',
-                'message': description
+                "state": "success"
+                if self.notifier_yaml_settings.get("informational")
+                else "failure",
+                "message": description,
             }
 
-        description = 'No unexpected coverage changes found'
-        return {
-            'state': 'success',
-            'message': description
-        }
+        description = "No unexpected coverage changes found"
+        return {"state": "success", "message": description}

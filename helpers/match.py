@@ -6,13 +6,13 @@ def match(patterns, string):
         return True
 
     patterns = set(filter(None, patterns))
-    negatives = filter(lambda a: a.startswith(('^!', '!')), patterns)
+    negatives = filter(lambda a: a.startswith(("^!", "!")), patterns)
     positives = patterns - set(negatives)
 
     # must not match
     for pattern in negatives:
         # matched a negative search
-        if re.match(pattern.replace('!', ''), string):
+        if re.match(pattern.replace("!", ""), string):
             return False
 
     if positives:

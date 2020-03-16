@@ -5,11 +5,12 @@ from services.report.languages.base import BaseLanguageProcessor
 
 
 class SCoverageProcessor(BaseLanguageProcessor):
-
     def matches_content(self, content, first_line, name):
-        return bool(content.tag == 'statements')
+        return bool(content.tag == "statements")
 
-    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+    def process(
+        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
+    ):
         return from_xml(content, path_fixer, ignored_lines, sessionid)
 
 
@@ -19,9 +20,9 @@ def from_xml(xml, fix, ignored_lines, sessionid):
     cache_fixes = {}
     _cur_file_name = None
     files = {}
-    for statement in xml.iter('statement'):
+    for statement in xml.iter("statement"):
         # Determine the path
-        unfixed_path = next(statement.iter('source')).text
+        unfixed_path = next(statement.iter("source")).text
         if unfixed_path in ignore:
             continue
 
@@ -49,17 +50,17 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                 files[filename] = _file
 
         # Add the line
-        ln = int(next(statement.iter('line')).text)
-        hits = next(statement.iter('count')).text
+        ln = int(next(statement.iter("line")).text)
+        hits = next(statement.iter("count")).text
         try:
-            if next(statement.iter('ignored')).text == 'true':
+            if next(statement.iter("ignored")).text == "true":
                 continue
         except StopIteration:
             pass
 
-        if next(statement.iter('branch')).text == 'true':
-            cov = '%s/2' % hits
-            _file[ln] = ReportLine(cov, 'b', [[sessionid, cov]])
+        if next(statement.iter("branch")).text == "true":
+            cov = "%s/2" % hits
+            _file[ln] = ReportLine(cov, "b", [[sessionid, cov]])
         else:
             cov = maxint(hits)
             _file[ln] = ReportLine(cov, None, [[sessionid, cov]])
