@@ -7,28 +7,32 @@ from services.report.languages.base import BaseLanguageProcessor
 
 
 class VOneProcessor(BaseLanguageProcessor):
-
     def matches_content(self, content, first_line, name):
-        return 'coverage' in content or 'RSpec' in content or 'MiniTest' in content
+        return "coverage" in content or "RSpec" in content or "MiniTest" in content
 
-    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
-        if 'RSpec' in content:
-            content = content['RSpec']
+    def process(
+        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
+    ):
+        if "RSpec" in content:
+            content = content["RSpec"]
 
-        elif 'MiniTest' in content:
-            content = content['MiniTest']
+        elif "MiniTest" in content:
+            content = content["MiniTest"]
 
         return from_json(
-            content, path_fixer, ignored_lines, sessionid,
-            read_yaml_field(repo_yaml, ('parsers', 'v1')) or {}
+            content,
+            path_fixer,
+            ignored_lines,
+            sessionid,
+            read_yaml_field(repo_yaml, ("parsers", "v1")) or {},
         )
 
 
 def from_json(json, fix, ignored_lines, sessionid, config):
-    if type(json['coverage']) is dict:
+    if type(json["coverage"]) is dict:
         # messages = json.get('messages', {})
         report = Report()
-        for fn, lns in json['coverage'].items():
+        for fn, lns in json["coverage"].items():
             fn = fix(fn)
             if fn is None:
                 continue
@@ -47,10 +51,12 @@ def from_json(json, fix, ignored_lines, sessionid, config):
                                 cov = int(cov)
 
                         # message = messages.get(fn, {}).get(ln)
-                        _file[int(ln)] = ReportLine(coverage=cov,
-                                                    type='b' if type(cov) in (str, bool) else None,
-                                                    sessions=[[sessionid, cov]],
-                                                    messages=None)
+                        _file[int(ln)] = ReportLine(
+                            coverage=cov,
+                            type="b" if type(cov) in (str, bool) else None,
+                            sessions=[[sessionid, cov]],
+                            messages=None,
+                        )
 
                 report.append(_file)
         return report

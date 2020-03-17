@@ -30,7 +30,14 @@ class AbstractBaseNotifier(object):
 
     """
 
-    def __init__(self, repository: Repository, title: str, notifier_yaml_settings: Mapping[str, Any], notifier_site_settings: Mapping[str, Any], current_yaml: Mapping[str, Any]):
+    def __init__(
+        self,
+        repository: Repository,
+        title: str,
+        notifier_yaml_settings: Mapping[str, Any],
+        notifier_site_settings: Mapping[str, Any],
+        current_yaml: Mapping[str, Any],
+    ):
         self.repository = repository
         self.title = title
         self.notifier_yaml_settings = notifier_yaml_settings

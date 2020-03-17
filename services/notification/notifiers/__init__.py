@@ -7,30 +7,28 @@ from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.status import (
     ProjectStatusNotifier,
     PatchStatusNotifier,
-    ChangesStatusNotifier
+    ChangesStatusNotifier,
 )
 
 
 def get_all_notifier_classes_mapping():
     return {
-        'gitter': GitterNotifier,
-        'hipchat': HipchatNotifier,
-        'irc': IRCNotifier,
-        'slack': SlackNotifier,
-        'webhook': WebhookNotifier
+        "gitter": GitterNotifier,
+        "hipchat": HipchatNotifier,
+        "irc": IRCNotifier,
+        "slack": SlackNotifier,
+        "webhook": WebhookNotifier,
     }
 
 
 def get_status_notifier_class(status_type: str):
-    if status_type == 'patch':
+    if status_type == "patch":
         return PatchStatusNotifier
-    if status_type == 'project':
+    if status_type == "project":
         return ProjectStatusNotifier
-    if status_type == 'changes':
+    if status_type == "changes":
         return ChangesStatusNotifier
 
 
 def get_pull_request_notifiers():
-    return [
-        CommentNotifier
-    ]
+    return [CommentNotifier]

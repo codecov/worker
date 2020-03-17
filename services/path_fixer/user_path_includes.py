@@ -28,11 +28,11 @@ class UserPathIncludes(object):
         if not self.path_patterns:
             return
 
-        self.includes = set(filter(lambda p: not p.startswith('!'), self.path_patterns))
+        self.includes = set(filter(lambda p: not p.startswith("!"), self.path_patterns))
         self.excludes = set(self.path_patterns) - self.includes
 
         # create lists of pass/fails
-        if '.*' in self.path_patterns:
+        if ".*" in self.path_patterns:
             # match everything, just make sure it is not negative
             self.include_all = True
             self.includes = None
@@ -42,16 +42,13 @@ class UserPathIncludes(object):
             self.include_all = False
             self.includes = list(map(re.compile, self.includes))
 
-        if '!.*' in self.path_patterns:
+        if "!.*" in self.path_patterns:
             self.exclude_all = False
         else:
             self.excludes = list(
                 map(
                     lambda p: re.compile(p[1:]),
-                    filter(
-                        lambda p: p.startswith('!'),
-                        self.path_patterns
-                    )
+                    filter(lambda p: p.startswith("!"), self.path_patterns),
                 )
             )
 

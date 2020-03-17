@@ -4,7 +4,7 @@ from tests.base import BaseTestCase
 from services.report.languages import lcov
 
 
-txt = '''TN:
+txt = """TN:
 SF:file.js
 FNDA:76,jsx
 FN:76,(anonymous_1)
@@ -81,20 +81,12 @@ BRDA:77,3,1,0
 BRDA:77,4,0,0
 BRDA:77,4,1,0
 end_of_record
-'''
+"""
 
 result = {
     "files": {
-        "file.js": {
-            "l": {
-                "1": {"c": 1, "s": [[0, 1, None, None, None]]}
-            }
-        },
-        "file.ts": {
-            "l": {
-                "2": {"c": 1, "s": [[0, 1, None, None, None]]}
-            }
-        },
+        "file.js": {"l": {"1": {"c": 1, "s": [[0, 1, None, None, None]]}}},
+        "file.ts": {"l": {"2": {"c": 1, "s": [[0, 1, None, None, None]]}}},
         "file.cpp": {
             "l": {
                 "1": {"c": 1, "s": [[0, 1, None, None, None]]},
@@ -102,15 +94,15 @@ result = {
                 "2": {
                     "c": "1/3",
                     "t": "m",
-                    "s": [[0, "1/3", ["1:1", "1:3"], None, None]]
+                    "s": [[0, "1/3", ["1:1", "1:3"], None, None]],
                 },
                 "77": {
                     "c": "0/4",
                     "t": "b",
-                    "s": [[0, "0/4", ["4:1", "4:0", "3:0", "3:1"], None, None]]
-                }
+                    "s": [[0, "0/4", ["4:1", "4:0", "3:0", "3:1"], None, None]],
+                },
             }
-        }
+        },
     }
 }
 
@@ -118,30 +110,38 @@ result = {
 class TestLcov(BaseTestCase):
     def test_report(self):
         def fixes(path):
-            if path == 'ignore':
+            if path == "ignore":
                 return None
-            assert path in ('file.js', 'file.ts', 'file.cpp', 'empty.js')
+            assert path in ("file.js", "file.ts", "file.cpp", "empty.js")
             return path
 
         report = lcov.from_txt(txt, fixes, {}, 0)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
-        pprint.pprint(processed_report['archive'])
+
+        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
-            'file.cpp': [
+            "file.cpp": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
-                (2, '1/3', 'm', [[0, '1/3', ['1:1', '1:3'], None, None]], None, None),
-                (5, '2/2', 'b', [[0, '2/2', None, None, None]], None, None),
-                (77, '0/4', 'b', [[0, '0/4', ['3:0', '3:1', '4:0', '4:1'], None, None]], None, None)
+                (2, "1/3", "m", [[0, "1/3", ["1:1", "1:3"], None, None]], None, None),
+                (5, "2/2", "b", [[0, "2/2", None, None, None]], None, None),
+                (
+                    77,
+                    "0/4",
+                    "b",
+                    [[0, "0/4", ["3:0", "3:1", "4:0", "4:1"], None, None]],
+                    None,
+                    None,
+                )
                 # TODO (Thiago): This is out f order compared to the original, verify what happened
             ],
-            'file.js': [(1, 1, None, [[0, 1, None, None, None]], None, None)],
-            'file.ts': [(2, 1, None, [[0, 1, None, None, None]], None, None)]
+            "file.js": [(1, 1, None, [[0, 1, None, None, None]], None, None)],
+            "file.ts": [(2, 1, None, [[0, 1, None, None, None]], None, None)],
         }
 
-        assert expected_result_archive == processed_report['archive']
+        assert expected_result_archive == processed_report["archive"]
 
     def test_detect(self):
-        assert lcov.detect('hello\nend_of_record\n') is True
-        assert lcov.detect('hello_end_of_record') is False
-        assert lcov.detect('') is False
+        assert lcov.detect("hello\nend_of_record\n") is True
+        assert lcov.detect("hello_end_of_record") is False
+        assert lcov.detect("") is False

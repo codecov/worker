@@ -13,6 +13,7 @@ class GitHubMarketplaceService(object):
     """
     Static ids for each of Codecov's plans on GitHub marketplace
     """
+
     LEGACY_PLAN_ID = 18
     CURRENT_PLAN_ID = 2147
     PER_USER_PLAN_ID = 3267

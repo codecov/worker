@@ -10,8 +10,8 @@ from covreports.config import get_config
 
 
 def before_send(event, hint):
-    if 'exc_info' in hint:
-        exc_type, exc_value, tb = hint['exc_info']
+    if "exc_info" in hint:
+        exc_type, exc_value, tb = hint["exc_info"]
         if isinstance(exc_value, SoftTimeLimitExceeded):
             return None
     return event
@@ -26,6 +26,6 @@ def initialize_sentry():
     sentry_sdk.init(
         sentry_dsn,
         before_send=before_send,
-        sample_rate=float(os.getenv('SENTRY_PERCENTAGE', 1.0)),
+        sample_rate=float(os.getenv("SENTRY_PERCENTAGE", 1.0)),
         integrations=[CeleryIntegration(), SqlalchemyIntegration(), RedisIntegration()],
     )

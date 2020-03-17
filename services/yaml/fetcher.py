@@ -88,6 +88,9 @@ def _search_among_files(
     desired_filenames: Sequence[str], all_files: Sequence[Mapping[str, Any]]
 ) -> str:
     for file in all_files:
-        if file.get("name") in desired_filenames or file.get("path").split("/")[-1] in desired_filenames:
+        if (
+            file.get("name") in desired_filenames
+            or file.get("path").split("/")[-1] in desired_filenames
+        ):
             return file["path"]
     return None

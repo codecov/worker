@@ -13,10 +13,7 @@ log = logging.getLogger(__name__)
 
 
 def get_repo_yaml(repository):
-    return get_final_yaml(
-        owner_yaml=repository.owner.yaml,
-        repo_yaml=repository.yaml
-    )
+    return get_final_yaml(owner_yaml=repository.owner.yaml, repo_yaml=repository.yaml)
 
 
 def merge_yamls(d1, d2):
@@ -53,26 +50,26 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
             extra=dict(
                 repoid=repository.repoid,
                 commit=commit.commitid,
-                error_location=ex.error_location
+                error_location=ex.error_location,
             ),
-            exc_info=True
+            exc_info=True,
         )
     except TorngitClientError:
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to client issues",
             extra=dict(repoid=repository.repoid, commit=commit.commitid),
-            exc_info=True
+            exc_info=True,
         )
     except TorngitError:
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to unknown issues",
             extra=dict(repoid=repository.repoid, commit=commit.commitid),
-            exc_info=True
+            exc_info=True,
         )
     return get_final_yaml(
         owner_yaml=repository.owner.yaml,
         repo_yaml=repository.yaml,
-        commit_yaml=commit_yaml
+        commit_yaml=commit_yaml,
     )
 
 
@@ -99,7 +96,7 @@ def get_final_yaml(*, owner_yaml, repo_yaml, commit_yaml=None):
     Returns:
         dict - The dict we are supposed to use when concerning that user/commit
     """
-    resulting_yaml = copy.deepcopy(get_config('site', default={}))
+    resulting_yaml = copy.deepcopy(get_config("site", default={}))
     if owner_yaml is not None:
         resulting_yaml = merge_yamls(resulting_yaml, owner_yaml)
     if commit_yaml is not None:
@@ -112,15 +109,15 @@ def get_final_yaml(*, owner_yaml, repo_yaml, commit_yaml=None):
 def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
     repository = current_commit.repository
     existing_yaml = get_repo_yaml(repository)
-    syb = read_yaml_field(existing_yaml, ('codecov', 'strict_yaml_branch'))
+    syb = read_yaml_field(existing_yaml, ("codecov", "strict_yaml_branch"))
     branches_considered_for_yaml = (
         syb,
         current_commit.repository.branch,
-        read_yaml_field(existing_yaml, ('codecov', 'branch'))
+        read_yaml_field(existing_yaml, ("codecov", "branch")),
     )
     if current_commit.branch and current_commit.branch in branches_considered_for_yaml:
         if not syb or syb == current_commit.branch:
-            yaml_branch = read_yaml_field(new_yaml, ('codecov', 'branch'))
+            yaml_branch = read_yaml_field(new_yaml, ("codecov", "branch"))
             if yaml_branch:
                 repository.branch = yaml_branch
             repository.yaml = new_yaml

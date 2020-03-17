@@ -19,19 +19,25 @@ def combine_partials(partials):
 
     columns = defaultdict(list)
     # fill in the partials WITH end values: (_, X, _)
-    [[columns[c].append(cov) for c in range(sc or 0, ec)]
-     for (sc, ec, cov) in partials
-     if ec is not None]
+    [
+        [columns[c].append(cov) for c in range(sc or 0, ec)]
+        for (sc, ec, cov) in partials
+        if ec is not None
+    ]
 
     # get the last column number (+1 for exclusiveness)
-    lc = (max(columns.keys()) if columns else max([sc or 0 for (sc, ec, cov) in partials])) + 1
+    lc = (
+        max(columns.keys()) if columns else max([sc or 0 for (sc, ec, cov) in partials])
+    ) + 1
     # hits for (lc, None, eol)
     eol = []
 
     # fill in the partials WITHOUT end values: (_, None, _)
-    [([columns[c].append(cov) for c in range(sc or 0, lc)], eol.append(cov))
-     for (sc, ec, cov) in partials
-     if ec is None]
+    [
+        ([columns[c].append(cov) for c in range(sc or 0, lc)], eol.append(cov))
+        for (sc, ec, cov) in partials
+        if ec is None
+    ]
 
     columns = [(c, merge.merge_all(cov)) for c, cov in columns.items()]
 
@@ -76,14 +82,20 @@ def list_to_dict(lines):
     """
     if type(lines) is list:
         if len(lines) > 1:
-            return dict([(ln, cov) for ln, cov in enumerate(lines[1:], start=1) if cov is not None])
+            return dict(
+                [
+                    (ln, cov)
+                    for ln, cov in enumerate(lines[1:], start=1)
+                    if cov is not None
+                ]
+            )
         else:
             return {}
     else:
         return lines or {}
 
 
-def remove_non_ascii(string, replace_with=''):
+def remove_non_ascii(string, replace_with=""):
     # ASCII control characters <=31, 127
     # Extended ASCII characters: >=128
-    return ''.join([i if 31 < ord(i) < 127 else replace_with for i in string])
+    return "".join([i if 31 < ord(i) < 127 else replace_with for i in string])

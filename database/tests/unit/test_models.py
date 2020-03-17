@@ -3,7 +3,7 @@ from database.tests.factories import (
     RepositoryFactory,
     CommitFactory,
     BranchFactory,
-    PullFactory
+    PullFactory,
 )
 
 from database.models import Owner, Repository, Commit, Branch, Pull
@@ -18,7 +18,9 @@ class TestReprModels(object):
         dbsession.add(factoried_owner)
         dbsession.flush()
         dbsession.refresh(factoried_owner)
-        assert f"Owner<{factoried_owner.ownerid}@service<github>>" == repr(factoried_owner)
+        assert f"Owner<{factoried_owner.ownerid}@service<github>>" == repr(
+            factoried_owner
+        )
 
     def test_repo_repr(self, dbsession):
         simple_repo = Repository()

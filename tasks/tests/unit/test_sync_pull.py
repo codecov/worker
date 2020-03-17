@@ -8,30 +8,33 @@ here = Path(__file__)
 
 
 class TestPullSyncTask(object):
-
     def test_update_pull_commits_merged(self, dbsession):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        base_commit = CommitFactory.create(
-            repository=repository
-        )
-        head_commit = CommitFactory.create(
-            repository=repository,
-        )
+        base_commit = CommitFactory.create(repository=repository)
+        head_commit = CommitFactory.create(repository=repository,)
         pull = PullFactory.create(
             repository=repository,
             base=base_commit.commitid,
             head=head_commit.commitid,
-            state="merged"
+            state="merged",
         )
         pullid = pull.pullid
         base_commit.pullid = pullid
         head_commit.pullid = pullid
-        first_commit = CommitFactory.create(repository=repository, pullid=pullid, merged=False)
-        second_commit = CommitFactory.create(repository=repository, pullid=pullid, merged=False)
-        third_commit = CommitFactory.create(repository=repository, pullid=pullid, merged=False)
-        fourth_commit = CommitFactory.create(repository=repository, pullid=pullid, merged=False)
+        first_commit = CommitFactory.create(
+            repository=repository, pullid=pullid, merged=False
+        )
+        second_commit = CommitFactory.create(
+            repository=repository, pullid=pullid, merged=False
+        )
+        third_commit = CommitFactory.create(
+            repository=repository, pullid=pullid, merged=False
+        )
+        fourth_commit = CommitFactory.create(
+            repository=repository, pullid=pullid, merged=False
+        )
         dbsession.add(pull)
         dbsession.add(first_commit)
         dbsession.add(second_commit)
@@ -42,14 +45,11 @@ class TestPullSyncTask(object):
         dbsession.flush()
         task = PullSyncTask()
         enriched_pull = EnrichedPull(
-            database_pull=pull,
-            provider_pull=dict(
-                base=dict(branch='lookatthis')
-            ),
+            database_pull=pull, provider_pull=dict(base=dict(branch="lookatthis")),
         )
         commits = [first_commit.commitid, third_commit.commitid]
         res = task.update_pull_commits(enriched_pull, commits)
-        assert res == {'merged_count': 2, 'soft_deleted_count': 2}
+        assert res == {"merged_count": 2, "soft_deleted_count": 2}
         dbsession.refresh(first_commit)
         dbsession.refresh(second_commit)
         dbsession.refresh(third_commit)
@@ -69,25 +69,29 @@ class TestPullSyncTask(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        base_commit = CommitFactory.create(
-            repository=repository
-        )
-        head_commit = CommitFactory.create(
-            repository=repository,
-        )
+        base_commit = CommitFactory.create(repository=repository)
+        head_commit = CommitFactory.create(repository=repository,)
         pull = PullFactory.create(
             repository=repository,
             base=base_commit.commitid,
             head=head_commit.commitid,
-            state="open"
+            state="open",
         )
         pullid = pull.pullid
         base_commit.pullid = pullid
         head_commit.pullid = pullid
-        first_commit = CommitFactory.create(repository=repository, pullid=pullid, merged=False)
-        second_commit = CommitFactory.create(repository=repository, pullid=pullid, merged=False)
-        third_commit = CommitFactory.create(repository=repository, pullid=pullid, merged=False)
-        fourth_commit = CommitFactory.create(repository=repository, pullid=pullid, merged=False)
+        first_commit = CommitFactory.create(
+            repository=repository, pullid=pullid, merged=False
+        )
+        second_commit = CommitFactory.create(
+            repository=repository, pullid=pullid, merged=False
+        )
+        third_commit = CommitFactory.create(
+            repository=repository, pullid=pullid, merged=False
+        )
+        fourth_commit = CommitFactory.create(
+            repository=repository, pullid=pullid, merged=False
+        )
         dbsession.add(pull)
         dbsession.add(first_commit)
         dbsession.add(second_commit)
@@ -98,14 +102,11 @@ class TestPullSyncTask(object):
         dbsession.flush()
         task = PullSyncTask()
         enriched_pull = EnrichedPull(
-            database_pull=pull,
-            provider_pull=dict(
-                base=dict(branch='lookatthis')
-            ),
+            database_pull=pull, provider_pull=dict(base=dict(branch="lookatthis")),
         )
         commits = [first_commit.commitid, third_commit.commitid]
         res = task.update_pull_commits(enriched_pull, commits)
-        assert res == {'merged_count': 0, 'soft_deleted_count': 2}
+        assert res == {"merged_count": 0, "soft_deleted_count": 2}
         dbsession.refresh(first_commit)
         dbsession.refresh(second_commit)
         dbsession.refresh(third_commit)
