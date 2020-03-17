@@ -76,6 +76,10 @@ jobs:
     - run:
         <<: *k8s_auth
     - run:
+        name: Git tag release
+        command: |
+          make -f Makefile.circle addreleasetag
+    - run:
         name: deploy to k8s
         command: |-
           make -f Makefile.circle tag
