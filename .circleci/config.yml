@@ -47,6 +47,10 @@ jobs:
           make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           make -f Makefile.circle build VERSION=$CIRCLE_TAG
           make -f Makefile.circle push
+    - run:
+        name: attempttag
+        command: |
+          make -f Makefile.circle addtag
   test:
     executor: codecov-worker
     steps:
@@ -59,7 +63,6 @@ jobs:
         command: |
           make test.unit
           make test.integration
-
     - run:
         name: codecov
         command: |
