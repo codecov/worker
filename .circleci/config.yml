@@ -63,7 +63,7 @@ jobs:
     - run:
         name: codecov
         command: |
-          pip install codecov
+          pip install codecov==2.0.16
           codecov -F integration -f integration.coverage.xml  --required
           codecov -F unit -f unit.coverage.xml  --required
   deploy:
