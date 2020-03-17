@@ -6,6 +6,7 @@ from asyncio import Future
 import pytest
 from torngit.status import Status
 
+from database.tests.factories import CommitFactory
 from tasks.status_set_pending import StatusSetPendingTask
 
 here = Path(__file__)
@@ -14,9 +15,7 @@ here = Path(__file__)
 class TestSetPendingTaskUnit(object):
     @pytest.mark.asyncio
     async def test_no_status(self, mocker, mock_configuration, dbsession, mock_redis):
-        mocked_1 = mocker.patch(
-            "tasks.status_set_pending.get_repo_provider_service_by_id"
-        )
+        mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         repo = mocker.MagicMock(
             service="github",
             data=dict(repo=dict(repoid=123)),
@@ -24,17 +23,18 @@ class TestSetPendingTaskUnit(object):
         )
         mocked_1.return_value = repo
 
-        mocked_2 = mocker.patch(
-            "tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference"
-        )
+        mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
         fetch_current_yaml = Future()
         fetch_current_yaml.set_result({"coverage": {"status": None}})
         mocked_2.return_value = fetch_current_yaml
 
         mock_redis.sismember.side_effect = [True]
 
-        repoid = "1"
-        commitid = "x"
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        repoid = commit.repoid
+        commitid = commit.commitid
         branch = "master"
         on_a_pull_request = False
         res = await StatusSetPendingTask().run_async(
@@ -45,9 +45,7 @@ class TestSetPendingTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_not_in_beta(self, mocker, mock_configuration, dbsession, mock_redis):
-        mocked_1 = mocker.patch(
-            "tasks.status_set_pending.get_repo_provider_service_by_id"
-        )
+        mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         repo = mocker.MagicMock(
             service="github",
             data=dict(repo=dict(repoid=123)),
@@ -55,17 +53,18 @@ class TestSetPendingTaskUnit(object):
         )
         mocked_1.return_value = repo
 
-        mocked_2 = mocker.patch(
-            "tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference"
-        )
+        mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
         fetch_current_yaml = Future()
         fetch_current_yaml.set_result({"coverage": {"status": None}})
         mocked_2.return_value = fetch_current_yaml
 
         mock_redis.sismember.side_effect = [False]
 
-        repoid = "1"
-        commitid = "x"
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        repoid = commit.repoid
+        commitid = commit.commitid
         branch = "master"
         on_a_pull_request = False
         with pytest.raises(
@@ -80,9 +79,7 @@ class TestSetPendingTaskUnit(object):
     async def test_skip_set_pending(
         self, mocker, mock_configuration, dbsession, mock_redis
     ):
-        mocked_1 = mocker.patch(
-            "tasks.status_set_pending.get_repo_provider_service_by_id"
-        )
+        mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         get_commit_statuses = Future()
         set_commit_status = Future()
         repo = mocker.MagicMock(
@@ -94,9 +91,7 @@ class TestSetPendingTaskUnit(object):
         )
         mocked_1.return_value = repo
 
-        mocked_2 = mocker.patch(
-            "tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference"
-        )
+        mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
         fetch_current_yaml = Future()
         fetch_current_yaml.set_result(
             {
@@ -114,8 +109,11 @@ class TestSetPendingTaskUnit(object):
         get_commit_statuses.set_result(Status([]))
         set_commit_status.set_result(None)
 
-        repoid = 1
-        commitid = "a"
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        repoid = commit.repoid
+        commitid = commit.commitid
         branch = "master"
         on_a_pull_request = False
         res = await StatusSetPendingTask().run_async(
@@ -128,9 +126,7 @@ class TestSetPendingTaskUnit(object):
     async def test_skip_set_pending_unknown_branch(
         self, mocker, mock_configuration, dbsession, mock_redis
     ):
-        mocked_1 = mocker.patch(
-            "tasks.status_set_pending.get_repo_provider_service_by_id"
-        )
+        mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         get_commit_statuses = Future()
         set_commit_status = Future()
         repo = mocker.MagicMock(
@@ -142,9 +138,7 @@ class TestSetPendingTaskUnit(object):
         )
         mocked_1.return_value = repo
 
-        mocked_2 = mocker.patch(
-            "tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference"
-        )
+        mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
         fetch_current_yaml = Future()
         fetch_current_yaml.set_result(
             {
@@ -162,8 +156,11 @@ class TestSetPendingTaskUnit(object):
         get_commit_statuses.set_result(Status([]))
         set_commit_status.set_result(None)
 
-        repoid = 1
-        commitid = "a"
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        repoid = commit.repoid
+        commitid = commit.commitid
         branch = None
         on_a_pull_request = False
         res = await StatusSetPendingTask().run_async(
@@ -219,9 +216,7 @@ class TestSetPendingTaskUnit(object):
             else []
         )
 
-        mocked_1 = mocker.patch(
-            "tasks.status_set_pending.get_repo_provider_service_by_id"
-        )
+        mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         get_commit_statuses = Future()
         set_commit_status = Future()
         repo = mocker.MagicMock(
@@ -233,9 +228,7 @@ class TestSetPendingTaskUnit(object):
         )
         mocked_1.return_value = repo
 
-        mocked_2 = mocker.patch(
-            "tasks.status_set_pending.fetch_current_yaml_from_provider_via_reference"
-        )
+        mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
         fetch_current_yaml = Future()
         fetch_current_yaml.set_result(
             {
@@ -253,19 +246,22 @@ class TestSetPendingTaskUnit(object):
         get_commit_statuses.set_result(Status(statuses))
         set_commit_status.set_result(None)
 
-        repoid = 1
-        commitid = "a"
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        repoid = commit.repoid
+        commitid = commit.commitid
         on_a_pull_request = False
         await StatusSetPendingTask().run_async(
             dbsession, repoid, commitid, branch, on_a_pull_request
         )
         if branch == "master" and not cc_status_exists:
             repo.set_commit_status.assert_called_with(
-                commit="a",
+                commit=commitid,
                 status="pending",
                 context="codecov/" + context + "/custom",
                 description="Collecting reports and waiting for CI to complete",
-                url="https://codecov.io/gh/owner/repo/commit/a",
+                url=f"https://codecov.io/gh/owner/repo/commit/{commitid}",
             )
         else:
             assert not repo.set_commit_status.called

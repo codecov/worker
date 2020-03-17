@@ -1,14 +1,15 @@
 import logging
-import re
 
 from app import celery_app
 from celery_config import status_set_pending_task_name
-from covreports.helpers.yaml import walk, default_if_true
+from covreports.helpers.yaml import default_if_true
 from covreports.utils.match import match
 from covreports.utils.urls import make_url
+
+from database.models import Commit
 from services.redis import get_redis_connection
-from services.repository import get_repo_provider_service_by_id
-from services.yaml.fetcher import fetch_current_yaml_from_provider_via_reference
+from services.repository import get_repo_provider_service
+from services.yaml import get_current_yaml
 from services.yaml.reader import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -44,18 +45,20 @@ class StatusSetPendingTask(BaseCodecovTask):
             "beta.pending", repoid
         ), "Pending disabled. Please request to be in beta."
 
-        repo = get_repo_provider_service_by_id(db_session, repoid)
-
-        current_yaml = await fetch_current_yaml_from_provider_via_reference(
-            commitid, repo
+        commits = db_session.query(Commit).filter(
+            Commit.repoid == repoid, Commit.commitid == commitid
         )
+        commit = commits.first()
+        assert commit, "Commit not found in database."
+        repo_service = get_repo_provider_service(commit.repository)
+        current_yaml = await get_current_yaml(commit, repo_service)
         settings = read_yaml_field(current_yaml, ("coverage", "status"))
 
         status_set = False
 
         if settings and any(settings.values()):
-            statuses = await repo.get_commit_statuses(commitid)
-            url = make_url(repo, "commit", commitid)
+            statuses = await repo_service.get_commit_statuses(commitid)
+            url = make_url(repo_service, "commit", commitid)
 
             for context in ("project", "patch", "changes"):
                 if settings.get(context):
@@ -78,7 +81,7 @@ class StatusSetPendingTask(BaseCodecovTask):
                             ), "Pending status disabled in YAML"
                             assert title not in statuses, "Pending status already set"
 
-                            await repo.set_commit_status(
+                            await repo_service.set_commit_status(
                                 commit=commitid,
                                 status="pending",
                                 context=title,
