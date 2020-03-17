@@ -72,6 +72,6 @@ release:
 	git tag ${VERSION}
 	git push --tags
 
-addreleasetag:
+add-release-tag:
 	git tag ${VERSION}
 	git push --tags

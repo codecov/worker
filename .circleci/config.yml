@@ -78,7 +78,7 @@ jobs:
     - run:
         name: Git tag release
         command: |
-          make -f Makefile.circle addreleasetag
+          make -f Makefile.circle add-release-tag
     - run:
         name: deploy to k8s
         command: |-
