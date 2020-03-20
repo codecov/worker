@@ -91,6 +91,9 @@ class UploadTask(BaseCodecovTask):
 
     name = upload_task_name
 
+    def has_pending_jobs(self, redis_connection, uploads_list_key) -> bool:
+        return redis_connection.exists(uploads_list_key)
+
     def lists_of_arguments(self, redis_connection, uploads_list_key):
         """Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
             and feeds them to the processing code.
@@ -130,6 +133,23 @@ class UploadTask(BaseCodecovTask):
                 lock_name,
                 extra=dict(commit=commitid, repoid=repoid),
             )
+            uploads_list_key = "testuploads/%s/%s" % (repoid, commitid)
+            if not self.has_pending_jobs(redis_connection, uploads_list_key):
+                log.info(
+                    "Not retrying since there are likely no jobs that need scheduling",
+                    extra=dict(commit=commitid, repoid=repoid),
+                )
+                return {"was_setup": False, "was_updated": False, "tasks_were_scheduled": False}
+            if self.request.retries > 1:
+                log.info(
+                    "Not retrying since we already had too many retries",
+                    extra=dict(commit=commitid, repoid=repoid),
+                )
+                return {
+                    "was_setup": False,
+                    "was_updated": False,
+                    "tasks_were_scheduled": False,
+                }
             self.retry(max_retries=3, countdown=20 * 2 ** self.request.retries)
 
     async def run_async_within_lock(
@@ -139,6 +159,8 @@ class UploadTask(BaseCodecovTask):
             "Starting processing of report", extra=dict(repoid=repoid, commit=commitid)
         )
         uploads_list_key = "testuploads/%s/%s" % (repoid, commitid)
+        if not self.has_pending_jobs(redis_connection, uploads_list_key):
+            return {"was_setup": False, "was_updated": False, "tasks_were_scheduled": False}
         commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
@@ -199,7 +221,10 @@ class UploadTask(BaseCodecovTask):
                     argument_list=argument_list,
                 ),
             )
-        return {"was_setup": was_setup, "was_updated": was_updated}
+        return {
+            "was_setup": was_setup,
+            "was_updated": was_updated
+        }
 
     async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
