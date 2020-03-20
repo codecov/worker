@@ -13,7 +13,7 @@ chardet==3.0.4
 colour==0.1.5
 contextlib2==0.5.5
 coverage==4.5
--e git+https://github.com/codecov/report.git@v0.2.10#egg=covreports
+-e git+https://github.com/codecov/report.git@v0.2.11#egg=covreports
 cryptography==2.7
 docutils==0.15.2
 ecdsa==0.13.2
@@ -34,7 +34,7 @@ importlib-metadata==0.23
 jmespath==0.9.4
 kombu==4.5.0
 lxml==4.3.1
-minio==4.0.19
+minio==5.0.8
 mock==2.0.0
 more-itertools==7.2.0
 multidict==4.5.2
