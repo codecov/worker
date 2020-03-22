@@ -331,7 +331,6 @@ async def fetch_and_update_pull_request_information(
             state=pull_information["state"],
             title=pull_information["title"],
             base=pull_information["base"]["commitid"],
-            head=pull_information["head"]["commitid"],
             compared_to=compared_to,
         )
         db_session.add(pull)

@@ -1,4 +1,6 @@
 from pathlib import Path
+from asyncio import Future
+import pytest
 
 from tasks.sync_pull import PullSyncTask
 from database.tests.factories import RepositoryFactory, CommitFactory, PullFactory
@@ -119,3 +121,23 @@ class TestPullSyncTask(object):
         assert not second_commit.merged
         assert not third_commit.merged
         assert not fourth_commit.merged
+
+    @pytest.mark.asyncio
+    async def test_call_pullsync_task(self, dbsession, mocker):
+        task = PullSyncTask()
+        pull = PullFactory.create(head="head_commit_nonexistent_sha", state="open",)
+        dbsession.add(pull)
+        dbsession.flush()
+        mocked_fetch_pr = mocker.patch(
+            "tasks.sync_pull.fetch_and_update_pull_request_information",
+            return_value=Future(),
+        )
+        mocked_fetch_pr.return_value.set_result(
+            EnrichedPull(database_pull=pull, provider_pull=None)
+        )
+        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        assert res == {
+            "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+            "notifier_called": True,
+            "pull_updated": False,
+        }

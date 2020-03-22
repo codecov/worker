@@ -89,6 +89,7 @@ class TestPullSyncTask(object):
         assert {
             "notifier_called": True,
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+            "pull_updated": True,
         } == res
         assert len(pull.flare) == 1
         expected_flare = {
