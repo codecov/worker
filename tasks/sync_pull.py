@@ -60,9 +60,19 @@ class PullSyncTask(BaseCodecovTask):
         )
         pull = enriched_pull.database_pull
         report_service = ReportService()
-        commit = pull.get_head_commit()
+        head_commit = pull.get_head_commit()
+        if head_commit is None:
+            log.info(
+                "Not syncing pull since there is no head in our database",
+                extra=dict(pullid=pullid, repoid=repoid),
+            )
+            return {
+                "notifier_called": True,
+                "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+                "pull_updated": False,
+            }
         compared_to = pull.get_comparedto_commit()
-        head_report = report_service.build_report_from_commit(commit)
+        head_report = report_service.build_report_from_commit(head_commit)
         if compared_to is not None:
             base_report = report_service.build_report_from_commit(compared_to)
         else:
@@ -85,7 +95,11 @@ class PullSyncTask(BaseCodecovTask):
         )
         redis_connection = get_redis_connection()
         self.clear_pull_related_caches(redis_connection, enriched_pull)
-        return {"notifier_called": True, "commit_updates_done": commit_updates_done}
+        return {
+            "notifier_called": True,
+            "commit_updates_done": commit_updates_done,
+            "pull_updated": True,
+        }
 
     def clear_pull_related_caches(self, redis_connection, enriched_pull: EnrichedPull):
         pull = enriched_pull.database_pull
