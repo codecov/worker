@@ -3,14 +3,16 @@ import logging
 
 import requests
 import jwt
-
 import torngit
+
+from helpers.cache import cache
 from covreports.config import get_config
 from services.pem import get_pem
 
 log = logging.getLogger(__name__)
 
 
+@cache.cache_function
 def get_github_integration_token(service, integration_id=None):
     # https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/
     now = int(time())
