@@ -75,7 +75,7 @@ text-unidecode==1.3
 timestring==1.6.2
 tlslite-ng==0.7.5
 tornado==6.0.3
--e git+https://github.com/codecov/torngit.git@76b0b6a2a4cb402165e06e4b1ca2ce227abdd044#egg=torngit
+-e git+https://github.com/codecov/torngit.git@3cfcc87d147f1dcee2942439a4c792882758448a#egg=torngit
 urllib3==1.25.6
 vcrpy==2.1.0
 vine==1.3.0

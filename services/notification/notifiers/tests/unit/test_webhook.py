@@ -64,6 +64,61 @@ class TestWebhookNotifier(object):
         }
         assert result == expected_result
 
+    def test_build_commit_payload_gitlab(self, dbsession, mock_configuration, create_sample_comparison):
+        subgroup_namespace_path = 'group/subgroup1/subsubgroup'
+        username_in_db = subgroup_namespace_path.replace('/', ':')
+        sample_comparison = create_sample_comparison(username=username_in_db, service='gitlab')
+
+        mock_configuration.params['setup']['codecov_url'] = 'codecov.io'
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        pull = sample_comparison.pull
+        dbsession.add(base_commit)
+        dbsession.add(head_commit)
+        dbsession.add(pull)
+        dbsession.flush()
+        notifier = WebhookNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        repository = base_commit.repository
+        comparison = sample_comparison
+        result = notifier.build_commit_payload(comparison.head)
+        expected_result = {
+            'author': {
+                'username': head_commit.author.username,
+                'service_id': head_commit.author.service_id,
+                'email': head_commit.author.email,
+                'service': head_commit.author.service,
+                'name': head_commit.author.name
+            },
+            'url': f'codecov.io/gl/{username_in_db}/{repository.name}/commit/{head_commit.commitid}',
+            'timestamp': '2019-02-01T17:59:47',
+            'totals': {
+                'files': 2,
+                'lines': 10,
+                'hits': 6,
+                'misses': 3,
+                'partials': 1,
+                'coverage': '60.00000',
+                'branches': 1,
+                'methods': 0,
+                'messages': 0,
+                'sessions': 1,
+                'complexity': 10,
+                'complexity_total': 2,
+                'diff': 0,
+            },
+            'commitid': head_commit.commitid,
+            'service_url': f'https://gitlab.com/{subgroup_namespace_path}/{repository.name}/commit/{head_commit.commitid}',
+            'branch': 'new_branch',
+            'message': head_commit.message
+        }
+        assert result == expected_result
+
     def test_build_commit_payload_no_author(self, dbsession, mock_configuration, sample_report):
         repository = RepositoryFactory.create(
             owner__username='test_build_commit_payload_no_author',

@@ -68,6 +68,35 @@ def sample_report():
     report.add_session(Session(flags=['unit']))
     return report
 
+@pytest.fixture
+def create_sample_comparison(dbsession, request, sample_report):
+    def _comparison(service='github', username='codecov-test'):
+        repository = RepositoryFactory.create(
+            owner__username=username,
+            owner__service=service,
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        base_commit = CommitFactory.create(repository=repository)
+        head_commit = CommitFactory.create(repository=repository, branch='new_branch')
+        pull = PullFactory.create(
+            repository=repository,
+            base=base_commit.commitid,
+            head=head_commit.commitid
+        )
+        dbsession.add(base_commit)
+        dbsession.add(head_commit)
+        dbsession.add(pull)
+        dbsession.flush()
+        repository = base_commit.repository
+        base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
+        head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+        return Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            pull=pull
+        )
+    return _comparison
 
 @pytest.fixture
 def sample_comparison(dbsession, request, sample_report):
@@ -95,7 +124,6 @@ def sample_comparison(dbsession, request, sample_report):
         base=base_full_commit,
         pull=pull
     )
-
 
 @pytest.fixture
 def sample_comparison_negative_change(dbsession, request, sample_report):

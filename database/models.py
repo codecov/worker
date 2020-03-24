@@ -45,7 +45,7 @@ class Owner(CodecovBaseModel):
 
     @property
     def slug(self):
-        return self.username.replace(':', '/')
+        return self.username
 
     def __repr__(self):
         return f"Owner<{self.ownerid}@service<{self.service}>>"

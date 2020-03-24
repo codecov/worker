@@ -33,7 +33,7 @@ def get_commit_url(commit: Commit) -> str:
     return SiteUrls.commit_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(commit.repository.service),
-        username=commit.repository.owner.username.replace(':', '/'),
+        username=commit.repository.owner.username,
         project_name=commit.repository.name,
         commit_sha=commit.commitid
     )
@@ -43,7 +43,7 @@ def get_graph_url(commit: Commit, graph_filename: str, **kwargs) -> str:
     url = SiteUrls.graph_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(commit.repository.service),
-        username=commit.repository.owner.username.replace(':', '/'),
+        username=commit.repository.owner.username,
         project_name=commit.repository.name,
         commit_sha=commit.commitid,
         graph_filename=graph_filename
@@ -56,7 +56,7 @@ def get_compare_url(base_commit: Commit, head_commit: Commit) -> str:
     return SiteUrls.compare_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(head_commit.repository.service),
-        username=head_commit.repository.owner.username.replace(':', '/'),
+        username=head_commit.repository.owner.username,
         project_name=head_commit.repository.name,
         base_sha=base_commit.commitid,
         head_sha=head_commit.commitid
@@ -67,7 +67,7 @@ def get_repository_url(repository: Repository) -> str:
     return SiteUrls.repository_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(repository.service),
-        username=repository.owner.username.replace(':', '/'),
+        username=repository.owner.username,
         project_name=repository.name
     )
 
@@ -77,7 +77,7 @@ def get_pull_url(pull: Pull) -> str:
     return SiteUrls.pull_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(repository.service),
-        username=repository.owner.username.replace(':', '/'),
+        username=repository.owner.username,
         project_name=repository.name,
         pull_id=pull.pullid
     )
@@ -88,7 +88,7 @@ def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
     url = SiteUrls.pull_graph_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(repository.service),
-        username=repository.owner.username.replace(':', '/'),
+        username=repository.owner.username,
         project_name=repository.name,
         pull_id=pull.pullid,
         graph_filename=graph_filename

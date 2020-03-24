@@ -42,6 +42,44 @@ def sample_comparison(dbsession, request, sample_report, small_report):
     )
 
 
+@pytest.fixture
+def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
+    repository = RepositoryFactory.create(
+        owner__username='l00p_group_1:subgroup1',
+        owner__service='gitlab',
+        owner__unencrypted_oauth_token='test1nioqi3p3681oa43',
+        service_id='11087339',
+        name='proj-b',
+        image_token='abcdefghij'
+    )
+    dbsession.add(repository)
+    dbsession.flush()
+    base_commit = CommitFactory.create(
+        repository=repository, commitid='842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4'
+    )
+    head_commit = CommitFactory.create(
+        repository=repository, branch='div', commitid='46ce216948fe8c301fc80d9ba3ba1a582a0ba497'
+    )
+    pull = PullFactory.create(
+        repository=repository,
+        base=base_commit.commitid,
+        head=head_commit.commitid,
+        pullid=11
+    )
+    dbsession.add(base_commit)
+    dbsession.add(head_commit)
+    dbsession.add(pull)
+    dbsession.flush()
+    repository = base_commit.repository
+    base_full_commit = FullCommit(commit=base_commit, report=small_report)
+    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        pull=pull
+    )
+
+
 class TestCommentNotifierIntegration(object):
 
     @pytest.mark.asyncio
@@ -108,3 +146,68 @@ class TestCommentNotifierIntegration(object):
             'pullid': 15
         }
         assert result.data_received == {'id': 570682170}
+
+    @pytest.mark.asyncio
+    async def test_notify_gitlab(self, sample_comparison_gitlab, codecov_vcr):
+        comparison = sample_comparison_gitlab
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title='title',
+            notifier_yaml_settings={'layout': "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={}
+        )
+        result = await notifier.notify(comparison)
+        assert result.notification_attempted
+        assert result.notification_successful
+        assert result.explanation is None
+        message = [
+           '# [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1) Report',
+           '> Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc) into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4&el=desc) will **increase** coverage by `10.00%`.',
+           '> The diff coverage is `n/a`.',
+           '',
+           '[![Impacted file tree graph](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree)',
+           '',
+           '```diff',
+           '@@              Coverage Diff              @@',
+           '##             master      #11       +/-   ##',
+           '=============================================',
+           '+ Coverage     50.00%   60.00%   +10.00%     ',
+           '+ Complexity       11       10        -1     ',
+           '=============================================',
+           '  Files             2        2               ',
+           '  Lines             6       10        +4     ',
+           '  Branches          0        1        +1     ',
+           '=============================================',
+           '+ Hits              3        6        +3     ',
+           '  Misses            3        3               ',
+           '- Partials          0        1        +1     ',
+           '```',
+           '',
+           '| Flag | Coverage Δ | Complexity Δ | |',
+           '|---|---|---|---|',
+           '| #integration | `?` | `?` | |',
+           '| #unit | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |',
+           '',
+           '| [Impacted Files](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree) | Coverage Δ | Complexity Δ | |',
+           '|---|---|---|---|',
+           '| [file\\_2.py](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |',
+           '| [file\\_1.go](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |',
+           '',
+           '------',
+           '',
+           '[Continue to review full report at Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=continue).',
+           '> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)',
+           '> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`',
+           '> Powered by [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=footer). Last update [842f7c8...46ce216](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).',
+           '',
+        ]
+        for exp, res in zip(result.data_sent['message'], message):
+            assert exp == res
+        assert result.data_sent['message'] == message
+        assert result.data_sent == {
+            'commentid': None,
+            'message': message,
+            'pullid': 11
+        }
+        assert result.data_received == {'id': 305215656}
