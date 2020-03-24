@@ -109,7 +109,11 @@ class TestUploadTaskIntegration(object):
         dbsession.add(commit)
         dbsession.flush()
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
-        expected_result = {"was_setup": False, "was_updated": False, "tasks_were_scheduled": False}
+        expected_result = {
+            "was_setup": False,
+            "was_updated": False,
+            "tasks_were_scheduled": False,
+        }
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
@@ -496,17 +500,25 @@ class TestUploadTaskUnit(object):
         mocked_chain.assert_called_with(t1, t2)
 
     @pytest.mark.asyncio
-    async def test_run_async_unobtainable_lock_no_pending_jobs(self, dbsession, mocker, mock_redis):
+    async def test_run_async_unobtainable_lock_no_pending_jobs(
+        self, dbsession, mocker, mock_redis
+    ):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lock.side_effect = LockError()
         mock_redis.exists.return_value = False
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
-        assert result == {'tasks_were_scheduled': False, 'was_setup': False, 'was_updated': False}
+        assert result == {
+            "tasks_were_scheduled": False,
+            "was_setup": False,
+            "was_updated": False,
+        }
 
     @pytest.mark.asyncio
-    async def test_run_async_unobtainable_lock_too_many_retries(self, dbsession, mocker, mock_redis):
+    async def test_run_async_unobtainable_lock_too_many_retries(
+        self, dbsession, mocker, mock_redis
+    ):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
@@ -515,10 +527,16 @@ class TestUploadTaskUnit(object):
         task = UploadTask()
         task.request.retries = 3
         result = await task.run_async(dbsession, commit.repoid, commit.commitid)
-        assert result == {'tasks_were_scheduled': False, 'was_setup': False, 'was_updated': False}
+        assert result == {
+            "tasks_were_scheduled": False,
+            "was_setup": False,
+            "was_updated": False,
+        }
 
     @pytest.mark.asyncio
-    async def test_run_async_unobtainable_lock_retry(self, dbsession, mocker, mock_redis):
+    async def test_run_async_unobtainable_lock_retry(
+        self, dbsession, mocker, mock_redis
+    ):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()

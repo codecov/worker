@@ -31,7 +31,6 @@ def make_hashable(o):
 
 
 class BaseBackend(object):
-
     def get(self, key):
         raise NotImplementedError()
 

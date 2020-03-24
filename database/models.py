@@ -9,7 +9,7 @@ from sqlalchemy import UniqueConstraint, Index
 
 
 class Owner(CodecovBaseModel):
-    __tablename__ = 'owners'
+    __tablename__ = "owners"
     ownerid = Column(types.Integer, primary_key=True)
     service = Column(types.String(100), nullable=False)
     service_id = Column(types.Text, nullable=False)
@@ -34,13 +34,13 @@ class Owner(CodecovBaseModel):
     plan_auto_activate = Column(types.Boolean)
     stripe_customer_id = Column(types.Text)
     stripe_subscription_id = Column(types.Text)
-    bot_id = Column('bot', types.Integer, ForeignKey('owners.ownerid'))
+    bot_id = Column("bot", types.Integer, ForeignKey("owners.ownerid"))
 
-    bot = relationship('Owner', remote_side=[ownerid])
+    bot = relationship("Owner", remote_side=[ownerid])
 
     __table_args__ = (
-        Index('owner_service_ids', 'service', 'service_id', unique=True),
-        Index('owner_service_username', 'service', 'username', unique=True),
+        Index("owner_service_ids", "service", "service_id", unique=True),
+        Index("owner_service_username", "service", "username", unique=True),
     )
 
     @property
@@ -53,30 +53,37 @@ class Owner(CodecovBaseModel):
 
 class Repository(CodecovBaseModel):
 
-    __tablename__ = 'repos'
+    __tablename__ = "repos"
 
     repoid = Column(types.Integer, primary_key=True)
-    ownerid = Column(types.Integer, ForeignKey('owners.ownerid'))
-    bot_id = Column('bot', types.Integer, ForeignKey('owners.ownerid'))
+    ownerid = Column(types.Integer, ForeignKey("owners.ownerid"))
+    bot_id = Column("bot", types.Integer, ForeignKey("owners.ownerid"))
     service_id = Column(types.Text)
     name = Column(types.Text)
     private = Column(types.Boolean)
     updatestamp = Column(types.DateTime)
     yaml = Column(postgresql.JSON)
     branch = Column(types.Text)
-    image_token = Column(types.Text, default=lambda: ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10)))
+    image_token = Column(
+        types.Text,
+        default=lambda: "".join(
+            random.choice(string.ascii_uppercase + string.digits) for _ in range(10)
+        ),
+    )
     language = Column(types.Text)
     hookid = Column(types.Text)
     activated = Column(types.Boolean, default=False)
     using_integration = Column(types.Boolean)
-    cache_do_not_use = Column('cache', postgresql.JSON)
+    cache_do_not_use = Column("cache", postgresql.JSON)
 
-    owner = relationship(Owner, foreign_keys=[ownerid], backref=backref("owners", cascade="delete"))
+    owner = relationship(
+        Owner, foreign_keys=[ownerid], backref=backref("owners", cascade="delete")
+    )
     bot = relationship(Owner, foreign_keys=[bot_id])
 
     __table_args__ = (
-        Index('repos_slug', 'ownerid', 'name', unique=True),
-        Index('repos_service_ids', 'ownerid', 'service_id', unique=True),
+        Index("repos_slug", "ownerid", "name", unique=True),
+        Index("repos_service_ids", "ownerid", "service_id", unique=True),
     )
 
     @property
@@ -93,18 +100,18 @@ class Repository(CodecovBaseModel):
 
 class Commit(CodecovBaseModel):
 
-    __tablename__ = 'commits'
+    __tablename__ = "commits"
 
-    author_id = Column('author', types.Integer, ForeignKey('owners.ownerid'))
+    author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))
     branch = Column(types.Text)
     ci_passed = Column(types.Boolean)
     commitid = Column(types.Text, primary_key=True)
     deleted = Column(types.Boolean)
     message = Column(types.Text)
     merged = Column(types.Boolean)
-    parent_commit_id = Column('parent', types.Text)
+    parent_commit_id = Column("parent", types.Text)
     pullid = Column(types.Integer)
-    repoid = Column(types.Integer, ForeignKey('repos.repoid'), primary_key=True)
+    repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
     report_json = Column("report", postgresql.JSON)
     state = Column(types.String(256))
     timestamp = Column(types.DateTime, nullable=False)
@@ -119,14 +126,18 @@ class Commit(CodecovBaseModel):
 
     def get_parent_commit(self):
         db_session = self.get_db_session()
-        return db_session.query(Commit).filter_by(repoid=self.repoid, commitid=self.parent_commit_id).first()
+        return (
+            db_session.query(Commit)
+            .filter_by(repoid=self.repoid, commitid=self.parent_commit_id)
+            .first()
+        )
 
 
 class Branch(CodecovBaseModel):
 
-    __tablename__ = 'branches'
+    __tablename__ = "branches"
 
-    repoid = Column(types.Integer, ForeignKey('repos.repoid'), primary_key=True)
+    repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
     updatestamp = Column(types.DateTime)
     branch = Column(types.Text, nullable=False)
     base = Column(types.Text)
@@ -135,9 +146,7 @@ class Branch(CodecovBaseModel):
 
     repository = relationship(Repository, backref=backref("branches", cascade="delete"))
 
-    __table_args__ = (
-        Index('branches_repoid_branch', 'repoid', 'branch', unique=True),
-    )
+    __table_args__ = (Index("branches_repoid_branch", "repoid", "branch", unique=True),)
 
     def __repr__(self):
         return f"Branch<{self.branch}@repo<{self.repoid}>>"
@@ -145,13 +154,13 @@ class Branch(CodecovBaseModel):
 
 class Pull(CodecovBaseModel):
 
-    __tablename__ = 'pulls'
+    __tablename__ = "pulls"
 
-    repoid = Column(types.Integer, ForeignKey('repos.repoid'), primary_key=True)
+    repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
     pullid = Column(types.Integer, nullable=False, primary_key=True)
     issueid = Column(types.Integer)
     updatestamp = Column(types.DateTime)
-    state = Column(types.Text, nullable=False, default='open')
+    state = Column(types.Text, nullable=False, default="open")
     title = Column(types.Text)
     base = Column(types.Text)
     compared_to = Column(types.Text)
@@ -159,14 +168,12 @@ class Pull(CodecovBaseModel):
     commentid = Column(types.Text)
     diff = Column(postgresql.JSON)
     flare = Column(postgresql.JSON)
-    author_id = Column('author', types.Integer, ForeignKey('owners.ownerid'))
+    author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))
 
     author = relationship(Owner)
     repository = relationship(Repository, backref=backref("pulls", cascade="delete"))
 
-    __table_args__ = (
-        Index('pulls_repoid_pullid', 'repoid', 'pullid', unique=True),
-    )
+    __table_args__ = (Index("pulls_repoid_pullid", "repoid", "pullid", unique=True),)
 
     def __repr__(self):
         return f"Pull<{self.pullid}@repo<{self.repoid}>>"

@@ -4,17 +4,19 @@ from urllib.parse import urlencode
 from covreports.config import get_config
 
 services_short_dict = dict(
-    github='gh',
-    github_enterprise='ghe',
-    bitbucket='bb',
-    bitbucket_server='bbs',
-    gitlab='gl',
-    gitlab_enterprise='gle'
+    github="gh",
+    github_enterprise="ghe",
+    bitbucket="bb",
+    bitbucket_server="bbs",
+    gitlab="gl",
+    gitlab_enterprise="gle",
 )
 
 
 class SiteUrls(Enum):
-    commit_url = "{base_url}/{service_short}/{username}/{project_name}/commit/{commit_sha}"
+    commit_url = (
+        "{base_url}/{service_short}/{username}/{project_name}/commit/{commit_sha}"
+    )
     compare_url = "{base_url}/{service_short}/{username}/{project_name}/compare/{base_sha}...{head_sha}"
     repository_url = "{base_url}/{service_short}/{username}/{project_name}"
     graph_url = "{base_url}/{service_short}/{username}/{project_name}/commit/{commit_sha}/graphs/{graph_filename}"
@@ -26,7 +28,7 @@ class SiteUrls(Enum):
 
 
 def get_base_url():
-    return get_config('setup', 'codecov_url')
+    return get_config("setup", "codecov_url")
 
 
 def get_commit_url(commit: Commit) -> str:
@@ -35,7 +37,7 @@ def get_commit_url(commit: Commit) -> str:
         service_short=services_short_dict.get(commit.repository.service),
         username=commit.repository.owner.username,
         project_name=commit.repository.name,
-        commit_sha=commit.commitid
+        commit_sha=commit.commitid,
     )
 
 
@@ -46,7 +48,7 @@ def get_graph_url(commit: Commit, graph_filename: str, **kwargs) -> str:
         username=commit.repository.owner.username,
         project_name=commit.repository.name,
         commit_sha=commit.commitid,
-        graph_filename=graph_filename
+        graph_filename=graph_filename,
     )
     encoded_kwargs = urlencode(kwargs)
     return f"{url}?{encoded_kwargs}"
@@ -59,7 +61,7 @@ def get_compare_url(base_commit: Commit, head_commit: Commit) -> str:
         username=head_commit.repository.owner.username,
         project_name=head_commit.repository.name,
         base_sha=base_commit.commitid,
-        head_sha=head_commit.commitid
+        head_sha=head_commit.commitid,
     )
 
 
@@ -68,7 +70,7 @@ def get_repository_url(repository: Repository) -> str:
         base_url=get_base_url(),
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
-        project_name=repository.name
+        project_name=repository.name,
     )
 
 
@@ -79,7 +81,7 @@ def get_pull_url(pull: Pull) -> str:
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
         project_name=repository.name,
-        pull_id=pull.pullid
+        pull_id=pull.pullid,
     )
 
 
@@ -91,7 +93,7 @@ def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
         username=repository.owner.username,
         project_name=repository.name,
         pull_id=pull.pullid,
-        graph_filename=graph_filename
+        graph_filename=graph_filename,
     )
     encoded_kwargs = urlencode(kwargs)
     return f"{url}?{encoded_kwargs}"
