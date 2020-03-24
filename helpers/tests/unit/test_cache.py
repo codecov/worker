@@ -48,7 +48,6 @@ class FakeRedis(object):
 
 
 class FakeRedisWithIssues(object):
-
     def get(self, key):
         raise TimeoutError()
 
@@ -112,11 +111,10 @@ class TestCache(object):
 
     @pytest.mark.asyncio
     async def test_make_hash_sha256(self):
+        assert make_hash_sha256(1) == "a4ayc/80/OGda4BO/1o/V0etpOqiLx1JwB5S3beHW0s="
         assert (
-            make_hash_sha256(1) == "a4ayc/80/OGda4BO/1o/V0etpOqiLx1JwB5S3beHW0s="
-        )
-        assert (
-            make_hash_sha256("somestring") == "l5nfZJ7iQAll9QGKjGm4wPuSgUoikOMrdpOw/36GLyw="
+            make_hash_sha256("somestring")
+            == "l5nfZJ7iQAll9QGKjGm4wPuSgUoikOMrdpOw/36GLyw="
         )
         this_set = set(["1", "something", "True", "another_string_of_values"])
         assert (

@@ -139,7 +139,11 @@ class UploadTask(BaseCodecovTask):
                     "Not retrying since there are likely no jobs that need scheduling",
                     extra=dict(commit=commitid, repoid=repoid),
                 )
-                return {"was_setup": False, "was_updated": False, "tasks_were_scheduled": False}
+                return {
+                    "was_setup": False,
+                    "was_updated": False,
+                    "tasks_were_scheduled": False,
+                }
             if self.request.retries > 1:
                 log.info(
                     "Not retrying since we already had too many retries",
@@ -160,7 +164,11 @@ class UploadTask(BaseCodecovTask):
         )
         uploads_list_key = "testuploads/%s/%s" % (repoid, commitid)
         if not self.has_pending_jobs(redis_connection, uploads_list_key):
-            return {"was_setup": False, "was_updated": False, "tasks_were_scheduled": False}
+            return {
+                "was_setup": False,
+                "was_updated": False,
+                "tasks_were_scheduled": False,
+            }
         commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
@@ -221,10 +229,7 @@ class UploadTask(BaseCodecovTask):
                     argument_list=argument_list,
                 ),
             )
-        return {
-            "was_setup": was_setup,
-            "was_updated": was_updated
-        }
+        return {"was_setup": was_setup, "was_updated": was_updated}
 
     async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
