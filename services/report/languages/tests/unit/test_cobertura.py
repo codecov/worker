@@ -2,7 +2,7 @@ from time import time
 import xml.etree.cElementTree as etree
 import pytest
 
-from tests.base import BaseTestCase
+from tests.base import FBaseTestCase
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import cobertura
 
@@ -129,6 +129,14 @@ class TestCobertura(BaseTestCase):
         }
         assert processed_report == expected_result
 
+    def test_timestamp_zero_passes(self):
+        # Some reports have timestamp as a string zero, check we can handle that
+        timestring = "0"
+        report = cobertura.from_xml(etree.fromstring(xml % ('', timestring, '')), None, {}, 0, {'codecov': {'max_report_age': None}})
+        processed_report = self.convert_report_to_better_readable(report)
+        assert len(processed_report["archive"]["file"]) == 3
+        assert processed_report["archive"]["totals"] == "45.45455"
+
     @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
     def test_expired(self, date):
         with pytest.raises(ReportExpiredException, match='Cobertura report expired'):
@@ -161,3 +169,4 @@ class TestCobertura(BaseTestCase):
         first_line = xml.split("\n", 1)[0]
         name = "coverage.xml"
         assert not processor.matches_content(content, first_line, name)
+
