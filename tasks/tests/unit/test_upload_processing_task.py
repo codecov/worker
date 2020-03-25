@@ -98,7 +98,8 @@ class TestUploadProcessorTask(object):
                     "t": [3, 24, 19, 5, 0, "79.16667", 0, 0, 0, 0, 0, 0, 0],
                     "u": None,
                     "d": commit.report_json["sessions"]["0"]["d"],
-                    "st": "uploaded",  # This is not deterministic
+                    "st": "uploaded",
+                    "se": {},
                 }
             },
         }
