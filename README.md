@@ -1,5 +1,5 @@
 # worker
-[![Circle CI](https://circleci.com/gh/codecov/worker.png?style=badge&circle-token=885f572a99c95211064d4b97deb1de96e84e1352)](https://circleci.com/gh/codecov/worker) [![worker](https://codecov.io/github/codecov/worker/coverage.svg?branch=master&token=P4Uxn9nj57)](https://codecov.io/github/codecov/worker)
+[![Circle CI](https://circleci.com/gh/codecov/worker.png?style=badge&circle-token=885f572a99c95211064d4b97deb1de96e84e1352)](https://circleci.com/gh/codecov/worker) [![worker](https://codecov.io/github/codecov/worker/coverage.svg?branch=master&token=BWTOrjBaE5)](https://codecov.io/github/codecov/worker)
 Code for Background Workers of Codecov. This is built on top of the `celery` async framework
 
 ## Quickstart
