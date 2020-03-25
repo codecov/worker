@@ -2,6 +2,8 @@ from pathlib import Path
 from asyncio import Future
 import pytest
 
+from redis.exceptions import LockError
+
 from tasks.sync_pull import PullSyncTask
 from database.tests.factories import RepositoryFactory, CommitFactory, PullFactory
 from services.repository import EnrichedPull
@@ -123,7 +125,7 @@ class TestPullSyncTask(object):
         assert not fourth_commit.merged
 
     @pytest.mark.asyncio
-    async def test_call_pullsync_task(self, dbsession, mocker):
+    async def test_call_pullsync_task(self, dbsession, mocker, mock_redis):
         task = PullSyncTask()
         pull = PullFactory.create(head="head_commit_nonexistent_sha", state="open",)
         dbsession.add(pull)
@@ -139,5 +141,19 @@ class TestPullSyncTask(object):
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": True,
+            "pull_updated": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_call_pullsync_task_nolock(self, dbsession, mock_redis):
+        task = PullSyncTask()
+        pull = PullFactory.create(state="open",)
+        dbsession.add(pull)
+        dbsession.flush()
+        mock_redis.lock.return_value.__enter__.side_effect = LockError
+        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        assert res == {
+            "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+            "notifier_called": False,
             "pull_updated": False,
         }
