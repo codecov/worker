@@ -1,0 +1,480 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/11087339/repository/compare/?from=842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4&to=46ce216948fe8c301fc80d9ba3ba1a582a0ba497
+  response:
+    body: {string: '{"commit":{"id":"46ce216948fe8c301fc80d9ba3ba1a582a0ba497","short_id":"46ce2169","created_at":"2020-03-15T19:40:40.000-05:00","parent_ids":["39f0cd520381dc3d2e61aeb4c31e4d805a895515"],"title":"Add
+        test","message":"Add test\n","author_name":"Thomas Buida","author_email":"thomasbuida@gmail.com","authored_date":"2020-03-15T19:40:40.000-05:00","committer_name":"Thomas
+        Buida","committer_email":"thomasbuida@gmail.com","committed_date":"2020-03-15T19:40:40.000-05:00","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/-/commit/46ce216948fe8c301fc80d9ba3ba1a582a0ba497"},"commits":[{"id":"77b456d6209583d9674546970948fcc24305f5dc","short_id":"77b456d6","created_at":"2020-03-15T15:56:00.000-05:00","parent_ids":["842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4"],"title":"Add
+        div method","message":"Add div method\n","author_name":"Thomas Buida","author_email":"thomasbuida@gmail.com","authored_date":"2020-03-15T15:56:00.000-05:00","committer_name":"Thomas
+        Buida","committer_email":"thomasbuida@gmail.com","committed_date":"2020-03-15T15:56:00.000-05:00","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/-/commit/77b456d6209583d9674546970948fcc24305f5dc"},{"id":"39f0cd520381dc3d2e61aeb4c31e4d805a895515","short_id":"39f0cd52","created_at":"2020-03-15T16:03:54.000-05:00","parent_ids":["77b456d6209583d9674546970948fcc24305f5dc"],"title":"Another
+        new method","message":"Another new method\n","author_name":"Thomas Buida","author_email":"thomasbuida@gmail.com","authored_date":"2020-03-15T16:03:54.000-05:00","committer_name":"Thomas
+        Buida","committer_email":"thomasbuida@gmail.com","committed_date":"2020-03-15T16:03:54.000-05:00","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/-/commit/39f0cd520381dc3d2e61aeb4c31e4d805a895515"},{"id":"46ce216948fe8c301fc80d9ba3ba1a582a0ba497","short_id":"46ce2169","created_at":"2020-03-15T19:40:40.000-05:00","parent_ids":["39f0cd520381dc3d2e61aeb4c31e4d805a895515"],"title":"Add
+        test","message":"Add test\n","author_name":"Thomas Buida","author_email":"thomasbuida@gmail.com","authored_date":"2020-03-15T19:40:40.000-05:00","committer_name":"Thomas
+        Buida","committer_email":"thomasbuida@gmail.com","committed_date":"2020-03-15T19:40:40.000-05:00","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/-/commit/46ce216948fe8c301fc80d9ba3ba1a582a0ba497"}],"diffs":[{"old_path":"calc/calculator.py","new_path":"calc/calculator.py","a_mode":"100644","b_mode":"100644","new_file":false,"renamed_file":false,"deleted_file":false,"diff":"@@
+        -1,3 +1,5 @@\n+from math import sqrt\n+\n class Calculator:\n     def add(self,
+        x, y):\n         return x + y\n@@ -10,3 +12,6 @@ class Calculator:\n \n     def
+        power(self, x, y):\n         return x ** y\n+\n+    def div(self, x, y):\n+        return
+        x // y\n"},{"old_path":"tests/test_calc.py","new_path":"tests/test_calc.py","a_mode":"100644","b_mode":"100644","new_file":false,"renamed_file":false,"deleted_file":false,"diff":"@@
+        -11,3 +11,6 @@ class TestClass:\n \n     def test_mul(self):\n         assert
+        calc.mul(1, 2) == 2\n+\n+    def test_div(self):\n+        assert calc.div(2,
+        1) == 2\n"}],"compare_timeout":false,"compare_same_ref":false}'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Mon, 16 Mar 2020 00:51:35 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['3152']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"3aa4222c0d75e5c4e7cdfe9544a29936"]
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Request-Id
+      - [cNksBglxJL3]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.115449']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['1']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['599']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1584319955']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Mon, 16 Mar 2020 00:52:35 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-24-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/projects/11087339/repository/compare/?from=842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4&to=46ce216948fe8c301fc80d9ba3ba1a582a0ba497
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/11087339/merge_requests/11
+  response:
+    body: {string: '{"id":52607662,"iid":11,"project_id":11087339,"title":"Add div
+        method","description":"","state":"opened","created_at":"2020-03-15T20:59:13.834Z","updated_at":"2020-03-16T00:41:51.925Z","merged_by":null,"merged_at":null,"closed_by":null,"closed_at":null,"target_branch":"master","source_branch":"div","user_notes_count":1,"upvotes":0,"downvotes":0,"assignee":null,"author":{"id":3215137,"name":"Infinite
+        Loop","username":"1nf1n1t3l00p","state":"active","avatar_url":"https://assets.gitlab-static.net/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"assignees":[],"source_project_id":11087339,"target_project_id":11087339,"labels":[],"work_in_progress":false,"milestone":null,"merge_when_pipeline_succeeds":false,"merge_status":"can_be_merged","sha":"46ce216948fe8c301fc80d9ba3ba1a582a0ba497","merge_commit_sha":null,"squash_commit_sha":null,"discussion_locked":null,"should_remove_source_branch":null,"force_remove_source_branch":false,"reference":"!11","references":{"short":"!11","relative":"!11","full":"l00p_group_1/subgroup1/proj-b!11"},"web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/-/merge_requests/11","time_stats":{"time_estimate":0,"total_time_spent":0,"human_time_estimate":null,"human_total_time_spent":null},"squash":false,"task_completion_status":{"count":0,"completed_count":0},"has_conflicts":false,"blocking_discussions_resolved":true,"approvals_before_merge":null,"subscribed":true,"changes_count":"2","latest_build_started_at":"2020-03-16T00:40:47.057Z","latest_build_finished_at":"2020-03-16T00:41:45.162Z","first_deployed_to_production_at":null,"pipeline":{"id":126521180,"sha":"46ce216948fe8c301fc80d9ba3ba1a582a0ba497","ref":"refs/merge-requests/11/head","status":"success","created_at":"2020-03-16T00:40:46.113Z","updated_at":"2020-03-16T00:41:45.167Z","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/pipelines/126521180"},"head_pipeline":{"id":126521180,"sha":"46ce216948fe8c301fc80d9ba3ba1a582a0ba497","ref":"refs/merge-requests/11/head","status":"success","created_at":"2020-03-16T00:40:46.113Z","updated_at":"2020-03-16T00:41:45.167Z","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/pipelines/126521180","before_sha":"0000000000000000000000000000000000000000","tag":false,"yaml_errors":null,"user":{"id":3215137,"name":"Infinite
+        Loop","username":"1nf1n1t3l00p","state":"active","avatar_url":"https://assets.gitlab-static.net/uploads/-/system/user/avatar/3215137/avatar.png","web_url":"https://gitlab.com/1nf1n1t3l00p"},"started_at":"2020-03-16T00:40:47.057Z","finished_at":"2020-03-16T00:41:45.162Z","committed_at":null,"duration":58,"coverage":"95.83","detailed_status":{"icon":"status_success","text":"passed","label":"passed","group":"success","tooltip":"passed","has_details":true,"details_path":"/l00p_group_1/subgroup1/proj-b/pipelines/126521180","illustration":null,"favicon":"https://gitlab.com/assets/ci_favicons/favicon_status_success-8451333011eee8ce9f2ab25dc487fe24a8758c694827a582f17f42b0a90446a2.png"}},"diff_refs":{"base_sha":"842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4","head_sha":"46ce216948fe8c301fc80d9ba3ba1a582a0ba497","start_sha":"842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4"},"merge_error":null,"user":{"can_merge":true}}'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Mon, 16 Mar 2020 00:51:35 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['3249']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"40b3a54a1c37ad86bd5626826e77a132"]
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Request-Id
+      - [7m7sTiB1Qxa]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.160427']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['2']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['598']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1584319955']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Mon, 16 Mar 2020 00:52:35 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-11-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/projects/11087339/merge_requests/11
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/11087339/merge_requests/11/commits
+  response:
+    body: {string: '[{"id":"46ce216948fe8c301fc80d9ba3ba1a582a0ba497","short_id":"46ce2169","created_at":"2020-03-16T00:40:40.000Z","parent_ids":[],"title":"Add
+        test","message":"Add test\n","author_name":"Thomas Buida","author_email":"thomasbuida@gmail.com","authored_date":"2020-03-16T00:40:40.000Z","committer_name":"Thomas
+        Buida","committer_email":"thomasbuida@gmail.com","committed_date":"2020-03-16T00:40:40.000Z","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/-/commit/46ce216948fe8c301fc80d9ba3ba1a582a0ba497"},{"id":"39f0cd520381dc3d2e61aeb4c31e4d805a895515","short_id":"39f0cd52","created_at":"2020-03-15T21:03:54.000Z","parent_ids":[],"title":"Another
+        new method","message":"Another new method\n","author_name":"Thomas Buida","author_email":"thomasbuida@gmail.com","authored_date":"2020-03-15T21:03:54.000Z","committer_name":"Thomas
+        Buida","committer_email":"thomasbuida@gmail.com","committed_date":"2020-03-15T21:03:54.000Z","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/-/commit/39f0cd520381dc3d2e61aeb4c31e4d805a895515"},{"id":"77b456d6209583d9674546970948fcc24305f5dc","short_id":"77b456d6","created_at":"2020-03-15T20:56:00.000Z","parent_ids":[],"title":"Add
+        div method","message":"Add div method\n","author_name":"Thomas Buida","author_email":"thomasbuida@gmail.com","authored_date":"2020-03-15T20:56:00.000Z","committer_name":"Thomas
+        Buida","committer_email":"thomasbuida@gmail.com","committed_date":"2020-03-15T20:56:00.000Z","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/-/commit/77b456d6209583d9674546970948fcc24305f5dc"}]'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Mon, 16 Mar 2020 00:51:35 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['1563']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"65d40bcc24a16f8d045a3fa0f1ba151b"]
+    - !!python/tuple
+      - Link
+      - ['<https://gitlab.com/api/v4/projects/11087339/merge_requests/11/commits?id=11087339&merge_request_iid=11&page=1&per_page=>;
+          rel="first", <https://gitlab.com/api/v4/projects/11087339/merge_requests/11/commits?id=11087339&merge_request_iid=11&page=1&per_page=>;
+          rel="last"']
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Next-Page
+      - ['']
+    - !!python/tuple
+      - X-Page
+      - ['1']
+    - !!python/tuple
+      - X-Per-Page
+      - ['20']
+    - !!python/tuple
+      - X-Prev-Page
+      - ['']
+    - !!python/tuple
+      - X-Request-Id
+      - [wWXXFwvxPB9]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.061985']
+    - !!python/tuple
+      - X-Total
+      - ['3']
+    - !!python/tuple
+      - X-Total-Pages
+      - ['1']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['1']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['599']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1584319955']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Mon, 16 Mar 2020 00:52:35 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-20-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/projects/11087339/merge_requests/11/commits
+- request:
+    body: null
+    headers:
+      Accept: [application/json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/11087339/repository/commits/77b456d6209583d9674546970948fcc24305f5dc
+  response:
+    body: {string: '{"id":"77b456d6209583d9674546970948fcc24305f5dc","short_id":"77b456d6","created_at":"2020-03-15T15:56:00.000-05:00","parent_ids":["842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4"],"title":"Add
+        div method","message":"Add div method\n","author_name":"Thomas Buida","author_email":"thomasbuida@gmail.com","authored_date":"2020-03-15T15:56:00.000-05:00","committer_name":"Thomas
+        Buida","committer_email":"thomasbuida@gmail.com","committed_date":"2020-03-15T15:56:00.000-05:00","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/-/commit/77b456d6209583d9674546970948fcc24305f5dc","stats":{"additions":3,"deletions":0,"total":3},"status":"success","project_id":11087339,"last_pipeline":{"id":126498814,"sha":"77b456d6209583d9674546970948fcc24305f5dc","ref":"refs/merge-requests/11/head","status":"success","created_at":"2020-03-15T20:59:14.185Z","updated_at":"2020-03-15T21:00:21.433Z","web_url":"https://gitlab.com/l00p_group_1/subgroup1/proj-b/pipelines/126498814"}}'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Mon, 16 Mar 2020 00:51:36 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['965']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"f44db3e368026778646fee8f496a698d"]
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Request-Id
+      - [WfafjWWZDZ7]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.083805']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['3']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['597']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1584319956']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Mon, 16 Mar 2020 00:52:36 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-13-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 200, message: OK}
+    url: https://gitlab.com/api/v4/projects/11087339/repository/commits/77b456d6209583d9674546970948fcc24305f5dc
+- request:
+    body: '{"body": "# [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1)
+      Report\n> Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc)
+      into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4&el=desc)
+      will **increase** coverage by `10.00%`.\n> The diff coverage is `n/a`.\n\n[![Impacted
+      file tree graph](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree)\n\n```diff\n@@              Coverage
+      Diff              @@\n##             master      #11       +/-   ##\n=============================================\n+
+      Coverage     50.00%   60.00%   +10.00%     \n+ Complexity       11       10        -1     \n=============================================\n  Files             2        2               \n  Lines             6       10        +4     \n  Branches          0        1        +1     \n=============================================\n+
+      Hits              3        6        +3     \n  Misses            3        3               \n-
+      Partials          0        1        +1     \n```\n\n| Flag | Coverage \u0394
+      | Complexity \u0394 | |\n|---|---|---|---|\n| #integration | `?` | `?` | |\n|
+      #unit | `100.00% <\u00f8> (?)` | `0.00 <\u00f8> (?)` | |\n\n| [Impacted Files](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree)
+      | Coverage \u0394 | Complexity \u0394 | |\n|---|---|---|---|\n| [file\\_2.py](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5)
+      | `50.00% <0.00%> (\u00f8)` | `0.00% <0.00%> (\u00f8%)` | |\n| [file\\_1.go](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv)
+      | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\n\n------\n\n[Continue
+      to review full report at Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=continue).\n>
+      **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)\n>
+      `\u0394 = absolute <relative> (impact)`, `\u00f8 = not affected`, `? = missing
+      data`\n> Powered by [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=footer).
+      Last update [842f7c8...46ce216](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=lastupdated).
+      Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).\n"}'
+    headers:
+      Accept: [application/json]
+      Content-Type: [application/json]
+      User-Agent: [Default]
+    method: POST
+    uri: https://gitlab.com/api/v4/projects/11087339/merge_requests/11/notes
+  response:
+    body: {string: "{\"id\":305215656,\"type\":null,\"body\":\"# [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
+        u0026el=h1) Report\\n\\u003e Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
+        u0026el=desc) into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4\\\
+        u0026el=desc) will **increase** coverage by `10.00%`.\\n\\u003e The diff coverage\
+        \ is `n/a`.\\n\\n[![Impacted file tree graph](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/graphs/tree.svg?width=650\\\
+        u0026height=150\\u0026src=pr\\u0026token=abcdefghij)](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
+        u0026el=tree)\\n\\n```diff\\n@@              Coverage Diff              @@\\\
+        n##             master      #11       +/-   ##\\n=============================================\\\
+        n+ Coverage     50.00%   60.00%   +10.00%     \\n+ Complexity       11   \
+        \    10        -1     \\n=============================================\\n\
+        \  Files             2        2               \\n  Lines             6   \
+        \    10        +4     \\n  Branches          0        1        +1     \\n=============================================\\\
+        n+ Hits              3        6        +3     \\n  Misses            3   \
+        \     3               \\n- Partials          0        1        +1     \\n```\\\
+        n\\n| Flag | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\\
+        n| #integration | `?` | `?` | |\\n| #unit | `100.00% \\u003c\xF8\\u003e (?)`\
+        \ | `0.00 \\u003c\xF8\\u003e (?)` | |\\n\\n| [Impacted Files](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
+        u0026el=tree) | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\\
+        n| [file\\\\_2.py](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr\\\
+        u0026el=tree#diff-ZmlsZV8yLnB5) | `50.00% \\u003c0.00%\\u003e (\xF8)` | `0.00%\
+        \ \\u003c0.00%\\u003e (\xF8%)` | |\\n| [file\\\\_1.go](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr\\\
+        u0026el=tree#diff-ZmlsZV8xLmdv) | `62.50% \\u003c0.00%\\u003e (+12.50%)` |\
+        \ `10.00% \\u003c0.00%\\u003e (-1.00%)` | :arrow_up: |\\n\\n------\\n\\n[Continue\
+        \ to review full report at Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
+        u0026el=continue).\\n\\u003e **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)\\\
+        n\\u003e `\u0394 = absolute \\u003crelative\\u003e (impact)`, `\xF8 = not\
+        \ affected`, `? = missing data`\\n\\u003e Powered by [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
+        u0026el=footer). Last update [842f7c8...46ce216](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
+        u0026el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).\"\
+        ,\"attachment\":null,\"author\":{\"id\":3215137,\"name\":\"Infinite Loop\"\
+        ,\"username\":\"1nf1n1t3l00p\",\"state\":\"active\",\"avatar_url\":\"https://assets.gitlab-static.net/uploads/-/system/user/avatar/3215137/avatar.png\"\
+        ,\"web_url\":\"https://gitlab.com/1nf1n1t3l00p\"},\"created_at\":\"2020-03-16T00:51:36.215Z\"\
+        ,\"updated_at\":\"2020-03-16T00:51:36.215Z\",\"system\":false,\"noteable_id\"\
+        :52607662,\"noteable_type\":\"MergeRequest\",\"resolvable\":false,\"noteable_iid\"\
+        :11}"}
+    headers:
+    - !!python/tuple
+      - Server
+      - [nginx]
+    - !!python/tuple
+      - Date
+      - ['Mon, 16 Mar 2020 00:51:36 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json]
+    - !!python/tuple
+      - Content-Length
+      - ['2970']
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Cache-Control
+      - ['max-age=0, private, must-revalidate']
+    - !!python/tuple
+      - Etag
+      - [W/"a466e40cd1b8d5bdf68c5e7a42009c4e"]
+    - !!python/tuple
+      - Vary
+      - [Origin]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Frame-Options
+      - [SAMEORIGIN]
+    - !!python/tuple
+      - X-Request-Id
+      - [erXnmDUbky1]
+    - !!python/tuple
+      - X-Runtime
+      - ['0.260620']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000]
+    - !!python/tuple
+      - Referrer-Policy
+      - [strict-origin-when-cross-origin]
+    - !!python/tuple
+      - Ratelimit-Limit
+      - ['600']
+    - !!python/tuple
+      - Ratelimit-Observed
+      - ['4']
+    - !!python/tuple
+      - Ratelimit-Remaining
+      - ['596']
+    - !!python/tuple
+      - Ratelimit-Reset
+      - ['1584319956']
+    - !!python/tuple
+      - Ratelimit-Resettime
+      - ['Mon, 16 Mar 2020 00:52:36 GMT']
+    - !!python/tuple
+      - Gitlab-Lb
+      - [fe-02-lb-gprd]
+    - !!python/tuple
+      - Gitlab-Sv
+      - [localhost]
+    status: {code: 201, message: Created}
+    url: https://gitlab.com/api/v4/projects/11087339/merge_requests/11/notes
+version: 1

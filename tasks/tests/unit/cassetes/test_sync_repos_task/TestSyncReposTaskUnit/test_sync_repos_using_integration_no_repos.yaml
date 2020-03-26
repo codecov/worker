@@ -1,0 +1,88 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: [application/vnd.github.machine-man-preview+json]
+      User-Agent: [Default]
+    method: GET
+    uri: https://api.github.com/installation/repositories?per_page=100&page=1
+  response:
+    body: {string: '{
+  "total_count": 0,
+  "repositories": []
+}'}
+    headers:
+    - !!python/tuple
+      - Server
+      - [GitHub.com]
+    - !!python/tuple
+      - Date
+      - ['Thu, 20 Feb 2020 03:21:56 GMT']
+    - !!python/tuple
+      - Content-Type
+      - [application/json; charset=utf-8]
+    - !!python/tuple
+      - Transfer-Encoding
+      - [chunked]
+    - !!python/tuple
+      - Connection
+      - [close]
+    - !!python/tuple
+      - Status
+      - [403 Forbidden]
+    - !!python/tuple
+      - X-Ratelimit-Limit
+      - ['5000']
+    - !!python/tuple
+      - X-Ratelimit-Remaining
+      - ['4999']
+    - !!python/tuple
+      - X-Ratelimit-Reset
+      - ['1582172516']
+    - !!python/tuple
+      - X-Oauth-Scopes
+      - ['repo, user']
+    - !!python/tuple
+      - X-Accepted-Oauth-Scopes
+      - ['']
+    - !!python/tuple
+      - X-Github-Media-Type
+      - [github.machine-man-preview; format=json]
+    - !!python/tuple
+      - Access-Control-Expose-Headers
+      - ['ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+          X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+          X-GitHub-Media-Type']
+    - !!python/tuple
+      - Access-Control-Allow-Origin
+      - ['*']
+    - !!python/tuple
+      - Strict-Transport-Security
+      - [max-age=31536000; includeSubdomains; preload]
+    - !!python/tuple
+      - X-Frame-Options
+      - [deny]
+    - !!python/tuple
+      - X-Content-Type-Options
+      - [nosniff]
+    - !!python/tuple
+      - X-Xss-Protection
+      - [1; mode=block]
+    - !!python/tuple
+      - Referrer-Policy
+      - ['origin-when-cross-origin, strict-origin-when-cross-origin']
+    - !!python/tuple
+      - Content-Security-Policy
+      - [default-src 'none']
+    - !!python/tuple
+      - Vary
+      - ['Accept-Encoding, Accept, X-Requested-With']
+    - !!python/tuple
+      - X-Github-Request-Id
+      - ['B880:4CF4:AD5BEB:1A3160D:5E4DFB54']
+    - !!python/tuple
+      - X-Consumed-Content-Encoding
+      - [gzip]
+    status: {code: 200, message: OK}
+    url: https://api.github.com/installation/repositories?per_page=100&page=1
+version: 1

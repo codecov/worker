@@ -1,12 +1,11 @@
--e git+https://github.com/codecov/report.git@af165ab5102fd92f37d9a58076b816ffc970f04a#egg=covreports
--e git+https://github.com/codecov/torngit.git@b9bb82f531f52162449157d3b11e399bf8171a4c#egg=torngit
+-e git+https://github.com/codecov/report.git@v0.2.11#egg=covreports
+-e git+https://github.com/codecov/torngit.git@3cfcc87d147f1dcee2942439a4c792882758448a#egg=torngit
 boto3==1.9.218
 celery==4.3
 cryptography==2.7
 factory-boy==2.11.1
 google-cloud-storage==1.18.0
 lxml==4.3.1
-minio==4.0.19
 pathmap==0.1.5
 psycopg2==2.7.6.1
 PyJWT==1.7.1
@@ -19,9 +18,10 @@ python-json-logger==0.1.11
 PyYAML==3.13
 redis==3.2.0
 requests==2.22.0
-schema==0.7.0
+sentry-sdk==0.14.0
 SQLAlchemy-Utils==0.33.9
 SQLAlchemy==1.2.14
 statsd==3.3.0
+stripe==2.42.0
 timestring==1.6.2
 vcrpy==2.1.0

@@ -5,7 +5,7 @@ from tests.base import BaseTestCase
 from services.report.languages import vb2
 
 
-txt = '''<?xml version="1.0" standalone="yes"?>
+txt = """<?xml version="1.0" standalone="yes"?>
 <CoverageDSPriv>
   <Lines>
     <LnStart>258</LnStart>
@@ -43,7 +43,7 @@ txt = '''<?xml version="1.0" standalone="yes"?>
     <SourceFileName>Source\\Mobius\\csharp\\Tests.Common\\RowHelper.cs</SourceFileName>
   </SourceFileNames>
 </CoverageDSPriv>
-'''
+"""
 
 
 class TestVBTwo(BaseTestCase):
@@ -51,16 +51,17 @@ class TestVBTwo(BaseTestCase):
         report = vb2.from_xml(etree.fromstring(txt), str, {}, 0)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
-        pprint.pprint(processed_report['archive'])
+
+        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
-            'Source/Mobius/csharp/Tests.Common/RowHelper.cs': [
-                (260, 1, None, [[0, 1]], None, None),
-                (261, 0, None, [[0, 0]], None, None),
-                (262, 0, None, [[0, 0]], None, None)
+            "Source/Mobius/csharp/Tests.Common/RowHelper.cs": [
+                (260, 1, None, [[0, 1, None, None, None]], None, None),
+                (261, 0, None, [[0, 0, None, None, None]], None, None),
+                (262, 0, None, [[0, 0, None, None, None]], None, None),
             ],
-            'source/mobius/cpp/riosock/riosock.cpp': [
-                (258, True, None, [[0, True]], None, None)
-            ]
+            "source/mobius/cpp/riosock/riosock.cpp": [
+                (258, True, None, [[0, True, None, None, None]], None, None)
+            ],
         }
 
-        assert expected_result_archive == processed_report['archive']
+        assert expected_result_archive == processed_report["archive"]

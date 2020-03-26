@@ -7,7 +7,7 @@ from helpers.exceptions import ReportExpiredException
 from services.report.languages import clover
 
 
-xml = '''<?xml version="1.0" encoding="UTF-8"?>
+xml = """<?xml version="1.0" encoding="UTF-8"?>
 <coverage generated="%s">
   <project timestamp="1410539625">
     <package name="Codecov">
@@ -62,73 +62,26 @@ xml = '''<?xml version="1.0" encoding="UTF-8"?>
     <metrics files="1" loc="86" ncloc="62" classes="1" methods="1" coveredmethods="0" conditionals="0" coveredconditionals="0" statements="6" coveredstatements="2" elements="7" coveredelements="2"/>
   </project>
 </coverage>
-'''
+"""
 
 result = {
-    'files': {
-        'file.php': {
-            'l': {
-                '11': {
-                    'c': 1,
-                    's': [[0, 1, None, None, None]]
-                }
+    "files": {
+        "file.php": {"l": {"11": {"c": 1, "s": [[0, 1, None, None, None]]}}},
+        "source.php": {
+            "l": {
+                "11": {"c": 1, "s": [[0, 1, None, None, None]]},
+                "21": {"c": 0, "s": [[0, 0, None, None, None]]},
+                "22": {"c": 0, "s": [[0, 0, None, None, None]]},
+                "23": {"c": 0, "s": [[0, 0, None, None, None]]},
+                "5": {"c": 1, "s": [[0, 1, None, None, 0]], "t": "m"},
+                "6": {"c": 2969, "C": 9, "s": [[0, 2969, None, None, 9]], "t": "m"},
+                "1": {"c": "1/2", "s": [[0, "1/2", None, None, None]], "t": "b"},
+                "2": {"c": "1/2", "s": [[0, "1/2", None, None, None]], "t": "b"},
+                "3": {"c": "2/2", "s": [[0, "2/2", None, None, None]], "t": "b"},
+                "4": {"c": "0/2", "s": [[0, "0/2", None, None, None]], "t": "b"},
+                "8": {"c": 0, "s": [[0, 0, None, None, None]]},
             }
         },
-        'source.php': {
-            'l': {
-                '11': {
-                    'c': 1,
-                    's': [[0, 1, None, None, None]]
-                },
-                '21': {
-                    'c': 0,
-                    's': [[0, 0, None, None, None]]
-                },
-                '22': {
-                    'c': 0,
-                    's': [[0, 0, None, None, None]]
-                },
-                '23': {
-                    'c': 0,
-                    's': [[0, 0, None, None, None]]
-                },
-                '5': {
-                    'c': 1,
-                    's': [[0, 1, None, None, 0]],
-                    't': 'm'
-                },
-                '6': {
-                    'c': 2969,
-                    'C': 9,
-                    's': [[0, 2969, None, None, 9]],
-                    't': 'm'
-                },
-                '1': {
-                    'c': "1/2",
-                    's': [[0, "1/2", None, None, None]],
-                    't': 'b'
-                },
-                '2': {
-                    'c': "1/2",
-                    's': [[0, "1/2", None, None, None]],
-                    't': 'b'
-                },
-                '3': {
-                    'c': "2/2",
-                    's': [[0, "2/2", None, None, None]],
-                    't': 'b'
-                },
-                '4': {
-                    'c': "0/2",
-                    's': [[0, "0/2", None, None, None]],
-                    't': 'b'
-                },
-                '8': {
-                    'c': 0,
-                    's': [[0, 0, None, None, None]]
-                }
-            }
-        }
     }
 }
 
@@ -136,67 +89,69 @@ result = {
 class TestCloverProcessor(BaseTestCase):
     def test_report(self):
         def fixes(path):
-            if path == 'ignore':
+            if path == "ignore":
                 return None
-            assert path in ('source.php', 'file.php', 'nolines')
+            assert path in ("source.php", "file.php", "nolines")
             return path
 
-        report = clover.from_xml(etree.fromstring(xml % int(time())), fixes, {}, 0, None)
+        report = clover.from_xml(
+            etree.fromstring(xml % int(time())), fixes, {}, 0, None
+        )
         processed_report = self.convert_report_to_better_readable(report)
         expected_result = {
-            'archive': {
-                'file.php': [
-                    (11, 1, None, [[0, 1, None, None, None]], None, None)
-                ],
-                'source.php': [
-                    (1, '1/2', 'b', [[0, '1/2', None, None, None]], None, None),
-                    (2, '1/2', 'b', [[0, '1/2', None, None, None]], None, None),
-                    (3, '2/2', 'b', [[0, '2/2', None, None, None]], None, None),
-                    (4, '0/2', 'b', [[0, '0/2', None, None, None]], None, None),
-                    (5, 1, 'm', [[0, 1, None, None, 0]], None, 0),
-                    (6, 2969, 'm', [[0, 2969, None, None, 9]], None, 9),
+            "archive": {
+                "file.php": [(11, 1, None, [[0, 1, None, None, None]], None, None)],
+                "source.php": [
+                    (1, "1/2", "b", [[0, "1/2", None, None, None]], None, None),
+                    (2, "1/2", "b", [[0, "1/2", None, None, None]], None, None),
+                    (3, "2/2", "b", [[0, "2/2", None, None, None]], None, None),
+                    (4, "0/2", "b", [[0, "0/2", None, None, None]], None, None),
+                    (5, 1, "m", [[0, 1, None, None, 0]], None, 0),
+                    (6, 2969, "m", [[0, 2969, None, None, 9]], None, 9),
                     (8, 0, None, [[0, 0, None, None, None]], None, None),
                     (11, 1, None, [[0, 1, None, None, None]], None, None),
                     (21, 0, None, [[0, 0, None, None, None]], None, None),
                     (22, 0, None, [[0, 0, None, None, None]], None, None),
-                    (23, 0, None, [[0, 0, None, None, None]], None, None)
-                ]
+                    (23, 0, None, [[0, 0, None, None, None]], None, None),
+                ],
             },
-            'report': {
-                'files': {
-                    'file.php': [
+            "report": {
+                "files": {
+                    "file.php": [
                         1,
-                        [0, 1, 1, 0, 0, '100', 0, 0, 0, 0, 0, 0, 0],
-                        [[0, 1, 1, 0, 0, '100', 0, 0, 0, 0, 0, 0, 0]],
-                        None
+                        [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
+                        [[0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
+                        None,
                     ],
-                    'source.php': [
+                    "source.php": [
                         0,
-                        [0, 11, 4, 5, 2, '36.36364', 4, 2, 0, 0, 9, 0, 0],
-                        [[0, 11, 4, 5, 2, '36.36364', 4, 2, 0, 0, 9, 0, 0]],
-                        None
-                    ]},
-                'sessions': {}},
-            'totals': {
-                'C': 9,
-                'M': 0,
-                'N': 0,
-                'b': 4,
-                'c': '41.66667',
-                'd': 2,
-                'diff': None,
-                'f': 2,
-                'h': 5,
-                'm': 5,
-                'n': 12,
-                'p': 2,
-                's': 0
-            }
+                        [0, 11, 4, 5, 2, "36.36364", 4, 2, 0, 0, 9, 0, 0],
+                        [[0, 11, 4, 5, 2, "36.36364", 4, 2, 0, 0, 9, 0, 0]],
+                        None,
+                    ],
+                },
+                "sessions": {},
+            },
+            "totals": {
+                "C": 9,
+                "M": 0,
+                "N": 0,
+                "b": 4,
+                "c": "41.66667",
+                "d": 2,
+                "diff": None,
+                "f": 2,
+                "h": 5,
+                "m": 5,
+                "n": 12,
+                "p": 2,
+                "s": 0,
+            },
         }
 
         assert processed_report == expected_result
 
-    @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
+    @pytest.mark.parametrize("date", [(int(time()) - 172800), "01-01-2014"])
     def test_expired(self, date):
-        with pytest.raises(ReportExpiredException, match='Clover report expired'):
+        with pytest.raises(ReportExpiredException, match="Clover report expired"):
             clover.from_xml(etree.fromstring(xml % date), None, {}, 0, None)

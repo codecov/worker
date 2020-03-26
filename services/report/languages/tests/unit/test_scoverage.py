@@ -5,7 +5,7 @@ from tests.base import BaseTestCase
 from services.report.languages import scoverage
 
 
-xml = '''<?xml version="1.0" ?>
+xml = """<?xml version="1.0" ?>
 <statements>
     <statement>
         <source>source.scala</source>
@@ -46,7 +46,7 @@ xml = '''<?xml version="1.0" ?>
         <count>0</count>
     </statement>
 </statements>
-'''
+"""
 
 result = {
     "files": {
@@ -54,7 +54,7 @@ result = {
             "l": {
                 "1": {"c": 1, "s": [[0, 1, None, None, None]]},
                 "3": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "2": {"c": "0/2", "t": "b", "s": [[0, "0/2", None, None, None]]}
+                "2": {"c": "0/2", "t": "b", "s": [[0, "0/2", None, None, None]]},
             }
         }
     }
@@ -64,20 +64,21 @@ result = {
 class TestSCoverage(BaseTestCase):
     def test_report(self):
         def fixes(path):
-            if path == 'ignore':
+            if path == "ignore":
                 return None
             return path
 
         report = scoverage.from_xml(etree.fromstring(xml), fixes, {}, 0)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
-        pprint.pprint(processed_report['archive'])
+
+        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
-            'source.scala': [
-                (1, 1, None, [[0, 1]], None, None),
-                (2, '0/2', 'b', [[0, '0/2']], None, None),
-                (3, 0, None, [[0, 0]], None, None)
+            "source.scala": [
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (2, "0/2", "b", [[0, "0/2", None, None, None]], None, None),
+                (3, 0, None, [[0, 0, None, None, None]], None, None),
             ]
         }
 
-        assert expected_result_archive == processed_report['archive']
+        assert expected_result_archive == processed_report["archive"]

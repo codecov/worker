@@ -1,14 +1,15 @@
-from covreports.resources import Report, ReportFile
-from covreports.utils.tuples import ReportLine
+from covreports.reports.resources import Report, ReportFile
+from covreports.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
 
 
 class RlangProcessor(BaseLanguageProcessor):
-
     def matches_content(self, content, first_line, name):
-        return content.get('uploader') == 'R'
+        return content.get("uploader") == "R"
 
-    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None):
+    def process(
+        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
+    ):
         return from_json(content, path_fixer, ignored_lines, sessionid)
 
 
@@ -23,14 +24,16 @@ def from_json(data_dict, fix, ignored_lines, sessionid):
     """
     report = Report()
 
-    for data in data_dict['files']:
-        filename = fix(data['name'])
+    for data in data_dict["files"]:
+        filename = fix(data["name"])
         if filename:
             _file = ReportFile(filename, ignore=ignored_lines.get(filename))
             fs = _file.__setitem__
-            [fs(ln, ReportLine(int(cov), None, [[sessionid, int(cov)]]))
-             for ln, cov in enumerate(data['coverage'])
-             if cov is not None]
+            [
+                fs(ln, ReportLine(int(cov), None, [[sessionid, int(cov)]]))
+                for ln, cov in enumerate(data["coverage"])
+                if cov is not None
+            ]
             report.append(_file)
 
     return report

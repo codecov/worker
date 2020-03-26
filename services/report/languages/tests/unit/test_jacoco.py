@@ -7,7 +7,7 @@ from services.report.languages import jacoco
 from helpers.exceptions import ReportExpiredException
 
 
-xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <!DOCTYPE report PUBLIC "-//JACOCO//DTD Report 1.0//EN" "report.dtd">
 <report name="JaCoCo Maven plug-in example for Java project">
     <sessioninfo id="Steves-MBP.local-b048b758" start="%s" dump="1411925088117" />
@@ -45,41 +45,43 @@ xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
         </sourcefile>
     </package>
 </report>
-'''
+"""
 
 
 class TestJacoco(BaseTestCase):
     def test_report(self):
         def fixes(path):
-            if path == 'base/ignore':
+            if path == "base/ignore":
                 return None
-            assert path in ('base/source.java', 'base/file.java', 'base/empty')
+            assert path in ("base/source.java", "base/file.java", "base/empty")
             return path
 
-        report = jacoco.from_xml(etree.fromstring(xml % int(time())), fixes, {}, 0, None)
+        report = jacoco.from_xml(
+            etree.fromstring(xml % int(time())), fixes, {}, 0, None
+        )
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
-        pprint.pprint(processed_report['archive'])
+
+        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
-            'base/file.java': [(1, 1, None, [[0, 1, None, None, None]], None, None)],
-            'base/source.java': [
-                (1, '2/2', 'm', [[0, '2/2', None, None, (1, 4)]], None, (1, 4)),
-                (2, '1/2', 'm', [[0, '1/2', None, None, (1, 4)]], None, (1, 4)),
+            "base/file.java": [(1, 1, None, [[0, 1, None, None, None]], None, None)],
+            "base/source.java": [
+                (1, "2/2", "m", [[0, "2/2", None, None, (1, 4)]], None, (1, 4)),
+                (2, "1/2", "m", [[0, "1/2", None, None, (1, 4)]], None, (1, 4)),
                 (3, 0, None, [[0, 0, None, None, None]], None, None),
-                (4, 2, None, [[0, 2, None, None, None]], None, None)
-            ]
+                (4, 2, None, [[0, 2, None, None, None]], None, None),
+            ],
         }
 
-        assert expected_result_archive == processed_report['archive']
+        assert expected_result_archive == processed_report["archive"]
 
     @pytest.mark.parametrize(
         "module, path",
-        [
-            ('a', 'module_a/package/file'),
-            ('b', 'module_b/src/main/java/package/file')
-        ])
+        [("a", "module_a/package/file"), ("b", "module_b/src/main/java/package/file")],
+    )
     def test_multi_module(self, module, path):
-        data = '''<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+        data = (
+            """<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
         <!DOCTYPE report PUBLIC "-//JACOCO//DTD Report 1.0//EN" "report.dtd">
         <report name="module_%s">
             <package name="package">
@@ -87,19 +89,21 @@ class TestJacoco(BaseTestCase):
                     <line nr="1" mi="0" ci="2" mb="0" cb="0" />
                 </sourcefile>
             </package>
-        </report>''' % module
+        </report>"""
+            % module
+        )
 
         def fixes(path):
-            if module == 'a':
-                return path if 'src/main/java' not in path else None
+            if module == "a":
+                return path if "src/main/java" not in path else None
             else:
-                return path if 'src/main/java' in path else None
+                return path if "src/main/java" in path else None
 
         report = jacoco.from_xml(etree.fromstring(data), fixes, {}, 0, None)
         processed_report = self.convert_report_to_better_readable(report)
-        assert [path] == list(processed_report['archive'].keys())
+        assert [path] == list(processed_report["archive"].keys())
 
-    @pytest.mark.parametrize("date", [(int(time()) - 172800), '01-01-2014'])
+    @pytest.mark.parametrize("date", [(int(time()) - 172800), "01-01-2014"])
     def test_expired(self, date):
-        with pytest.raises(ReportExpiredException, match='Jacoco report expired'):
+        with pytest.raises(ReportExpiredException, match="Jacoco report expired"):
             jacoco.from_xml(etree.fromstring(xml % date), None, {}, 0, None)

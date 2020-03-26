@@ -63,7 +63,7 @@ jobs:
     - run:
         name: codecov
         command: |
-          pip install codecov
+          pip install codecov==2.0.16
           codecov -F integration -f integration.coverage.xml  --required
           codecov -F unit -f unit.coverage.xml  --required
   deploy:
@@ -76,10 +76,14 @@ jobs:
     - run:
         <<: *k8s_auth
     - run:
+        name: Git tag release
+        command: |
+          make -f Makefile.circle add-release-tag
+    - run:
         name: deploy to k8s
         command: |-
-          make -f Makefile.circle tag VERSION=$CIRCLE_TAG
-          make -f Makefile.circle deploy VERSION=$CIRCLE_TAG
+          make -f Makefile.circle tag
+          make -f Makefile.circle deploy
 
 workflows:
   version: 2
