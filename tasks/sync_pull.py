@@ -95,7 +95,7 @@ class PullSyncTask(BaseCodecovTask):
             )
             return {
                 "notifier_called": False,
-                "commit_updates_done": None,
+                "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
                 "pull_updated": False,
             }
         report_service = ReportService()

@@ -157,3 +157,23 @@ class TestPullSyncTask(object):
             "notifier_called": False,
             "pull_updated": False,
         }
+
+    @pytest.mark.asyncio
+    async def test_call_pullsync_task_no_database_pull(self, dbsession, mocker, mock_redis):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        task = PullSyncTask()
+        mocked_fetch_pr = mocker.patch(
+            "tasks.sync_pull.fetch_and_update_pull_request_information",
+            return_value=Future(),
+        )
+        mocked_fetch_pr.return_value.set_result(
+            EnrichedPull(database_pull=None, provider_pull=None)
+        )
+        res = await task.run_async(dbsession, repoid=repository.repoid, pullid=99)
+        assert res == {
+            "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+            "notifier_called": False,
+            "pull_updated": False,
+        }
