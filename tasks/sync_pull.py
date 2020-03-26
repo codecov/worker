@@ -1,9 +1,10 @@
 import logging
 from datetime import datetime
 from typing import Sequence
+
 import sqlalchemy.orm
 from celery_config import pulls_task_name, notify_task_name, task_default_queue
-
+from redis.exceptions import LockError
 
 from database.models import Repository, Commit
 from services.redis import get_redis_connection
@@ -51,6 +52,34 @@ class PullSyncTask(BaseCodecovTask):
         pullid: int = None,
         **kwargs,
     ):
+        redis_connection = get_redis_connection()
+        lock_name = f"pullsync_{repoid}_{pullid}"
+        try:
+            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+                return await self.run_async_within_lock(
+                    db_session, redis_connection, repoid=repoid, pullid=pullid, **kwargs
+                )
+        except LockError:
+            log.info(
+                "Unable to acquire PullSync lock. Not retrying because pull is being synced already",
+                lock_name,
+                extra=dict(pullid=pullid, repoid=repoid),
+            )
+            return {
+                "notifier_called": False,
+                "commit_updates_done": {'merged_count': 0, 'soft_deleted_count': 0},
+                "pull_updated": False,
+            }
+
+    async def run_async_within_lock(
+        self,
+        db_session: sqlalchemy.orm.Session,
+        redis_connection,
+        *,
+        repoid: int = None,
+        pullid: int = None,
+        **kwargs,
+    ):
         repository = db_session.query(Repository).filter_by(repoid=repoid).first()
         assert repository
         repository_service = get_repo_provider_service(repository)
@@ -59,6 +88,16 @@ class PullSyncTask(BaseCodecovTask):
             repository_service, db_session, repoid, pullid, current_yaml
         )
         pull = enriched_pull.database_pull
+        if pull is None:
+            log.info(
+                "Not syncing pull since we can't find it in the database nor in the provider",
+                extra=dict(pullid=pullid, repoid=repoid),
+            )
+            return {
+                "notifier_called": False,
+                "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+                "pull_updated": False,
+            }
         report_service = ReportService()
         head_commit = pull.get_head_commit()
         if head_commit is None:
@@ -93,7 +132,6 @@ class PullSyncTask(BaseCodecovTask):
         self.app.tasks[notify_task_name].apply_async(
             queue=task_default_queue, kwargs=dict(repoid=repoid, commitid=pull.head,)
         )
-        redis_connection = get_redis_connection()
         self.clear_pull_related_caches(redis_connection, enriched_pull)
         return {
             "notifier_called": True,

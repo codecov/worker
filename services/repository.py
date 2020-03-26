@@ -5,7 +5,8 @@ from typing import Mapping, Any
 from dataclasses import dataclass
 
 import torngit
-from torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError
+from torngit.exceptions import TorngitClientError
+from sqlalchemy.exc import IntegrityError
 
 from covreports.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
@@ -285,7 +286,7 @@ async def fetch_and_update_pull_request_information(
     compared_to = None
     try:
         pull_information = await repository_service.get_pull_request(pullid=pullid)
-    except TorngitObjectNotFoundError:
+    except TorngitClientError:
         log.warning(
             "Unable to find pull request information on provider to update it",
             extra=dict(repoid=repoid, pullid=pullid),
@@ -300,7 +301,6 @@ async def fetch_and_update_pull_request_information(
     if base_commit:
         compared_to = base_commit.commitid
     else:
-        # Copying from legacy-code. We should take a look and redecide
         commit_dict = await repository_service.get_commit(
             pull_information["base"]["commitid"]
         )
@@ -324,6 +324,7 @@ async def fetch_and_update_pull_request_information(
         pull.base = pull_information["base"]["commitid"]
         pull.compared_to = compared_to
     else:
+        db_session.flush()
         pull = Pull(
             pullid=pullid,
             repoid=repoid,
@@ -334,5 +335,11 @@ async def fetch_and_update_pull_request_information(
             compared_to=compared_to,
         )
         db_session.add(pull)
+        try:
+            db_session.flush()
+        except IntegrityError:
+            log.info("The pull is already in the database now. We will only fetch it then")
+            pull_query = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid)
+            pull = pull_query.first()
     db_session.flush()
     return EnrichedPull(database_pull=pull, provider_pull=pull_information)
