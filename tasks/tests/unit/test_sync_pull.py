@@ -3,10 +3,12 @@ from asyncio import Future
 import pytest
 
 from redis.exceptions import LockError
+from torngit.exceptions import TorngitClientError
 
 from tasks.sync_pull import PullSyncTask
 from database.tests.factories import RepositoryFactory, CommitFactory, PullFactory
 from services.repository import EnrichedPull
+from helpers.exceptions import RepositoryWithoutValidBotError
 
 here = Path(__file__)
 
@@ -125,7 +127,9 @@ class TestPullSyncTask(object):
         assert not fourth_commit.merged
 
     @pytest.mark.asyncio
-    async def test_call_pullsync_task_no_head_commit(self, dbsession, mocker, mock_redis):
+    async def test_call_pullsync_task_no_head_commit(
+        self, dbsession, mocker, mock_redis
+    ):
         task = PullSyncTask()
         pull = PullFactory.create(head="head_commit_nonexistent_sha", state="open",)
         dbsession.add(pull)
@@ -135,13 +139,14 @@ class TestPullSyncTask(object):
             return_value=Future(),
         )
         mocked_fetch_pr.return_value.set_result(
-            EnrichedPull(database_pull=pull, provider_pull=None)
+            EnrichedPull(database_pull=pull, provider_pull={})
         )
         res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
             "pull_updated": False,
+            "reason": "no_head",
         }
 
     @pytest.mark.asyncio
@@ -156,10 +161,13 @@ class TestPullSyncTask(object):
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
             "pull_updated": False,
+            "reason": "unable_fetch_lock",
         }
 
     @pytest.mark.asyncio
-    async def test_call_pullsync_task_no_database_pull(self, dbsession, mocker, mock_redis):
+    async def test_call_pullsync_task_no_database_pull(
+        self, dbsession, mocker, mock_redis
+    ):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -176,4 +184,89 @@ class TestPullSyncTask(object):
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
             "pull_updated": False,
+            "reason": "no_db_pull",
+        }
+
+    @pytest.mark.asyncio
+    async def test_call_pullsync_task_no_provider_pull_only(
+        self, dbsession, mocker, mock_redis
+    ):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(state="open", repository=repository)
+        dbsession.add(pull)
+        dbsession.flush()
+        task = PullSyncTask()
+        mocked_fetch_pr = mocker.patch(
+            "tasks.sync_pull.fetch_and_update_pull_request_information",
+            return_value=Future(),
+        )
+        mocked_fetch_pr.return_value.set_result(
+            EnrichedPull(database_pull=pull, provider_pull=None)
+        )
+        res = await task.run_async(dbsession, repoid=repository.repoid, pullid=99)
+        assert res == {
+            "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+            "notifier_called": False,
+            "pull_updated": False,
+            "reason": "not_in_provider",
+        }
+
+    @pytest.mark.asyncio
+    async def test_call_pullsync_no_bot(self, dbsession, mock_redis, mocker):
+        task = PullSyncTask()
+        pull = PullFactory.create(state="open",)
+        dbsession.add(pull)
+        dbsession.flush()
+        mocker.patch(
+            "tasks.sync_pull.get_repo_provider_service",
+            side_effect=RepositoryWithoutValidBotError(),
+        )
+        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        assert res == {
+            "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+            "notifier_called": False,
+            "pull_updated": False,
+            "reason": "no_bot",
+        }
+
+    @pytest.mark.asyncio
+    async def test_call_pullsync_no_permissions_get_compare(
+        self, dbsession, mock_redis, mocker, mock_repo_provider, mock_storage
+    ):
+        mocker.patch.object(PullSyncTask, "app")
+        task = PullSyncTask()
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        base_commit = CommitFactory.create(repository=repository)
+        head_commit = CommitFactory.create(repository=repository,)
+        dbsession.add(base_commit)
+        dbsession.add(head_commit)
+        pull = PullFactory.create(
+            state="open",
+            repository=repository,
+            base=base_commit.commitid,
+            head=head_commit.commitid,
+        )
+        dbsession.add(pull)
+        dbsession.flush()
+        mocked_fetch_pr = mocker.patch(
+            "tasks.sync_pull.fetch_and_update_pull_request_information",
+            return_value=Future(),
+        )
+        mocked_fetch_pr.return_value.set_result(
+            EnrichedPull(database_pull=pull, provider_pull={"head"})
+        )
+        mock_repo_provider.get_compare.return_value = Future()
+        mock_repo_provider.get_compare.return_value.set_exception(
+            TorngitClientError(403, "response", "message")
+        )
+        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        assert res == {
+            "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+            "notifier_called": True,
+            "pull_updated": True,
+            "reason": "success",
         }
