@@ -12,7 +12,7 @@ from services.pem import get_pem
 log = logging.getLogger(__name__)
 
 
-@cache.cache_function
+@cache.cache_function()
 def get_github_integration_token(service, integration_id=None):
     # https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps/
     now = int(time())

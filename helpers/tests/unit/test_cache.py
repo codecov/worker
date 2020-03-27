@@ -30,10 +30,15 @@ class FakeBackend(BaseBackend):
         self.all_keys = {}
 
     def get(self, key):
-        return self.all_keys.get(key, NO_VALUE)
+        possible_values = self.all_keys.get(key, {})
+        for ttl, val in possible_values.items():
+            return val
+        return NO_VALUE
 
-    def set(self, key, value):
-        self.all_keys[key] = value
+    def set(self, key, ttl, value):
+        if key not in self.all_keys:
+            self.all_keys[key] = {}
+        self.all_keys[key][ttl] = value
 
 
 class FakeRedis(object):
@@ -57,18 +62,18 @@ class FakeRedisWithIssues(object):
 
 class TestRedisBackend(object):
     def test_simple_redis_call(self):
-        redis_backend = RedisBackend(FakeRedis(), 120)
+        redis_backend = RedisBackend(FakeRedis())
         assert redis_backend.get("normal_key") == NO_VALUE
-        redis_backend.set("normal_key", {"value_1": set("ascdefgh"), 1: [1, 3]})
+        redis_backend.set("normal_key", 120, {"value_1": set("ascdefgh"), 1: [1, 3]})
         assert redis_backend.get("normal_key") == {
             "value_1": set("ascdefgh"),
             1: [1, 3],
         }
 
     def test_simple_redis_call_exception(self):
-        redis_backend = RedisBackend(FakeRedisWithIssues(), 120)
+        redis_backend = RedisBackend(FakeRedisWithIssues())
         assert redis_backend.get("normal_key") == NO_VALUE
-        redis_backend.set("normal_key", {"value_1": set("ascdefgh"), 1: [1, 3]})
+        redis_backend.set("normal_key", 120, {"value_1": set("ascdefgh"), 1: [1, 3]})
         assert redis_backend.get("normal_key") == NO_VALUE
 
 
@@ -76,7 +81,15 @@ class TestCache(object):
     def test_simple_caching_no_backend_no_params(self, mocker):
         cache = OurOwnCache()
         sample_function = RandomCounter().call_function
-        cached_function = cache.cache_function(sample_function)
+        cached_function = cache.cache_function()(sample_function)
+        assert cached_function() == 1
+        assert cached_function() == 2
+        assert cached_function() == 3
+
+    def test_simple_caching_no_backend_no_params_with_ttl(self, mocker):
+        cache = OurOwnCache()
+        sample_function = RandomCounter().call_function
+        cached_function = cache.cache_function(ttl=300)(sample_function)
         assert cached_function() == 1
         assert cached_function() == 2
         assert cached_function() == 3
@@ -85,7 +98,7 @@ class TestCache(object):
     async def test_simple_caching_no_backend_async_no_params(self, mocker):
         cache = OurOwnCache()
         sample_function = RandomCounter().async_call_function
-        cached_function = cache.cache_function(sample_function)
+        cached_function = cache.cache_function()(sample_function)
         assert (await cached_function()) == 8
         assert (await cached_function()) == 40
         assert (await cached_function()) == 168
@@ -94,7 +107,7 @@ class TestCache(object):
         cache = OurOwnCache()
         cache.configure(FakeBackend())
         sample_function = RandomCounter().call_function
-        cached_function = cache.cache_function(sample_function)
+        cached_function = cache.cache_function()(sample_function)
         assert cached_function() == 1
         assert cached_function() == 1
         assert cached_function() == 1
@@ -104,7 +117,7 @@ class TestCache(object):
         cache = OurOwnCache()
         cache.configure(FakeBackend())
         sample_function = RandomCounter().async_call_function
-        cached_function = cache.cache_function(sample_function)
+        cached_function = cache.cache_function()(sample_function)
         assert (await cached_function()) == 8
         assert (await cached_function()) == 8
         assert (await cached_function()) == 8
