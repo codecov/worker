@@ -413,7 +413,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit, 1)
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             [
@@ -1364,6 +1364,7 @@ class TestReportService(BaseTestCase):
                         "n": None,
                         "p": None,
                         "st": "carriedforward",
+                        "se": {"carryforwardorwarded_from": parent_commit.commitid},
                         "t": None,
                         "u": None,
                     },
@@ -1378,6 +1379,7 @@ class TestReportService(BaseTestCase):
                         "n": None,
                         "p": None,
                         "st": "carriedforward",
+                        "se": {"carryforwardorwarded_from": parent_commit.commitid},
                         "t": None,
                         "u": None,
                     },
@@ -1402,6 +1404,10 @@ class TestReportService(BaseTestCase):
         assert (
             expected_results["report"]["sessions"]["0"]
             == readable_report["report"]["sessions"]["0"]
+        )
+        assert (
+            expected_results["report"]["sessions"]["1"]
+            == readable_report["report"]["sessions"]["1"]
         )
         assert (
             expected_results["report"]["sessions"]
@@ -1436,7 +1442,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit, 1)
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
         assert report is not None
         assert len(report.files) == 15
         report.add_session(Session(flags=["enterprise"]))
@@ -1457,6 +1463,7 @@ class TestReportService(BaseTestCase):
                         "n": None,
                         "p": None,
                         "st": "uploaded",
+                        "se": {},
                         "t": None,
                         "u": None,
                     }
@@ -1479,6 +1486,15 @@ class TestReportService(BaseTestCase):
             },
         }
         pprint.pprint(readable_report)
+        assert (
+            readable_report["report"]["sessions"]["0"]
+            == expected_results["report"]["sessions"]["0"]
+        )
+        assert (
+            readable_report["report"]["sessions"]
+            == expected_results["report"]["sessions"]
+        )
+        assert readable_report["report"] == expected_results["report"]
         assert readable_report == expected_results
 
     def test_build_report_from_commit_already_carriedforward_add_sessions(
@@ -1505,6 +1521,7 @@ class TestReportService(BaseTestCase):
                 "n": None,
                 "p": None,
                 "st": "uploaded",
+                "se": {},
                 "t": None,
                 "u": None,
             },
@@ -1519,6 +1536,7 @@ class TestReportService(BaseTestCase):
                 "n": None,
                 "p": None,
                 "st": "uploaded",
+                "se": {},
                 "t": None,
                 "u": None,
             },
@@ -1533,6 +1551,7 @@ class TestReportService(BaseTestCase):
                 "n": None,
                 "p": None,
                 "st": "uploaded",
+                "se": {},
                 "t": None,
                 "u": None,
             },
@@ -1553,6 +1572,7 @@ class TestReportService(BaseTestCase):
             "n": None,
             "p": None,
             "st": "uploaded",
+            "se": {},
             "t": None,
             "u": None,
         }
@@ -1581,7 +1601,7 @@ class TestReportService(BaseTestCase):
                 "special_flag": {"paths": ["file_0.*"]},
             }
         }
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit, 1)
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             ["file_10.py", "file_11.py", "file_12.py", "file_13.py", "file_14.py",]
@@ -2001,6 +2021,7 @@ class TestReportService(BaseTestCase):
                         "n": None,
                         "p": None,
                         "st": "carriedforward",
+                        "se": {"carryforwardorwarded_from": parent_commit.commitid},
                         "t": None,
                         "u": None,
                     },
@@ -2015,6 +2036,7 @@ class TestReportService(BaseTestCase):
                         "n": None,
                         "p": None,
                         "st": "carriedforward",
+                        "se": {"carryforwardorwarded_from": parent_commit.commitid},
                         "t": None,
                         "u": None,
                     },
@@ -2039,6 +2061,10 @@ class TestReportService(BaseTestCase):
         assert (
             expected_results["report"]["sessions"]["0"]
             == readable_report["report"]["sessions"]["0"]
+        )
+        assert (
+            expected_results["report"]["sessions"]["1"]
+            == readable_report["report"]["sessions"]["1"]
         )
         assert (
             expected_results["report"]["sessions"]
@@ -2066,7 +2092,7 @@ class TestReportService(BaseTestCase):
                 "special_flag": {"paths": ["file_0.*"]},
             }
         }
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit, 1)
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         assert report.totals == ReportTotals(
@@ -2125,7 +2151,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit, 1)
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         assert report.totals == ReportTotals(
@@ -2171,3 +2197,229 @@ class TestReportService(BaseTestCase):
         assert expected_results["report"] == readable_report["report"]
         assert expected_results["totals"] == readable_report["totals"]
         assert expected_results == readable_report
+
+    def test_create_new_report_for_commit_parent_not_ready(
+        self, dbsession, sample_commit_with_report_big
+    ):
+        grandparent_commit = sample_commit_with_report_big
+        parent_commit = CommitFactory.create(
+            repository=grandparent_commit.repository,
+            parent_commit_id=grandparent_commit.commitid,
+            report_json=None,
+            state="pending",
+        )
+        commit = CommitFactory.create(
+            repository=grandparent_commit.repository,
+            parent_commit_id=parent_commit.commitid,
+            report_json=None,
+        )
+        dbsession.add(parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        assert report is not None
+        assert sorted(report.files) == sorted(
+            [
+                "file_00.py",
+                "file_01.py",
+                "file_02.py",
+                "file_03.py",
+                "file_04.py",
+                "file_05.py",
+                "file_06.py",
+                "file_07.py",
+                "file_08.py",
+                "file_09.py",
+                "file_10.py",
+                "file_11.py",
+                "file_12.py",
+                "file_13.py",
+                "file_14.py",
+            ]
+        )
+        assert report.totals == ReportTotals(
+            files=15,
+            lines=188,
+            hits=68,
+            misses=26,
+            partials=94,
+            coverage="36.17021",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=2,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        readable_report = self.convert_report_to_better_readable(report)
+        expected_results_report = {
+            "files": {
+                "file_00.py": [
+                    0,
+                    [0, 14, 4, 5, 5, "28.57143", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 14, 4, 5, 5, "28.57143", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_01.py": [
+                    1,
+                    [0, 10, 3, 0, 7, "30.00000", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 10, 3, 0, 7, "30.00000", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_02.py": [
+                    7,
+                    [0, 11, 5, 0, 6, "45.45455", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 11, 5, 0, 6, "45.45455", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_03.py": [
+                    8,
+                    [0, 15, 4, 2, 9, "26.66667", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 15, 4, 2, 9, "26.66667", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_04.py": [
+                    9,
+                    [0, 10, 3, 1, 6, "30.00000", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 10, 3, 1, 6, "30.00000", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_05.py": [
+                    10,
+                    [0, 13, 3, 2, 8, "23.07692", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 13, 3, 2, 8, "23.07692", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_06.py": [
+                    11,
+                    [0, 7, 5, 0, 2, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 7, 5, 0, 2, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_07.py": [
+                    12,
+                    [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_08.py": [
+                    13,
+                    [0, 11, 2, 4, 5, "18.18182", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 11, 2, 4, 5, "18.18182", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_09.py": [
+                    14,
+                    [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_10.py": [
+                    2,
+                    [0, 8, 3, 0, 5, "37.50000", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 8, 3, 0, 5, "37.50000", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_11.py": [
+                    3,
+                    [0, 22, 8, 5, 9, "36.36364", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 22, 8, 5, 9, "36.36364", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_12.py": [
+                    4,
+                    [0, 12, 4, 3, 5, "33.33333", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 12, 4, 3, 5, "33.33333", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_13.py": [
+                    5,
+                    [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "file_14.py": [
+                    6,
+                    [0, 22, 8, 2, 12, "36.36364", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 22, 8, 2, 12, "36.36364", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+            },
+            "sessions": {
+                "0": {
+                    "N": "Carriedforward",
+                    "a": None,
+                    "c": None,
+                    "d": readable_report["report"]["sessions"]["0"]["d"],
+                    "e": None,
+                    "f": ["enterprise"],
+                    "j": None,
+                    "n": None,
+                    "p": None,
+                    "st": "carriedforward",
+                    "se": {"carryforwardorwarded_from": grandparent_commit.commitid},
+                    "t": None,
+                    "u": None,
+                },
+                "1": {
+                    "N": "Carriedforward",
+                    "a": None,
+                    "c": None,
+                    "d": readable_report["report"]["sessions"]["1"]["d"],
+                    "e": None,
+                    "f": ["unit", "enterprise"],
+                    "j": None,
+                    "n": None,
+                    "p": None,
+                    "st": "carriedforward",
+                    "se": {"carryforwardorwarded_from": grandparent_commit.commitid},
+                    "t": None,
+                    "u": None,
+                },
+            },
+        }
+        assert (
+            expected_results_report["sessions"]["0"]
+            == readable_report["report"]["sessions"]["0"]
+        )
+        assert (
+            expected_results_report["sessions"]["1"]
+            == readable_report["report"]["sessions"]["1"]
+        )
+        assert (
+            expected_results_report["sessions"] == readable_report["report"]["sessions"]
+        )
+        assert expected_results_report == readable_report["report"]
+
+    def test_create_new_report_for_commit_too_many_ancestors_not_ready(
+        self, dbsession, sample_commit_with_report_big
+    ):
+        grandparent_commit = sample_commit_with_report_big
+        current_commit = grandparent_commit
+        for i in range(10):
+            current_commit = CommitFactory.create(
+                repository=grandparent_commit.repository,
+                parent_commit_id=current_commit.commitid,
+                report_json=None,
+                state="pending",
+            )
+            dbsession.add(current_commit)
+        commit = CommitFactory.create(
+            repository=grandparent_commit.repository,
+            parent_commit_id=current_commit.commitid,
+            report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        assert report is not None
+        assert sorted(report.files) == []
+        readable_report = self.convert_report_to_better_readable(report)
+        expected_results_report = {
+            "files": {},
+            "sessions": {},
+        }
+        assert expected_results_report == readable_report["report"]
