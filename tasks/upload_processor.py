@@ -118,6 +118,8 @@ class UploadProcessorTask(BaseCodecovTask):
         archive_service = ArchiveService(repository)
         try:
             report = ReportService(commit_yaml).build_report_from_commit(commit)
+        except (CeleryError, SoftTimeLimitExceeded):
+            raise
         except Exception:
             log.exception(
                 "Unable to fetch current report for commit",

@@ -3,6 +3,8 @@ import dataclasses
 from typing import List
 import asyncio
 
+from celery.exceptions import CeleryError, SoftTimeLimitExceeded
+
 from covreports.config import get_config
 from covreports.helpers.yaml import default_if_true
 from helpers.metrics import metrics
@@ -120,6 +122,8 @@ class NotificationService(object):
                 ),
             )
             return individual_result
+        except (CeleryError, SoftTimeLimitExceeded):
+            raise
         except Exception:
             individual_result = {
                 "notifier": notifier.name,
