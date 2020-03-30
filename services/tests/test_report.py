@@ -2392,3 +2392,34 @@ class TestReportService(BaseTestCase):
             expected_results_report["sessions"] == readable_report["report"]["sessions"]
         )
         assert expected_results_report == readable_report["report"]
+
+    def test_create_new_report_for_commit_too_many_ancestors_not_ready(
+        self, dbsession, sample_commit_with_report_big
+    ):
+        grandparent_commit = sample_commit_with_report_big
+        current_commit = grandparent_commit
+        for i in range(10):
+            current_commit = CommitFactory.create(
+                repository=grandparent_commit.repository,
+                parent_commit_id=current_commit.commitid,
+                report_json=None,
+                state="pending",
+            )
+            dbsession.add(current_commit)
+        commit = CommitFactory.create(
+            repository=grandparent_commit.repository,
+            parent_commit_id=current_commit.commitid,
+            report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        assert report is not None
+        assert sorted(report.files) == []
+        readable_report = self.convert_report_to_better_readable(report)
+        expected_results_report = {
+            "files": {},
+            "sessions": {},
+        }
+        assert expected_results_report == readable_report["report"]

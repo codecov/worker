@@ -84,11 +84,30 @@ class ReportService(object):
             self.current_yaml, flags_to_carryforward
         )
         parent_commit = commit.get_parent_commit()
-        while parent_commit is not None and parent_commit.state != "complete":
+        max_parenthood_deepness = 10
+        count = 1  # `parent_commit` is already the first parent
+        while (
+            parent_commit is not None
+            and parent_commit.state != "complete"
+            and count < max_parenthood_deepness
+        ):
             parent_commit = parent_commit.get_parent_commit()
+            count += 1
         if parent_commit is None:
             log.warning(
                 "No parent commit was found to be carriedforward from",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    would_be_parent=commit.parent_commit_id,
+                    flags_to_carryforward=flags_to_carryforward,
+                    paths_to_carryforward=paths_to_carryforward,
+                ),
+            )
+            return Report()
+        if parent_commit.state != "complete":
+            log.warning(
+                "None of the parent commits were in a complete state to be used as CFing base",
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
