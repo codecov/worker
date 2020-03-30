@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import torngit
 from torngit.exceptions import TorngitClientError
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import FlushError
 
 from covreports.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
@@ -281,8 +282,6 @@ async def fetch_and_update_pull_request_information_from_commit(
 async def fetch_and_update_pull_request_information(
     repository_service, db_session, repoid, pullid, current_yaml
 ) -> EnrichedPull:
-    pull_query = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid)
-    pull = pull_query.first()
     compared_to = None
     try:
         pull_information = await repository_service.get_pull_request(pullid=pullid)
@@ -291,6 +290,7 @@ async def fetch_and_update_pull_request_information(
             "Unable to find pull request information on provider to update it",
             extra=dict(repoid=repoid, pullid=pullid),
         )
+        pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
         return EnrichedPull(database_pull=pull, provider_pull=None)
     pull_base_sha = pull_information["base"]["commitid"]
     base_commit = (
@@ -316,30 +316,30 @@ async def fetch_and_update_pull_request_information(
         new_base = new_base_query.first()
         if new_base:
             compared_to = new_base.commitid
-
-    if pull:
+    db_session.flush()
+    db_session.begin_nested()
+    pull = Pull(
+        pullid=pullid,
+        repoid=repoid,
+        issueid=pull_information["id"],
+        state=pull_information["state"],
+        title=pull_information["title"],
+        base=pull_information["base"]["commitid"],
+        compared_to=compared_to,
+    )
+    db_session.add(pull)
+    try:
+        db_session.flush()
+    except (IntegrityError, FlushError):
+        db_session.rollback()
+        log.info("The pull is already in the database now. We will only fetch it then")
+        pull_query = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid)
+        pull = pull_query.first()
         pull.issueid = pull_information["id"]
         pull.state = pull_information["state"]
         pull.title = pull_information["title"]
         pull.base = pull_information["base"]["commitid"]
         pull.compared_to = compared_to
-    else:
-        db_session.flush()
-        pull = Pull(
-            pullid=pullid,
-            repoid=repoid,
-            issueid=pull_information["id"],
-            state=pull_information["state"],
-            title=pull_information["title"],
-            base=pull_information["base"]["commitid"],
-            compared_to=compared_to,
-        )
-        db_session.add(pull)
-        try:
-            db_session.flush()
-        except IntegrityError:
-            log.info("The pull is already in the database now. We will only fetch it then")
-            pull_query = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid)
-            pull = pull_query.first()
     db_session.flush()
+    db_session.commit()
     return EnrichedPull(database_pull=pull, provider_pull=pull_information)
