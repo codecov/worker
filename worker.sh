@@ -1,1 +1,1 @@
-celery -A tasks worker -Q new_tasks --loglevel=info
+celery -A tasks worker -Q new_tasks,upload -l info
