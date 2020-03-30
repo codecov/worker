@@ -125,7 +125,7 @@ class TestPullSyncTask(object):
         assert not fourth_commit.merged
 
     @pytest.mark.asyncio
-    async def test_call_pullsync_task(self, dbsession, mocker, mock_redis):
+    async def test_call_pullsync_task_no_head_commit(self, dbsession, mocker, mock_redis):
         task = PullSyncTask()
         pull = PullFactory.create(head="head_commit_nonexistent_sha", state="open",)
         dbsession.add(pull)
@@ -140,7 +140,7 @@ class TestPullSyncTask(object):
         res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
-            "notifier_called": True,
+            "notifier_called": False,
             "pull_updated": False,
         }
 

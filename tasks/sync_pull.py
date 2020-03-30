@@ -106,7 +106,7 @@ class PullSyncTask(BaseCodecovTask):
                 extra=dict(pullid=pullid, repoid=repoid),
             )
             return {
-                "notifier_called": True,
+                "notifier_called": False,
                 "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
                 "pull_updated": False,
             }
