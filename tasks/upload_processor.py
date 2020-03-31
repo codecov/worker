@@ -116,21 +116,7 @@ class UploadProcessorTask(BaseCodecovTask):
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         archive_service = ArchiveService(repository)
-        try:
-            report = ReportService(commit_yaml).build_report_from_commit(commit)
-        except (CeleryError, SoftTimeLimitExceeded):
-            raise
-        except Exception:
-            log.exception(
-                "Unable to fetch current report for commit",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    arguments_list=arguments_list,
-                    commit_yaml=commit_yaml,
-                ),
-            )
-            raise
+        report = ReportService(commit_yaml).build_report_from_commit(commit)
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")
