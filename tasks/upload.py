@@ -10,6 +10,8 @@ from torngit.exceptions import (
     TorngitClientError,
     TorngitRepoNotFoundError,
 )
+from celery.exceptions import CeleryError, SoftTimeLimitExceeded
+
 
 from app import celery_app
 from celery_config import upload_task_name
@@ -324,7 +326,7 @@ class UploadTask(BaseCodecovTask):
                 repository.hookid = hookid
                 repo_data["repo"]["hookid"] = hookid
                 return True
-            except Exception:
+            except TorngitClientError:
                 log.warning(
                     "Failed to create project webhook",
                     extra=dict(repoid=repository.repoid, commit=commit.commitid),

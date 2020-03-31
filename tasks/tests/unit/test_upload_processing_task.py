@@ -1,10 +1,12 @@
 from pathlib import Path
 from asyncio import Future
+
 import pytest
 import celery
 from redis.exceptions import LockError
 from torngit.exceptions import TorngitObjectNotFoundError
 from covreports.reports.resources import Report, ReportFile, ReportLine, ReportTotals
+from celery.exceptions import SoftTimeLimitExceeded
 
 from tasks.upload_processor import UploadProcessorTask
 from database.tests.factories import CommitFactory
@@ -14,6 +16,7 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from services.archive import ArchiveService
+from services.report import ReportService
 
 here = Path(__file__)
 
