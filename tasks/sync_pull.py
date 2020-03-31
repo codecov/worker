@@ -6,6 +6,7 @@ import sqlalchemy.orm
 from celery_config import pulls_task_name, notify_task_name, task_default_queue
 from redis.exceptions import LockError
 from torngit.exceptions import TorngitClientError
+from covreports.config import get_config
 
 from database.models import Repository, Commit
 from services.redis import get_redis_connection
@@ -17,6 +18,7 @@ from services.repository import (
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.notification.changes import get_changes
 from services.yaml.reader import read_yaml_field
+from services.yaml import get_final_yaml
 from services.report import ReportService
 from tasks.base import BaseCodecovTask
 from app import celery_app
@@ -100,7 +102,9 @@ class PullSyncTask(BaseCodecovTask):
                 "pull_updated": False,
                 "reason": "no_bot",
             }
-        current_yaml = repository.yaml
+        current_yaml = get_final_yaml(
+            owner_yaml=repository.owner.yaml, repo_yaml=repository.yaml
+        )
         enriched_pull = await fetch_and_update_pull_request_information(
             repository_service, db_session, repoid, pullid, current_yaml
         )
