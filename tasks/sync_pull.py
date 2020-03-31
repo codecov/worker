@@ -5,6 +5,7 @@ from typing import Sequence
 import sqlalchemy.orm
 from celery_config import pulls_task_name, notify_task_name, task_default_queue
 from redis.exceptions import LockError
+from torngit.exceptions import TorngitClientError
 
 from database.models import Repository, Commit
 from services.redis import get_redis_connection
@@ -13,6 +14,7 @@ from services.repository import (
     fetch_and_update_pull_request_information,
     EnrichedPull,
 )
+from helpers.exceptions import RepositoryWithoutValidBotError
 from services.notification.changes import get_changes
 from services.yaml.reader import read_yaml_field
 from services.report import ReportService
@@ -67,8 +69,9 @@ class PullSyncTask(BaseCodecovTask):
             )
             return {
                 "notifier_called": False,
-                "commit_updates_done": {'merged_count': 0, 'soft_deleted_count': 0},
+                "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
                 "pull_updated": False,
+                "reason": "unable_fetch_lock",
             }
 
     async def run_async_within_lock(
@@ -80,9 +83,23 @@ class PullSyncTask(BaseCodecovTask):
         pullid: int = None,
         **kwargs,
     ):
+        commit_updates_done = {"merged_count": 0, "soft_deleted_count": 0}
         repository = db_session.query(Repository).filter_by(repoid=repoid).first()
         assert repository
-        repository_service = get_repo_provider_service(repository)
+        try:
+            repository_service = get_repo_provider_service(repository)
+        except RepositoryWithoutValidBotError:
+            log.warning(
+                "Could not sync pull because there is no valid bot found for that repo",
+                extra=dict(pullid=pullid, repoid=repoid),
+                exc_info=True,
+            )
+            return {
+                "notifier_called": False,
+                "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+                "pull_updated": False,
+                "reason": "no_bot",
+            }
         current_yaml = repository.yaml
         enriched_pull = await fetch_and_update_pull_request_information(
             repository_service, db_session, repoid, pullid, current_yaml
@@ -97,6 +114,18 @@ class PullSyncTask(BaseCodecovTask):
                 "notifier_called": False,
                 "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
                 "pull_updated": False,
+                "reason": "no_db_pull",
+            }
+        if enriched_pull.provider_pull is None:
+            log.info(
+                "Not syncing pull since we can't find it in the provider. There is nothing to sync",
+                extra=dict(pullid=pullid, repoid=repoid),
+            )
+            return {
+                "notifier_called": False,
+                "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+                "pull_updated": False,
+                "reason": "not_in_provider",
             }
         report_service = ReportService()
         head_commit = pull.get_head_commit()
@@ -109,6 +138,7 @@ class PullSyncTask(BaseCodecovTask):
                 "notifier_called": False,
                 "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
                 "pull_updated": False,
+                "reason": "no_head",
             }
         compared_to = pull.get_comparedto_commit()
         head_report = report_service.build_report_from_commit(head_commit)
@@ -116,19 +146,28 @@ class PullSyncTask(BaseCodecovTask):
             base_report = report_service.build_report_from_commit(compared_to)
         else:
             base_report = None
-        compare_dict = await repository_service.get_compare(
-            pull.base, pull.head, with_commits=False
-        )
-        diff = compare_dict["diff"]
-        changes = get_changes(base_report, head_report, diff)
-        if head_report:
-            color = read_yaml_field(current_yaml, ("coverage", "range"))
-            pull.diff = head_report.apply_diff(diff)
-            pull.flare = (
-                head_report.flare(changes, color=color) if head_report else None
+        compare_dict, commits = None, None
+        try:
+            compare_dict = await repository_service.get_compare(
+                pull.base, pull.head, with_commits=False
             )
-        commits = await repository_service.get_pull_request_commits(pull.pullid)
-        commit_updates_done = self.update_pull_commits(enriched_pull, commits)
+            commits = await repository_service.get_pull_request_commits(pull.pullid)
+        except TorngitClientError:
+            log.warning(
+                "Unable to fetch information about diff or pull commits",
+                extra=dict(pullid=pullid, repoid=repoid),
+            )
+        if compare_dict:
+            diff = compare_dict["diff"]
+            changes = get_changes(base_report, head_report, diff)
+            if head_report:
+                color = read_yaml_field(current_yaml, ("coverage", "range"))
+                pull.diff = head_report.apply_diff(diff)
+                pull.flare = (
+                    head_report.flare(changes, color=color) if head_report else None
+                )
+        if commits:
+            commit_updates_done = self.update_pull_commits(enriched_pull, commits)
         self.app.tasks[notify_task_name].apply_async(
             queue=task_default_queue, kwargs=dict(repoid=repoid, commitid=pull.head,)
         )
@@ -137,6 +176,7 @@ class PullSyncTask(BaseCodecovTask):
             "notifier_called": True,
             "commit_updates_done": commit_updates_done,
             "pull_updated": True,
+            "reason": "success",
         }
 
     def clear_pull_related_caches(self, redis_connection, enriched_pull: EnrichedPull):
