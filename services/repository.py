@@ -332,7 +332,10 @@ async def fetch_and_update_pull_request_information(
         db_session.flush()
     except (IntegrityError, FlushError):
         db_session.rollback()
-        log.info("The pull is already in the database now. We will only fetch it then")
+        log.info(
+            "The pull is already in the database now. We will only fetch it then",
+            extra=dict(repoid=repoid, pullid=pullid),
+        )
         pull_query = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid)
         pull = pull_query.first()
         pull.issueid = pull_information["id"]
@@ -340,6 +343,11 @@ async def fetch_and_update_pull_request_information(
         pull.title = pull_information["title"]
         pull.base = pull_information["base"]["commitid"]
         pull.compared_to = compared_to
-    db_session.flush()
-    db_session.commit()
+        db_session.flush()
+        log.info(
+            "Fetched and updated existing pull",
+            extra=dict(repoid=repoid, pullid=pullid),
+        )
+    else:
+        db_session.commit()
     return EnrichedPull(database_pull=pull, provider_pull=pull_information)

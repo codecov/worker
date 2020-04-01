@@ -6,7 +6,7 @@ import sqlalchemy.orm
 from celery_config import pulls_task_name, notify_task_name, task_default_queue
 from redis.exceptions import LockError
 from torngit.exceptions import TorngitClientError
-from covreports.config import get_config
+from helpers.metrics import metrics
 
 from database.models import Repository, Commit
 from services.redis import get_redis_connection
@@ -57,9 +57,11 @@ class PullSyncTask(BaseCodecovTask):
         **kwargs,
     ):
         redis_connection = get_redis_connection()
+        pullid = int(pullid)
+        repoid = int(repoid)
         lock_name = f"pullsync_{repoid}_{pullid}"
         try:
-            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+            with redis_connection.lock(lock_name, timeout=60, blocking_timeout=1):
                 return await self.run_async_within_lock(
                     db_session, redis_connection, repoid=repoid, pullid=pullid, **kwargs
                 )
@@ -105,9 +107,10 @@ class PullSyncTask(BaseCodecovTask):
         current_yaml = get_final_yaml(
             owner_yaml=repository.owner.yaml, repo_yaml=repository.yaml
         )
-        enriched_pull = await fetch_and_update_pull_request_information(
-            repository_service, db_session, repoid, pullid, current_yaml
-        )
+        with metrics.timer(f"new_worker.tasks.{self.name},fetch_pull"):
+            enriched_pull = await fetch_and_update_pull_request_information(
+                repository_service, db_session, repoid, pullid, current_yaml
+            )
         pull = enriched_pull.database_pull
         if pull is None:
             log.info(
