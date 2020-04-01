@@ -6,6 +6,7 @@ import jwt
 import torngit
 
 from helpers.cache import cache
+from helpers.exceptions import RepositoryWithoutValidBotError
 from covreports.config import get_config
 from services.pem import get_pem
 
@@ -38,6 +39,12 @@ def get_github_integration_token(service, integration_id=None):
         }
         url = "%s/app/installations/%s/access_tokens" % (api_endpoint, integration_id)
         res = requests.post(url, headers=headers)
+        if res.status_code == 404:
+            log.warning(
+                "Integration could not be found to fetch token from",
+                extra=dict(service=service, integration_id=integration_id),
+            )
+            raise RepositoryWithoutValidBotError()
         try:
             res.raise_for_status()
         except requests.exceptions.HTTPError:
