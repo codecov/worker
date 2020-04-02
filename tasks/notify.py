@@ -68,9 +68,7 @@ class NotifyTask(BaseCodecovTask):
             )
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         if current_yaml is None:
-            current_yaml = await get_current_yaml(
-                commit, repository_service
-            )
+            current_yaml = await get_current_yaml(commit, repository_service)
         assert commit, "Commit not found in database."
         try:
             ci_results = await self.fetch_and_update_whether_ci_passed(

@@ -116,6 +116,42 @@ class TestNotifyTask(object):
         )
 
     @pytest.mark.asyncio
+    async def test_simple_call_no_notifications_no_yaml_given(
+        self, dbsession, mocker, mock_storage, mock_configuration, mock_repo_provider
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mocker.patch.object(NotifyTask, "app")
+        mocked_should_send_notifications = mocker.patch.object(
+            NotifyTask, "should_send_notifications", return_value=False
+        )
+        fetch_and_update_whether_ci_passed_result = Future()
+        fetch_and_update_whether_ci_passed_result.set_result({})
+        mocker.patch.object(
+            NotifyTask,
+            "fetch_and_update_whether_ci_passed",
+            return_value=fetch_and_update_whether_ci_passed_result,
+        )
+        commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+        )
+        mocked_fetch_yaml = mocker.patch("services.yaml.fetch_commit_yaml_from_provider", return_value=Future())
+        mocked_fetch_yaml.return_value.set_result({})
+        dbsession.add(commit)
+        dbsession.flush()
+        task = NotifyTask()
+        result = await task.run_async(
+            dbsession, commit.repoid, commit.commitid, current_yaml=None
+        )
+        assert result == {"notified": False, "notifications": None}
+        mocked_should_send_notifications.assert_called_with(
+            {}, commit, fetch_and_update_whether_ci_passed_result.result()
+        )
+        mocked_fetch_yaml.assert_called_with(commit, mock_repo_provider)
+
+    @pytest.mark.asyncio
     async def test_simple_call_yes_notifications_no_base(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
