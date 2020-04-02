@@ -32,9 +32,10 @@ class BaseCodecovTask(celery_app.Task):
             metrics.incr(f"new-worker.task.{self.name}.softimeout")
             raise
         finally:
-            if self.write_to_db():
-                db_session.commit()
-            db_session.close()
+            with metrics.timer(f"new-worker.task.{self.name}.db_wrap"):
+                if self.write_to_db():
+                    db_session.commit()
+                db_session.close()
 
     def write_to_db(self):
         return True

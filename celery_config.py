@@ -98,6 +98,12 @@ send_email_task_name = "app.tasks.send_email.SendEmail"
 remove_webhook_task_name = "app.tasks.remove_webhook.RemoveOldHook"
 synchronize_task_name = "app.tasks.synchronize.Synchronize"
 
+task_annotations = {
+    notify_task_name: {
+        "soft_time_limit": 15,
+        "time_limit": 20,
+    }
+}
 
 task_routes = {
     sync_teams_task_name: {
@@ -119,8 +125,6 @@ task_routes = {
         "queue": get_config(
             "setup", "tasks", "notify", "queue", default=_default_queue
         ),
-        "soft_time_limit": 15,
-        "time_limit": 20,
     },
     pulls_task_name: {
         "queue": get_config("setup", "tasks", "pulls", "queue", default=_default_queue)
