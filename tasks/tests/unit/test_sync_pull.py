@@ -270,3 +270,20 @@ class TestPullSyncTask(object):
             "pull_updated": True,
             "reason": "success",
         }
+
+    @pytest.mark.asyncio
+    async def test_run_async_unobtainable_lock(self, dbsession, mocker, mock_redis):
+        pull = PullFactory.create()
+        dbsession.add(pull)
+        dbsession.flush()
+        mock_redis.lock.side_effect = LockError()
+        mock_redis.exists.return_value = True
+        task = PullSyncTask()
+        task.request.retries = 0
+        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        assert res == {
+            "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+            "notifier_called": False,
+            "pull_updated": False,
+            "reason": "unable_fetch_lock",
+        }

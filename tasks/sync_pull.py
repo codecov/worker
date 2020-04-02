@@ -61,14 +61,13 @@ class PullSyncTask(BaseCodecovTask):
         repoid = int(repoid)
         lock_name = f"pullsync_{repoid}_{pullid}"
         try:
-            with redis_connection.lock(lock_name, timeout=60, blocking_timeout=1):
+            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
                 return await self.run_async_within_lock(
                     db_session, redis_connection, repoid=repoid, pullid=pullid, **kwargs
                 )
         except LockError:
             log.info(
                 "Unable to acquire PullSync lock. Not retrying because pull is being synced already",
-                lock_name,
                 extra=dict(pullid=pullid, repoid=repoid),
             )
             return {
