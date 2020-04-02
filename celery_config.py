@@ -100,8 +100,8 @@ synchronize_task_name = "app.tasks.synchronize.Synchronize"
 
 task_annotations = {
     notify_task_name: {
-        "soft_time_limit": 15,
-        "time_limit": 20,
+        "soft_time_limit": 30,
+        "time_limit": 45,
     }
 }
 
