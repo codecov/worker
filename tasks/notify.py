@@ -20,8 +20,7 @@ from services.repository import (
     get_repo_provider_service,
     fetch_and_update_pull_request_information_from_commit,
 )
-from services.yaml import read_yaml_field
-from services.yaml.fetcher import fetch_commit_yaml_from_provider
+from services.yaml import read_yaml_field, get_current_yaml
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -69,9 +68,7 @@ class NotifyTask(BaseCodecovTask):
             )
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         if current_yaml is None:
-            current_yaml = await fetch_commit_yaml_from_provider(
-                commit, repository_service
-            )
+            current_yaml = await get_current_yaml(commit, repository_service)
         assert commit, "Commit not found in database."
         try:
             ci_results = await self.fetch_and_update_whether_ci_passed(
