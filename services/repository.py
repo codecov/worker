@@ -5,7 +5,11 @@ from typing import Mapping, Any
 from dataclasses import dataclass
 
 import torngit
-from torngit.exceptions import TorngitClientError
+from torngit.exceptions import (
+    TorngitClientError,
+    TorngitObjectNotFoundError,
+    TorngitError,
+)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import FlushError
 
@@ -287,7 +291,14 @@ async def fetch_and_update_pull_request_information(
         pull_information = await repository_service.get_pull_request(pullid=pullid)
     except TorngitClientError:
         log.warning(
-            "Unable to find pull request information on provider to update it",
+            "Unable to find pull request information on provider to update it due to client error",
+            extra=dict(repoid=repoid, pullid=pullid),
+        )
+        pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
+        return EnrichedPull(database_pull=pull, provider_pull=None)
+    except TorngitError:
+        log.warning(
+            "Unable to find pull request information on provider to update it due to unknown provider error",
             extra=dict(repoid=repoid, pullid=pullid),
         )
         pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
@@ -301,21 +312,31 @@ async def fetch_and_update_pull_request_information(
     if base_commit:
         compared_to = base_commit.commitid
     else:
-        commit_dict = await repository_service.get_commit(
-            pull_information["base"]["commitid"]
-        )
-        new_base_query = db_session.query(Commit).filter(
-            Commit.repoid == repoid,
-            Commit.branch == pull_information["base"]["branch"],
-            (Commit.pullid.is_(None) | Commit.merged),
-            Commit.timestamp < commit_dict["timestamp"],
-        )
-        if read_yaml_field(current_yaml, ("codecov", "require_ci_to_pass"), True):
-            new_base_query = new_base_query.filter(Commit.ci_passed)
-        new_base_query.order_by(Commit.timestamp.desc())
-        new_base = new_base_query.first()
-        if new_base:
-            compared_to = new_base.commitid
+        try:
+            commit_dict = await repository_service.get_commit(
+                pull_information["base"]["commitid"]
+            )
+            new_base_query = db_session.query(Commit).filter(
+                Commit.repoid == repoid,
+                Commit.branch == pull_information["base"]["branch"],
+                (Commit.pullid.is_(None) | Commit.merged),
+                Commit.timestamp < commit_dict["timestamp"],
+            )
+            if read_yaml_field(current_yaml, ("codecov", "require_ci_to_pass"), True):
+                new_base_query = new_base_query.filter(Commit.ci_passed)
+            new_base_query.order_by(Commit.timestamp.desc())
+            new_base = new_base_query.first()
+            if new_base:
+                compared_to = new_base.commitid
+        except TorngitObjectNotFoundError:
+            log.warning(
+                "Cannot find (in the provider) commit that is supposed to be the PR base",
+                extra=dict(
+                    repoid=repoid,
+                    pullid=pullid,
+                    supposed_base=pull_information["base"]["commitid"],
+                ),
+            )
     db_session.flush()
     db_session.begin_nested()
     pull = Pull(

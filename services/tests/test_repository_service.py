@@ -2,7 +2,7 @@ import pytest
 from asyncio import Future
 from datetime import datetime
 
-from torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError
+from torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError, TorngitServerUnreachableError
 
 from services.repository import (
     get_repo_provider_service,
@@ -11,6 +11,7 @@ from services.repository import (
     update_commit_from_provider_info,
     get_repo_provider_service_by_id,
     fetch_and_update_pull_request_information_from_commit,
+    fetch_and_update_pull_request_information
 )
 from database.tests.factories import (
     RepositoryFactory,
@@ -474,6 +475,9 @@ class TestRepositoryServiceTestCase(object):
             "secret": None,
         }
 
+
+class TestPullRequestFetcher(object):
+
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_from_commit_new_pull_commits_in_place(
         self, dbsession, mocker
@@ -743,6 +747,68 @@ class TestRepositoryServiceTestCase(object):
         assert res.author == commit.author
 
     @pytest.mark.asyncio
+    async def test_fetch_and_update_pull_request_information_no_compared_to(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(repository=repository)
+        compared_to_commit = CommitFactory.create(
+            repository=repository, branch="master", merged=True
+        )
+        commit = CommitFactory.create(
+            message="",
+            pullid=pull.pullid,
+            totals=None,
+            report_json=None,
+            repository=repository,
+        )
+        dbsession.add(pull)
+        dbsession.add(commit)
+        dbsession.add(compared_to_commit)
+        dbsession.flush()
+        current_yaml = {}
+        f = Future()
+        f.set_exception(TorngitObjectNotFoundError('response', 'message'))
+        get_pull_request_result = Future()
+        get_pull_request_result.set_result(
+            {
+                "base": {"branch": "master", "commitid": "somecommitid"},
+                "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            }
+        )
+        repository_service = mocker.MagicMock(
+            get_commit=mocker.MagicMock(return_value=f),
+            get_pull_request=mocker.MagicMock(return_value=get_pull_request_result),
+        )
+        enriched_pull = await fetch_and_update_pull_request_information(
+            repository_service, dbsession, pull.repoid, pull.pullid, current_yaml
+        )
+        res = enriched_pull.database_pull
+        dbsession.flush()
+        dbsession.refresh(res)
+        assert res is not None
+        assert res == pull
+        assert res.repoid == commit.repoid
+        assert res.pullid == pull.pullid
+        assert res.issueid == pull.pullid
+        assert res.updatestamp is None
+        assert res.state == "open"
+        assert res.title == "Creating new code for reasons no one knows"
+        assert res.base == "somecommitid"
+        assert res.compared_to is None
+        assert res.head is None
+        assert res.commentid is None
+        assert res.diff is None
+        assert res.flare is None
+        assert res.author is None
+
+    @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_torngitexception(
         self, dbsession, mocker
     ):
@@ -807,6 +873,27 @@ class TestRepositoryServiceTestCase(object):
             repository_service, commit, current_yaml
         )
         assert res.database_pull is None
+        assert res.provider_pull is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_and_update_pull_request_information_torngitserverexception_getting_pull(
+        self, dbsession, mocker
+    ):
+        pull = PullFactory.create()
+        dbsession.add(pull)
+        dbsession.flush()
+        current_yaml = {}
+        result = Future()
+        result.set_exception(
+            TorngitServerUnreachableError()
+        )
+        repository_service = mocker.MagicMock(
+            get_pull_request=mocker.MagicMock(return_value=result),
+        )
+        res = await fetch_and_update_pull_request_information(
+            repository_service, dbsession, pull.repoid, pull.pullid, current_yaml
+        )
+        assert res.database_pull == pull
         assert res.provider_pull is None
 
     @pytest.mark.asyncio
