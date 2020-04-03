@@ -26,7 +26,7 @@ def initialize_logging(loglevel=logging.INFO, **kwargs):
 @signals.worker_process_init.connect
 def initialize_cache(**kwargs):
     log.info("Initialized cache")
-    redis_cache_backend = RedisBackend(get_redis_connection(), 120)
+    redis_cache_backend = RedisBackend(get_redis_connection())
     cache.configure(redis_cache_backend)
 
 
