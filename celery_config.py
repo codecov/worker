@@ -98,12 +98,7 @@ send_email_task_name = "app.tasks.send_email.SendEmail"
 remove_webhook_task_name = "app.tasks.remove_webhook.RemoveOldHook"
 synchronize_task_name = "app.tasks.synchronize.Synchronize"
 
-task_annotations = {
-    notify_task_name: {
-        "soft_time_limit": 30,
-        "time_limit": 45,
-    }
-}
+task_annotations = {notify_task_name: {"soft_time_limit": 45, "time_limit": 60,}}
 
 task_routes = {
     sync_teams_task_name: {
