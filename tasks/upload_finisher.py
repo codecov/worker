@@ -158,9 +158,15 @@ class UploadFinisherTask(BaseCodecovTask):
         return {"notifications_called": notifications_called}
 
     def should_send_notify_task_to_new_worker(self, commit):
-        whitelisted_owners = [
+        notify_whitelisted_owners = [
             int(x.strip()) for x in os.getenv("NOTIFY_WHITELISTED_OWNERS", "").split()
         ]
+        # if part of PR author billing whitelist then we should use new notify
+        pr_billing_whitelisted_owners = [
+            int(x.strip()) for x in os.getenv("PR_AUTHOR_BILLING_WHITELISTED_OWNERS", "").split()
+        ]
+        whitelisted_owners = set().union(notify_whitelisted_owners, pr_billing_whitelisted_owners)
+         
         if commit.repository.ownerid in whitelisted_owners:
             return True
         return random.random() < float(os.getenv("NOTIFY_PERCENTAGE", "0.00"))

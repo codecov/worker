@@ -21,9 +21,10 @@ log = logging.getLogger(__name__)
 
 
 class NotificationService(object):
-    def __init__(self, repository, current_yaml):
+    def __init__(self, repository, current_yaml, decoration_type):
         self.repository = repository
         self.current_yaml = current_yaml
+        self.decoration_type = decoration_type
 
     def get_notifiers_instances(self):
         mapping = get_all_notifier_classes_mapping()

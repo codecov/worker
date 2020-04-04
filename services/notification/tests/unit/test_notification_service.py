@@ -5,6 +5,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 
 from services.notification import NotificationService
 from database.tests.factories import RepositoryFactory
+from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.types import Comparison, FullCommit
 from database.tests.factories import (
@@ -51,7 +52,7 @@ class TestNotificationService(object):
         current_yaml = {
             "coverage": {"notify": {"slack": {"default": {"field": "1y ago"}}}}
         }
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(repository, current_yaml, Decoration.standard)
         instances = list(service.get_notifiers_instances())
         assert len(instances) == 1
         instance = instances[0]
@@ -95,7 +96,7 @@ class TestNotificationService(object):
             "get_notifiers_instances",
             return_value=[bad_notifier, good_notifier, disabled_notifier],
         )
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(commit.repository, current_yaml, Decoration.standard)
         expected_result = [
             {"notifier": "bad_name", "title": "bad_notifier", "result": None},
             {
@@ -147,6 +148,6 @@ class TestNotificationService(object):
             "get_notifiers_instances",
             return_value=[bad_notifier, good_notifier, disabled_notifier],
         )
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(commit.repository, current_yaml, Decoration.standard)
         with pytest.raises(SoftTimeLimitExceeded):
             await notifications_service.notify(sample_comparison)

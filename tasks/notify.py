@@ -15,6 +15,7 @@ from helpers.exceptions import RepositoryWithoutValidBotError
 from services.commit_status import RepositoryCIFilter
 from services.notification.types import Comparison, FullCommit
 from services.notification import NotificationService
+from services.decoration import Decoration, get_decoration_type
 from services.report import ReportService
 from services.repository import (
     get_repo_provider_service,
@@ -138,6 +139,10 @@ class NotifyTask(BaseCodecovTask):
             else:
                 pull = None
                 base_commit = self.fetch_parent(commit)
+
+            # TODO: check which decoration to use for PR author billing
+            decoration_type = get_decoration_type(enriched_pull, commit)
+
             report_service = ReportService(current_yaml)
             if base_commit is not None:
                 base_report = report_service.build_report_from_commit(base_commit)
@@ -145,7 +150,7 @@ class NotifyTask(BaseCodecovTask):
                 base_report = None
             head_report = report_service.build_report_from_commit(commit)
             notifications = await self.submit_third_party_notifications(
-                current_yaml, base_commit, commit, base_report, head_report, pull
+                current_yaml, base_commit, commit, base_report, head_report, pull, decoration_type
             )
             log.info(
                 "Notifications done",
@@ -166,14 +171,14 @@ class NotifyTask(BaseCodecovTask):
             return {"notified": False, "notifications": None}
 
     async def submit_third_party_notifications(
-        self, current_yaml, base_commit, commit, base_report, head_report, pull
+        self, current_yaml, base_commit, commit, base_report, head_report, pull, decoration_type=Decoration.standard
     ):
         comparison = Comparison(
             head=FullCommit(commit=commit, report=head_report),
             pull=pull,
             base=FullCommit(commit=base_commit, report=base_report),
         )
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(commit.repository, current_yaml, decoration_type)
         return await notifications_service.notify(comparison)
 
     def fetch_pull_request_base(self, pull: Pull) -> Commit:
