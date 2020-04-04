@@ -23,7 +23,7 @@ from helpers.metrics import metrics
 from services.yaml.reader import read_yaml_field, round_number
 from services.notification.changes import get_changes
 from services.repository import get_repo_provider_service
-from services.urls import get_pull_url, get_commit_url, get_pull_graph_url
+from services.urls import get_pull_url, get_commit_url, get_pull_graph_url, get_org_account_url
 from services.notification.notifiers.comment.helpers import (
     sort_by_importance,
     format_number_to_str,
@@ -302,16 +302,29 @@ class CommentNotifier(AbstractBaseNotifier):
     async def build_message(self, comparison: Comparison) -> str:
         pull = comparison.pull
         with metrics.timer(
-            "new_worker.services.notifications.notifiers.comment.get_diff"
-        ):
-            diff = await self.get_diff(comparison)
-        with metrics.timer(
             "new_worker.services.notifications.notifiers.comment.get_pull"
         ):
             pull_dict = await self.repository_service.get_pull_request(
                 pullid=pull.pullid
             )
+        if self.use_upgrade_decoration():
+            return self._create_upgrade_message(pull, pull_dict)
+
+        with metrics.timer(
+            "new_worker.services.notifications.notifiers.comment.get_diff"
+        ):
+            diff = await self.get_diff(comparison)
         return self._create_message(comparison, diff, pull_dict)
+
+    def _create_upgrade_message(self, db_pull, provider_pull):
+        links = {
+            "org_account": get_org_account_url(db_pull),
+        }
+        author_username = provider_pull['author'].get("username")
+        return [
+            f"The author of this PR, {author_username}, is not an active member of this organization on Codecov.",
+            f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment."
+        ]
 
     def _create_message(self, comparison, diff, pull_dict):
         changes = get_changes(comparison.base.report, comparison.head.report, diff)

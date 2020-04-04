@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass
 
 from database.models import Repository
+from services.decoration import Decoration
 from services.notification.types import Comparison
 
 log = logging.getLogger(__name__)
@@ -37,12 +38,14 @@ class AbstractBaseNotifier(object):
         notifier_yaml_settings: Mapping[str, Any],
         notifier_site_settings: Mapping[str, Any],
         current_yaml: Mapping[str, Any],
+        decoration_type: int = None
     ):
         self.repository = repository
         self.title = title
         self.notifier_yaml_settings = notifier_yaml_settings
         self.site_settings = notifier_site_settings
         self.current_yaml = current_yaml
+        self.decoration_type = decoration_type
 
     @property
     def name(self) -> str:
@@ -64,3 +67,6 @@ class AbstractBaseNotifier(object):
             result (NotificationResult): The results of the notificaiton
         """
         raise NotImplementedError()
+
+    def use_upgrade_decoration(self) -> bool:
+        return self.decoration_type == Decoration.upgrade

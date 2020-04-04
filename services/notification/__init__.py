@@ -72,6 +72,7 @@ class NotificationService(object):
                     notifier_yaml_settings=comment_yaml_field,
                     notifier_site_settings=None,
                     current_yaml=self.current_yaml,
+                    decoration_type=self.decoration_type,
                 )
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
