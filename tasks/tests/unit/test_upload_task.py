@@ -592,7 +592,7 @@ class TestUploadTaskUnit(object):
     async def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_base_yaml(
         self, dbsession, mock_configuration, mocker
     ):
-        mock_configuration.set_params({"site": {"sample": True}})
+        mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
         commit = CommitFactory.create()
         list_top_level_files_result = Future()
         get_source_result = Future()
@@ -621,7 +621,7 @@ class TestUploadTaskUnit(object):
         )
         expected_result = {
             "codecov": {"notify": {}, "require_ci_to_pass": True},
-            "sample": True,
+            "coverage": {"precision": 14}
         }
         assert result == expected_result
         repository_service.get_source.assert_called_with(
@@ -633,7 +633,7 @@ class TestUploadTaskUnit(object):
     async def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_repo_yaml(
         self, dbsession, mock_configuration, mocker
     ):
-        mock_configuration.set_params({"site": {"sample": True}})
+        mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
         commit = CommitFactory.create(
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__branch="supeduperbranch",
@@ -666,7 +666,7 @@ class TestUploadTaskUnit(object):
         )
         expected_result = {
             "codecov": {"notify": {}, "require_ci_to_pass": True},
-            "sample": True,
+            "coverage": {"precision": 14}
         }
         assert result == expected_result
         assert commit.repository.yaml == {
@@ -681,7 +681,7 @@ class TestUploadTaskUnit(object):
     async def test_fetch_commit_yaml_and_possibly_store_commit_yaml_no_commit_yaml(
         self, dbsession, mock_configuration, mocker
     ):
-        mock_configuration.set_params({"site": {"sample": True}})
+        mock_configuration.set_params({"site": {"coverage": {"round": "up"}}})
         commit = CommitFactory.create(
             repository__owner__yaml={"coverage": {"precision": 2}},
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
@@ -701,9 +701,8 @@ class TestUploadTaskUnit(object):
             commit, repository_service
         )
         expected_result = {
-            "coverage": {"precision": 2},
+            "coverage": {"precision": 2, "round": "up"},
             "codecov": {"max_report_age": "1y ago"},
-            "sample": True,
         }
         assert result == expected_result
         assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
@@ -712,7 +711,7 @@ class TestUploadTaskUnit(object):
     async def test_fetch_commit_yaml_and_possibly_store_commit_yaml_invalid_commit_yaml(
         self, dbsession, mock_configuration, mocker
     ):
-        mock_configuration.set_params({"site": {"sample": True}})
+        mock_configuration.set_params({"site": {"comment": {"behavior": "new"}}})
         commit = CommitFactory.create(
             repository__owner__yaml={"coverage": {"precision": 2}},
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
@@ -747,7 +746,7 @@ class TestUploadTaskUnit(object):
         expected_result = {
             "coverage": {"precision": 2},
             "codecov": {"max_report_age": "1y ago"},
-            "sample": True,
+            "comment": {"behavior": "new"},
         }
         assert result == expected_result
         assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
