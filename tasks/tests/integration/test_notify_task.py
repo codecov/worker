@@ -11,8 +11,9 @@ from services.archive import ArchiveService
 class TestNotifyTask(object):
     @pytest.mark.asyncio
     async def test_simple_call_no_notifiers(
-        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration, mock_redis
     ):
+        mock_redis.get.return_value = False
         mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
@@ -42,7 +43,7 @@ class TestNotifyTask(object):
         dbsession.flush()
         task = NotifyTask()
         result = await task.run_async(
-            dbsession, commit.repoid, commit.commitid, current_yaml={}
+            dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
         expected_result = {"notified": True, "notifications": []}
         assert result == expected_result
@@ -87,10 +88,10 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async(
+        result = await task.run_async_within_lock(
             dbsession,
-            commit.repoid,
-            commit.commitid,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
             current_yaml={"coverage": {"status": {"project": True}}},
         )
         expected_result = {
@@ -158,10 +159,10 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async(
+        result = await task.run_async_within_lock(
             dbsession,
-            commit.repoid,
-            commit.commitid,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
             current_yaml={
                 "coverage": {
                     "status": {"project": True, "patch": True, "changes": True}
@@ -263,10 +264,10 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async(
+        result = await task.run_async_within_lock(
             dbsession,
-            commit.repoid,
-            commit.commitid,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
             current_yaml={
                 "coverage": {
                     "status": {"project": True, "patch": True, "changes": True}
@@ -374,10 +375,10 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async(
+        result = await task.run_async_within_lock(
             dbsession,
-            commit.repoid,
-            commit.commitid,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
             current_yaml={
                 "comment": {
                     "layout": "reach, diff, flags, files, footer",

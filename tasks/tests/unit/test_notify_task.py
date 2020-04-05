@@ -4,9 +4,10 @@ from asyncio import Future
 from covreports.reports.resources import Report
 from celery.exceptions import Retry, MaxRetriesExceededError
 from torngit.exceptions import TorngitClientError, TorngitServer5xxCodeError
+from redis.exceptions import LockError
 
 from helpers.exceptions import RepositoryWithoutValidBotError
-from tasks.notify import default_if_true, NotifyTask
+from tasks.notify import NotifyTask
 from services.notification.notifiers.base import NotificationResult
 from services.notification import NotificationService
 from database.tests.factories import (
@@ -18,17 +19,6 @@ from database.tests.factories import (
 
 
 class TestNotifyTaskHelpers(object):
-    def test_default_if_true(self):
-        assert list(default_if_true(True)) == [("default", {})]
-        assert list(default_if_true(None)) == []
-        assert list(default_if_true(False)) == []
-        assert list(default_if_true({"custom": {"enabled": False}})) == []
-        assert list(default_if_true({"custom": False})) == []
-        assert list(default_if_true({"custom": True})) == [("custom", {})]
-        assert list(default_if_true({"custom": {"enabled": True}})) == [
-            ("custom", {"enabled": True})
-        ]
-
     def test_fetch_parent(self, dbsession):
         task = NotifyTask()
         owner = OwnerFactory.create(
@@ -107,8 +97,8 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        result = await task.run_async(
-            dbsession, commit.repoid, commit.commitid, current_yaml={}
+        result = await task.run_async_within_lock(
+            dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
         assert result == {"notified": False, "notifications": None}
         mocked_should_send_notifications.assert_called_with(
@@ -137,13 +127,15 @@ class TestNotifyTask(object):
             branch="test-branch-1",
             commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
         )
-        mocked_fetch_yaml = mocker.patch("services.yaml.fetch_commit_yaml_from_provider", return_value=Future())
+        mocked_fetch_yaml = mocker.patch(
+            "services.yaml.fetch_commit_yaml_from_provider", return_value=Future()
+        )
         mocked_fetch_yaml.return_value.set_result({})
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        result = await task.run_async(
-            dbsession, commit.repoid, commit.commitid, current_yaml=None
+        result = await task.run_async_within_lock(
+            dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml=None
         )
         assert result == {"notified": False, "notifications": None}
         mocked_should_send_notifications.assert_called_with(
@@ -191,10 +183,10 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        result = await task.run_async(
+        result = await task.run_async_within_lock(
             dbsession,
-            commit.repoid,
-            commit.commitid,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
             current_yaml={"coverage": {"status": {"patch": True}}},
         )
         expected_result = {
@@ -244,8 +236,11 @@ class TestNotifyTask(object):
         dbsession.flush()
         task = NotifyTask()
         with pytest.raises(Retry):
-            await task.run_async(
-                dbsession, commit.repoid, commit.commitid, current_yaml={}
+            await task.run_async_within_lock(
+                dbsession,
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                current_yaml={},
             )
         mocked_retry.assert_called_with(countdown=15, max_retries=10)
         mocked_should_wait_longer.assert_called_with(
@@ -280,8 +275,11 @@ class TestNotifyTask(object):
         dbsession.flush()
         task = NotifyTask()
         with pytest.raises(Retry):
-            await task.run_async(
-                dbsession, commit.repoid, commit.commitid, current_yaml={}
+            await task.run_async_within_lock(
+                dbsession,
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                current_yaml={},
             )
         mocked_retry.assert_called_with(countdown=180, max_retries=5)
         mocked_should_wait_longer.assert_called_with(
@@ -313,8 +311,8 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        res = await task.run_async(
-            dbsession, commit.repoid, commit.commitid, current_yaml={}
+        res = await task.run_async_within_lock(
+            dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
         expected_result = {
             "notifications": None,
@@ -348,8 +346,8 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        res = await task.run_async(
-            dbsession, commit.repoid, commit.commitid, current_yaml={}
+        res = await task.run_async_within_lock(
+            dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
         expected_result = {
             "notifications": None,
@@ -401,8 +399,11 @@ class TestNotifyTask(object):
         dbsession.flush()
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
-        res = await task.run_async(
-            dbsession, commit.repoid, commit.commitid, current_yaml=current_yaml
+        res = await task.run_async_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml=current_yaml,
         )
         expected_result = {
             "notifications": None,
@@ -499,8 +500,11 @@ class TestNotifyTask(object):
         dbsession.flush()
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
-        res = await task.run_async(
-            dbsession, commit.repoid, commit.commitid, current_yaml=current_yaml
+        res = await task.run_async_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml=current_yaml,
         )
         expected_result = {
             "notifications": None,
@@ -508,3 +512,85 @@ class TestNotifyTask(object):
             "reason": "too_many_retries",
         }
         assert expected_result == res
+
+    @pytest.mark.asyncio
+    async def test_run_async_unobtainable_lock(self, dbsession, mock_redis, mocker):
+        mocked_run_async_within_lock = mocker.patch.object(
+            NotifyTask, "run_async_within_lock"
+        )
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        current_yaml = {"codecov": {"require_ci_to_pass": True}}
+        task = NotifyTask()
+        mock_redis.lock.side_effect = LockError()
+        mock_redis.get.return_value = None
+        res = await task.run_async(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml=current_yaml,
+        )
+        assert res == {
+            "notifications": None,
+            "notified": False,
+            "reason": "unobtainable_lock",
+        }
+        assert not mocked_run_async_within_lock.called
+
+    @pytest.mark.asyncio
+    async def test_run_async_other_jobs_coming(self, dbsession, mock_redis, mocker):
+        mocked_run_async_within_lock = mocker.patch.object(
+            NotifyTask, "run_async_within_lock"
+        )
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        current_yaml = {"codecov": {"require_ci_to_pass": True}}
+        task = NotifyTask()
+        mock_redis.get.return_value = True
+        res = await task.run_async(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml=current_yaml,
+        )
+        assert res == {
+            "notifications": None,
+            "notified": False,
+            "reason": "has_other_notifies_coming",
+        }
+        assert not mocked_run_async_within_lock.called
+
+    @pytest.mark.asyncio
+    async def test_run_async_can_run_logic(self, dbsession, mock_redis, mocker):
+        mocked_run_async_within_lock = mocker.patch.object(
+            NotifyTask, "run_async_within_lock"
+        )
+        mocked_run_async_within_lock.return_value = Future()
+        mocked_run_async_within_lock.return_value.set_result(
+            {"notifications": [], "notified": True, "reason": "yay",}
+        )
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        current_yaml = {"codecov": {"require_ci_to_pass": True}}
+        task = NotifyTask()
+        mock_redis.get.return_value = False
+        res = await task.run_async(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml=current_yaml,
+        )
+        assert res == {
+            "notifications": [],
+            "notified": True,
+            "reason": "yay",
+        }
+        mocked_run_async_within_lock.assert_called_with(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml=current_yaml,
+        )
