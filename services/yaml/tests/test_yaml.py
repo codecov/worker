@@ -22,14 +22,14 @@ class TestYamlService(BaseTestCase):
         mock_configuration.set_params(
             {
                 "site": {
-                    "coverage": {"precision": 2.0},
-                    "parsers": {"gcov": {"branch_detection": {"conditional": True}}},
+                    "coverage": {"precision": 2},
+                    "parsers": {"javascript": {"enable_partials": True}},
                 }
             }
         )
         expected_result = {
-            "coverage": {"precision": 2.0},
-            "parsers": {"gcov": {"branch_detection": {"conditional": True}}},
+            "coverage": {"precision": 2},
+            "parsers": {"javascript": {"enable_partials": True}},
         }
         result = get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
         assert expected_result == result
@@ -38,15 +38,15 @@ class TestYamlService(BaseTestCase):
         mock_configuration.set_params(
             {
                 "site": {
-                    "coverage": {"precision": 2.0},
-                    "parsers": {"gcov": {"branch_detection": {"conditional": True}}},
+                    "coverage": {"precision": 2},
+                    "parsers": {"javascript": {"enable_partials": True}},
                 }
             }
         )
         expected_result = {
-            "coverage": {"precision": 2.0},
+            "coverage": {"precision": 2},
             "parsers": {
-                "gcov": {"branch_detection": {"conditional": True}},
+                "javascript": {"enable_partials": True},
                 "new_language": "damn right",
             },
         }
@@ -61,15 +61,15 @@ class TestYamlService(BaseTestCase):
         mock_configuration.set_params(
             {
                 "site": {
-                    "coverage": {"precision": 2.0},
-                    "parsers": {"gcov": {"branch_detection": {"conditional": True}}},
+                    "coverage": {"precision": 2},
+                    "parsers": {"javascript": {"enable_partials": True}},
                 }
             }
         )
         expected_result = {
-            "coverage": {"precision": 2.0},
+            "coverage": {"precision": 2},
             "parsers": {
-                "gcov": {"branch_detection": {"conditional": True}},
+                "javascript": {"enable_partials": True},
                 "different_language": "say what",
             },
         }
