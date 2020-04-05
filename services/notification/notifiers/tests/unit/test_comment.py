@@ -605,8 +605,9 @@ class TestCommentNotifier(object):
             decoration_type=Decoration.upgrade,
         )
         result = await notifier.build_message(comparison)
+        pull_data = await mock_repo_provider.get_pull_request.return_value
         expected_result = [
-            f"The author of this PR, tomcat, is not an active member of this organization on Codecov.",
+            f"The author of this PR, {pull_data['author']['username']}, is not an active member of this organization on Codecov.",
             f"Please [activate this user on Codecov](test.example.br/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
         ]
         li = 0

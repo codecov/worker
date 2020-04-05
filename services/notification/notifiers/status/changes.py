@@ -31,7 +31,7 @@ class ChangesStatusNotifier(StatusNotifier):
                 return (t.misses + t.partials) > 0
         return False
 
-    async def build_payload(self, comparison):
+    async def _get_changes_status(self, comparison):
         pull = comparison.pull
         if self.notifier_yaml_settings.get("base") in ("auto", None, "pr") and pull:
             if not comparison.has_base_report():
@@ -39,7 +39,7 @@ class ChangesStatusNotifier(StatusNotifier):
                     "Unable to determine changes, no report found at pull request base"
                 )
                 state = "success"
-                return {"state": state, "message": description}
+                return (state, description)
 
         # filter changes
         diff_json = await self.get_diff(comparison)
@@ -54,12 +54,19 @@ class ChangesStatusNotifier(StatusNotifier):
             description = "{0} {1} unexpected coverage changes not visible in diff".format(
                 lpc, eng
             )
-            return {
-                "state": "success"
+            state = (
+                "success"
                 if self.notifier_yaml_settings.get("informational")
-                else "failure",
-                "message": description,
-            }
+                else "failure"
+            )
+            return (state, description)
 
         description = "No unexpected coverage changes found"
-        return {"state": "success", "message": description}
+        return ("success", description)
+
+    async def build_payload(self, comparison):
+        state, message = await self._get_changes_status(comparison)
+        if self.use_upgrade_decoration():
+            message = self.get_upgrade_message()
+
+        return {"state": state, "message": message}

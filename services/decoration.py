@@ -50,7 +50,7 @@ def get_decoration_type(enriched_pull, commit):
         )
 
         if not pr_author:
-            log.warning(
+            log.info(
                 "PR author not found in database",
                 extra=dict(
                     author_service=org.service,
@@ -58,7 +58,7 @@ def get_decoration_type(enriched_pull, commit):
                     author_username=db_pull.author.username,
                 ),
             )
-            return Decoration.standard
+            return Decoration.upgrade
 
         is_pr_author_org_member = pr_author.ownerid in org.plan_activated_users
         if not is_pr_author_org_member and org.plan_auto_activate:
@@ -84,7 +84,7 @@ def get_decoration_type(enriched_pull, commit):
                     ),
                 )
                 return Decoration.upgrade
-            
+
             # TODO: activation was successful so we should run the future NewUserActivatedTask
         else:
             return Decoration.upgrade

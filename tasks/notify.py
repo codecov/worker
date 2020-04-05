@@ -140,7 +140,6 @@ class NotifyTask(BaseCodecovTask):
                 pull = None
                 base_commit = self.fetch_parent(commit)
 
-            # TODO: check which decoration to use for PR author billing
             decoration_type = get_decoration_type(enriched_pull, commit)
 
             report_service = ReportService(current_yaml)
@@ -150,7 +149,13 @@ class NotifyTask(BaseCodecovTask):
                 base_report = None
             head_report = report_service.build_report_from_commit(commit)
             notifications = await self.submit_third_party_notifications(
-                current_yaml, base_commit, commit, base_report, head_report, pull, decoration_type
+                current_yaml,
+                base_commit,
+                commit,
+                base_report,
+                head_report,
+                pull,
+                decoration_type,
             )
             log.info(
                 "Notifications done",
@@ -171,14 +176,23 @@ class NotifyTask(BaseCodecovTask):
             return {"notified": False, "notifications": None}
 
     async def submit_third_party_notifications(
-        self, current_yaml, base_commit, commit, base_report, head_report, pull, decoration_type=Decoration.standard
+        self,
+        current_yaml,
+        base_commit,
+        commit,
+        base_report,
+        head_report,
+        pull,
+        decoration_type=Decoration.standard,
     ):
         comparison = Comparison(
             head=FullCommit(commit=commit, report=head_report),
             pull=pull,
             base=FullCommit(commit=base_commit, report=base_report),
         )
-        notifications_service = NotificationService(commit.repository, current_yaml, decoration_type)
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, decoration_type
+        )
         return await notifications_service.notify(comparison)
 
     def fetch_pull_request_base(self, pull: Pull) -> Commit:

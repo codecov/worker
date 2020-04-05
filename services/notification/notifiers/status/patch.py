@@ -20,7 +20,7 @@ class PatchStatusNotifier(StatusNotifier):
 
     context = "patch"
 
-    async def build_payload(self, comparison: Comparison):
+    async def _get_patch_status(self, comparison):
         threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")
         diff = await self.get_diff(comparison)
         totals = comparison.head.report.apply_diff(diff)
@@ -56,12 +56,18 @@ class PatchStatusNotifier(StatusNotifier):
                     coverage_str = round_number(self.current_yaml, coverage)
                     target_str = round_number(self.current_yaml, target_coverage)
                     message = f"{coverage_str}% of diff hit (target {target_str}%)"
-            return {"state": state, "message": message}
+            return (state, message)
         if comparison.base.commit:
             description = "Coverage not affected when comparing {0}...{1}".format(
                 comparison.base.commit.commitid[:7], comparison.head.commit.commitid[:7]
             )
         else:
             description = "Coverage not affected"
+        return ("success", description)
 
-        return {"state": "success", "message": description}
+    async def build_payload(self, comparison: Comparison):
+        state, message = await self._get_patch_status(comparison)
+        if self.use_upgrade_decoration():
+            message = self.get_upgrade_message()
+
+        return {"state": state, "message": message}

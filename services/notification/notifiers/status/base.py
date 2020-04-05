@@ -35,6 +35,10 @@ class StatusNotifier(AbstractBaseNotifier):
     async def build_payload(self, comparison):
         raise NotImplementedError()
 
+    def get_upgrade_message(self):
+        # TODO: this is the message in the PR author billing spec but maybe we should add the actual username?
+        return "Please activate this user to display a detailed status check"
+
     def can_we_set_this_status(self, comparison):
         head = comparison.head.commit
         pull = comparison.pull
