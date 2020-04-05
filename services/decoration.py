@@ -32,7 +32,10 @@ def get_decoration_type(db_session, enriched_pull):
         provider_pull = enriched_pull.provider_pull
 
         if not provider_pull:
-            return (Decoration.standard, "Can't determine PR author - no pull info from provider")
+            return (
+                Decoration.standard,
+                "Can't determine PR author - no pull info from provider",
+            )
 
         if db_pull.repository.private is False:
             # public repo or repo we arent certain is private should be standard

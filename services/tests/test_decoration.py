@@ -98,7 +98,9 @@ class TestDecorationServiceTestCase(object):
         assert decoration_type == Decoration.standard
         assert reason == "No pull"
 
-    def test_get_decoration_type_no_provider_pull(self, dbsession, mocker, enriched_pull):
+    def test_get_decoration_type_no_provider_pull(
+        self, dbsession, mocker, enriched_pull
+    ):
         mocker.patch("services.decoration.is_whitelisted", return_value=True)
         enriched_pull.provider_pull = None
 

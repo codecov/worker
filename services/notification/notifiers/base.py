@@ -38,7 +38,7 @@ class AbstractBaseNotifier(object):
         notifier_yaml_settings: Mapping[str, Any],
         notifier_site_settings: Mapping[str, Any],
         current_yaml: Mapping[str, Any],
-        decoration_type: int = None
+        decoration_type: Decoration = None,
     ):
         self.repository = repository
         self.title = title
