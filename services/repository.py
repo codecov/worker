@@ -278,7 +278,7 @@ async def fetch_and_update_pull_request_information_from_commit(
     )
     pull = enriched_pull.database_pull
     if pull is not None:
-        pull.author = commit.author # TODO: remove in favor of author from torngit response?
+        pull.author = commit.author
         pull.head = commit.commitid
     return enriched_pull
 

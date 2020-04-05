@@ -53,7 +53,7 @@ class NotifyTask(BaseCodecovTask):
         commitid: str,
         current_yaml=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         log.info("Starting notifications", extra=dict(commit=commitid, repoid=repoid))
         commits_query = db_session.query(Commit).filter(
@@ -140,7 +140,10 @@ class NotifyTask(BaseCodecovTask):
                 pull = None
                 base_commit = self.fetch_parent(commit)
 
-            decoration_type = get_decoration_type(enriched_pull, commit)
+            decoration_type, reason = get_decoration_type(db_session, enriched_pull)
+            log.info(
+                f"Using decoration type {decoration_type}", extra=dict(reason=reason)
+            )
 
             report_service = ReportService(current_yaml)
             if base_commit is not None:
