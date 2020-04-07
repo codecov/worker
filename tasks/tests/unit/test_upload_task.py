@@ -18,6 +18,51 @@ from services.archive import ArchiveService
 here = Path(__file__)
 
 
+class FakeRedis(object):
+    """
+        This is a fake, very rudimentary redis implementation to ease the managing
+         of mocking `exists`, `lpop` and whatnot in the context of Upload jobs
+    """
+
+    def __init__(self, mocker):
+        self.lists = {}
+        self.keys = {}
+        self.lock = mocker.MagicMock()
+        self.delete = mocker.MagicMock()
+        self.sismember = mocker.MagicMock()
+        self.hdel = mocker.MagicMock()
+
+    def exists(self, key):
+        if self.lists.get(key):
+            return True
+        if self.keys.get(key) is not None:
+            return True
+        return False
+
+    def get(self, key):
+        if self.keys.get(key) is not None:
+            return self.keys.get(key)
+        if self.lists.get(key):
+            return self.lists.get(key)
+
+    def lpop(self, key):
+        res = self.lists.get(key).pop(0)
+        if self.lists.get(key) == []:
+            del self.lists[key]
+        return res
+
+    def delete(self, key):
+        del self.lists[key]
+
+
+@pytest.fixture
+def mock_redis(mocker):
+    m = mocker.patch("services.redis._get_redis_instance_from_url")
+    redis_server = FakeRedis(mocker)
+    m.return_value = redis_server
+    yield redis_server
+
+
 @pytest.mark.integration
 class TestUploadTaskIntegration(object):
     @pytest.mark.asyncio
@@ -36,8 +81,6 @@ class TestUploadTaskIntegration(object):
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocked_3 = mocker.patch.object(UploadTask, "app")
         mocked_3.send_task.return_value = True
-        mock_redis.exists.side_effect = [True] + [True] * len(redis_queue) + [False]
-        mock_redis.lpop.side_effect = jsonified_redis_queue
 
         commit = CommitFactory.create(
             message="",
@@ -49,6 +92,9 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        mock_redis.lists[
+            f"testuploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": True}
         assert expected_result == result
@@ -71,17 +117,6 @@ class TestUploadTaskIntegration(object):
             ),
         )
         mocked_1.assert_called_with(t1, t2)
-        mock_redis.lpop.assert_called_with(
-            "testuploads/%s/%s" % (commit.repoid, commit.commitid)
-        )
-        mock_redis.exists.assert_called_with(
-            "testuploads/%s/%s" % (commit.repoid, commit.commitid)
-        )
-        mock_redis.lock.assert_called_with(
-            f"upload_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=5,
-            timeout=300,
-        )
 
     @pytest.mark.asyncio
     async def test_upload_task_call_no_jobs(
@@ -95,7 +130,6 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_3 = mocker.patch.object(UploadTask, "app")
         mocked_3.send_task.return_value = True
-        mock_redis.exists.return_value = False
 
         commit = CommitFactory.create(
             parent_commit_id=None,
@@ -108,6 +142,7 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        mock_redis.lists[f"testuploads/{commit.repoid}/{commit.commitid}"] = []
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {
             "was_setup": False,
@@ -117,14 +152,6 @@ class TestUploadTaskIntegration(object):
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
-        mock_redis.exists.assert_called_with(
-            "testuploads/%s/%s" % (commit.repoid, commit.commitid)
-        )
-        mock_redis.lock.assert_called_with(
-            f"upload_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=5,
-            timeout=300,
-        )
 
     @pytest.mark.asyncio
     async def test_upload_task_call_multiple_processors(
@@ -150,8 +177,6 @@ class TestUploadTaskIntegration(object):
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocked_3 = mocker.patch.object(UploadTask, "app")
         mocked_3.send_task.return_value = True
-        mock_redis.exists.side_effect = [True] + [True] * len(redis_queue) + [False]
-        mock_redis.lpop.side_effect = jsonified_redis_queue
 
         commit = CommitFactory.create(
             message="",
@@ -163,6 +188,9 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        mock_redis.lists[
+            f"testuploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": True}
         assert expected_result == result
@@ -203,18 +231,11 @@ class TestUploadTaskIntegration(object):
             ),
         )
         mocked_1.assert_called_with(t1, t2, t3, t_final)
-        mock_redis.lpop.assert_called_with(
-            "testuploads/%s/%s" % (commit.repoid, commit.commitid)
-        )
-        mock_redis.exists.assert_called_with(
-            "testuploads/%s/%s" % (commit.repoid, commit.commitid)
-        )
         # mocked_3.send_task.assert_called_with(
         #     'app.tasks.notify.Notify',
         #     args=None,
         #     kwargs={'repoid': commit.repository.repoid, 'commitid': commit.commitid}
         # )
-        # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
             f"upload_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,
@@ -233,8 +254,10 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
         mocked_3 = mocker.patch.object(UploadTask, "app")
+        mocked_3 = mocker.patch.object(
+            UploadTask, "lists_of_arguments", return_value=[]
+        )
         mocked_3.send_task.return_value = True
-        mock_redis.exists.side_effect = [True, False]
 
         owner = OwnerFactory.create(
             service="github",
@@ -264,16 +287,17 @@ class TestUploadTaskIntegration(object):
         dbsession.add(parent_commit)
         dbsession.add(commit)
         dbsession.flush()
+        redis_queue = [{"part": "part1"}]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mock_redis.lists[
+            f"testuploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": True}
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id == "c5b67303452bbff57cc1f49984339cde39eb1db5"
         assert not mocked_1.called
-        assert not mock_redis.lpop.called
-        mock_redis.exists.assert_called_with(
-            "testuploads/%s/%s" % (commit.repoid, commit.commitid)
-        )
         mock_redis.lock.assert_called_with(
             f"upload_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,
@@ -292,8 +316,6 @@ class TestUploadTaskIntegration(object):
         )
         redis_queue = [{"part": "part1"}, {"part": "part2"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        mock_redis.exists.side_effect = [True] + [True] * len(redis_queue) + [False]
-        mock_redis.lpop.side_effect = jsonified_redis_queue
         mock_get_repo_service = mocker.patch("tasks.upload.get_repo_provider_service")
         mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
         commit = CommitFactory.create(
@@ -307,6 +329,9 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        mock_redis.lists[
+            f"testuploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": False}
         assert expected_result == result
@@ -316,14 +341,6 @@ class TestUploadTaskIntegration(object):
             commit, {"codecov": {"max_report_age": "764y ago"}}, redis_queue
         )
         assert not mocked_fetch_yaml.called
-        mock_redis.exists.assert_called_with(
-            "testuploads/%s/%s" % (commit.repoid, commit.commitid)
-        )
-        mock_redis.lock.assert_called_with(
-            f"upload_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=5,
-            timeout=300,
-        )
 
     @pytest.mark.asyncio
     async def test_upload_task_bot_no_permissions(
@@ -337,8 +354,6 @@ class TestUploadTaskIntegration(object):
         )
         redis_queue = [{"part": "part1"}, {"part": "part2"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        mock_redis.exists.side_effect = [True] + [True] * len(redis_queue) + [False]
-        mock_redis.lpop.side_effect = jsonified_redis_queue
         mock_get_repo_service = mocker.patch("tasks.upload.get_repo_provider_service")
         mock_get_repo_service.side_effect = TorngitRepoNotFoundError(
             "fake_response", "message"
@@ -353,6 +368,9 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        mock_redis.lists[
+            f"testuploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": False}
         assert expected_result == result
@@ -362,14 +380,6 @@ class TestUploadTaskIntegration(object):
             commit, {"codecov": {"max_report_age": "764y ago"}}, redis_queue
         )
         assert not mocked_fetch_yaml.called
-        mock_redis.exists.assert_called_with(
-            "testuploads/%s/%s" % (commit.repoid, commit.commitid)
-        )
-        mock_redis.lock.assert_called_with(
-            f"upload_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=5,
-            timeout=300,
-        )
 
     @pytest.mark.asyncio
     async def test_upload_task_bot_unauthorized(
@@ -380,8 +390,6 @@ class TestUploadTaskIntegration(object):
         mock_app.send_task.return_value = True
         redis_queue = [{"part": "part1"}, {"part": "part2"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        mock_redis.exists.side_effect = [True] + [True] * len(redis_queue) + [False]
-        mock_redis.lpop.side_effect = jsonified_redis_queue
         f = Future()
         f.set_exception(TorngitClientError(401, "response", "message"))
         mock_repo_provider.get_commit.return_value = f
@@ -395,6 +403,9 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        mock_redis.lists[
+            f"testuploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         result = await UploadTask().run_async_within_lock(
             dbsession, mock_redis, commit.repoid, commit.commitid
         )
@@ -404,16 +415,32 @@ class TestUploadTaskIntegration(object):
         mocked_schedule_task.assert_called_with(
             commit, {"codecov": {"max_report_age": "764y ago"}}, redis_queue
         )
-        mock_redis.exists.assert_called_with(
-            "testuploads/%s/%s" % (commit.repoid, commit.commitid)
-        )
 
 
 class TestUploadTaskUnit(object):
+    def test_list_of_arguments(self, mock_redis):
+        task = UploadTask()
+        first_redis_queue = [
+            {"url": "http://example.first.com"},
+            {"and_another": "one"},
+        ]
+        second_redis_queue = [{"args": "an_arg!"}]
+        mock_redis.lists["testuploads/542/commitid"] = [
+            json.dumps(x) for x in first_redis_queue
+        ]
+        mock_redis.lists["uploads/542/commitid"] = [
+            json.dumps(x) for x in second_redis_queue
+        ]
+        res = list(task.lists_of_arguments(mock_redis, 542, "commitid"))
+        assert res == [
+            {"url": "http://example.first.com"},
+            {"and_another": "one"},
+            {"args": "an_arg!"},
+        ]
+
     def test_normalize_upload_arguments_no_changes(
         self, dbsession, mock_redis, mock_storage
     ):
-        mock_redis.get.return_value = b"Some weird value"
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
@@ -433,7 +460,7 @@ class TestUploadTaskUnit(object):
     ):
         mocked_now = mocker.patch.object(ArchiveService, "get_now")
         mocked_now.return_value = datetime(2019, 12, 3)
-        mock_redis.get.return_value = b"Some weird value"
+        mock_redis.keys["commit_chunks.something"] = b"Some weird value"
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
@@ -453,7 +480,6 @@ class TestUploadTaskUnit(object):
             "random": "argument",
         }
         assert expected_result == result
-        mock_redis.get.assert_called_with("commit_chunks.something")
         assert "archive" in mock_storage.storage
         assert (
             f"v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt"
@@ -507,7 +533,6 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lock.side_effect = LockError()
-        mock_redis.exists.return_value = False
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         assert result == {
             "tasks_were_scheduled": False,
@@ -523,7 +548,9 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lock.side_effect = LockError()
-        mock_redis.exists.return_value = True
+        mock_redis.keys[f"testuploads/{commit.repoid}/{commit.commitid}"] = [
+            "something"
+        ]
         task = UploadTask()
         task.request.retries = 3
         result = await task.run_async(dbsession, commit.repoid, commit.commitid)
@@ -531,6 +558,7 @@ class TestUploadTaskUnit(object):
             "tasks_were_scheduled": False,
             "was_setup": False,
             "was_updated": False,
+            "reason": "too_many_retries",
         }
 
     @pytest.mark.asyncio
@@ -541,7 +569,9 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lock.side_effect = LockError()
-        mock_redis.exists.return_value = True
+        mock_redis.keys[f"testuploads/{commit.repoid}/{commit.commitid}"] = [
+            "something"
+        ]
         task = UploadTask()
         task.request.retries = 0
         with pytest.raises(Retry):
@@ -621,7 +651,7 @@ class TestUploadTaskUnit(object):
         )
         expected_result = {
             "codecov": {"notify": {}, "require_ci_to_pass": True},
-            "coverage": {"precision": 14}
+            "coverage": {"precision": 14},
         }
         assert result == expected_result
         repository_service.get_source.assert_called_with(
@@ -666,7 +696,7 @@ class TestUploadTaskUnit(object):
         )
         expected_result = {
             "codecov": {"notify": {}, "require_ci_to_pass": True},
-            "coverage": {"precision": 14}
+            "coverage": {"precision": 14},
         }
         assert result == expected_result
         assert commit.repository.yaml == {
