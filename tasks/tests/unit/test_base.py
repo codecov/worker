@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, InvalidRequestError
 import pytest
 from celery.exceptions import Retry, SoftTimeLimitExceeded
 from celery.contrib.testing.mocks import TaskMessage
@@ -72,6 +72,43 @@ class TestBaseTask(object):
         mocked_get_db_session.return_value = dbsession
         with pytest.raises(SoftTimeLimitExceeded):
             SampleTaskWithSoftTimeout().run()
+
+    def test_wrap_up_dbsession_success(self, mocker):
+        task = BaseCodecovTask()
+        fake_session = mocker.MagicMock()
+        task.wrap_up_dbsession(fake_session)
+        assert fake_session.commit.call_count == 1
+        assert fake_session.close.call_count == 1
+
+    def test_wrap_up_dbsession_timeout_but_ok(self, mocker):
+        task = BaseCodecovTask()
+        fake_session = mocker.MagicMock(
+            commit=mocker.MagicMock(
+                side_effect=[
+                    SoftTimeLimitExceeded(),
+                    1
+                ]
+            )
+        )
+        task.wrap_up_dbsession(fake_session)
+        assert fake_session.commit.call_count == 2
+        assert fake_session.close.call_count == 1
+
+    def test_wrap_up_dbsession_timeout_nothing_works(self, mocker):
+        mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
+        task = BaseCodecovTask()
+        fake_session = mocker.MagicMock(
+            commit=mocker.MagicMock(
+                side_effect=[
+                    SoftTimeLimitExceeded(),
+                    InvalidRequestError()
+                ]
+            )
+        )
+        task.wrap_up_dbsession(fake_session)
+        assert fake_session.commit.call_count == 2
+        assert fake_session.close.call_count == 0
+        assert mocked_get_db_session.remove.call_count == 1
 
 
 class TestBaseCodecovTaskHooks(object):
