@@ -2,7 +2,8 @@ import asyncio
 import logging
 
 from celery.worker.request import Request
-from sqlalchemy.exc import SQLAlchemyError
+from celery.exceptions import SoftTimeLimitExceeded
+from sqlalchemy.exc import SQLAlchemyError, InvalidRequestError
 
 from app import celery_app
 from database.engine import get_db_session
@@ -13,7 +14,6 @@ log = logging.getLogger("worker")
 
 
 class BaseCodecovRequest(Request):
-
     @property
     def metrics_prefix(self):
         return f"new-worker.task.{self.name}"
@@ -48,12 +48,40 @@ class BaseCodecovTask(celery_app.Task):
                 db_session.rollback()
                 self.retry()
             finally:
-                if self.write_to_db():
-                    db_session.commit()
-                db_session.close()
+                self.wrap_up_dbsession(db_session)
 
-    def write_to_db(self):
-        return True
+    def wrap_up_dbsession(self, db_session):
+        """
+            Wraps up dbsession, commita what is relevant and closes the session
+
+            This function deals with the very corner case of when a `SoftTimeLimitExceeded`
+                is raised during the execution of `db_session.commit()`. When it happens,
+                the dbsession gets into a bad state, which disallows further operations in it.
+
+            And because we reuse dbsessions, this would mean future tasks happening inside the
+                same process would also lose access to db.
+
+            So we need to do two ugly exception-catching:
+                1) For if `SoftTimeLimitExceeded` was raised  while commiting
+                2) For if the exception left `db_session` in an unusable state
+        """
+        try:
+            db_session.commit()
+            db_session.close()
+        except SoftTimeLimitExceeded:
+            log.warning(
+                "We had an issue where a timeout happened directly during the DB commit",
+                exc_info=True,
+            )
+            try:
+                db_session.commit()
+                db_session.close()
+            except InvalidRequestError:
+                log.warning(
+                    "DB session cannot be operated on any longer. Closing it and removing it",
+                    exc_info=True,
+                )
+                get_db_session.remove()
 
     def on_retry(self, *args, **kwargs):
         res = super().on_retry(*args, **kwargs)
