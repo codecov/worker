@@ -186,11 +186,14 @@ class ArchiveService(object):
     Deletes an entire repository's contents
     """
 
-    def delete_repo_files(self):
+    def delete_repo_files(self) -> int:
         path = "v4/repos/{}".format(self.storage_hash)
         objects = self.storage.list_folder_contents(self.root, path)
+        count = 0
         for obj in objects:
-            self.storage.delete_file(self.root, obj.object_name)
+            self.storage.delete_file(self.root, obj["name"])
+            count += 1
+        return count
 
     """
     Convenience method to read a chunks file from the archive.
