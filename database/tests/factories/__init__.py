@@ -54,7 +54,7 @@ class BranchFactory(Factory):
     class Meta:
         model = models.Branch
 
-    branch = "master"
+    branch = factory.Faker("slug")
     head = factory.LazyAttribute(lambda o: sha1(o.branch.encode("utf-8")).hexdigest())
     authors = []
 
