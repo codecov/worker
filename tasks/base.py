@@ -51,6 +51,20 @@ class BaseCodecovTask(celery_app.Task):
                 self.wrap_up_dbsession(db_session)
 
     def wrap_up_dbsession(self, db_session):
+        """
+            Wraps up dbsession, commita what is relevant and closes the session
+
+            This function deals with the very corner case of when a `SoftTimeLimitExceeded`
+                is raised during the execution of `db_session.commit()`. When it happens,
+                the dbsession gets into a bad state, which disallows further operations in it.
+
+            And because we reuse dbsessions, this would mean future tasks happening inside the
+                same process would also lose access to db.
+
+            So we need to do two ugly exception-catching:
+                1) For if `SoftTimeLimitExceeded` was raised  while commiting
+                2) For if the exception left `db_session` in an unusable state
+        """
         try:
             db_session.commit()
             db_session.close()
