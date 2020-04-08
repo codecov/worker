@@ -154,3 +154,17 @@ class TestNotificationService(object):
         notifications_service = NotificationService(commit.repository, current_yaml)
         with pytest.raises(SoftTimeLimitExceeded):
             await notifications_service.notify(sample_comparison)
+
+    @pytest.mark.asyncio
+    async def test_not_licensed_enterprise(self, mocker, dbsession, sample_comparison):
+        mocker.patch("services.notification.is_properly_licensed", return_value=False)
+        mock_notify_individual_notifier = mocker.patch.object(
+            NotificationService, "notify_individual_notifier"
+        )
+        current_yaml = {}
+        commit = sample_comparison.head.commit
+        notifications_service = NotificationService(commit.repository, current_yaml)
+        expected_result = []
+        res = await notifications_service.notify(sample_comparison)
+        assert expected_result == res
+        assert not mock_notify_individual_notifier.called
