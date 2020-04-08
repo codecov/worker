@@ -4,6 +4,7 @@ from covreports.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.notification.types import FullCommit, Comparison
+from services.repository import EnrichedPull
 
 
 def get_small_report():
@@ -89,7 +90,11 @@ def create_sample_comparison(dbsession, request, sample_report):
         repository = base_commit.repository
         base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
         head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-        return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+        return Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+        )
 
     return _comparison
 
@@ -111,7 +116,11 @@ def sample_comparison(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+    )
 
 
 @pytest.fixture
@@ -131,7 +140,11 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=sample_report)
     head_full_commit = FullCommit(commit=head_commit, report=get_small_report())
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+    )
 
 
 @pytest.fixture
@@ -147,7 +160,7 @@ def sample_comparison_without_pull(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=None)
+    return Comparison(head=head_full_commit, base=base_full_commit, enriched_pull=None)
 
 
 @pytest.fixture
@@ -166,7 +179,11 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
     dbsession.flush()
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
     base_full_commit = FullCommit(commit=base_commit, report=None)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+    )
 
 
 @pytest.fixture
@@ -183,4 +200,8 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
     dbsession.flush()
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
     base_full_commit = FullCommit(commit=None, report=None)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+    )
