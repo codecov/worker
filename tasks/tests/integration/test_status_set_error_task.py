@@ -12,7 +12,7 @@ class TestStatusSetErrorTask(object):
         repository = RepositoryFactory.create(
             owner__username="ThiagoCodecov",
             name="example-python",
-            owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
             yaml={"coverage": {"status": {"project": {"default": {"target": 100}}}}},
         )
         dbsession.add(repository)
@@ -21,7 +21,7 @@ class TestStatusSetErrorTask(object):
         commit = CommitFactory.create(
             message="",
             branch="thiago/test-1",
-            commitid="c2a05aa15ecad5bec37e29b9fe51ef30120f8642",
+            commitid="e3b6c976efe88b2a3781dc8157485e46bf2ac7ab",
             repository=repository,
         )
         dbsession.add(commit)
