@@ -300,17 +300,11 @@ class CommentNotifier(AbstractBaseNotifier):
         )
 
     async def build_message(self, comparison: Comparison) -> str:
-        pull = comparison.pull
         with metrics.timer(
             "new_worker.services.notifications.notifiers.comment.get_diff"
         ):
             diff = await self.get_diff(comparison)
-        with metrics.timer(
-            "new_worker.services.notifications.notifiers.comment.get_pull"
-        ):
-            pull_dict = await self.repository_service.get_pull_request(
-                pullid=pull.pullid
-            )
+        pull_dict = comparison.enriched_pull.provider_pull
         return self._create_message(comparison, diff, pull_dict)
 
     def _create_message(self, comparison, diff, pull_dict):
