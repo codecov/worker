@@ -21,6 +21,7 @@ from services.redis import get_redis_connection, Redis
 from services.repository import (
     get_repo_provider_service,
     fetch_and_update_pull_request_information_from_commit,
+    EnrichedPull
 )
 from services.yaml import read_yaml_field, get_current_yaml
 from tasks.base import BaseCodecovTask
@@ -177,7 +178,7 @@ class NotifyTask(BaseCodecovTask):
                 base_report = None
             head_report = report_service.build_report_from_commit(commit)
             notifications = await self.submit_third_party_notifications(
-                current_yaml, base_commit, commit, base_report, head_report, pull
+                current_yaml, base_commit, commit, base_report, head_report, enriched_pull
             )
             log.info(
                 "Notifications done",
@@ -219,11 +220,11 @@ class NotifyTask(BaseCodecovTask):
         return False
 
     async def submit_third_party_notifications(
-        self, current_yaml, base_commit, commit, base_report, head_report, pull
+        self, current_yaml, base_commit, commit, base_report, head_report, enriched_pull: EnrichedPull
     ):
         comparison = Comparison(
             head=FullCommit(commit=commit, report=head_report),
-            pull=pull,
+            enriched_pull=enriched_pull,
             base=FullCommit(commit=base_commit, report=base_report),
         )
         notifications_service = NotificationService(commit.repository, current_yaml)
