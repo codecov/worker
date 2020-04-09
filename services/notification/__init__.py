@@ -16,6 +16,7 @@ from services.notification.notifiers import (
 from services.notification.types import Comparison
 from services.notification.notifiers.base import NotificationResult
 from services.yaml import read_yaml_field
+from services.license import is_properly_licensed
 
 log = logging.getLogger(__name__)
 
@@ -74,6 +75,9 @@ class NotificationService(object):
                 )
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
+        if not is_properly_licensed(comparison.head.commit.get_db_session()):
+            log.warning("Not sending notifications because the system is not properly licensed")
+            return []
         notification_tasks = []
         for notifier in self.get_notifiers_instances():
             if notifier.is_enabled():
