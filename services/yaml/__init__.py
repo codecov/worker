@@ -96,7 +96,7 @@ def get_final_yaml(*, owner_yaml, repo_yaml, commit_yaml=None):
     Returns:
         dict - The dict we are supposed to use when concerning that user/commit
     """
-    resulting_yaml = validate_yaml(get_config("site", default={}))
+    resulting_yaml = validate_yaml(get_config("site", default={}), show_secrets=True)
     if owner_yaml is not None:
         resulting_yaml = merge_yamls(resulting_yaml, owner_yaml)
     if commit_yaml is not None:
