@@ -22,6 +22,7 @@ from services.redis import get_redis_connection, Redis
 from services.repository import (
     get_repo_provider_service,
     fetch_and_update_pull_request_information_from_commit,
+    EnrichedPull
 )
 from services.yaml import read_yaml_field, get_current_yaml
 from tasks.base import BaseCodecovTask
@@ -190,6 +191,7 @@ class NotifyTask(BaseCodecovTask):
                 base_report,
                 head_report,
                 pull,
+                enriched_pull,
                 decoration_type,
             )
             log.info(
@@ -239,11 +241,12 @@ class NotifyTask(BaseCodecovTask):
         base_report,
         head_report,
         pull,
+        enriched_pull: EnrichedPull,
         decoration_type=Decoration.standard,
     ):
         comparison = Comparison(
             head=FullCommit(commit=commit, report=head_report),
-            pull=pull,
+            enriched_pull=enriched_pull,
             base=FullCommit(commit=base_commit, report=base_report),
         )
         notifications_service = NotificationService(

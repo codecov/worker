@@ -2,7 +2,7 @@ import pytest
 
 from services.notification.notifiers.comment import CommentNotifier
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.notification.types import FullCommit, Comparison
+from services.notification.types import FullCommit, Comparison, EnrichedPull
 from services.decoration import Decoration
 
 
@@ -37,7 +37,7 @@ def sample_comparison(dbsession, request, sample_report, small_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=small_report)
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(head=head_full_commit, base=base_full_commit, enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}))
 
 
 @pytest.fixture
@@ -73,7 +73,7 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=small_report)
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(head=head_full_commit, base=base_full_commit, enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}))
 
 
 @pytest.fixture
@@ -107,7 +107,7 @@ def sample_comparison_for_upgrade(dbsession, request, sample_report, small_repor
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=small_report)
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(head=head_full_commit, base=base_full_commit, enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}))
 
 
 class TestCommentNotifierIntegration(object):

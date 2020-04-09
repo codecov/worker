@@ -7,7 +7,7 @@ from services.notification import NotificationService
 from database.tests.factories import RepositoryFactory
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
-from services.notification.types import Comparison, FullCommit
+from services.notification.types import Comparison, FullCommit, EnrichedPull
 from database.tests.factories import (
     CommitFactory,
     PullFactory,
@@ -31,7 +31,11 @@ def sample_comparison(dbsession, request):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=None)
     head_full_commit = FullCommit(commit=head_commit, report=None)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+    )
 
 
 class TestNotificationService(object):
