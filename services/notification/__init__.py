@@ -8,6 +8,7 @@ from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from covreports.config import get_config
 from covreports.helpers.yaml import default_if_true
 from helpers.metrics import metrics
+from services.decoration import Decoration, get_decoration_type_and_reason
 from services.notification.notifiers import (
     get_all_notifier_classes_mapping,
     get_status_notifier_class,
@@ -21,12 +22,11 @@ log = logging.getLogger(__name__)
 
 
 class NotificationService(object):
-    def __init__(self, repository, current_yaml, decoration_type):
+    def __init__(self, repository, current_yaml):
         self.repository = repository
         self.current_yaml = current_yaml
-        self.decoration_type = decoration_type
 
-    def get_notifiers_instances(self):
+    def get_notifiers_instances(self, decoration_type=Decoration.standard):
         mapping = get_all_notifier_classes_mapping()
         yaml_field = read_yaml_field(self.current_yaml, ("coverage", "notify"))
         if yaml_field is not None:
@@ -41,6 +41,7 @@ class NotificationService(object):
                             "services", "notifications", instance_type, default=True
                         ),
                         current_yaml=self.current_yaml,
+                        decoration_type=decoration_type,
                     )
         status_fields = read_yaml_field(self.current_yaml, ("coverage", "status"))
         if status_fields:
@@ -54,6 +55,7 @@ class NotificationService(object):
                             notifier_yaml_settings=status_config,
                             notifier_site_settings={},
                             current_yaml=self.current_yaml,
+                            decoration_type=decoration_type,
                         )
                 else:
                     log.warning(
@@ -72,12 +74,26 @@ class NotificationService(object):
                     notifier_yaml_settings=comment_yaml_field,
                     notifier_site_settings=None,
                     current_yaml=self.current_yaml,
-                    decoration_type=self.decoration_type,
+                    decoration_type=decoration_type,
                 )
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
+        decoration_type, reason = get_decoration_type_and_reason(
+            Comparison.enriched_pull
+        )
+        log.info(
+            f"Notifying with decoration type {decoration_type}",
+            extra=dict(
+                commit=commit.commitid,
+                base_commit=base_commit.commitid
+                if base_commit is not None
+                else "NO_BASE",
+                repoid=commit.repoid,
+                reason=reason,
+            ),
+        )
         notification_tasks = []
-        for notifier in self.get_notifiers_instances():
+        for notifier in self.get_notifiers_instances(decoration_type):
             if notifier.is_enabled():
                 notification_tasks.append(
                     self.notify_individual_notifier(notifier, comparison)

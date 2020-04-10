@@ -66,7 +66,7 @@ class ChangesStatusNotifier(StatusNotifier):
 
     async def build_payload(self, comparison):
         state, message = await self._get_changes_status(comparison)
-        if self.use_upgrade_decoration():
+        if self.should_use_upgrade_decoration():
             message = self.get_upgrade_message()
 
         return {"state": state, "message": message}

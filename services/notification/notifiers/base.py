@@ -68,5 +68,5 @@ class AbstractBaseNotifier(object):
         """
         raise NotImplementedError()
 
-    def use_upgrade_decoration(self) -> bool:
+    def should_use_upgrade_decoration(self) -> bool:
         return self.decoration_type == Decoration.upgrade

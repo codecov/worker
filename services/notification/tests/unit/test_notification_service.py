@@ -56,7 +56,7 @@ class TestNotificationService(object):
         current_yaml = {
             "coverage": {"notify": {"slack": {"default": {"field": "1y ago"}}}}
         }
-        service = NotificationService(repository, current_yaml, Decoration.standard)
+        service = NotificationService(repository, current_yaml)
         instances = list(service.get_notifiers_instances())
         assert len(instances) == 1
         instance = instances[0]
@@ -100,7 +100,7 @@ class TestNotificationService(object):
             "get_notifiers_instances",
             return_value=[bad_notifier, good_notifier, disabled_notifier],
         )
-        notifications_service = NotificationService(commit.repository, current_yaml, Decoration.standard)
+        notifications_service = NotificationService(commit.repository, current_yaml)
         expected_result = [
             {"notifier": "bad_name", "title": "bad_notifier", "result": None},
             {
@@ -152,6 +152,6 @@ class TestNotificationService(object):
             "get_notifiers_instances",
             return_value=[bad_notifier, good_notifier, disabled_notifier],
         )
-        notifications_service = NotificationService(commit.repository, current_yaml, Decoration.standard)
+        notifications_service = NotificationService(commit.repository, current_yaml)
         with pytest.raises(SoftTimeLimitExceeded):
             await notifications_service.notify(sample_comparison)

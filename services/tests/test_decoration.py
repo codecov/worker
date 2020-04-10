@@ -7,7 +7,7 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
-from services.decoration import Decoration, get_decoration_type, is_whitelisted
+from services.decoration import Decoration, get_decoration_type_and_reason, is_whitelisted
 from services.repository import EnrichedPull
 
 
@@ -90,21 +90,21 @@ class TestDecorationServiceTestCase(object):
         assert is_whitelisted(999) is True
         assert is_whitelisted(404) is False
 
-    def test_get_decoration_type_no_pull(self, dbsession, mocker):
+    def test_get_decoration_type_no_pull(self, mocker):
         mocker.patch("services.decoration.is_whitelisted", return_value=True)
 
-        decoration_type, reason = get_decoration_type(dbsession, None)
+        decoration_type, reason = get_decoration_type_and_reason(None)
 
         assert decoration_type == Decoration.standard
         assert reason == "No pull"
 
     def test_get_decoration_type_no_provider_pull(
-        self, dbsession, mocker, enriched_pull
+        self, mocker, enriched_pull
     ):
         mocker.patch("services.decoration.is_whitelisted", return_value=True)
         enriched_pull.provider_pull = None
 
-        decoration_type, reason = get_decoration_type(dbsession, enriched_pull)
+        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
 
         assert decoration_type == Decoration.standard
         assert reason == "Can't determine PR author - no pull info from provider"
@@ -113,7 +113,7 @@ class TestDecorationServiceTestCase(object):
         enriched_pull.database_pull.repository.private = False
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type(dbsession, enriched_pull)
+        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
 
         assert decoration_type == Decoration.standard
         assert reason == "Public repo"
@@ -124,28 +124,28 @@ class TestDecorationServiceTestCase(object):
 
         mocker.patch("services.decoration.is_whitelisted", return_value=True)
 
-        decoration_type, reason = get_decoration_type(dbsession, enriched_pull)
+        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
 
         assert decoration_type == Decoration.standard
         assert reason == "Org not on PR plan"
 
     def test_get_decoration_type_not_in_whitelist(
-        self, dbsession, mocker, enriched_pull
+        self, mocker, enriched_pull
     ):
         mocker.patch("services.decoration.is_whitelisted", return_value=False)
 
-        decoration_type, reason = get_decoration_type(dbsession, enriched_pull)
+        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
 
         assert decoration_type == Decoration.standard
         assert reason == "Org not in whitelist"
 
     def test_get_decoration_type_pr_author_not_in_db(
-        self, dbsession, mocker, enriched_pull
+        self, mocker, enriched_pull
     ):
         mocker.patch("services.decoration.is_whitelisted", return_value=True)
         enriched_pull.provider_pull["author"]["id"] = "190"
 
-        decoration_type, reason = get_decoration_type(dbsession, enriched_pull)
+        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
 
         assert decoration_type == Decoration.upgrade
         assert reason == "PR author not found in database"
@@ -165,7 +165,7 @@ class TestDecorationServiceTestCase(object):
         dbsession.add(pr_author)
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type(dbsession, enriched_pull)
+        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
         dbsession.commit()
 
         assert decoration_type == Decoration.standard
@@ -193,7 +193,7 @@ class TestDecorationServiceTestCase(object):
         dbsession.add(pr_author)
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type(dbsession, enriched_pull)
+        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
         dbsession.commit()
 
         assert decoration_type == Decoration.upgrade
@@ -222,7 +222,7 @@ class TestDecorationServiceTestCase(object):
         dbsession.add(pr_author)
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type(dbsession, enriched_pull)
+        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
         dbsession.commit()
 
         assert decoration_type == Decoration.upgrade

@@ -307,7 +307,7 @@ class CommentNotifier(AbstractBaseNotifier):
             pull_dict = await self.repository_service.get_pull_request(
                 pullid=pull.pullid
             )
-        if self.use_upgrade_decoration():
+        if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(pull, pull_dict)
 
         with metrics.timer(

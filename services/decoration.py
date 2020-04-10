@@ -2,8 +2,10 @@ import logging
 import os
 from enum import Enum
 from sqlalchemy import func
+from typing import Tuple
 
 from database.models import Owner
+from services.repository import EnrichedPull
 
 
 log = logging.getLogger(__name__)
@@ -23,9 +25,14 @@ def is_whitelisted(ownerid) -> bool:
     return ownerid in pr_billing_whitelisted_owners
 
 
-def get_decoration_type(db_session, enriched_pull):
+def get_decoration_type_and_reason(
+    enriched_pull: EnrichedPull,
+) -> Tuple[Decoration, str]:
     """
-    Determine which type of decoration we should do
+    Determine which type of decoration we should do and why
+
+    Returns:
+        (Decoration, str): tuple of the decoration type and the reason for using that decoration
     """
     if enriched_pull:
         db_pull = enriched_pull.database_pull
@@ -49,6 +56,7 @@ def get_decoration_type(db_session, enriched_pull):
         if not is_whitelisted(org.ownerid):
             return (Decoration.standard, "Org not in whitelist")
 
+        db_session = db_pull.get_db_session()
         pr_author = (
             db_session.query(Owner)
             .filter(
