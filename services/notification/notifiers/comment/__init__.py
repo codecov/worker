@@ -80,6 +80,14 @@ class CommentNotifier(AbstractBaseNotifier):
                 data_sent=None,
                 data_received=None,
             )
+        if comparison.enriched_pull is None or comparison.enriched_pull.provider_pull is None:
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="pull_request_not_in_provider",
+                data_sent=None,
+                data_received=None,
+            )
         if comparison.pull.state != "open":
             return NotificationResult(
                 notification_attempted=False,
