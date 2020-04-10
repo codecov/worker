@@ -80,6 +80,14 @@ class CommentNotifier(AbstractBaseNotifier):
                 data_sent=None,
                 data_received=None,
             )
+        if comparison.enriched_pull is None or comparison.enriched_pull.provider_pull is None:
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="pull_request_not_in_provider",
+                data_sent=None,
+                data_received=None,
+            )
         if comparison.pull.state != "open":
             return NotificationResult(
                 notification_attempted=False,
@@ -300,13 +308,6 @@ class CommentNotifier(AbstractBaseNotifier):
         )
 
     async def build_message(self, comparison: Comparison) -> str:
-        pull = comparison.pull
-        with metrics.timer(
-            "new_worker.services.notifications.notifiers.comment.get_pull"
-        ):
-            pull_dict = await self.repository_service.get_pull_request(
-                pullid=pull.pullid
-            )
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(pull, pull_dict)
 
@@ -314,6 +315,7 @@ class CommentNotifier(AbstractBaseNotifier):
             "new_worker.services.notifications.notifiers.comment.get_diff"
         ):
             diff = await self.get_diff(comparison)
+        pull_dict = comparison.enriched_pull.provider_pull
         return self._create_message(comparison, diff, pull_dict)
 
     def _create_upgrade_message(self, db_pull, provider_pull):

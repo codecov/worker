@@ -11,4 +11,4 @@ def parse_yaml_file(content):
         raise InvalidYamlException("invalid_yaml", e)
     if yaml_dict is None:
         return None
-    return validate_yaml(yaml_dict)
+    return validate_yaml(yaml_dict, show_secrets=True)

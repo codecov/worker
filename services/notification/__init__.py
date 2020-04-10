@@ -17,6 +17,7 @@ from services.notification.notifiers import (
 from services.notification.types import Comparison
 from services.notification.notifiers.base import NotificationResult
 from services.yaml import read_yaml_field
+from services.license import is_properly_licensed
 
 log = logging.getLogger(__name__)
 
@@ -78,6 +79,9 @@ class NotificationService(object):
                 )
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
+        if not is_properly_licensed(comparison.head.commit.get_db_session()):
+            log.warning("Not sending notifications because the system is not properly licensed")
+            return []
         decoration_type, reason = get_decoration_type_and_reason(
             Comparison.enriched_pull
         )
@@ -121,7 +125,7 @@ class NotificationService(object):
             with metrics.timer(
                 f"new_worker.services.notifications.notifiers.{notifier.name}"
             ):
-                res = await notifier.notify(comparison)
+                res = await asyncio.wait_for(notifier.notify(comparison), timeout=30)
             individual_result = {
                 "notifier": notifier.name,
                 "title": notifier.title,
@@ -142,6 +146,24 @@ class NotificationService(object):
             return individual_result
         except (CeleryError, SoftTimeLimitExceeded):
             raise
+        except asyncio.TimeoutError:
+            individual_result = {
+                "notifier": notifier.name,
+                "title": notifier.title,
+                "result": None,
+            }
+            log.warning(
+                "Individual notifier timed out",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    individual_result=individual_result,
+                    base_commit=base_commit.commitid
+                    if base_commit is not None
+                    else "NO_BASE",
+                ),
+            )
+            return individual_result
         except Exception:
             individual_result = {
                 "notifier": notifier.name,

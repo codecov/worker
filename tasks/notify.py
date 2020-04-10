@@ -4,6 +4,7 @@ from sqlalchemy.orm.session import Session
 from torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from celery.exceptions import MaxRetriesExceededError
 from redis.exceptions import LockError
+from celery.exceptions import SoftTimeLimitExceeded
 
 from app import celery_app
 from celery_config import (
@@ -32,6 +33,8 @@ log = logging.getLogger(__name__)
 class NotifyTask(BaseCodecovTask):
 
     name = notify_task_name
+
+    throws = (SoftTimeLimitExceeded, )
 
     async def run_async(
         self,
