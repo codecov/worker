@@ -1315,6 +1315,27 @@ class TestCommentNotifier(object):
         assert result.data_received is None
 
     @pytest.mark.asyncio
+    async def test_notify_pull_request_not_in_provider(
+        self, dbsession, sample_comparison_database_pull_without_provider
+    ):
+        notifier = CommentNotifier(
+            repository=sample_comparison_database_pull_without_provider.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "reach, diff, flags, files, footer",
+                "behavior": "default",
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.notify(sample_comparison_database_pull_without_provider)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "pull_request_not_in_provider"
+        assert result.data_sent is None
+        assert result.data_received is None
+
+    @pytest.mark.asyncio
     async def test_notify_server_unreachable(
         self, mocker, dbsession, sample_comparison
     ):
