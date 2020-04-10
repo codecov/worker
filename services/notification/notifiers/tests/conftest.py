@@ -119,7 +119,20 @@ def sample_comparison(dbsession, request, sample_report):
     return Comparison(
         head=head_full_commit,
         base=base_full_commit,
-        enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "base": {"branch": "master", "commitid": base_commit.commitid,},
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
     )
 
 
@@ -143,7 +156,20 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
     return Comparison(
         head=head_full_commit,
         base=base_full_commit,
-        enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "base": {"branch": "master", "commitid": base_commit.commitid,},
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
     )
 
 
@@ -160,7 +186,11 @@ def sample_comparison_without_pull(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, enriched_pull=None)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(database_pull=None, provider_pull=None),
+    )
 
 
 @pytest.fixture
@@ -182,7 +212,20 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
     return Comparison(
         head=head_full_commit,
         base=base_full_commit,
-        enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "base": {"branch": "master", "commitid": base_commit.commitid,},
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
     )
 
 
@@ -203,5 +246,21 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
     return Comparison(
         head=head_full_commit,
         base=base_full_commit,
-        enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "base": {
+                    "branch": "master",
+                    "commitid": "cdf9aa4bd2c6bcd8a662864097cb62a85a2fd55b",
+                },
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
     )

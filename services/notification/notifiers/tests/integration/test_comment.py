@@ -36,7 +36,27 @@ def sample_comparison(dbsession, request, sample_report, small_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=small_report)
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}))
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "base": {
+                    "branch": "master",
+                    "commitid": "30cc1ed751a59fa9e7ad8e79fff41a6fe11ef5dd",
+                },
+                "head": {
+                    "branch": "thiago/test-1",
+                    "commitid": "2e2600aa09525e2e1e1d98b09de61454d29c94bb",
+                },
+                "state": "open",
+                "title": "Thiago/test 1",
+                "id": "15",
+                "number": "15",
+            },
+        ),
+    )
 
 
 @pytest.fixture
@@ -72,7 +92,27 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=small_report)
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}))
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "base": {
+                    "branch": "master",
+                    "commitid": "842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4",
+                },
+                "head": {
+                    "branch": "div",
+                    "commitid": "46ce216948fe8c301fc80d9ba3ba1a582a0ba497",
+                },
+                "state": "open",
+                "title": "Add div method",
+                "id": "11",
+                "number": "11",
+            },
+        ),
+    )
 
 
 class TestCommentNotifierIntegration(object):
