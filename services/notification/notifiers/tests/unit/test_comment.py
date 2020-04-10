@@ -6,6 +6,7 @@ from services.notification.notifiers.comment import (
     diff_to_string,
     format_number_to_str,
 )
+from services.decoration import Decoration
 from services.notification.notifiers.comment.helpers import sort_by_importance, Change
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
@@ -563,6 +564,34 @@ class TestCommentNotifier(object):
         for exp, res in zip(expected_result, result):
             li += 1
             print(li)
+            assert exp == res
+        assert result == expected_result
+    
+    @pytest.mark.asyncio
+    async def test_build_upgrade_message(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        pull = comparison.enriched_pull.database_pull
+        repository = sample_comparison.head.commit.repository
+        notifier = CommentNotifier(
+            repository=repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        result = await notifier.build_message(comparison)
+        provider_pull = comparison.enriched_pull.provider_pull
+        expected_result = [
+            f"The author of this PR, {provider_pull['author']['username']}, is not an active member of this organization on Codecov.",
+            f"Please [activate this user on Codecov](test.example.br/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
+        ]
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
             assert exp == res
         assert result == expected_result
 

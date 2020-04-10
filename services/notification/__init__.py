@@ -8,6 +8,7 @@ from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from covreports.config import get_config
 from covreports.helpers.yaml import default_if_true
 from helpers.metrics import metrics
+from services.decoration import Decoration, get_decoration_type_and_reason
 from services.notification.notifiers import (
     get_all_notifier_classes_mapping,
     get_status_notifier_class,
@@ -26,7 +27,7 @@ class NotificationService(object):
         self.repository = repository
         self.current_yaml = current_yaml
 
-    def get_notifiers_instances(self):
+    def get_notifiers_instances(self, decoration_type=Decoration.standard):
         mapping = get_all_notifier_classes_mapping()
         yaml_field = read_yaml_field(self.current_yaml, ("coverage", "notify"))
         if yaml_field is not None:
@@ -41,6 +42,7 @@ class NotificationService(object):
                             "services", "notifications", instance_type, default=True
                         ),
                         current_yaml=self.current_yaml,
+                        decoration_type=decoration_type,
                     )
         status_fields = read_yaml_field(self.current_yaml, ("coverage", "status"))
         if status_fields:
@@ -54,6 +56,7 @@ class NotificationService(object):
                             notifier_yaml_settings=status_config,
                             notifier_site_settings={},
                             current_yaml=self.current_yaml,
+                            decoration_type=decoration_type,
                         )
                 else:
                     log.warning(
@@ -72,14 +75,31 @@ class NotificationService(object):
                     notifier_yaml_settings=comment_yaml_field,
                     notifier_site_settings=None,
                     current_yaml=self.current_yaml,
+                    decoration_type=decoration_type,
                 )
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
         if not is_properly_licensed(comparison.head.commit.get_db_session()):
-            log.warning("Not sending notifications because the system is not properly licensed")
+            log.warning(
+                "Not sending notifications because the system is not properly licensed"
+            )
             return []
+        decoration_type, reason = get_decoration_type_and_reason(
+            comparison.enriched_pull
+        )
+        log.info(
+            f"Notifying with decoration type {decoration_type}",
+            extra=dict(
+                head_commit=comparison.head.commit.commitid,
+                base_commit=comparison.base.commit.commitid
+                if comparison.base.commit is not None
+                else "NO_BASE",
+                repoid=comparison.head.commit.repoid,
+                reason=reason,
+            ),
+        )
         notification_tasks = []
-        for notifier in self.get_notifiers_instances():
+        for notifier in self.get_notifiers_instances(decoration_type):
             if notifier.is_enabled():
                 notification_tasks.append(
                     self.notify_individual_notifier(notifier, comparison)

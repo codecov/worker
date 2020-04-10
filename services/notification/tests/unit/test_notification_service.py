@@ -5,6 +5,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 
 from services.notification import NotificationService
 from database.tests.factories import RepositoryFactory
+from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.types import Comparison, FullCommit, EnrichedPull
 from database.tests.factories import (
