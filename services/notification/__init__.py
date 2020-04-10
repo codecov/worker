@@ -80,19 +80,21 @@ class NotificationService(object):
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
         if not is_properly_licensed(comparison.head.commit.get_db_session()):
-            log.warning("Not sending notifications because the system is not properly licensed")
+            log.warning(
+                "Not sending notifications because the system is not properly licensed"
+            )
             return []
         decoration_type, reason = get_decoration_type_and_reason(
-            Comparison.enriched_pull
+            comparison.enriched_pull
         )
         log.info(
             f"Notifying with decoration type {decoration_type}",
             extra=dict(
-                commit=commit.commitid,
-                base_commit=base_commit.commitid
-                if base_commit is not None
+                head_commit=comparison.head.commit.commitid,
+                base_commit=comparison.base.commit.commitid
+                if comparison.base.commit is not None
                 else "NO_BASE",
-                repoid=commit.repoid,
+                repoid=comparison.head.commit.repoid,
                 reason=reason,
             ),
         )

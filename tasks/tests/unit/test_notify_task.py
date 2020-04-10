@@ -9,6 +9,7 @@ from redis.exceptions import LockError
 from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.notify import NotifyTask
 from services.decoration import Decoration
+from services.repository import EnrichedPull
 from services.notification.notifiers.base import NotificationResult
 from services.notification import NotificationService
 from database.tests.factories import (
@@ -424,6 +425,7 @@ class TestNotifyTask(object):
         pull = PullFactory.create(
             repository=repository, base=base_commit.commitid, head=head_commit.commitid
         )
+        enrichedPull = EnrichedPull(database_pull=pull, provider_pull={})
         dbsession.add(base_commit)
         dbsession.add(head_commit)
         dbsession.add(pull)
@@ -477,7 +479,7 @@ class TestNotifyTask(object):
             },
         ]
         res = await task.submit_third_party_notifications(
-            current_yaml, base_commit, head_commit, base_report, head_report, pull, Decoration.standard
+            current_yaml, base_commit, head_commit, base_report, head_report, enrichedPull
         )
         assert expected_result == res
 

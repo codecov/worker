@@ -110,24 +110,6 @@ def mock_repo_provider(mock_repo_provider):
             },
         ],
     }
-    pull_result_dict = {
-        "author": {
-            "id": "7123",
-            "username": "tomcat"
-        },
-        "base": {
-            "branch": "master",
-            "commitid": "b92edba44fdd29fcc506317cc3ddeae1a723dd08",
-        },
-        "head": {
-            "branch": "reason/some-testing",
-            "commitid": "a06aef4356ca35b34c5486269585288489e578db",
-        },
-        "number": "1",
-        "id": "1",
-        "state": "open",
-        "title": "Creating new code for reasons no one knows",
-    }
     result.set_result(compare_result)
     mock_repo_provider.get_compare.return_value = result
     mock_repo_provider.post_comment.return_value = Future()
@@ -591,7 +573,7 @@ class TestCommentNotifier(object):
     ):
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
         comparison = sample_comparison
-        pull = comparison.pull
+        pull = comparison.enriched_pull.database_pull
         repository = sample_comparison.head.commit.repository
         notifier = CommentNotifier(
             repository=repository,
@@ -602,9 +584,9 @@ class TestCommentNotifier(object):
             decoration_type=Decoration.upgrade,
         )
         result = await notifier.build_message(comparison)
-        pull_data = await mock_repo_provider.get_pull_request.return_value
+        provider_pull = comparison.enriched_pull.provider_pull
         expected_result = [
-            f"The author of this PR, {pull_data['author']['username']}, is not an active member of this organization on Codecov.",
+            f"The author of this PR, {provider_pull['author']['username']}, is not an active member of this organization on Codecov.",
             f"Please [activate this user on Codecov](test.example.br/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
         ]
         li = 0

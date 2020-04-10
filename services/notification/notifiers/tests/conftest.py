@@ -122,6 +122,10 @@ def sample_comparison(dbsession, request, sample_report):
         enriched_pull=EnrichedPull(
             database_pull=pull,
             provider_pull={
+                "author": {
+                    "id": "12345",
+                    "username": "codecov-test-user"
+                },
                 "base": {"branch": "master", "commitid": base_commit.commitid,},
                 "head": {
                     "branch": "reason/some-testing",
@@ -159,6 +163,10 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
         enriched_pull=EnrichedPull(
             database_pull=pull,
             provider_pull={
+                "author": {
+                    "id": "12345",
+                    "username": "codecov-test-user"
+                },
                 "base": {"branch": "master", "commitid": base_commit.commitid,},
                 "head": {
                     "branch": "reason/some-testing",
@@ -238,6 +246,10 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
         enriched_pull=EnrichedPull(
             database_pull=pull,
             provider_pull={
+                "author": {
+                    "id": "12345",
+                    "username": "codecov-test-user"
+                },
                 "base": {"branch": "master", "commitid": base_commit.commitid,},
                 "head": {
                     "branch": "reason/some-testing",
@@ -272,6 +284,10 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
         enriched_pull=EnrichedPull(
             database_pull=pull,
             provider_pull={
+                "author": {
+                    "id": "12345",
+                    "username": "codecov-test-user"
+                },
                 "base": {
                     "branch": "master",
                     "commitid": "cdf9aa4bd2c6bcd8a662864097cb62a85a2fd55b",

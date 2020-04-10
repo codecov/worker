@@ -5,6 +5,7 @@ from sqlalchemy import func
 from typing import Tuple
 
 from database.models import Owner
+from services.billing import is_pr_billing_plan
 from services.repository import EnrichedPull
 
 
@@ -50,7 +51,7 @@ def get_decoration_type_and_reason(
 
         org = db_pull.repository.owner
 
-        if not org.plan in ["users-inappm-pr", "users-inappy-pr"]:
+        if not is_pr_billing_plan(org.plan):
             return (Decoration.standard, "Org not on PR plan")
 
         if not is_whitelisted(org.ownerid):

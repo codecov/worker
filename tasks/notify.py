@@ -22,7 +22,7 @@ from services.redis import get_redis_connection, Redis
 from services.repository import (
     get_repo_provider_service,
     fetch_and_update_pull_request_information_from_commit,
-    EnrichedPull
+    EnrichedPull,
 )
 from services.yaml import read_yaml_field, get_current_yaml
 from tasks.base import BaseCodecovTask
@@ -34,7 +34,7 @@ class NotifyTask(BaseCodecovTask):
 
     name = notify_task_name
 
-    throws = (SoftTimeLimitExceeded, )
+    throws = (SoftTimeLimitExceeded,)
 
     async def run_async(
         self,
@@ -187,7 +187,6 @@ class NotifyTask(BaseCodecovTask):
                 commit,
                 base_report,
                 head_report,
-                pull,
                 enriched_pull,
             )
             log.info(
@@ -236,7 +235,6 @@ class NotifyTask(BaseCodecovTask):
         commit,
         base_report,
         head_report,
-        pull,
         enriched_pull: EnrichedPull,
     ):
         comparison = Comparison(
@@ -245,9 +243,7 @@ class NotifyTask(BaseCodecovTask):
             base=FullCommit(commit=base_commit, report=base_report),
         )
 
-        notifications_service = NotificationService(
-            commit.repository, current_yaml
-        )
+        notifications_service = NotificationService(commit.repository, current_yaml)
         return await notifications_service.notify(comparison)
 
     def fetch_pull_request_base(self, pull: Pull) -> Commit:

@@ -309,7 +309,7 @@ class CommentNotifier(AbstractBaseNotifier):
 
     async def build_message(self, comparison: Comparison) -> str:
         if self.should_use_upgrade_decoration():
-            return self._create_upgrade_message(pull, pull_dict)
+            return self._create_upgrade_message(comparison)
 
         with metrics.timer(
             "new_worker.services.notifications.notifiers.comment.get_diff"
@@ -318,11 +318,12 @@ class CommentNotifier(AbstractBaseNotifier):
         pull_dict = comparison.enriched_pull.provider_pull
         return self._create_message(comparison, diff, pull_dict)
 
-    def _create_upgrade_message(self, db_pull, provider_pull):
+    def _create_upgrade_message(self, comparison):
+        db_pull = comparison.enriched_pull.database_pull
         links = {
             "org_account": get_org_account_url(db_pull),
         }
-        author_username = provider_pull['author'].get("username")
+        author_username = comparison.enriched_pull.provider_pull['author'].get("username")
         return [
             f"The author of this PR, {author_username}, is not an active member of this organization on Codecov.",
             f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment."
