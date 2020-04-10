@@ -1,5 +1,5 @@
 import pytest
-from asyncio import Future
+from asyncio import Future, TimeoutError as AsyncioTimeoutError
 
 from celery.exceptions import SoftTimeLimitExceeded
 
@@ -116,6 +116,25 @@ class TestNotificationService(object):
         ]
         res = await notifications_service.notify(sample_comparison)
         assert expected_result == res
+
+    @pytest.mark.asyncio
+    async def test_notify_individual_notifier_timeout(self, mocker, sample_comparison):
+        current_yaml = {}
+        commit = sample_comparison.head.commit
+        notifier = mocker.MagicMock(
+            title="fake_notifier", notify=mocker.MagicMock(return_value=Future())
+        )
+        notifier.notify.return_value = Future()
+        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifications_service = NotificationService(commit.repository, current_yaml)
+        res = await notifications_service.notify_individual_notifier(
+            notifier, sample_comparison
+        )
+        assert res == {
+            "notifier": notifier.name,
+            "result": None,
+            "title": "fake_notifier",
+        }
 
     @pytest.mark.asyncio
     async def test_notify_timeout_exception(self, mocker, dbsession, sample_comparison):
