@@ -381,7 +381,6 @@ class TestNotifyTask(object):
             kwargs=dict(
                 repoid=commit.repoid, commitid=commit.commitid, message="CI failed."
             ),
-            queue="new_tasks",
         )
 
     @pytest.mark.asyncio

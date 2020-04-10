@@ -1,7 +1,5 @@
 import logging
 import re
-import random
-import os
 from copy import deepcopy
 
 from app import celery_app
@@ -14,7 +12,6 @@ from services.yaml import read_yaml_field
 from celery_config import (
     notify_task_name,
     status_set_pending_task_name,
-    task_default_queue,
 )
 
 log = logging.getLogger(__name__)
@@ -120,27 +117,11 @@ class UploadFinisherTask(BaseCodecovTask):
                         processing_results=processing_results,
                     ),
                 )
-                if self.should_send_notify_task_to_new_worker(commit):
-                    log.info(
-                        "Sending task to new worker notify",
-                        extra=dict(repoid=repoid, commitid=commitid,),
-                    )
-                    self.app.tasks[notify_task_name].apply_async(
-                        queue=task_default_queue,
-                        kwargs=dict(
-                            repoid=repoid, commitid=commitid, current_yaml=commit_yaml
-                        ),
-                    )
-                else:
-                    log.info(
-                        "Sending task to legacy worker notify",
-                        extra=dict(repoid=repoid, commitid=commitid,),
-                    )
-                    self.app.send_task(
-                        notify_task_name,
-                        args=None,
-                        kwargs=dict(repoid=repoid, commitid=commitid),
-                    )
+                self.app.tasks[notify_task_name].apply_async(
+                    kwargs=dict(
+                        repoid=repoid, commitid=commitid, current_yaml=commit_yaml
+                    ),
+                )
             else:
                 notifications_called = False
                 log.info(
@@ -156,20 +137,6 @@ class UploadFinisherTask(BaseCodecovTask):
             commit.state = "skipped"
             commit.notified = False
         return {"notifications_called": notifications_called}
-
-    def should_send_notify_task_to_new_worker(self, commit):
-        notify_whitelisted_owners = [
-            int(x.strip()) for x in os.getenv("NOTIFY_WHITELISTED_OWNERS", "").split()
-        ]
-        # if part of PR author billing whitelist then we should use new notify
-        pr_billing_whitelisted_owners = [
-            int(x.strip()) for x in os.getenv("PR_AUTHOR_BILLING_WHITELISTED_OWNERS", "").split()
-        ]
-        whitelisted_owners = set().union(notify_whitelisted_owners, pr_billing_whitelisted_owners)
-         
-        if commit.repository.ownerid in whitelisted_owners:
-            return True
-        return random.random() < float(os.getenv("NOTIFY_PERCENTAGE", "0.00"))
 
     def should_call_notifications(self, commit, commit_yaml, processing_results):
         if not any(

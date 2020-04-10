@@ -225,7 +225,7 @@ class TestUploadProcessorTask(object):
         mocked_2.assert_called_with(
             mocker.ANY, mock_redis, {}, commit, mocker.ANY, False, url="url"
         )
-        mocked_3.assert_called_with(countdown=20, max_retries=5, queue="new_tasks")
+        mocked_3.assert_called_with(countdown=20, max_retries=5)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_redis_lock_unobtainable(
@@ -257,7 +257,7 @@ class TestUploadProcessorTask(object):
                 commit_yaml={},
                 arguments_list=[{"url": "url"}],
             )
-        mocked_3.assert_called_with(countdown=20, max_retries=5, queue="new_tasks")
+        mocked_3.assert_called_with(countdown=20, max_retries=5)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_expired_report(
