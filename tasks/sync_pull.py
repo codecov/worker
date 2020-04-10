@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Sequence
 
 import sqlalchemy.orm
-from celery_config import pulls_task_name, notify_task_name, task_default_queue
+from celery_config import pulls_task_name, notify_task_name
 from redis.exceptions import LockError
 from torngit.exceptions import TorngitClientError
 from helpers.metrics import metrics
@@ -175,7 +175,7 @@ class PullSyncTask(BaseCodecovTask):
         if commits:
             commit_updates_done = self.update_pull_commits(enriched_pull, commits)
         self.app.tasks[notify_task_name].apply_async(
-            queue=task_default_queue, kwargs=dict(repoid=repoid, commitid=pull.head,)
+            kwargs=dict(repoid=repoid, commitid=pull.head,)
         )
         self.clear_pull_related_caches(redis_connection, enriched_pull)
         return {

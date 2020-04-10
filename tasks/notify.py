@@ -10,7 +10,6 @@ from app import celery_app
 from celery_config import (
     notify_task_name,
     status_set_error_task_name,
-    task_default_queue,
 )
 from database.models import Commit, Pull
 from helpers.exceptions import RepositoryWithoutValidBotError
@@ -268,7 +267,6 @@ class NotifyTask(BaseCodecovTask):
                 kwargs=dict(
                     repoid=commit.repoid, commitid=commit.commitid, message="CI failed."
                 ),
-                queue=task_default_queue,
             )
             log.info(
                 "Not sending notifications because CI failed",

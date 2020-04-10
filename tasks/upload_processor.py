@@ -10,7 +10,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from torngit.exceptions import TorngitClientError
 
 from app import celery_app
-from celery_config import task_default_queue
 from database.models import Commit
 from covreports.config import get_config
 from helpers.exceptions import ReportExpiredException, ReportEmptyError
@@ -53,7 +52,7 @@ class UploadProcessorTask(BaseCodecovTask):
 
     def schedule_for_later_try(self):
         retry_in = FIRST_RETRY_DELAY * 3 ** self.request.retries
-        self.retry(max_retries=5, countdown=retry_in, queue=task_default_queue)
+        self.retry(max_retries=5, countdown=retry_in)
 
     async def run_async(
         self,
