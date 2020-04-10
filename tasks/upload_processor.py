@@ -4,21 +4,21 @@ import logging
 import re
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
-from covreports.utils.sessions import Session
+from shared.utils.sessions import Session
 from redis.exceptions import LockError
 from sqlalchemy.exc import SQLAlchemyError
-from torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitClientError
 
 from app import celery_app
 from database.models import Commit
-from covreports.config import get_config
+from shared.config import get_config
 from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from services.archive import ArchiveService
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService
 from services.repository import get_repo_provider_service
-from covreports.storage.exceptions import FileNotInStorageError
+from shared.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 

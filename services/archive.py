@@ -5,7 +5,7 @@ from hashlib import md5
 from base64 import b16encode
 from enum import Enum
 
-from covreports.config import get_config
+from shared.config import get_config
 from helpers.metrics import metrics
 from services.storage import get_storage_client
 

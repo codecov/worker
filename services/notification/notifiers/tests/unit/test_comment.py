@@ -10,8 +10,8 @@ from services.decoration import Decoration
 from services.notification.notifiers.comment.helpers import sort_by_importance, Change
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
-from covreports.reports.types import ReportTotals
-from torngit.exceptions import (
+from shared.reports.types import ReportTotals
+from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
     TorngitClientError,

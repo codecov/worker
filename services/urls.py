@@ -1,7 +1,7 @@
 from database.models import Commit, Repository, Pull
 from enum import Enum
 from urllib.parse import urlencode
-from covreports.config import get_config
+from shared.config import get_config
 
 services_short_dict = dict(
     github="gh",

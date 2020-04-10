@@ -1,9 +1,9 @@
 from collections import defaultdict
 from fractions import Fraction
 
-from covreports.reports.resources import Report, ReportFile
-from covreports.reports.types import ReportLine
-from covreports.utils.merge import partials_to_line
+from shared.reports.resources import Report, ReportFile
+from shared.reports.types import ReportLine
+from shared.utils.merge import partials_to_line
 from services.yaml import read_yaml_field
 
 from services.report.languages.base import BaseLanguageProcessor

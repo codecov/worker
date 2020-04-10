@@ -3,8 +3,8 @@ from datetime import datetime
 from enum import Enum, auto
 from functools import lru_cache
 
-from covreports.license import get_current_license
-from covreports.config import get_config
+from shared.license import get_current_license
+from shared.config import get_config
 from sqlalchemy import func
 
 from database.models import Owner, Repository

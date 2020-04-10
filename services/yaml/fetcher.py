@@ -1,6 +1,6 @@
 import logging
 from typing import Sequence, Mapping, Any
-import torngit
+import shared.torngit as torngit
 
 from helpers.cache import cache
 from database.models import Commit

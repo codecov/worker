@@ -1,8 +1,8 @@
 import pytest
 from asyncio import Future
 
-from covreports.reports.resources import ReportLine, ReportFile, Report
-from torngit.exceptions import (
+from shared.reports.resources import ReportLine, ReportFile, Report
+from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitServerUnreachableError,
     TorngitRepoNotFoundError,
@@ -16,7 +16,7 @@ from services.notification.notifiers.status import (
 )
 from services.notification.notifiers.status.base import StatusNotifier
 from services.notification.notifiers.base import NotificationResult
-from torngit.status import Status
+from shared.torngit.status import Status
 
 
 @pytest.fixture

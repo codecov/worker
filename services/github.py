@@ -3,11 +3,11 @@ import logging
 
 import requests
 import jwt
-import torngit
+import shared.torngit as torngit
 
 from helpers.cache import cache
 from helpers.exceptions import RepositoryWithoutValidBotError
-from covreports.config import get_config
+from shared.config import get_config
 from services.pem import get_pem
 
 log = logging.getLogger(__name__)

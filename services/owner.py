@@ -1,8 +1,8 @@
 import logging
 
-import torngit
+import shared.torngit as torngit
 
-from covreports.config import get_config, get_verify_ssl
+from shared.config import get_config, get_verify_ssl
 from services.bots import get_owner_appropriate_bot_token
 from database.models import Owner
 

@@ -2,10 +2,10 @@ import dataclasses
 from collections import defaultdict
 from typing import Mapping, Any, List
 
-from covreports.utils.merge import line_type
-from covreports.reports.types import ReportTotals, Change
-from covreports.reports.resources import Report
-from covreports.helpers.numeric import ratio
+from shared.utils.merge import line_type
+from shared.reports.types import ReportTotals, Change
+from shared.reports.resources import Report
+from shared.helpers.numeric import ratio
 
 
 def diff_totals(base, head, absolute=None):

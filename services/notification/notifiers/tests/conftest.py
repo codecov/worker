@@ -1,6 +1,6 @@
 import pytest
-from covreports.reports.resources import Report, ReportFile, ReportLine
-from covreports.utils.sessions import Session
+from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.notification.types import FullCommit, Comparison

@@ -1,6 +1,6 @@
 import logging
 
-from covreports.storage import get_appropriate_storage_service
+from shared.storage import get_appropriate_storage_service
 
 log = logging.getLogger(__name__)
 

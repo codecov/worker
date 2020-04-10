@@ -1,7 +1,7 @@
 from tests.base import BaseTestCase
 from services.archive import ArchiveService
 from database.tests.factories import RepositoryFactory
-from covreports.storage import MinioStorageService
+from shared.storage import MinioStorageService
 
 
 class TestArchiveService(BaseTestCase):

@@ -1,6 +1,6 @@
 import pytest
 from asyncio import Future
-from torngit.exceptions import TorngitClientError, TorngitServerUnreachableError
+from shared.torngit.exceptions import TorngitClientError, TorngitServerUnreachableError
 
 from database.tests.factories import CommitFactory
 from tests.base import BaseTestCase

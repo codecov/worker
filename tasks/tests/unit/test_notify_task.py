@@ -1,9 +1,9 @@
 import pytest
 from asyncio import Future
 
-from covreports.reports.resources import Report
+from shared.reports.resources import Report
 from celery.exceptions import Retry, MaxRetriesExceededError
-from torngit.exceptions import TorngitClientError, TorngitServer5xxCodeError
+from shared.torngit.exceptions import TorngitClientError, TorngitServer5xxCodeError
 from redis.exceptions import LockError
 
 from helpers.exceptions import RepositoryWithoutValidBotError

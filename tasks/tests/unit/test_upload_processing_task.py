@@ -4,8 +4,8 @@ from asyncio import Future
 import pytest
 import celery
 from redis.exceptions import LockError
-from torngit.exceptions import TorngitObjectNotFoundError
-from covreports.reports.resources import Report, ReportFile, ReportLine, ReportTotals
+from shared.torngit.exceptions import TorngitObjectNotFoundError
+from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
 from celery.exceptions import SoftTimeLimitExceeded
 
 from tasks.upload_processor import UploadProcessorTask

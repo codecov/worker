@@ -1,10 +1,10 @@
 import logging
 
 from database.models import Commit
-from covreports.config import get_config
-from covreports.validation.exceptions import InvalidYamlException
-from covreports.validation.yaml import validate_yaml
-from torngit.exceptions import TorngitClientError, TorngitError
+from shared.config import get_config
+from shared.validation.exceptions import InvalidYamlException
+from shared.validation.yaml import validate_yaml
+from shared.torngit.exceptions import TorngitClientError, TorngitError
 
 from services.yaml.reader import read_yaml_field
 from services.yaml.fetcher import fetch_commit_yaml_from_provider

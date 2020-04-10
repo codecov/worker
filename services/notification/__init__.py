@@ -5,8 +5,8 @@ import asyncio
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 
-from covreports.config import get_config
-from covreports.helpers.yaml import default_if_true
+from shared.config import get_config
+from shared.helpers.yaml import default_if_true
 from helpers.metrics import metrics
 from services.decoration import Decoration, get_decoration_type_and_reason
 from services.notification.notifiers import (

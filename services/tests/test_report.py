@@ -8,9 +8,9 @@ from tests.base import BaseTestCase
 from services.report import ReportService
 from database.tests.factories import CommitFactory
 from services.archive import ArchiveService
-from covreports.reports.types import ReportTotals, LineSession, ReportLine
-from covreports.reports.resources import ReportFile, Report, Session
-from covreports.utils.merge import get_coverage_from_sessions
+from shared.reports.types import ReportTotals, LineSession, ReportLine
+from shared.reports.resources import ReportFile, Report, Session
+from shared.utils.merge import get_coverage_from_sessions
 
 
 def powerset(iterable):

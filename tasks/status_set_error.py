@@ -2,9 +2,9 @@ import logging
 
 from app import celery_app
 from celery_config import status_set_error_task_name
-from covreports.helpers.yaml import default_if_true
+from shared.helpers.yaml import default_if_true
 from database.models import Commit
-from covreports.utils.urls import make_url
+from shared.utils.urls import make_url
 from services.repository import get_repo_provider_service
 from services.yaml import get_current_yaml
 from services.yaml.reader import read_yaml_field

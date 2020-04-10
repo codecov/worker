@@ -5,7 +5,7 @@ import pytest
 
 from tests.base import BaseTestCase
 from services.yaml.parser import parse_yaml_file
-from covreports.validation.exceptions import InvalidYamlException
+from shared.validation.exceptions import InvalidYamlException
 
 here = Path(__file__)
 

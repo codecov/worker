@@ -1,8 +1,8 @@
 import re
 
 from services.yaml import read_yaml_field
-from covreports.reports.resources import Report, ReportFile
-from covreports.reports.types import ReportLine
+from shared.reports.resources import Report, ReportFile
+from shared.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
 
 

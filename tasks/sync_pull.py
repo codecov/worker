@@ -5,7 +5,7 @@ from typing import Sequence
 import sqlalchemy.orm
 from celery_config import pulls_task_name, notify_task_name
 from redis.exceptions import LockError
-from torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitClientError
 from helpers.metrics import metrics
 
 from database.models import Repository, Commit

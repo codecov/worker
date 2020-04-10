@@ -1,7 +1,7 @@
 import logging
 from contextlib import nullcontext
 
-from torngit.exceptions import TorngitClientError, TorngitError
+from shared.torngit.exceptions import TorngitClientError, TorngitError
 
 from helpers.match import match
 from services.notification.notifiers.base import (

@@ -3,7 +3,7 @@ from decimal import Decimal
 import re
 import logging
 
-from covreports.reports.resources import ReportTotals
+from shared.reports.resources import ReportTotals
 
 from services.notification.changes import Change
 from services.yaml.reader import round_number, get_minimum_precision

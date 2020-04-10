@@ -1,7 +1,7 @@
 from collections import defaultdict
 from itertools import groupby
 
-from covreports.utils import merge
+from shared.utils import merge
 
 
 def combine_partials(partials):

@@ -5,7 +5,7 @@ import dataclasses
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from .base import Base
-from covreports.config import get_config
+from shared.config import get_config
 
 
 def create_all(engine):

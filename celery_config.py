@@ -7,7 +7,7 @@ from helpers.logging_config import get_logging_config_dict
 from helpers.cache import cache, RedisBackend
 from services.redis import get_redis_connection
 
-from covreports.config import get_config
+from shared.config import get_config
 from celery import signals
 
 log = logging.getLogger(__name__)

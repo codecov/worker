@@ -1,6 +1,6 @@
-from covreports.reports.resources import Report, ReportFile
-from covreports.reports.types import ReportLine
-from covreports.helpers.numeric import maxint
+from shared.reports.resources import Report, ReportFile
+from shared.reports.types import ReportLine
+from shared.helpers.numeric import maxint
 from services.report.languages.base import BaseLanguageProcessor
 
 
