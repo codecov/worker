@@ -392,12 +392,14 @@ class CommentNotifier(AbstractBaseNotifier):
             message_internal = "> Merging [#{pull}]({links[pull]}?src=pr&el=desc) into [{base}]({links[base]}&el=desc) will **{message}** coverage{coverage}.".format(
                 pull=pull.pullid,
                 base=pull_dict["base"]["branch"],
+                # ternary operator, see https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator
                 message={False: "decrease", "na": "not change", True: "increase"}[
                     (change > 0) if change != 0 else "na"
                 ],
-                coverage=" by `{0}%`".format(
-                    round_number(yaml, abs(change)) if change != 0 else ""
-                ),
+                coverage={
+                    True: " by `{0}%`".format(round_number(yaml, abs(change))),
+                    False: "",
+                }[(change != 0)],
                 links=links,
             )
         else:

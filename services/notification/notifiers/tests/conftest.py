@@ -182,6 +182,47 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
 
 
 @pytest.fixture
+def sample_comparison_no_change(dbsession, request, sample_report):
+    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    dbsession.add(repository)
+    dbsession.flush()
+    base_commit = CommitFactory.create(repository=repository)
+    head_commit = CommitFactory.create(repository=repository, branch="new_branch")
+    pull = PullFactory.create(
+        repository=repository, base=base_commit.commitid, head=head_commit.commitid
+    )
+    dbsession.add(base_commit)
+    dbsession.add(head_commit)
+    dbsession.add(pull)
+    dbsession.flush()
+    repository = base_commit.repository
+    base_full_commit = FullCommit(commit=base_commit, report=sample_report)
+    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull, 
+            provider_pull={
+                "author": {
+                    "id": "12345",
+                    "username": "codecov-test-user"
+                },
+                "base": {"branch": "master", "commitid": base_commit.commitid,},
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
+    )
+
+
+@pytest.fixture
 def sample_comparison_without_pull(dbsession, request, sample_report):
     repository = RepositoryFactory.create(owner__username=request.node.name,)
     dbsession.add(repository)
