@@ -14,7 +14,7 @@ build-requirements:
 	# requirements.txt.  Otherwise, build and push a version tagged
 	# with the hash of this requirements.txt
 	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG} || docker build \
-		-f Dockerfile.requirements . \
+		-f dockerscripts/Dockerfile.requirements . \
 		-t ${GCR_REPO}:${REQUIREMENTS_TAG} \
 		--build-arg GH_ACCESS_TOKEN=${GH_ACCESS_TOKEN} \
 	&& docker push ${GCR_REPO}:${REQUIREMENTS_TAG}
@@ -25,7 +25,7 @@ build-requirements:
 build:
 	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG}
 	docker build \
-		-f Dockerfile.circle . \
+		-f dockerscripts/Dockerfile.circle . \
 		-t ${GCR_REPO}:latest \
 		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
 
