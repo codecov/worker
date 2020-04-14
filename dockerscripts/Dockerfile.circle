@@ -2,5 +2,9 @@ ARG REQUIREMENTS_IMAGE
 
 FROM $REQUIREMENTS_IMAGE
 
+ARG             RELEASE_VERSION
+
+ENV             RELEASE_VERSION $RELEASE_VERSION
+
 COPY            . /worker
 WORKDIR         /worker
