@@ -1,4 +1,4 @@
-# BUILD STAGE - Download dependencies from GitHub that require SSH access
+        # BUILD STAGE - Download dependencies from GitHub that require SSH access
 FROM python:3.7.4-alpine as build
 
 RUN             apk update \
@@ -50,5 +50,5 @@ COPY            --from=build /pip-packages/ /pip-packages/
 RUN             rm -rf /pip-packages/src
 RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages/*
 
-COPY            . /app
-WORKDIR         /app
+RUN             addgroup -S application \
+                && adduser -S codecov -G application
