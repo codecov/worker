@@ -29,7 +29,7 @@ build:
 	docker build \
 		-f dockerscripts/Dockerfile.circle . \
 		-t ${GCR_REPO}:latest \
-		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
+		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG} \
 		--build-arg RELEASE_VERSION=${IMAGE_VERSION}
 
 # CIRCLECI
