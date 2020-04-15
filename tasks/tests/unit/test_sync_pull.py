@@ -263,6 +263,10 @@ class TestPullSyncTask(object):
         mock_repo_provider.get_compare.return_value.set_exception(
             TorngitClientError(403, "response", "message")
         )
+        mock_repo_provider.get_pull_request_commits.return_value = Future()
+        mock_repo_provider.get_pull_request_commits.return_value.set_exception(
+            TorngitClientError(403, "response", "message")
+        )
         res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},

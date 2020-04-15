@@ -8,7 +8,7 @@ from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitClientError
 from helpers.metrics import metrics
 
-from database.models import Repository, Commit
+from database.models import Repository, Commit, Pull
 from services.redis import get_redis_connection
 from services.repository import (
     get_repo_provider_service,
@@ -19,7 +19,7 @@ from helpers.exceptions import RepositoryWithoutValidBotError
 from services.notification.changes import get_changes
 from services.yaml.reader import read_yaml_field
 from services.yaml import get_final_yaml
-from services.report import ReportService
+from services.report import ReportService, Report
 from tasks.base import BaseCodecovTask
 from app import celery_app
 
@@ -54,6 +54,7 @@ class PullSyncTask(BaseCodecovTask):
         *,
         repoid: int = None,
         pullid: int = None,
+        should_send_notifications: bool = True,
         **kwargs,
     ):
         redis_connection = get_redis_connection()
@@ -63,7 +64,12 @@ class PullSyncTask(BaseCodecovTask):
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
                 return await self.run_async_within_lock(
-                    db_session, redis_connection, repoid=repoid, pullid=pullid, **kwargs
+                    db_session,
+                    redis_connection,
+                    repoid=repoid,
+                    pullid=pullid,
+                    should_send_notifications=should_send_notifications,
+                    **kwargs,
                 )
         except LockError:
             log.info(
@@ -84,6 +90,7 @@ class PullSyncTask(BaseCodecovTask):
         *,
         repoid: int = None,
         pullid: int = None,
+        should_send_notifications: bool = True,
         **kwargs,
     ):
         commit_updates_done = {"merged_count": 0, "soft_deleted_count": 0}
@@ -152,18 +159,39 @@ class PullSyncTask(BaseCodecovTask):
             base_report = report_service.build_report_from_commit(compared_to)
         else:
             base_report = None
-        compare_dict, commits = None, None
+        commits = None
+        try:
+            commits = await repository_service.get_pull_request_commits(pull.pullid)
+            commit_updates_done = self.update_pull_commits(enriched_pull, commits)
+        except TorngitClientError:
+            log.warning(
+                "Unable to fetch information about pull commits",
+                extra=dict(pullid=pullid, repoid=repoid),
+            )
+        await self.update_pull_from_reports(
+            pull, repository_service, base_report, head_report, current_yaml
+        )
+        notifier_was_called = False
+        if should_send_notifications:
+            notifier_was_called = True
+            self.app.tasks[notify_task_name].apply_async(
+                kwargs=dict(repoid=repoid, commitid=pull.head,)
+            )
+        self.clear_pull_related_caches(redis_connection, enriched_pull)
+        return {
+            "notifier_called": notifier_was_called,
+            "commit_updates_done": commit_updates_done,
+            "pull_updated": True,
+            "reason": "success",
+        }
+
+    async def update_pull_from_reports(
+        self, pull: Pull, repository_service, base_report: Report, head_report: Report, current_yaml
+    ):
         try:
             compare_dict = await repository_service.get_compare(
                 pull.base, pull.head, with_commits=False
             )
-            commits = await repository_service.get_pull_request_commits(pull.pullid)
-        except TorngitClientError:
-            log.warning(
-                "Unable to fetch information about diff or pull commits",
-                extra=dict(pullid=pullid, repoid=repoid),
-            )
-        if compare_dict:
             diff = compare_dict["diff"]
             changes = get_changes(base_report, head_report, diff)
             if head_report:
@@ -172,18 +200,13 @@ class PullSyncTask(BaseCodecovTask):
                 pull.flare = (
                     head_report.flare(changes, color=color) if head_report else None
                 )
-        if commits:
-            commit_updates_done = self.update_pull_commits(enriched_pull, commits)
-        self.app.tasks[notify_task_name].apply_async(
-            kwargs=dict(repoid=repoid, commitid=pull.head,)
-        )
-        self.clear_pull_related_caches(redis_connection, enriched_pull)
-        return {
-            "notifier_called": True,
-            "commit_updates_done": commit_updates_done,
-            "pull_updated": True,
-            "reason": "success",
-        }
+            return True
+        except TorngitClientError:
+            log.warning(
+                "Unable to fetch information about diff",
+                extra=dict(pullid=pull.pullid, repoid=pull.repoid),
+            )
+            return False
 
     def clear_pull_related_caches(self, redis_connection, enriched_pull: EnrichedPull):
         pull = enriched_pull.database_pull
@@ -212,7 +235,7 @@ class PullSyncTask(BaseCodecovTask):
         Args:
             enriched_pull (EnrichedPull): The pull that changed state
             commits (Sequence): The commits we might want to update
-        
+
         Returns:
             dict: A dict of the changes that were made
         """

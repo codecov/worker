@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from app import celery_app
 from tasks.base import BaseCodecovTask
-from database.models import Commit
+from database.models import Commit, Pull
 
 from services.redis import get_redis_connection
 from services.yaml import read_yaml_field
@@ -12,6 +12,7 @@ from services.yaml import read_yaml_field
 from celery_config import (
     notify_task_name,
     status_set_pending_task_name,
+    pulls_task_name
 )
 
 log = logging.getLogger(__name__)
@@ -122,6 +123,25 @@ class UploadFinisherTask(BaseCodecovTask):
                         repoid=repoid, commitid=commitid, current_yaml=commit_yaml
                     ),
                 )
+                if commit.pullid:
+                    pull = (
+                        db_session.query(Pull)
+                        .filter_by(repoid=commit.repoid, pullid=commit.pullid)
+                        .first()
+                    )
+                    if pull:
+                        head = pull.get_head_commit()
+                        if head is None or head.timestamp < commit.timestamp:
+                            pull.head = commit.commitid
+                        if pull.head == commit.commitid:
+                            db_session.commit()
+                            self.app.tasks[pulls_task_name].apply_async(
+                                kwargs=dict(
+                                    repoid=repoid,
+                                    pullid=pull.pullid,
+                                    should_send_notifications=False,
+                                ),
+                            )
             else:
                 notifications_called = False
                 log.info(
