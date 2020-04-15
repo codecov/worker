@@ -1,4 +1,4 @@
-from torngit.enums import Endpoints
+from shared.torngit.enums import Endpoints
 
 from services.notification.notifiers.generics import (
     RequestsYamlBasedNotifier,

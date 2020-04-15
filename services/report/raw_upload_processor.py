@@ -4,8 +4,8 @@ import logging
 import random
 
 
-from covreports.utils.sessions import Session
-from covreports.reports.resources import Report
+from shared.utils.sessions import Session
+from shared.reports.resources import Report
 
 from helpers.exceptions import ReportEmptyError
 from services.report.fixes import get_fixes_from_raw

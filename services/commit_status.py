@@ -1,4 +1,4 @@
-from covreports.config import get_config
+from shared.config import get_config
 from services.yaml import read_yaml_field
 
 

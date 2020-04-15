@@ -6,7 +6,7 @@ from celery.exceptions import Retry
 
 import pytest
 from redis.exceptions import LockError
-from torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
+from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 
 from tasks.upload import UploadTask
 from tasks.upload_processor import upload_processor_task

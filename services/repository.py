@@ -4,8 +4,8 @@ import re
 from typing import Mapping, Any
 from dataclasses import dataclass
 
-import torngit
-from torngit.exceptions import (
+import shared.torngit as torngit
+from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
     TorngitError,
@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import FlushError
 from sqlalchemy.dialects.postgresql import insert, dialect
 
-from covreports.config import get_config, get_verify_ssl
+from shared.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
 from database.models import Owner, Commit, Pull, Repository
 from services.yaml import read_yaml_field

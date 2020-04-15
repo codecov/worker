@@ -1,7 +1,7 @@
 import logging
 import dataclasses
 
-from torngit.enums import Endpoints
+from shared.torngit.enums import Endpoints
 
 from services.notification.notifiers.generics import RequestsYamlBasedNotifier
 from services.notification.types import FullCommit, Comparison

@@ -5,7 +5,7 @@ from typing import Mapping, Any
 
 from celery import chain
 from redis.exceptions import LockError
-from torngit.exceptions import (
+from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitClientError,
     TorngitRepoNotFoundError,
@@ -25,7 +25,7 @@ from services.repository import (
     create_webhook_on_provider,
 )
 from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
-from covreports.validation.exceptions import InvalidYamlException
+from shared.validation.exceptions import InvalidYamlException
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 from tasks.upload_finisher import upload_finisher_task

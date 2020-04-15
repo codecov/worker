@@ -1,10 +1,10 @@
 import logging
 from typing import Mapping, Any
 
-from covreports.reports.resources import Report
-from covreports.reports.editable import EditableReport
-from covreports.storage.exceptions import FileNotInStorageError
-from covreports.reports.carryforward import generate_carryforward_report
+from shared.reports.resources import Report
+from shared.reports.editable import EditableReport
+from shared.storage.exceptions import FileNotInStorageError
+from shared.reports.carryforward import generate_carryforward_report
 
 from database.models import Commit
 from services.archive import ArchiveService

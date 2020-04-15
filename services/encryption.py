@@ -1,8 +1,8 @@
 import os
 
-from covreports.config import get_config
+from shared.config import get_config
 
-from covreports.encryption import StandardEncryptor
+from shared.encryption import StandardEncryptor
 
 
 first_part = get_config("setup", "encryption_secret", default="")

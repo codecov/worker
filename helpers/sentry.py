@@ -6,7 +6,7 @@ from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from celery.exceptions import SoftTimeLimitExceeded
 
-from covreports.config import get_config
+from shared.config import get_config
 
 
 def before_send(event, hint):

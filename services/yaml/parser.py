@@ -1,7 +1,7 @@
 from yaml import safe_load
 from yaml.error import YAMLError
-from covreports.validation.yaml import validate_yaml
-from covreports.validation.exceptions import InvalidYamlException
+from shared.validation.yaml import validate_yaml
+from shared.validation.exceptions import InvalidYamlException
 
 
 def parse_yaml_file(content):

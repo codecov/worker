@@ -2,7 +2,7 @@ import pytest
 from asyncio import Future
 from datetime import datetime
 
-from torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError, TorngitServerUnreachableError
+from shared.torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError, TorngitServerUnreachableError
 
 from services.repository import (
     get_repo_provider_service,

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from covreports.reports.resources import Report
+from shared.reports.resources import Report
 
 from services.repository import EnrichedPull
 from database.models import Commit, Pull

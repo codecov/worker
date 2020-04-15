@@ -7,7 +7,7 @@ import logging
 
 import requests
 from requests.exceptions import RequestException
-from covreports.config import get_config
+from shared.config import get_config
 
 from helpers.metrics import metrics
 from helpers.match import match

@@ -5,9 +5,9 @@ from collections import namedtuple
 import logging
 from typing import Any, Mapping
 
-from covreports.reports.resources import Report, ReportTotals
-from covreports.helpers.yaml import walk
-from torngit.exceptions import (
+from shared.reports.resources import Report, ReportTotals
+from shared.helpers.yaml import walk
+from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitClientError,
     TorngitServerFailureError,

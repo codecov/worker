@@ -3,7 +3,7 @@ from asyncio import Future
 import pytest
 
 from redis.exceptions import LockError
-from torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitClientError
 
 from tasks.sync_pull import PullSyncTask
 from database.tests.factories import RepositoryFactory, CommitFactory, PullFactory

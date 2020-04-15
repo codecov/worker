@@ -1,7 +1,7 @@
 import logging
 
 from sqlalchemy.orm.session import Session
-from torngit.exceptions import TorngitClientError, TorngitServerFailureError
+from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from celery.exceptions import MaxRetriesExceededError
 from redis.exceptions import LockError
 from celery.exceptions import SoftTimeLimitExceeded

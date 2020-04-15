@@ -11,8 +11,8 @@ from sqlalchemy import event
 from database.base import Base
 from database.engine import json_dumps
 from sqlalchemy_utils import create_database, database_exists
-from covreports.config import ConfigHelper
-from covreports.storage.memory import MemoryStorageService
+from shared.config import ConfigHelper
+from shared.storage.memory import MemoryStorageService
 from celery_config import initialize_logging
 
 
@@ -115,7 +115,7 @@ def dbsession(db, engine):
 
 @pytest.fixture
 def mock_configuration(mocker):
-    m = mocker.patch("covreports.config._get_config_instance")
+    m = mocker.patch("shared.config._get_config_instance")
     mock_config = ConfigHelper()
     m.return_value = mock_config
     our_config = {

@@ -4,7 +4,7 @@ from services.github import get_github_integration_token
 from services.encryption import encryptor
 from helpers.exceptions import RepositoryWithoutValidBotError, OwnerWithoutValidBotError
 
-from covreports.config import get_config
+from shared.config import get_config
 
 log = logging.getLogger(__name__)
 

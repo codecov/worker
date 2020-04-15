@@ -1,8 +1,8 @@
 from services.report.languages.helpers import list_to_dict
 
-from covreports.reports.resources import Report, ReportFile
+from shared.reports.resources import Report, ReportFile
 from services.yaml import read_yaml_field
-from covreports.reports.types import ReportLine
+from shared.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
 
 
