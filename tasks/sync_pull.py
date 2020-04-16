@@ -160,9 +160,11 @@ class PullSyncTask(BaseCodecovTask):
         else:
             base_report = None
         commits = None
+        db_session.commit()
         try:
             commits = await repository_service.get_pull_request_commits(pull.pullid)
             commit_updates_done = self.update_pull_commits(enriched_pull, commits)
+            db_session.commit()
         except TorngitClientError:
             log.warning(
                 "Unable to fetch information about pull commits",
