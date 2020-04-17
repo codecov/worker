@@ -1,7 +1,12 @@
 import pytest
 
 from tasks.flush_repo import FlushRepoTask
-from database.tests.factories import RepositoryFactory, CommitFactory, PullFactory, BranchFactory
+from database.tests.factories import (
+    RepositoryFactory,
+    CommitFactory,
+    PullFactory,
+    BranchFactory,
+)
 from services.archive import ArchiveService
 
 
@@ -21,7 +26,9 @@ class TestFlushRepo(object):
         }
 
     @pytest.mark.asyncio
-    async def test_flush_repo_few_of_each_only_db_objects(self, dbsession, mock_storage):
+    async def test_flush_repo_few_of_each_only_db_objects(
+        self, dbsession, mock_storage
+    ):
         task = FlushRepoTask()
         repo = RepositoryFactory.create()
         dbsession.add(repo)

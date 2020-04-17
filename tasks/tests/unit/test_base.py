@@ -83,12 +83,7 @@ class TestBaseTask(object):
     def test_wrap_up_dbsession_timeout_but_ok(self, mocker):
         task = BaseCodecovTask()
         fake_session = mocker.MagicMock(
-            commit=mocker.MagicMock(
-                side_effect=[
-                    SoftTimeLimitExceeded(),
-                    1
-                ]
-            )
+            commit=mocker.MagicMock(side_effect=[SoftTimeLimitExceeded(), 1])
         )
         task.wrap_up_dbsession(fake_session)
         assert fake_session.commit.call_count == 2
@@ -99,10 +94,7 @@ class TestBaseTask(object):
         task = BaseCodecovTask()
         fake_session = mocker.MagicMock(
             commit=mocker.MagicMock(
-                side_effect=[
-                    SoftTimeLimitExceeded(),
-                    InvalidRequestError()
-                ]
+                side_effect=[SoftTimeLimitExceeded(), InvalidRequestError()]
             )
         )
         task.wrap_up_dbsession(fake_session)
@@ -119,10 +111,8 @@ class TestBaseCodecovTaskHooks(object):
         task = celery_app.tasks[DTask.name]
         k = task.apply()
         res = k.get()
-        assert res == {'unusual': 'return', 'value': ['There']}
-        mock_metrics.assert_called_with(
-            "new-worker.task.test.SampleTask.successes"
-        )
+        assert res == {"unusual": "return", "value": ["There"]}
+        mock_metrics.assert_called_with("new-worker.task.test.SampleTask.successes")
 
     def test_sample_task_failure(self, celery_app, mocker):
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
@@ -180,6 +170,4 @@ class TestBaseCodecovRequest(object):
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
         request.on_timeout(True, 10)
-        mock_metrics.assert_called_with(
-            "new-worker.task.test.SampleTask.timeout"
-        )
+        mock_metrics.assert_called_with("new-worker.task.test.SampleTask.timeout")

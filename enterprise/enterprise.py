@@ -34,9 +34,9 @@ def deal_web_command(parser, codecov):
 def setup_worker():
     print(initialization_text.format(version=get_current_version()))
     storage_client = get_storage_client()
-    minio_config = get_config('services', 'minio')
+    minio_config = get_config("services", "minio")
     bucket_name = get_config("services", "minio", "bucket", default="archive")
-    region = minio_config.get('region', 'us-east-1')
+    region = minio_config.get("region", "us-east-1")
     try:
         storage_client.create_root_storage(bucket_name, region)
         log.info("Initializing bucket %s", bucket_name)

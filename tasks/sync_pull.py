@@ -188,7 +188,12 @@ class PullSyncTask(BaseCodecovTask):
         }
 
     async def update_pull_from_reports(
-        self, pull: Pull, repository_service, base_report: Report, head_report: Report, current_yaml
+        self,
+        pull: Pull,
+        repository_service,
+        base_report: Report,
+        head_report: Report,
+        current_yaml,
     ):
         try:
             compare_dict = await repository_service.get_compare(

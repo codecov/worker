@@ -4,7 +4,6 @@ from helpers.version import get_current_version
 
 
 class TestVersion(object):
-
     def test_get_current_version(self, mocker):
         mocker.patch.dict(os.environ, {"RELEASE_VERSION": "HAHA"})
         assert get_current_version() == "HAHA"

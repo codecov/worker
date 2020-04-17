@@ -566,7 +566,7 @@ class TestCommentNotifier(object):
             print(li)
             assert exp == res
         assert result == expected_result
-    
+
     @pytest.mark.asyncio
     async def test_build_upgrade_message(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison

@@ -2,7 +2,11 @@ import pytest
 from asyncio import Future
 from datetime import datetime
 
-from shared.torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError, TorngitServerUnreachableError
+from shared.torngit.exceptions import (
+    TorngitClientError,
+    TorngitObjectNotFoundError,
+    TorngitServerUnreachableError,
+)
 
 from services.repository import (
     get_repo_provider_service,
@@ -11,7 +15,7 @@ from services.repository import (
     update_commit_from_provider_info,
     get_repo_provider_service_by_id,
     fetch_and_update_pull_request_information_from_commit,
-    fetch_and_update_pull_request_information
+    fetch_and_update_pull_request_information,
 )
 from database.tests.factories import (
     RepositoryFactory,
@@ -477,7 +481,6 @@ class TestRepositoryServiceTestCase(object):
 
 
 class TestPullRequestFetcher(object):
-
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_from_commit_new_pull_commits_in_place(
         self, dbsession, mocker
@@ -770,7 +773,7 @@ class TestPullRequestFetcher(object):
         dbsession.flush()
         current_yaml = {}
         f = Future()
-        f.set_exception(TorngitObjectNotFoundError('response', 'message'))
+        f.set_exception(TorngitObjectNotFoundError("response", "message"))
         get_pull_request_result = Future()
         get_pull_request_result.set_result(
             {
@@ -884,9 +887,7 @@ class TestPullRequestFetcher(object):
         dbsession.flush()
         current_yaml = {}
         result = Future()
-        result.set_exception(
-            TorngitServerUnreachableError()
-        )
+        result.set_exception(TorngitServerUnreachableError())
         repository_service = mocker.MagicMock(
             get_pull_request=mocker.MagicMock(return_value=result),
         )

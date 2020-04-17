@@ -17,8 +17,12 @@ class FlushRepoTask(BaseCodecovTask):
         repo = db_session.query(Repository).filter_by(repoid=repoid).first()
         archive_service = ArchiveService(repo)
         deleted_archives = archive_service.delete_repo_files()
-        deleted_commits = db_session.query(Commit).filter_by(repoid=repo.repoid).delete()
-        delete_branches = db_session.query(Branch).filter_by(repoid=repo.repoid).delete()
+        deleted_commits = (
+            db_session.query(Commit).filter_by(repoid=repo.repoid).delete()
+        )
+        delete_branches = (
+            db_session.query(Branch).filter_by(repoid=repo.repoid).delete()
+        )
         deleted_pulls = db_session.query(Pull).filter_by(repoid=repo.repoid).delete()
         repo.yaml = None
         repo.cache_do_not_use = None
@@ -26,7 +30,7 @@ class FlushRepoTask(BaseCodecovTask):
             "deleted_commits_count": deleted_commits,
             "delete_branches_count": delete_branches,
             "deleted_pulls_count": deleted_pulls,
-            "deleted_archives": deleted_archives
+            "deleted_archives": deleted_archives,
         }
 
 

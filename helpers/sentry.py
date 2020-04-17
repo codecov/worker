@@ -32,5 +32,5 @@ def initialize_sentry():
         before_send=before_send,
         sample_rate=float(os.getenv("SENTRY_PERCENTAGE", 1.0)),
         integrations=[CeleryIntegration(), SqlalchemyIntegration(), RedisIntegration()],
-        release=version_str
+        release=version_str,
     )
