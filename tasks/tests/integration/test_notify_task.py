@@ -673,11 +673,19 @@ class TestNotifyTask(object):
             sorted(result["notifications"], key=lambda x: x["notifier"]),
             sorted(expected_result["notifications"], key=lambda x: x["notifier"]),
         ):
-            assert expected["result"]["notification_attempted"] == actual["result"]["notification_attempted"]
-            assert expected["result"]["notification_successful"] == actual["result"]["notification_successful"]
+            assert (
+                expected["result"]["notification_attempted"]
+                == actual["result"]["notification_attempted"]
+            )
+            assert (
+                expected["result"]["notification_successful"]
+                == actual["result"]["notification_successful"]
+            )
             assert expected["result"]["explanation"] == actual["result"]["explanation"]
             assert expected["result"]["data_sent"] == actual["result"]["data_sent"]
-            assert expected["result"]["data_received"] == actual["result"]["data_received"]
+            assert (
+                expected["result"]["data_received"] == actual["result"]["data_received"]
+            )
             assert expected["result"] == actual["result"]
             assert expected == actual
         assert sorted(result["notifications"], key=lambda x: x["notifier"]) == sorted(

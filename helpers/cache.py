@@ -54,6 +54,7 @@ class BaseBackend(object):
         However the cache wants to work internally, it's their choice. They only need to be able to
             `set` and `get` without raising any exceptions
     """
+
     def get(self, key: str) -> Any:
         """Returns a cached value from the cache, or NO_VALUE, if no cache is set for that key
 
@@ -78,6 +79,7 @@ class NullBackend(BaseBackend):
 
         This makes the cache virtually transparent. It acts as if no cache was there
     """
+
     def get(self, key: str):
         return NO_VALUE
 
@@ -142,6 +144,7 @@ class OurOwnCache(object):
             lifting of actually decorating the function properly, dealign with sync-async context.
 
     """
+
     def __init__(self):
         self._backend = NullBackend()
 

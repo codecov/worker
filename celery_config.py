@@ -120,16 +120,24 @@ task_routes = {
         ),
     },
     pulls_task_name: {
-        "queue": get_config("setup", "tasks", "pulls", "queue", default=task_default_queue)
+        "queue": get_config(
+            "setup", "tasks", "pulls", "queue", default=task_default_queue
+        )
     },
     status_set_error_task_name: {
-        "queue": get_config("setup", "tasks", "status", "queue", default=task_default_queue)
+        "queue": get_config(
+            "setup", "tasks", "status", "queue", default=task_default_queue
+        )
     },
     status_set_pending_task_name: {
-        "queue": get_config("setup", "tasks", "status", "queue", default=task_default_queue)
+        "queue": get_config(
+            "setup", "tasks", "status", "queue", default=task_default_queue
+        )
     },
     upload_task_name: {
-        "queue": get_config("setup", "tasks", "upload", "queue", default=task_default_queue)
+        "queue": get_config(
+            "setup", "tasks", "upload", "queue", default=task_default_queue
+        )
     },
     archive_task_name: {
         "queue": get_config(

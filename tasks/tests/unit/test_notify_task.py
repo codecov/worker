@@ -478,7 +478,12 @@ class TestNotifyTask(object):
             },
         ]
         res = await task.submit_third_party_notifications(
-            current_yaml, base_commit, head_commit, base_report, head_report, enrichedPull
+            current_yaml,
+            base_commit,
+            head_commit,
+            base_report,
+            head_report,
+            enrichedPull,
         )
         assert expected_result == res
 

@@ -7,7 +7,11 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
-from services.decoration import Decoration, get_decoration_type_and_reason, is_whitelisted
+from services.decoration import (
+    Decoration,
+    get_decoration_type_and_reason,
+    is_whitelisted,
+)
 from services.repository import EnrichedPull
 
 
@@ -98,9 +102,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_type == Decoration.standard
         assert reason == "No pull"
 
-    def test_get_decoration_type_no_provider_pull(
-        self, mocker, enriched_pull
-    ):
+    def test_get_decoration_type_no_provider_pull(self, mocker, enriched_pull):
         mocker.patch("services.decoration.is_whitelisted", return_value=True)
         enriched_pull.provider_pull = None
 
@@ -129,9 +131,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_type == Decoration.standard
         assert reason == "Org not on PR plan"
 
-    def test_get_decoration_type_not_in_whitelist(
-        self, mocker, enriched_pull
-    ):
+    def test_get_decoration_type_not_in_whitelist(self, mocker, enriched_pull):
         mocker.patch("services.decoration.is_whitelisted", return_value=False)
 
         decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
@@ -139,9 +139,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_type == Decoration.standard
         assert reason == "Org not in whitelist"
 
-    def test_get_decoration_type_pr_author_not_in_db(
-        self, mocker, enriched_pull
-    ):
+    def test_get_decoration_type_pr_author_not_in_db(self, mocker, enriched_pull):
         mocker.patch("services.decoration.is_whitelisted", return_value=True)
         enriched_pull.provider_pull["author"]["id"] = "190"
 

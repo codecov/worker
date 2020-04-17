@@ -99,6 +99,7 @@ def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
     encoded_kwargs = urlencode(kwargs)
     return f"{url}?{encoded_kwargs}"
 
+
 def get_org_account_url(pull: Pull) -> str:
     repository = pull.repository
     return SiteUrls.org_acccount_url.get_url(
