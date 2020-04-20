@@ -20,7 +20,7 @@ def enriched_pull(dbsession):
     repository = RepositoryFactory.create(
         owner__username="codecov",
         owner__unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
-        owner__plan="users-inappm-pr",
+        owner__plan="users-pr-inappm",
         name="example-python",
         image_token="abcdefghij",
         private=True,
