@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from enum import Enum, auto
 from functools import lru_cache
+from typing import Optional
 
 from shared.license import get_current_license
 from shared.config import get_config
@@ -28,7 +29,7 @@ def is_properly_licensed(db_session) -> bool:
     return not requires_license() or has_valid_license(db_session)
 
 
-def requires_license():
+def requires_license() -> bool:
     return is_enterprise()
 
 
@@ -40,16 +41,16 @@ def has_valid_license(db_session) -> bool:
     return reason_for_not_being_valid(db_session) is None
 
 
-def reason_for_not_being_valid(db_session) -> InvalidLicenseReason:
+def reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReason]:
     return cached_reason_for_not_being_valid(db_session)
 
 
 @lru_cache()
-def cached_reason_for_not_being_valid(db_session):
+def cached_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReason]:
     return calculate_reason_for_not_being_valid(db_session)
 
 
-def calculate_reason_for_not_being_valid(db_session):
+def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReason]:
     current_license = get_current_license()
     if not current_license.is_valid:
         return InvalidLicenseReason.invalid

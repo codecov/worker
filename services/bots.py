@@ -1,5 +1,6 @@
 import logging
 
+from database.models import Repository
 from services.github import get_github_integration_token
 from services.encryption import encryptor
 from helpers.exceptions import RepositoryWithoutValidBotError, OwnerWithoutValidBotError
@@ -9,7 +10,7 @@ from shared.config import get_config
 log = logging.getLogger(__name__)
 
 
-def get_repo_appropriate_bot_token(repo):
+def get_repo_appropriate_bot_token(repo: Repository) -> dict:
     if repo.using_integration and repo.owner.integration_id:
         github_token = get_github_integration_token(
             repo.owner.service, repo.owner.integration_id

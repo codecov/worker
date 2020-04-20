@@ -28,7 +28,7 @@ class SiteUrls(Enum):
         return self.value.format(**kwargs)
 
 
-def get_base_url():
+def get_base_url() -> str:
     return get_config("setup", "codecov_url")
 
 

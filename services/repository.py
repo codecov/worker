@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 import re
-from typing import Mapping, Any
+from typing import Mapping, Any, Optional
 from dataclasses import dataclass
 
 import shared.torngit as torngit
@@ -253,7 +253,7 @@ def get_repo_provider_service_by_id(db_session, repoid, commitid=None):
 @dataclass
 class EnrichedPull(object):
     database_pull: Pull
-    provider_pull: Mapping[str, Any]
+    provider_pull: Optional[Mapping[str, Any]]
 
 
 async def fetch_and_update_pull_request_information_from_commit(

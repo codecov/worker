@@ -31,15 +31,15 @@ def is_enterprise() -> bool:
 
 
 @lru_cache()
-def _get_cached_current_env():
+def _get_cached_current_env() -> Environment:
     return _calculate_current_env()
 
 
-def _get_current_folder():
+def _get_current_folder() -> str:
     return getattr(sys, "_MEIPASS", os.getcwd())
 
 
-def _calculate_current_env():
+def _calculate_current_env() -> Environment:
     os.environ["CODECOV_HOME"] = _get_current_folder()
     some_dir = Path(os.getenv("CODECOV_HOME"))
     if os.path.exists(some_dir / "src/is_enterprise"):
