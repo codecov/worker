@@ -23,7 +23,7 @@ def is_sentry_enabled() -> bool:
     return bool(get_config("services", "sentry", "server_dsn"))
 
 
-def initialize_sentry():
+def initialize_sentry() -> None:
     version = get_current_version()
     version_str = f"worker-{version}"
     sentry_dsn = get_config("services", "sentry", "server_dsn")

@@ -80,7 +80,7 @@ class NullBackend(BaseBackend):
         This makes the cache virtually transparent. It acts as if no cache was there
     """
 
-    def get(self, key: str):
+    def get(self, key: str) -> Any:
         return NO_VALUE
 
     def set(self, key: str, ttl: int, value: Any):
@@ -171,12 +171,12 @@ class FunctionCacher(object):
         self.cache_instance = cache_instance
         self.ttl = ttl
 
-    def __call__(self, func):
+    def __call__(self, func) -> Callable:
         if asyncio.iscoroutinefunction(func):
             return self.cache_async_function(func)
         return self.cache_synchronous_function(func)
 
-    def cache_synchronous_function(self, func: Callable):
+    def cache_synchronous_function(self, func: Callable) -> Callable:
         @wraps(func)
         def wrapped(*args, **kwargs):
             key = self.generate_key(func, args, kwargs)
@@ -192,13 +192,13 @@ class FunctionCacher(object):
 
         return wrapped
 
-    def generate_key(self, func, args, kwargs):
+    def generate_key(self, func, args, kwargs) -> str:
         func_name = make_hash_sha256(func.__name__)
         tupled_args = make_hash_sha256(args)
         frozen_kwargs = make_hash_sha256(kwargs)
         return ":".join(["cache", func_name, tupled_args, frozen_kwargs])
 
-    def cache_async_function(self, func: Callable):
+    def cache_async_function(self, func: Callable) -> Callable:
         @wraps(func)
         async def wrapped(*args, **kwargs):
             key = self.generate_key(func, args, kwargs)

@@ -1,7 +1,8 @@
 import re
+from typing import Optional, List
 
 
-def match(patterns, string):
+def match(patterns: Optional[List[str]], string: str) -> bool:
     if patterns is None or string in patterns:
         return True
 

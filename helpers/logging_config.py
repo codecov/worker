@@ -7,7 +7,7 @@ from helpers.environment import get_current_env, Environment
 
 
 class BaseLogger(JsonFormatter):
-    def add_fields(self, log_record, record, message_dict):
+    def add_fields(self, log_record, record, message_dict) -> None:
         super(BaseLogger, self).add_fields(log_record, record, message_dict)
         task = get_current_task()
         if task and task.request:
@@ -19,7 +19,7 @@ class BaseLogger(JsonFormatter):
 
 
 class CustomLocalJsonFormatter(BaseLogger):
-    def jsonify_log_record(self, log_record):
+    def jsonify_log_record(self, log_record) -> str:
         """Returns a json string of the log record."""
         levelname = log_record.pop("levelname")
         message = log_record.pop("message")
@@ -75,7 +75,7 @@ config_dict = {
 }
 
 
-def get_logging_config_dict():
+def get_logging_config_dict() -> dict:
     res = deepcopy(config_dict)
     if get_current_env() == Environment.local:
         res["handlers"]["default"]["formatter"] = "standard"
