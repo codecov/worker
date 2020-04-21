@@ -3,6 +3,7 @@ from decimal import Decimal
 from services.notification.notifiers.base import Comparison
 from services.yaml.reader import round_number
 from services.notification.notifiers.status.base import StatusNotifier
+from typing import Tuple
 
 
 class PatchStatusNotifier(StatusNotifier):
@@ -20,7 +21,7 @@ class PatchStatusNotifier(StatusNotifier):
 
     context = "patch"
 
-    async def _get_patch_status(self, comparison):
+    async def _get_patch_status(self, comparison) -> Tuple[str, str]:
         threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")
         diff = await self.get_diff(comparison)
         totals = comparison.head.report.apply_diff(diff)

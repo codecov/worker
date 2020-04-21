@@ -35,7 +35,7 @@ class StandardNotifier(AbstractBaseNotifier):
         - Check that the threshold of the webhook is satisfied on this comparison
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._repository_service = None
 
@@ -52,7 +52,7 @@ class StandardNotifier(AbstractBaseNotifier):
     def name(self):
         return self.__class__.__name__
 
-    def is_enabled(self):
+    def is_enabled(self) -> bool:
         if not bool(self.site_settings):
             log.info(
                 "Not notifying on %s, because it is not enabled on site-level settings",
@@ -71,7 +71,7 @@ class StandardNotifier(AbstractBaseNotifier):
             return False
         return True
 
-    def should_notify_comparison(self, comparison):
+    def should_notify_comparison(self, comparison: Comparison) -> bool:
         head_full_commit = comparison.head
         if not match(
             self.notifier_yaml_settings.get("branches"), head_full_commit.commit.branch
@@ -90,7 +90,7 @@ class StandardNotifier(AbstractBaseNotifier):
             return False
         return True
 
-    async def notify(self, comparison: Comparison, **extra_data):
+    async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
         head_full_commit = comparison.head
         base_full_commit = comparison.base
         _filters = self.get_notifier_filters()
@@ -111,7 +111,7 @@ class StandardNotifier(AbstractBaseNotifier):
                     )
         return result
 
-    def get_notifier_filters(self):
+    def get_notifier_filters(self) -> dict:
         return dict(
             paths=set(
                 get_paths_from_flags(
@@ -122,7 +122,7 @@ class StandardNotifier(AbstractBaseNotifier):
             flags=self.notifier_yaml_settings.get("flags"),
         )
 
-    def do_notify(self, comparison):
+    def do_notify(self, comparison) -> NotificationResult:
         data = self.build_payload(comparison)
         result = self.send_actual_notification(data)
         return NotificationResult(

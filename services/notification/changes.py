@@ -1,14 +1,15 @@
 import dataclasses
 from collections import defaultdict
-from typing import Mapping, Any, List
+from typing import Mapping, Any, List, Optional
 
 from shared.utils.merge import line_type
 from shared.reports.types import ReportTotals, Change
 from shared.reports.resources import Report
 from shared.helpers.numeric import ratio
+from typing import Dict, Iterator, Tuple, Union
 
 
-def diff_totals(base, head, absolute=None):
+def diff_totals(base, head, absolute=None) -> Union[bool, None, ReportTotals]:
     if head is None:
         return False  # file deleted
 
@@ -47,7 +48,7 @@ def diff_totals(base, head, absolute=None):
     return ReportTotals(*diff)
 
 
-def get_segment_offsets(segments):
+def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
     offsets = defaultdict(lambda: 0)
     additions = []
     # loop through the segments
@@ -77,7 +78,7 @@ def get_segment_offsets(segments):
 
 def get_changes(
     base_report: Report, head_report: Report, diff_json: Mapping[str, Any]
-) -> List[Change]:
+) -> Optional[List[Change]]:
     """
 
     Please bear with me because I didnt write the function, so what I know is from using it
@@ -180,7 +181,7 @@ def get_changes(
     return changes
 
 
-def get_totals_from_list(lst):
+def get_totals_from_list(lst) -> ReportTotals:
     """
     takes list of coverage values and returns a <ReportTotals>
     on the list
@@ -192,7 +193,7 @@ def get_totals_from_list(lst):
 
 def iter_changed_lines(
     base_report_file, head_report_file, diff=None, yield_line_numbers=True
-):
+) -> Iterator[Union[int, Tuple[Any, Any]]]:
     """
     streams line numbers that changed as integers > 0
     """
@@ -231,6 +232,6 @@ def iter_changed_lines(
                     yield ln if yield_line_numbers else (None, head_line.coverage)
 
 
-def line_has_changed(before, after):
+def line_has_changed(before, after) -> bool:
     # coverage changed
     return line_type(before.coverage) != line_type(after.coverage)

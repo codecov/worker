@@ -4,14 +4,16 @@ from services.notification.notifiers.irc import IRCNotifier
 from services.notification.notifiers.slack import SlackNotifier
 from services.notification.notifiers.webhook import WebhookNotifier
 from services.notification.notifiers.comment import CommentNotifier
+from services.notification.notifiers.base import AbstractBaseNotifier
 from services.notification.notifiers.status import (
     ProjectStatusNotifier,
     PatchStatusNotifier,
     ChangesStatusNotifier,
 )
+from typing import Type, Dict, List
 
 
-def get_all_notifier_classes_mapping():
+def get_all_notifier_classes_mapping() -> Dict[str, Type[AbstractBaseNotifier]]:
     return {
         "gitter": GitterNotifier,
         "hipchat": HipchatNotifier,
@@ -21,7 +23,7 @@ def get_all_notifier_classes_mapping():
     }
 
 
-def get_status_notifier_class(status_type: str):
+def get_status_notifier_class(status_type: str) -> Type[AbstractBaseNotifier]:
     if status_type == "patch":
         return PatchStatusNotifier
     if status_type == "project":
@@ -30,5 +32,5 @@ def get_status_notifier_class(status_type: str):
         return ChangesStatusNotifier
 
 
-def get_pull_request_notifiers():
+def get_pull_request_notifiers() -> List[Type[AbstractBaseNotifier]]:
     return [CommentNotifier]

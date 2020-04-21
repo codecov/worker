@@ -3,7 +3,7 @@ from itertools import starmap
 from decimal import Decimal
 from collections import namedtuple
 import logging
-from typing import Any, Mapping
+from typing import Any, Mapping, List
 
 from shared.reports.resources import Report, ReportTotals
 from shared.helpers.yaml import walk
@@ -315,7 +315,7 @@ class CommentNotifier(AbstractBaseNotifier):
             self.notifier_yaml_settings, dict
         )
 
-    async def build_message(self, comparison: Comparison) -> str:
+    async def build_message(self, comparison: Comparison) -> List[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
 
