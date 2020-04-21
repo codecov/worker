@@ -1,4 +1,4 @@
--e git+https://github.com/codecov/shared.git@v0.3.4#egg=shared
+-e git+https://github.com/codecov/shared.git@v0.3.5#egg=shared
 boto3==1.9.218
 celery==4.3
 cryptography==2.7
