@@ -8,7 +8,7 @@ from redis import Redis
 log = logging.getLogger(__name__)
 
 
-def get_redis_url():
+def get_redis_url() -> str:
     url = get_config("services", "redis_url")
     if url is not None:
         return url

@@ -33,7 +33,7 @@ def requires_license() -> bool:
     return is_enterprise()
 
 
-def _get_now():
+def _get_now() -> datetime:
     return datetime.now()
 
 

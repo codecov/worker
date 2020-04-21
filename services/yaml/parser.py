@@ -2,9 +2,10 @@ from yaml import safe_load
 from yaml.error import YAMLError
 from shared.validation.yaml import validate_yaml
 from shared.validation.exceptions import InvalidYamlException
+from typing import Optional, Dict
 
 
-def parse_yaml_file(content):
+def parse_yaml_file(content: str) -> Optional[Dict]:
     try:
         yaml_dict = safe_load(content)
     except YAMLError as e:

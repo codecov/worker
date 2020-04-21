@@ -1,5 +1,5 @@
 import logging
-from typing import Mapping, Any
+from typing import Mapping, Any, Optional
 
 from shared.reports.resources import Report
 from shared.reports.editable import EditableReport
@@ -18,7 +18,7 @@ class ReportService(object):
     def __init__(self, current_yaml: Mapping[str, Any] = None):
         self.current_yaml = current_yaml
 
-    def build_report(self, chunks, files, sessions, totals):
+    def build_report(self, chunks, files, sessions, totals) -> Report:
         report_class = Report
         for sess in sessions.values():
             if sess.get("st") == "carriedforward":
@@ -27,10 +27,10 @@ class ReportService(object):
             chunks=chunks, files=files, sessions=sessions, totals=totals
         )
 
-    def build_report_from_commit(self, commit):
+    def build_report_from_commit(self, commit) -> Report:
         return self._do_build_report_from_commit(commit)
 
-    def get_existing_report_for_commit(self, commit):
+    def get_existing_report_for_commit(self, commit) -> Optional[Report]:
         commitid = commit.commitid
         if commit.report_json is None:
             return None
@@ -51,13 +51,13 @@ class ReportService(object):
         res = self.build_report(chunks, files, sessions, totals)
         return res
 
-    def _do_build_report_from_commit(self, commit):
+    def _do_build_report_from_commit(self, commit) -> Report:
         report = self.get_existing_report_for_commit(commit)
         if report is not None:
             return report
         return self.create_new_report_for_commit(commit)
 
-    def create_new_report_for_commit(self, commit: Commit):
+    def create_new_report_for_commit(self, commit: Commit) -> Report:
         log.info(
             "Creating new report for commit",
             extra=dict(commit=commit.commitid, repoid=commit.repoid,),
@@ -138,5 +138,5 @@ class ReportService(object):
 
     def build_report_from_raw_content(
         self, commit_yaml, master, reports, flags, session
-    ):
+    ) -> Any:
         return process_raw_upload(commit_yaml, master, reports, flags, session)

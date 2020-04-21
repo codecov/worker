@@ -1,16 +1,17 @@
 import logging
 
-from database.models import Repository
+from database.models import Repository, Owner
 from services.github import get_github_integration_token
 from services.encryption import encryptor
 from helpers.exceptions import RepositoryWithoutValidBotError, OwnerWithoutValidBotError
 
 from shared.config import get_config
+from typing import Any, Dict
 
 log = logging.getLogger(__name__)
 
 
-def get_repo_appropriate_bot_token(repo: Repository) -> dict:
+def get_repo_appropriate_bot_token(repo: Repository) -> Dict:
     if repo.using_integration and repo.owner.integration_id:
         github_token = get_github_integration_token(
             repo.owner.service, repo.owner.integration_id
@@ -56,14 +57,14 @@ def _get_repo_appropriate_bot(repo):
     raise RepositoryWithoutValidBotError()
 
 
-def get_owner_appropriate_bot_token(owner, using_integration):
+def get_owner_appropriate_bot_token(owner, using_integration) -> Dict:
     if owner.integration_id:
         github_token = get_github_integration_token(owner.service, owner.integration_id)
         return dict(key=github_token)
     return encryptor.decrypt_token(_get_owner_or_appropriate_bot(owner).oauth_token)
 
 
-def _get_owner_or_appropriate_bot(owner):
+def _get_owner_or_appropriate_bot(owner: Owner) -> Owner:
     if owner.bot is not None and owner.bot.oauth_token is not None:
         log.info(
             "Owner has specific bot",
