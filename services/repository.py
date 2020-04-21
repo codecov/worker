@@ -258,7 +258,7 @@ class EnrichedPull(object):
 
 async def fetch_and_update_pull_request_information_from_commit(
     repository_service, commit, current_yaml
-) -> EnrichedPull:
+) -> Optional[EnrichedPull]:
     db_session = commit.get_db_session()
     pullid = commit.pullid
     if not commit.pullid:

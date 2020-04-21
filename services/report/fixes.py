@@ -1,4 +1,7 @@
-def get_fixes_from_raw(content, fix):
+from typing import Any, Dict, Callable
+
+
+def get_fixes_from_raw(content, fix: Callable) -> Dict[str, Dict[str, Any]]:
     files = {}
     files_long_comments = {}
     _cur_file = None

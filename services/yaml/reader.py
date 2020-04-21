@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 """
 
 
-def read_yaml_field(yaml_dict, keys, _else=None):
+def read_yaml_field(yaml_dict, keys, _else=None) -> Any:
     log.debug("Field %s requested", keys)
     try:
         for key in keys:

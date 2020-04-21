@@ -8,6 +8,8 @@ from enum import Enum
 from shared.config import get_config
 from helpers.metrics import metrics
 from services.storage import get_storage_client
+from shared.storage.base import BaseStorageService
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +19,7 @@ class MinioEndpoints(Enum):
     reports_json = "{version}/repos/{repo_hash}/commits/{commitid}/report.json"
     raw = "v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt"
 
-    def get_path(self, **kwaargs):
+    def get_path(self, **kwaargs) -> str:
         return self.value.format(**kwaargs)
 
 
@@ -47,7 +49,7 @@ class ArchiveService(object):
     """
     enterprise = False
 
-    def __init__(self, repository, bucket=None):
+    def __init__(self, repository, bucket=None) -> None:
         if bucket is None:
             self.root = get_config("services", "minio", "bucket", default="archive")
         else:
@@ -68,7 +70,7 @@ class ArchiveService(object):
         #     pass
         # log.debug("Created root storage")
 
-    def get_now(self):
+    def get_now(self) -> datetime:
         return datetime.now()
 
     """
@@ -76,14 +78,14 @@ class ArchiveService(object):
     this for anything.
     """
 
-    def storage_client(self):
+    def storage_client(self) -> BaseStorageService:
         return self.storage
 
     """
     Getter. Returns true if the current configuration is enterprise.
     """
 
-    def is_enterprise(self):
+    def is_enterprise(self) -> bool:
         return self.enterprise
 
     """
@@ -92,7 +94,7 @@ class ArchiveService(object):
     """
 
     @classmethod
-    def get_archive_hash(cls, repository):
+    def get_archive_hash(cls, repository) -> str:
         _hash = md5()
         hash_key = get_config("services", "minio", "hash_key")
         val = "".join(
@@ -114,7 +116,7 @@ class ArchiveService(object):
     writes back to path, overwriting the original contents
     """
 
-    def update_archive(self, path, data):
+    def update_archive(self, path, data) -> None:
         self.storage.append_to_file(self.root, path, data)
 
     """
@@ -123,7 +125,7 @@ class ArchiveService(object):
     write_chunks
     """
 
-    def write_file(self, path, data, reduced_redundancy=False, gzipped=False):
+    def write_file(self, path, data, reduced_redundancy=False, gzipped=False) -> None:
         self.storage.write_file(
             self.root,
             path,
@@ -137,7 +139,7 @@ class ArchiveService(object):
     Returns the path it writes.
     """
 
-    def write_raw_upload(self, commit_sha, report_id, data, gzipped=False):
+    def write_raw_upload(self, commit_sha, report_id, data, gzipped=False) -> str:
         # create a custom report path for a raw upload.
         # write the file.
         path = "/".join(
@@ -158,7 +160,7 @@ class ArchiveService(object):
     Convenience method to write a chunks.txt file to storage.
     """
 
-    def write_chunks(self, commit_sha, data):
+    def write_chunks(self, commit_sha, data) -> str:
         path = MinioEndpoints.chunks.get_path(
             version="v4", repo_hash=self.storage_hash, commitid=commit_sha
         )
@@ -171,7 +173,7 @@ class ArchiveService(object):
     """
 
     @metrics.timer("services.archive.read_file")
-    def read_file(self, path):
+    def read_file(self, path) -> str:
         contents = self.storage.read_file(self.root, path)
         return contents.decode(errors="replace")
 
@@ -179,7 +181,7 @@ class ArchiveService(object):
     Generic method to delete a file from the archive.
     """
 
-    def delete_file(self, path):
+    def delete_file(self, path) -> None:
         self.storage.delete_file(self.root, path)
 
     """
@@ -199,7 +201,7 @@ class ArchiveService(object):
     Convenience method to read a chunks file from the archive.
     """
 
-    def read_chunks(self, commit_sha):
+    def read_chunks(self, commit_sha) -> str:
 
         path = MinioEndpoints.chunks.get_path(
             version="v4", repo_hash=self.storage_hash, commitid=commit_sha
@@ -211,7 +213,7 @@ class ArchiveService(object):
     Delete a chunk file from the archive
     """
 
-    def delete_chunk_from_archive(self, commit_sha):
+    def delete_chunk_from_archive(self, commit_sha) -> None:
         path = "v4/repos/{}/commits/{}/chunks.txt".format(self.storage_hash, commit_sha)
 
         self.delete_file(path)

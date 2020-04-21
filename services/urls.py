@@ -24,7 +24,7 @@ class SiteUrls(Enum):
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
     org_acccount_url = "{base_url}/account/{service_short}/{username}"
 
-    def get_url(self, **kwargs):
+    def get_url(self, **kwargs) -> str:
         return self.value.format(**kwargs)
 
 
