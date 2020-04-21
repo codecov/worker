@@ -7,7 +7,7 @@ from shared.reports.resources import ReportTotals
 
 from services.notification.changes import Change
 from services.yaml.reader import round_number, get_minimum_precision
-
+from typing import List
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ zero_change_regex = re.compile("0.0+%?")
 
 def format_number_to_str(
     yml, value, if_zero=None, if_null=None, plus=False, style="{0}"
-):
+) -> str:
     if value is None:
         return if_null
     precision = get_minimum_precision(yml)
@@ -38,7 +38,7 @@ def format_number_to_str(
     return style.format(res)
 
 
-def add_plus_sign(value):
+def add_plus_sign(value: str) -> str:
     if value in ("", "0", "0%") or zero_change_regex.fullmatch(value):
         return ""
     elif value[0] != "-":
@@ -47,7 +47,7 @@ def add_plus_sign(value):
         return value
 
 
-def list_to_text_table(rows, padding=0):
+def list_to_text_table(rows, padding=0) -> List[str]:
     """
     Assumes align left.
 
@@ -81,7 +81,7 @@ def list_to_text_table(rows, padding=0):
     return list(map(lambda row: spacing(map(_fill, zip(column_w, row))), rows))
 
 
-def diff_to_string(current_yaml, base_title, base, head_title, head):
+def diff_to_string(current_yaml, base_title, base, head_title, head) -> List[str]:
     """
     ('master', {},
      'stable', {},
@@ -166,14 +166,14 @@ def diff_to_string(current_yaml, base_title, base, head_title, head):
     return "\n".join(filter(lambda row: row.strip(" "), table)).strip("=").split("\n")
 
 
-def sort_by_importance(changes: Sequence[Change]):
+def sort_by_importance(changes: Sequence[Change]) -> List[Change]:
     return sorted(
         changes or [],
         key=lambda c: (float((c.totals or ReportTotals()).coverage), c.new, c.deleted),
     )
 
 
-def ellipsis(text, length, cut_from="left"):
+def ellipsis(text, length, cut_from="left") -> str:
     if cut_from == "right":
         return (text[:length] + "...") if len(text) > length else text
     elif cut_from is None:
@@ -186,5 +186,5 @@ def ellipsis(text, length, cut_from="left"):
         return ("..." + text[len(text) - length :]) if len(text) > length else text
 
 
-def escape_markdown(value):
+def escape_markdown(value: str) -> str:
     return value.replace("`", "\\`").replace("*", "\\*").replace("_", "\\_")

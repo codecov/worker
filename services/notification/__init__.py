@@ -15,19 +15,25 @@ from services.notification.notifiers import (
     get_pull_request_notifiers,
 )
 from services.notification.types import Comparison
-from services.notification.notifiers.base import NotificationResult
+from services.notification.notifiers.base import (
+    NotificationResult,
+    AbstractBaseNotifier,
+)
 from services.yaml import read_yaml_field
 from services.license import is_properly_licensed
+from typing import Any, Iterator
 
 log = logging.getLogger(__name__)
 
 
 class NotificationService(object):
-    def __init__(self, repository, current_yaml):
+    def __init__(self, repository, current_yaml) -> None:
         self.repository = repository
         self.current_yaml = current_yaml
 
-    def get_notifiers_instances(self, decoration_type=Decoration.standard):
+    def get_notifiers_instances(
+        self, decoration_type=Decoration.standard
+    ) -> Iterator[AbstractBaseNotifier]:
         mapping = get_all_notifier_classes_mapping()
         yaml_field = read_yaml_field(self.current_yaml, ("coverage", "notify"))
         if yaml_field is not None:
