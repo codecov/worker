@@ -1,6 +1,7 @@
 import re
 
-from timestring import Date
+from timestring import Date, TimestringInvalid
+
 
 from services.yaml import read_yaml_field
 from covreports.reports.resources import Report, ReportFile
@@ -37,8 +38,15 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 timestamp = next(xml.iter("scoverage")).get("timestamp")
             except StopIteration:
                 timestamp = None
-        is_valid_timestamp = timestamp not in ["0"]
-        if timestamp and is_valid_timestamp and Date(timestamp) 
+
+        try:
+            parsed_datetime = Date(timestamp)
+            is_valid_timestamp = True
+        except TimestringInvalid:
+            parsed_datetime = None
+            is_valid_timestamp = False
+            
+        if timestamp and is_valid_timestamp and parsed_datetime 
             < read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
 
             # report expired over 12 hours ago
