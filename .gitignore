@@ -80,6 +80,8 @@ ipython_config.py
 # pyenv
 .python-version
 
+# vscode/
+.vscode
 # celery beat schedule file
 celerybeat-schedule
 
