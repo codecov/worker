@@ -46,9 +46,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             parsed_datetime = None
             is_valid_timestamp = False
             
-        if timestamp and is_valid_timestamp and parsed_datetime 
-            < read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
-
+        if timestamp and is_valid_timestamp and parsed_datetime < read_yaml_field(yaml, ('codecov', 'max_report_age'), '12h ago'):
             # report expired over 12 hours ago
             raise ReportExpiredException("Cobertura report expired " + timestamp)
 
