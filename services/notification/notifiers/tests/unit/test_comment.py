@@ -6,11 +6,12 @@ from services.notification.notifiers.comment import (
     diff_to_string,
     format_number_to_str,
 )
+from services.decoration import Decoration
 from services.notification.notifiers.comment.helpers import sort_by_importance, Change
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
-from covreports.reports.types import ReportTotals
-from torngit.exceptions import (
+from shared.reports.types import ReportTotals
+from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
     TorngitClientError,
@@ -20,7 +21,6 @@ from torngit.exceptions import (
 @pytest.fixture
 def mock_repo_provider(mock_repo_provider):
     result = Future()
-    pull_result = Future()
     compare_result = {
         "diff": {
             "files": {
@@ -87,7 +87,7 @@ def mock_repo_provider(mock_repo_provider):
         },
         "commits": [
             {
-                "commitid": "b92edba44fdd29fcc506317cc3ddeae1a723dd08",
+                "commitid": "{comparison.base.commit[:7]}44fdd29fcc506317cc3ddeae1a723dd08",
                 "message": "Update README.rst",
                 "timestamp": "2018-07-09T23:51:16Z",
                 "author": {
@@ -110,24 +110,8 @@ def mock_repo_provider(mock_repo_provider):
             },
         ],
     }
-    pull_result_dict = {
-        "base": {
-            "branch": "master",
-            "commitid": "b92edba44fdd29fcc506317cc3ddeae1a723dd08",
-        },
-        "head": {
-            "branch": "reason/some-testing",
-            "commitid": "a06aef4356ca35b34c5486269585288489e578db",
-        },
-        "number": "1",
-        "id": "1",
-        "state": "open",
-        "title": "Creating new code for reasons no one knows",
-    }
     result.set_result(compare_result)
-    pull_result.set_result(pull_result_dict)
     mock_repo_provider.get_compare.return_value = result
-    mock_repo_provider.get_pull_request.return_value = pull_result
     mock_repo_provider.post_comment.return_value = Future()
     mock_repo_provider.edit_comment.return_value = Future()
     mock_repo_provider.delete_comment.return_value = Future()
@@ -572,7 +556,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[b92edba...a06aef4](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -580,6 +564,34 @@ class TestCommentNotifier(object):
         for exp, res in zip(expected_result, result):
             li += 1
             print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_upgrade_message(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        pull = comparison.enriched_pull.database_pull
+        repository = sample_comparison.head.commit.repository
+        notifier = CommentNotifier(
+            repository=repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        result = await notifier.build_message(comparison)
+        provider_pull = comparison.enriched_pull.provider_pull
+        expected_result = [
+            f"The author of this PR, {provider_pull['author']['username']}, is not an active member of this organization on Codecov.",
+            f"Please [activate this user on Codecov](test.example.br/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
+        ]
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
             assert exp == res
         assert result == expected_result
 
@@ -642,7 +654,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[b92edba...a06aef4](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -675,7 +687,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@b92edba`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -714,7 +726,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[b92edba...a06aef4](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -744,7 +756,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@b92edba`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"> The diff coverage is `n/a`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -780,11 +792,86 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[b92edba...a06aef4](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[cdf9aa4...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
         for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_no_change(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_no_change,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_no_change
+        pull = comparison.pull
+
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}&el=desc) will **not change** coverage.",
+            f"> The diff coverage is `66.67%`.",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"```diff",
+            f"@@            Coverage Diff            @@",
+            f"##             master      #{pull.pullid}   +/-   ##",
+            f"=========================================",
+            f"  Coverage     60.00%   60.00%           ",
+            f"  Complexity       10       10           ",
+            f"=========================================",
+            f"  Files             2        2           ",
+            f"  Lines            10       10           ",
+            f"  Branches          1        1           ",
+            f"=========================================",
+            f"  Hits              6        6           ",
+            f"  Misses            3        3           ",
+            f"  Partials          1        1           ",
+            f"```",
+            f"",
+            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| #unit | `100.00% <100.00%> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"",
+            f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (ø)` | |",
+            f"",
+            f"------",
+            f"",
+            f"[Continue to review full report at "
+            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"> **Legend** - [Click here to learn "
+            f"more](https://docs.codecov.io/docs/codecov-delta)",
+            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            f"> Powered by "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"Last update "
+            f"[{sample_comparison_no_change.base.commit.commitid[:7]}...{sample_comparison_no_change.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            f"",
+        ]
+        print(result)
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -851,7 +938,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[b92edba...a06aef4](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -908,6 +995,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         sample_comparison.head.report = sample_report_without_flags
+        comparison = sample_comparison
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(sample_comparison)
         expected_result = [
@@ -952,7 +1040,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[b92edba...a06aef4](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1327,6 +1415,27 @@ class TestCommentNotifier(object):
         assert not result.notification_attempted
         assert result.notification_successful is None
         assert result.explanation == "no_pull_request"
+        assert result.data_sent is None
+        assert result.data_received is None
+
+    @pytest.mark.asyncio
+    async def test_notify_pull_request_not_in_provider(
+        self, dbsession, sample_comparison_database_pull_without_provider
+    ):
+        notifier = CommentNotifier(
+            repository=sample_comparison_database_pull_without_provider.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "reach, diff, flags, files, footer",
+                "behavior": "default",
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.notify(sample_comparison_database_pull_without_provider)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "pull_request_not_in_provider"
         assert result.data_sent is None
         assert result.data_received is None
 

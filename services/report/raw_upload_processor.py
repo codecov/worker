@@ -4,8 +4,8 @@ import logging
 import random
 
 
-from covreports.utils.sessions import Session
-from covreports.reports.resources import Report
+from shared.utils.sessions import Session
+from shared.reports.resources import Report
 
 from helpers.exceptions import ReportEmptyError
 from services.report.fixes import get_fixes_from_raw
@@ -13,18 +13,21 @@ from services.path_fixer.fixpaths import clean_toc
 from services.path_fixer import PathFixer
 from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
+from typing import Any
 
 log = logging.getLogger(__name__)
 
 
-def invert_pattern(string):
+def invert_pattern(string: str) -> str:
     if string.startswith("!"):
         return string[1:]
     else:
         return "!%s" % string
 
 
-def process_raw_upload(commit_yaml, original_report, reports, flags, session=None):
+def process_raw_upload(
+    commit_yaml, original_report, reports, flags, session=None
+) -> Any:
     toc, env = None, None
 
     # ----------------------

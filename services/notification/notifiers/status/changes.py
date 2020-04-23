@@ -2,6 +2,7 @@ import logging
 
 from services.notification.changes import get_changes
 from services.notification.notifiers.status.base import StatusNotifier
+from typing import Any, Dict, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class ChangesStatusNotifier(StatusNotifier):
 
     context = "changes"
 
-    def is_a_change_worth_noting(self, change):
+    def is_a_change_worth_noting(self, change) -> bool:
         if not change.new and not change.deleted:
             # has totals and not -10m => 10h
             t = change.totals
@@ -31,7 +32,7 @@ class ChangesStatusNotifier(StatusNotifier):
                 return (t.misses + t.partials) > 0
         return False
 
-    async def build_payload(self, comparison):
+    async def _get_changes_status(self, comparison) -> Tuple[str, str]:
         pull = comparison.pull
         if self.notifier_yaml_settings.get("base") in ("auto", None, "pr") and pull:
             if not comparison.has_base_report():
@@ -39,7 +40,7 @@ class ChangesStatusNotifier(StatusNotifier):
                     "Unable to determine changes, no report found at pull request base"
                 )
                 state = "success"
-                return {"state": state, "message": description}
+                return (state, description)
 
         # filter changes
         diff_json = await self.get_diff(comparison)
@@ -54,12 +55,19 @@ class ChangesStatusNotifier(StatusNotifier):
             description = "{0} {1} unexpected coverage changes not visible in diff".format(
                 lpc, eng
             )
-            return {
-                "state": "success"
+            state = (
+                "success"
                 if self.notifier_yaml_settings.get("informational")
-                else "failure",
-                "message": description,
-            }
+                else "failure"
+            )
+            return (state, description)
 
         description = "No unexpected coverage changes found"
-        return {"state": "success", "message": description}
+        return ("success", description)
+
+    async def build_payload(self, comparison) -> Dict[str, str]:
+        state, message = await self._get_changes_status(comparison)
+        if self.should_use_upgrade_decoration():
+            message = self.get_upgrade_message()
+
+        return {"state": state, "message": message}

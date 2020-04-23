@@ -1,10 +1,10 @@
 import logging
-import copy
 
 from database.models import Commit
-from covreports.config import get_config
-from covreports.validation.exceptions import InvalidYamlException
-from torngit.exceptions import TorngitClientError, TorngitError
+from shared.config import get_config
+from shared.validation.exceptions import InvalidYamlException
+from shared.validation.yaml import validate_yaml
+from shared.torngit.exceptions import TorngitClientError, TorngitError
 
 from services.yaml.reader import read_yaml_field
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
@@ -96,7 +96,7 @@ def get_final_yaml(*, owner_yaml, repo_yaml, commit_yaml=None):
     Returns:
         dict - The dict we are supposed to use when concerning that user/commit
     """
-    resulting_yaml = copy.deepcopy(get_config("site", default={}))
+    resulting_yaml = validate_yaml(get_config("site", default={}), show_secrets=True)
     if owner_yaml is not None:
         resulting_yaml = merge_yamls(resulting_yaml, owner_yaml)
     if commit_yaml is not None:

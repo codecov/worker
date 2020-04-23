@@ -1,6 +1,6 @@
 from tests.base import BaseTestCase
 from services.report.languages import gcov
-from covreports.reports.resources import Report
+from shared.reports.resources import Report
 
 txt = """    -:    0:Source:tmp.c
     -:    1:not covered source

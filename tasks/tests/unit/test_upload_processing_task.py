@@ -1,10 +1,12 @@
 from pathlib import Path
 from asyncio import Future
+
 import pytest
 import celery
 from redis.exceptions import LockError
-from torngit.exceptions import TorngitObjectNotFoundError
-from covreports.reports.resources import Report, ReportFile, ReportLine, ReportTotals
+from shared.torngit.exceptions import TorngitObjectNotFoundError
+from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
+from celery.exceptions import SoftTimeLimitExceeded
 
 from tasks.upload_processor import UploadProcessorTask
 from database.tests.factories import CommitFactory
@@ -14,6 +16,7 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from services.archive import ArchiveService
+from services.report import ReportService
 
 here = Path(__file__)
 
@@ -98,7 +101,8 @@ class TestUploadProcessorTask(object):
                     "t": [3, 24, 19, 5, 0, "79.16667", 0, 0, 0, 0, 0, 0, 0],
                     "u": None,
                     "d": commit.report_json["sessions"]["0"]["d"],
-                    "st": "uploaded",  # This is not deterministic
+                    "st": "uploaded",
+                    "se": {},
                 }
             },
         }
@@ -221,7 +225,7 @@ class TestUploadProcessorTask(object):
         mocked_2.assert_called_with(
             mocker.ANY, mock_redis, {}, commit, mocker.ANY, False, url="url"
         )
-        mocked_3.assert_called_with(countdown=20, max_retries=5, queue="new_tasks")
+        mocked_3.assert_called_with(countdown=20, max_retries=5)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_redis_lock_unobtainable(
@@ -253,7 +257,7 @@ class TestUploadProcessorTask(object):
                 commit_yaml={},
                 arguments_list=[{"url": "url"}],
             )
-        mocked_3.assert_called_with(countdown=20, max_retries=5, queue="new_tasks")
+        mocked_3.assert_called_with(countdown=20, max_retries=5)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_expired_report(

@@ -1,7 +1,7 @@
 from database.models import Commit, Repository, Pull
 from enum import Enum
 from urllib.parse import urlencode
-from covreports.config import get_config
+from shared.config import get_config
 
 services_short_dict = dict(
     github="gh",
@@ -22,12 +22,13 @@ class SiteUrls(Enum):
     graph_url = "{base_url}/{service_short}/{username}/{project_name}/commit/{commit_sha}/graphs/{graph_filename}"
     pull_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}"
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
+    org_acccount_url = "{base_url}/account/{service_short}/{username}"
 
-    def get_url(self, **kwargs):
+    def get_url(self, **kwargs) -> str:
         return self.value.format(**kwargs)
 
 
-def get_base_url():
+def get_base_url() -> str:
     return get_config("setup", "codecov_url")
 
 
@@ -97,3 +98,12 @@ def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
     )
     encoded_kwargs = urlencode(kwargs)
     return f"{url}?{encoded_kwargs}"
+
+
+def get_org_account_url(pull: Pull) -> str:
+    repository = pull.repository
+    return SiteUrls.org_acccount_url.get_url(
+        base_url=get_base_url(),
+        service_short=services_short_dict.get(repository.service),
+        username=repository.owner.username,
+    )

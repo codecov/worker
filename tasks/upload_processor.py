@@ -4,22 +4,21 @@ import logging
 import re
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
-from covreports.utils.sessions import Session
+from shared.utils.sessions import Session
 from redis.exceptions import LockError
 from sqlalchemy.exc import SQLAlchemyError
-from torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitClientError
 
 from app import celery_app
-from celery_config import task_default_queue
 from database.models import Commit
-from covreports.config import get_config
+from shared.config import get_config
 from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from services.archive import ArchiveService
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService
 from services.repository import get_repo_provider_service
-from covreports.storage.exceptions import FileNotInStorageError
+from shared.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -53,7 +52,7 @@ class UploadProcessorTask(BaseCodecovTask):
 
     def schedule_for_later_try(self):
         retry_in = FIRST_RETRY_DELAY * 3 ** self.request.retries
-        self.retry(max_retries=5, countdown=retry_in, queue=task_default_queue)
+        self.retry(max_retries=5, countdown=retry_in)
 
     async def run_async(
         self,
@@ -116,19 +115,7 @@ class UploadProcessorTask(BaseCodecovTask):
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         archive_service = ArchiveService(repository)
-        try:
-            report = ReportService(commit_yaml).build_report_from_commit(commit)
-        except Exception:
-            log.exception(
-                "Unable to fetch current report for commit",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    arguments_list=arguments_list,
-                    commit_yaml=commit_yaml,
-                ),
-            )
-            raise
+        report = ReportService(commit_yaml).build_report_from_commit(commit)
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")

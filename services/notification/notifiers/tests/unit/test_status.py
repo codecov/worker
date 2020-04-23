@@ -1,14 +1,14 @@
 import pytest
 from asyncio import Future
 
-from covreports.reports.resources import ReportLine, ReportFile, Report
-from torngit.exceptions import (
+from shared.reports.resources import ReportLine, ReportFile, Report
+from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitServerUnreachableError,
     TorngitRepoNotFoundError,
 )
 
-
+from services.decoration import Decoration
 from services.notification.notifiers.status import (
     ProjectStatusNotifier,
     PatchStatusNotifier,
@@ -16,7 +16,7 @@ from services.notification.notifiers.status import (
 )
 from services.notification.notifiers.status.base import StatusNotifier
 from services.notification.notifiers.base import NotificationResult
-from torngit.status import Status
+from shared.torngit.status import Status
 
 
 @pytest.fixture
@@ -419,6 +419,27 @@ class TestProjectStatusNotifier(object):
         assert expected_result == result
 
     @pytest.mark.asyncio
+    async def test_build_upgrade_payload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        base_commit = sample_comparison.base.commit
+        expected_result = {
+            "message": "Please activate this user to display a detailed status check",
+            "state": "success",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
     async def test_build_payload_not_auto(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
@@ -598,6 +619,26 @@ class TestPatchStatusNotifier(object):
         )
         expected_result = {
             "message": "66.67% of diff hit (target 50.00%)",
+            "state": "success",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_upgrade_payload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = PatchStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        expected_result = {
+            "message": "Please activate this user to display a detailed status check",
             "state": "success",
         }
         result = await notifier.build_payload(sample_comparison)
@@ -840,6 +881,26 @@ class TestChangesStatusNotifier(object):
         )
         expected_result = {
             "message": "No unexpected coverage changes found",
+            "state": "success",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_upgrade_payload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ChangesStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        expected_result = {
+            "message": "Please activate this user to display a detailed status check",
             "state": "success",
         }
         result = await notifier.build_payload(sample_comparison)

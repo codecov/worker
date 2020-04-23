@@ -1,6 +1,6 @@
 from typing import Callable, Mapping
 
-from covreports.reports.resources import Report
+from shared.reports.resources import Report
 
 
 class BaseLanguageProcessor(object):
@@ -8,7 +8,7 @@ class BaseLanguageProcessor(object):
     def name(self):
         return self.get_processor_name()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         pass
 
     def matches_content(self, content, first_line: str, name: str) -> bool:
@@ -44,5 +44,5 @@ class BaseLanguageProcessor(object):
         pass
 
     @classmethod
-    def get_processor_name(cls):
+    def get_processor_name(cls) -> str:
         return cls.__name__

@@ -1,7 +1,7 @@
 import logging
 from contextlib import nullcontext
 
-from torngit.exceptions import TorngitClientError, TorngitError
+from shared.torngit.exceptions import TorngitClientError, TorngitError
 
 from helpers.match import match
 from services.notification.notifiers.base import (
@@ -12,17 +12,18 @@ from services.notification.notifiers.base import (
 from services.repository import get_repo_provider_service
 from services.urls import get_commit_url, get_compare_url
 from services.yaml.reader import get_paths_from_flags
+from typing import Dict
 
 
 log = logging.getLogger(__name__)
 
 
 class StatusNotifier(AbstractBaseNotifier):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._repository_service = None
 
-    def is_enabled(self):
+    def is_enabled(self) -> bool:
         return True
 
     def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
@@ -32,10 +33,14 @@ class StatusNotifier(AbstractBaseNotifier):
     def name(self):
         return f"status-{self.context}"
 
-    async def build_payload(self, comparison):
+    async def build_payload(self, comparison) -> Dict[str, str]:
         raise NotImplementedError()
 
-    def can_we_set_this_status(self, comparison):
+    def get_upgrade_message(self) -> str:
+        # TODO: this is the message in the PR author billing spec but maybe we should add the actual username?
+        return "Please activate this user to display a detailed status check"
+
+    def can_we_set_this_status(self, comparison) -> bool:
         head = comparison.head.commit
         pull = comparison.pull
         if (
@@ -64,7 +69,7 @@ class StatusNotifier(AbstractBaseNotifier):
             self._repository_service = get_repo_provider_service(self.repository)
         return self._repository_service
 
-    def get_notifier_filters(self):
+    def get_notifier_filters(self) -> dict:
         return dict(
             paths=set(
                 get_paths_from_flags(
@@ -138,7 +143,9 @@ class StatusNotifier(AbstractBaseNotifier):
                 data_sent=payload,
             )
 
-    async def status_already_exists(self, comparison, title, state, description):
+    async def status_already_exists(
+        self, comparison, title, state, description
+    ) -> bool:
         head = comparison.head.commit
         repository_service = self.repository_service
         statuses = await repository_service.get_commit_statuses(head.commitid)
@@ -151,7 +158,7 @@ class StatusNotifier(AbstractBaseNotifier):
             )
         return False
 
-    def get_status_external_name(self):
+    def get_status_external_name(self) -> str:
         status_piece = f"/{self.title}" if self.title != "default" else ""
         return f"codecov/{self.context}{status_piece}"
 

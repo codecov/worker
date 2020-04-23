@@ -1,6 +1,6 @@
 import logging
 from typing import Sequence, Mapping, Any
-import torngit
+import shared.torngit as torngit
 
 from helpers.cache import cache
 from database.models import Commit
@@ -9,7 +9,7 @@ from services.yaml.parser import parse_yaml_file
 log = logging.getLogger(__name__)
 
 
-@cache.cache_function
+@cache.cache_function()
 async def fetch_commit_yaml_from_provider(
     commit: Commit, repository_service: torngit.base.BaseHandler
 ) -> dict:
@@ -43,7 +43,7 @@ async def fetch_current_yaml_from_provider_via_reference(
     return None
 
 
-@cache.cache_function
+@cache.cache_function()
 async def determine_commit_yaml_location(
     ref: str, repository_service: torngit.base.BaseHandler
 ) -> str:

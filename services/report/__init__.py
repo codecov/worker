@@ -1,10 +1,10 @@
 import logging
-from typing import Mapping, Any
+from typing import Mapping, Any, Optional
 
-from covreports.reports.resources import Report
-from covreports.reports.editable import EditableReport
-from covreports.storage.exceptions import FileNotInStorageError
-from covreports.reports.carryforward import generate_carryforward_report
+from shared.reports.resources import Report
+from shared.reports.editable import EditableReport
+from shared.storage.exceptions import FileNotInStorageError
+from shared.reports.carryforward import generate_carryforward_report
 
 from database.models import Commit
 from services.archive import ArchiveService
@@ -18,7 +18,7 @@ class ReportService(object):
     def __init__(self, current_yaml: Mapping[str, Any] = None):
         self.current_yaml = current_yaml
 
-    def build_report(self, chunks, files, sessions, totals):
+    def build_report(self, chunks, files, sessions, totals) -> Report:
         report_class = Report
         for sess in sessions.values():
             if sess.get("st") == "carriedforward":
@@ -27,13 +27,13 @@ class ReportService(object):
             chunks=chunks, files=files, sessions=sessions, totals=totals
         )
 
-    def build_report_from_commit(self, commit):
-        return self._do_build_report_from_commit(commit, recursion_limit=1)
+    def build_report_from_commit(self, commit) -> Report:
+        return self._do_build_report_from_commit(commit)
 
-    def _do_build_report_from_commit(self, commit, recursion_limit):
+    def get_existing_report_for_commit(self, commit) -> Optional[Report]:
         commitid = commit.commitid
         if commit.report_json is None:
-            return self.create_new_report_for_commit(commit, recursion_limit)
+            return None
         try:
             chunks_archive_service = ArchiveService(commit.repository)
             chunks = chunks_archive_service.read_chunks(commitid)
@@ -42,23 +42,27 @@ class ReportService(object):
                 "File for chunks not found in storage",
                 extra=dict(commit=commitid, repo=commit.repoid),
             )
-            return self.create_new_report_for_commit(commit, recursion_limit)
+            return None
         if chunks is None:
-            return self.create_new_report_for_commit(commit, recursion_limit)
+            return None
         files = commit.report_json["files"]
         sessions = commit.report_json["sessions"]
         totals = commit.totals
         res = self.build_report(chunks, files, sessions, totals)
         return res
 
-    def create_new_report_for_commit(self, commit: Commit, recursion_limit=0):
+    def _do_build_report_from_commit(self, commit) -> Report:
+        report = self.get_existing_report_for_commit(commit)
+        if report is not None:
+            return report
+        return self.create_new_report_for_commit(commit)
+
+    def create_new_report_for_commit(self, commit: Commit) -> Report:
         log.info(
             "Creating new report for commit",
             extra=dict(commit=commit.commitid, repoid=commit.repoid,),
         )
         if not self.current_yaml:
-            return Report()
-        if recursion_limit <= 0:
             return Report()
         flags_to_carryforward = []
         all_flags = read_yaml_field(self.current_yaml, ("flags",))
@@ -80,6 +84,15 @@ class ReportService(object):
             self.current_yaml, flags_to_carryforward
         )
         parent_commit = commit.get_parent_commit()
+        max_parenthood_deepness = 10
+        count = 1  # `parent_commit` is already the first parent
+        while (
+            parent_commit is not None
+            and parent_commit.state != "complete"
+            and count < max_parenthood_deepness
+        ):
+            parent_commit = parent_commit.get_parent_commit()
+            count += 1
         if parent_commit is None:
             log.warning(
                 "No parent commit was found to be carriedforward from",
@@ -92,9 +105,19 @@ class ReportService(object):
                 ),
             )
             return Report()
-        parent_report = self._do_build_report_from_commit(
-            parent_commit, recursion_limit - 1
-        )
+        if parent_commit.state != "complete":
+            log.warning(
+                "None of the parent commits were in a complete state to be used as CFing base",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    would_be_parent=commit.parent_commit_id,
+                    flags_to_carryforward=flags_to_carryforward,
+                    paths_to_carryforward=paths_to_carryforward,
+                ),
+            )
+            return Report()
+        parent_report = self.get_existing_report_for_commit(parent_commit)
         log.info(
             "Generating carriedforward report",
             extra=dict(
@@ -107,10 +130,13 @@ class ReportService(object):
             ),
         )
         return generate_carryforward_report(
-            parent_report, flags_to_carryforward, paths_to_carryforward
+            parent_report,
+            flags_to_carryforward,
+            paths_to_carryforward,
+            session_extras=dict(carryforwardorwarded_from=parent_commit.commitid),
         )
 
     def build_report_from_raw_content(
         self, commit_yaml, master, reports, flags, session
-    ):
+    ) -> Any:
         return process_raw_upload(commit_yaml, master, reports, flags, session)

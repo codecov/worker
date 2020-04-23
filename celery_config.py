@@ -7,7 +7,7 @@ from helpers.logging_config import get_logging_config_dict
 from helpers.cache import cache, RedisBackend
 from services.redis import get_redis_connection
 
-from covreports.config import get_config
+from shared.config import get_config
 from celery import signals
 
 log = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ def initialize_logging(loglevel=logging.INFO, **kwargs):
 @signals.worker_process_init.connect
 def initialize_cache(**kwargs):
     log.info("Initialized cache")
-    redis_cache_backend = RedisBackend(get_redis_connection(), 120)
+    redis_cache_backend = RedisBackend(get_redis_connection())
     cache.configure(redis_cache_backend)
 
 
@@ -37,7 +37,9 @@ result_backend = get_config("services", "celery_broker") or get_config(
     "services", "redis_url"
 )
 
-task_default_queue = "new_tasks"
+task_default_queue = get_config(
+    "setup", "tasks", "celery", "default_queue", default="celery"
+)
 
 # Import jobs
 imports = ("tasks",)
@@ -77,10 +79,6 @@ task_time_limit = int(
     get_config("setup", "tasks", "celery", "hard_timelimit", default=480)
 )
 
-_default_queue = get_config(
-    "setup", "tasks", "celery", "default_queue", default="celery"
-)
-
 sync_teams_task_name = "app.tasks.sync_teams.SyncTeams"
 sync_repos_task_name = "app.tasks.sync_repos.SyncRepos"
 delete_owner_task_name = "app.tasks.delete_owner.DeleteOwner"
@@ -98,75 +96,82 @@ send_email_task_name = "app.tasks.send_email.SendEmail"
 remove_webhook_task_name = "app.tasks.remove_webhook.RemoveOldHook"
 synchronize_task_name = "app.tasks.synchronize.Synchronize"
 
+task_annotations = {notify_task_name: {"soft_time_limit": 45, "time_limit": 60,}}
 
 task_routes = {
     sync_teams_task_name: {
         "queue": get_config(
-            "setup", "tasks", "sync_teams", "queue", default=_default_queue
+            "setup", "tasks", "sync_teams", "queue", default=task_default_queue
         )
     },
     sync_repos_task_name: {
         "queue": get_config(
-            "setup", "tasks", "sync_repos", "queue", default=_default_queue
+            "setup", "tasks", "sync_repos", "queue", default=task_default_queue
         )
     },
     delete_owner_task_name: {
         "queue": get_config(
-            "setup", "tasks", "delete_owner", "queue", default=_default_queue
+            "setup", "tasks", "delete_owner", "queue", default=task_default_queue
         )
     },
     notify_task_name: {
         "queue": get_config(
-            "setup", "tasks", "notify", "queue", default=_default_queue
+            "setup", "tasks", "notify", "queue", default=task_default_queue
         ),
-        "soft_time_limit": 15,
-        "time_limit": 20,
     },
     pulls_task_name: {
-        "queue": get_config("setup", "tasks", "pulls", "queue", default=_default_queue)
+        "queue": get_config(
+            "setup", "tasks", "pulls", "queue", default=task_default_queue
+        )
     },
     status_set_error_task_name: {
-        "queue": get_config("setup", "tasks", "status", "queue", default=_default_queue)
+        "queue": get_config(
+            "setup", "tasks", "status", "queue", default=task_default_queue
+        )
     },
     status_set_pending_task_name: {
-        "queue": get_config("setup", "tasks", "status", "queue", default=_default_queue)
+        "queue": get_config(
+            "setup", "tasks", "status", "queue", default=task_default_queue
+        )
     },
     upload_task_name: {
-        "queue": get_config("setup", "tasks", "upload", "queue", default=_default_queue)
+        "queue": get_config(
+            "setup", "tasks", "upload", "queue", default=task_default_queue
+        )
     },
     archive_task_name: {
         "queue": get_config(
-            "setup", "tasks", "archive", "queue", default=_default_queue
+            "setup", "tasks", "archive", "queue", default=task_default_queue
         )
     },
     bot_task_name: {
         "queue": get_config(
-            "setup", "tasks", "verify_bot", "queue", default=_default_queue
+            "setup", "tasks", "verify_bot", "queue", default=task_default_queue
         )
     },
     comment_task_name: {
         "queue": get_config(
-            "setup", "tasks", "comment", "queue", default=_default_queue
+            "setup", "tasks", "comment", "queue", default=task_default_queue
         )
     },
     flush_repo_task_name: {
         "queue": get_config(
-            "setup", "tasks", "flush_repo", "queue", default=_default_queue
+            "setup", "tasks", "flush_repo", "queue", default=task_default_queue
         )
     },
     ghm_sync_plans_task_name: {
         "queue": get_config(
-            "setup", "tasks", "sync_plans", "queue", default=_default_queue
+            "setup", "tasks", "sync_plans", "queue", default=task_default_queue
         )
     },
     remove_webhook_task_name: {
         "queue": get_config(
-            "setup", "tasks", "remove_webhook", "queue", default=_default_queue
+            "setup", "tasks", "remove_webhook", "queue", default=task_default_queue
         )
     },
     synchronize_task_name: {
         "queue": get_config(
-            "setup", "tasks", "synchronize", "queue", default=_default_queue
+            "setup", "tasks", "synchronize", "queue", default=task_default_queue
         )
     },
 }

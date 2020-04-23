@@ -2,9 +2,9 @@ import logging
 
 from app import celery_app
 from celery_config import status_set_pending_task_name
-from covreports.helpers.yaml import default_if_true
-from covreports.utils.match import match
-from covreports.utils.urls import make_url
+from shared.helpers.yaml import default_if_true
+from shared.utils.match import match
+from shared.utils.urls import make_url
 
 from database.models import Commit
 from services.redis import get_redis_connection
@@ -22,6 +22,8 @@ class StatusSetPendingTask(BaseCodecovTask):
     """
 
     name = status_set_pending_task_name
+
+    throws = (AssertionError,)
 
     async def run_async(
         self, db_session, repoid, commitid, branch, on_a_pull_request, *args, **kwargs

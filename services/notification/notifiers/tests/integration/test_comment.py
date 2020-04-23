@@ -2,7 +2,8 @@ import pytest
 
 from services.notification.notifiers.comment import CommentNotifier
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.notification.types import FullCommit, Comparison
+from services.notification.types import FullCommit, Comparison, EnrichedPull
+from services.decoration import Decoration
 
 
 @pytest.fixture
@@ -36,7 +37,28 @@ def sample_comparison(dbsession, request, sample_report, small_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=small_report)
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "author": {"id": "12345", "username": "hootener",},
+                "base": {
+                    "branch": "master",
+                    "commitid": "30cc1ed751a59fa9e7ad8e79fff41a6fe11ef5dd",
+                },
+                "head": {
+                    "branch": "thiago/test-1",
+                    "commitid": "2e2600aa09525e2e1e1d98b09de61454d29c94bb",
+                },
+                "state": "open",
+                "title": "Thiago/test 1",
+                "id": "15",
+                "number": "15",
+            },
+        ),
+    )
 
 
 @pytest.fixture
@@ -72,7 +94,83 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=small_report)
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "author": {"id": "12345", "username": "falco.lombardi",},
+                "base": {
+                    "branch": "master",
+                    "commitid": "842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4",
+                },
+                "head": {
+                    "branch": "div",
+                    "commitid": "46ce216948fe8c301fc80d9ba3ba1a582a0ba497",
+                },
+                "state": "open",
+                "title": "Add div method",
+                "id": "11",
+                "number": "11",
+            },
+        ),
+    )
+
+
+@pytest.fixture
+def sample_comparison_for_upgrade(dbsession, request, sample_report, small_report):
+    repository = RepositoryFactory.create(
+        owner__username="1nf1n1t3l00p",
+        name="priv_example",
+        owner__unencrypted_oauth_token="test1p40fvqsw2hoxl55kvhd4sakchhehblihuth",
+        image_token="abcdefghij",
+    )
+    dbsession.add(repository)
+    dbsession.flush()
+    base_commit = CommitFactory.create(
+        repository=repository, commitid="ca084b346c2f1450f011adbd5ec950e3532b57b6"
+    )
+    head_commit = CommitFactory.create(
+        repository=repository,
+        branch="featureA",
+        commitid="6341a94d2bb77a6153cec905363348937d258720",
+    )
+    pull = PullFactory.create(
+        repository=repository,
+        base=base_commit.commitid,
+        head=head_commit.commitid,
+        pullid=1,
+    )
+    dbsession.add(base_commit)
+    dbsession.add(head_commit)
+    dbsession.add(pull)
+    dbsession.flush()
+    repository = base_commit.repository
+    base_full_commit = FullCommit(commit=base_commit, report=small_report)
+    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "author": {"id": "12345", "username": "1nf1n1t3l00p",},
+                "base": {
+                    "branch": "master",
+                    "commitid": "842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4",
+                },
+                "head": {
+                    "branch": "div",
+                    "commitid": "46ce216948fe8c301fc80d9ba3ba1a582a0ba497",
+                },
+                "state": "open",
+                "title": "Add div method",
+                "id": "11",
+                "number": "11",
+            },
+        ),
+    )
 
 
 class TestCommentNotifierIntegration(object):
@@ -136,6 +234,37 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent["message"] == message
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 15}
         assert result.data_received == {"id": 570682170}
+
+    @pytest.mark.asyncio
+    async def test_notify_upgrade(
+        self, dbsession, sample_comparison_for_upgrade, codecov_vcr
+    ):
+        comparison = sample_comparison_for_upgrade
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        result = await notifier.notify(comparison)
+        assert result.notification_attempted
+        assert result.notification_successful
+        assert result.explanation is None
+        expected_message = [
+            "The author of this PR, 1nf1n1t3l00p, is not an active member of this organization on Codecov.",
+            "Please [activate this user on Codecov](None/account/gh/1nf1n1t3l00p/users) to display this PR comment.",
+        ]
+        for exp, res in zip(result.data_sent["message"], expected_message):
+            assert exp == res
+        assert result.data_sent["message"] == expected_message
+        assert result.data_sent == {
+            "commentid": None,
+            "message": expected_message,
+            "pullid": 1,
+        }
+        assert result.data_received == {"id": 609479265}
 
     @pytest.mark.asyncio
     async def test_notify_gitlab(self, sample_comparison_gitlab, codecov_vcr):

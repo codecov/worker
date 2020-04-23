@@ -1,4 +1,4 @@
-# BUILD STAGE - Download dependencies from GitHub that require SSH access
+        # BUILD STAGE - Download dependencies from GitHub that require SSH access
 FROM python:3.7.4-alpine as build
 
 RUN             apk update \
@@ -41,11 +41,14 @@ RUN             apk add --no-cache postgresql-libs && \
 
 RUN             apk add gcc musl-dev python3-dev libffi-dev openssl-dev
 
+RUN             wget -q -O /usr/local/bin/berglas https://storage.googleapis.com/berglas/0.5.0/linux_amd64/berglas && \
+                chmod +x /usr/local/bin/berglas
+
 WORKDIR         /pip-packages/
 COPY            --from=build /pip-packages/ /pip-packages/
 
 RUN             rm -rf /pip-packages/src
 RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages/*
 
-COPY            . /app
-WORKDIR         /app
+RUN             addgroup -S application \
+                && adduser -S codecov -G application

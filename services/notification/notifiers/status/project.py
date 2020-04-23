@@ -4,6 +4,7 @@ from decimal import Decimal
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.status.base import StatusNotifier
 from services.yaml.reader import round_number
+from typing import Any, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class ProjectStatusNotifier(StatusNotifier):
 
     context = "project"
 
-    def _get_project_status(self, comparison):
+    def _get_project_status(self, comparison) -> Tuple[str, str]:
         threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
             head_coverage = Decimal(comparison.head.report.totals.coverage)
@@ -62,6 +63,8 @@ class ProjectStatusNotifier(StatusNotifier):
 
     async def build_payload(self, comparison: Comparison):
         state, message = self._get_project_status(comparison)
+        if self.should_use_upgrade_decoration():
+            message = self.get_upgrade_message()
         return {
             "state": state,
             "message": message,

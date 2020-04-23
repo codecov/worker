@@ -3,27 +3,37 @@ import dataclasses
 from typing import List
 import asyncio
 
-from covreports.config import get_config
-from covreports.helpers.yaml import default_if_true
+from celery.exceptions import CeleryError, SoftTimeLimitExceeded
+
+from shared.config import get_config
+from shared.helpers.yaml import default_if_true
 from helpers.metrics import metrics
+from services.decoration import Decoration, get_decoration_type_and_reason
 from services.notification.notifiers import (
     get_all_notifier_classes_mapping,
     get_status_notifier_class,
     get_pull_request_notifiers,
 )
 from services.notification.types import Comparison
-from services.notification.notifiers.base import NotificationResult
+from services.notification.notifiers.base import (
+    NotificationResult,
+    AbstractBaseNotifier,
+)
 from services.yaml import read_yaml_field
+from services.license import is_properly_licensed
+from typing import Any, Iterator
 
 log = logging.getLogger(__name__)
 
 
 class NotificationService(object):
-    def __init__(self, repository, current_yaml):
+    def __init__(self, repository, current_yaml) -> None:
         self.repository = repository
         self.current_yaml = current_yaml
 
-    def get_notifiers_instances(self):
+    def get_notifiers_instances(
+        self, decoration_type=Decoration.standard
+    ) -> Iterator[AbstractBaseNotifier]:
         mapping = get_all_notifier_classes_mapping()
         yaml_field = read_yaml_field(self.current_yaml, ("coverage", "notify"))
         if yaml_field is not None:
@@ -38,6 +48,7 @@ class NotificationService(object):
                             "services", "notifications", instance_type, default=True
                         ),
                         current_yaml=self.current_yaml,
+                        decoration_type=decoration_type,
                     )
         status_fields = read_yaml_field(self.current_yaml, ("coverage", "status"))
         if status_fields:
@@ -51,6 +62,7 @@ class NotificationService(object):
                             notifier_yaml_settings=status_config,
                             notifier_site_settings={},
                             current_yaml=self.current_yaml,
+                            decoration_type=decoration_type,
                         )
                 else:
                     log.warning(
@@ -69,11 +81,31 @@ class NotificationService(object):
                     notifier_yaml_settings=comment_yaml_field,
                     notifier_site_settings=None,
                     current_yaml=self.current_yaml,
+                    decoration_type=decoration_type,
                 )
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
+        if not is_properly_licensed(comparison.head.commit.get_db_session()):
+            log.warning(
+                "Not sending notifications because the system is not properly licensed"
+            )
+            return []
+        decoration_type, reason = get_decoration_type_and_reason(
+            comparison.enriched_pull
+        )
+        log.info(
+            f"Notifying with decoration type {decoration_type}",
+            extra=dict(
+                head_commit=comparison.head.commit.commitid,
+                base_commit=comparison.base.commit.commitid
+                if comparison.base.commit is not None
+                else "NO_BASE",
+                repoid=comparison.head.commit.repoid,
+                reason=reason,
+            ),
+        )
         notification_tasks = []
-        for notifier in self.get_notifiers_instances():
+        for notifier in self.get_notifiers_instances(decoration_type):
             if notifier.is_enabled():
                 notification_tasks.append(
                     self.notify_individual_notifier(notifier, comparison)
@@ -101,7 +133,7 @@ class NotificationService(object):
             with metrics.timer(
                 f"new_worker.services.notifications.notifiers.{notifier.name}"
             ):
-                res = await notifier.notify(comparison)
+                res = await asyncio.wait_for(notifier.notify(comparison), timeout=30)
             individual_result = {
                 "notifier": notifier.name,
                 "title": notifier.title,
@@ -117,6 +149,26 @@ class NotificationService(object):
                     if base_commit is not None
                     else "NO_BASE",
                     repoid=commit.repoid,
+                ),
+            )
+            return individual_result
+        except (CeleryError, SoftTimeLimitExceeded):
+            raise
+        except asyncio.TimeoutError:
+            individual_result = {
+                "notifier": notifier.name,
+                "title": notifier.title,
+                "result": None,
+            }
+            log.warning(
+                "Individual notifier timed out",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    individual_result=individual_result,
+                    base_commit=base_commit.commitid
+                    if base_commit is not None
+                    else "NO_BASE",
                 ),
             )
             return individual_result

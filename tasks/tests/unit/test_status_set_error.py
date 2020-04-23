@@ -4,7 +4,7 @@ from pathlib import Path
 from asyncio import Future
 
 import pytest
-from torngit.status import Status
+from shared.torngit.status import Status
 
 from database.tests.factories import CommitFactory
 from tasks.status_set_error import StatusSetErrorTask

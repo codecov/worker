@@ -1,14 +1,15 @@
 import logging
 
 from sqlalchemy.orm.session import Session
-from torngit.exceptions import TorngitClientError, TorngitServerFailureError
+from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from celery.exceptions import MaxRetriesExceededError
+from redis.exceptions import LockError
+from celery.exceptions import SoftTimeLimitExceeded
 
 from app import celery_app
 from celery_config import (
     notify_task_name,
     status_set_error_task_name,
-    task_default_queue,
 )
 from database.models import Commit, Pull
 from helpers.exceptions import RepositoryWithoutValidBotError
@@ -16,44 +17,77 @@ from services.commit_status import RepositoryCIFilter
 from services.notification.types import Comparison, FullCommit
 from services.notification import NotificationService
 from services.report import ReportService
+from services.redis import get_redis_connection, Redis
 from services.repository import (
     get_repo_provider_service,
     fetch_and_update_pull_request_information_from_commit,
+    EnrichedPull,
 )
-from services.yaml import read_yaml_field
-from services.yaml.fetcher import fetch_commit_yaml_from_provider
+from services.yaml import read_yaml_field, get_current_yaml
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
-
-
-def default_if_true(value):
-    if value is True:
-        yield "default", {}
-    elif type(value) is dict:
-        for key, data in value.items():
-            if data is False:
-                continue
-            elif data is True:
-                yield key, {}
-            elif type(data) is not dict or data.get("enabled") is False:
-                continue
-            else:
-                yield key, data
 
 
 class NotifyTask(BaseCodecovTask):
 
     name = notify_task_name
 
+    throws = (SoftTimeLimitExceeded,)
+
     async def run_async(
         self,
         db_session: Session,
+        *,
         repoid: int,
         commitid: str,
         current_yaml=None,
-        *args,
-        **kwargs
+        **kwargs,
+    ):
+        redis_connection = get_redis_connection()
+        if self.has_upcoming_notifies_according_to_redis(
+            redis_connection, repoid, commitid
+        ):
+            log.info(
+                "Not notifying because there are seemingly other jobs being processed yet",
+                extra=dict(repoid=repoid, commitid=commitid),
+            )
+            return {
+                "notified": False,
+                "notifications": None,
+                "reason": "has_other_notifies_coming",
+            }
+        notify_lock_name = f"notify_lock_{repoid}_{commitid}"
+        try:
+            with redis_connection.lock(
+                notify_lock_name, timeout=60, blocking_timeout=10
+            ):
+                return await self.run_async_within_lock(
+                    db_session,
+                    repoid=repoid,
+                    commitid=commitid,
+                    current_yaml=current_yaml,
+                    **kwargs,
+                )
+        except LockError:
+            log.info(
+                "Not notifying because there is another notification already happening",
+                extra=dict(repoid=repoid, commitid=commitid),
+            )
+            return {
+                "notified": False,
+                "notifications": None,
+                "reason": "unobtainable_lock",
+            }
+
+    async def run_async_within_lock(
+        self,
+        db_session: Session,
+        *,
+        repoid: int,
+        commitid: str,
+        current_yaml=None,
+        **kwargs,
     ):
         log.info("Starting notifications", extra=dict(commit=commitid, repoid=repoid))
         commits_query = db_session.query(Commit).filter(
@@ -69,9 +103,7 @@ class NotifyTask(BaseCodecovTask):
             )
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         if current_yaml is None:
-            current_yaml = await fetch_commit_yaml_from_provider(
-                commit, repository_service
-            )
+            current_yaml = await get_current_yaml(commit, repository_service)
         assert commit, "Commit not found in database."
         try:
             ci_results = await self.fetch_and_update_whether_ci_passed(
@@ -141,6 +173,7 @@ class NotifyTask(BaseCodecovTask):
             else:
                 pull = None
                 base_commit = self.fetch_parent(commit)
+
             report_service = ReportService(current_yaml)
             if base_commit is not None:
                 base_report = report_service.build_report_from_commit(base_commit)
@@ -148,7 +181,12 @@ class NotifyTask(BaseCodecovTask):
                 base_report = None
             head_report = report_service.build_report_from_commit(commit)
             notifications = await self.submit_third_party_notifications(
-                current_yaml, base_commit, commit, base_report, head_report, pull
+                current_yaml,
+                base_commit,
+                commit,
+                base_report,
+                head_report,
+                enriched_pull,
             )
             log.info(
                 "Notifications done",
@@ -168,14 +206,42 @@ class NotifyTask(BaseCodecovTask):
             )
             return {"notified": False, "notifications": None}
 
+    def has_upcoming_notifies_according_to_redis(
+        self, redis_connection: Redis, repoid: int, commitid: str
+    ) -> bool:
+        """Checks whether there are any jobs processing according to Redis right now and,
+            therefore, whether more up-to-date notifications will come after this anyway
+
+            It's very important to have this code be conservative against saying
+                there are upcoming notifies already. The point of this code is to
+                avoid extra notifications for efficiency purposes, but it is better
+                to send extra notifications than to lack notifications
+
+        Args:
+            redis_connection (Redis): The redis connection we check against
+            repoid (int): The repoid of the commit
+            commitid (str): The commitid of the commit
+        """
+        upload_processing_lock_name = f"upload_processing_lock_{repoid}_{commitid}"
+        if redis_connection.get(upload_processing_lock_name):
+            return True
+        return False
+
     async def submit_third_party_notifications(
-        self, current_yaml, base_commit, commit, base_report, head_report, pull
+        self,
+        current_yaml,
+        base_commit,
+        commit,
+        base_report,
+        head_report,
+        enriched_pull: EnrichedPull,
     ):
         comparison = Comparison(
             head=FullCommit(commit=commit, report=head_report),
-            pull=pull,
+            enriched_pull=enriched_pull,
             base=FullCommit(commit=base_commit, report=base_report),
         )
+
         notifications_service = NotificationService(commit.repository, current_yaml)
         return await notifications_service.notify(comparison)
 
@@ -201,7 +267,6 @@ class NotifyTask(BaseCodecovTask):
                 kwargs=dict(
                     repoid=commit.repoid, commitid=commit.commitid, message="CI failed."
                 ),
-                queue=task_default_queue,
             )
             log.info(
                 "Not sending notifications because CI failed",

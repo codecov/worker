@@ -139,7 +139,7 @@ class Branch(CodecovBaseModel):
 
     repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
     updatestamp = Column(types.DateTime)
-    branch = Column(types.Text, nullable=False)
+    branch = Column(types.Text, nullable=False, primary_key=True)
     base = Column(types.Text)
     head = Column(types.Text, nullable=False)
     authors = Column(postgresql.ARRAY(types.Integer))

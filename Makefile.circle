@@ -3,6 +3,8 @@
 #GCLOUD_SERVICE_KEY := $(shell cat ~/.gcloud/codecov-enterprise-sandbox-03eb0a0ecaf2.json | base64 --wrap=0)
 GCR_REPO := gcr.io/test6u3411ty6xqh462sri/codecov-worker
 REQUIREMENTS_TAG := requirements-v2-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)
+SEMANTIC_VERSION := `cat VERSION`
+IMAGE_VERSION := ${SEMANTIC_VERSION}-$(shell git rev-parse --short=7 HEAD)
 VERSION := release-$(shell git rev-parse --short=7 HEAD)
 
 # CIRCLECI
@@ -14,7 +16,7 @@ build-requirements:
 	# requirements.txt.  Otherwise, build and push a version tagged
 	# with the hash of this requirements.txt
 	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG} || docker build \
-		-f Dockerfile.requirements . \
+		-f dockerscripts/Dockerfile.requirements . \
 		-t ${GCR_REPO}:${REQUIREMENTS_TAG} \
 		--build-arg GH_ACCESS_TOKEN=${GH_ACCESS_TOKEN} \
 	&& docker push ${GCR_REPO}:${REQUIREMENTS_TAG}
@@ -25,9 +27,10 @@ build-requirements:
 build:
 	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG}
 	docker build \
-		-f Dockerfile.circle . \
+		-f dockerscripts/Dockerfile.circle . \
 		-t ${GCR_REPO}:latest \
-		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
+		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG} \
+		--build-arg RELEASE_VERSION=${IMAGE_VERSION}
 
 # CIRCLECI
 # job: test
@@ -73,5 +76,5 @@ release:
 	git push --tags
 
 add-release-tag:
-	git tag ${VERSION}
+	git tag ${IMAGE_VERSION}
 	git push --tags

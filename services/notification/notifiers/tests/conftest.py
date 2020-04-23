@@ -1,9 +1,10 @@
 import pytest
-from covreports.reports.resources import Report, ReportFile, ReportLine
-from covreports.utils.sessions import Session
+from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.notification.types import FullCommit, Comparison
+from services.repository import EnrichedPull
 
 
 def get_small_report():
@@ -89,7 +90,11 @@ def create_sample_comparison(dbsession, request, sample_report):
         repository = base_commit.repository
         base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
         head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-        return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+        return Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+        )
 
     return _comparison
 
@@ -111,7 +116,25 @@ def sample_comparison(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "author": {"id": "12345", "username": "codecov-test-user"},
+                "base": {"branch": "master", "commitid": base_commit.commitid,},
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
+    )
 
 
 @pytest.fixture
@@ -131,7 +154,63 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=sample_report)
     head_full_commit = FullCommit(commit=head_commit, report=get_small_report())
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "author": {"id": "12345", "username": "codecov-test-user"},
+                "base": {"branch": "master", "commitid": base_commit.commitid,},
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
+    )
+
+
+@pytest.fixture
+def sample_comparison_no_change(dbsession, request, sample_report):
+    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    dbsession.add(repository)
+    dbsession.flush()
+    base_commit = CommitFactory.create(repository=repository)
+    head_commit = CommitFactory.create(repository=repository, branch="new_branch")
+    pull = PullFactory.create(
+        repository=repository, base=base_commit.commitid, head=head_commit.commitid
+    )
+    dbsession.add(base_commit)
+    dbsession.add(head_commit)
+    dbsession.add(pull)
+    dbsession.flush()
+    repository = base_commit.repository
+    base_full_commit = FullCommit(commit=base_commit, report=sample_report)
+    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "author": {"id": "12345", "username": "codecov-test-user"},
+                "base": {"branch": "master", "commitid": base_commit.commitid,},
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
+    )
 
 
 @pytest.fixture
@@ -147,7 +226,35 @@ def sample_comparison_without_pull(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=None)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(database_pull=None, provider_pull=None),
+    )
+
+
+@pytest.fixture
+def sample_comparison_database_pull_without_provider(dbsession, request, sample_report):
+    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    dbsession.add(repository)
+    dbsession.flush()
+    base_commit = CommitFactory.create(repository=repository)
+    head_commit = CommitFactory.create(repository=repository, branch="new_branch")
+    pull = PullFactory.create(
+        repository=repository, base=base_commit.commitid, head=head_commit.commitid
+    )
+    dbsession.add(base_commit)
+    dbsession.add(head_commit)
+    dbsession.add(pull)
+    dbsession.flush()
+    repository = base_commit.repository
+    base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
+    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(database_pull=pull, provider_pull=None),
+    )
 
 
 @pytest.fixture
@@ -166,7 +273,25 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
     dbsession.flush()
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
     base_full_commit = FullCommit(commit=base_commit, report=None)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "author": {"id": "12345", "username": "codecov-test-user"},
+                "base": {"branch": "master", "commitid": base_commit.commitid,},
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
+    )
 
 
 @pytest.fixture
@@ -183,4 +308,25 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
     dbsession.flush()
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
     base_full_commit = FullCommit(commit=None, report=None)
-    return Comparison(head=head_full_commit, base=base_full_commit, pull=pull)
+    return Comparison(
+        head=head_full_commit,
+        base=base_full_commit,
+        enriched_pull=EnrichedPull(
+            database_pull=pull,
+            provider_pull={
+                "author": {"id": "12345", "username": "codecov-test-user"},
+                "base": {
+                    "branch": "master",
+                    "commitid": "cdf9aa4bd2c6bcd8a662864097cb62a85a2fd55b",
+                },
+                "head": {
+                    "branch": "reason/some-testing",
+                    "commitid": head_commit.commitid,
+                },
+                "number": str(pull.pullid),
+                "id": str(pull.pullid),
+                "state": "open",
+                "title": "Creating new code for reasons no one knows",
+            },
+        ),
+    )

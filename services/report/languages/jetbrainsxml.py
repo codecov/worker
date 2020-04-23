@@ -1,5 +1,5 @@
-from covreports.reports.resources import Report, ReportFile
-from covreports.reports.types import ReportLine, LineSession
+from shared.reports.resources import Report, ReportFile
+from shared.reports.types import ReportLine, LineSession
 from services.report.languages.base import BaseLanguageProcessor
 
 

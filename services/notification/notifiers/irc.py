@@ -3,12 +3,13 @@ from typing import Mapping, Any
 import logging
 from io import BytesIO
 from services.notification.notifiers.generics import StandardNotifier, Comparison
+from typing import List
 
 log = logging.getLogger(__name__)
 
 
 class IRCClient(object):
-    def __init__(self, server):
+    def __init__(self, server) -> None:
         self.server = server
         server = tuple(self.server.split(":")) + (6667,)
         self.con = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -19,10 +20,10 @@ class IRCClient(object):
         message = message + "\r\n"
         return self.con.send(message.encode())
 
-    def close(self):
+    def close(self) -> None:
         self.con.close()
 
-    def receive_everything(self):
+    def receive_everything(self) -> List[str]:
         received_messages = BytesIO()
         try:
             while 1:

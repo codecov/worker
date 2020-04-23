@@ -1,13 +1,20 @@
 import logging
 from datetime import datetime
 import re
-from typing import Mapping, Any
+from typing import Mapping, Any, Optional
 from dataclasses import dataclass
 
-import torngit
-from torngit.exceptions import TorngitClientError, TorngitObjectNotFoundError
+import shared.torngit as torngit
+from shared.torngit.exceptions import (
+    TorngitClientError,
+    TorngitObjectNotFoundError,
+    TorngitError,
+)
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import FlushError
+from sqlalchemy.dialects.postgresql import insert, dialect
 
-from covreports.config import get_config, get_verify_ssl
+from shared.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token
 from database.models import Owner, Commit, Pull, Repository
 from services.yaml import read_yaml_field
@@ -246,12 +253,12 @@ def get_repo_provider_service_by_id(db_session, repoid, commitid=None):
 @dataclass
 class EnrichedPull(object):
     database_pull: Pull
-    provider_pull: Mapping[str, Any]
+    provider_pull: Optional[Mapping[str, Any]]
 
 
 async def fetch_and_update_pull_request_information_from_commit(
     repository_service, commit, current_yaml
-) -> EnrichedPull:
+) -> Optional[EnrichedPull]:
     db_session = commit.get_db_session()
     pullid = commit.pullid
     if not commit.pullid:
@@ -280,16 +287,22 @@ async def fetch_and_update_pull_request_information_from_commit(
 async def fetch_and_update_pull_request_information(
     repository_service, db_session, repoid, pullid, current_yaml
 ) -> EnrichedPull:
-    pull_query = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid)
-    pull = pull_query.first()
     compared_to = None
     try:
         pull_information = await repository_service.get_pull_request(pullid=pullid)
-    except TorngitObjectNotFoundError:
+    except TorngitClientError:
         log.warning(
-            "Unable to find pull request information on provider to update it",
+            "Unable to find pull request information on provider to update it due to client error",
             extra=dict(repoid=repoid, pullid=pullid),
         )
+        pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
+        return EnrichedPull(database_pull=pull, provider_pull=None)
+    except TorngitError:
+        log.warning(
+            "Unable to find pull request information on provider to update it due to unknown provider error",
+            extra=dict(repoid=repoid, pullid=pullid),
+        )
+        pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
         return EnrichedPull(database_pull=pull, provider_pull=None)
     pull_base_sha = pull_information["base"]["commitid"]
     base_commit = (
@@ -300,31 +313,35 @@ async def fetch_and_update_pull_request_information(
     if base_commit:
         compared_to = base_commit.commitid
     else:
-        # Copying from legacy-code. We should take a look and redecide
-        commit_dict = await repository_service.get_commit(
-            pull_information["base"]["commitid"]
-        )
-        new_base_query = db_session.query(Commit).filter(
-            Commit.repoid == repoid,
-            Commit.branch == pull_information["base"]["branch"],
-            (Commit.pullid.is_(None) | Commit.merged),
-            Commit.timestamp < commit_dict["timestamp"],
-        )
-        if read_yaml_field(current_yaml, ("codecov", "require_ci_to_pass"), True):
-            new_base_query = new_base_query.filter(Commit.ci_passed)
-        new_base_query.order_by(Commit.timestamp.desc())
-        new_base = new_base_query.first()
-        if new_base:
-            compared_to = new_base.commitid
-
-    if pull:
-        pull.issueid = pull_information["id"]
-        pull.state = pull_information["state"]
-        pull.title = pull_information["title"]
-        pull.base = pull_information["base"]["commitid"]
-        pull.compared_to = compared_to
-    else:
-        pull = Pull(
+        try:
+            commit_dict = await repository_service.get_commit(
+                pull_information["base"]["commitid"]
+            )
+            new_base_query = db_session.query(Commit).filter(
+                Commit.repoid == repoid,
+                Commit.branch == pull_information["base"]["branch"],
+                (Commit.pullid.is_(None) | Commit.merged),
+                Commit.timestamp < commit_dict["timestamp"],
+            )
+            if read_yaml_field(current_yaml, ("codecov", "require_ci_to_pass"), True):
+                new_base_query = new_base_query.filter(Commit.ci_passed)
+            new_base_query.order_by(Commit.timestamp.desc())
+            new_base = new_base_query.first()
+            if new_base:
+                compared_to = new_base.commitid
+        except TorngitObjectNotFoundError:
+            log.warning(
+                "Cannot find (in the provider) commit that is supposed to be the PR base",
+                extra=dict(
+                    repoid=repoid,
+                    pullid=pullid,
+                    supposed_base=pull_information["base"]["commitid"],
+                ),
+            )
+    db_session.flush()
+    command = (
+        insert(Pull.__table__)
+        .values(
             pullid=pullid,
             repoid=repoid,
             issueid=pull_information["id"],
@@ -333,6 +350,19 @@ async def fetch_and_update_pull_request_information(
             base=pull_information["base"]["commitid"],
             compared_to=compared_to,
         )
-        db_session.add(pull)
+        .on_conflict_do_update(
+            index_elements=[Pull.repoid, Pull.pullid],
+            set_=dict(
+                issueid=pull_information["id"],
+                state=pull_information["state"],
+                title=pull_information["title"],
+                base=pull_information["base"]["commitid"],
+                compared_to=compared_to,
+            ),
+        )
+    )
+    db_session.connection().execute(command)
     db_session.flush()
+    pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
+    db_session.refresh(pull)
     return EnrichedPull(database_pull=pull, provider_pull=pull_information)

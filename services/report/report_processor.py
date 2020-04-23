@@ -4,8 +4,9 @@ from json import loads
 from lxml import etree
 import logging
 
-from services.report.languages.helpers import remove_non_ascii
+from shared.reports.resources import Report
 
+from services.report.languages.helpers import remove_non_ascii
 from helpers.metrics import metrics
 
 from services.report.languages import (
@@ -36,11 +37,12 @@ from services.report.languages import (
     XCodeProcessor,
     XCodePlistProcessor,
 )
+from typing import Any, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
 
-def report_type_matching(name, raw_report):
+def report_type_matching(name, raw_report) -> Tuple[Any, Optional[str]]:
     parser = etree.XMLParser(recover=True, resolve_entities=False)
     first_line = raw_report.split("\n", 1)[0]
     xcode_first_line_endings = (
@@ -88,7 +90,7 @@ def report_type_matching(name, raw_report):
     return raw_report, "txt"
 
 
-def get_possible_processors_list(report_type):
+def get_possible_processors_list(report_type) -> list:
     processor_dict = {
         "plist": [XCodePlistProcessor()],
         "xml": [
@@ -127,7 +129,9 @@ def get_possible_processors_list(report_type):
     return processor_dict.get(report_type, [])
 
 
-def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
+def process_report(
+    report, commit_yaml, sessionid, ignored_lines, path_fixer
+) -> Optional[Report]:
     name = ""
     if report[:7] == "# path=":
         if "\n" not in report:

@@ -5,11 +5,13 @@ from typing import Mapping, Any
 
 from celery import chain
 from redis.exceptions import LockError
-from torngit.exceptions import (
+from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitClientError,
     TorngitRepoNotFoundError,
 )
+from celery.exceptions import CeleryError, SoftTimeLimitExceeded
+
 
 from app import celery_app
 from celery_config import upload_task_name
@@ -23,7 +25,7 @@ from services.repository import (
     create_webhook_on_provider,
 )
 from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
-from covreports.validation.exceptions import InvalidYamlException
+from shared.validation.exceptions import InvalidYamlException
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 from tasks.upload_finisher import upload_finisher_task
@@ -91,10 +93,17 @@ class UploadTask(BaseCodecovTask):
 
     name = upload_task_name
 
-    def has_pending_jobs(self, redis_connection, uploads_list_key) -> bool:
-        return redis_connection.exists(uploads_list_key)
+    def has_pending_jobs(self, redis_connection, repoid, commitid) -> bool:
+        uploads_locations = [
+            f"testuploads/{repoid}/{commitid}",
+            f"uploads/{repoid}/{commitid}",
+        ]
+        for uploads_list_key in uploads_locations:
+            if redis_connection.exists(uploads_list_key):
+                return True
+        return False
 
-    def lists_of_arguments(self, redis_connection, uploads_list_key):
+    def lists_of_arguments(self, redis_connection, repoid, commitid):
         """Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
             and feeds them to the processing code.
 
@@ -109,13 +118,16 @@ class UploadTask(BaseCodecovTask):
         Yields:
             dict: A dict with the parameters to be passed
         """
-        log.debug("Fetching arguments from redis %s", uploads_list_key)
-        while redis_connection.exists(uploads_list_key):
-            arguments = redis_connection.lpop(uploads_list_key)
-            if (
-                arguments
-            ):  # fix race issue https://app.getsentry.com/codecov/v4/issues/126562772/
-                yield loads(arguments)
+        uploads_locations = [
+            f"testuploads/{repoid}/{commitid}",
+            f"uploads/{repoid}/{commitid}",
+        ]
+        for uploads_list_key in uploads_locations:
+            log.debug("Fetching arguments from redis %s", uploads_list_key)
+            while redis_connection.exists(uploads_list_key):
+                arguments = redis_connection.lpop(uploads_list_key)
+                if arguments:
+                    yield loads(arguments)
 
     async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
         log.info("Received upload task", extra=dict(repoid=repoid, commit=commitid))
@@ -133,8 +145,7 @@ class UploadTask(BaseCodecovTask):
                 lock_name,
                 extra=dict(commit=commitid, repoid=repoid),
             )
-            uploads_list_key = "testuploads/%s/%s" % (repoid, commitid)
-            if not self.has_pending_jobs(redis_connection, uploads_list_key):
+            if not self.has_pending_jobs(redis_connection, repoid, commitid):
                 log.info(
                     "Not retrying since there are likely no jobs that need scheduling",
                     extra=dict(commit=commitid, repoid=repoid),
@@ -153,6 +164,7 @@ class UploadTask(BaseCodecovTask):
                     "was_setup": False,
                     "was_updated": False,
                     "tasks_were_scheduled": False,
+                    "reason": "too_many_retries",
                 }
             self.retry(max_retries=3, countdown=20 * 2 ** self.request.retries)
 
@@ -162,8 +174,7 @@ class UploadTask(BaseCodecovTask):
         log.info(
             "Starting processing of report", extra=dict(repoid=repoid, commit=commitid)
         )
-        uploads_list_key = "testuploads/%s/%s" % (repoid, commitid)
-        if not self.has_pending_jobs(redis_connection, uploads_list_key):
+        if not self.has_pending_jobs(redis_connection, repoid, commitid):
             return {
                 "was_setup": False,
                 "was_updated": False,
@@ -202,7 +213,7 @@ class UploadTask(BaseCodecovTask):
                 exc_info=True,
             )
         argument_list = []
-        for arguments in self.lists_of_arguments(redis_connection, uploads_list_key):
+        for arguments in self.lists_of_arguments(redis_connection, repoid, commitid):
             normalized_arguments = self.normalize_upload_arguments(
                 commit, arguments, redis_connection
             )
@@ -324,7 +335,7 @@ class UploadTask(BaseCodecovTask):
                 repository.hookid = hookid
                 repo_data["repo"]["hookid"] = hookid
                 return True
-            except Exception:
+            except TorngitClientError:
                 log.warning(
                     "Failed to create project webhook",
                     extra=dict(repoid=repository.repoid, commit=commit.commitid),

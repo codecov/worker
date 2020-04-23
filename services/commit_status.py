@@ -1,8 +1,9 @@
-from covreports.config import get_config
+from shared.config import get_config
 from services.yaml import read_yaml_field
+from typing import List
 
 
-def _ci_providers():
+def _ci_providers() -> List[str]:
     providers = get_config("services", "ci_providers")
     if not providers:
         return []
@@ -35,7 +36,7 @@ CI_EXCLUDE = set(("styleci",))
 
 
 class RepositoryCIFilter(object):
-    def __init__(self, commit_yaml):
+    def __init__(self, commit_yaml) -> None:
         ci = read_yaml_field(commit_yaml, ("codecov", "ci")) or []
         ci = set(ci) | ENTERPRISE_DEFAULTS
         self.exclude = (
@@ -46,10 +47,10 @@ class RepositoryCIFilter(object):
             set(filter(lambda ci: ci[0] != "!", ci) if ci else []) | CI_DOMAINS
         )
 
-    def __call__(self, status):
+    def __call__(self, status) -> bool:
         return self._filter(status)
 
-    def _filter(self, status):
+    def _filter(self, status) -> bool:
         domain = ((status["url"] or "").split("/") + ["", "", ""])[2]
         if domain:
             # ignore.com in ('ignore.com',) || skip.domain.com in ('skip',)

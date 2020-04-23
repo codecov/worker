@@ -117,3 +117,5 @@ dmypy.json
 
 background_app/.fdk/metrics
 background_app/.report.json
+
+.pytype
