@@ -54,7 +54,11 @@ class TestPullSyncTask(object):
             database_pull=pull, provider_pull=dict(base=dict(branch="lookatthis")),
         )
         commits = [first_commit.commitid, third_commit.commitid]
-        res = task.update_pull_commits(enriched_pull, commits)
+        commits_at_base = {
+            "commitid": first_commit.commitid,
+            "parents": [{"commitid": third_commit.commitid, "parents": []}],
+        }
+        res = task.update_pull_commits(enriched_pull, commits, commits_at_base)
         assert res == {"merged_count": 2, "soft_deleted_count": 2}
         dbsession.refresh(first_commit)
         dbsession.refresh(second_commit)
@@ -111,7 +115,11 @@ class TestPullSyncTask(object):
             database_pull=pull, provider_pull=dict(base=dict(branch="lookatthis")),
         )
         commits = [first_commit.commitid, third_commit.commitid]
-        res = task.update_pull_commits(enriched_pull, commits)
+        commits_at_base = {
+            "commitid": first_commit.commitid,
+            "parents": [{"commitid": third_commit.commitid, "parents": []}],
+        }
+        res = task.update_pull_commits(enriched_pull, commits, commits_at_base)
         assert res == {"merged_count": 0, "soft_deleted_count": 2}
         dbsession.refresh(first_commit)
         dbsession.refresh(second_commit)
@@ -291,3 +299,31 @@ class TestPullSyncTask(object):
             "pull_updated": False,
             "reason": "unable_fetch_lock",
         }
+
+    def test_was_pr_merged_with_squash(self):
+        ancestors_tree = {
+            "commitid": "c739768fcac68144a3a6d82305b9c4106934d31a",
+            "parents": [
+                {
+                    "commitid": "b33e12816cc3f386dae8add4968cedeff5155021",
+                    "parents": [
+                        {
+                            "commitid": "743b04806ea677403aa2ff26c6bdeb85005de658",
+                            "parents": [],
+                        },
+                        {
+                            "commitid": "some_commit",
+                            "parents": [{"commitid": "paaaaaaaaaaa", "parents": []}],
+                        },
+                    ],
+                }
+            ],
+        }
+        task = PullSyncTask()
+        assert not task.was_pr_merged_with_squash(
+            ["c739768fcac68144a3a6d82305b9c4106934d31a"], ancestors_tree
+        )
+        assert task.was_pr_merged_with_squash(["some_other_stuff"], ancestors_tree)
+        assert not task.was_pr_merged_with_squash(
+            ["some_other_stuff", "some_commit"], ancestors_tree
+        )
