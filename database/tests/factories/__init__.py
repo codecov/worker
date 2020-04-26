@@ -2,7 +2,7 @@ from uuid import uuid4
 from datetime import datetime
 
 import factory
-from database import models
+from database import models, enums
 from hashlib import sha1
 from factory import Factory
 
@@ -69,6 +69,15 @@ class PullFactory(Factory):
     state = "open"
 
     repository = factory.SubFactory(RepositoryFactory)
+
+
+class PullNotificationFactory(Factory):
+    class Meta:
+        model = models.PullNotification
+
+    notification = enums.Notification.status
+
+    pull = factory.SubFactory(PullFactory)
 
 
 class CommitFactory(Factory):

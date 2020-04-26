@@ -5,16 +5,12 @@ from sqlalchemy import func
 from typing import Tuple
 
 from database.models import Owner
+from database.enums import Decoration
 from services.billing import is_pr_billing_plan
 from services.repository import EnrichedPull
 
 
 log = logging.getLogger(__name__)
-
-
-class Decoration(Enum):
-    standard = "standard"
-    upgrade = "upgrade"
 
 
 def is_whitelisted(ownerid) -> bool:

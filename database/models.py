@@ -2,7 +2,8 @@ import random
 import string
 
 from database.base import CodecovBaseModel
-from sqlalchemy import Column, types, ForeignKey
+from database.enums import Notification, Decoration
+from sqlalchemy import Column, types, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects import postgresql
 from sqlalchemy import UniqueConstraint, Index
@@ -152,6 +153,45 @@ class Branch(CodecovBaseModel):
         return f"Branch<{self.branch}@repo<{self.repoid}>>"
 
 
+class PullNotification(CodecovBaseModel):
+
+    __tablename__ = "pull_notifications"
+
+    repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
+    pullid = Column(types.Integer, nullable=False, primary_key=True)
+    notification = Column(
+        postgresql.ENUM(Notification, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
+    createstamp = Column(types.DateTime)
+    updatestamp = Column(types.DateTime)
+    success = Column(types.Boolean)
+    attempted = Column(types.Boolean, default=False)
+    decoration = Column(
+        postgresql.ENUM(Decoration, values_callable=lambda x: [e.value for e in x])
+    )
+
+    pull = relationship("Pull", backref=backref("pull_notifications", cascade="delete"))
+
+    __table_args__ = (
+        Index(
+            "pull_notifications_repoid_pullid",
+            "repoid",
+            "pullid",
+        ),
+        UniqueConstraint(
+            "repoid",
+            "pullid",
+            "notification",
+            name="pull_notifications_repoid_pullid_notification",
+        ),
+        ForeignKeyConstraint([repoid, pullid], ["pulls.repoid", "pulls.pullid"]),
+    )
+
+    def __repr__(self):
+        return f"PullNotification<{self.notification}@pull<{self.pullid}@repo<{self.repoid}>>>"
+
+
 class Pull(CodecovBaseModel):
 
     __tablename__ = "pulls"
@@ -172,6 +212,9 @@ class Pull(CodecovBaseModel):
 
     author = relationship(Owner)
     repository = relationship(Repository, backref=backref("pulls", cascade="delete"))
+    notifications = relationship(
+        PullNotification, backref=backref("pulls", cascade="delete")
+    )
 
     __table_args__ = (Index("pulls_repoid_pullid", "repoid", "pullid", unique=True),)
 
