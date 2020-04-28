@@ -12,6 +12,7 @@ from services.decoration import Decoration
 from services.repository import EnrichedPull
 from services.notification.notifiers.base import NotificationResult
 from services.notification import NotificationService
+from database.enums import Notification, Decoration
 from database.tests.factories import (
     RepositoryFactory,
     CommitFactory,
@@ -153,6 +154,8 @@ class TestNotifyTask(object):
             notify=mocker.MagicMock(return_value=Future()),
             is_enabled=mocker.MagicMock(return_value=True),
             title="the_title",
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
         )
         fake_notifier.name = "fake_hahaha"
         fake_notifier.notify.return_value.set_result(
@@ -436,14 +439,21 @@ class TestNotifyTask(object):
             is_enabled=mocker.MagicMock(return_value=True),
             notify=mocker.MagicMock(return_value=Future()),
             title="good_notifier",
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
         )
         bad_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=True),
             notify=mocker.MagicMock(return_value=Future()),
             title="bad_notifier",
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
         )
         disabled_notifier = mocker.MagicMock(
-            is_enabled=mocker.MagicMock(return_value=False), title="disabled_notifier"
+            is_enabled=mocker.MagicMock(return_value=False),
+            title="disabled_notifier",
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
         )
         good_notifier.notify.return_value.set_result(
             NotificationResult(

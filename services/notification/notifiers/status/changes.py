@@ -1,5 +1,6 @@
 import logging
 
+from database.enums import Notification
 from services.notification.changes import get_changes
 from services.notification.notifiers.status.base import StatusNotifier
 from typing import Any, Dict, Tuple
@@ -22,6 +23,10 @@ class ChangesStatusNotifier(StatusNotifier):
     """
 
     context = "changes"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.status_changes
 
     def is_a_change_worth_noting(self, change) -> bool:
         if not change.new and not change.deleted:

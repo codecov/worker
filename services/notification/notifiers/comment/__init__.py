@@ -13,6 +13,7 @@ from shared.torngit.exceptions import (
     TorngitServerFailureError,
 )
 
+from database.enums import Notification
 from services.notification.notifiers.base import (
     NotificationResult,
     AbstractBaseNotifier,
@@ -64,6 +65,10 @@ class CommentNotifier(AbstractBaseNotifier):
     @property
     def name(self) -> str:
         return "comment"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.comment
 
     async def get_diff(self, comparison: Comparison):
         repository_service = self.repository_service

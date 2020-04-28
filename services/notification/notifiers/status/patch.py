@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from database.enums import Notification
 from services.notification.notifiers.base import Comparison
 from services.yaml.reader import round_number
 from services.notification.notifiers.status.base import StatusNotifier
@@ -20,6 +21,10 @@ class PatchStatusNotifier(StatusNotifier):
     """
 
     context = "patch"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.status_patch
 
     async def _get_patch_status(self, comparison) -> Tuple[str, str]:
         threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")

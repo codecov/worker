@@ -19,6 +19,9 @@ from services.notification.notifiers.base import (
     NotificationResult,
     AbstractBaseNotifier,
 )
+from services.pull_notifications import (
+    create_or_update_pull_notification_from_notification_result,
+)
 from services.yaml import read_yaml_field
 from services.license import is_properly_licensed
 from typing import Any, Iterator
@@ -153,6 +156,11 @@ class NotificationService(object):
             )
             return individual_result
         except (CeleryError, SoftTimeLimitExceeded):
+            individual_result = {
+                "notifier": notifier.name,
+                "title": notifier.title,
+                "result": None,
+            }
             raise
         except asyncio.TimeoutError:
             individual_result = {
@@ -190,3 +198,7 @@ class NotificationService(object):
                 ),
             )
             return individual_result
+        finally:
+            create_or_update_pull_notification_from_notification_result(
+                comparison.pull, notifier, individual_result["result"]
+            )

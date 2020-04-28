@@ -75,7 +75,10 @@ class PullNotificationFactory(Factory):
     class Meta:
         model = models.PullNotification
 
-    notification = enums.Notification.status
+    notification = enums.Notification.comment.value
+    decoration = enums.Decoration.standard.value
+    attempted = False
+    successful = None
 
     pull = factory.SubFactory(PullFactory)
 

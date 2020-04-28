@@ -1,6 +1,7 @@
 import logging
 from decimal import Decimal
 
+from database.enums import Notification
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.status.base import StatusNotifier
 from services.yaml.reader import round_number
@@ -27,6 +28,10 @@ class ProjectStatusNotifier(StatusNotifier):
     """
 
     context = "project"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.status_project
 
     def _get_project_status(self, comparison) -> Tuple[str, str]:
         threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")
