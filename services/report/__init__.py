@@ -57,6 +57,55 @@ class ReportService(object):
             return report
         return self.create_new_report_for_commit(commit)
 
+    def get_appropriate_commit_to_carryforward_from(
+        self, commit: Commit
+    ) -> Optional[Commit]:
+        parent_commit = commit.get_parent_commit()
+        max_parenthood_deepness = 10
+        parent_commit_tracking = []
+        count = 1  # `parent_commit` is already the first parent
+        while (
+            parent_commit is not None
+            and parent_commit.state not in ("complete", "skipped")
+            and count < max_parenthood_deepness
+        ):
+            parent_commit_tracking.append(parent_commit.commitid)
+            log.info(
+                "Going from parent to their parent since they dont match the requisites for CFF",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    current_parent_commit=parent_commit.commitid,
+                    current_state=parent_commit.state,
+                    new_parent_commit=parent_commit.parent_commit_id,
+                ),
+            )
+            parent_commit = parent_commit.get_parent_commit()
+            count += 1
+        if parent_commit is None:
+            log.warning(
+                "No parent commit was found to be carriedforward from",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    parent_tracing=parent_commit_tracking,
+                ),
+            )
+            return None
+        if parent_commit.state not in ("complete", "skipped"):
+            log.warning(
+                "None of the parent commits were in a complete state to be used as CFing base",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    parent_tracing=parent_commit_tracking,
+                    would_be_state=parent_commit.state,
+                    would_be_parent=parent_commit.commitid,
+                ),
+            )
+            return None
+        return parent_commit
+
     def create_new_report_for_commit(self, commit: Commit) -> Report:
         log.info(
             "Creating new report for commit",
@@ -83,37 +132,14 @@ class ReportService(object):
         paths_to_carryforward = get_paths_from_flags(
             self.current_yaml, flags_to_carryforward
         )
-        parent_commit = commit.get_parent_commit()
-        max_parenthood_deepness = 10
-        count = 1  # `parent_commit` is already the first parent
-        while (
-            parent_commit is not None
-            and parent_commit.state != "complete"
-            and count < max_parenthood_deepness
-        ):
-            parent_commit = parent_commit.get_parent_commit()
-            count += 1
+        parent_commit = self.get_appropriate_commit_to_carryforward_from(commit)
         if parent_commit is None:
             log.warning(
-                "No parent commit was found to be carriedforward from",
+                "Could not carryforward report from another commit despite having CF flags",
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
-                    would_be_parent=commit.parent_commit_id,
-                    flags_to_carryforward=flags_to_carryforward,
-                    paths_to_carryforward=paths_to_carryforward,
-                ),
-            )
-            return Report()
-        if parent_commit.state != "complete":
-            log.warning(
-                "None of the parent commits were in a complete state to be used as CFing base",
-                extra=dict(
-                    commit=commit.commitid,
-                    repoid=commit.repoid,
-                    would_be_parent=commit.parent_commit_id,
-                    flags_to_carryforward=flags_to_carryforward,
-                    paths_to_carryforward=paths_to_carryforward,
+                    some_flags_to_carryforward=flags_to_carryforward[:100],
                 ),
             )
             return Report()
