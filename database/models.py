@@ -1,5 +1,6 @@
 import random
 import string
+from datetime import datetime
 
 from database.base import CodecovBaseModel
 from database.enums import Notification, Decoration
@@ -162,10 +163,11 @@ class PullNotification(CodecovBaseModel):
     notification = Column(
         postgresql.ENUM(Notification, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
+        primary_key=True
     )
-    createstamp = Column(types.DateTime)
-    updatestamp = Column(types.DateTime)
-    success = Column(types.Boolean)
+    createstamp = Column(types.DateTime, default=datetime.now)
+    updatestamp = Column(types.DateTime, default=datetime.now(), onupdate=datetime.now())
+    successful = Column(types.Boolean)
     attempted = Column(types.Boolean, default=False)
     decoration = Column(
         postgresql.ENUM(Decoration, values_callable=lambda x: [e.value for e in x])
