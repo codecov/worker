@@ -30,6 +30,7 @@ print(' --hiddenimport kombu.transport.pyamqp')
 print(' --hiddenimport celery.worker.consumer')
 print(' --hiddenimport sqlalchemy.ext.baked')
 print(' --hiddenimport tasks')
+print(' --hiddenimport tornado.curl_httpclient')
 ")
 
 mkdir src
