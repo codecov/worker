@@ -579,7 +579,7 @@ class TestUploadTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_fetch_commit_yaml_and_possibly_store_only_commit_yaml(
-        self, dbsession, mocker
+        self, dbsession, mocker, mock_configuration
     ):
         commit = CommitFactory.create()
         list_top_level_files_result = Future()
