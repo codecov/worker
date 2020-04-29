@@ -1,4 +1,5 @@
 import pytest
+import os
 from asyncio import Future
 from shared.torngit.exceptions import TorngitClientError, TorngitServerUnreachableError
 
@@ -30,6 +31,25 @@ class TestYamlService(BaseTestCase):
         expected_result = {
             "coverage": {"precision": 2},
             "parsers": {"javascript": {"enable_partials": True}},
+        }
+        result = get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
+        assert expected_result == result
+
+    def test_get_final_yaml_no_thing_set_at_all(self, mocker, mock_configuration):
+        mock_configuration._params = None
+        mocker.patch.dict(os.environ, {}, clear=True)
+        mocker.patch.object(
+            mock_configuration, "load_yaml_file", side_effect=FileNotFoundError()
+        )
+        expected_result = {
+            "codecov": {"require_ci_to_pass": True},
+            "coverage": {
+                "precision": 2,
+                "round": "down",
+                "range": [70.0, 100.0],
+                "status": {"project": True, "patch": True, "changes": False},
+            },
+            "comment": {"layout": "reach,diff,flags,tree,reach", "behavior": "default"},
         }
         result = get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
         assert expected_result == result
