@@ -8,7 +8,7 @@ from redis.exceptions import LockError
 
 from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.notify import NotifyTask
-from services.decoration import Decoration
+from services.report import ReportService
 from services.repository import EnrichedPull
 from services.notification.notifiers.base import NotificationResult
 from services.notification import NotificationService
@@ -179,6 +179,9 @@ class TestNotifyTask(object):
         mocked_fetch_pull = mocker.patch(
             "tasks.notify.fetch_and_update_pull_request_information_from_commit",
             return_value=Future(),
+        )
+        mocker.patch.object(
+            ReportService, "get_existing_report_for_commit", return_value=Report()
         )
         mocked_fetch_pull.return_value.set_result(None)
         commit = CommitFactory.create(message="", pullid=None,)

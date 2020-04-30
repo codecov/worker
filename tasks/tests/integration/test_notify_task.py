@@ -47,6 +47,15 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.add(master_commit)
         dbsession.flush()
+        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
+            mock_storage.write_file("archive", chunks_url, content)
+            master_chunks_url = (
+                f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
+            )
+            mock_storage.write_file("archive", master_chunks_url, content)
         task = NotifyTask()
         result = await task.run_async(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
@@ -691,4 +700,56 @@ class TestNotifyTask(object):
         assert sorted(result["notifications"], key=lambda x: x["notifier"]) == sorted(
             expected_result["notifications"], key=lambda x: x["notifier"]
         )
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_notifier_call_no_head_commit_report(
+        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mocked_app = mocker.patch.object(NotifyTask, "app")
+        repository = RepositoryFactory.create(
+            owner__unencrypted_oauth_token="4877ed9686b74b0ee46af7f41a07a4d8063a8afa",
+            owner__username="ThiagoCodecov",
+            name="example-python",
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        master_commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="master",
+            commitid="17a71a9a2f5335ed4d00496c7bbc6405f547a527",
+            repository=repository,
+        )
+        commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+            repository=repository,
+            report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.add(master_commit)
+        dbsession.flush()
+        task = NotifyTask()
+        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            master_chunks_url = (
+                f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
+            )
+            mock_storage.write_file("archive", master_chunks_url, content)
+        result = await task.run_async_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml={"coverage": {"status": {"project": True}}},
+        )
+        expected_result = {
+            "notified": False,
+            "notifications": None,
+            "reason": "no_head_report",
+        }
         assert result == expected_result

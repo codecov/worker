@@ -154,9 +154,9 @@ class PullSyncTask(BaseCodecovTask):
                 "reason": "no_head",
             }
         compared_to = pull.get_comparedto_commit()
-        head_report = report_service.build_report_from_commit(head_commit)
+        head_report = report_service.get_existing_report_for_commit(head_commit)
         if compared_to is not None:
-            base_report = report_service.build_report_from_commit(compared_to)
+            base_report = report_service.get_existing_report_for_commit(compared_to)
         else:
             base_report = None
         commits = None

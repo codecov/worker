@@ -16,7 +16,7 @@ from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from services.archive import ArchiveService
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
-from services.report import ReportService
+from services.report import ReportService, NotReadyToBuildReportYetError
 from services.repository import get_repo_provider_service
 from shared.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
@@ -115,7 +115,14 @@ class UploadProcessorTask(BaseCodecovTask):
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         archive_service = ArchiveService(repository)
-        report = ReportService(commit_yaml).build_report_from_commit(commit)
+        try:
+            report = ReportService(commit_yaml).build_report_from_commit(commit)
+        except NotReadyToBuildReportYetError:
+            log.warning(
+                "Unable to build the existing commit report due to a temporary situation. Retrying",
+                extra=dict(repoid=repoid, commit=commitid,),
+            )
+            self.schedule_for_later_try()
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")
