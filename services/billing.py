@@ -12,5 +12,5 @@ class BillingPlan(Enum):
     pr_yearly = "users-pr-inappy"
 
 
-def is_pr_billing_plan(plan) -> bool:
+def is_pr_billing_plan(plan: str) -> bool:
     return plan in [BillingPlan.pr_monthly.value, BillingPlan.pr_yearly.value]

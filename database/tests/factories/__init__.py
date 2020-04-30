@@ -69,6 +69,7 @@ class PullFactory(Factory):
     state = "open"
 
     repository = factory.SubFactory(RepositoryFactory)
+    author = factory.SubFactory(OwnerFactory)
 
 
 class PullNotificationFactory(Factory):

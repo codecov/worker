@@ -809,7 +809,7 @@ class TestPullRequestFetcher(object):
         assert res.commentid is None
         assert res.diff is None
         assert res.flare is None
-        assert res.author is None
+        assert res.author is pull.author
 
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_torngitexception(
