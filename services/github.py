@@ -1,6 +1,6 @@
 from time import time
 import logging
-
+from datetime import datetime
 import requests
 import jwt
 import shared.torngit as torngit
@@ -54,6 +54,17 @@ def get_github_integration_token(service, integration_id=None):
                 extra=dict(code=res.status_code, text=res.text),
             )
             raise
-        return res.json()["token"]
+        res_json = res.json()
+        log.info(
+            "Requested and received a Github Integration token",
+            extra=dict(
+                valid_from=datetime.fromtimestamp(payload["iat"]).isoformat(),
+                expires_at=res_json.get("expires_at"),
+                permissions=res_json.get("permissions"),
+                repository_selection=res_json.get("repository_selection"),
+                integration_id=integration_id,
+            ),
+        )
+        return res_json["token"]
     else:
         return token
