@@ -5,7 +5,7 @@ import json
 from itertools import chain, combinations, permutations
 
 from tests.base import BaseTestCase
-from services.report import ReportService
+from services.report import ReportService, NotReadyToBuildReportYetError
 from database.tests.factories import CommitFactory
 from services.archive import ArchiveService
 from shared.reports.types import ReportTotals, LineSession, ReportLine
@@ -2521,3 +2521,25 @@ class TestReportService(BaseTestCase):
             "sessions": {},
         }
         assert expected_results_report == readable_report["report"]
+
+    def test_create_new_report_parent_had_no_parent_and_pending(self, dbsession):
+        current_commit = CommitFactory.create(parent_commit_id=None, state="pending",)
+        dbsession.add(current_commit)
+        for i in range(5):
+            current_commit = CommitFactory.create(
+                repository=current_commit.repository,
+                parent_commit_id=current_commit.commitid,
+                report_json=None,
+                state="pending",
+            )
+            dbsession.add(current_commit)
+        commit = CommitFactory.create(
+            repository=current_commit.repository,
+            parent_commit_id=current_commit.commitid,
+            report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
+        with pytest.raises(NotReadyToBuildReportYetError):
+            ReportService(yaml_dict).create_new_report_for_commit(commit)

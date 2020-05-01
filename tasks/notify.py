@@ -176,10 +176,16 @@ class NotifyTask(BaseCodecovTask):
 
             report_service = ReportService(current_yaml)
             if base_commit is not None:
-                base_report = report_service.build_report_from_commit(base_commit)
+                base_report = report_service.get_existing_report_for_commit(base_commit)
             else:
                 base_report = None
-            head_report = report_service.build_report_from_commit(commit)
+            head_report = report_service.get_existing_report_for_commit(commit)
+            if head_report is None:
+                return {
+                    "notified": False,
+                    "notifications": None,
+                    "reason": "no_head_report",
+                }
             notifications = await self.submit_third_party_notifications(
                 current_yaml,
                 base_commit,

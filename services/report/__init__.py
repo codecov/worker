@@ -14,6 +14,10 @@ from services.yaml.reader import read_yaml_field, get_paths_from_flags
 log = logging.getLogger(__name__)
 
 
+class NotReadyToBuildReportYetError(Exception):
+    pass
+
+
 class ReportService(object):
     def __init__(self, current_yaml: Mapping[str, Any] = None):
         self.current_yaml = current_yaml
@@ -70,12 +74,26 @@ class ReportService(object):
             and count < max_parenthood_deepness
         ):
             parent_commit_tracking.append(parent_commit.commitid)
+            if (
+                parent_commit.state == "pending"
+                and parent_commit.parent_commit_id is None
+            ):
+                log.warning(
+                    "One of the ancestors commit doesn't seem to have determined its parent yet",
+                    extra=dict(
+                        commit=commit.commitid,
+                        repoid=commit.repoid,
+                        current_parent_commit=parent_commit.commitid,
+                    ),
+                )
+                raise NotReadyToBuildReportYetError()
             log.info(
                 "Going from parent to their parent since they dont match the requisites for CFF",
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
                     current_parent_commit=parent_commit.commitid,
+                    parent_tracking=parent_commit_tracking,
                     current_state=parent_commit.state,
                     new_parent_commit=parent_commit.parent_commit_id,
                 ),
@@ -98,7 +116,7 @@ class ReportService(object):
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
-                    parent_tracing=parent_commit_tracking,
+                    parent_tracking=parent_commit_tracking,
                     would_be_state=parent_commit.state,
                     would_be_parent=parent_commit.commitid,
                 ),
