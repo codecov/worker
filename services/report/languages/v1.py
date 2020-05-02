@@ -4,6 +4,7 @@ from shared.reports.resources import Report, ReportFile
 from services.yaml import read_yaml_field
 from shared.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
+from helpers.exceptions import CorruptRawReportError
 
 
 class VOneProcessor(BaseLanguageProcessor):
@@ -41,7 +42,14 @@ def from_json(json, fix, ignored_lines, sessionid, config):
             if lns:
                 _file = ReportFile(fn, ignore=ignored_lines.get(fn))
                 for ln, cov in lns.items():
-                    if int(ln) > 0:
+                    try:
+                        line_number = int(ln)
+                    except ValueError:
+                        raise CorruptRawReportError(
+                            "v1",
+                            "file dictionaries expected to have integers, not strings",
+                        )
+                    if line_number > 0:
                         if isinstance(cov, str):
                             try:
                                 int(cov)
@@ -51,7 +59,7 @@ def from_json(json, fix, ignored_lines, sessionid, config):
                                 cov = int(cov)
 
                         # message = messages.get(fn, {}).get(ln)
-                        _file[int(ln)] = ReportLine(
+                        _file[line_number] = ReportLine(
                             coverage=cov,
                             type="b" if type(cov) in (str, bool) else None,
                             sessions=[[sessionid, cov]],
