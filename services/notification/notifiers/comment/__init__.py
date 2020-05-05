@@ -116,7 +116,7 @@ class CommentNotifier(AbstractBaseNotifier):
                 )
         try:
             with metrics.timer(
-                "new_worker.services.notifications.notifiers.comment.build_message"
+                "worker.services.notifications.notifiers.comment.build_message"
             ):
                 message = await self.build_message(comparison)
         except TorngitClientError:
@@ -139,7 +139,7 @@ class CommentNotifier(AbstractBaseNotifier):
         data = {"message": message, "commentid": pull.commentid, "pullid": pull.pullid}
         try:
             with metrics.timer(
-                "new_worker.services.notifications.notifiers.comment.send_notifications"
+                "worker.services.notifications.notifiers.comment.send_notifications"
             ):
                 return await self.send_actual_notification(data)
         except TorngitServerFailureError:
@@ -319,9 +319,7 @@ class CommentNotifier(AbstractBaseNotifier):
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
 
-        with metrics.timer(
-            "new_worker.services.notifications.notifiers.comment.get_diff"
-        ):
+        with metrics.timer("worker.services.notifications.notifiers.comment.get_diff"):
             diff = await self.get_diff(comparison)
         pull_dict = comparison.enriched_pull.provider_pull
         return self._create_message(comparison, diff, pull_dict)

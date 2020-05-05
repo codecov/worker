@@ -114,7 +114,7 @@ class PullSyncTask(BaseCodecovTask):
         current_yaml = get_final_yaml(
             owner_yaml=repository.owner.yaml, repo_yaml=repository.yaml
         )
-        with metrics.timer(f"new_worker.tasks.{self.name},fetch_pull"):
+        with metrics.timer(f"worker.tasks.{self.name},fetch_pull"):
             enriched_pull = await fetch_and_update_pull_request_information(
                 repository_service, db_session, repoid, pullid, current_yaml
             )

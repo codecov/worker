@@ -16,7 +16,7 @@ log = logging.getLogger("worker")
 class BaseCodecovRequest(Request):
     @property
     def metrics_prefix(self):
-        return f"new-worker.task.{self.name}"
+        return f"worker.task.{self.name}"
 
     def on_timeout(self, soft: bool, timeout: int):
         res = super().on_timeout(soft, timeout)
@@ -29,7 +29,7 @@ class BaseCodecovTask(celery_app.Task):
 
     @property
     def metrics_prefix(self):
-        return f"new-worker.task.{self.name}"
+        return f"worker.task.{self.name}"
 
     def run(self, *args, **kwargs):
         with metrics.timer(f"{self.metrics_prefix}.full"):
