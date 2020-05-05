@@ -13,6 +13,7 @@ from app import celery_app
 from database.models import Commit
 from shared.config import get_config
 from helpers.exceptions import ReportExpiredException, ReportEmptyError
+from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
@@ -115,14 +116,15 @@ class UploadProcessorTask(BaseCodecovTask):
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         archive_service = ArchiveService(repository)
-        try:
-            report = ReportService(commit_yaml).build_report_from_commit(commit)
-        except NotReadyToBuildReportYetError:
-            log.warning(
-                "Unable to build the existing commit report due to a temporary situation. Retrying",
-                extra=dict(repoid=repoid, commit=commitid,),
-            )
-            self.schedule_for_later_try()
+        with metrics.timer(f"worker.tasks.{self.name}.build_original_report"):
+            try:
+                report = ReportService(commit_yaml).build_report_from_commit(commit)
+            except NotReadyToBuildReportYetError:
+                log.warning(
+                    "Unable to build the existing commit report due to a temporary situation. Retrying",
+                    extra=dict(repoid=repoid, commit=commitid,),
+                )
+                self.schedule_for_later_try()
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")
@@ -141,15 +143,18 @@ class UploadProcessorTask(BaseCodecovTask):
                     arguments_commitid = arguments.pop("commit", None)
                     if arguments_commitid:
                         assert arguments_commitid == commit.commitid
-                    result = self.process_individual_report(
-                        archive_service,
-                        redis_connection,
-                        commit_yaml,
-                        commit,
-                        report,
-                        should_delete_archive,
-                        **arguments,
-                    )
+                    with metrics.timer(
+                        f"worker.tasks.{self.name}.process_individual_report"
+                    ):
+                        result = self.process_individual_report(
+                            archive_service,
+                            redis_connection,
+                            commit_yaml,
+                            commit,
+                            report,
+                            should_delete_archive,
+                            **arguments,
+                        )
                     individual_info.update(result)
                 except (CeleryError, SoftTimeLimitExceeded):
                     raise
@@ -176,9 +181,10 @@ class UploadProcessorTask(BaseCodecovTask):
                 n_processed,
                 extra=dict(repoid=repoid, commit=commitid),
             )
-            results_dict = await self.save_report_results(
-                db_session, archive_service, repository, commit, report, pr
-            )
+            with metrics.timer(f"worker.tasks.{self.name}.save_report_results"):
+                results_dict = await self.save_report_results(
+                    db_session, archive_service, repository, commit, report, pr
+                )
             log.info(
                 "Processed %d reports",
                 n_processed,
