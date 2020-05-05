@@ -182,10 +182,10 @@ class FunctionCacher(object):
             key = self.generate_key(func, args, kwargs)
             value = self.cache_instance.get_backend().get(key)
             if value is not NO_VALUE:
-                metrics.incr(f"new_worker.caches.{func.__name__}.hits")
+                metrics.incr(f"worker.caches.{func.__name__}.hits")
                 return value
-            metrics.incr(f"new_worker.caches.{func.__name__}.misses")
-            with metrics.timer(f"new_worker.caches.{func.__name__}.runtime"):
+            metrics.incr(f"worker.caches.{func.__name__}.misses")
+            with metrics.timer(f"worker.caches.{func.__name__}.runtime"):
                 result = func(*args, **kwargs)
             self.cache_instance.get_backend().set(key, self.ttl, result)
             return result
@@ -204,10 +204,10 @@ class FunctionCacher(object):
             key = self.generate_key(func, args, kwargs)
             value = self.cache_instance.get_backend().get(key)
             if value is not NO_VALUE:
-                metrics.incr(f"new_worker.caches.{func.__name__}.hits")
+                metrics.incr(f"worker.caches.{func.__name__}.hits")
                 return value
-            metrics.incr(f"new_worker.caches.{func.__name__}.misses")
-            with metrics.timer(f"new_worker.caches.{func.__name__}.runtime"):
+            metrics.incr(f"worker.caches.{func.__name__}.misses")
+            with metrics.timer(f"worker.caches.{func.__name__}.runtime"):
                 result = await func(*args, **kwargs)
             self.cache_instance.get_backend().set(key, self.ttl, result)
             return result

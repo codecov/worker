@@ -112,7 +112,7 @@ class TestBaseCodecovTaskHooks(object):
         k = task.apply()
         res = k.get()
         assert res == {"unusual": "return", "value": ["There"]}
-        mock_metrics.assert_called_with("new-worker.task.test.SampleTask.successes")
+        mock_metrics.assert_called_with("worker.task.test.SampleTask.successes")
 
     def test_sample_task_failure(self, celery_app, mocker):
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
@@ -121,9 +121,7 @@ class TestBaseCodecovTaskHooks(object):
         with pytest.raises(Exception) as exc:
             task.apply().get()
         assert exc.value.args == ("Whhhhyyyyyyy",)
-        mock_metrics.assert_called_with(
-            "new-worker.task.test.FailureSampleTask.failures"
-        )
+        mock_metrics.assert_called_with("worker.task.test.FailureSampleTask.failures")
 
     def test_sample_task_retry(self, celery_app, mocker):
         # Unfortunately we cant really call the task with apply().get()
@@ -134,7 +132,7 @@ class TestBaseCodecovTaskHooks(object):
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
         task = RetrySampleTask()
         task.on_retry("exc", "task_id", "args", "kwargs", "einfo")
-        mock_metrics.assert_called_with("new-worker.task.test.RetrySampleTask.retries")
+        mock_metrics.assert_called_with("worker.task.test.RetrySampleTask.retries")
 
 
 class TestBaseCodecovRequest(object):
@@ -170,4 +168,4 @@ class TestBaseCodecovRequest(object):
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
         request.on_timeout(True, 10)
-        mock_metrics.assert_called_with("new-worker.task.test.SampleTask.timeout")
+        mock_metrics.assert_called_with("worker.task.test.SampleTask.timeout")
