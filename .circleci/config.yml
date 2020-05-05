@@ -59,6 +59,8 @@ jobs:
           make -f Makefile.circle build VERSION=$CIRCLE_TAG
           make -f Makefile.circle push
   test:
+    environment:
+      SONARSCANNER_VERSION: "4.3.0.2102"
     executor: codecov-worker
     steps:
     - run:
@@ -77,6 +79,23 @@ jobs:
           pip install codecov==2.0.16
           codecov -F integration -f integration.coverage.xml  --required
           codecov -F unit -f unit.coverage.xml  --required
+
+    - run:
+        name: Install OpenJDK 11
+        command: sudo apt install openjdk-11-jdk
+
+    - run:
+        name: Install SonarScanner
+        command: |
+          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONARSCANNER_VERSION.zip
+          unzip sonar-scanner-cli-$SONARSCANNER_VERSION.zip
+
+      - run:
+          name: Run SonarScanner
+          command: |
+            echo "sonar.login="$SONAR_TOKEN >> ./sonar-project.properties
+            ./sonar-scanner-$SONARSCANNER_VERSION/bin/sonar-scanner -X
+
   deploy:
     executor: codecov-deploy
     steps:
