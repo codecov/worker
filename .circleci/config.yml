@@ -81,7 +81,7 @@ jobs:
             codecov -F unit -f unit.coverage.xml  --required
 
       - run:
-          name: Install OpenJDK 11
+          name: Install OpenJDK 11 (for SonarScanner)
           command: |
             apk --no-cache add openjdk11 --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
 
@@ -94,7 +94,17 @@ jobs:
       - run:
           name: Run SonarScanner
           command: |
+            # add token
             echo "sonar.login="$SONAR_TOKEN >> ./sonar-project.properties
+
+            # get pr number
+            GITHUB_PR_NUM=$(echo $CIRCLE_PULL_REQUEST | tr -dc '0-9')
+
+            # add pull request info for decoration
+            echo "sonar.pullrequest.key="$GITHUB_PR_NUM >> ./sonar-project.properties
+            echo "sonar.pullrequest.branch="$CIRCLE_BRANCH >> ./sonar-project.properties
+            echo "sonar.pullrequest.base=master" >> ./sonar-project.properties
+
             ./sonar-scanner-$SONARSCANNER_VERSION/bin/sonar-scanner -X
 
   deploy:
