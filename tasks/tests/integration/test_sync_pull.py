@@ -18,7 +18,7 @@ class TestPullSyncTask(object):
         repository = RepositoryFactory.create(
             owner__username="ThiagoCodecov",
             name="example-python",
-            owner__unencrypted_oauth_token="testep9nqipo4lmw5v9b3i52ggtw9v3rknkhre89",
+            owner__unencrypted_oauth_token="testduhiiri16grurxduwjexioy26ohqhaxvk67z",
         )
         report_json = {
             "files": {
