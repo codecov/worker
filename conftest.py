@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
 
 from pathlib import Path
-from asyncio import Future
 
 import pytest
 import vcr
+import mock
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import event
 
@@ -12,6 +12,7 @@ from database.base import Base
 from database.engine import json_dumps
 from sqlalchemy_utils import create_database, database_exists
 from shared.config import ConfigHelper
+from shared.torngit import Github as GithubHandler
 from shared.storage.memory import MemoryStorageService
 from celery_config import initialize_logging
 
@@ -175,11 +176,9 @@ def mock_storage(mocker):
 
 @pytest.fixture
 def mock_repo_provider(mocker):
-    f = Future()
-    f.set_result({})
     m = mocker.patch("services.repository._get_repo_provider_service_instance")
     provider_instance = mocker.MagicMock(
-        get_commit_diff=mocker.MagicMock(return_value=f)
+        GithubHandler, get_commit_diff=mock.AsyncMock(return_value={})
     )
     m.return_value = provider_instance
     yield provider_instance

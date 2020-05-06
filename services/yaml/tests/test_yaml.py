@@ -1,6 +1,7 @@
 import pytest
 import os
-from asyncio import Future
+
+import mock
 from shared.torngit.exceptions import TorngitClientError, TorngitServerUnreachableError
 
 from database.tests.factories import CommitFactory
@@ -122,17 +123,15 @@ class TestYamlService(BaseTestCase):
             {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
             {"name": "tests", "path": "tests", "type": "folder"},
         ]
-        list_files_future = Future()
-        list_files_future.set_result(mocked_list_files_result)
+        list_files_future = mocked_list_files_result
         sample_yaml = "\n".join(
             ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
         )
         contents_result = {"content": sample_yaml}
-        contents_result_future = Future()
-        contents_result_future.set_result(contents_result)
+        contents_result_future = contents_result
         valid_handler = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(return_value=list_files_future),
-            get_source=mocker.MagicMock(return_value=contents_result_future),
+            list_top_level_files=mock.AsyncMock(return_value=list_files_future),
+            get_source=mock.AsyncMock(return_value=contents_result_future),
         )
         commit = CommitFactory.create(
             repository__yaml={
@@ -176,17 +175,15 @@ class TestYamlService(BaseTestCase):
             {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
             {"name": "tests", "path": "tests", "type": "folder"},
         ]
-        list_files_future = Future()
-        list_files_future.set_result(mocked_list_files_result)
+        list_files_future = mocked_list_files_result
         sample_yaml = "\n".join(
             ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
         )
         contents_result = {"content": sample_yaml}
-        contents_result_future = Future()
-        contents_result_future.set_result(contents_result)
+        contents_result_future = contents_result
         valid_handler = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(return_value=list_files_future),
-            get_source=mocker.MagicMock(return_value=contents_result_future),
+            list_top_level_files=mock.AsyncMock(return_value=list_files_future),
+            get_source=mock.AsyncMock(return_value=contents_result_future),
         )
         commit = CommitFactory.create(
             repository__yaml={
@@ -229,17 +226,15 @@ class TestYamlService(BaseTestCase):
         mocked_list_files_result = [
             {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
         ]
-        list_files_future = Future()
-        list_files_future.set_result(mocked_list_files_result)
+        list_files_future = mocked_list_files_result
         sample_yaml = "\n".join(
             ["@codecov:", "  notify:", "    require_ci_to_pass: yes",]
         )
         contents_result = {"content": sample_yaml}
-        contents_result_future = Future()
-        contents_result_future.set_result(contents_result)
+        contents_result_future = contents_result
         valid_handler = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(return_value=list_files_future),
-            get_source=mocker.MagicMock(return_value=contents_result_future),
+            list_top_level_files=mock.AsyncMock(return_value=list_files_future),
+            get_source=mock.AsyncMock(return_value=contents_result_future),
         )
         commit = CommitFactory.create(
             repository__yaml={

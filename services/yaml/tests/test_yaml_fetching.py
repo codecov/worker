@@ -1,6 +1,5 @@
-from asyncio import Future
-
 import pytest
+import mock
 
 from tests.base import BaseTestCase
 from database.tests.factories import CommitFactory
@@ -29,10 +28,9 @@ class TestYamlSavingService(BaseTestCase):
             {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
             {"name": "tests", "path": "tests", "type": "folder"},
         ]
-        f = Future()
-        f.set_result(mocked_result)
+        f = mocked_result
         valid_handler = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(return_value=f)
+            list_top_level_files=mock.AsyncMock(return_value=f)
         )
         commit = CommitFactory.create()
         res = await determine_commit_yaml_location(commit, valid_handler)
@@ -49,10 +47,9 @@ class TestYamlSavingService(BaseTestCase):
             {"path": "codecov.yaml", "type": "file"},
             {"path": "tests", "type": "folder"},
         ]
-        f = Future()
-        f.set_result(mocked_result)
+        f = mocked_result
         valid_handler = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(return_value=f)
+            list_top_level_files=mock.AsyncMock(return_value=f)
         )
         commit = CommitFactory.create()
         res = await determine_commit_yaml_location(commit, valid_handler)
@@ -79,13 +76,11 @@ class TestYamlSavingService(BaseTestCase):
             {"name": "codecov", "path": ".github/codecov", "type": "folder"},
             {"name": "codecov.yaml", "path": ".github/codecov.yaml", "type": "file"},
         ]
-        f = Future()
-        list_file_future = Future()
-        f.set_result(mocked_result)
-        list_file_future.set_result(files_inside_folder)
+        f = mocked_result
+        list_file_future = files_inside_folder
         valid_handler = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(return_value=f),
-            list_files=mocker.MagicMock(return_value=list_file_future),
+            list_top_level_files=mock.AsyncMock(return_value=f),
+            list_files=mock.AsyncMock(return_value=list_file_future),
         )
         commit = CommitFactory.create()
         res = await determine_commit_yaml_location(commit, valid_handler)
@@ -108,13 +103,11 @@ class TestYamlSavingService(BaseTestCase):
             {"path": ".github/codecov", "type": "folder"},
             {"path": ".github/codecov.yaml", "type": "file"},
         ]
-        f = Future()
-        list_file_future = Future()
-        f.set_result(mocked_result)
-        list_file_future.set_result(files_inside_folder)
+        f = mocked_result
+        list_file_future = files_inside_folder
         valid_handler = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(return_value=f),
-            list_files=mocker.MagicMock(return_value=list_file_future),
+            list_top_level_files=mock.AsyncMock(return_value=f),
+            list_files=mock.AsyncMock(return_value=list_file_future),
         )
         commit = CommitFactory.create()
         res = await determine_commit_yaml_location(commit, valid_handler)
@@ -129,10 +122,9 @@ class TestYamlSavingService(BaseTestCase):
             {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
             {"name": "tests", "path": "tests", "type": "folder"},
         ]
-        f = Future()
-        f.set_result(mocked_result)
+        f = mocked_result
         valid_handler = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(return_value=f)
+            list_top_level_files=mock.AsyncMock(return_value=f)
         )
         commit = CommitFactory.create()
         res = await determine_commit_yaml_location(commit, valid_handler)
@@ -149,14 +141,12 @@ class TestYamlSavingService(BaseTestCase):
             {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
             {"name": "tests", "path": "tests", "type": "folder"},
         ]
-        list_files_future = Future()
-        list_files_future.set_result(mocked_list_files_result)
+        list_files_future = mocked_list_files_result
         contents_result = {"content": sample_yaml}
-        contents_result_future = Future()
-        contents_result_future.set_result(contents_result)
+        contents_result_future = contents_result
         valid_handler = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(return_value=list_files_future),
-            get_source=mocker.MagicMock(return_value=contents_result_future),
+            list_top_level_files=mock.AsyncMock(return_value=list_files_future),
+            get_source=mock.AsyncMock(return_value=contents_result_future),
         )
         commit = CommitFactory.create()
         res = await fetch_commit_yaml_from_provider(commit, valid_handler)

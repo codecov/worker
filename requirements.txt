@@ -34,7 +34,7 @@ jmespath==0.9.4
 kombu==4.5.0
 lxml==4.3.1
 minio==5.0.8
-mock==2.0.0
+mock==4.0.2
 more-itertools==7.2.0
 multidict==4.5.2
 oauth2==1.9.0.post1
@@ -52,7 +52,7 @@ PyJWT==1.7.1
 pytest==4.5.0
 pytest-asyncio==0.10.0
 pytest-cov==2.5.1
-pytest-mock==1.10.1
+pytest-mock==1.4.0
 pytest-sqlalchemy==0.2.1
 python-dateutil==2.8.0
 python-json-logger==0.1.11

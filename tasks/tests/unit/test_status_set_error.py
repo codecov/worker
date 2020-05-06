@@ -1,7 +1,6 @@
 import json
-import asyncio
+import mock
 from pathlib import Path
-from asyncio import Future
 
 import pytest
 from shared.torngit.status import Status
@@ -19,13 +18,12 @@ class TestSetErrorTaskUnit(object):
         repo = mocker.MagicMock(
             service="github",
             data=dict(repo=dict(repoid=123)),
-            set_commit_status=mocker.MagicMock(return_value=None),
+            set_commit_status=mock.AsyncMock(return_value=None),
         )
         mocked_1.return_value = repo
 
         mocked_2 = mocker.patch("tasks.status_set_error.get_current_yaml")
-        fetch_current_yaml = Future()
-        fetch_current_yaml.set_result({"coverage": {"status": None}})
+        fetch_current_yaml = {"coverage": {"status": None}}
         mocked_2.return_value = fetch_current_yaml
         commit = CommitFactory.create()
         dbsession.add(commit)
@@ -70,28 +68,24 @@ class TestSetErrorTaskUnit(object):
             if cc_status_exists
             else []
         )
+        get_commit_statuses = Status(statuses)
+        set_commit_status = None
 
         mocked_1 = mocker.patch("tasks.status_set_error.get_repo_provider_service")
-        get_commit_statuses = Future()
-        set_commit_status = Future()
         repo = mocker.MagicMock(
             service="github",
             slug="owner/repo",
             token={"username": "bot"},
             data=dict(repo=dict(repoid=123)),
-            get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
-            set_commit_status=mocker.MagicMock(return_value=set_commit_status),
+            get_commit_statuses=mock.AsyncMock(return_value=get_commit_statuses),
+            set_commit_status=mock.AsyncMock(return_value=set_commit_status),
         )
         mocked_1.return_value = repo
 
-        get_commit_statuses.set_result(Status(statuses))
-        set_commit_status.set_result(None)
-
         mocked_2 = mocker.patch("tasks.status_set_error.get_current_yaml")
-        fetch_current_yaml = Future()
-        fetch_current_yaml.set_result(
-            {"coverage": {"status": {context: {"default": {"target": 80}}}}}
-        )
+        fetch_current_yaml = {
+            "coverage": {"status": {context: {"default": {"target": 80}}}}
+        }
         mocked_2.return_value = fetch_current_yaml
 
         commit = CommitFactory.create()
@@ -133,29 +127,25 @@ class TestSetErrorTaskUnit(object):
                 }
             ]
         )
+        get_commit_statuses = Status(statuses)
+        set_commit_status = None
 
         mocked_1 = mocker.patch("tasks.status_set_error.get_repo_provider_service")
-        get_commit_statuses = Future()
-        set_commit_status = Future()
         repo = mocker.MagicMock(
             service="github",
             slug="owner/repo",
             token={"username": "bot"},
             data=dict(repo=dict(repoid=123)),
-            get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
-            set_commit_status=mocker.MagicMock(return_value=set_commit_status),
+            get_commit_statuses=mock.AsyncMock(return_value=get_commit_statuses),
+            set_commit_status=mock.AsyncMock(return_value=set_commit_status),
         )
         mocked_1.return_value = repo
 
         mocked_2 = mocker.patch("tasks.status_set_error.get_current_yaml")
-        fetch_current_yaml = Future()
-        fetch_current_yaml.set_result(
-            {"coverage": {"status": {context: {"default": {"target": 80}}}}}
-        )
+        fetch_current_yaml = {
+            "coverage": {"status": {context: {"default": {"target": 80}}}}
+        }
         mocked_2.return_value = fetch_current_yaml
-
-        get_commit_statuses.set_result(Status(statuses))
-        set_commit_status.set_result(None)
 
         commit = CommitFactory.create()
         dbsession.add(commit)

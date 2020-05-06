@@ -1,6 +1,7 @@
 import pytest
-from asyncio import Future, TimeoutError as AsyncioTimeoutError
+from asyncio import TimeoutError as AsyncioTimeoutError
 
+import mock
 from celery.exceptions import SoftTimeLimitExceeded
 
 from services.notification import NotificationService
@@ -72,29 +73,29 @@ class TestNotificationService(object):
         commit = sample_comparison.head.commit
         good_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=True),
-            notify=mocker.MagicMock(return_value=Future()),
             title="good_notifier",
+            notify=mock.AsyncMock(),
         )
         bad_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=True),
-            notify=mocker.MagicMock(return_value=Future()),
             title="bad_notifier",
+            notify=mock.AsyncMock(),
         )
         disabled_notifier = mocker.MagicMock(
-            is_enabled=mocker.MagicMock(return_value=False), title="disabled_notifier"
+            is_enabled=mocker.MagicMock(return_value=False),
+            notify=mock.AsyncMock(),
+            title="disabled_notifier",
         )
-        good_notifier.notify.return_value.set_result(
-            NotificationResult(
-                notification_attempted=True,
-                notification_successful=True,
-                explanation="",
-                data_sent={"some": "data"},
-            )
+        good_notifier.notify.return_value = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation="",
+            data_sent={"some": "data"},
         )
         good_notifier.name = "good_name"
         bad_notifier.name = "bad_name"
         disabled_notifier.name = "disabled_notifier_name"
-        bad_notifier.notify.return_value.set_exception(Exception("This is bad"))
+        bad_notifier.notify.side_effect = Exception("This is bad")
         mocker.patch.object(
             NotificationService,
             "get_notifiers_instances",
@@ -122,11 +123,8 @@ class TestNotificationService(object):
     async def test_notify_individual_notifier_timeout(self, mocker, sample_comparison):
         current_yaml = {}
         commit = sample_comparison.head.commit
-        notifier = mocker.MagicMock(
-            title="fake_notifier", notify=mocker.MagicMock(return_value=Future())
-        )
-        notifier.notify.return_value = Future()
-        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifier = mocker.MagicMock(title="fake_notifier", notify=mock.AsyncMock())
+        notifier.notify.side_effect = AsyncioTimeoutError()
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
@@ -143,29 +141,27 @@ class TestNotificationService(object):
         commit = sample_comparison.head.commit
         good_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=True),
-            notify=mocker.MagicMock(return_value=Future()),
+            notify=mock.AsyncMock(),
             title="good_notifier",
         )
         bad_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=True),
-            notify=mocker.MagicMock(return_value=Future()),
+            notify=mock.AsyncMock(),
             title="bad_notifier",
         )
         disabled_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=False), title="disabled_notifier"
         )
-        good_notifier.notify.return_value.set_result(
-            NotificationResult(
-                notification_attempted=True,
-                notification_successful=True,
-                explanation="",
-                data_sent={"some": "data"},
-            )
+        good_notifier.notify.return_value = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation="",
+            data_sent={"some": "data"},
         )
         good_notifier.name = "good_name"
         bad_notifier.name = "bad_name"
         disabled_notifier.name = "disabled_notifier_name"
-        bad_notifier.notify.return_value.set_exception(SoftTimeLimitExceeded())
+        bad_notifier.notify.side_effect = SoftTimeLimitExceeded()
         mocker.patch.object(
             NotificationService,
             "get_notifiers_instances",
