@@ -1,5 +1,8 @@
-from json import loads, dumps
+from json import loads
 
+import pytest
+
+from helpers.exceptions import CorruptRawReportError
 from tests.base import BaseTestCase
 from services.report.languages import v1
 
@@ -18,6 +21,43 @@ txt = """
     }
 }
 
+"""
+
+invalid_report = """{
+    "coverage": {
+        "/home/repo/app/scable/channel.rb": {
+            "lines": [
+                "1",
+                "1",
+                "None",
+                "None"
+            ]
+        },
+        "/home/repo/app/scable/connection.rb": {},
+        "/home/repo/app/controllers/api/base_controller.rb": {},
+        "/home/path/to/base_controller.rb": {},
+        "/home/path/to/defaults.rb": {},
+        "/home/path/to/users_controller.rb": {},
+        "/home/path/to/validators/invoice_date.rb": {},
+        "/home/path/to/validators/max_length.rb": {},
+        "/home/repo/app/lib/parser/json_api.rb": {},
+        "/home/repo/lib/exceptions.rb": {
+            "lines": [
+                "1",
+                "1",
+                "1",
+                "None",
+                "1",
+                "1",
+                "1",
+                "1",
+                "1",
+                "1"
+            ]
+        }
+    },
+    "timestamp": 1588372645
+}
 """
 
 
@@ -46,3 +86,12 @@ class TestVOne(BaseTestCase):
 
     def test_not_list(self):
         assert v1.from_json({"coverage": "<string>"}, str, {}, 0, {}) is None
+
+    def test_report_that_looks_valid_but_isnt(self):
+        with pytest.raises(CorruptRawReportError) as ex:
+            v1.from_json(loads(invalid_report), lambda x: x, {}, 0, {})
+        assert ex.value.expected_format == "v1"
+        assert (
+            ex.value.corruption_error
+            == "file dictionaries expected to have integers, not strings"
+        )
