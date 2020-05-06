@@ -33,13 +33,10 @@ class BaseCodecovTask(celery_app.Task):
 
     def run(self, *args, **kwargs):
         with metrics.timer(f"{self.metrics_prefix}.full"):
-            loop = asyncio.get_event_loop()
             db_session = get_db_session()
             try:
                 with metrics.timer(f"{self.metrics_prefix}.run"):
-                    return loop.run_until_complete(
-                        self.run_async(db_session, *args, **kwargs)
-                    )
+                    return asyncio.run(self.run_async(db_session, *args, **kwargs))
             except SQLAlchemyError:
                 log.exception(
                     "An error talking to the database occurred",
