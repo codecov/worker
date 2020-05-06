@@ -1,6 +1,6 @@
 import pytest
-from asyncio import Future
 from datetime import datetime
+import mock
 
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -131,18 +131,15 @@ class TestRepositoryServiceTestCase(object):
             commitid=grandparent_commit_id, repository=repository
         )
         commit = CommitFactory.create(parent_commit_id=None, repository=repository)
-        f = Future()
-        f.set_result(
-            {
-                "commitid": commit.commitid,
-                "parents": [
-                    {
-                        "commitid": parent_commit_id,
-                        "parents": [{"commitid": grandparent_commit_id, "parents": []}],
-                    }
-                ],
-            }
-        )
+        f = {
+            "commitid": commit.commitid,
+            "parents": [
+                {
+                    "commitid": parent_commit_id,
+                    "parents": [{"commitid": grandparent_commit_id, "parents": []}],
+                }
+            ],
+        }
         dbsession.add(parent_commit)
         dbsession.add(commit)
         dbsession.flush()
@@ -168,18 +165,15 @@ class TestRepositoryServiceTestCase(object):
         deceiving_parent_commit = CommitFactory.create(
             commitid=parent_commit_id, repository=second_repository
         )
-        f = Future()
-        f.set_result(
-            {
-                "commitid": commit.commitid,
-                "parents": [
-                    {
-                        "commitid": parent_commit_id,
-                        "parents": [{"commitid": grandparent_commit_id, "parents": []}],
-                    }
-                ],
-            }
-        )
+        f = {
+            "commitid": commit.commitid,
+            "parents": [
+                {
+                    "commitid": parent_commit_id,
+                    "parents": [{"commitid": grandparent_commit_id, "parents": []}],
+                }
+            ],
+        }
         dbsession.add(parent_commit)
         dbsession.add(commit)
         dbsession.add(deceiving_parent_commit)
@@ -290,25 +284,21 @@ class TestRepositoryServiceTestCase(object):
         dbsession.add(commit)
         dbsession.flush()
         dbsession.refresh(commit)
-        f = Future()
-        f.set_result(
-            {
-                "author": {
-                    "id": None,
-                    "username": None,
-                    "email": "email@email.com",
-                    "name": "Mario",
-                },
-                "message": "This message is brought to you by",
-                "parents": [possible_parent_commit.commitid],
-                "timestamp": "2018-07-09T23:39:20Z",
-            }
-        )
-        get_pull_request_result = Future()
-        get_pull_request_result.set_result({"head": {"branch": "newbranchyeah"}})
+        f = {
+            "author": {
+                "id": None,
+                "username": None,
+                "email": "email@email.com",
+                "name": "Mario",
+            },
+            "message": "This message is brought to you by",
+            "parents": [possible_parent_commit.commitid],
+            "timestamp": "2018-07-09T23:39:20Z",
+        }
+        get_pull_request_result = {"head": {"branch": "newbranchyeah"}}
         repository_service = mocker.MagicMock(
-            get_commit=mocker.MagicMock(return_value=f),
-            get_pull_request=mocker.MagicMock(return_value=get_pull_request_result),
+            get_commit=mock.AsyncMock(return_value=f),
+            get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
         await update_commit_from_provider_info(repository_service, commit)
         dbsession.flush()
@@ -342,25 +332,21 @@ class TestRepositoryServiceTestCase(object):
         dbsession.add(commit)
         dbsession.flush()
         dbsession.refresh(commit)
-        f = Future()
-        f.set_result(
-            {
-                "author": {
-                    "id": "author_id",
-                    "username": "author_username",
-                    "email": "email@email.com",
-                    "name": "Mario",
-                },
-                "message": "This message is brought to you by",
-                "parents": [possible_parent_commit.commitid],
-                "timestamp": "2018-07-09T23:39:20Z",
-            }
-        )
-        get_pull_request_result = Future()
-        get_pull_request_result.set_result({"head": {"branch": "newbranchyeah"}})
+        f = {
+            "author": {
+                "id": "author_id",
+                "username": "author_username",
+                "email": "email@email.com",
+                "name": "Mario",
+            },
+            "message": "This message is brought to you by",
+            "parents": [possible_parent_commit.commitid],
+            "timestamp": "2018-07-09T23:39:20Z",
+        }
+        get_pull_request_result = {"head": {"branch": "newbranchyeah"}}
         repository_service = mocker.MagicMock(
-            get_commit=mocker.MagicMock(return_value=f),
-            get_pull_request=mocker.MagicMock(return_value=get_pull_request_result),
+            get_commit=mock.AsyncMock(return_value=f),
+            get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
         await update_commit_from_provider_info(repository_service, commit)
         dbsession.flush()
@@ -397,27 +383,24 @@ class TestRepositoryServiceTestCase(object):
         dbsession.add(commit)
         dbsession.flush()
         dbsession.refresh(commit)
-        f = Future()
-        f.set_result(
-            {
-                "author": {
-                    "id": "author_id",
-                    "username": "author_username",
-                    "email": "email@email.com",
-                    "name": "Mario",
-                },
-                "message": "Merged in aaaa/coverage.py (pull request #99) Fix #123: crash",
-                "parents": [possible_parent_commit.commitid],
-                "timestamp": "2018-07-09T23:39:20Z",
-            }
-        )
-        get_pull_request_result = Future()
-        get_pull_request_result.set_result(
-            {"head": {"branch": "newbranchyeah"}, "base": {"branch": "thebasebranch"},}
-        )
+        f = {
+            "author": {
+                "id": "author_id",
+                "username": "author_username",
+                "email": "email@email.com",
+                "name": "Mario",
+            },
+            "message": "Merged in aaaa/coverage.py (pull request #99) Fix #123: crash",
+            "parents": [possible_parent_commit.commitid],
+            "timestamp": "2018-07-09T23:39:20Z",
+        }
+        get_pull_request_result = {
+            "head": {"branch": "newbranchyeah"},
+            "base": {"branch": "thebasebranch"},
+        }
         repository_service = mocker.MagicMock(
-            get_commit=mocker.MagicMock(return_value=f),
-            get_pull_request=mocker.MagicMock(return_value=get_pull_request_result),
+            get_commit=mock.AsyncMock(return_value=f),
+            get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
         await update_commit_from_provider_info(repository_service, commit)
         dbsession.flush()
@@ -493,19 +476,16 @@ class TestPullRequestFetcher(object):
         dbsession.add(base_commit)
         dbsession.flush()
         current_yaml = {}
-        get_pull_request_result = Future()
-        get_pull_request_result.set_result(
-            {
-                "base": {"branch": "master", "commitid": base_commit.commitid},
-                "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
-                "number": "1",
-                "id": "1",
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            }
-        )
+        get_pull_request_result = {
+            "base": {"branch": "master", "commitid": base_commit.commitid},
+            "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
+            "number": "1",
+            "id": "1",
+            "state": "open",
+            "title": "Creating new code for reasons no one knows",
+        }
         repository_service = mocker.MagicMock(
-            get_pull_request=mocker.MagicMock(return_value=get_pull_request_result),
+            get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
         enriched_pull = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml
@@ -549,34 +529,28 @@ class TestPullRequestFetcher(object):
         dbsession.add(base_commit)
         dbsession.flush()
         current_yaml = {}
-        f = Future()
-        f.set_result(
-            {
-                "author": {
-                    "id": "author_id",
-                    "username": "author_username",
-                    "email": "email@email.com",
-                    "name": "Mario",
-                },
-                "message": "Merged in aaaa/coverage.py (pull request #99) Fix #123: crash",
-                "timestamp": datetime(2019, 10, 10),
-                "parents": [],
-            }
-        )
-        get_pull_request_result = Future()
-        get_pull_request_result.set_result(
-            {
-                "base": {"branch": "master", "commitid": base_commit.commitid},
-                "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            }
-        )
+        f = {
+            "author": {
+                "id": "author_id",
+                "username": "author_username",
+                "email": "email@email.com",
+                "name": "Mario",
+            },
+            "message": "Merged in aaaa/coverage.py (pull request #99) Fix #123: crash",
+            "timestamp": datetime(2019, 10, 10),
+            "parents": [],
+        }
+        get_pull_request_result = {
+            "base": {"branch": "master", "commitid": base_commit.commitid},
+            "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
+            "number": str(pull.pullid),
+            "id": str(pull.pullid),
+            "state": "open",
+            "title": "Creating new code for reasons no one knows",
+        }
         repository_service = mocker.MagicMock(
-            get_commit=mocker.MagicMock(return_value=f),
-            get_pull_request=mocker.MagicMock(return_value=get_pull_request_result),
+            get_commit=mock.AsyncMock(return_value=f),
+            get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
         enriched_pull = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml
@@ -623,34 +597,28 @@ class TestPullRequestFetcher(object):
         dbsession.add(base_commit)
         dbsession.flush()
         current_yaml = {}
-        f = Future()
-        f.set_result(
-            {
-                "author": {
-                    "id": "author_id",
-                    "username": "author_username",
-                    "email": "email@email.com",
-                    "name": "Mario",
-                },
-                "message": "Merged in aaaa/coverage.py (pull request #99) Fix #123: crash",
-                "timestamp": datetime(2019, 10, 10),
-                "parents": [],
-            }
-        )
-        get_pull_request_result = Future()
-        get_pull_request_result.set_result(
-            {
-                "base": {"branch": "master", "commitid": base_commit.commitid},
-                "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            }
-        )
+        f = {
+            "author": {
+                "id": "author_id",
+                "username": "author_username",
+                "email": "email@email.com",
+                "name": "Mario",
+            },
+            "message": "Merged in aaaa/coverage.py (pull request #99) Fix #123: crash",
+            "timestamp": datetime(2019, 10, 10),
+            "parents": [],
+        }
+        get_pull_request_result = {
+            "base": {"branch": "master", "commitid": base_commit.commitid},
+            "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
+            "number": str(pull.pullid),
+            "id": str(pull.pullid),
+            "state": "open",
+            "title": "Creating new code for reasons no one knows",
+        }
         repository_service = mocker.MagicMock(
-            get_commit=mocker.MagicMock(return_value=f),
-            get_pull_request=mocker.MagicMock(return_value=get_pull_request_result),
+            get_commit=mock.AsyncMock(return_value=f),
+            get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
         enriched_pull = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml
@@ -698,34 +666,28 @@ class TestPullRequestFetcher(object):
         dbsession.add(compared_to_commit)
         dbsession.flush()
         current_yaml = {}
-        f = Future()
-        f.set_result(
-            {
-                "author": {
-                    "id": "author_id",
-                    "username": "author_username",
-                    "email": "email@email.com",
-                    "name": "Mario",
-                },
-                "message": "Merged in aaaa/coverage.py (pull request #99) Fix #123: crash",
-                "parents": [],
-                "timestamp": datetime(2019, 10, 10),
-            }
-        )
-        get_pull_request_result = Future()
-        get_pull_request_result.set_result(
-            {
-                "base": {"branch": "master", "commitid": "somecommitid"},
-                "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            }
-        )
+        f = {
+            "author": {
+                "id": "author_id",
+                "username": "author_username",
+                "email": "email@email.com",
+                "name": "Mario",
+            },
+            "message": "Merged in aaaa/coverage.py (pull request #99) Fix #123: crash",
+            "parents": [],
+            "timestamp": datetime(2019, 10, 10),
+        }
+        get_pull_request_result = {
+            "base": {"branch": "master", "commitid": "somecommitid"},
+            "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
+            "number": str(pull.pullid),
+            "id": str(pull.pullid),
+            "state": "open",
+            "title": "Creating new code for reasons no one knows",
+        }
         repository_service = mocker.MagicMock(
-            get_commit=mocker.MagicMock(return_value=f),
-            get_pull_request=mocker.MagicMock(return_value=get_pull_request_result),
+            get_commit=mock.AsyncMock(return_value=f),
+            get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
         enriched_pull = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml
@@ -772,22 +734,19 @@ class TestPullRequestFetcher(object):
         dbsession.add(compared_to_commit)
         dbsession.flush()
         current_yaml = {}
-        f = Future()
-        f.set_exception(TorngitObjectNotFoundError("response", "message"))
-        get_pull_request_result = Future()
-        get_pull_request_result.set_result(
-            {
-                "base": {"branch": "master", "commitid": "somecommitid"},
-                "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            }
-        )
+        get_pull_request_result = {
+            "base": {"branch": "master", "commitid": "somecommitid"},
+            "head": {"branch": "reason/some-testing", "commitid": commit.commitid},
+            "number": str(pull.pullid),
+            "id": str(pull.pullid),
+            "state": "open",
+            "title": "Creating new code for reasons no one knows",
+        }
         repository_service = mocker.MagicMock(
-            get_commit=mocker.MagicMock(return_value=f),
-            get_pull_request=mocker.MagicMock(return_value=get_pull_request_result),
+            get_commit=mock.AsyncMock(
+                side_effect=TorngitObjectNotFoundError("response", "message")
+            ),
+            get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
         enriched_pull = await fetch_and_update_pull_request_information(
             repository_service, dbsession, pull.repoid, pull.pullid, current_yaml
@@ -832,12 +791,10 @@ class TestPullRequestFetcher(object):
         dbsession.add(compared_to_commit)
         dbsession.flush()
         current_yaml = {}
-        find_pull_request_result = Future()
-        find_pull_request_result.set_exception(
-            TorngitClientError(422, "response", "message")
-        )
         repository_service = mocker.MagicMock(
-            find_pull_request=mocker.MagicMock(return_value=find_pull_request_result),
+            find_pull_request=mock.AsyncMock(
+                side_effect=TorngitClientError(422, "response", "message")
+            ),
         )
         res = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml
@@ -865,12 +822,10 @@ class TestPullRequestFetcher(object):
         dbsession.add(compared_to_commit)
         dbsession.flush()
         current_yaml = {}
-        find_pull_request_result = Future()
-        find_pull_request_result.set_exception(
-            TorngitObjectNotFoundError("response", "message")
-        )
         repository_service = mocker.MagicMock(
-            get_pull_request=mocker.MagicMock(return_value=find_pull_request_result),
+            get_pull_request=mock.AsyncMock(
+                side_effect=TorngitObjectNotFoundError("response", "message")
+            ),
         )
         res = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml
@@ -886,10 +841,10 @@ class TestPullRequestFetcher(object):
         dbsession.add(pull)
         dbsession.flush()
         current_yaml = {}
-        result = Future()
-        result.set_exception(TorngitServerUnreachableError())
         repository_service = mocker.MagicMock(
-            get_pull_request=mocker.MagicMock(return_value=result),
+            get_pull_request=mock.AsyncMock(
+                side_effect=TorngitServerUnreachableError()
+            ),
         )
         res = await fetch_and_update_pull_request_information(
             repository_service, dbsession, pull.repoid, pull.pullid, current_yaml
@@ -920,12 +875,10 @@ class TestPullRequestFetcher(object):
         dbsession.add(compared_to_commit)
         dbsession.flush()
         current_yaml = {}
-        find_pull_request_result = Future()
-        find_pull_request_result.set_exception(
-            TorngitObjectNotFoundError("response", "message")
-        )
         repository_service = mocker.MagicMock(
-            get_pull_request=mocker.MagicMock(return_value=find_pull_request_result),
+            get_pull_request=mock.AsyncMock(
+                side_effect=TorngitObjectNotFoundError("response", "message")
+            ),
         )
         res = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml

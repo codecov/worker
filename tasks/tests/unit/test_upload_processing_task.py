@@ -1,5 +1,4 @@
 from pathlib import Path
-from asyncio import Future
 
 import pytest
 import celery
@@ -488,9 +487,9 @@ class TestUploadProcessorTask(object):
         report.append(report_file_1)
         report.append(report_file_2)
         chunks_archive_service = ArchiveService(commit.repository)
-        f = Future()
-        f.set_exception(TorngitObjectNotFoundError("response", "message"))
-        mock_repo_provider.get_commit_diff.return_value = f
+        mock_repo_provider.get_commit_diff.side_effect = TorngitObjectNotFoundError(
+            "response", "message"
+        )
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
             chunks_archive_service=chunks_archive_service,
@@ -575,30 +574,27 @@ class TestUploadProcessorTask(object):
         report.append(report_file_1)
         report.append(report_file_2)
         chunks_archive_service = ArchiveService(commit.repository)
-        f = Future()
-        f.set_result(
-            {
-                "files": {
-                    "path/to/first.py": {
-                        "type": "modified",
-                        "before": None,
-                        "segments": [
-                            {
-                                "header": ["9", "3", "9", "5"],
-                                "lines": [
-                                    "+sudo: false",
-                                    "+",
-                                    " language: python",
-                                    " ",
-                                    " python:",
-                                ],
-                            }
-                        ],
-                        "stats": {"added": 2, "removed": 0},
-                    }
+        f = {
+            "files": {
+                "path/to/first.py": {
+                    "type": "modified",
+                    "before": None,
+                    "segments": [
+                        {
+                            "header": ["9", "3", "9", "5"],
+                            "lines": [
+                                "+sudo: false",
+                                "+",
+                                " language: python",
+                                " ",
+                                " python:",
+                            ],
+                        }
+                    ],
+                    "stats": {"added": 2, "removed": 0},
                 }
             }
-        )
+        }
         mock_repo_provider.get_commit_diff.return_value = f
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
@@ -645,30 +641,27 @@ class TestUploadProcessorTask(object):
         dbsession.flush()
         report = Report()
         chunks_archive_service = ArchiveService(commit.repository)
-        f = Future()
-        f.set_result(
-            {
-                "files": {
-                    "path/to/first.py": {
-                        "type": "modified",
-                        "before": None,
-                        "segments": [
-                            {
-                                "header": ["9", "3", "9", "5"],
-                                "lines": [
-                                    "+sudo: false",
-                                    "+",
-                                    " language: python",
-                                    " ",
-                                    " python:",
-                                ],
-                            }
-                        ],
-                        "stats": {"added": 2, "removed": 0},
-                    }
+        f = {
+            "files": {
+                "path/to/first.py": {
+                    "type": "modified",
+                    "before": None,
+                    "segments": [
+                        {
+                            "header": ["9", "3", "9", "5"],
+                            "lines": [
+                                "+sudo: false",
+                                "+",
+                                " language: python",
+                                " ",
+                                " python:",
+                            ],
+                        }
+                    ],
+                    "stats": {"added": 2, "removed": 0},
                 }
             }
-        )
+        }
         mock_repo_provider.get_commit_diff.return_value = f
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,

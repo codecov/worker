@@ -1,5 +1,4 @@
 import pytest
-from asyncio import Future
 
 from services.repository import (
     get_repo_provider_service,

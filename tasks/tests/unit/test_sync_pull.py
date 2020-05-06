@@ -1,5 +1,4 @@
 from pathlib import Path
-from asyncio import Future
 import pytest
 
 from redis.exceptions import LockError
@@ -144,10 +143,9 @@ class TestPullSyncTask(object):
         dbsession.flush()
         mocked_fetch_pr = mocker.patch(
             "tasks.sync_pull.fetch_and_update_pull_request_information",
-            return_value=Future(),
         )
-        mocked_fetch_pr.return_value.set_result(
-            EnrichedPull(database_pull=pull, provider_pull={})
+        mocked_fetch_pr.return_value = EnrichedPull(
+            database_pull=pull, provider_pull={}
         )
         res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
@@ -182,10 +180,9 @@ class TestPullSyncTask(object):
         task = PullSyncTask()
         mocked_fetch_pr = mocker.patch(
             "tasks.sync_pull.fetch_and_update_pull_request_information",
-            return_value=Future(),
         )
-        mocked_fetch_pr.return_value.set_result(
-            EnrichedPull(database_pull=None, provider_pull=None)
+        mocked_fetch_pr.return_value = EnrichedPull(
+            database_pull=None, provider_pull=None
         )
         res = await task.run_async(dbsession, repoid=repository.repoid, pullid=99)
         assert res == {
@@ -208,10 +205,9 @@ class TestPullSyncTask(object):
         task = PullSyncTask()
         mocked_fetch_pr = mocker.patch(
             "tasks.sync_pull.fetch_and_update_pull_request_information",
-            return_value=Future(),
         )
-        mocked_fetch_pr.return_value.set_result(
-            EnrichedPull(database_pull=pull, provider_pull=None)
+        mocked_fetch_pr.return_value = EnrichedPull(
+            database_pull=pull, provider_pull=None
         )
         res = await task.run_async(dbsession, repoid=repository.repoid, pullid=99)
         assert res == {
@@ -262,18 +258,15 @@ class TestPullSyncTask(object):
         dbsession.flush()
         mocked_fetch_pr = mocker.patch(
             "tasks.sync_pull.fetch_and_update_pull_request_information",
-            return_value=Future(),
         )
-        mocked_fetch_pr.return_value.set_result(
-            EnrichedPull(database_pull=pull, provider_pull={"head"})
+        mocked_fetch_pr.return_value = EnrichedPull(
+            database_pull=pull, provider_pull={"head"}
         )
-        mock_repo_provider.get_compare.return_value = Future()
-        mock_repo_provider.get_compare.return_value.set_exception(
-            TorngitClientError(403, "response", "message")
+        mock_repo_provider.get_compare.side_effect = TorngitClientError(
+            403, "response", "message"
         )
-        mock_repo_provider.get_pull_request_commits.return_value = Future()
-        mock_repo_provider.get_pull_request_commits.return_value.set_exception(
-            TorngitClientError(403, "response", "message")
+        mock_repo_provider.get_pull_request_commits.side_effect = TorngitClientError(
+            403, "response", "message"
         )
         res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
