@@ -1,5 +1,6 @@
 from json import loads
 from time import time
+from asyncio import CancelledError
 import logging
 import re
 
@@ -198,7 +199,8 @@ class UploadProcessorTask(BaseCodecovTask):
             return {
                 "processings_so_far": processings_so_far,
             }
-        except CeleryError:
+        except (CeleryError, CancelledError, SoftTimeLimitExceeded):
+            commit.state = "error"
             raise
         except Exception:
             commit.state = "error"
