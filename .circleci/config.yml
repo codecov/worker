@@ -97,15 +97,23 @@ jobs:
             # add token
             echo "sonar.login="$SONAR_TOKEN >> ./sonar-project.properties
 
-            # get pr number
-            GITHUB_PR_NUM=$(echo $CIRCLE_PULL_REQUEST | tr -dc '0-9')
-
-            # add pull request info for decoration
-            echo "sonar.pullrequest.key="$GITHUB_PR_NUM >> ./sonar-project.properties
-            echo "sonar.pullrequest.branch="$CIRCLE_BRANCH >> ./sonar-project.properties
-            echo "sonar.pullrequest.base=master" >> ./sonar-project.properties
+            # optional: add pull request info
+            if [ -n "$CIRCLE_PULL_REQUEST" ] 
+            then
+              GITHUB_PR_NUM=$(echo $CIRCLE_PULL_REQUEST | tr -dc '0-9')
+              echo "sonar.pullrequest.key="$GITHUB_PR_NUM >> ./sonar-project.properties
+              echo "sonar.pullrequest.branch="$CIRCLE_BRANCH >> ./sonar-project.properties
+              echo "sonar.pullrequest.base=master" >> ./sonar-project.properties
+            fi
 
             ./sonar-scanner-$SONARSCANNER_VERSION/bin/sonar-scanner -X
+
+      - run:
+          name: Delete OpenJDK11 and SonarScanner
+          command: |
+            apk del openjdk11
+            rm sonar-scanner-cli-$SONARSCANNER_VERSION.zip
+            rm -rf sonar-scanner-$SONARSCANNER_VERSION
 
   deploy:
     executor: codecov-deploy
