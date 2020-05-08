@@ -1,5 +1,5 @@
         # BUILD STAGE - Download dependencies from GitHub that require SSH access
-FROM python:3.7.4-alpine as build
+FROM python:3.8.2-alpine as build
 
 RUN             apk update \
                 && apk add --update --no-cache \
@@ -34,7 +34,7 @@ RUN             pip download setuptools wheel
 
 
 # RUNTIME STAGE - Copy packages from build stage and install runtime dependencies
-FROM            python:3.7.4-alpine
+FROM            python:3.8.2-alpine
 
 RUN             apk add --no-cache postgresql-libs && \
                 apk add --no-cache --virtual .build-deps gcc \ 
@@ -46,7 +46,7 @@ RUN             apk add --no-cache postgresql-libs && \
                 build-base \
                 curl-dev
 
-RUN             apk add gcc musl-dev python3-dev libffi-dev openssl-dev
+RUN             apk add libffi-dev openssl-dev
 ENV             PYCURL_SSL_LIBRARY=openssl
 RUN             wget -q -O /usr/local/bin/berglas https://storage.googleapis.com/berglas/0.5.0/linux_amd64/berglas && \
                 chmod +x /usr/local/bin/berglas

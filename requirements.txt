@@ -12,7 +12,7 @@ cffi==1.12.3
 chardet==3.0.4
 colour==0.1.5
 contextlib2==0.5.5
-coverage==4.5
+coverage==5.1
 cryptography==2.7
 docutils==0.15.2
 ecdsa==0.13.2
@@ -43,7 +43,7 @@ pathmap==0.1.5
 pbr==3.1.1
 pluggy==0.13.0
 protobuf==3.9.2
-psycopg2==2.7.6.1
+psycopg2==2.8.5
 py==1.5.2
 pyasn1==0.4.7
 pyasn1-modules==0.2.6
@@ -51,7 +51,7 @@ pycparser==2.19
 PyJWT==1.7.1
 pytest==4.5.0
 pytest-asyncio==0.10.0
-pytest-cov==2.5.1
+pytest-cov==2.8.1
 pytest-mock==1.10.1
 pytest-sqlalchemy==0.2.1
 python-dateutil==2.8.0
