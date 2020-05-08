@@ -24,7 +24,7 @@ class CoberturaProcessor(BaseLanguageProcessor):
 def Int(value):
     try:
         return int(value)
-    except Exception:
+    except ValueError:
         return int(float(value))
 
 

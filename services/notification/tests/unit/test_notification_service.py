@@ -1,12 +1,11 @@
 import pytest
-from asyncio import TimeoutError as AsyncioTimeoutError
+from asyncio import TimeoutError as AsyncioTimeoutError, CancelledError
 
 import mock
 from celery.exceptions import SoftTimeLimitExceeded
 
 from services.notification import NotificationService
 from database.tests.factories import RepositoryFactory
-from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.types import Comparison, FullCommit, EnrichedPull
 from database.tests.factories import (
@@ -134,6 +133,20 @@ class TestNotificationService(object):
             "result": None,
             "title": "fake_notifier",
         }
+
+    @pytest.mark.asyncio
+    async def test_notify_individual_notifier_cancellation(
+        self, mocker, sample_comparison
+    ):
+        current_yaml = {}
+        commit = sample_comparison.head.commit
+        notifier = mocker.MagicMock(title="fake_notifier", notify=mock.AsyncMock())
+        notifier.notify.side_effect = CancelledError()
+        notifications_service = NotificationService(commit.repository, current_yaml)
+        with pytest.raises(CancelledError):
+            await notifications_service.notify_individual_notifier(
+                notifier, sample_comparison
+            )
 
     @pytest.mark.asyncio
     async def test_notify_timeout_exception(self, mocker, dbsession, sample_comparison):
