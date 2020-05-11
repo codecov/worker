@@ -88,6 +88,9 @@ class NullBackend(BaseBackend):
 
 
 class RedisBackend(BaseBackend):
+
+    current_protocol = pickle.DEFAULT_PROTOCOL
+
     def __init__(self, redis_connection: Redis):
         self.redis_connection = redis_connection
 
@@ -99,10 +102,13 @@ class RedisBackend(BaseBackend):
             return NO_VALUE
         if serialized_value is None:
             return NO_VALUE
-        return pickle.loads(serialized_value)
+        try:
+            return pickle.loads(serialized_value)
+        except ValueError:
+            return NO_VALUE
 
     def set(self, key: str, ttl: int, value: Any):
-        serialized_value = pickle.dumps(value, pickle.HIGHEST_PROTOCOL)
+        serialized_value = pickle.dumps(value, self.current_protocol)
         try:
             self.redis_connection.setex(key, ttl, serialized_value)
         except RedisError:
