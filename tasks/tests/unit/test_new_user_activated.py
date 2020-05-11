@@ -2,13 +2,13 @@ import pytest
 from asyncio import Future
 from datetime import datetime
 
-from database.enums import Decoration, Notification
+from database.enums import Decoration, Notification, NotificationState
 from database.tests.factories import (
     OwnerFactory,
     CommitFactory,
     RepositoryFactory,
     PullFactory,
-    PullNotificationFactory,
+    CommitNotificationFactory,
 )
 from tasks.new_user_activated import NewUserActivatedTask
 
@@ -128,22 +128,21 @@ class TestNewUserActivatedTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_pull_notifications_all_standard(self, mocker, dbsession, pull):
-        pn1 = PullNotificationFactory.create(
-            pull=pull,
-            notification=Notification.comment,
-            decoration=Decoration.standard,
-            attempted=False,
-            successful=None,
+        commit = pull.get_head_commit()
+        cn1 = CommitNotificationFactory.create(
+            commitid=commit.commit_pk,
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
+            state=NotificationState.pending,
         )
-        pn2 = PullNotificationFactory.create(
-            pull=pull,
-            notification=Notification.status_changes,
-            decoration=Decoration.standard,
-            attempted=False,
-            successful=None,
+        cn2 = CommitNotificationFactory.create(
+            commitid=commit.commit_pk,
+            notification_type=Notification.status_changes,
+            decoration_type=Decoration.standard,
+            state=NotificationState.pending,
         )
-        dbsession.add(pn1)
-        dbsession.add(pn2)
+        dbsession.add(cn1)
+        dbsession.add(cn2)
         dbsession.flush()
 
         res = await NewUserActivatedTask().run_async(
@@ -157,35 +156,33 @@ class TestNewUserActivatedTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_pull_notifications_resend_single_pull(self, mocker, dbsession, pull):
-        pn1 = PullNotificationFactory.create(
-            pull=pull,
-            notification=Notification.comment,
-            decoration=Decoration.upgrade,
-            attempted=False,
-            successful=None,
+        pull_head_commit = pull.get_head_commit()
+        cn1 = CommitNotificationFactory.create(
+            commit=pull_head_commit,
+            notification_type=Notification.comment,
+            decoration_type=Decoration.upgrade,
+            state=NotificationState.pending,
         )
-        pn2 = PullNotificationFactory.create(
-            pull=pull,
-            notification=Notification.status_changes,
-            decoration=Decoration.upgrade,
-            attempted=False,
-            successful=None,
+        cn2 = CommitNotificationFactory.create(
+            commit=pull_head_commit,
+            notification_type=Notification.status_changes,
+            decoration_type=Decoration.upgrade,
+            state=NotificationState.pending,
         )
-        dbsession.add(pn1)
-        dbsession.add(pn2)
+        dbsession.add(cn1)
+        dbsession.add(cn2)
         dbsession.flush()
 
         mocked_app = mocker.patch.object(
             NewUserActivatedTask,
             "app",
-            tasks={
-                "app.tasks.notify.Notify": mocker.MagicMock(),
-            },
+            tasks={"app.tasks.notify.Notify": mocker.MagicMock(),},
         )
 
         res = await NewUserActivatedTask().run_async(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
+
         assert res == {
             "notifies_scheduled": True,
             "pulls_notified": [
@@ -194,7 +191,5 @@ class TestNewUserActivatedTaskUnit(object):
             "reason": None,
         }
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
-            kwargs=dict(
-                commitid=pull.head, repoid=pull.repoid
-            ),
+            kwargs=dict(commitid=pull.head, repoid=pull.repoid),
         )

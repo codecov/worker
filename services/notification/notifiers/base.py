@@ -2,7 +2,7 @@ from typing import Mapping, Any
 import logging
 from dataclasses import dataclass
 
-from database.models import Repository, PullNotification
+from database.models import Repository
 from services.decoration import Decoration
 from services.notification.types import Comparison
 

@@ -4,10 +4,10 @@ from database.tests.factories import (
     CommitFactory,
     BranchFactory,
     PullFactory,
-    PullNotificationFactory,
+    CommitNotificationFactory,
 )
 
-from database.models import Owner, Repository, Commit, Branch, Pull, PullNotification
+from database.models import Owner, Repository, Commit, Branch, Pull, CommitNotification
 
 
 class TestReprModels(object):
@@ -74,20 +74,18 @@ class TestReprModels(object):
             factoried_pull
         )
 
-    def test_pull_notifications_repr(self, dbsession):
-        simple_pull_notification = PullNotification()
-        assert "PullNotification<None@pull<None@repo<None>>>" == repr(
-            simple_pull_notification
-        )
-        factoried_pull_notification = PullNotificationFactory.create()
+    def test_notification_repr(self, dbsession):
+        simple_notification = CommitNotification()
+        assert "Notification<None@commit<None>>" == repr(simple_notification)
+        factoried_notification = CommitNotificationFactory.create()
         assert (
-            f"PullNotification<{factoried_pull_notification.notification}@pull<{factoried_pull_notification.pullid}@repo<None>>>"
-            == repr(factoried_pull_notification)
+            f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commitid}>>"
+            == repr(factoried_notification)
         )
-        dbsession.add(factoried_pull_notification)
+        dbsession.add(factoried_notification)
         dbsession.flush()
-        dbsession.refresh(factoried_pull_notification)
+        dbsession.refresh(factoried_notification)
         assert (
-            f"PullNotification<{factoried_pull_notification.notification}@pull<{factoried_pull_notification.pullid}@repo<{factoried_pull_notification.repoid}>>>"
-            == repr(factoried_pull_notification)
+            f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commitid}>>"
+            == repr(factoried_notification)
         )

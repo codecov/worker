@@ -1,17 +1,17 @@
 import dataclasses
 import pytest
 
-from database.enums import Decoration, Notification
+from database.enums import Decoration, Notification, NotificationState
 from database.tests.factories import (
     CommitFactory,
+    CommitNotificationFactory,
     PullFactory,
-    PullNotificationFactory,
     RepositoryFactory,
 )
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.base import NotificationResult
-from services.pull_notifications import (
-    create_or_update_pull_notification_from_notification_result,
+from services.commit_notifications import (
+    create_or_update_commit_notification_from_notification_result,
 )
 
 
@@ -42,8 +42,9 @@ def pull(dbsession):
     return pull
 
 
-class TestPUllNotificationsServiceTestCase(object):
-    def test_create_or_update_pull_notification_not_yet_exists(self, dbsession, pull):
+class TestCommitNotificationsServiceTestCase(object):
+    def test_create_or_update_commit_notification_not_yet_exists(self, dbsession, pull):
+        commit = pull.get_head_commit()
         notifier = CommentNotifier(
             repository=pull.repository,
             title="title",
@@ -60,18 +61,17 @@ class TestPUllNotificationsServiceTestCase(object):
             data_sent=dict(a=1, b=2),
         )
         result_dict = dataclasses.asdict(notify_res)
-        res = create_or_update_pull_notification_from_notification_result(
+        res = create_or_update_commit_notification_from_notification_result(
             pull, notifier, result_dict
         )
         dbsession.flush()
-        assert res.repoid == pull.repoid
-        assert res.pullid == pull.pullid
-        assert res.decoration == notifier.decoration_type
-        assert res.notification == notifier.notification_type
-        assert res.attempted == notify_res.notification_attempted
-        assert res.successful == notify_res.notification_successful
+        assert res.commitid == commit.commit_pk
+        assert res.decoration_type == notifier.decoration_type
+        assert res.notification_type == notifier.notification_type
+        assert res.state == NotificationState.error
 
-    def test_create_or_update_pull_notification_no_result(self, dbsession, pull):
+    def test_create_or_update_commit_notification_no_result(self, dbsession, pull):
+        commit = pull.get_head_commit()
         notifier = CommentNotifier(
             repository=pull.repository,
             title="title",
@@ -81,28 +81,27 @@ class TestPUllNotificationsServiceTestCase(object):
             decoration_type=Decoration.standard,
         )
         result_dict = None
-        res = create_or_update_pull_notification_from_notification_result(
+        res = create_or_update_commit_notification_from_notification_result(
             pull, notifier, result_dict
         )
         dbsession.flush()
-        assert res.repoid == pull.repoid
-        assert res.pullid == pull.pullid
-        assert res.decoration == notifier.decoration_type
-        assert res.notification == notifier.notification_type
-        assert res.attempted == True
-        assert res.successful == False
+        assert res.commitid == commit.commit_pk
+        assert res.decoration_type == notifier.decoration_type
+        assert res.notification_type == notifier.notification_type
+        assert res.state == NotificationState.error
 
-    def test_create_or_update_pull_notification_decoration_change(
+    def test_create_or_update_commit_notification_decoration_change(
         self, dbsession, pull
     ):
-        pn = PullNotificationFactory(
-            pull=pull,
-            notification=Notification.comment,
-            decoration=Decoration.upgrade,
-            attempted=False,
-            successful=None,
+        head_commit = pull.get_head_commit()
+
+        cn = CommitNotificationFactory(
+            commit=head_commit,
+            notification_type=Notification.comment,
+            decoration_type=Decoration.upgrade,
+            state=NotificationState.success,
         )
-        dbsession.add(pn)
+        dbsession.add(cn)
         dbsession.flush()
 
         notifier = CommentNotifier(
@@ -121,26 +120,25 @@ class TestPUllNotificationsServiceTestCase(object):
             data_sent=dict(a=1, b=2),
         )
         result_dict = dataclasses.asdict(notify_res)
-        res = create_or_update_pull_notification_from_notification_result(
+        res = create_or_update_commit_notification_from_notification_result(
             pull, notifier, result_dict
         )
         dbsession.flush()
-        assert pn.repoid == pull.repoid
-        assert pn.pullid == pull.pullid
-        assert pn.decoration == notifier.decoration_type
-        assert pn.notification == notifier.notification_type
-        assert pn.attempted == notify_res.notification_attempted
-        assert pn.successful == notify_res.notification_successful
+        assert cn.commitid == head_commit.commit_pk
+        assert cn.decoration_type == notifier.decoration_type
+        assert cn.notification_type == notifier.notification_type
+        assert cn.state == NotificationState.success
 
-    def test_create_or_update_pull_notification_now_successful(self, dbsession, pull):
-        pn = PullNotificationFactory(
-            pull=pull,
-            notification=Notification.comment,
-            decoration=Decoration.upgrade,
-            attempted=True,
-            successful=False,
+    def test_create_or_update_commit_notification_now_successful(self, dbsession, pull):
+        head_commit = pull.get_head_commit()
+
+        cn = CommitNotificationFactory(
+            commit=head_commit,
+            notification_type=Notification.comment,
+            decoration_type=Decoration.upgrade,
+            state=NotificationState.error,
         )
-        dbsession.add(pn)
+        dbsession.add(cn)
         dbsession.flush()
 
         notifier = CommentNotifier(
@@ -159,13 +157,11 @@ class TestPUllNotificationsServiceTestCase(object):
             data_sent=dict(a=1, b=2),
         )
         result_dict = dataclasses.asdict(notify_res)
-        res = create_or_update_pull_notification_from_notification_result(
+        res = create_or_update_commit_notification_from_notification_result(
             pull, notifier, result_dict
         )
         dbsession.flush()
-        assert pn.repoid == pull.repoid
-        assert pn.pullid == pull.pullid
-        assert pn.decoration == notifier.decoration_type
-        assert pn.notification == notifier.notification_type
-        assert pn.attempted == notify_res.notification_attempted
-        assert pn.successful == notify_res.notification_successful
+        assert cn.commitid == head_commit.commit_pk
+        assert cn.decoration_type == notifier.decoration_type
+        assert cn.notification_type == notifier.notification_type
+        assert cn.state == NotificationState.success

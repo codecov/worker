@@ -19,8 +19,8 @@ from services.notification.notifiers.base import (
     NotificationResult,
     AbstractBaseNotifier,
 )
-from services.pull_notifications import (
-    create_or_update_pull_notification_from_notification_result,
+from services.commit_notifications import (
+    create_or_update_commit_notification_from_notification_result,
 )
 from services.yaml import read_yaml_field
 from services.license import is_properly_licensed
@@ -185,6 +185,11 @@ class NotificationService(object):
                 "Individual notifier cancelled",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid,),
             )
+            individual_result = {
+                "notifier": notifier.name,
+                "title": notifier.title,
+                "result": None,
+            }
             raise
         except Exception:
             individual_result = {
@@ -205,6 +210,6 @@ class NotificationService(object):
             )
             return individual_result
         finally:
-            create_or_update_pull_notification_from_notification_result(
+            create_or_update_commit_notification_from_notification_result(
                 comparison.pull, notifier, individual_result["result"]
             )

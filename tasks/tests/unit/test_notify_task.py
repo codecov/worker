@@ -439,30 +439,17 @@ class TestNotifyTask(object):
             decoration_type=Decoration.standard,
         )
         disabled_notifier = mocker.MagicMock(
-<<<<<<< HEAD
+            AbstractBaseNotifier,
             is_enabled=mocker.MagicMock(return_value=False),
             title="disabled_notifier",
             notification_type=Notification.comment,
             decoration_type=Decoration.standard,
-        )
-        good_notifier.notify.return_value.set_result(
-            NotificationResult(
-                notification_attempted=True,
-                notification_successful=True,
-                explanation="",
-                data_sent={"some": "data"},
-            )
-=======
-            AbstractBaseNotifier,
-            is_enabled=mocker.MagicMock(return_value=False),
-            title="disabled_notifier",
         )
         good_notifier.notify.return_value = NotificationResult(
             notification_attempted=True,
             notification_successful=True,
             explanation="",
             data_sent={"some": "data"},
->>>>>>> f8b48ad26ef3413d7f1eb7de5344ae1e6a0127b1
         )
         good_notifier.name = "good_name"
         bad_notifier.name = "bad_name"

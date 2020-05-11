@@ -12,7 +12,6 @@ log = logging.getLogger(__name__)
 
 
 class WebhookNotifier(RequestsYamlBasedNotifier):
-
     @property
     def notification_type(self) -> Notification:
         return Notification.webhook

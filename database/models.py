@@ -3,7 +3,7 @@ import string
 from datetime import datetime
 
 from database.base import CodecovBaseModel
-from database.enums import Notification, Decoration
+from database.enums import Notification, NotificationState, Decoration
 from sqlalchemy import Column, types, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects import postgresql
@@ -104,6 +104,8 @@ class Commit(CodecovBaseModel):
 
     __tablename__ = "commits"
 
+    # TODO: this is a placeholder to be replaced by Thiago's work
+    commit_pk = Column(types.BigInteger, unique=True)
     author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))
     branch = Column(types.Text)
     ci_passed = Column(types.Boolean)
@@ -122,6 +124,9 @@ class Commit(CodecovBaseModel):
 
     author = relationship(Owner)
     repository = relationship(Repository, backref=backref("commits", cascade="delete"))
+    notifications = relationship(
+        "CommitNotification", backref=backref("commits", cascade="delete")
+    )
 
     def __repr__(self):
         return f"Commit<{self.commitid}@repo<{self.repoid}>>"
@@ -154,46 +159,6 @@ class Branch(CodecovBaseModel):
         return f"Branch<{self.branch}@repo<{self.repoid}>>"
 
 
-class PullNotification(CodecovBaseModel):
-
-    __tablename__ = "pull_notifications"
-
-    repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
-    pullid = Column(types.Integer, nullable=False, primary_key=True)
-    notification = Column(
-        postgresql.ENUM(Notification, values_callable=lambda x: [e.value for e in x]),
-        nullable=False,
-        primary_key=True
-    )
-    createstamp = Column(types.DateTime, default=datetime.now)
-    updatestamp = Column(types.DateTime, default=datetime.now(), onupdate=datetime.now())
-    successful = Column(types.Boolean)
-    attempted = Column(types.Boolean, default=False)
-    decoration = Column(
-        postgresql.ENUM(Decoration, values_callable=lambda x: [e.value for e in x])
-    )
-
-    pull = relationship("Pull", backref=backref("pull_notifications", cascade="delete"))
-
-    __table_args__ = (
-        Index(
-            "pull_notifications_repoid_pullid",
-            "repoid",
-            "pullid",
-        ),
-        UniqueConstraint(
-            "repoid",
-            "pullid",
-            "notification",
-            name="pull_notifications_repoid_pullid_notification",
-        ),
-        ForeignKeyConstraint([repoid, pullid], ["pulls.repoid", "pulls.pullid"]),
-    )
-
-    def __repr__(self):
-        return f"PullNotification<{self.notification}@pull<{self.pullid}@repo<{self.repoid}>>>"
-
-
 class Pull(CodecovBaseModel):
 
     __tablename__ = "pulls"
@@ -214,9 +179,6 @@ class Pull(CodecovBaseModel):
 
     author = relationship(Owner)
     repository = relationship(Repository, backref=backref("pulls", cascade="delete"))
-    notifications = relationship(
-        PullNotification, backref=backref("pulls", cascade="delete")
-    )
 
     __table_args__ = (Index("pulls_repoid_pullid", "repoid", "pullid", unique=True),)
 
@@ -238,3 +200,51 @@ class Pull(CodecovBaseModel):
             .filter_by(repoid=self.repoid, commitid=self.compared_to)
             .first()
         )
+
+    def get_head_commit_notifications(self):
+        head_commit = self.get_head_commit()
+        if head_commit:
+            return (
+                self.get_db_session()
+                .query(CommitNotification)
+                .filter_by(commitid=head_commit.commit_pk)
+                .all()
+            )
+        return []
+
+
+class CommitNotification(CodecovBaseModel):
+
+    __tablename__ = "notifications"
+
+    notificationid = Column(types.BigInteger, primary_key=True)
+    # TODO: foreign key will change based on thew new commits PK that Thiago adds
+    commitid = Column(types.BigInteger, ForeignKey("commits.commit_pk"))
+    notification_type = Column(
+        postgresql.ENUM(Notification, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
+    decoration_type = Column(
+        postgresql.ENUM(Decoration, values_callable=lambda x: [e.value for e in x])
+    )
+    created_at = Column(types.DateTime, default=datetime.now())
+    updated_at = Column(types.DateTime, default=datetime.now(), onupdate=datetime.now())
+    state = Column(
+        postgresql.ENUM(
+            NotificationState, values_callable=lambda x: [e.value for e in x]
+        )
+    )
+
+    commit = relationship(Commit, foreign_keys=[commitid])
+
+    __table_args__ = (
+        Index("notifications_commitid", "commitid",),
+        UniqueConstraint(
+            "commitid",
+            "notification_type",
+            name="notifications_commitid_notification_type",
+        ),
+    )
+
+    def __repr__(self):
+        return f"Notification<{self.notification_type}@commit<{self.commitid}>>"

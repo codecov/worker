@@ -72,24 +72,13 @@ class PullFactory(Factory):
     author = factory.SubFactory(OwnerFactory)
 
 
-class PullNotificationFactory(Factory):
-    class Meta:
-        model = models.PullNotification
-
-    notification = enums.Notification.comment.value
-    decoration = enums.Decoration.standard.value
-    attempted = False
-    successful = None
-
-    pull = factory.SubFactory(PullFactory)
-
-
 class CommitFactory(Factory):
     class Meta:
         model = models.Commit
 
     message = factory.Faker("sentence")
 
+    commit_pk = factory.Sequence(lambda n: n)
     commitid = factory.LazyAttribute(
         lambda o: sha1(o.message.encode("utf-8")).hexdigest()
     )
@@ -154,3 +143,14 @@ class CommitFactory(Factory):
         lambda o: sha1((o.message + "parent").encode("utf-8")).hexdigest()
     )
     state = "complete"
+
+
+class CommitNotificationFactory(Factory):
+    class Meta:
+        model = models.CommitNotification
+
+    notification_type = enums.Notification.comment.value
+    decoration_type = enums.Decoration.standard.value
+    state = enums.NotificationState.pending
+
+    commit = factory.SubFactory(CommitFactory)

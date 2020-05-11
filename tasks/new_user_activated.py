@@ -7,7 +7,7 @@ from sqlalchemy.orm import contains_eager
 
 from tasks.base import BaseCodecovTask
 from database.enums import Decoration, Notification
-from database.models import Owner, Pull, Repository
+from database.models import CommitNotification, Owner, Pull, Repository
 from services.billing import is_pr_billing_plan
 from typing import Iterator
 
@@ -48,11 +48,13 @@ class NewUserActivatedTask(BaseCodecovTask):
             }
 
         pulls = self.get_pulls_authored_by_user(db_session, org_ownerid, user_ownerid)
+        log.info("pulls", extra=dict(pulls=pulls))
 
         # TODO: better to call notify directly or should we notify through pulls_sync task?
         for pull in pulls:
-            pull_notifications = pull.notifications
-            if not pull_notifications:
+            pull_commit_notifications = pull.get_head_commit_notifications()
+
+            if not pull_commit_notifications:
                 # don't know decoration type used so skip
                 log.info(
                     "Skipping pull",
@@ -65,7 +67,7 @@ class NewUserActivatedTask(BaseCodecovTask):
                 )
                 continue
 
-            if self.possibly_resend_notifications(pull_notifications, pull):
+            if self.possibly_resend_notifications(pull_commit_notifications, pull):
                 pulls_notified.append(
                     dict(repoid=pull.repoid, pullid=pull.pullid, commitid=pull.head)
                 )
@@ -110,10 +112,13 @@ class NewUserActivatedTask(BaseCodecovTask):
 
         return pulls
 
-    def possibly_resend_notifications(self, pull_notifications, pull: Pull) -> bool:
+    def possibly_resend_notifications(
+        self, pull_commit_notifications, pull: Pull
+    ) -> bool:
         was_notification_scheduled = False
         should_notify = any(
-            pn.decoration == Decoration.upgrade for pn in pull_notifications
+            commit_notification.decoration_type == Decoration.upgrade
+            for commit_notification in pull_commit_notifications
         )
 
         if should_notify:

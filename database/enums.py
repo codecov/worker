@@ -1,8 +1,10 @@
 from enum import Enum
 
+
 class Decoration(Enum):
     standard = "standard"
     upgrade = "upgrade"
+
 
 class Notification(Enum):
     comment = "comment"
@@ -14,3 +16,9 @@ class Notification(Enum):
     gitter = "gitter"
     irc = "irc"
     hipchat = "hipchat"
+
+
+class NotificationState(Enum):
+    pending = "pending"
+    success = "success"
+    error = "error"
