@@ -68,6 +68,7 @@ class TestLicenseService(object):
     def test_calculate_reason_for_not_being_valid_simple_license(
         self, dbsession, mock_configuration, mocker
     ):
+        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
         encrypted_license = "0dRbhbzp8TVFQp7P4e2ES9lSfyQlTo8J7LQ/N51yeAE/KcRBCnU+QsVvVMDuLL4xNGXGGk9p4ZTmIl0II3cMr0tIoPHe9Re2UjommalyFYuP8JjjnNR/Ql2DnjOzEnTzsE2Poq9xlNHcIU4F9gC2WOYPnazR6U+t4CelcvIAbEpbOMOiw34nVyd3OEmWusquMNrwkNkk/lwjwCJmj6bTXQ=="
         mock_configuration.params["setup"]["enterprise_license"] = encrypted_license
         mock_configuration.params["setup"]["codecov_url"] = "https://codeov.mysite.com"
@@ -108,8 +109,9 @@ class TestLicenseService(object):
         )
 
     def test_calculate_reason_for_not_being_valid_repos_warning(
-        self, dbsession, mock_configuration
+        self, dbsession, mock_configuration, mocker
     ):
+        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
         # number of max repos is 20
         owner = OwnerFactory.create(service="github")
         dbsession.add(owner)
