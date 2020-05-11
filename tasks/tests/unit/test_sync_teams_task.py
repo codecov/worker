@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from asyncio import Future
 
 import pytest
 

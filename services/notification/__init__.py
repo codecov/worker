@@ -134,7 +134,7 @@ class NotificationService(object):
         )
         try:
             with metrics.timer(
-                f"new_worker.services.notifications.notifiers.{notifier.name}"
+                f"worker.services.notifications.notifiers.{notifier.name}"
             ):
                 res = await asyncio.wait_for(notifier.notify(comparison), timeout=30)
             individual_result = {
@@ -180,6 +180,12 @@ class NotificationService(object):
                 ),
             )
             return individual_result
+        except asyncio.CancelledError:
+            log.warning(
+                "Individual notifier cancelled",
+                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+            )
+            raise
         except Exception:
             individual_result = {
                 "notifier": notifier.name,

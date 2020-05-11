@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
-from typing import Sequence
+from typing import Sequence, Dict, Any, Set
+from collections import deque
 
 import sqlalchemy.orm
 from celery_config import pulls_task_name, notify_task_name
@@ -113,7 +114,7 @@ class PullSyncTask(BaseCodecovTask):
         current_yaml = get_final_yaml(
             owner_yaml=repository.owner.yaml, repo_yaml=repository.yaml
         )
-        with metrics.timer(f"new_worker.tasks.{self.name},fetch_pull"):
+        with metrics.timer(f"worker.tasks.{self.name},fetch_pull"):
             enriched_pull = await fetch_and_update_pull_request_information(
                 repository_service, db_session, repoid, pullid, current_yaml
             )
@@ -154,16 +155,21 @@ class PullSyncTask(BaseCodecovTask):
                 "reason": "no_head",
             }
         compared_to = pull.get_comparedto_commit()
-        head_report = report_service.build_report_from_commit(head_commit)
+        head_report = report_service.get_existing_report_for_commit(head_commit)
         if compared_to is not None:
-            base_report = report_service.build_report_from_commit(compared_to)
+            base_report = report_service.get_existing_report_for_commit(compared_to)
         else:
             base_report = None
         commits = None
         db_session.commit()
         try:
             commits = await repository_service.get_pull_request_commits(pull.pullid)
-            commit_updates_done = self.update_pull_commits(enriched_pull, commits)
+            base_ancestors_tree = await repository_service.get_ancestors_tree(
+                enriched_pull.provider_pull["base"]["branch"]
+            )
+            commit_updates_done = self.update_pull_commits(
+                enriched_pull, commits, base_ancestors_tree
+            )
             db_session.commit()
         except TorngitClientError:
             log.warning(
@@ -228,20 +234,26 @@ class PullSyncTask(BaseCodecovTask):
                     redis_connection.hdel("badge", (f"{key}:").lower())
 
     def update_pull_commits(
-        self, enriched_pull: EnrichedPull, commits: Sequence
+        self,
+        enriched_pull: EnrichedPull,
+        commits_on_pr: Sequence,
+        ancestors_tree_on_base: Dict[str, Any],
     ) -> dict:
         """Updates commits considering what the new PR situation is.
 
             For example, if a pull is merged, it makes sense that their commits switch to
                 `merged` mode and start being part of the `base` branch.
 
-            This might be a problem when customers do squash merge, but it is somehow
-                needed when the users do FastForward merge, since nothing else will update
-                commit branches
+            On squash merge we have a bit of an issue, since we can't move the commits to the
+                new branch (they didn't go there), but they don't go deleted. So they just hang
+                there for a while. Theoretically a branch deletion should trigger something
+                and the system will deal with those commits, but I dont think this is implemented
+                yet
 
         Args:
             enriched_pull (EnrichedPull): The pull that changed state
-            commits (Sequence): The commits we might want to update
+            commits_on_pr (Sequence): The commits that were on the PR we might want to update
+            ancestors_tree_on_base (Dict[str, Any]): Ancestor tree of commits starting at the base
 
         Returns:
             dict: A dict of the changes that were made
@@ -252,29 +264,41 @@ class PullSyncTask(BaseCodecovTask):
         pullid = pull.pullid
         db_session = pull.get_db_session()
         merged_count, deleted_count = 0, 0
-        if commits:
-            commits.append(pull.base)
-            commits.append(pull.head)
+        if commits_on_pr:
+            commits_on_pr.append(pull.base)
+            commits_on_pr.append(pull.head)
             if pull.state == "merged":
-                # merge the branch in
-                merged_count = (
-                    db_session.query(Commit)
-                    .filter(
-                        Commit.repoid == repoid,
-                        Commit.pullid == pullid,
-                        Commit.commitid.in_(commits),
-                        ~Commit.merged,
-                    )
-                    .update(
-                        {
-                            Commit.branch: pull_dict["base"]["branch"],
-                            Commit.updatestamp: datetime.now(),
-                            Commit.merged: True,
-                            Commit.deleted: False,
-                        },
-                        synchronize_session=False,
-                    )
+                is_squash_merge = self.was_pr_merged_with_squash(
+                    commits_on_pr, ancestors_tree_on_base
                 )
+                if not is_squash_merge:
+                    log.info(
+                        "Moving commits to base branch",
+                        extra=dict(
+                            commits_on_pr=commits_on_pr,
+                            repoid=repoid,
+                            pullid=pullid,
+                            new_branch=pull_dict["base"]["branch"],
+                        ),
+                    )
+                    merged_count = (
+                        db_session.query(Commit)
+                        .filter(
+                            Commit.repoid == repoid,
+                            Commit.pullid == pullid,
+                            Commit.commitid.in_(commits_on_pr),
+                            ~Commit.merged,
+                        )
+                        .update(
+                            {
+                                Commit.branch: pull_dict["base"]["branch"],
+                                Commit.updatestamp: datetime.now(),
+                                Commit.merged: True,
+                                Commit.deleted: False,
+                            },
+                            synchronize_session=False,
+                        )
+                    )
 
             # set the rest of the commits to deleted (do not show in the UI)
             deleted_count = (
@@ -282,11 +306,46 @@ class PullSyncTask(BaseCodecovTask):
                 .filter(
                     Commit.repoid == repoid,
                     Commit.pullid == pullid,
-                    ~Commit.commitid.in_(commits),
+                    ~Commit.commitid.in_(commits_on_pr),
                 )
                 .update({Commit.deleted: True}, synchronize_session=False)
             )
         return {"soft_deleted_count": deleted_count, "merged_count": merged_count}
+
+    def was_pr_merged_with_squash(
+        self, commits_on_pr: Sequence[str], base_ancestors_tree: Dict[str, Any]
+    ) -> bool:
+        """
+            Determines if commit was merged with squash merge or not, by looking at the commits
+                that were on the commit and the commits that are on the base branch now
+
+            The logic here is that, if at least one commit of the PR made it into the base branch,
+                then we know no ways of merging just that one commit without the other ones. So it
+                is probable that the commit was merged with merge-commit (or some other strategy
+                that moves all commits to the base branch).
+
+            Notice that the reason we don't require all commits to be on the base branch now is
+                because it's possible that the base branch moves so fast that by the time
+                we check it part of the PR commits could have been merged via merge-commit, but
+                are already out of the first page of commit listing.
+
+            This also brings us the the limitation of this logic: if the base branch moves so fast
+                that ALL the commits are out of the first page of listing when we check, we
+                will assume (wrongly) that this was a squash commit
+
+        Args:
+            commits_on_pr (Sequence[str]): Description
+            base_ancestors_tree (Dict[str, Any]): Description
+        """
+        commits_on_pr = set(commits_on_pr)
+        current_level = deque([base_ancestors_tree])
+        while current_level:
+            el = current_level.popleft()
+            if el["commitid"] in commits_on_pr:
+                return False
+            for p in el.get("parents", []):
+                current_level.append(p)
+        return True
 
 
 RegisteredPullSyncTask = celery_app.register_task(PullSyncTask())

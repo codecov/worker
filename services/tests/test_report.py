@@ -5,7 +5,7 @@ import json
 from itertools import chain, combinations, permutations
 
 from tests.base import BaseTestCase
-from services.report import ReportService
+from services.report import ReportService, NotReadyToBuildReportYetError
 from database.tests.factories import CommitFactory
 from services.archive import ArchiveService
 from shared.reports.types import ReportTotals, LineSession, ReportLine
@@ -2393,6 +2393,104 @@ class TestReportService(BaseTestCase):
         )
         assert expected_results_report == readable_report["report"]
 
+    def test_create_new_report_for_commit_parent_not_ready_but_skipped(
+        self, dbsession, sample_commit_with_report_big
+    ):
+        parent_commit = sample_commit_with_report_big
+        parent_commit.state = "skipped"
+        dbsession.flush()
+        commit = CommitFactory.create(
+            repository=parent_commit.repository,
+            parent_commit_id=parent_commit.commitid,
+            report_json=None,
+        )
+        dbsession.add(parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
+        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        assert report is not None
+        assert sorted(report.files) == sorted(
+            [
+                "file_00.py",
+                "file_01.py",
+                "file_02.py",
+                "file_03.py",
+                "file_04.py",
+                "file_05.py",
+                "file_06.py",
+                "file_07.py",
+                "file_08.py",
+                "file_09.py",
+                "file_10.py",
+                "file_11.py",
+                "file_12.py",
+                "file_13.py",
+                "file_14.py",
+            ]
+        )
+        assert report.totals == ReportTotals(
+            files=15,
+            lines=188,
+            hits=68,
+            misses=26,
+            partials=94,
+            coverage="36.17021",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=2,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        readable_report = self.convert_report_to_better_readable(report)
+        expected_results_report = {
+            "sessions": {
+                "0": {
+                    "N": "Carriedforward",
+                    "a": None,
+                    "c": None,
+                    "d": readable_report["report"]["sessions"]["0"]["d"],
+                    "e": None,
+                    "f": ["enterprise"],
+                    "j": None,
+                    "n": None,
+                    "p": None,
+                    "st": "carriedforward",
+                    "se": {"carryforwardorwarded_from": parent_commit.commitid},
+                    "t": None,
+                    "u": None,
+                },
+                "1": {
+                    "N": "Carriedforward",
+                    "a": None,
+                    "c": None,
+                    "d": readable_report["report"]["sessions"]["1"]["d"],
+                    "e": None,
+                    "f": ["unit", "enterprise"],
+                    "j": None,
+                    "n": None,
+                    "p": None,
+                    "st": "carriedforward",
+                    "se": {"carryforwardorwarded_from": parent_commit.commitid},
+                    "t": None,
+                    "u": None,
+                },
+            },
+        }
+        assert (
+            expected_results_report["sessions"]["0"]
+            == readable_report["report"]["sessions"]["0"]
+        )
+        assert (
+            expected_results_report["sessions"]["1"]
+            == readable_report["report"]["sessions"]["1"]
+        )
+        assert (
+            expected_results_report["sessions"] == readable_report["report"]["sessions"]
+        )
+
     def test_create_new_report_for_commit_too_many_ancestors_not_ready(
         self, dbsession, sample_commit_with_report_big
     ):
@@ -2423,3 +2521,25 @@ class TestReportService(BaseTestCase):
             "sessions": {},
         }
         assert expected_results_report == readable_report["report"]
+
+    def test_create_new_report_parent_had_no_parent_and_pending(self, dbsession):
+        current_commit = CommitFactory.create(parent_commit_id=None, state="pending",)
+        dbsession.add(current_commit)
+        for i in range(5):
+            current_commit = CommitFactory.create(
+                repository=current_commit.repository,
+                parent_commit_id=current_commit.commitid,
+                report_json=None,
+                state="pending",
+            )
+            dbsession.add(current_commit)
+        commit = CommitFactory.create(
+            repository=current_commit.repository,
+            parent_commit_id=current_commit.commitid,
+            report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
+        with pytest.raises(NotReadyToBuildReportYetError):
+            ReportService(yaml_dict).create_new_report_for_commit(commit)

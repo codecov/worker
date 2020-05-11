@@ -1,10 +1,10 @@
 import json
 from pathlib import Path
-from asyncio import Future
 from datetime import datetime
 from celery.exceptions import Retry
 
 import pytest
+import mock
 from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 
@@ -390,10 +390,12 @@ class TestUploadTaskIntegration(object):
         mock_app.send_task.return_value = True
         redis_queue = [{"part": "part1"}, {"part": "part2"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        f = Future()
-        f.set_exception(TorngitClientError(401, "response", "message"))
-        mock_repo_provider.get_commit.return_value = f
-        mock_repo_provider.list_top_level_files.return_value = f
+        mock_repo_provider.get_commit.side_effect = TorngitClientError(
+            401, "response", "message"
+        )
+        mock_repo_provider.list_top_level_files.side_effect = TorngitClientError(
+            401, "response", "message"
+        )
         commit = CommitFactory.create(
             message="",
             parent_commit_id=None,
@@ -401,6 +403,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
         )
+        mock_repo_provider.data = dict(repo=dict(repoid=commit.repoid))
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lists[
@@ -579,35 +582,30 @@ class TestUploadTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_fetch_commit_yaml_and_possibly_store_only_commit_yaml(
-        self, dbsession, mocker
+        self, dbsession, mocker, mock_configuration
     ):
         commit = CommitFactory.create()
-        list_top_level_files_result = Future()
-        get_source_result = Future()
+        get_source_result = {
+            "content": "\n".join(
+                ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
+            )
+        }
+        list_top_level_files_result = [
+            {"name": ".gitignore", "path": ".gitignore", "type": "file"},
+            {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
+            {"name": "README.rst", "path": "README.rst", "type": "file"},
+            {"name": "awesome", "path": "awesome", "type": "folder"},
+            {"name": "codecov", "path": "codecov", "type": "file"},
+            {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
+            {"name": "tests", "path": "tests", "type": "folder"},
+        ]
         repository_service = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(
+            list_top_level_files=mock.AsyncMock(
                 return_value=list_top_level_files_result
             ),
-            get_source=mocker.MagicMock(return_value=get_source_result),
+            get_source=mock.AsyncMock(return_value=get_source_result),
         )
-        get_source_result.set_result(
-            {
-                "content": "\n".join(
-                    ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
-                )
-            }
-        )
-        list_top_level_files_result.set_result(
-            [
-                {"name": ".gitignore", "path": ".gitignore", "type": "file"},
-                {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
-                {"name": "README.rst", "path": "README.rst", "type": "file"},
-                {"name": "awesome", "path": "awesome", "type": "folder"},
-                {"name": "codecov", "path": "codecov", "type": "file"},
-                {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
-                {"name": "tests", "path": "tests", "type": "folder"},
-            ]
-        )
+
         result = await UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
@@ -624,28 +622,23 @@ class TestUploadTaskUnit(object):
     ):
         mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
         commit = CommitFactory.create()
-        list_top_level_files_result = Future()
-        get_source_result = Future()
+        get_source_result = {
+            "content": "\n".join(
+                ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
+            )
+        }
+        list_top_level_files_result = [
+            {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
+            {"name": "awesome", "path": "awesome", "type": "folder"},
+            {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
+        ]
         repository_service = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(
+            list_top_level_files=mock.AsyncMock(
                 return_value=list_top_level_files_result
             ),
-            get_source=mocker.MagicMock(return_value=get_source_result),
+            get_source=mock.AsyncMock(return_value=get_source_result),
         )
-        get_source_result.set_result(
-            {
-                "content": "\n".join(
-                    ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
-                )
-            }
-        )
-        list_top_level_files_result.set_result(
-            [
-                {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
-                {"name": "awesome", "path": "awesome", "type": "folder"},
-                {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
-            ]
-        )
+
         result = await UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
@@ -669,28 +662,23 @@ class TestUploadTaskUnit(object):
             repository__branch="supeduperbranch",
             branch="supeduperbranch",
         )
-        list_top_level_files_result = Future()
-        get_source_result = Future()
+        get_source_result = {
+            "content": "\n".join(
+                ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
+            )
+        }
+        list_top_level_files_result = [
+            {"name": ".gitignore", "path": ".gitignore", "type": "file"},
+            {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
+            {"name": "tests", "path": "tests", "type": "folder"},
+        ]
         repository_service = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(
+            list_top_level_files=mock.AsyncMock(
                 return_value=list_top_level_files_result
             ),
-            get_source=mocker.MagicMock(return_value=get_source_result),
+            get_source=mock.AsyncMock(return_value=get_source_result),
         )
-        get_source_result.set_result(
-            {
-                "content": "\n".join(
-                    ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
-                )
-            }
-        )
-        list_top_level_files_result.set_result(
-            [
-                {"name": ".gitignore", "path": ".gitignore", "type": "file"},
-                {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
-                {"name": "tests", "path": "tests", "type": "folder"},
-            ]
-        )
+
         result = await UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
@@ -718,15 +706,12 @@ class TestUploadTaskUnit(object):
             repository__branch="supeduperbranch",
             branch="supeduperbranch",
         )
-        list_top_level_files_result = Future()
         repository_service = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(
-                return_value=list_top_level_files_result
+            list_top_level_files=mock.AsyncMock(
+                side_effect=TorngitClientError(404, "fake_response", "message")
             )
         )
-        list_top_level_files_result.set_exception(
-            TorngitClientError(404, "fake_response", "message")
-        )
+
         result = await UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
@@ -748,28 +733,23 @@ class TestUploadTaskUnit(object):
             repository__branch="supeduperbranch",
             branch="supeduperbranch",
         )
-        list_top_level_files_result = Future()
-        get_source_result = Future()
+        get_source_result = {
+            "content": "\n".join(
+                ["bad_key:", "  notify:", "    require_ci_to_pass: yes",]
+            )
+        }
+        list_top_level_files_result = [
+            {"name": ".gitignore", "path": ".gitignore", "type": "file"},
+            {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
+            {"name": "tests", "path": "tests", "type": "folder"},
+        ]
         repository_service = mocker.MagicMock(
-            list_top_level_files=mocker.MagicMock(
+            list_top_level_files=mock.AsyncMock(
                 return_value=list_top_level_files_result
             ),
-            get_source=mocker.MagicMock(return_value=get_source_result),
+            get_source=mock.AsyncMock(return_value=get_source_result),
         )
-        get_source_result.set_result(
-            {
-                "content": "\n".join(
-                    ["bad_key:", "  notify:", "    require_ci_to_pass: yes",]
-                )
-            }
-        )
-        list_top_level_files_result.set_result(
-            [
-                {"name": ".gitignore", "path": ".gitignore", "type": "file"},
-                {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
-                {"name": "tests", "path": "tests", "type": "folder"},
-            ]
-        )
+
         result = await UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )

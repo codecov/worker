@@ -1,3 +1,5 @@
+import pickle
+
 import pytest
 
 from redis.exceptions import TimeoutError
@@ -69,6 +71,14 @@ class TestRedisBackend(object):
             "value_1": set("ascdefgh"),
             1: [1, 3],
         }
+
+    def test_simple_redis_call_invalid_pickle_version(self):
+        redis_instance = FakeRedis()
+        # PICKLE HERE WILL BE SET TO VERSION 9 (\x09 in the second byte of the value)
+        # IF THIS STOPS FAILING WITH ValueError, CHANGE THE SECOND BYTE TO SOMETHING HIGHER
+        redis_instance.setex("key", 120, b"\x80\x09X\x05\x00\x00\x00valueq\x00.")
+        redis_backend = RedisBackend(redis_instance)
+        assert redis_backend.get("key") == NO_VALUE
 
     def test_simple_redis_call_exception(self):
         redis_backend = RedisBackend(FakeRedisWithIssues())

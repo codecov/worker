@@ -4,7 +4,7 @@ import pytest
 from json import loads
 from pathlib import Path
 
-from helpers.exceptions import ReportEmptyError
+from helpers.exceptions import ReportEmptyError, CorruptRawReportError
 from tests.base import BaseTestCase
 from services.report import raw_upload_processor as process
 from shared.reports.types import ReportTotals
@@ -410,3 +410,26 @@ class TestProcessReport(BaseTestCase):
                 ignored_lines={},
                 path_fixer=str,
             )
+
+    def test_process_report_corrupt_format(self, mocker):
+        mock_bad_processor = mocker.MagicMock(
+            matches_content=mocker.MagicMock(return_value=True),
+            process=mocker.MagicMock(
+                side_effect=CorruptRawReportError(
+                    "expected_format", "error_explanation"
+                )
+            ),
+            name="mock_bad_processor",
+        )
+        mocker.patch(
+            "services.report.report_processor.get_possible_processors_list",
+            return_value=[mock_bad_processor],
+        )
+        res = process.process_report(
+            report="# path=/Users/path/to/app.coverage.txt\n<data>",
+            commit_yaml=None,
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str,
+        )
+        assert res is None

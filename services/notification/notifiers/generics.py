@@ -235,7 +235,7 @@ class RequestsYamlBasedNotifier(StandardNotifier):
         kwargs = dict(timeout=_timeouts, headers=self.json_headers)
         try:
             with metrics.timer(
-                f"new_worker.services.notifications.notifiers.{self.name}.actual_connection"
+                f"worker.services.notifications.notifiers.{self.name}.actual_connection"
             ):
                 res = requests.post(
                     url=self.notifier_yaml_settings["url"],

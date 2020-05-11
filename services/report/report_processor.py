@@ -6,6 +6,7 @@ import logging
 
 from shared.reports.resources import Report
 
+from helpers.exceptions import CorruptRawReportError
 from services.report.languages.helpers import remove_non_ascii
 from helpers.metrics import metrics
 
@@ -150,23 +151,33 @@ def process_report(
         # empty [dlst]
         return None
     processors = get_possible_processors_list(report_type)
-    # [xcode]
     for processor in processors:
         if processor.matches_content(report, first_line, name):
             with metrics.timer(
-                f"new_worker.services.report.processors.{processor.name}.run"
+                f"worker.services.report.processors.{processor.name}.run"
             ):
                 try:
                     res = processor.process(
                         name, report, path_fixer, ignored_lines, sessionid, commit_yaml
                     )
                     metrics.incr(
-                        f"new_worker.services.report.processors.{processor.name}.success"
+                        f"worker.services.report.processors.{processor.name}.success"
                     )
                     return res
+                except CorruptRawReportError as e:
+                    log.warning(
+                        "Processor matched file but later a problem with file was discovered",
+                        extra=dict(
+                            processor_name=processor.name,
+                            expected_format=e.expected_format,
+                            corruption_error=e.corruption_error,
+                        ),
+                        exc_info=True,
+                    )
+                    return None
                 except Exception:
                     metrics.incr(
-                        f"new_worker.services.report.processors.{processor.name}.failure"
+                        f"worker.services.report.processors.{processor.name}.failure"
                     )
                     raise
     log.info(
