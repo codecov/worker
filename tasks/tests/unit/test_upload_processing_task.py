@@ -675,5 +675,20 @@ class TestUploadProcessorTask(object):
             "url": f"v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt"
         }
         assert expected_result == result
-        assert report.diff_totals is None
+        expected_diff_totals = ReportTotals(
+            files=0,
+            lines=0,
+            hits=0,
+            misses=0,
+            partials=0,
+            coverage=None,
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=None,
+            complexity_total=None,
+            diff=0,
+        )
+        assert report.diff_totals == expected_diff_totals
         assert commit.state == "error"
