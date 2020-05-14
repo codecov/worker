@@ -179,7 +179,7 @@ def get_author_from_commit(db_session, service, author_id, username, email, name
     return author
 
 
-async def create_webhook_on_provider(repository_service):
+async def create_webhook_on_provider(repository_service, token=None):
     """
         Posts to the provider a webhook so we can receive updates from this
         repo
@@ -239,6 +239,7 @@ async def create_webhook_on_provider(repository_service):
             "webhook_secret",
             default="ab164bf3f7d947f2a0681b215404873e",
         ),
+        token=token,
     )
 
 
