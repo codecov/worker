@@ -23,4 +23,4 @@ class BaseTestCase(object):
                     (line_number, coverage, line_type, sessions, messages, complexity)
                 )
             archive_dict[filename] = lines
-        return {"totals": totals_dict, "report": report_dict, "archive": archive_dict}
+        return {"archive": archive_dict, "report": report_dict, "totals": totals_dict}

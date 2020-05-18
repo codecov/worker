@@ -55,9 +55,7 @@ class TestUploadProcessorTask(object):
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
-            commit_yaml={
-                "codecov": {"max_report_age": "1y ago"}
-            },  # Sorry, this is a timebomb now
+            commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
         expected_result = {
@@ -155,9 +153,7 @@ class TestUploadProcessorTask(object):
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
-            commit_yaml={
-                "codecov": {"max_report_age": "1y ago"}
-            },  # Sorry, this is a timebomb now
+            commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
         expected_result = {
