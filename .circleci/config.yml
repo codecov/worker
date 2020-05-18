@@ -76,9 +76,9 @@ jobs:
       - run:
           name: codecov
           command: |
-            pip install codecov==2.0.16
-            codecov -F integration -f integration.coverage.xml  --required
-            codecov -F unit -f unit.coverage.xml  --required
+            pip install codecov==2.1
+            codecov -F integration -f integration.coverage.xml -X gcov  --required
+            codecov -F unit -f unit.coverage.xml -X gcov --required
 
       - run:
           name: Install OpenJDK 11 (for SonarScanner)
