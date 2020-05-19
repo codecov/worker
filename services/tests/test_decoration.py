@@ -1,6 +1,7 @@
 import os
 import pytest
 
+from celery_config import new_user_activated_task_name
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
@@ -152,6 +153,10 @@ class TestDecorationServiceTestCase(object):
         self, dbsession, mocker, enriched_pull, with_sql_functions
     ):
         mocker.patch("services.decoration.is_whitelisted", return_value=True)
+        mocked_send_task = mocker.patch(
+            "services.decoration.celery_app.send_task", return_value=False
+        )
+
         enriched_pull.database_pull.repository.owner.plan_user_count = 10
         enriched_pull.database_pull.repository.owner.plan_activated_users = []
         enriched_pull.database_pull.repository.owner.plan_auto_activate = True
@@ -166,6 +171,15 @@ class TestDecorationServiceTestCase(object):
         decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
         dbsession.commit()
 
+        assert mocked_send_task.call_count == 1
+        mocked_send_task.assert_called_with(
+            new_user_activated_task_name,
+            args=None,
+            kwargs=dict(
+                org_ownerid=enriched_pull.database_pull.repository.owner.ownerid,
+                user_ownerid=pr_author.ownerid,
+            ),
+        )
         assert decoration_type == Decoration.standard
         assert reason == "PR author auto activation success"
         assert enriched_pull.database_pull.repository.owner.plan_activated_users == [

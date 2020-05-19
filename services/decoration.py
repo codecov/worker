@@ -4,11 +4,12 @@ from enum import Enum
 from sqlalchemy import func
 from typing import Tuple
 
+from app import celery_app
+from celery_config import new_user_activated_task_name
 from database.models import Owner
 from database.enums import Decoration
 from services.billing import is_pr_billing_plan
 from services.repository import EnrichedPull
-
 
 log = logging.getLogger(__name__)
 
@@ -101,7 +102,21 @@ def get_decoration_type_and_reason(
                 )
                 return (Decoration.upgrade, "PR author auto activation failed")
 
-            # TODO: activation was successful so we should run the future NewUserActivatedTask
+            log.info(
+                "PR author auto activation was successful - kicking off NewUserActivatedTask",
+                extra=dict(
+                    org_ownerid=org.ownerid,
+                    author_ownerid=pr_author.ownerid,
+                    pullid=db_pull.pullid,
+                ),
+            )
+            # activation was successful so we should run the NewUserActivatedTask
+            celery_app.send_task(
+                new_user_activated_task_name,
+                args=None,
+                kwargs=dict(org_ownerid=org.ownerid, user_ownerid=pr_author.ownerid),
+            )
+
             return (Decoration.standard, "PR author auto activation success")
         else:
             return (Decoration.upgrade, "User must be manually activated")

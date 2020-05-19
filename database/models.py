@@ -104,8 +104,7 @@ class Commit(CodecovBaseModel):
 
     __tablename__ = "commits"
 
-    # TODO: this is a placeholder to be replaced by Thiago's work
-    commit_pk = Column(types.BigInteger, unique=True)
+    id_ = Column("id", types.BigInteger, unique=True)
     author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))
     branch = Column(types.Text)
     ci_passed = Column(types.Boolean)
@@ -207,7 +206,7 @@ class Pull(CodecovBaseModel):
             return (
                 self.get_db_session()
                 .query(CommitNotification)
-                .filter_by(commitid=head_commit.commit_pk)
+                .filter_by(commitid=head_commit.id_)
                 .all()
             )
         return []
@@ -215,11 +214,10 @@ class Pull(CodecovBaseModel):
 
 class CommitNotification(CodecovBaseModel):
 
-    __tablename__ = "notifications"
+    __tablename__ = "commit_notifications"
 
-    notificationid = Column(types.BigInteger, primary_key=True)
-    # TODO: foreign key will change based on thew new commits PK that Thiago adds
-    commitid = Column(types.BigInteger, ForeignKey("commits.commit_pk"))
+    id_ = Column("id", types.BigInteger, primary_key=True)
+    commitid = Column(types.BigInteger, ForeignKey("commits.id"))
     notification_type = Column(
         postgresql.ENUM(Notification, values_callable=lambda x: [e.value for e in x]),
         nullable=False,

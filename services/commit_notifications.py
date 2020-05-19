@@ -33,20 +33,19 @@ def create_or_update_commit_notification_from_notification_result(
     pull: Pull, notifier: AbstractBaseNotifier, result_dict
 ) -> CommitNotification:
     if not pull:
-        # TODO: is it possible to not have pull or just test cases not fully accurate?
         return
 
     db_session = pull.get_db_session()
 
     commit = pull.get_head_commit()
     if not commit:
-        log.warning("Head commit not found", extra=dict(pull=pull))
+        log.warning("Head commit not found for pull", extra=dict(pull=pull))
         return
 
     commit_notification = (
         db_session.query(CommitNotification)
         .filter(
-            CommitNotification.commitid == commit.commit_pk,
+            CommitNotification.commitid == commit.id_,
             CommitNotification.notification_type == notifier.notification_type,
         )
         .first()
@@ -56,7 +55,7 @@ def create_or_update_commit_notification_from_notification_result(
 
     if not commit_notification:
         commit_notification = CommitNotification(
-            commitid=commit.commit_pk,
+            commitid=commit.id_,
             notification_type=notifier.notification_type,
             decoration_type=notifier.decoration_type,
             state=notification_state,

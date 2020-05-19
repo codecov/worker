@@ -112,7 +112,7 @@ class TestNewUserActivatedTaskUnit(object):
         }
 
     @pytest.mark.asyncio
-    async def test_no_pull_notifications_found(self, mocker, dbsession, pull):
+    async def test_no_commit_notifications_found(self, mocker, dbsession, pull):
         mocked_possibly_resend_notifications = mocker.patch(
             "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications",
         )
@@ -127,16 +127,32 @@ class TestNewUserActivatedTaskUnit(object):
         assert not mocked_possibly_resend_notifications.called
 
     @pytest.mark.asyncio
-    async def test_pull_notifications_all_standard(self, mocker, dbsession, pull):
+    async def test_no_head_commit_on_pull(self, mocker, dbsession, pull):
+        pull.head = None
+        mocked_possibly_resend_notifications = mocker.patch(
+            "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications",
+        )
+        res = await NewUserActivatedTask().run_async(
+            dbsession, pull.repository.owner.ownerid, pull.author.ownerid
+        )
+        assert res == {
+            "notifies_scheduled": False,
+            "pulls_notified": [],
+            "reason": "no pulls/pull notifications met criteria",
+        }
+        assert not mocked_possibly_resend_notifications.called
+
+    @pytest.mark.asyncio
+    async def test_commit_notifications_all_standard(self, mocker, dbsession, pull):
         commit = pull.get_head_commit()
         cn1 = CommitNotificationFactory.create(
-            commitid=commit.commit_pk,
+            commitid=commit.id_,
             notification_type=Notification.comment,
             decoration_type=Decoration.standard,
             state=NotificationState.pending,
         )
         cn2 = CommitNotificationFactory.create(
-            commitid=commit.commit_pk,
+            commitid=commit.id_,
             notification_type=Notification.status_changes,
             decoration_type=Decoration.standard,
             state=NotificationState.pending,
@@ -155,7 +171,9 @@ class TestNewUserActivatedTaskUnit(object):
         }
 
     @pytest.mark.asyncio
-    async def test_pull_notifications_resend_single_pull(self, mocker, dbsession, pull):
+    async def test_commit_notifications_resend_single_pull(
+        self, mocker, dbsession, pull
+    ):
         pull_head_commit = pull.get_head_commit()
         cn1 = CommitNotificationFactory.create(
             commit=pull_head_commit,

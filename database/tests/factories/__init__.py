@@ -78,7 +78,7 @@ class CommitFactory(Factory):
 
     message = factory.Faker("sentence")
 
-    commit_pk = factory.Sequence(lambda n: n)
+    id_ = factory.Sequence(lambda n: n)
     commitid = factory.LazyAttribute(
         lambda o: sha1(o.message.encode("utf-8")).hexdigest()
     )
