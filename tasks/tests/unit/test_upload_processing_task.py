@@ -55,9 +55,7 @@ class TestUploadProcessorTask(object):
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
-            commit_yaml={
-                "codecov": {"max_report_age": "1y ago"}
-            },  # Sorry, this is a timebomb now
+            commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
         expected_result = {
@@ -155,9 +153,7 @@ class TestUploadProcessorTask(object):
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
-            commit_yaml={
-                "codecov": {"max_report_age": "1y ago"}
-            },  # Sorry, this is a timebomb now
+            commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
         expected_result = {
@@ -675,5 +671,20 @@ class TestUploadProcessorTask(object):
             "url": f"v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt"
         }
         assert expected_result == result
-        assert report.diff_totals is None
+        expected_diff_totals = ReportTotals(
+            files=0,
+            lines=0,
+            hits=0,
+            misses=0,
+            partials=0,
+            coverage=None,
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=None,
+            complexity_total=None,
+            diff=0,
+        )
+        assert report.diff_totals == expected_diff_totals
         assert commit.state == "error"

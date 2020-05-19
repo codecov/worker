@@ -31,6 +31,22 @@ def get_repo_appropriate_bot_token(repo: Repository) -> Dict:
     return token_dict
 
 
+def get_repo_admin_bot_token(repo: Repository) -> Dict:
+    if repo.using_integration and repo.owner.integration_id:
+        github_token = get_github_integration_token(
+            repo.owner.service, repo.owner.integration_id
+        )
+        return dict(key=github_token)
+    appropriate_bot = _get_repo_appropriate_bot(repo)
+    log.info(
+        "Using special bot for admin-level operations",
+        extra=dict(bot=appropriate_bot.username),
+    )
+    token_dict = encryptor.decrypt_token(appropriate_bot.oauth_token)
+    token_dict["username"] = appropriate_bot.username
+    return token_dict
+
+
 def _get_repo_appropriate_bot(repo):
     if repo.bot is not None and repo.bot.oauth_token is not None:
         log.info(

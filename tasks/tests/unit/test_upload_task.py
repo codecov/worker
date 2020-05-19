@@ -760,3 +760,29 @@ class TestUploadTaskUnit(object):
         }
         assert result == expected_result
         assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
+
+    @pytest.mark.asyncio
+    async def test_possibly_setup_webhooks_public_repo(
+        self, mocker, mock_configuration, mock_repo_provider
+    ):
+        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
+        commit = CommitFactory.create(
+            repository__private=False,
+            repository__owner__unencrypted_oauth_token="aaaaabbbbhhhh",
+        )
+        task = UploadTask()
+        mock_repo_provider.data = mocker.MagicMock()
+        mock_repo_provider.service = "github"
+        res = await task.possibly_setup_webhooks(commit, mock_repo_provider)
+        assert res is True
+        mock_repo_provider.post_webhook.assert_called_with(
+            "Codecov Webhook. None",
+            "None/webhooks/github",
+            ["pull_request", "delete", "push", "public", "status", "repository"],
+            "ab164bf3f7d947f2a0681b215404873e",
+            token={
+                "key": "aaaaabbbbhhhh",
+                "secret": None,
+                "username": commit.repository.owner.username,
+            },
+        )

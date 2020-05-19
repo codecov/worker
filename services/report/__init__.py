@@ -1,6 +1,7 @@
 import logging
 from typing import Mapping, Any, Optional
 
+from shared.metrics import metrics
 from shared.reports.resources import Report
 from shared.reports.editable import EditableReport
 from shared.storage.exceptions import FileNotInStorageError
@@ -27,9 +28,12 @@ class ReportService(object):
         for sess in sessions.values():
             if sess.get("st") == "carriedforward":
                 report_class = EditableReport
-        return report_class(
-            chunks=chunks, files=files, sessions=sessions, totals=totals
-        )
+        with metrics.timer(
+            f"services.report.ReportService.build_report.{report_class.__name__}"
+        ):
+            return report_class(
+                chunks=chunks, files=files, sessions=sessions, totals=totals
+            )
 
     def build_report_from_commit(self, commit) -> Report:
         return self._do_build_report_from_commit(commit)
@@ -61,6 +65,9 @@ class ReportService(object):
             return report
         return self.create_new_report_for_commit(commit)
 
+    @metrics.timer(
+        f"services.report.ReportService.get_appropriate_commit_to_carryforward_from"
+    )
     def get_appropriate_commit_to_carryforward_from(
         self, commit: Commit
     ) -> Optional[Commit]:
@@ -124,6 +131,7 @@ class ReportService(object):
             return None
         return parent_commit
 
+    @metrics.timer(f"services.report.ReportService.create_new_report_for_commit")
     def create_new_report_for_commit(self, commit: Commit) -> Report:
         log.info(
             "Creating new report for commit",
