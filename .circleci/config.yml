@@ -76,7 +76,7 @@ jobs:
       - run:
           name: codecov
           command: |
-            pip install codecov==2.1
+            pip install codecov==2.1.1
             codecov -F integration -f integration.coverage.xml -X gcov  --required
             codecov -F unit -f unit.coverage.xml -X gcov --required
 
