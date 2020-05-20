@@ -206,7 +206,7 @@ class Pull(CodecovBaseModel):
             return (
                 self.get_db_session()
                 .query(CommitNotification)
-                .filter_by(commitid=head_commit.id_)
+                .filter_by(commit_id=head_commit.id_)
                 .all()
             )
         return []
@@ -217,7 +217,7 @@ class CommitNotification(CodecovBaseModel):
     __tablename__ = "commit_notifications"
 
     id_ = Column("id", types.BigInteger, primary_key=True)
-    commitid = Column(types.BigInteger, ForeignKey("commits.id"))
+    commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
     notification_type = Column(
         postgresql.ENUM(Notification, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
@@ -233,16 +233,16 @@ class CommitNotification(CodecovBaseModel):
         )
     )
 
-    commit = relationship(Commit, foreign_keys=[commitid])
+    commit = relationship(Commit, foreign_keys=[commit_id])
 
     __table_args__ = (
-        Index("notifications_commitid", "commitid",),
+        Index("notifications_commit_id", "commit_id",),
         UniqueConstraint(
-            "commitid",
+            "commit_id",
             "notification_type",
-            name="notifications_commitid_notification_type",
+            name="commit_notifications_commit_id_notification_type",
         ),
     )
 
     def __repr__(self):
-        return f"Notification<{self.notification_type}@commit<{self.commitid}>>"
+        return f"Notification<{self.notification_type}@commit<{self.commit_id}>>"

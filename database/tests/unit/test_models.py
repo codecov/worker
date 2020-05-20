@@ -79,13 +79,13 @@ class TestReprModels(object):
         assert "Notification<None@commit<None>>" == repr(simple_notification)
         factoried_notification = CommitNotificationFactory.create()
         assert (
-            f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commitid}>>"
+            f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commit_id}>>"
             == repr(factoried_notification)
         )
         dbsession.add(factoried_notification)
         dbsession.flush()
         dbsession.refresh(factoried_notification)
         assert (
-            f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commitid}>>"
+            f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commit_id}>>"
             == repr(factoried_notification)
         )

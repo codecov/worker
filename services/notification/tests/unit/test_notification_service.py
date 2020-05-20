@@ -5,7 +5,6 @@ import mock
 from celery.exceptions import SoftTimeLimitExceeded
 
 from database.enums import Notification, NotificationState, Decoration
-from database.models import CommitNotification
 from database.tests.factories import RepositoryFactory
 from services.decoration import Decoration
 from services.notification import NotificationService

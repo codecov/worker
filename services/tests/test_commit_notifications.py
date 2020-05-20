@@ -65,7 +65,7 @@ class TestCommitNotificationsServiceTestCase(object):
             pull, notifier, result_dict
         )
         dbsession.flush()
-        assert res.commitid == commit.id_
+        assert res.commit_id == commit.id_
         assert res.decoration_type == notifier.decoration_type
         assert res.notification_type == notifier.notification_type
         assert res.state == NotificationState.error
@@ -85,7 +85,7 @@ class TestCommitNotificationsServiceTestCase(object):
             pull, notifier, result_dict
         )
         dbsession.flush()
-        assert res.commitid == commit.id_
+        assert res.commit_id == commit.id_
         assert res.decoration_type == notifier.decoration_type
         assert res.notification_type == notifier.notification_type
         assert res.state == NotificationState.error
@@ -124,7 +124,7 @@ class TestCommitNotificationsServiceTestCase(object):
             pull, notifier, result_dict
         )
         dbsession.flush()
-        assert cn.commitid == head_commit.id_
+        assert cn.commit_id == head_commit.id_
         assert cn.decoration_type == notifier.decoration_type
         assert cn.notification_type == notifier.notification_type
         assert cn.state == NotificationState.success
@@ -161,7 +161,7 @@ class TestCommitNotificationsServiceTestCase(object):
             pull, notifier, result_dict
         )
         dbsession.flush()
-        assert cn.commitid == head_commit.id_
+        assert cn.commit_id == head_commit.id_
         assert cn.decoration_type == notifier.decoration_type
         assert cn.notification_type == notifier.notification_type
         assert cn.state == NotificationState.success

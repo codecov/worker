@@ -7,7 +7,7 @@ from sqlalchemy.orm import contains_eager
 
 from tasks.base import BaseCodecovTask
 from database.enums import Decoration, Notification
-from database.models import CommitNotification, Owner, Pull, Repository
+from database.models import Owner, Pull, Repository
 from services.billing import is_pr_billing_plan
 from typing import Iterator
 

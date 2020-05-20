@@ -144,15 +144,15 @@ class TestNewUserActivatedTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_commit_notifications_all_standard(self, mocker, dbsession, pull):
-        commit = pull.get_head_commit()
+        pull_head_commit = pull.get_head_commit()
         cn1 = CommitNotificationFactory.create(
-            commitid=commit.id_,
+            commit=pull_head_commit,
             notification_type=Notification.comment,
             decoration_type=Decoration.standard,
             state=NotificationState.pending,
         )
         cn2 = CommitNotificationFactory.create(
-            commitid=commit.id_,
+            commit=pull_head_commit,
             notification_type=Notification.status_changes,
             decoration_type=Decoration.standard,
             state=NotificationState.pending,

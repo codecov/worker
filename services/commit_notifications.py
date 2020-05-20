@@ -45,7 +45,7 @@ def create_or_update_commit_notification_from_notification_result(
     commit_notification = (
         db_session.query(CommitNotification)
         .filter(
-            CommitNotification.commitid == commit.id_,
+            CommitNotification.commit_id == commit.id_,
             CommitNotification.notification_type == notifier.notification_type,
         )
         .first()
@@ -55,7 +55,7 @@ def create_or_update_commit_notification_from_notification_result(
 
     if not commit_notification:
         commit_notification = CommitNotification(
-            commitid=commit.id_,
+            commit_id=commit.id_,
             notification_type=notifier.notification_type,
             decoration_type=notifier.decoration_type,
             state=notification_state,
