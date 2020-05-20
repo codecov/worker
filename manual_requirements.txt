@@ -1,6 +1,6 @@
 -e git+https://github.com/codecov/shared.git@v0.3.15#egg=shared
 boto3==1.9.218
-celery==4.3
+celery==4.4.2
 coverage==5.1
 cryptography==2.7
 factory-boy==2.11.1
