@@ -66,6 +66,11 @@ jobs:
           pip install codecov==2.0.16
           codecov -F integration -f integration.coverage.xml  --required
           codecov -F unit -f unit.coverage.xml  --required
+  staging:
+    - run:
+        name: build image and push to gcr with staging tag
+        command: |
+          make -f Makefile.circle staging
   deploy:
     executor: codecov-deploy
     steps:
@@ -84,9 +89,6 @@ jobs:
         command: |-
           make -f Makefile.circle tag
           make -f Makefile.circle deploy
-    - run:
-        command: |-
-          if [ $CIRCLE_BRANCH = 'staging' ]; then make -f Makefile.circle staging; done
 
 workflows:
   version: 2
@@ -102,6 +104,13 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - staging:
+          requires:
+            - build
+            - test
+          filters:
+            branches:
+              only: staging
       - deploy:
           requires:
             - build
