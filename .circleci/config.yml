@@ -114,14 +114,7 @@ jobs:
             apk del openjdk11
             rm sonar-scanner-cli-$SONARSCANNER_VERSION.zip
             rm -rf sonar-scanner-$SONARSCANNER_VERSION
-     
-     - run:
-        name: codecov
-        command: |
-          pip install codecov==2.0.16
-          codecov -F integration -f integration.coverage.xml  --required
-          codecov -F unit -f unit.coverage.xml  --required
-  
+
   deploy:
     executor: codecov-deploy
     steps:
@@ -156,13 +149,6 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - staging:
-          requires:
-            - build
-            - test
-          filters:
-            branches:
-              only: staging
       - deploy:
           requires:
             - build
