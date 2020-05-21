@@ -54,6 +54,7 @@ class BaseBackend(object):
         However the cache wants to work internally, it's their choice. They only need to be able to
             `set` and `get` without raising any exceptions
     """
+
     def get(self, key: str) -> Any:
         """Returns a cached value from the cache, or NO_VALUE, if no cache is set for that key
 
@@ -78,7 +79,8 @@ class NullBackend(BaseBackend):
 
         This makes the cache virtually transparent. It acts as if no cache was there
     """
-    def get(self, key: str):
+
+    def get(self, key: str) -> Any:
         return NO_VALUE
 
     def set(self, key: str, ttl: int, value: Any):
@@ -86,6 +88,9 @@ class NullBackend(BaseBackend):
 
 
 class RedisBackend(BaseBackend):
+
+    current_protocol = pickle.DEFAULT_PROTOCOL
+
     def __init__(self, redis_connection: Redis):
         self.redis_connection = redis_connection
 
@@ -97,10 +102,13 @@ class RedisBackend(BaseBackend):
             return NO_VALUE
         if serialized_value is None:
             return NO_VALUE
-        return pickle.loads(serialized_value)
+        try:
+            return pickle.loads(serialized_value)
+        except ValueError:
+            return NO_VALUE
 
     def set(self, key: str, ttl: int, value: Any):
-        serialized_value = pickle.dumps(value, pickle.HIGHEST_PROTOCOL)
+        serialized_value = pickle.dumps(value, self.current_protocol)
         try:
             self.redis_connection.setex(key, ttl, serialized_value)
         except RedisError:
@@ -142,6 +150,7 @@ class OurOwnCache(object):
             lifting of actually decorating the function properly, dealign with sync-async context.
 
     """
+
     def __init__(self):
         self._backend = NullBackend()
 
@@ -168,43 +177,43 @@ class FunctionCacher(object):
         self.cache_instance = cache_instance
         self.ttl = ttl
 
-    def __call__(self, func):
+    def __call__(self, func) -> Callable:
         if asyncio.iscoroutinefunction(func):
             return self.cache_async_function(func)
         return self.cache_synchronous_function(func)
 
-    def cache_synchronous_function(self, func: Callable):
+    def cache_synchronous_function(self, func: Callable) -> Callable:
         @wraps(func)
         def wrapped(*args, **kwargs):
             key = self.generate_key(func, args, kwargs)
             value = self.cache_instance.get_backend().get(key)
             if value is not NO_VALUE:
-                metrics.incr(f"new_worker.caches.{func.__name__}.hits")
+                metrics.incr(f"worker.caches.{func.__name__}.hits")
                 return value
-            metrics.incr(f"new_worker.caches.{func.__name__}.misses")
-            with metrics.timer(f"new_worker.caches.{func.__name__}.runtime"):
+            metrics.incr(f"worker.caches.{func.__name__}.misses")
+            with metrics.timer(f"worker.caches.{func.__name__}.runtime"):
                 result = func(*args, **kwargs)
             self.cache_instance.get_backend().set(key, self.ttl, result)
             return result
 
         return wrapped
 
-    def generate_key(self, func, args, kwargs):
+    def generate_key(self, func, args, kwargs) -> str:
         func_name = make_hash_sha256(func.__name__)
         tupled_args = make_hash_sha256(args)
         frozen_kwargs = make_hash_sha256(kwargs)
         return ":".join(["cache", func_name, tupled_args, frozen_kwargs])
 
-    def cache_async_function(self, func: Callable):
+    def cache_async_function(self, func: Callable) -> Callable:
         @wraps(func)
         async def wrapped(*args, **kwargs):
             key = self.generate_key(func, args, kwargs)
             value = self.cache_instance.get_backend().get(key)
             if value is not NO_VALUE:
-                metrics.incr(f"new_worker.caches.{func.__name__}.hits")
+                metrics.incr(f"worker.caches.{func.__name__}.hits")
                 return value
-            metrics.incr(f"new_worker.caches.{func.__name__}.misses")
-            with metrics.timer(f"new_worker.caches.{func.__name__}.runtime"):
+            metrics.incr(f"worker.caches.{func.__name__}.misses")
+            with metrics.timer(f"worker.caches.{func.__name__}.runtime"):
                 result = await func(*args, **kwargs)
             self.cache_instance.get_backend().set(key, self.ttl, result)
             return result

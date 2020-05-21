@@ -1,8 +1,5 @@
 FROM        codecov/baseworker
 
-COPY        . /worker
-WORKDIR     /worker
-
 # Official Python base image is needed or some applications will segfault.
 # PyInstaller needs zlib-dev, gcc, libc-dev, and musl-dev
 RUN         apk --update --no-cache add \
@@ -22,6 +19,8 @@ RUN git clone --depth 1 --single-branch --branch v3.4 https://github.com/pyinsta
     && CFLAGS="-Wno-stringop-overflow" python ./waf configure --no-lsb all \
     && pip install .. \
     && rm -Rf /tmp/pyinstaller
+
+COPY        . /worker
 
 WORKDIR     /worker
 

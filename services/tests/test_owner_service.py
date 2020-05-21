@@ -1,5 +1,4 @@
 import pytest
-from asyncio import Future
 
 from services.owner import get_owner_provider_service
 from database.tests.factories import OwnerFactory

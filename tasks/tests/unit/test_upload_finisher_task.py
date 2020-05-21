@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 import os
-from asyncio import Future
 
 import pytest
 
@@ -105,11 +104,9 @@ class TestUploadFinisherTask(object):
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocked_3 = mocker.patch.object(UploadFinisherTask, "app")
         mock_finish_reports_processing = mocker.patch.object(
-            UploadFinisherTask, "finish_reports_processing", return_value=Future()
+            UploadFinisherTask, "finish_reports_processing"
         )
-        mock_finish_reports_processing.return_value.set_result(
-            {"notifications_called": True}
-        )
+        mock_finish_reports_processing.return_value = {"notifications_called": True}
         mocked_3.send_task.return_value = True
         mock_redis.exists.side_effect = [True, False]
         mock_redis.lpop.side_effect = jsonified_redis_queue
@@ -182,11 +179,9 @@ class TestUploadFinisherTask(object):
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocked_3 = mocker.patch.object(UploadFinisherTask, "app")
         mock_finish_reports_processing = mocker.patch.object(
-            UploadFinisherTask, "finish_reports_processing", return_value=Future()
+            UploadFinisherTask, "finish_reports_processing"
         )
-        mock_finish_reports_processing.return_value.set_result(
-            {"notifications_called": True}
-        )
+        mock_finish_reports_processing.return_value = {"notifications_called": True}
         mocked_3.send_task.return_value = True
         mock_redis.exists.side_effect = [True, False]
         mock_redis.lpop.side_effect = jsonified_redis_queue

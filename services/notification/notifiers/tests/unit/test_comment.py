@@ -1,5 +1,4 @@
 import pytest
-from asyncio import Future
 from decimal import Decimal
 from services.notification.notifiers.comment import (
     CommentNotifier,
@@ -20,7 +19,6 @@ from shared.torngit.exceptions import (
 
 @pytest.fixture
 def mock_repo_provider(mock_repo_provider):
-    result = Future()
     compare_result = {
         "diff": {
             "files": {
@@ -110,11 +108,10 @@ def mock_repo_provider(mock_repo_provider):
             },
         ],
     }
-    result.set_result(compare_result)
-    mock_repo_provider.get_compare.return_value = result
-    mock_repo_provider.post_comment.return_value = Future()
-    mock_repo_provider.edit_comment.return_value = Future()
-    mock_repo_provider.delete_comment.return_value = Future()
+    mock_repo_provider.get_compare.return_value = compare_result
+    mock_repo_provider.post_comment.return_value = {}
+    mock_repo_provider.edit_comment.return_value = {}
+    mock_repo_provider.delete_comment.return_value = {}
     return mock_repo_provider
 
 
@@ -566,7 +563,7 @@ class TestCommentNotifier(object):
             print(li)
             assert exp == res
         assert result == expected_result
-    
+
     @pytest.mark.asyncio
     async def test_build_upgrade_message(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
@@ -965,7 +962,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
@@ -1066,9 +1063,9 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.delete_comment.return_value.set_exception(
-            TorngitClientError("code", "response", "message")
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.delete_comment.side_effect = TorngitClientError(
+            "code", "response", "message"
         )
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
@@ -1095,8 +1092,8 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.delete_comment.return_value.set_result(True)
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.delete_comment.return_value = True
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
@@ -1122,11 +1119,11 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": None, "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_exception(
-            TorngitClientError("code", "response", "message")
+        mock_repo_provider.post_comment.side_effect = TorngitClientError(
+            "code", "response", "message"
         )
-        mock_repo_provider.edit_comment.return_value.set_exception(
-            TorngitClientError("code", "response", "message")
+        mock_repo_provider.edit_comment.side_effect = TorngitClientError(
+            "code", "response", "message"
         )
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
@@ -1153,9 +1150,9 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.delete_comment.return_value.set_exception(
-            TorngitObjectNotFoundError("response", "message")
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.delete_comment.side_effect = TorngitObjectNotFoundError(
+            "response", "message"
         )
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
@@ -1182,9 +1179,9 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.edit_comment.return_value.set_exception(
-            TorngitObjectNotFoundError("response", "message")
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.edit_comment.side_effect = TorngitObjectNotFoundError(
+            "response", "message"
         )
         result = await notifier.send_actual_notification(data)
         assert not result.notification_attempted
@@ -1211,9 +1208,9 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": None, "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.edit_comment.return_value.set_exception(
-            TorngitObjectNotFoundError("response", "message")
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.edit_comment.side_effect = TorngitObjectNotFoundError(
+            "response", "message"
         )
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
@@ -1240,8 +1237,8 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.edit_comment.return_value.set_result({"id": "49"})
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.edit_comment.return_value = {"id": "49"}
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
@@ -1267,9 +1264,9 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.edit_comment.return_value.set_exception(
-            TorngitClientError("code", "response", "message")
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.edit_comment.side_effect = TorngitClientError(
+            "code", "response", "message"
         )
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
@@ -1296,8 +1293,8 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.edit_comment.return_value.set_result({"id": "49"})
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.edit_comment.return_value = {"id": "49"}
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
@@ -1323,9 +1320,9 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.edit_comment.return_value.set_exception(
-            TorngitClientError("code", "response", "message")
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.edit_comment.side_effect = TorngitClientError(
+            "code", "response", "message"
         )
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
@@ -1352,11 +1349,11 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_exception(
-            TorngitClientError("code", "response", "message")
+        mock_repo_provider.post_comment.side_effect = TorngitClientError(
+            "code", "response", "message"
         )
-        mock_repo_provider.edit_comment.return_value.set_exception(
-            TorngitClientError("code", "response", "message")
+        mock_repo_provider.edit_comment.side_effect = TorngitClientError(
+            "code", "response", "message"
         )
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
@@ -1383,9 +1380,9 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
-        mock_repo_provider.post_comment.return_value.set_result({"id": 9865})
-        mock_repo_provider.edit_comment.return_value.set_exception(
-            TorngitObjectNotFoundError("response", "message")
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_repo_provider.edit_comment.side_effect = TorngitObjectNotFoundError(
+            "response", "message"
         )
         result = await notifier.send_actual_notification(data)
         assert result.notification_attempted
@@ -1444,15 +1441,13 @@ class TestCommentNotifier(object):
         self, mocker, dbsession, sample_comparison
     ):
         mocked_send_actual_notification = mocker.patch.object(
-            CommentNotifier, "send_actual_notification", return_value=Future()
+            CommentNotifier,
+            "send_actual_notification",
+            side_effect=TorngitServerUnreachableError(),
         )
         mocked_build_message = mocker.patch.object(
-            CommentNotifier, "build_message", return_value=Future()
+            CommentNotifier, "build_message", return_value=["title", "content"]
         )
-        mocked_send_actual_notification.return_value.set_exception(
-            TorngitServerUnreachableError()
-        )
-        mocked_build_message.return_value.set_result(["title", "content"])
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -1555,10 +1550,9 @@ class TestCommentNotifier(object):
         self, dbsession, mocker, sample_comparison
     ):
         mocked_build_message = mocker.patch.object(
-            CommentNotifier, "build_message", return_value=Future()
-        )
-        mocked_build_message.return_value.set_exception(
-            TorngitClientError("code", "response", "message")
+            CommentNotifier,
+            "build_message",
+            side_effect=TorngitClientError("code", "response", "message"),
         )
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -1602,21 +1596,19 @@ class TestCommentNotifier(object):
         self, dbsession, sample_comparison, mocker
     ):
         build_message_mocker = mocker.patch.object(
-            CommentNotifier, "build_message", return_value=Future()
+            CommentNotifier,
+            "build_message",
+            return_value="message_test_notify_with_enough_builds",
         )
         send_comment_default_behavior_mocker = mocker.patch.object(
-            CommentNotifier, "send_comment_default_behavior", return_value=Future()
-        )
-        build_message_mocker.return_value.set_result(
-            "message_test_notify_with_enough_builds"
-        )
-        send_comment_default_behavior_mocker.return_value.set_result(
-            dict(
+            CommentNotifier,
+            "send_comment_default_behavior",
+            return_value=dict(
                 notification_attempted=True,
                 notification_successful=True,
                 explanation=None,
                 data_received=None,
-            )
+            ),
         )
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,

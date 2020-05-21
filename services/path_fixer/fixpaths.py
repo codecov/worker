@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ _remove_known_bad_paths = re.compile(
 ).sub
 
 
-def clean_toc(toc):
+def clean_toc(toc: str) -> Optional[str]:
     toc = toc.strip()
     if toc:
         toc = (
@@ -70,7 +71,7 @@ def clean_toc(toc):
         return toc
 
 
-def first_not_null_index(_list):
+def first_not_null_index(_list) -> Optional[int]:
     """return key of the first not null value in list
     """
     for i, v in enumerate(_list):
@@ -81,7 +82,7 @@ def first_not_null_index(_list):
 _star_to_glob = re.compile(r"(?<!\.)\*").sub
 
 
-def _fixpaths_regs(fix):
+def _fixpaths_regs(fix: str) -> str:
     key = tuple(fix.split("::"))[0]
     # [DEPRECIATING] because handled by validators, but some data is cached in db
     # a/**/b => a/.*/b

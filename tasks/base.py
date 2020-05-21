@@ -16,7 +16,7 @@ log = logging.getLogger("worker")
 class BaseCodecovRequest(Request):
     @property
     def metrics_prefix(self):
-        return f"new-worker.task.{self.name}"
+        return f"worker.task.{self.name}"
 
     def on_timeout(self, soft: bool, timeout: int):
         res = super().on_timeout(soft, timeout)
@@ -29,17 +29,14 @@ class BaseCodecovTask(celery_app.Task):
 
     @property
     def metrics_prefix(self):
-        return f"new-worker.task.{self.name}"
+        return f"worker.task.{self.name}"
 
     def run(self, *args, **kwargs):
         with metrics.timer(f"{self.metrics_prefix}.full"):
-            loop = asyncio.get_event_loop()
             db_session = get_db_session()
             try:
                 with metrics.timer(f"{self.metrics_prefix}.run"):
-                    return loop.run_until_complete(
-                        self.run_async(db_session, *args, **kwargs)
-                    )
+                    return asyncio.run(self.run_async(db_session, *args, **kwargs))
             except SQLAlchemyError:
                 log.exception(
                     "An error talking to the database occurred",

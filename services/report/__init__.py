@@ -1,6 +1,7 @@
 import logging
-from typing import Mapping, Any
+from typing import Mapping, Any, Optional
 
+from shared.metrics import metrics
 from shared.reports.resources import Report
 from shared.reports.editable import EditableReport
 from shared.storage.exceptions import FileNotInStorageError
@@ -14,23 +15,30 @@ from services.yaml.reader import read_yaml_field, get_paths_from_flags
 log = logging.getLogger(__name__)
 
 
+class NotReadyToBuildReportYetError(Exception):
+    pass
+
+
 class ReportService(object):
     def __init__(self, current_yaml: Mapping[str, Any] = None):
         self.current_yaml = current_yaml
 
-    def build_report(self, chunks, files, sessions, totals):
+    def build_report(self, chunks, files, sessions, totals) -> Report:
         report_class = Report
         for sess in sessions.values():
             if sess.get("st") == "carriedforward":
                 report_class = EditableReport
-        return report_class(
-            chunks=chunks, files=files, sessions=sessions, totals=totals
-        )
+        with metrics.timer(
+            f"services.report.ReportService.build_report.{report_class.__name__}"
+        ):
+            return report_class(
+                chunks=chunks, files=files, sessions=sessions, totals=totals
+            )
 
-    def build_report_from_commit(self, commit):
+    def build_report_from_commit(self, commit) -> Report:
         return self._do_build_report_from_commit(commit)
 
-    def get_existing_report_for_commit(self, commit):
+    def get_existing_report_for_commit(self, commit) -> Optional[Report]:
         commitid = commit.commitid
         if commit.report_json is None:
             return None
@@ -51,13 +59,80 @@ class ReportService(object):
         res = self.build_report(chunks, files, sessions, totals)
         return res
 
-    def _do_build_report_from_commit(self, commit):
+    def _do_build_report_from_commit(self, commit) -> Report:
         report = self.get_existing_report_for_commit(commit)
         if report is not None:
             return report
         return self.create_new_report_for_commit(commit)
 
-    def create_new_report_for_commit(self, commit: Commit):
+    @metrics.timer(
+        f"services.report.ReportService.get_appropriate_commit_to_carryforward_from"
+    )
+    def get_appropriate_commit_to_carryforward_from(
+        self, commit: Commit
+    ) -> Optional[Commit]:
+        parent_commit = commit.get_parent_commit()
+        max_parenthood_deepness = 10
+        parent_commit_tracking = []
+        count = 1  # `parent_commit` is already the first parent
+        while (
+            parent_commit is not None
+            and parent_commit.state not in ("complete", "skipped")
+            and count < max_parenthood_deepness
+        ):
+            parent_commit_tracking.append(parent_commit.commitid)
+            if (
+                parent_commit.state == "pending"
+                and parent_commit.parent_commit_id is None
+            ):
+                log.warning(
+                    "One of the ancestors commit doesn't seem to have determined its parent yet",
+                    extra=dict(
+                        commit=commit.commitid,
+                        repoid=commit.repoid,
+                        current_parent_commit=parent_commit.commitid,
+                    ),
+                )
+                raise NotReadyToBuildReportYetError()
+            log.info(
+                "Going from parent to their parent since they dont match the requisites for CFF",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    current_parent_commit=parent_commit.commitid,
+                    parent_tracking=parent_commit_tracking,
+                    current_state=parent_commit.state,
+                    new_parent_commit=parent_commit.parent_commit_id,
+                ),
+            )
+            parent_commit = parent_commit.get_parent_commit()
+            count += 1
+        if parent_commit is None:
+            log.warning(
+                "No parent commit was found to be carriedforward from",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    parent_tracing=parent_commit_tracking,
+                ),
+            )
+            return None
+        if parent_commit.state not in ("complete", "skipped"):
+            log.warning(
+                "None of the parent commits were in a complete state to be used as CFing base",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    parent_tracking=parent_commit_tracking,
+                    would_be_state=parent_commit.state,
+                    would_be_parent=parent_commit.commitid,
+                ),
+            )
+            return None
+        return parent_commit
+
+    @metrics.timer(f"services.report.ReportService.create_new_report_for_commit")
+    def create_new_report_for_commit(self, commit: Commit) -> Report:
         log.info(
             "Creating new report for commit",
             extra=dict(commit=commit.commitid, repoid=commit.repoid,),
@@ -83,37 +158,14 @@ class ReportService(object):
         paths_to_carryforward = get_paths_from_flags(
             self.current_yaml, flags_to_carryforward
         )
-        parent_commit = commit.get_parent_commit()
-        max_parenthood_deepness = 10
-        count = 1  # `parent_commit` is already the first parent
-        while (
-            parent_commit is not None
-            and parent_commit.state != "complete"
-            and count < max_parenthood_deepness
-        ):
-            parent_commit = parent_commit.get_parent_commit()
-            count += 1
+        parent_commit = self.get_appropriate_commit_to_carryforward_from(commit)
         if parent_commit is None:
             log.warning(
-                "No parent commit was found to be carriedforward from",
+                "Could not carryforward report from another commit despite having CF flags",
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
-                    would_be_parent=commit.parent_commit_id,
-                    flags_to_carryforward=flags_to_carryforward,
-                    paths_to_carryforward=paths_to_carryforward,
-                ),
-            )
-            return Report()
-        if parent_commit.state != "complete":
-            log.warning(
-                "None of the parent commits were in a complete state to be used as CFing base",
-                extra=dict(
-                    commit=commit.commitid,
-                    repoid=commit.repoid,
-                    would_be_parent=commit.parent_commit_id,
-                    flags_to_carryforward=flags_to_carryforward,
-                    paths_to_carryforward=paths_to_carryforward,
+                    some_flags_to_carryforward=flags_to_carryforward[:100],
                 ),
             )
             return Report()
@@ -138,5 +190,5 @@ class ReportService(object):
 
     def build_report_from_raw_content(
         self, commit_yaml, master, reports, flags, session
-    ):
+    ) -> Any:
         return process_raw_upload(commit_yaml, master, reports, flags, session)

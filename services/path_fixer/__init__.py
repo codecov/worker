@@ -4,6 +4,7 @@ import logging
 import random
 from pathlib import PurePath
 from collections import defaultdict
+from typing import Optional
 
 from pathmap import _resolve_path
 from pathmap.tree import Tree
@@ -12,6 +13,7 @@ from services.path_fixer.fixpaths import _remove_known_bad_paths
 from services.path_fixer.user_path_fixes import UserPathFixes
 from services.path_fixer.user_path_includes import UserPathIncludes
 from services.yaml import read_yaml_field
+
 
 log = logging.getLogger(__name__)
 
@@ -55,21 +57,21 @@ class PathFixer(object):
 
     def __init__(
         self, yaml_fixes, path_patterns, toc, should_disable_default_pathfixes=False
-    ):
+    ) -> None:
         self.yaml_fixes = yaml_fixes or []
         self.path_patterns = set(path_patterns) or set([])
         self.toc = toc or []
         self.should_disable_default_pathfixes = should_disable_default_pathfixes
         self.initialize()
 
-    def initialize(self):
+    def initialize(self) -> None:
         self.custom_fixes = UserPathFixes(self.yaml_fixes)
         self.path_matcher = UserPathIncludes(self.path_patterns)
         self.tree = Tree()
         self.tree.construct_tree(self.toc)
         self.calculated_paths = defaultdict(set)
 
-    def clean_path(self, path: str) -> str:
+    def clean_path(self, path: str) -> Optional[str]:
         if not path:
             return None
         path = os.path.relpath(path.replace("\\", "/").lstrip("./").lstrip("../"))
@@ -97,12 +99,12 @@ class PathFixer(object):
         self.calculated_paths[res].add(path)
         return res
 
-    def get_relative_path_aware_pathfixer(self, base_path):
+    def get_relative_path_aware_pathfixer(self, base_path) -> "BasePathAwarePathFixer":
         return BasePathAwarePathFixer(original_path_fixer=self, base_path=base_path)
 
 
 class BasePathAwarePathFixer(PathFixer):
-    def __init__(self, original_path_fixer, base_path):
+    def __init__(self, original_path_fixer, base_path) -> None:
         self.original_path_fixer = original_path_fixer
         self.base_path = PurePath(base_path).parent if base_path is not None else None
         self.unexpected_results = set()

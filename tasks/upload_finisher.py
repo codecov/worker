@@ -12,7 +12,7 @@ from services.yaml import read_yaml_field
 from celery_config import (
     notify_task_name,
     status_set_pending_task_name,
-    pulls_task_name
+    pulls_task_name,
 )
 
 log = logging.getLogger(__name__)

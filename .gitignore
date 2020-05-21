@@ -80,6 +80,8 @@ ipython_config.py
 # pyenv
 .python-version
 
+# vscode/
+.vscode
 # celery beat schedule file
 celerybeat-schedule
 
@@ -115,3 +117,5 @@ dmypy.json
 
 background_app/.fdk/metrics
 background_app/.report.json
+
+.pytype

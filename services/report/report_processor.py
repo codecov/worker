@@ -4,8 +4,10 @@ from json import loads
 from lxml import etree
 import logging
 
-from services.report.languages.helpers import remove_non_ascii
+from shared.reports.resources import Report
 
+from helpers.exceptions import CorruptRawReportError
+from services.report.languages.helpers import remove_non_ascii
 from helpers.metrics import metrics
 
 from services.report.languages import (
@@ -36,11 +38,12 @@ from services.report.languages import (
     XCodeProcessor,
     XCodePlistProcessor,
 )
+from typing import Any, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
 
-def report_type_matching(name, raw_report):
+def report_type_matching(name, raw_report) -> Tuple[Any, Optional[str]]:
     parser = etree.XMLParser(recover=True, resolve_entities=False)
     first_line = raw_report.split("\n", 1)[0]
     xcode_first_line_endings = (
@@ -88,7 +91,7 @@ def report_type_matching(name, raw_report):
     return raw_report, "txt"
 
 
-def get_possible_processors_list(report_type):
+def get_possible_processors_list(report_type) -> list:
     processor_dict = {
         "plist": [XCodePlistProcessor()],
         "xml": [
@@ -127,7 +130,9 @@ def get_possible_processors_list(report_type):
     return processor_dict.get(report_type, [])
 
 
-def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
+def process_report(
+    report, commit_yaml, sessionid, ignored_lines, path_fixer
+) -> Optional[Report]:
     name = ""
     if report[:7] == "# path=":
         if "\n" not in report:
@@ -146,23 +151,33 @@ def process_report(report, commit_yaml, sessionid, ignored_lines, path_fixer):
         # empty [dlst]
         return None
     processors = get_possible_processors_list(report_type)
-    # [xcode]
     for processor in processors:
         if processor.matches_content(report, first_line, name):
             with metrics.timer(
-                f"new_worker.services.report.processors.{processor.name}.run"
+                f"worker.services.report.processors.{processor.name}.run"
             ):
                 try:
                     res = processor.process(
                         name, report, path_fixer, ignored_lines, sessionid, commit_yaml
                     )
                     metrics.incr(
-                        f"new_worker.services.report.processors.{processor.name}.success"
+                        f"worker.services.report.processors.{processor.name}.success"
                     )
                     return res
+                except CorruptRawReportError as e:
+                    log.warning(
+                        "Processor matched file but later a problem with file was discovered",
+                        extra=dict(
+                            processor_name=processor.name,
+                            expected_format=e.expected_format,
+                            corruption_error=e.corruption_error,
+                        ),
+                        exc_info=True,
+                    )
+                    return None
                 except Exception:
                     metrics.incr(
-                        f"new_worker.services.report.processors.{processor.name}.failure"
+                        f"worker.services.report.processors.{processor.name}.failure"
                     )
                     raise
     log.info(

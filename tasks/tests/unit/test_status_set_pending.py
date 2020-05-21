@@ -1,7 +1,6 @@
 import json
-import asyncio
+import mock
 from pathlib import Path
-from asyncio import Future
 
 import pytest
 from shared.torngit.status import Status
@@ -19,13 +18,12 @@ class TestSetPendingTaskUnit(object):
         repo = mocker.MagicMock(
             service="github",
             data=dict(repo=dict(repoid=123)),
-            set_commit_status=mocker.MagicMock(return_value=None),
+            set_commit_status=mock.AsyncMock(return_value=None),
         )
         mocked_1.return_value = repo
 
         mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
-        fetch_current_yaml = Future()
-        fetch_current_yaml.set_result({"coverage": {"status": None}})
+        fetch_current_yaml = {"coverage": {"status": None}}
         mocked_2.return_value = fetch_current_yaml
 
         mock_redis.sismember.side_effect = [True]
@@ -49,13 +47,12 @@ class TestSetPendingTaskUnit(object):
         repo = mocker.MagicMock(
             service="github",
             data=dict(repo=dict(repoid=123)),
-            set_commit_status=mocker.MagicMock(return_value=None),
+            set_commit_status=mock.AsyncMock(return_value=None),
         )
         mocked_1.return_value = repo
 
         mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
-        fetch_current_yaml = Future()
-        fetch_current_yaml.set_result({"coverage": {"status": None}})
+        fetch_current_yaml = {"coverage": {"status": None}}
         mocked_2.return_value = fetch_current_yaml
 
         mock_redis.sismember.side_effect = [False]
@@ -80,34 +77,26 @@ class TestSetPendingTaskUnit(object):
         self, mocker, mock_configuration, dbsession, mock_redis
     ):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
-        get_commit_statuses = Future()
-        set_commit_status = Future()
+        get_commit_statuses = Status([])
+        set_commit_status = None
         repo = mocker.MagicMock(
             service="github",
             slug="owner/repo",
             data=dict(repo=dict(repoid=123)),
-            get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
-            set_commit_status=mocker.MagicMock(return_value=set_commit_status),
+            get_commit_statuses=mock.AsyncMock(return_value=get_commit_statuses),
+            set_commit_status=mock.AsyncMock(return_value=set_commit_status),
         )
         mocked_1.return_value = repo
 
         mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
-        fetch_current_yaml = Future()
-        fetch_current_yaml.set_result(
-            {
-                "coverage": {
-                    "status": {
-                        "project": {"custom": {"target": 80, "set_pending": False}}
-                    }
-                }
+        fetch_current_yaml = {
+            "coverage": {
+                "status": {"project": {"custom": {"target": 80, "set_pending": False}}}
             }
-        )
+        }
         mocked_2.return_value = fetch_current_yaml
 
         mock_redis.sismember.side_effect = [True]
-
-        get_commit_statuses.set_result(Status([]))
-        set_commit_status.set_result(None)
 
         commit = CommitFactory.create()
         dbsession.add(commit)
@@ -127,34 +116,28 @@ class TestSetPendingTaskUnit(object):
         self, mocker, mock_configuration, dbsession, mock_redis
     ):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
-        get_commit_statuses = Future()
-        set_commit_status = Future()
+        get_commit_statuses = Status([])
+        set_commit_status = None
         repo = mocker.MagicMock(
             service="github",
             slug="owner/repo",
             data=dict(repo=dict(repoid=123)),
-            get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
-            set_commit_status=mocker.MagicMock(return_value=set_commit_status),
+            get_commit_statuses=mock.AsyncMock(return_value=get_commit_statuses),
+            set_commit_status=mock.AsyncMock(return_value=set_commit_status),
         )
         mocked_1.return_value = repo
 
         mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
-        fetch_current_yaml = Future()
-        fetch_current_yaml.set_result(
-            {
-                "coverage": {
-                    "status": {
-                        "project": {"custom": {"target": 80, "branches": ["master"]}}
-                    }
+        fetch_current_yaml = {
+            "coverage": {
+                "status": {
+                    "project": {"custom": {"target": 80, "branches": ["master"]}}
                 }
             }
-        )
+        }
         mocked_2.return_value = fetch_current_yaml
 
         mock_redis.sismember.side_effect = [True]
-
-        get_commit_statuses.set_result(Status([]))
-        set_commit_status.set_result(None)
 
         commit = CommitFactory.create()
         dbsession.add(commit)
@@ -217,34 +200,26 @@ class TestSetPendingTaskUnit(object):
         )
 
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
-        get_commit_statuses = Future()
-        set_commit_status = Future()
+        get_commit_statuses = Status(statuses)
+        set_commit_status = None
         repo = mocker.MagicMock(
             service="github",
             slug="owner/repo",
             data=dict(repo=dict(repoid=123)),
-            get_commit_statuses=mocker.MagicMock(return_value=get_commit_statuses),
-            set_commit_status=mocker.MagicMock(return_value=set_commit_status),
+            get_commit_statuses=mock.AsyncMock(return_value=get_commit_statuses),
+            set_commit_status=mock.AsyncMock(return_value=set_commit_status),
         )
         mocked_1.return_value = repo
 
         mocked_2 = mocker.patch("tasks.status_set_pending.get_current_yaml")
-        fetch_current_yaml = Future()
-        fetch_current_yaml.set_result(
-            {
-                "coverage": {
-                    "status": {
-                        context: {"custom": {"target": 80, "branches": ["!skip"]}}
-                    }
-                }
+        fetch_current_yaml = {
+            "coverage": {
+                "status": {context: {"custom": {"target": 80, "branches": ["!skip"]}}}
             }
-        )
+        }
         mocked_2.return_value = fetch_current_yaml
 
         mock_redis.sismember.side_effect = [True]
-
-        get_commit_statuses.set_result(Status(statuses))
-        set_commit_status.set_result(None)
 
         commit = CommitFactory.create()
         dbsession.add(commit)

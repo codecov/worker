@@ -24,11 +24,11 @@ class SiteUrls(Enum):
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
     org_acccount_url = "{base_url}/account/{service_short}/{username}"
 
-    def get_url(self, **kwargs):
+    def get_url(self, **kwargs) -> str:
         return self.value.format(**kwargs)
 
 
-def get_base_url():
+def get_base_url() -> str:
     return get_config("setup", "codecov_url")
 
 
@@ -98,6 +98,7 @@ def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
     )
     encoded_kwargs = urlencode(kwargs)
     return f"{url}?{encoded_kwargs}"
+
 
 def get_org_account_url(pull: Pull) -> str:
     repository = pull.repository

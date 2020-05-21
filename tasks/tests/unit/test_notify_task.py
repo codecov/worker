@@ -1,5 +1,4 @@
 import pytest
-from asyncio import Future
 
 from shared.reports.resources import Report
 from celery.exceptions import Retry, MaxRetriesExceededError
@@ -8,9 +7,12 @@ from redis.exceptions import LockError
 
 from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.notify import NotifyTask
-from services.decoration import Decoration
+from services.report import ReportService
 from services.repository import EnrichedPull
-from services.notification.notifiers.base import NotificationResult
+from services.notification.notifiers.base import (
+    NotificationResult,
+    AbstractBaseNotifier,
+)
 from services.notification import NotificationService
 from database.tests.factories import (
     RepositoryFactory,
@@ -83,8 +85,7 @@ class TestNotifyTask(object):
         mocked_should_send_notifications = mocker.patch.object(
             NotifyTask, "should_send_notifications", return_value=False
         )
-        fetch_and_update_whether_ci_passed_result = Future()
-        fetch_and_update_whether_ci_passed_result.set_result({})
+        fetch_and_update_whether_ci_passed_result = {}
         mocker.patch.object(
             NotifyTask,
             "fetch_and_update_whether_ci_passed",
@@ -104,7 +105,7 @@ class TestNotifyTask(object):
         )
         assert result == {"notified": False, "notifications": None}
         mocked_should_send_notifications.assert_called_with(
-            {}, commit, fetch_and_update_whether_ci_passed_result.result()
+            {}, commit, fetch_and_update_whether_ci_passed_result
         )
 
     @pytest.mark.asyncio
@@ -116,8 +117,7 @@ class TestNotifyTask(object):
         mocked_should_send_notifications = mocker.patch.object(
             NotifyTask, "should_send_notifications", return_value=False
         )
-        fetch_and_update_whether_ci_passed_result = Future()
-        fetch_and_update_whether_ci_passed_result.set_result({})
+        fetch_and_update_whether_ci_passed_result = {}
         mocker.patch.object(
             NotifyTask,
             "fetch_and_update_whether_ci_passed",
@@ -130,9 +130,9 @@ class TestNotifyTask(object):
             commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
         )
         mocked_fetch_yaml = mocker.patch(
-            "services.yaml.fetch_commit_yaml_from_provider", return_value=Future()
+            "services.yaml.fetch_commit_yaml_from_provider",
         )
-        mocked_fetch_yaml.return_value.set_result({})
+        mocked_fetch_yaml.return_value = {}
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
@@ -141,7 +141,7 @@ class TestNotifyTask(object):
         )
         assert result == {"notified": False, "notifications": None}
         mocked_should_send_notifications.assert_called_with(
-            {}, commit, fetch_and_update_whether_ci_passed_result.result()
+            {}, commit, fetch_and_update_whether_ci_passed_result
         )
         mocked_fetch_yaml.assert_called_with(commit, mock_repo_provider)
 
@@ -150,18 +150,16 @@ class TestNotifyTask(object):
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
         fake_notifier = mocker.MagicMock(
-            notify=mocker.MagicMock(return_value=Future()),
+            AbstractBaseNotifier,
             is_enabled=mocker.MagicMock(return_value=True),
             title="the_title",
         )
         fake_notifier.name = "fake_hahaha"
-        fake_notifier.notify.return_value.set_result(
-            NotificationResult(
-                notification_attempted=True,
-                notification_successful=True,
-                explanation="",
-                data_sent={"all": ["The", 1, "data"]},
-            )
+        fake_notifier.notify.return_value = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation="",
+            data_sent={"all": ["The", 1, "data"]},
         )
         mocker.patch.object(
             NotificationService, "get_notifiers_instances", return_value=[fake_notifier]
@@ -169,8 +167,7 @@ class TestNotifyTask(object):
         mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
         mocker.patch.object(NotifyTask, "should_send_notifications", return_value=True)
-        fetch_and_update_whether_ci_passed_result = Future()
-        fetch_and_update_whether_ci_passed_result.set_result({})
+        fetch_and_update_whether_ci_passed_result = {}
         mocker.patch.object(
             NotifyTask,
             "fetch_and_update_whether_ci_passed",
@@ -178,9 +175,11 @@ class TestNotifyTask(object):
         )
         mocked_fetch_pull = mocker.patch(
             "tasks.notify.fetch_and_update_pull_request_information_from_commit",
-            return_value=Future(),
         )
-        mocked_fetch_pull.return_value.set_result(None)
+        mocker.patch.object(
+            ReportService, "get_existing_report_for_commit", return_value=Report()
+        )
+        mocked_fetch_pull.return_value = None
         commit = CommitFactory.create(message="", pullid=None,)
         dbsession.add(commit)
         dbsession.flush()
@@ -221,8 +220,7 @@ class TestNotifyTask(object):
             NotifyTask, "should_wait_longer", return_value=True
         )
         mocked_retry = mocker.patch.object(NotifyTask, "retry", side_effect=Retry())
-        fetch_and_update_whether_ci_passed_result = Future()
-        fetch_and_update_whether_ci_passed_result.set_result({})
+        fetch_and_update_whether_ci_passed_result = {}
         mocker.patch.object(
             NotifyTask,
             "fetch_and_update_whether_ci_passed",
@@ -246,7 +244,7 @@ class TestNotifyTask(object):
             )
         mocked_retry.assert_called_with(countdown=15, max_retries=10)
         mocked_should_wait_longer.assert_called_with(
-            {}, commit, fetch_and_update_whether_ci_passed_result.result()
+            {}, commit, fetch_and_update_whether_ci_passed_result
         )
 
     @pytest.mark.asyncio
@@ -259,8 +257,7 @@ class TestNotifyTask(object):
             NotifyTask, "should_wait_longer", return_value=True
         )
         mocked_retry = mocker.patch.object(NotifyTask, "retry", side_effect=Retry())
-        fetch_and_update_whether_ci_passed_result = Future()
-        fetch_and_update_whether_ci_passed_result.set_result({})
+        fetch_and_update_whether_ci_passed_result = {}
         mocker.patch.object(
             NotifyTask,
             "fetch_and_update_whether_ci_passed",
@@ -285,7 +282,7 @@ class TestNotifyTask(object):
             )
         mocked_retry.assert_called_with(countdown=180, max_retries=5)
         mocked_should_wait_longer.assert_called_with(
-            {}, commit, fetch_and_update_whether_ci_passed_result.result()
+            {}, commit, fetch_and_update_whether_ci_passed_result
         )
 
     @pytest.mark.asyncio
@@ -294,14 +291,10 @@ class TestNotifyTask(object):
     ):
         mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
-        fetch_and_update_whether_ci_passed_result = Future()
-        fetch_and_update_whether_ci_passed_result.set_exception(
-            TorngitClientError(401, "response", "message")
-        )
         mocker.patch.object(
             NotifyTask,
             "fetch_and_update_whether_ci_passed",
-            return_value=fetch_and_update_whether_ci_passed_result,
+            side_effect=TorngitClientError(401, "response", "message"),
         )
         commit = CommitFactory.create(
             message="",
@@ -329,14 +322,10 @@ class TestNotifyTask(object):
     ):
         mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
-        fetch_and_update_whether_ci_passed_result = Future()
-        fetch_and_update_whether_ci_passed_result.set_exception(
-            TorngitServer5xxCodeError()
-        )
         mocker.patch.object(
             NotifyTask,
             "fetch_and_update_whether_ci_passed",
-            return_value=fetch_and_update_whether_ci_passed_result,
+            side_effect=TorngitServer5xxCodeError(),
         )
         commit = CommitFactory.create(
             message="",
@@ -433,30 +422,30 @@ class TestNotifyTask(object):
         base_report = Report()
         head_report = Report()
         good_notifier = mocker.MagicMock(
+            AbstractBaseNotifier,
             is_enabled=mocker.MagicMock(return_value=True),
-            notify=mocker.MagicMock(return_value=Future()),
             title="good_notifier",
         )
         bad_notifier = mocker.MagicMock(
+            AbstractBaseNotifier,
             is_enabled=mocker.MagicMock(return_value=True),
-            notify=mocker.MagicMock(return_value=Future()),
             title="bad_notifier",
         )
         disabled_notifier = mocker.MagicMock(
-            is_enabled=mocker.MagicMock(return_value=False), title="disabled_notifier"
+            AbstractBaseNotifier,
+            is_enabled=mocker.MagicMock(return_value=False),
+            title="disabled_notifier",
         )
-        good_notifier.notify.return_value.set_result(
-            NotificationResult(
-                notification_attempted=True,
-                notification_successful=True,
-                explanation="",
-                data_sent={"some": "data"},
-            )
+        good_notifier.notify.return_value = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation="",
+            data_sent={"some": "data"},
         )
         good_notifier.name = "good_name"
         bad_notifier.name = "bad_name"
         disabled_notifier.name = "disabled_notifier_name"
-        bad_notifier.notify.return_value.set_exception(Exception("This is bad"))
+        bad_notifier.notify.side_effect = Exception("This is bad")
         mocker.patch.object(
             NotificationService,
             "get_notifiers_instances",
@@ -478,7 +467,12 @@ class TestNotifyTask(object):
             },
         ]
         res = await task.submit_third_party_notifications(
-            current_yaml, base_commit, head_commit, base_report, head_report, enrichedPull
+            current_yaml,
+            base_commit,
+            head_commit,
+            base_report,
+            head_report,
+            enrichedPull,
         )
         assert expected_result == res
 
@@ -489,9 +483,9 @@ class TestNotifyTask(object):
         mocker.patch.object(NotifyTask, "should_wait_longer", return_value=True)
         mocker.patch.object(NotifyTask, "retry", side_effect=MaxRetriesExceededError())
         mocked_fetch_and_update_whether_ci_passed = mocker.patch.object(
-            NotifyTask, "fetch_and_update_whether_ci_passed", return_value=Future()
+            NotifyTask, "fetch_and_update_whether_ci_passed",
         )
-        mocked_fetch_and_update_whether_ci_passed.return_value.set_result(True)
+        mocked_fetch_and_update_whether_ci_passed.return_value = True
         commit = CommitFactory.create(
             message="",
             pullid=None,
@@ -569,10 +563,11 @@ class TestNotifyTask(object):
         mocked_run_async_within_lock = mocker.patch.object(
             NotifyTask, "run_async_within_lock"
         )
-        mocked_run_async_within_lock.return_value = Future()
-        mocked_run_async_within_lock.return_value.set_result(
-            {"notifications": [], "notified": True, "reason": "yay",}
-        )
+        mocked_run_async_within_lock.return_value = {
+            "notifications": [],
+            "notified": True,
+            "reason": "yay",
+        }
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()

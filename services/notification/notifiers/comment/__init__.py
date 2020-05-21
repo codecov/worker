@@ -3,7 +3,7 @@ from itertools import starmap
 from decimal import Decimal
 from collections import namedtuple
 import logging
-from typing import Any, Mapping
+from typing import Any, Mapping, List
 
 from shared.reports.resources import Report, ReportTotals
 from shared.helpers.yaml import walk
@@ -23,7 +23,12 @@ from helpers.metrics import metrics
 from services.yaml.reader import read_yaml_field, round_number
 from services.notification.changes import get_changes
 from services.repository import get_repo_provider_service
-from services.urls import get_pull_url, get_commit_url, get_pull_graph_url, get_org_account_url
+from services.urls import (
+    get_pull_url,
+    get_commit_url,
+    get_pull_graph_url,
+    get_org_account_url,
+)
 from services.notification.notifiers.comment.helpers import (
     sort_by_importance,
     format_number_to_str,
@@ -80,7 +85,10 @@ class CommentNotifier(AbstractBaseNotifier):
                 data_sent=None,
                 data_received=None,
             )
-        if comparison.enriched_pull is None or comparison.enriched_pull.provider_pull is None:
+        if (
+            comparison.enriched_pull is None
+            or comparison.enriched_pull.provider_pull is None
+        ):
             return NotificationResult(
                 notification_attempted=False,
                 notification_successful=None,
@@ -108,7 +116,7 @@ class CommentNotifier(AbstractBaseNotifier):
                 )
         try:
             with metrics.timer(
-                "new_worker.services.notifications.notifiers.comment.build_message"
+                "worker.services.notifications.notifiers.comment.build_message"
             ):
                 message = await self.build_message(comparison)
         except TorngitClientError:
@@ -131,7 +139,7 @@ class CommentNotifier(AbstractBaseNotifier):
         data = {"message": message, "commentid": pull.commentid, "pullid": pull.pullid}
         try:
             with metrics.timer(
-                "new_worker.services.notifications.notifiers.comment.send_notifications"
+                "worker.services.notifications.notifiers.comment.send_notifications"
             ):
                 return await self.send_actual_notification(data)
         except TorngitServerFailureError:
@@ -307,13 +315,11 @@ class CommentNotifier(AbstractBaseNotifier):
             self.notifier_yaml_settings, dict
         )
 
-    async def build_message(self, comparison: Comparison) -> str:
+    async def build_message(self, comparison: Comparison) -> List[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
 
-        with metrics.timer(
-            "new_worker.services.notifications.notifiers.comment.get_diff"
-        ):
+        with metrics.timer("worker.services.notifications.notifiers.comment.get_diff"):
             diff = await self.get_diff(comparison)
         pull_dict = comparison.enriched_pull.provider_pull
         return self._create_message(comparison, diff, pull_dict)
@@ -323,10 +329,12 @@ class CommentNotifier(AbstractBaseNotifier):
         links = {
             "org_account": get_org_account_url(db_pull),
         }
-        author_username = comparison.enriched_pull.provider_pull['author'].get("username")
+        author_username = comparison.enriched_pull.provider_pull["author"].get(
+            "username"
+        )
         return [
             f"The author of this PR, {author_username}, is not an active member of this organization on Codecov.",
-            f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment."
+            f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment.",
         ]
 
     def _create_message(self, comparison, diff, pull_dict):

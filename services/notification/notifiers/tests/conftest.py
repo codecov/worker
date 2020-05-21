@@ -122,10 +122,7 @@ def sample_comparison(dbsession, request, sample_report):
         enriched_pull=EnrichedPull(
             database_pull=pull,
             provider_pull={
-                "author": {
-                    "id": "12345",
-                    "username": "codecov-test-user"
-                },
+                "author": {"id": "12345", "username": "codecov-test-user"},
                 "base": {"branch": "master", "commitid": base_commit.commitid,},
                 "head": {
                     "branch": "reason/some-testing",
@@ -163,10 +160,7 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
         enriched_pull=EnrichedPull(
             database_pull=pull,
             provider_pull={
-                "author": {
-                    "id": "12345",
-                    "username": "codecov-test-user"
-                },
+                "author": {"id": "12345", "username": "codecov-test-user"},
                 "base": {"branch": "master", "commitid": base_commit.commitid,},
                 "head": {
                     "branch": "reason/some-testing",
@@ -202,12 +196,9 @@ def sample_comparison_no_change(dbsession, request, sample_report):
         head=head_full_commit,
         base=base_full_commit,
         enriched_pull=EnrichedPull(
-            database_pull=pull, 
+            database_pull=pull,
             provider_pull={
-                "author": {
-                    "id": "12345",
-                    "username": "codecov-test-user"
-                },
+                "author": {"id": "12345", "username": "codecov-test-user"},
                 "base": {"branch": "master", "commitid": base_commit.commitid,},
                 "head": {
                     "branch": "reason/some-testing",
@@ -240,6 +231,7 @@ def sample_comparison_without_pull(dbsession, request, sample_report):
         base=base_full_commit,
         enriched_pull=EnrichedPull(database_pull=None, provider_pull=None),
     )
+
 
 @pytest.fixture
 def sample_comparison_database_pull_without_provider(dbsession, request, sample_report):
@@ -287,10 +279,7 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
         enriched_pull=EnrichedPull(
             database_pull=pull,
             provider_pull={
-                "author": {
-                    "id": "12345",
-                    "username": "codecov-test-user"
-                },
+                "author": {"id": "12345", "username": "codecov-test-user"},
                 "base": {"branch": "master", "commitid": base_commit.commitid,},
                 "head": {
                     "branch": "reason/some-testing",
@@ -325,10 +314,7 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
         enriched_pull=EnrichedPull(
             database_pull=pull,
             provider_pull={
-                "author": {
-                    "id": "12345",
-                    "username": "codecov-test-user"
-                },
+                "author": {"id": "12345", "username": "codecov-test-user"},
                 "base": {
                     "branch": "master",
                     "commitid": "cdf9aa4bd2c6bcd8a662864097cb62a85a2fd55b",

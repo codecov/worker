@@ -1,14 +1,51 @@
 # -*- coding: utf-8 -*-
+import logging
 import app
 import argparse
 import os
+
+from services.storage import get_storage_client
+from shared.config import get_config
+from helpers.version import get_current_version
+from shared.storage.exceptions import BucketAlreadyExistsError
+
+log = logging.getLogger(__name__)
+
+initialization_text = """
+  _____          _
+ / ____|        | |
+| |     ___   __| | ___  ___ _____   __
+| |    / _ \\ / _` |/ _ \\/ __/ _ \\ \\ / /
+| |___| (_) | (_| |  __/ (_| (_) \\ V /
+ \\_____\\___/ \\__,_|\\___|\\___\\___/ \\_/
+                              {version}
+
+"""
+
+
+def deal_test_command(parser, codecov_args):
+    parser.error("System not suitable to run TEST mode")
 
 
 def deal_web_command(parser, codecov):
     parser.error("System not suitable to run WEB mode")
 
 
+def setup_worker():
+    print(initialization_text.format(version=get_current_version()))
+    storage_client = get_storage_client()
+    minio_config = get_config("services", "minio")
+    bucket_name = get_config("services", "minio", "bucket", default="archive")
+    region = minio_config.get("region", "us-east-1")
+    try:
+        storage_client.create_root_storage(bucket_name, region)
+        log.info("Initializing bucket %s", bucket_name)
+    except BucketAlreadyExistsError:
+        pass
+
+
 def deal_worker_command(parser, codecov):
+    setup_worker()
     return app.celery_app.worker_main(
         argv=[
             "worker",
@@ -22,10 +59,6 @@ def deal_worker_command(parser, codecov):
             codecov.queue,
         ]
     )
-
-
-def deal_test_command(parser, codecov_args):
-    parser.error("System not suitable to run TEST mode")
 
 
 def get_arg_parser():

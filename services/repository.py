@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 import re
-from typing import Mapping, Any
+from typing import Mapping, Any, Optional
 from dataclasses import dataclass
 
 import shared.torngit as torngit
@@ -179,7 +179,7 @@ def get_author_from_commit(db_session, service, author_id, username, email, name
     return author
 
 
-async def create_webhook_on_provider(repository_service):
+async def create_webhook_on_provider(repository_service, token=None):
     """
         Posts to the provider a webhook so we can receive updates from this
         repo
@@ -239,6 +239,7 @@ async def create_webhook_on_provider(repository_service):
             "webhook_secret",
             default="ab164bf3f7d947f2a0681b215404873e",
         ),
+        token=token,
     )
 
 
@@ -253,12 +254,12 @@ def get_repo_provider_service_by_id(db_session, repoid, commitid=None):
 @dataclass
 class EnrichedPull(object):
     database_pull: Pull
-    provider_pull: Mapping[str, Any]
+    provider_pull: Optional[Mapping[str, Any]]
 
 
 async def fetch_and_update_pull_request_information_from_commit(
     repository_service, commit, current_yaml
-) -> EnrichedPull:
+) -> Optional[EnrichedPull]:
     db_session = commit.get_db_session()
     pullid = commit.pullid
     if not commit.pullid:

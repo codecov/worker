@@ -1,5 +1,6 @@
 import logging
 import zlib
+from typing import Optional
 
 from shared.config import get_config
 from redis import Redis
@@ -7,7 +8,7 @@ from redis import Redis
 log = logging.getLogger(__name__)
 
 
-def get_redis_url():
+def get_redis_url() -> str:
     url = get_config("services", "redis_url")
     if url is not None:
         return url
@@ -21,11 +22,13 @@ def get_redis_connection() -> Redis:
     return _get_redis_instance_from_url(url)
 
 
-def _get_redis_instance_from_url(url):
+def _get_redis_instance_from_url(url) -> Redis:
     return Redis.from_url(url)
 
 
-def download_archive_from_redis(redis_connection, redis_key):
+def download_archive_from_redis(
+    redis_connection: Redis, redis_key: str
+) -> Optional[str]:
     raw_uploaded_report = redis_connection.get(redis_key)
     gzipped = redis_key.endswith("/gzip")
     if gzipped:

@@ -23,7 +23,7 @@ def is_sentry_enabled() -> bool:
     return bool(get_config("services", "sentry", "server_dsn"))
 
 
-def initialize_sentry():
+def initialize_sentry() -> None:
     version = get_current_version()
     version_str = f"worker-{version}"
     sentry_dsn = get_config("services", "sentry", "server_dsn")
@@ -32,5 +32,5 @@ def initialize_sentry():
         before_send=before_send,
         sample_rate=float(os.getenv("SENTRY_PERCENTAGE", 1.0)),
         integrations=[CeleryIntegration(), SqlalchemyIntegration(), RedisIntegration()],
-        release=version_str
+        release=version_str,
     )

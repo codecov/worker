@@ -14,5 +14,5 @@ class TestSentry(object):
             before_send=before_send,
             release="worker-FAKE_VERSION_FOR_YOU",
             sample_rate=1.0,
-            integrations=[mocker.ANY, mocker.ANY, mocker.ANY]
+            integrations=[mocker.ANY, mocker.ANY, mocker.ANY],
         )

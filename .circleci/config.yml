@@ -34,6 +34,17 @@ k8s_auth: &k8s_auth
     gcloud container clusters get-credentials --zone ${GOOGLE_COMPUTE_ZONE} ${GOOGLE_CLUSTER_NAME}
 
 jobs:
+  linter:
+    docker:
+      - image: circleci/python:3.7.6
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Running linter
+          command: |
+            pip3 install black
+            black --check .
   build:
     executor: codecov-deploy
     steps:
@@ -48,30 +59,76 @@ jobs:
           make -f Makefile.circle build VERSION=$CIRCLE_TAG
           make -f Makefile.circle push
   test:
+    environment:
+      SONARSCANNER_VERSION: "4.3.0.2102"
     executor: codecov-worker
     steps:
-    - run:
-        name: verify postgres is up
-        command: |
-          while ! nc -vz postgres 5432; do sleep 1; echo "waiting for postgres"; done
-    - run:
-        name: run tests
-        command: |
-          make test.unit
-          make test.integration
+      - run:
+          name: verify postgres is up
+          command: |
+            while ! nc -vz postgres 5432; do sleep 1; echo "waiting for postgres"; done
+      - run:
+          name: run tests
+          command: |
+            make test.unit
+            make test.integration
 
-    - run:
+      - run:
+          name: codecov
+          command: |
+            pip install codecov==2.1.1
+            codecov -F integration -f integration.coverage.xml -X gcov  --required
+            codecov -F unit -f unit.coverage.xml -X gcov --required
+
+      - run:
+          name: Install OpenJDK 11 (for SonarScanner)
+          command: |
+            apk --no-cache add openjdk11 --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
+
+      - run:
+          name: Install SonarScanner
+          command: |
+            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONARSCANNER_VERSION.zip
+            unzip sonar-scanner-cli-$SONARSCANNER_VERSION.zip
+
+      - run:
+          name: Run SonarScanner
+          command: |
+            # add token
+            echo "sonar.login="$SONAR_TOKEN >> ./sonar-project.properties
+
+            # optional: add pull request info
+            if [ -n "$CIRCLE_PULL_REQUEST" ] 
+            then
+              GITHUB_PR_NUM=$(echo $CIRCLE_PULL_REQUEST | tr -dc '0-9')
+              echo "sonar.pullrequest.key="$GITHUB_PR_NUM >> ./sonar-project.properties
+              echo "sonar.pullrequest.branch="$CIRCLE_BRANCH >> ./sonar-project.properties
+              echo "sonar.pullrequest.base=master" >> ./sonar-project.properties
+            fi
+
+            ./sonar-scanner-$SONARSCANNER_VERSION/bin/sonar-scanner -X
+
+      - run:
+          name: Delete OpenJDK11 and SonarScanner
+          command: |
+            apk del openjdk11
+            rm sonar-scanner-cli-$SONARSCANNER_VERSION.zip
+            rm -rf sonar-scanner-$SONARSCANNER_VERSION
+     
+     - run:
         name: codecov
         command: |
           pip install codecov==2.0.16
           codecov -F integration -f integration.coverage.xml  --required
           codecov -F unit -f unit.coverage.xml  --required
+  
   staging:
     executor: codecov-deploy
     - run:
         name: build image and push to gcr with staging tag
         command: |
           make -f Makefile.circle staging
+  
   deploy:
     executor: codecov-deploy
     steps:
@@ -95,6 +152,7 @@ workflows:
   version: 2
   build-test-deploy:
     jobs:
+      - linter
       - build:
           filters:
             tags:

@@ -1,5 +1,4 @@
 import json
-from asyncio import Future
 
 import pytest
 

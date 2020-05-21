@@ -1,5 +1,4 @@
 import pytest
-from asyncio import Future
 
 from shared.reports.resources import ReportLine, ReportFile, Report
 from shared.torngit.exceptions import (
@@ -164,7 +163,6 @@ def comparison_with_multiple_changes(sample_comparison):
 
 @pytest.fixture
 def mock_repo_provider(mock_repo_provider):
-    result = Future()
     compare_result = {
         "diff": {
             "files": {
@@ -254,8 +252,7 @@ def mock_repo_provider(mock_repo_provider):
             },
         ],
     }
-    result.set_result(compare_result)
-    mock_repo_provider.get_compare.return_value = result
+    mock_repo_provider.get_compare.return_value = compare_result
     return mock_repo_provider
 
 
@@ -330,26 +327,23 @@ class TestBaseStatusNotifier(object):
         no_settings_notifier.context = "fake"
         mocker.patch.object(StatusNotifier, "can_we_set_this_status", return_value=True)
         mocked_build_payload = mocker.patch.object(
-            StatusNotifier, "build_payload", return_value=Future()
+            StatusNotifier,
+            "build_payload",
+            return_value={"state": "success", "message": "somemessage"},
         )
         mocked_send_notification = mocker.patch.object(
-            StatusNotifier, "send_notification", return_value=Future()
+            StatusNotifier, "send_notification",
         )
-        mocked_build_payload.return_value.set_result(
-            {"state": "success", "message": "somemessage"}
-        )
-        mocked_send_notification.return_value.set_result(
-            NotificationResult(
-                notification_attempted=True,
-                notification_successful=True,
-                explanation=None,
-                data_sent={
-                    "message": "somemessage",
-                    "state": "success",
-                    "title": "codecov/project/title",
-                },
-                data_received={"id": "some_id"},
-            )
+        mocked_send_notification.return_value = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": "somemessage",
+                "state": "success",
+                "title": "codecov/project/title",
+            },
+            data_received={"id": "some_id"},
         )
         result = await no_settings_notifier.notify(comparison)
         assert result.notification_attempted
@@ -376,12 +370,11 @@ class TestBaseStatusNotifier(object):
         )
         no_settings_notifier.context = "fake"
         mocked_status_already_exists = mocker.patch.object(
-            StatusNotifier, "status_already_exists", return_value=Future()
+            StatusNotifier, "status_already_exists",
         )
-        mocked_status_already_exists.return_value.set_result(False)
-        mock_repo_provider.set_commit_status.return_value = Future()
-        mock_repo_provider.set_commit_status.return_value.set_exception(
-            TorngitClientError(403, "response", "message")
+        mocked_status_already_exists.return_value = False
+        mock_repo_provider.set_commit_status.side_effect = TorngitClientError(
+            403, "response", "message"
         )
         payload = {"message": "something to say", "state": "success", "url": "url"}
         result = await no_settings_notifier.send_notification(comparison, payload)
@@ -506,11 +499,8 @@ class TestProjectStatusNotifier(object):
     async def test_notify_status_doesnt_exist(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
-        statuses = Future()
-        statuses.set_result(Status([]))
-        mock_repo_provider.get_commit_statuses.return_value = statuses
-        mock_repo_provider.set_commit_status.return_value = Future()
-        mock_repo_provider.set_commit_status.return_value.set_result({"id": "some_id"})
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
         notifier = ProjectStatusNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -711,39 +701,35 @@ class TestPatchStatusNotifier(object):
     async def test_build_payload_no_diff(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
-        f = Future()
-        mock_repo_provider.get_compare.return_value = f
-        f.set_result(
-            {
-                "diff": {
-                    "files": {
-                        "file_1.go": {
-                            "type": "modified",
-                            "before": None,
-                            "segments": [
-                                {
-                                    "header": ["15", "8", "15", "9"],
-                                    "lines": [
-                                        " Overview",
-                                        " --------",
-                                        " ",
-                                        "-Main website: `Codecov <https://codecov.io/>`_.",
-                                        "-Main website: `Codecov <https://codecov.io/>`_.",
-                                        "+",
-                                        "+website: `Codecov <https://codecov.io/>`_.",
-                                        "+website: `Codecov <https://codecov.io/>`_.",
-                                        " ",
-                                        " .. code-block:: shell-session",
-                                        " ",
-                                    ],
-                                },
-                            ],
-                            "stats": {"added": 11, "removed": 4},
-                        }
+        mock_repo_provider.get_compare.return_value = {
+            "diff": {
+                "files": {
+                    "file_1.go": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {
+                                "header": ["15", "8", "15", "9"],
+                                "lines": [
+                                    " Overview",
+                                    " --------",
+                                    " ",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "+",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    " ",
+                                    " .. code-block:: shell-session",
+                                    " ",
+                                ],
+                            },
+                        ],
+                        "stats": {"added": 11, "removed": 4},
                     }
                 }
             }
-        )
+        }
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
         notifier = PatchStatusNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -768,39 +754,35 @@ class TestPatchStatusNotifier(object):
         mock_repo_provider,
         mock_configuration,
     ):
-        f = Future()
-        mock_repo_provider.get_compare.return_value = f
-        f.set_result(
-            {
-                "diff": {
-                    "files": {
-                        "file_1.go": {
-                            "type": "modified",
-                            "before": None,
-                            "segments": [
-                                {
-                                    "header": ["15", "8", "15", "9"],
-                                    "lines": [
-                                        " Overview",
-                                        " --------",
-                                        " ",
-                                        "-Main website: `Codecov <https://codecov.io/>`_.",
-                                        "-Main website: `Codecov <https://codecov.io/>`_.",
-                                        "+",
-                                        "+website: `Codecov <https://codecov.io/>`_.",
-                                        "+website: `Codecov <https://codecov.io/>`_.",
-                                        " ",
-                                        " .. code-block:: shell-session",
-                                        " ",
-                                    ],
-                                },
-                            ],
-                            "stats": {"added": 11, "removed": 4},
-                        }
+        mock_repo_provider.get_compare.return_value = {
+            "diff": {
+                "files": {
+                    "file_1.go": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {
+                                "header": ["15", "8", "15", "9"],
+                                "lines": [
+                                    " Overview",
+                                    " --------",
+                                    " ",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "+",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    " ",
+                                    " .. code-block:: shell-session",
+                                    " ",
+                                ],
+                            },
+                        ],
+                        "stats": {"added": 11, "removed": 4},
                     }
                 }
             }
-        )
+        }
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
         comparison = sample_comparison_without_base_with_pull
         notifier = PatchStatusNotifier(
@@ -846,9 +828,7 @@ class TestPatchStatusNotifier(object):
         multiple_diff_changes,
     ):
         json_diff = multiple_diff_changes
-        f = Future()
-        mock_repo_provider.get_compare.return_value = f
-        f.set_result({"diff": json_diff})
+        mock_repo_provider.get_compare.return_value = {"diff": json_diff}
 
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
         notifier = PatchStatusNotifier(
@@ -915,9 +895,7 @@ class TestChangesStatusNotifier(object):
         multiple_diff_changes,
     ):
         json_diff = multiple_diff_changes
-        f = Future()
-        mock_repo_provider.get_compare.return_value = f
-        f.set_result({"diff": json_diff})
+        mock_repo_provider.get_compare.return_value = {"diff": json_diff}
 
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
         notifier = ChangesStatusNotifier(

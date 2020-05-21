@@ -1,12 +1,10 @@
 from pathlib import Path
-from asyncio import Future
 
 import pytest
 import celery
 from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
-from celery.exceptions import SoftTimeLimitExceeded
 
 from tasks.upload_processor import UploadProcessorTask
 from database.tests.factories import CommitFactory
@@ -16,7 +14,7 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from services.archive import ArchiveService
-from services.report import ReportService
+from services.report import ReportService, NotReadyToBuildReportYetError
 
 here = Path(__file__)
 
@@ -57,9 +55,7 @@ class TestUploadProcessorTask(object):
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
-            commit_yaml={
-                "codecov": {"max_report_age": "1y ago"}
-            },  # Sorry, this is a timebomb now
+            commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
         expected_result = {
@@ -157,9 +153,7 @@ class TestUploadProcessorTask(object):
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
-            commit_yaml={
-                "codecov": {"max_report_age": "1y ago"}
-            },  # Sorry, this is a timebomb now
+            commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
         expected_result = {
@@ -258,6 +252,28 @@ class TestUploadProcessorTask(object):
                 arguments_list=[{"url": "url"}],
             )
         mocked_3.assert_called_with(countdown=20, max_retries=5)
+
+    @pytest.mark.asyncio
+    async def test_upload_processing_task_call_with_not_ready_report(
+        self, mocker, mock_configuration, dbsession, mock_redis, mock_storage
+    ):
+        mocker.patch.object(
+            ReportService,
+            "build_report_from_commit",
+            side_effect=NotReadyToBuildReportYetError(),
+        )
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        with pytest.raises(celery.exceptions.Retry):
+            await UploadProcessorTask().run_async(
+                dbsession,
+                {},
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml={},
+                arguments_list=[{"url": "url"}],
+            )
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_expired_report(
@@ -467,9 +483,9 @@ class TestUploadProcessorTask(object):
         report.append(report_file_1)
         report.append(report_file_2)
         chunks_archive_service = ArchiveService(commit.repository)
-        f = Future()
-        f.set_exception(TorngitObjectNotFoundError("response", "message"))
-        mock_repo_provider.get_commit_diff.return_value = f
+        mock_repo_provider.get_commit_diff.side_effect = TorngitObjectNotFoundError(
+            "response", "message"
+        )
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
             chunks_archive_service=chunks_archive_service,
@@ -554,30 +570,27 @@ class TestUploadProcessorTask(object):
         report.append(report_file_1)
         report.append(report_file_2)
         chunks_archive_service = ArchiveService(commit.repository)
-        f = Future()
-        f.set_result(
-            {
-                "files": {
-                    "path/to/first.py": {
-                        "type": "modified",
-                        "before": None,
-                        "segments": [
-                            {
-                                "header": ["9", "3", "9", "5"],
-                                "lines": [
-                                    "+sudo: false",
-                                    "+",
-                                    " language: python",
-                                    " ",
-                                    " python:",
-                                ],
-                            }
-                        ],
-                        "stats": {"added": 2, "removed": 0},
-                    }
+        f = {
+            "files": {
+                "path/to/first.py": {
+                    "type": "modified",
+                    "before": None,
+                    "segments": [
+                        {
+                            "header": ["9", "3", "9", "5"],
+                            "lines": [
+                                "+sudo: false",
+                                "+",
+                                " language: python",
+                                " ",
+                                " python:",
+                            ],
+                        }
+                    ],
+                    "stats": {"added": 2, "removed": 0},
                 }
             }
-        )
+        }
         mock_repo_provider.get_commit_diff.return_value = f
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
@@ -624,30 +637,27 @@ class TestUploadProcessorTask(object):
         dbsession.flush()
         report = Report()
         chunks_archive_service = ArchiveService(commit.repository)
-        f = Future()
-        f.set_result(
-            {
-                "files": {
-                    "path/to/first.py": {
-                        "type": "modified",
-                        "before": None,
-                        "segments": [
-                            {
-                                "header": ["9", "3", "9", "5"],
-                                "lines": [
-                                    "+sudo: false",
-                                    "+",
-                                    " language: python",
-                                    " ",
-                                    " python:",
-                                ],
-                            }
-                        ],
-                        "stats": {"added": 2, "removed": 0},
-                    }
+        f = {
+            "files": {
+                "path/to/first.py": {
+                    "type": "modified",
+                    "before": None,
+                    "segments": [
+                        {
+                            "header": ["9", "3", "9", "5"],
+                            "lines": [
+                                "+sudo: false",
+                                "+",
+                                " language: python",
+                                " ",
+                                " python:",
+                            ],
+                        }
+                    ],
+                    "stats": {"added": 2, "removed": 0},
                 }
             }
-        )
+        }
         mock_repo_provider.get_commit_diff.return_value = f
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
@@ -661,5 +671,20 @@ class TestUploadProcessorTask(object):
             "url": f"v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt"
         }
         assert expected_result == result
-        assert report.diff_totals is None
+        expected_diff_totals = ReportTotals(
+            files=0,
+            lines=0,
+            hits=0,
+            misses=0,
+            partials=0,
+            coverage=None,
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=None,
+            complexity_total=None,
+            diff=0,
+        )
+        assert report.diff_totals == expected_diff_totals
         assert commit.state == "error"

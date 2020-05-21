@@ -8,6 +8,6 @@ pem_paths = {
 }
 
 
-def get_pem(pem_name):
+def get_pem(pem_name: str) -> str:
     path = pem_paths[pem_name]
     return load_file_from_path_at_config(*path)
