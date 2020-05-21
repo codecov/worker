@@ -17,15 +17,6 @@ class Decoration(Enum):
     upgrade = "upgrade"
 
 
-def is_whitelisted(ownerid) -> bool:
-    pr_billing_whitelisted_owners = [
-        int(ownerid.strip())
-        for ownerid in os.getenv("PR_AUTHOR_BILLING_WHITELISTED_OWNERS", "").split()
-    ]
-
-    return ownerid in pr_billing_whitelisted_owners
-
-
 def get_decoration_type_and_reason(
     enriched_pull: EnrichedPull,
 ) -> Tuple[Decoration, str]:
@@ -53,9 +44,6 @@ def get_decoration_type_and_reason(
 
         if not is_pr_billing_plan(org.plan):
             return (Decoration.standard, "Org not on PR plan")
-
-        if not is_whitelisted(org.ownerid):
-            return (Decoration.standard, "Org not in whitelist")
 
         db_session = db_pull.get_db_session()
         pr_author = (
