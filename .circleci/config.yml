@@ -67,6 +67,7 @@ jobs:
           codecov -F integration -f integration.coverage.xml  --required
           codecov -F unit -f unit.coverage.xml  --required
   staging:
+    executor: codecov-deploy
     - run:
         name: build image and push to gcr with staging tag
         command: |
