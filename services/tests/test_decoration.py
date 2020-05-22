@@ -8,11 +8,7 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
-from services.decoration import (
-    Decoration,
-    get_decoration_type_and_reason,
-    is_whitelisted,
-)
+from services.decoration import Decoration, get_decoration_type_and_reason
 from services.repository import EnrichedPull
 
 
@@ -86,25 +82,13 @@ def with_sql_functions(dbsession):
 
 
 class TestDecorationServiceTestCase(object):
-    def test_whitelist(self, mocker):
-        whitelist = "123 456  999"
-        mocker.patch.dict(
-            os.environ, {"PR_AUTHOR_BILLING_WHITELISTED_OWNERS": whitelist}
-        )
-        assert is_whitelisted(123) is True
-        assert is_whitelisted(999) is True
-        assert is_whitelisted(404) is False
-
     def test_get_decoration_type_no_pull(self, mocker):
-        mocker.patch("services.decoration.is_whitelisted", return_value=True)
-
         decoration_type, reason = get_decoration_type_and_reason(None)
 
         assert decoration_type == Decoration.standard
         assert reason == "No pull"
 
     def test_get_decoration_type_no_provider_pull(self, mocker, enriched_pull):
-        mocker.patch("services.decoration.is_whitelisted", return_value=True)
         enriched_pull.provider_pull = None
 
         decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
@@ -125,23 +109,12 @@ class TestDecorationServiceTestCase(object):
         enriched_pull.database_pull.repository.owner.plan = "users-inappm"
         dbsession.flush()
 
-        mocker.patch("services.decoration.is_whitelisted", return_value=True)
-
         decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
 
         assert decoration_type == Decoration.standard
         assert reason == "Org not on PR plan"
 
-    def test_get_decoration_type_not_in_whitelist(self, mocker, enriched_pull):
-        mocker.patch("services.decoration.is_whitelisted", return_value=False)
-
-        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
-
-        assert decoration_type == Decoration.standard
-        assert reason == "Org not in whitelist"
-
     def test_get_decoration_type_pr_author_not_in_db(self, mocker, enriched_pull):
-        mocker.patch("services.decoration.is_whitelisted", return_value=True)
         enriched_pull.provider_pull["author"]["id"] = "190"
 
         decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
@@ -152,7 +125,6 @@ class TestDecorationServiceTestCase(object):
     def test_get_decoration_type_pr_author_auto_activate_success(
         self, dbsession, mocker, enriched_pull, with_sql_functions
     ):
-        mocker.patch("services.decoration.is_whitelisted", return_value=True)
         mocked_send_task = mocker.patch(
             "services.decoration.celery_app.send_task", return_value=False
         )
@@ -189,7 +161,6 @@ class TestDecorationServiceTestCase(object):
     def test_get_decoration_type_pr_author_auto_activate_failure(
         self, dbsession, mocker, enriched_pull, with_sql_functions
     ):
-        mocker.patch("services.decoration.is_whitelisted", return_value=True)
         # already at max user count
         existing_activated_users = [1234, 5678, 9012]
         enriched_pull.database_pull.repository.owner.plan_user_count = 3
@@ -222,7 +193,6 @@ class TestDecorationServiceTestCase(object):
     def test_get_decoration_type_pr_author_manual_activation_required(
         self, dbsession, mocker, enriched_pull, with_sql_functions
     ):
-        mocker.patch("services.decoration.is_whitelisted", return_value=True)
         enriched_pull.database_pull.repository.owner.plan_user_count = 3
         enriched_pull.database_pull.repository.owner.plan_activated_users = []
         enriched_pull.database_pull.repository.owner.plan_auto_activate = False

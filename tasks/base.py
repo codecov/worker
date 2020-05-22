@@ -20,6 +20,8 @@ class BaseCodecovRequest(Request):
 
     def on_timeout(self, soft: bool, timeout: int):
         res = super().on_timeout(soft, timeout)
+        if not soft:
+            metrics.incr(f"{self.metrics_prefix}.hardtimeout")
         metrics.incr(f"{self.metrics_prefix}.timeout")
         return res
 

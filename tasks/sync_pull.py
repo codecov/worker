@@ -337,14 +337,28 @@ class PullSyncTask(BaseCodecovTask):
             commits_on_pr (Sequence[str]): Description
             base_ancestors_tree (Dict[str, Any]): Description
         """
-        commits_on_pr = set(commits_on_pr)
+        commits_on_pr_set = set(commits_on_pr)
         current_level = deque([base_ancestors_tree])
         while current_level:
             el = current_level.popleft()
-            if el["commitid"] in commits_on_pr:
+            if el["commitid"] in commits_on_pr_set:
+                log.info(
+                    "Commit currently on base tree was also on PR. Calling it a normal merge",
+                    extra=dict(
+                        commits_on_pr=commits_on_pr,
+                        commit_on_base=el["commitid"],
+                        base_head=base_ancestors_tree["commitid"],
+                    ),
+                )
                 return False
             for p in el.get("parents", []):
                 current_level.append(p)
+        log.info(
+            "Commits from PR not found on base tree. Calling it a squash merge",
+            extra=dict(
+                commits_on_pr=commits_on_pr, base_head=base_ancestors_tree["commitid"],
+            ),
+        )
         return True
 
 
