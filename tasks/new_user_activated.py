@@ -3,6 +3,7 @@ import logging
 from app import celery_app
 from celery_config import new_user_activated_task_name, notify_task_name
 from datetime import datetime, timedelta
+from sqlalchemy import func
 from sqlalchemy.orm import contains_eager
 
 from tasks.base import BaseCodecovTask
@@ -88,6 +89,19 @@ class NewUserActivatedTask(BaseCodecovTask):
                 "Org not found", extra=dict(org_ownerid=ownerid),
             )
             return False
+
+        if owner.service == "gitlab" and owner.parent_service_id:
+            # need to get root group so we can check plan info
+            (gl_root_group,) = db_session.query(
+                func.public.get_gitlab_root_group(ownerid)
+            ).first()
+
+            root_group = (
+                db_session.query(Owner)
+                .filter(Owner.ownerid == gl_root_group.get("ownerid"))
+                .first()
+            )
+            return is_pr_billing_plan(root_group.plan)
 
         return is_pr_billing_plan(owner.plan)
 

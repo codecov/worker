@@ -72,6 +72,28 @@ class TestNewUserActivatedTaskUnit(object):
         assert authored_pull.state == "open"
         assert authored_pull.author.ownerid == user_ownerid
 
+    def test_is_org_on_pr_plan_gitlab_subgroup(self, dbsession, with_sql_functions):
+        root_group = OwnerFactory.create(
+            username="root_group",
+            service="gitlab",
+            unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
+            plan="users-pr-inappm",
+            plan_activated_users=[],
+        )
+        subgroup = OwnerFactory.create(
+            username="subgroup",
+            service="gitlab",
+            unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
+            plan=None,
+            parent_service_id=root_group.service_id,
+        )
+        dbsession.add(subgroup)
+        dbsession.add(root_group)
+        dbsession.flush()
+
+        res = NewUserActivatedTask().is_org_on_pr_plan(dbsession, subgroup.ownerid)
+        assert res is True
+
     @pytest.mark.asyncio
     async def test_org_not_found(self, mocker, dbsession):
         unknown_org_ownerid = 404123

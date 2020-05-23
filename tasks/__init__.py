@@ -9,6 +9,7 @@ from tasks.upload import upload_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
 from tasks.send_email import send_email
+from tasks.new_user_activated import new_user_activated_task
 from tasks.notify import notify_task
 from tasks.sync_pull import pull_sync_task
 from app import celery_app

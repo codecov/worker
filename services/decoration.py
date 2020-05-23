@@ -39,10 +39,23 @@ def get_decoration_type_and_reason(
 
         org = db_pull.repository.owner
 
+        db_session = db_pull.get_db_session()
+
+        if org.service == "gitlab" and org.parent_service_id:
+            # need to get root group so we can check plan info
+            (gl_root_group,) = db_session.query(
+                func.public.get_gitlab_root_group(org.ownerid)
+            ).first()
+
+            org = (
+                db_session.query(Owner)
+                .filter(Owner.ownerid == gl_root_group.get("ownerid"))
+                .first()
+            )
+
         if not is_pr_billing_plan(org.plan):
             return (Decoration.standard, "Org not on PR plan")
 
-        db_session = db_pull.get_db_session()
         pr_author = (
             db_session.query(Owner)
             .filter(
@@ -63,50 +76,57 @@ def get_decoration_type_and_reason(
             )
             return (Decoration.upgrade, "PR author not found in database")
 
-        if not pr_author.ownerid in org.plan_activated_users and org.plan_auto_activate:
-            log.info(
-                "Attempting PR author auto activation",
-                extra=dict(
-                    org_ownerid=org.ownerid,
-                    author_ownerid=pr_author.ownerid,
-                    pullid=db_pull.pullid,
-                ),
-            )
+        if pr_author.ownerid in org.plan_activated_users:
+            return (Decoration.standard, "User is currently activated")
 
-            # TODO: we need to decide the best way for this logic to be shared across
-            # worker and codecov-api - ideally moving logic from database to application layer
-            (activation_success,) = db_session.query(
-                func.public.try_to_auto_activate(org.ownerid, pr_author.ownerid)
-            ).first()
-
-            if not activation_success:
-                log.info(
-                    "PR author auto activation was not successful",
-                    extra=dict(
-                        org_ownerid=org.ownerid,
-                        author_ownerid=pr_author.ownerid,
-                        pullid=db_pull.pullid,
-                    ),
-                )
-                return (Decoration.upgrade, "PR author auto activation failed")
-
-            log.info(
-                "PR author auto activation was successful - kicking off NewUserActivatedTask",
-                extra=dict(
-                    org_ownerid=org.ownerid,
-                    author_ownerid=pr_author.ownerid,
-                    pullid=db_pull.pullid,
-                ),
-            )
-            # activation was successful so we should run the NewUserActivatedTask
-            celery_app.send_task(
-                new_user_activated_task_name,
-                args=None,
-                kwargs=dict(org_ownerid=org.ownerid, user_ownerid=pr_author.ownerid),
-            )
-
-            return (Decoration.standard, "PR author auto activation success")
-        else:
+        if not org.plan_auto_activate:
             return (Decoration.upgrade, "User must be manually activated")
 
+        log.info(
+            "Attempting PR author auto activation",
+            extra=dict(
+                org_ownerid=org.ownerid,
+                author_ownerid=pr_author.ownerid,
+                pullid=db_pull.pullid,
+            ),
+        )
+
+        # TODO: we need to decide the best way for this logic to be shared across
+        # worker and codecov-api - ideally moving logic from database to application layer
+        (activation_success,) = db_session.query(
+            func.public.try_to_auto_activate(org.ownerid, pr_author.ownerid)
+        ).first()
+
+        if not activation_success:
+            log.info(
+                "PR author auto activation was not successful",
+                extra=dict(
+                    org_ownerid=org.ownerid,
+                    author_ownerid=pr_author.ownerid,
+                    pullid=db_pull.pullid,
+                ),
+            )
+            return (Decoration.upgrade, "PR author auto activation failed")
+
+        # NOTE: for GitLab we will use the pull repo ownerid for the org_ownerid
+        # in the future we may want to use the root group ownerid and let the
+        # NewUserActivatedTask traverse the subgroups
+        log.info(
+            "PR author auto activation was successful - kicking off NewUserActivatedTask",
+            extra=dict(
+                org_ownerid=db_pull.repository.owner.ownerid,
+                author_ownerid=pr_author.ownerid,
+                pullid=db_pull.pullid,
+            ),
+        )
+        celery_app.send_task(
+            new_user_activated_task_name,
+            args=None,
+            kwargs=dict(
+                org_ownerid=db_pull.repository.owner.ownerid,
+                user_ownerid=pr_author.ownerid,
+            ),
+        )
+
+        return (Decoration.standard, "PR author auto activation success")
     return (Decoration.standard, "No pull")
