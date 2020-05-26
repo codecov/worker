@@ -24,9 +24,7 @@ WORKDIR         /pip-packages/
 ENV             PYCURL_SSL_LIBRARY=openssl
 
 RUN             git config --global url."git@github.com:".insteadOf "https://github.com/"
-RUN             pip download -r /requirements.txt
-RUN             pip download setuptools wheel
-
+RUN             pip wheel -r /requirements.txt
 
 
 
@@ -49,6 +47,5 @@ RUN             apk add --no-cache postgresql-libs && \
 WORKDIR         /pip-packages/
 COPY            --from=build /pip-packages/ /pip-packages/
 
-ENV             PYCURL_SSL_LIBRARY=openssl
 RUN             rm -rf /pip-packages/src
 RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages/*
