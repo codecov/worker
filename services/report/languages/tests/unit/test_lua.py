@@ -2,7 +2,7 @@ from tests.base import BaseTestCase
 from services.report.languages import lua
 
 
-txt = """
+txt = b"""
 ==============================================================================
 source.lua
 ==============================================================================
@@ -74,6 +74,6 @@ class TestLua(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_detect(self):
-        assert lua.detect("=========") is True
-        assert lua.detect("=== fefef") is False
-        assert lua.detect("<xml>") is False
+        assert lua.detect(b"=========") is True
+        assert lua.detect(b"=== fefef") is False
+        assert lua.detect(b"<xml>") is False

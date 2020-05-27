@@ -6,20 +6,20 @@ from services.report.languages.base import BaseLanguageProcessor
 
 
 class XCodePlistProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: bytes, first_line, name):
         if name:
             return name.endswith("xccoverage.plist")
-        if content.find('<plist version="1.0">') > -1 and content.startswith("<?xml"):
+        if content.find(b'<plist version="1.0">') > -1 and content.startswith(b"<?xml"):
             return True
 
     def process(
-        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
+        self, name, content: bytes, path_fixer, ignored_lines, sessionid, repo_yaml=None
     ):
         return from_xml(content, path_fixer, ignored_lines, sessionid)
 
 
-def from_xml(xml, fix, ignored_lines, sessionid):
-    objects = plistlib.loads(xml.encode())["$objects"]
+def from_xml(xml: bytes, fix, ignored_lines, sessionid):
+    objects = plistlib.loads(xml)["$objects"]
 
     _report = Report()
 

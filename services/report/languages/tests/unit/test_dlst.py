@@ -2,7 +2,7 @@ from tests.base import BaseTestCase
 from services.report.languages import dlst
 import pytest
 
-RAW = """       |empty
+RAW = b"""       |empty
       1|coverage
 0000000|missed
 this is not line....
@@ -42,6 +42,14 @@ class TestDLST(BaseTestCase):
 
     def test_none(self):
         report = dlst.from_string(
-            None, "   1|test\nignore is 100% covered", lambda a: False, {}, 0
+            None, b"   1|test\nignore is 100% covered", lambda a: False, {}, 0
         )
         assert None is report
+
+    def test_matches_content(self):
+        content, first_line, name = (
+            b"   1|test\nignore is 100% covered",
+            "   1|test",
+            "name",
+        )
+        return dlst.DLSTProcessor().matches_content(content, first_line, name)

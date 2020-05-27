@@ -1,6 +1,7 @@
 from collections import defaultdict
 from itertools import groupby
 from shared.utils import merge
+from io import BytesIO
 
 from services.yaml import read_yaml_field
 from shared.reports.resources import Report, ReportFile
@@ -11,13 +12,15 @@ from services.report.languages.base import BaseLanguageProcessor
 
 class GoProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
-        return content[:6] == "mode: " or ".go:" in first_line
+        return content[:6] == b"mode: " or ".go:" in first_line
 
-    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
+    def process(
+        self, name, content: bytes, path_fixer, ignored_lines, sessionid, repo_yaml
+    ):
         return from_txt(content, path_fixer, ignored_lines, sessionid, repo_yaml)
 
 
-def from_txt(string, fix, ignored_lines, sessionid, yaml):
+def from_txt(string: bytes, fix, ignored_lines, sessionid, yaml):
     """
     mode: count
     github.com/codecov/sample_go/sample_go.go:7.14,9.2 1 1
@@ -48,11 +51,8 @@ def from_txt(string, fix, ignored_lines, sessionid, yaml):
     ignored_files = []
     file_name_replacement = {}  # {old_name: new_name}
     files = {}  # {new_name: <lines defaultdict(list)>}
-    disable_default_path_fixes = read_yaml_field(
-        yaml, ("codecov", "disable_default_path_fixes"), False
-    )
-
-    for line in string.splitlines():
+    for encoded_line in BytesIO(string):
+        line = encoded_line.decode(errors="replace").rstrip("\n")
         if not line:
             continue
 
