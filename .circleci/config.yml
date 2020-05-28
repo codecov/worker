@@ -115,6 +115,18 @@ jobs:
             rm sonar-scanner-cli-$SONARSCANNER_VERSION.zip
             rm -rf sonar-scanner-$SONARSCANNER_VERSION
 
+  staging:
+    executor: codecov-deploy
+    steps:
+    - checkout
+    - setup_remote_docker
+    - run:
+        <<: *gcloud_auth
+    - run:
+        name: docker build, tag, and upload to staging
+        command: |
+          make -f Makefile.circle staging
+
   deploy:
     executor: codecov-deploy
     steps:
@@ -149,6 +161,13 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - staging:
+          requires:
+            - build
+            - test
+          filters:
+            branches:
+              only: staging
       - deploy:
           requires:
             - build
