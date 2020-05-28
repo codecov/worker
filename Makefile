@@ -45,3 +45,6 @@ push.enterprise:
 worker-new.deploy:
 	kubectl set image deployment/worker-new-standard worker-new-standard=${_gcr}-worker:${release_version}-${sha}
 	kubectl rollout status deployments worker-new-standard
+
+update-requirements:
+	pip-compile requirements.in
