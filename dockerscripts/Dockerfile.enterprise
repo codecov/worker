@@ -14,7 +14,7 @@ RUN         apk --update --no-cache add \
             && pip install --upgrade pip
 
 # Build bootloader for alpine
-RUN git clone --depth 1 --single-branch --branch v3.4 https://github.com/pyinstaller/pyinstaller.git /tmp/pyinstaller \
+RUN git clone --depth 1 --single-branch --branch v3.6 https://github.com/pyinstaller/pyinstaller.git /tmp/pyinstaller \
     && cd /tmp/pyinstaller/bootloader \
     && CFLAGS="-Wno-stringop-overflow" python ./waf configure --no-lsb all \
     && pip install .. \
