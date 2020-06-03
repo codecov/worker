@@ -4,10 +4,12 @@
 #
 #    pip-compile requirements.in
 #
--e git+https://github.com/codecov/shared.git@v0.3.17#egg=shared  # via -r requirements.in
+-e git+https://github.com/codecov/shared.git@v0.3.18#egg=shared  # via -r requirements.in
 amqp==2.5.2               # via kombu
+analytics-python==1.3.0b1  # via shared
 asn1crypto==1.3.0         # via cryptography
 attrs==17.4.0             # via pytest, shared
+backoff==1.6.0            # via analytics-python
 billiard==3.6.3.0         # via celery
 boto3==1.9.218            # via -r requirements.in, shared
 botocore==1.12.253        # via boto3, s3transfer
@@ -40,6 +42,7 @@ kombu==4.6.8              # via celery
 lxml==4.3.5               # via -r requirements.in
 minio==5.0.8              # via shared
 mock==4.0.2               # via -r requirements.in
+monotonic==1.5            # via analytics-python
 more-itertools==8.3.0     # via pytest
 multidict==4.7.6          # via yarl
 oauth2==1.9.0.post1       # via shared
@@ -60,17 +63,17 @@ pytest-cov==2.9.0         # via -r requirements.in
 pytest-mock==1.10.4       # via -r requirements.in
 pytest-sqlalchemy==0.2.1  # via -r requirements.in
 pytest==5.4.2             # via -r requirements.in, pytest-asyncio, pytest-cov, pytest-mock, pytest-sqlalchemy
-python-dateutil==2.8.1    # via -r requirements.in, botocore, faker, minio
+python-dateutil==2.8.1    # via -r requirements.in, analytics-python, botocore, faker, minio
 python-json-logger==0.1.11  # via -r requirements.in
 pytz==2020.1              # via celery, google-api-core, minio, timestring
 pyyaml==3.13              # via -r requirements.in, vcrpy
 redis==3.2.1              # via -r requirements.in
-requests==2.22.0          # via -r requirements.in, google-api-core, stripe
+requests==2.22.0          # via -r requirements.in, analytics-python, google-api-core, stripe
 rsa==4.0                  # via google-auth
 s3transfer==0.2.1         # via boto3
 schema==0.7.0             # via shared
 sentry-sdk==0.14.4        # via -r requirements.in
-six==1.11.0               # via cryptography, ecdsa, google-api-core, google-auth, google-resumable-media, packaging, protobuf, python-dateutil, shared, sqlalchemy-utils, vcrpy
+six==1.11.0               # via analytics-python, cryptography, ecdsa, google-api-core, google-auth, google-resumable-media, packaging, protobuf, python-dateutil, shared, sqlalchemy-utils, vcrpy
 sqlalchemy-utils==0.33.11  # via -r requirements.in, pytest-sqlalchemy
 sqlalchemy==1.2.19        # via -r requirements.in, pytest-sqlalchemy, sqlalchemy-utils
 statsd==3.3.0             # via -r requirements.in, shared
