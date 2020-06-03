@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 @cache.cache_function()
 async def fetch_commit_yaml_from_provider(
-    commit: Commit, repository_service: torngit.base.BaseHandler
+    commit: Commit, repository_service: torngit.base.TorngitBaseAdapter
 ) -> dict:
     return await fetch_current_yaml_from_provider_via_reference(
         commit.commitid, repository_service
@@ -19,7 +19,7 @@ async def fetch_commit_yaml_from_provider(
 
 
 async def fetch_current_yaml_from_provider_via_reference(
-    ref: str, repository_service: torngit.base.BaseHandler
+    ref: str, repository_service: torngit.base.TorngitBaseAdapter
 ) -> dict:
     repoid = repository_service.data["repo"]["repoid"]
     location = await determine_commit_yaml_location(ref, repository_service)
@@ -45,7 +45,7 @@ async def fetch_current_yaml_from_provider_via_reference(
 
 @cache.cache_function()
 async def determine_commit_yaml_location(
-    ref: str, repository_service: torngit.base.BaseHandler
+    ref: str, repository_service: torngit.base.TorngitBaseAdapter
 ) -> str:
     """
         Determines where in `ref` the codecov.yaml is, in a given repository
@@ -58,7 +58,7 @@ async def determine_commit_yaml_location(
 
     Args:
         ref (str): The ref. Could be a branch name, tag, commit sha.
-        repository_service (torngit.base.BaseHandler): The torngit handler that can fetch this data.
+        repository_service (torngit.base.TorngitBaseAdapter): The torngit handler that can fetch this data.
             Indirectly determines the repository
 
     Returns:

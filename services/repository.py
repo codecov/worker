@@ -24,7 +24,9 @@ log = logging.getLogger(__name__)
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
 
-def get_repo_provider_service(repository, commit=None) -> torngit.base.BaseHandler:
+def get_repo_provider_service(
+    repository, commit=None
+) -> torngit.base.TorngitBaseAdapter:
     _timeouts = [
         get_config("setup", "http", "timeouts", "connect", default=15),
         get_config("setup", "http", "timeouts", "receive", default=30),
