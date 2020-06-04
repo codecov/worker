@@ -4,7 +4,7 @@ from database.models import Repository, Owner
 from services.github import get_github_integration_token
 from services.encryption import encryptor
 from helpers.exceptions import RepositoryWithoutValidBotError, OwnerWithoutValidBotError
-
+from shared.torngit.base import TokenType
 from shared.config import get_config
 from typing import Any, Dict
 
@@ -25,26 +25,27 @@ def get_repo_appropriate_bot_token(repo: Repository) -> Dict:
                 extra=dict(repoid=repo.repoid, botname=public_bot_dict.get("username")),
             )
             return public_bot_dict
+    return get_repo_particular_bot(repo)
+
+
+def get_repo_particular_bot(repo):
     appropriate_bot = _get_repo_appropriate_bot(repo)
     token_dict = encryptor.decrypt_token(appropriate_bot.oauth_token)
     token_dict["username"] = appropriate_bot.username
     return token_dict
 
 
-def get_repo_admin_bot_token(repo: Repository) -> Dict:
+def get_token_type_mapping(repo: Repository):
+    if repo.private:
+        return None
     if repo.using_integration and repo.owner.integration_id:
-        github_token = get_github_integration_token(
-            repo.owner.service, repo.owner.integration_id
-        )
-        return dict(key=github_token)
-    appropriate_bot = _get_repo_appropriate_bot(repo)
-    log.info(
-        "Using special bot for admin-level operations",
-        extra=dict(bot=appropriate_bot.username),
-    )
-    token_dict = encryptor.decrypt_token(appropriate_bot.oauth_token)
-    token_dict["username"] = appropriate_bot.username
-    return token_dict
+        return None
+    return {
+        TokenType.read: get_config(repo.service, "bots", "read"),
+        TokenType.admin: get_repo_particular_bot(repo),
+        TokenType.comment: get_config(repo.service, "bots", "comment"),
+        TokenType.status: get_config(repo.service, "bots", "status"),
+    }
 
 
 def _get_repo_appropriate_bot(repo):
