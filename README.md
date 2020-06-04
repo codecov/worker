@@ -65,7 +65,7 @@ If you are unsure whether you need to change that version at a given moment, the
 
 ## Upgrading Dependencies
 
-This repository uses `pip-tools` to manage dependencies. To add or update dependencies, change `requirements.in`,  Then run
+This repository uses `pip-tools` to manage dependencies, so make sure you've installed it with `pip install pip-tools`. To add or update dependencies, change `requirements.in`,  Then run
 
 ```
 pip-compile requirements.in
