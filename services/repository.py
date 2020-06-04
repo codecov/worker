@@ -282,7 +282,6 @@ async def fetch_and_update_pull_request_information_from_commit(
     )
     pull = enriched_pull.database_pull
     if pull is not None:
-        pull.author = commit.author
         pull.head = commit.commitid
     return enriched_pull
 
@@ -368,4 +367,33 @@ async def fetch_and_update_pull_request_information(
     db_session.flush()
     pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
     db_session.refresh(pull)
+
+    if pull is not None and not pull.author:
+        pr_author = get_or_create_pull_author(
+            db_session,
+            repository_service.service,
+            pull_information["author"]["id"],
+            pull_information["author"]["username"],
+        )
+        if pr_author:
+            pull.author = pr_author
+
     return EnrichedPull(database_pull=pull, provider_pull=pull_information)
+
+
+def get_or_create_pull_author(
+    db_session, service: str, service_id: str, username: str
+) -> Owner:
+    command = (
+        insert(Owner.__table__)
+        .values(service=service, service_id=service_id, username=username,)
+        .on_conflict_do_nothing()
+    )
+    db_session.connection().execute(command)
+    db_session.flush()
+    pr_author = (
+        db_session.query(Owner)
+        .filter(Owner.service == service, Owner.service_id == service_id,)
+        .first()
+    )
+    return pr_author
