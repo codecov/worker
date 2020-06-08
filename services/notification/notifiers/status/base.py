@@ -3,8 +3,10 @@ from contextlib import nullcontext
 
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.utils.sessions import SessionType
+from shared.analytics_tracking import track_event
 
 from helpers.match import match
+from helpers.environment import is_enterprise
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     Comparison,
@@ -220,6 +222,20 @@ class StatusNotifier(AbstractBaseNotifier):
             state = (
                 "success" if self.notifier_yaml_settings.get("informational") else state
             )
+
+            # Track state in analytics
+            event_name = (
+                "Coverage Report Passed"
+                if state == "success"
+                else "Coverage Report Failed"
+            )
+            track_event(
+                self.repository.ownerid,
+                event_name,
+                {"state": state, "repository_id": self.repository.repoid},
+                is_enterprise(),
+            )
+
             notification_result_data_sent = {
                 "title": title,
                 "state": state,
