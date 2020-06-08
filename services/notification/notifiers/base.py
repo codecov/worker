@@ -28,7 +28,7 @@ class AbstractBaseNotifier(object):
             <notifier_name:
                 <notifier_title>:
                     ... <notifier_fields>
-
+                    
     """
 
     def __init__(
@@ -40,6 +40,15 @@ class AbstractBaseNotifier(object):
         current_yaml: Mapping[str, Any],
         decoration_type: Decoration = None,
     ):
+        """
+            @param repository: The repository notifications are being sent to.
+            @param title: The project name for this notification, if applicable. For more info see https://docs.codecov.io/docs/commit-status#splitting-up-projects-example
+            @param notifier_yaml_settings: Contains the codecov yaml fields, if any, for this particular notification.
+                example: status -> patch -> custom_project_name -> <whatever is here is in notifier_yaml_settings for custom_project_name's status patch notifier>
+            @param notifier_site_settings -> ??? TODO
+            @param current_yaml -> The complete codecov yaml used for this notification.
+            @param decoration_type -> ??? TODO
+        """
         self.repository = repository
         self.title = title
         self.notifier_yaml_settings = notifier_yaml_settings

@@ -2,6 +2,7 @@ import logging
 from contextlib import nullcontext
 
 from shared.torngit.exceptions import TorngitClientError, TorngitError
+from shared.utils.sessions import SessionType
 
 from helpers.match import match
 from services.notification.notifiers.base import (
@@ -12,6 +13,7 @@ from services.notification.notifiers.base import (
 from services.repository import get_repo_provider_service
 from services.urls import get_commit_url, get_compare_url
 from services.yaml.reader import get_paths_from_flags
+from services.yaml import read_yaml_field
 from typing import Dict
 
 
@@ -52,6 +54,39 @@ class StatusNotifier(AbstractBaseNotifier):
             return False
         return True
 
+    def should_pass_on_carryforward(self) -> bool:
+        """
+            Read the codecov yaml to determine whether this status check is supposed to pass when coverage is carried forward.   
+        """
+        # If the yaml specifies a behavior for this particular project's status check, use that
+        should_pass_for_this_project = self.notifier_yaml_settings.get(
+            "pass_on_carryforward"
+        )
+        if should_pass_for_this_project is not None:
+            return should_pass_for_this_project
+
+        # Otherwise use the default behavior specified in the yaml, which defaults to passing on carriedforward
+        return read_yaml_field(
+            self.current_yaml,
+            ("coverage", "status", "pass_on_carryforward_default"),
+            True,
+        )
+
+    def coverage_was_carriedforward(self, comparison) -> bool:
+        """
+            Determine whether any coverage was carried forward on this report, by checking whether any of the sessions
+            contain carried forward coverage for the notification's flags.
+        """
+        flags_included_in_status = self.notifier_yaml_settings.get("flags", [])
+        for session_id, session in comparison.head.report.sessions.items():
+            session_flags = session.flags or []
+            # Check if the session has carried forward coverage and flags overlapping with the flags for this notification
+            if session.session_type == SessionType.carriedforward and set(
+                flags_included_in_status
+            ).intersection(set(session_flags)):
+                return True
+        return False
+
     async def get_diff(self, comparison: Comparison):
         repository_service = self.repository_service
         head = comparison.head.commit
@@ -89,6 +124,8 @@ class StatusNotifier(AbstractBaseNotifier):
                 explanation="not_fit_criteria",
                 data_sent=None,
             )
+        # Filter the coverage report based on fields in this notification's YAML settings
+        # e.g. if "paths" is specified, exclude the coverage not on those paths
         _filters = self.get_notifier_filters()
         base_full_commit = comparison.base
         try:
@@ -99,6 +136,15 @@ class StatusNotifier(AbstractBaseNotifier):
                     else nullcontext()
                 ):
                     payload = await self.build_payload(comparison)
+                    if self.should_pass_on_carryforward() and self.coverage_was_carriedforward(
+                        comparison
+                    ):
+                        # Override the status since we're passing for carried forward coverage
+                        payload["state"] = "success"
+                        payload["message"] = (
+                            payload["message"]
+                            + "[Carried forward]"  # TODO: any way to get the commit we carried forward from?
+                        )
             if (
                 comparison.pull
                 and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
