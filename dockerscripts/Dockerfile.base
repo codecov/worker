@@ -1,4 +1,4 @@
-        # BUILD STAGE - Download dependencies from GitHub that require SSH access
+# BUILD STAGE - Download dependencies from GitHub that require SSH access
 FROM python:3.7.7-alpine as build
 
 RUN             apk update \
@@ -28,6 +28,7 @@ ENV             PYCURL_SSL_LIBRARY=openssl
 
 RUN             git config --global url."git@github.com:".insteadOf "https://github.com/"
 RUN             pip wheel -r /requirements.txt
+COPY            --from=gcr.io/berglas/berglas:0.5.0 /bin/berglas /usr/local/bin/berglas
 
 
 
@@ -45,7 +46,6 @@ RUN             apk add --no-cache postgresql-libs && \
                 curl-dev
 
 RUN             apk add libffi-dev openssl-dev
-COPY            --from=gcr.io/berglas/berglas:0.5.0 /bin/berglas /usr/local/bin/berglas
 
 WORKDIR         /pip-packages/
 COPY            --from=build /pip-packages/ /pip-packages/
