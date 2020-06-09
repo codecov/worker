@@ -265,8 +265,6 @@ class PullSyncTask(BaseCodecovTask):
         db_session = pull.get_db_session()
         merged_count, deleted_count = 0, 0
         if commits_on_pr:
-            commits_on_pr.append(pull.base)
-            commits_on_pr.append(pull.head)
             if pull.state == "merged":
                 is_squash_merge = self.was_pr_merged_with_squash(
                     commits_on_pr, ancestors_tree_on_base
@@ -286,7 +284,7 @@ class PullSyncTask(BaseCodecovTask):
                         .filter(
                             Commit.repoid == repoid,
                             Commit.pullid == pullid,
-                            Commit.commitid.in_(commits_on_pr),
+                            Commit.commitid.in_(commits_on_pr + [pull.base, pull.head]),
                             ~Commit.merged,
                         )
                         .update(
@@ -306,7 +304,7 @@ class PullSyncTask(BaseCodecovTask):
                 .filter(
                     Commit.repoid == repoid,
                     Commit.pullid == pullid,
-                    ~Commit.commitid.in_(commits_on_pr),
+                    ~Commit.commitid.in_(commits_on_pr + [pull.base, pull.head]),
                 )
                 .update({Commit.deleted: True}, synchronize_session=False)
             )
