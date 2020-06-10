@@ -25,7 +25,6 @@ class TestNotifyTask(object):
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
             owner__username="ThiagoCodecov",
-            owner__service_id="44376991",
             yaml={"codecov": {"max_report_age": "1y ago"}},
             name="example-python",
         )
@@ -73,7 +72,6 @@ class TestNotifyTask(object):
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
             owner__username="ThiagoCodecov",
-            owner__service_id="44376991",
             name="example-python",
         )
         dbsession.add(repository)
@@ -144,7 +142,6 @@ class TestNotifyTask(object):
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
             owner__username="ThiagoCodecov",
-            owner__service_id="44376991",
             name="example-python",
         )
         dbsession.add(repository)
@@ -264,7 +261,6 @@ class TestNotifyTask(object):
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
             owner__username="ThiagoCodecov",
-            owner__service_id="44376991",
             name="example-python",
         )
         dbsession.add(repository)
@@ -373,7 +369,6 @@ class TestNotifyTask(object):
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
             owner__username="ThiagoCodecov",
-            owner__service_id="44376991",
             owner__email="thiago@test123.com",
             name="example-python",
             image_token="abcdefghij",
@@ -716,7 +711,6 @@ class TestNotifyTask(object):
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="4877ed9686b74b0ee46af7f41a07a4d8063a8afa",
             owner__username="ThiagoCodecov",
-            owner__service_id="44376991",
             name="example-python",
         )
         dbsession.add(repository)
