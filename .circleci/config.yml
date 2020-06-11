@@ -167,7 +167,7 @@ workflows:
             - test
           filters:
             branches:
-              only: staging
+              only: master
       - deploy:
           requires:
             - build
