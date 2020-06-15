@@ -780,9 +780,5 @@ class TestUploadTaskUnit(object):
             "None/webhooks/github",
             ["pull_request", "delete", "push", "public", "status", "repository"],
             "ab164bf3f7d947f2a0681b215404873e",
-            token={
-                "key": "aaaaabbbbhhhh",
-                "secret": None,
-                "username": commit.repository.owner.username,
-            },
+            token=None,
         )

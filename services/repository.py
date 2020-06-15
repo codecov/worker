@@ -10,12 +10,10 @@ from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitError,
 )
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.exc import FlushError
-from sqlalchemy.dialects.postgresql import insert, dialect
+from sqlalchemy.dialects.postgresql import insert
 
 from shared.config import get_config, get_verify_ssl
-from services.bots import get_repo_appropriate_bot_token
+from services.bots import get_repo_appropriate_bot_token, get_token_type_mapping
 from database.models import Owner, Commit, Pull, Repository
 from services.yaml import read_yaml_field
 
@@ -46,6 +44,7 @@ def get_repo_provider_service(
             username=repository.owner.username,
         ),
         token=token,
+        token_type_mapping=get_token_type_mapping(repository),
         verify_ssl=get_verify_ssl(service),
         timeouts=_timeouts,
         oauth_consumer_token=dict(
