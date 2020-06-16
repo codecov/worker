@@ -411,3 +411,33 @@ class TestBotsService(BaseTestCase):
         dbsession.add(repo)
         dbsession.flush()
         assert get_token_type_mapping(repo) is None
+
+    def test_get_token_type_mapping_public_repo_no_integration_no_bot(
+        self, mock_configuration, dbsession
+    ):
+        mock_configuration.set_params(
+            {
+                "github": {
+                    "bots": {"read": {"key": "aaaa", "username": "aaaa"}},
+                    "bot": {"key": "somekey"},
+                }
+            }
+        )
+        repo = RepositoryFactory.create(
+            private=False,
+            using_integration=False,
+            bot=None,
+            owner=OwnerFactory.create(
+                unencrypted_oauth_token=None,
+                integration_id=90,
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+        assert get_token_type_mapping(repo) == {
+            TokenType.read: {"key": "aaaa", "username": "aaaa"},
+            TokenType.admin: None,
+            TokenType.comment: None,
+            TokenType.status: None,
+        }
