@@ -10,7 +10,9 @@ log = logging.getLogger(__name__)
 
 class AddToSendgridListTask(BaseCodecovTask):
     async def run_async(self, db_session, ownerid, list_type, *args, **kwargs):
-        log.info("Add to Sendgrid List", extra=dict(ownerid=ownerid, list_type=list_type))
+        log.info(
+            "Add to Sendgrid List", extra=dict(ownerid=ownerid, list_type=list_type)
+        )
         # get owner object from database
         owners = db_session.query(Owner).filter_by(ownerid=ownerid)
         owner = owners.first()
