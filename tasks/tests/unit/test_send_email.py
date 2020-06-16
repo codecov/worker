@@ -22,7 +22,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
         result = await SendEmailTask().run_async(
-            db_session=dbsession, ownerid=owner.ownerid, email_type="end-of-trial"
+            db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
         )
         assert result["job_id"] == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
 
@@ -31,6 +31,6 @@ class TestSendEmailTask(object):
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         result = await SendEmailTask().run_async(
-            db_session=dbsession, ownerid=45, email_type="end-of-trial"
+            db_session=dbsession, ownerid=45, list_type="end-of-trial"
         )
         assert result is None

@@ -24,19 +24,24 @@ class Sendgrid(object):
         "Content-Type": "application/json",
     }
 
-    def __init__(self, email_type):
-        self.email_type = email_type
-        self.load_config(email_type)
+    def __init__(self, list_type=None):
+        self.config = None
+        if list_type:
+            self.list_type = list_type
+            self.load_config(list_type)
 
-    def load_config(self, email_type):
+    def load_config(self, list_type):
         with open(folder / self.yaml_location, "r") as stream:
             try:
                 data = safe_load(stream)
-                self.config = data[email_type]
+                self.config = data[list_type]
             except YAMLError as e:
                 log.error("Unable to read email config file")
 
     def add_to_list(self, email):
+        if self.config.get("list_id") is None:
+            return None
+
         data = {
             "list_ids": [self.config.get("list_id")],
             "contacts": [{"email": email}],
@@ -49,5 +54,5 @@ class Sendgrid(object):
         return r.json()
 
     def send_email(self, owner):
-        if self.email_type == "end-of-trial":
+        if self.list_type == "end-of-trial":
             return self.add_to_list(owner.email)
