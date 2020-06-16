@@ -25,10 +25,10 @@ def get_repo_appropriate_bot_token(repo: Repository) -> Dict:
                 extra=dict(repoid=repo.repoid, botname=public_bot_dict.get("username")),
             )
             return public_bot_dict
-    return get_repo_particular_bot(repo)
+    return get_repo_particular_bot_token(repo)
 
 
-def get_repo_particular_bot(repo):
+def get_repo_particular_bot_token(repo):
     appropriate_bot = _get_repo_appropriate_bot(repo)
     token_dict = encryptor.decrypt_token(appropriate_bot.oauth_token)
     token_dict["username"] = appropriate_bot.username
@@ -40,9 +40,17 @@ def get_token_type_mapping(repo: Repository):
         return None
     if repo.using_integration and repo.owner.integration_id:
         return None
+    admin_bot = None
+    try:
+        admin_bot = get_repo_particular_bot_token(repo)
+    except RepositoryWithoutValidBotError:
+        log.warning(
+            "Repository has no good bot for admin, but still continuing operations in case it is not doing an admin call anyway",
+            extra=dict(repoid=repo.repoid),
+        )
     return {
         TokenType.read: get_config(repo.service, "bots", "read"),
-        TokenType.admin: get_repo_particular_bot(repo),
+        TokenType.admin: admin_bot,
         TokenType.comment: get_config(repo.service, "bots", "comment"),
         TokenType.status: get_config(repo.service, "bots", "status"),
     }
