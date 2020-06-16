@@ -8,7 +8,7 @@ RUN             apk update \
                 postgresql-dev \
                 musl-dev \
                 libxslt-dev \
-                python-dev \
+                python3-dev \
                 libffi-dev \
                 gcc \
                 libcurl \
@@ -39,7 +39,6 @@ RUN             apk add --no-cache postgresql-libs && \
                 musl-dev \ 
                 postgresql-dev \
                 libxslt-dev \
-                python-dev \ 
                 python3-dev \
                 build-base \
                 curl-dev
