@@ -256,6 +256,29 @@ class TestBotsService(BaseTestCase):
             == expected_result
         )
 
+    def test_get_token_type_mapping_public_repo_no_configuration_no_particular_bot(
+        self, mock_configuration, dbsession
+    ):
+        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
+        repo = RepositoryFactory.create(
+            private=False,
+            using_integration=False,
+            bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            owner=OwnerFactory.create(
+                unencrypted_oauth_token=None,
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+        expected_result = {
+            TokenType.admin: None,
+            TokenType.read: None,
+            TokenType.comment: None,
+            TokenType.status: None,
+        }
+        assert expected_result == get_token_type_mapping(repo)
+
     def test_get_token_type_mapping_public_repo_no_configuration(
         self, mock_configuration, dbsession
     ):
@@ -279,9 +302,17 @@ class TestBotsService(BaseTestCase):
                 "secret": None,
                 "username": repo.bot.username,
             },
-            TokenType.read: None,
+            TokenType.read: {
+                "key": "simple_code",
+                "secret": None,
+                "username": repo.bot.username,
+            },
             TokenType.comment: None,
-            TokenType.status: None,
+            TokenType.status: {
+                "key": "simple_code",
+                "secret": None,
+                "username": repo.bot.username,
+            },
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -319,9 +350,93 @@ class TestBotsService(BaseTestCase):
                 "secret": None,
                 "username": repo.bot.username,
             },
+            TokenType.read: {
+                "key": "simple_code",
+                "secret": None,
+                "username": repo.bot.username,
+            },
+            TokenType.status: {
+                "key": "simple_code",
+                "secret": None,
+                "username": repo.bot.username,
+            },
+            TokenType.comment: {"key": "nada"},
+        }
+        assert expected_result == get_token_type_mapping(repo)
+
+    def test_get_token_type_mapping_public_repo_some_configuration_no_particular_bot(
+        self, mock_configuration, dbsession
+    ):
+        mock_configuration.set_params(
+            {
+                "github": {
+                    "bot": {"key": "somekey"},
+                    "bots": {
+                        "read": {"key": "aaaa", "username": "aaaa"},
+                        "status": {"key": "status", "username": "status"},
+                        "comment": {"key": "nada"},
+                    },
+                }
+            }
+        )
+        repo = RepositoryFactory.create(
+            private=False,
+            using_integration=False,
+            bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            owner=OwnerFactory.create(
+                unencrypted_oauth_token=None,
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+        expected_result = {
+            TokenType.admin: None,
             TokenType.read: {"key": "aaaa", "username": "aaaa"},
             TokenType.status: {"key": "status", "username": "status"},
             TokenType.comment: {"key": "nada"},
+        }
+        assert expected_result == get_token_type_mapping(repo)
+
+    def test_get_token_type_mapping_public_repo_some_configuration_not_github_no_particular_bot(
+        self, mock_configuration, dbsession
+    ):
+        mock_configuration.set_params(
+            {
+                "github": {
+                    "bot": {"key": "somekey"},
+                    "bots": {
+                        "read": {"key": "aaaa", "username": "aaaa"},
+                        "status": {"key": "status", "username": "status"},
+                        "comment": {"key": "nada"},
+                    },
+                },
+                "bitbucket": {
+                    "bot": {"key": "bit"},
+                    "bots": {
+                        "read": {"key": "bucket", "username": "bb"},
+                        "comment": {"key": "bibu", "username": "cket"},
+                    },
+                },
+            }
+        )
+        repo = RepositoryFactory.create(
+            private=False,
+            using_integration=False,
+            bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            owner=OwnerFactory.create(
+                service="bitbucket",
+                unencrypted_oauth_token=None,
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+        expected_result = {
+            TokenType.admin: None,
+            TokenType.read: {"key": "bucket", "username": "bb"},
+            TokenType.comment: {"key": "bibu", "username": "cket"},
+            TokenType.status: None,
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -342,7 +457,7 @@ class TestBotsService(BaseTestCase):
                     "bot": {"key": "bit"},
                     "bots": {
                         "read": {"key": "bucket", "username": "bb"},
-                        "status": {"key": "bibu", "username": "cket"},
+                        "comment": {"key": "bibu", "username": "cket"},
                     },
                 },
             }
@@ -367,9 +482,17 @@ class TestBotsService(BaseTestCase):
                 "secret": None,
                 "username": repo.bot.username,
             },
-            TokenType.read: {"key": "bucket", "username": "bb"},
-            TokenType.status: {"key": "bibu", "username": "cket"},
-            TokenType.comment: None,
+            TokenType.read: {
+                "key": "simple_code",
+                "secret": None,
+                "username": repo.bot.username,
+            },
+            TokenType.comment: {"key": "bibu", "username": "cket"},
+            TokenType.status: {
+                "key": "simple_code",
+                "secret": None,
+                "username": repo.bot.username,
+            },
         }
         assert expected_result == get_token_type_mapping(repo)
 

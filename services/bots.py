@@ -49,10 +49,10 @@ def get_token_type_mapping(repo: Repository):
             extra=dict(repoid=repo.repoid),
         )
     return {
-        TokenType.read: get_config(repo.service, "bots", "read"),
+        TokenType.read: admin_bot or get_config(repo.service, "bots", "read"),
         TokenType.admin: admin_bot,
         TokenType.comment: get_config(repo.service, "bots", "comment"),
-        TokenType.status: get_config(repo.service, "bots", "status"),
+        TokenType.status: admin_bot or get_config(repo.service, "bots", "status"),
     }
 
 
