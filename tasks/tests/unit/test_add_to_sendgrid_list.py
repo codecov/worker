@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 
 from database.tests.factories import OwnerFactory
-from tasks.add_to_sendgrid_list_task import AddToSendgridListTask
+from tasks.add_to_sendgrid_list import AddToSendgridListTask
 
 here = Path(__file__)
 
@@ -22,7 +22,7 @@ class TestAddToSendgridListTask(object):
         owner = OwnerFactory.create(ownerid=1, email="tom@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, ownerid=owner.ownerid, email_type="all-oauth-users"
+            db_session=dbsession, ownerid=owner.ownerid, list_type="all-oauth-users"
         )
         assert result["job_id"] == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
 
@@ -39,7 +39,7 @@ class TestAddToSendgridListTask(object):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, ownerid=owner.ownerid, email_type="end-of-trial"
+            db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
         )
         assert result["job_id"] == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
 
@@ -48,6 +48,6 @@ class TestAddToSendgridListTask(object):
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, ownerid=45, email_type="end-of-trial"
+            db_session=dbsession, ownerid=45, list_type="end-of-trial"
         )
         assert result is None
