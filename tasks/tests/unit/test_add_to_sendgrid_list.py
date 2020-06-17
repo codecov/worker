@@ -19,7 +19,7 @@ class TestAddToSendgridListTask(object):
         mock_storage,
         mock_redis,
     ):
-        owner = OwnerFactory.create(ownerid=1, email="tom@codecov.io")
+        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="new-oauthed-users"
@@ -42,7 +42,8 @@ class TestAddToSendgridListTask(object):
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
         )
-        assert result["job_id"] == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
+        print(result)
+        assert result.get("job_id", None) == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
 
     @pytest.mark.asyncio
     async def test_send_email_no_owner(
