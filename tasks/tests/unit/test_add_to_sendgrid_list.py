@@ -19,7 +19,7 @@ class TestAddToSendgridListTask(object):
         mock_storage,
         mock_redis,
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(ownerid=1, email="tom@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="new-oauthed-users"
@@ -37,7 +37,7 @@ class TestAddToSendgridListTask(object):
         mock_storage,
         mock_redis,
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(ownerid=1, email="tom@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
