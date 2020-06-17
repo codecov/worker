@@ -24,7 +24,6 @@ class TestAddToSendgridListTask(object):
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="new-oauthed-users"
         )
-        print(result)
         assert result.get("job_id", None) == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
 
     @pytest.mark.asyncio
@@ -42,7 +41,6 @@ class TestAddToSendgridListTask(object):
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
         )
-        print(result)
         assert result.get("job_id", None) == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
 
     @pytest.mark.asyncio
