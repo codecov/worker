@@ -1,6 +1,6 @@
-all-oauthed-users:
-    list_id: 'a0fef6f5-d174-4bef-aab4-39fef8f24584'
-    name: 'All Oauthed Users'
+new-oauthed-users:
+    list_id: '283c715a-48e0-4c35-9dbd-374760900ee2'
+    name: 'New Oauthed Users'
 
 end-of-trial:
     list_id: 'ff08b4ae-367e-49ac-9d5a-d6e0e004d19f'
