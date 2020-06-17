@@ -10,7 +10,7 @@ here = Path(__file__)
 
 class TestAddToSendgridListTask(object):
     @pytest.mark.asyncio
-    async def test_new_oauthed_users_email(
+    async def test_new_oauthed_users_email_with_list_type(
         self,
         mocker,
         mock_configuration,
@@ -23,6 +23,23 @@ class TestAddToSendgridListTask(object):
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="new-oauthed-users"
+        )
+        assert result.get("job_id", None) == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
+
+    @pytest.mark.asyncio
+    async def test_new_oauthed_users_email_with_email_type(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+    ):
+        owner = OwnerFactory.create(ownerid=1, email="tom@codecov.io")
+        dbsession.add(owner)
+        result = await AddToSendgridListTask().run_async(
+            db_session=dbsession, ownerid=owner.ownerid, email_type="new-oauthed-users"
         )
         assert result.get("job_id", None) == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
 

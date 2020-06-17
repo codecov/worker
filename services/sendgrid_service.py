@@ -24,11 +24,14 @@ class Sendgrid(object):
         "Content-Type": "application/json",
     }
 
-    def __init__(self, list_type=None):
+    def __init__(self, list_type=None, email_type=None):
         self.config = None
         if list_type:
             self.list_type = list_type
             self.load_config(list_type)
+        elif email_type:
+            self.list_type = email_type
+            self.load_config(email_type)
 
     def load_config(self, list_type):
         with open(folder / self.yaml_location, "r") as stream:
