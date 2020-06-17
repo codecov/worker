@@ -30,7 +30,7 @@ def get_github_integration_token(service, integration_id=None):
         api_endpoint = (
             torngit.Github.api_url
             if service == "github"
-            else torngit.GithubEnterprise.api_url
+            else torngit.GithubEnterprise.get_api_url()
         )
         headers = {
             "Accept": "application/vnd.github.machine-man-preview+json",
