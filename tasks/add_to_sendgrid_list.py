@@ -26,7 +26,7 @@ class AddToSendgridListTask(BaseCodecovTask):
         if not owner:
             log.error(
                 "Unable to find owner",
-                extra=dict(ownerid=ownerid, list_type=list_actual),
+                extra=dict(ownerid=ownerid, list_type=actual_type),
             )
             return None
         email_helper = Sendgrid(actual_type)
