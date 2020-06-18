@@ -5,6 +5,7 @@ coverage~=5.1
 cryptography~=2.7
 factory-boy~=2.11.1
 google-cloud-storage~=1.18.0
+httpx~=0.13.3
 lxml~=4.3.1
 mock~=4.0.2
 pathmap~=0.1.5

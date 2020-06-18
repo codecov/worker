@@ -1,5 +1,5 @@
 import pytest
-import requests
+import httpx
 
 from services.notification.notifiers.generics import (
     StandardNotifier,
@@ -12,7 +12,7 @@ class SampleNotifierForTest(StandardNotifier):
     def build_payload(self, comparison):
         return {"commitid": comparison.head.commit.commitid}
 
-    def send_actual_notification(self, data):
+    async def send_actual_notification(self, data):
         return {
             "notification_attempted": True,
             "notification_successful": True,
@@ -220,8 +220,8 @@ class TestStandardkNotifier(object):
 class TestRequestsYamlBasedNotifier(object):
     @pytest.mark.asyncio
     async def test_send_notification_exception(self, mocker, sample_comparison):
-        mocked_post = mocker.patch("requests.post")
-        mocked_post.side_effect = requests.exceptions.RequestException()
+        mocked_post = mocker.patch.object(httpx.AsyncClient, "post")
+        mocked_post.side_effect = httpx.HTTPError()
         notifier = RequestsYamlBasedNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -233,7 +233,7 @@ class TestRequestsYamlBasedNotifier(object):
             current_yaml={},
         )
         data = {}
-        res = notifier.send_actual_notification(data)
+        res = await notifier.send_actual_notification(data)
         assert res == {
             "notification_attempted": True,
             "notification_successful": False,
