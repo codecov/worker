@@ -207,7 +207,14 @@ async def create_webhook_on_provider(repository_service, token=None):
             "repo:commit_status_updated",
         ],
         # https://confluence.atlassian.com/bitbucketserver/post-service-webhook-for-bitbucket-server-776640367.html
-        "bitbucket_server":  ["repo:modified", "repo:refs_changed", "pr:opened", "pr:merged", 'pr:declined', 'pr:deleted'],
+        "bitbucket_server": [
+            "repo:modified",
+            "repo:refs_changed",
+            "pr:opened",
+            "pr:merged",
+            "pr:declined",
+            "pr:deleted",
+        ],
         "gitlab": {
             "push_events": True,
             "issues_events": False,
