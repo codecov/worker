@@ -9,7 +9,9 @@ log = logging.getLogger(__name__)
 
 
 class SendEmailTask(BaseCodecovTask):
-    async def run_async(self, db_session, ownerid, list_type=None, email_type=None, *args, **kwargs):
+    async def run_async(
+        self, db_session, ownerid, list_type=None, email_type=None, *args, **kwargs
+    ):
         actual_type = list_type or email_type
         if actual_type is None:
             log.error(

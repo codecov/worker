@@ -21,8 +21,7 @@ class AddToSendgridListTask(BaseCodecovTask):
             return None
 
         log.info(
-            "Add to Sendgrid List",
-            extra=dict(ownerid=ownerid, list_type=actual_type),
+            "Add to Sendgrid List", extra=dict(ownerid=ownerid, list_type=actual_type),
         )
         # get owner object from database
         owners = db_session.query(Owner).filter_by(ownerid=ownerid)
