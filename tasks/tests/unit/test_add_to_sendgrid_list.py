@@ -65,6 +65,6 @@ class TestAddToSendgridListTask(object):
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, ownerid=45, list_type="end-of-trial"
+            db_session=dbsession, ownerid=-1, list_type="end-of-trial"
         )
         assert result is None

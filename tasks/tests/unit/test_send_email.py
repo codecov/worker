@@ -31,6 +31,6 @@ class TestSendEmailTask(object):
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         result = await SendEmailTask().run_async(
-            db_session=dbsession, ownerid=45, list_type="end-of-trial"
+            db_session=dbsession, ownerid=999999999, list_type="end-of-trial"
         )
         assert result is None
