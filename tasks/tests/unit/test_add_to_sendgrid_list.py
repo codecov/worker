@@ -68,3 +68,12 @@ class TestAddToSendgridListTask(object):
             db_session=dbsession, ownerid=-1, list_type="end-of-trial"
         )
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_send_email_wrong_arguments(
+        self, mocker, mock_configuration, dbsession, codecov_vcr
+    ):
+        result = await AddToSendgridListTask().run_async(
+            db_session=dbsession, ownerid=-1
+        )
+        assert result is None

@@ -34,3 +34,12 @@ class TestSendEmailTask(object):
             db_session=dbsession, ownerid=999999999, list_type="end-of-trial"
         )
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_send_email_wrong_arguments(
+        self, mocker, mock_configuration, dbsession, codecov_vcr
+    ):
+        result = await SendEmailTask().run_async(
+            db_session=dbsession, ownerid=999999999
+        )
+        assert result is None
