@@ -64,7 +64,7 @@ class NotificationService(object):
                             current_yaml=self.current_yaml,
                             decoration_type=decoration_type,
                         )
-                elif key != "pass_on_carryforward_default":
+                elif key != "carryforward_behavior_default":
                     log.warning(
                         "User has unexpected status type",
                         extra=dict(

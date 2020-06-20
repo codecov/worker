@@ -460,6 +460,87 @@ class TestBaseStatusNotifier(object):
                 True,
             )
 
+    def test_get_carryforward_behavior(self, sample_comparison):
+        # uses component level setting if provided
+        comparison = sample_comparison
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"carryforward_behavior": "pass"},
+            notifier_site_settings=True,
+            current_yaml={
+                "coverage": {
+                    "status": {
+                        "carryforward_behavior_default": "exclude",
+                        "project": {
+                            "component_check": {"carryforward_behavior": "pass"},
+                        },
+                    },
+                }
+            },
+        )
+        notifier.context = "fake"
+        assert notifier.carryforward_behavior(comparison) == "pass"
+
+        # uses global setting if no component setting provided
+        # comparison = sample_comparison
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={
+                "coverage": {
+                    "status": {
+                        "carryforward_behavior_default": "exclude",
+                        "project": {"component_check": {}},
+                    },
+                }
+            },
+        )
+        notifier.context = "fake"
+        assert notifier.carryforward_behavior(comparison) == "exclude"
+
+        # defaults to include if neither setting was provided
+        # comparison = sample_comparison
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={"coverage": {"status": {"project": {"component_check": {}}}}},
+        )
+        notifier.context = "fake"
+        assert notifier.carryforward_behavior(comparison) == "include"
+
+    def test_some_coverage_carriedforward_when_true(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": ["unit", "enterprise"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifier.context = "fake"
+        assert notifier.some_coverage_was_carriedforward(comparison) is True
+
+    def test_some_coverage_carriedforward_when_false(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": ["integration"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifier.context = "fake"
+        assert notifier.some_coverage_was_carriedforward(comparison) is False
+
 
 class TestProjectStatusNotifier(object):
     @pytest.mark.asyncio
@@ -662,6 +743,63 @@ class TestProjectStatusNotifier(object):
         )
         result = await notifier.notify(sample_comparison)
         assert expected_result.data_sent == result.data_sent
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_pass_on_carryforward(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "carryforward_behavior": "pass",
+                "flags": ["unit", "enterprise"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": f"50.00% (+0.00%) compared to {base_commit.commitid[:7]} [Carried forward]",
+                "state": "success",
+                "title": "codecov/project/title",
+            },
+            data_received={"id": "some_id"},
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_on_carryforward(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "carryforward_behavior": "exclude",
+                "flags": ["unit", "enterprise"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        expected_result = NotificationResult(
+            notification_attempted=False,
+            notification_successful=None,
+            explanation="exclude_carriedforward_checks",
+            data_sent=None,
+            data_received=None,
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
 
@@ -916,6 +1054,64 @@ class TestPatchStatusNotifier(object):
         result = await notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result == result
 
+    @pytest.mark.asyncio
+    async def test_notify_pass_on_carryforward(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = PatchStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "carryforward_behavior": "pass",
+                "flags": ["unit", "enterprise"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        head_commit = sample_comparison_coverage_carriedforward.head.commit
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]} [Carried forward]",
+                "state": "success",
+                "title": "codecov/patch/title",
+            },
+            data_received={"id": "some_id"},
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_on_carryforward(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = PatchStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "carryforward_behavior": "exclude",
+                "flags": ["unit", "enterprise"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        expected_result = NotificationResult(
+            notification_attempted=False,
+            notification_successful=None,
+            explanation="exclude_carriedforward_checks",
+            data_sent=None,
+            data_received=None,
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
 
 class TestChangesStatusNotifier(object):
     @pytest.mark.asyncio
@@ -1004,4 +1200,60 @@ class TestChangesStatusNotifier(object):
             "state": "success",
         }
         result = await notifier.build_payload(comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_pass_on_carryforward(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ChangesStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "carryforward_behavior": "pass",
+                "flags": ["unit", "enterprise"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": "No unexpected coverage changes found [Carried forward]",
+                "state": "success",
+                "title": "codecov/changes/title",
+            },
+            data_received={"id": "some_id"},
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_on_carryforward(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ChangesStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "carryforward_behavior": "exclude",
+                "flags": ["unit", "enterprise"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        expected_result = NotificationResult(
+            notification_attempted=False,
+            notification_successful=None,
+            explanation="exclude_carriedforward_checks",
+            data_sent=None,
+            data_received=None,
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
