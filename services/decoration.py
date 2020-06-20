@@ -91,7 +91,7 @@ def get_decoration_type_and_reason(
             ),
         )
 
-        # TODO: we need to decide the best way for this logic to be shared across
+        # TODO: later we can decide the best way for this logic to be shared across
         # worker and codecov-api - ideally moving logic from database to application layer
         (activation_success,) = db_session.query(
             func.public.try_to_auto_activate(org.ownerid, pr_author.ownerid)

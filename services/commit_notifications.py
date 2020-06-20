@@ -18,7 +18,6 @@ def get_notification_state_from_result(result_dict) -> NotificationState:
     if result_dict is None:
         return NotificationState.error
 
-    attempted = result_dict.get("notification_attempted", True)
     successful = result_dict.get("notification_successful")
 
     if successful:

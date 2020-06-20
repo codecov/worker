@@ -9,6 +9,7 @@ from sqlalchemy.orm import contains_eager
 from tasks.base import BaseCodecovTask
 from database.enums import Decoration, Notification
 from database.models import Owner, Pull, Repository
+from helpers.metrics import metrics
 from services.billing import is_pr_billing_plan
 from typing import Iterator
 
@@ -51,7 +52,7 @@ class NewUserActivatedTask(BaseCodecovTask):
         pulls = self.get_pulls_authored_by_user(db_session, org_ownerid, user_ownerid)
         log.info("pulls", extra=dict(pulls=pulls))
 
-        # TODO: better to call notify directly or should we notify through pulls_sync task?
+        # NOTE: we could also notify through pulls_sync task but we will notify directly here
         for pull in pulls:
             pull_commit_notifications = pull.get_head_commit_notifications()
 
@@ -105,12 +106,12 @@ class NewUserActivatedTask(BaseCodecovTask):
 
         return is_pr_billing_plan(owner.plan)
 
+    @metrics.timer("tasks.new_user_activated.get_pulls_authored_by_user")
     def get_pulls_authored_by_user(
         self, db_session, org_ownerid: int, user_ownerid: int
     ) -> Iterator[Pull]:
         ten_days_ago = datetime.now() - timedelta(days=10)
 
-        # TODO: performance on production data? this likely needs to be optimized
         pulls = (
             db_session.query(Pull)
             .join(Pull.repository)

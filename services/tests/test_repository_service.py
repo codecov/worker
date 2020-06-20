@@ -604,7 +604,9 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository, title="purposelly bad title", author=None)
+        pull = PullFactory.create(
+            repository=repository, title="purposelly bad title", author=None
+        )
         second_pull = PullFactory.create(repository=repository)
         commit = CommitFactory.create(
             message="",
