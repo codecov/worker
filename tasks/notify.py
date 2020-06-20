@@ -198,7 +198,7 @@ class NotifyTask(BaseCodecovTask):
                 "Notifications done",
                 extra=dict(
                     notifications=notifications,
-                    commitid=commit.commitid,
+                    commit=commit.commitid,
                     repoid=commit.repoid,
                     pullid=pull.pullid if pull is not None else None,
                 ),

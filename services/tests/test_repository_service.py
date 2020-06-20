@@ -11,12 +11,13 @@ from shared.torngit.exceptions import (
 from services.repository import (
     get_repo_provider_service,
     fetch_appropriate_parent_for_commit,
-    get_author_from_commit,
+    get_or_create_author,
     update_commit_from_provider_info,
     get_repo_provider_service_by_id,
     fetch_and_update_pull_request_information_from_commit,
     fetch_and_update_pull_request_information,
 )
+from database.models import Owner
 from database.tests.factories import (
     RepositoryFactory,
     OwnerFactory,
@@ -205,13 +206,13 @@ class TestRepositoryServiceTestCase(object):
         )
         assert expected_result == result
 
-    def test_get_author_from_commit_doesnt_exist(self, dbsession):
+    def test_get_or_create_author_doesnt_exist(self, dbsession):
         service = "github"
         author_id = "123"
         username = "username"
         email = "email"
         name = "name"
-        author = get_author_from_commit(
+        author = get_or_create_author(
             dbsession, service, author_id, username, email, name
         )
         dbsession.flush()
@@ -230,7 +231,7 @@ class TestRepositoryServiceTestCase(object):
         assert author.oauth_token is None
         assert author.bot_id is None
 
-    def test_get_author_from_commit_already_exists(self, dbsession):
+    def test_get_or_create_author_already_exists(self, dbsession):
         owner = OwnerFactory.create(
             service="bitbucket",
             service_id="975",
@@ -245,7 +246,7 @@ class TestRepositoryServiceTestCase(object):
         username = "username"
         email = "email"
         name = "name"
-        author = get_author_from_commit(
+        author = get_or_create_author(
             dbsession, service, author_id, username, email, name
         )
         dbsession.flush()
@@ -483,8 +484,10 @@ class TestPullRequestFetcher(object):
             "id": "1",
             "state": "open",
             "title": "Creating new code for reasons no one knows",
+            "author": {"id": "123", "username": "pr_author_username"},
         }
         repository_service = mocker.MagicMock(
+            service="github",
             get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
         enriched_pull = await fetch_and_update_pull_request_information_from_commit(
@@ -506,7 +509,16 @@ class TestPullRequestFetcher(object):
         assert res.commentid is None
         assert res.diff is None
         assert res.flare is None
-        assert res.author == commit.author
+        assert (
+            res.author
+            == dbsession.query(Owner)
+            .filter(
+                Owner.service == "github",
+                Owner.service_id == get_pull_request_result["author"]["id"],
+                Owner.username == get_pull_request_result["author"]["username"],
+            )
+            .first()
+        )
 
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_from_commit_existing_pull_commits_in_place(
@@ -515,7 +527,7 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository)
+        pull = PullFactory.create(repository=repository, author=None)
         commit = CommitFactory.create(
             message="",
             pullid=pull.pullid,
@@ -547,8 +559,10 @@ class TestPullRequestFetcher(object):
             "id": str(pull.pullid),
             "state": "open",
             "title": "Creating new code for reasons no one knows",
+            "author": {"id": "123", "username": "pr_author_username"},
         }
         repository_service = mocker.MagicMock(
+            service="github",
             get_commit=mock.AsyncMock(return_value=f),
             get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
@@ -572,7 +586,16 @@ class TestPullRequestFetcher(object):
         assert res.commentid is None
         assert res.diff is None
         assert res.flare is None
-        assert res.author == commit.author
+        assert (
+            res.author
+            == dbsession.query(Owner)
+            .filter(
+                Owner.service == "github",
+                Owner.service_id == get_pull_request_result["author"]["id"],
+                Owner.username == get_pull_request_result["author"]["username"],
+            )
+            .first()
+        )
 
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_multiple_pulls_same_repo(
@@ -581,7 +604,7 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository, title="purposelly bad title")
+        pull = PullFactory.create(repository=repository, title="purposelly bad title", author=None)
         second_pull = PullFactory.create(repository=repository)
         commit = CommitFactory.create(
             message="",
@@ -615,8 +638,11 @@ class TestPullRequestFetcher(object):
             "id": str(pull.pullid),
             "state": "open",
             "title": "Creating new code for reasons no one knows",
+            "author": {"id": "123", "username": "pr_author_username"},
         }
+
         repository_service = mocker.MagicMock(
+            service="github",
             get_commit=mock.AsyncMock(return_value=f),
             get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
@@ -641,7 +667,16 @@ class TestPullRequestFetcher(object):
         assert res.commentid is None
         assert res.diff is None
         assert res.flare is None
-        assert res.author == commit.author
+        assert (
+            res.author
+            == dbsession.query(Owner)
+            .filter(
+                Owner.service == "github",
+                Owner.service_id == get_pull_request_result["author"]["id"],
+                Owner.username == get_pull_request_result["author"]["username"],
+            )
+            .first()
+        )
 
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_from_commit_different_compared_to(
@@ -650,7 +685,7 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository)
+        pull = PullFactory.create(repository=repository, author=None)
         commit = CommitFactory.create(
             message="",
             pullid=pull.pullid,
@@ -684,8 +719,10 @@ class TestPullRequestFetcher(object):
             "id": str(pull.pullid),
             "state": "open",
             "title": "Creating new code for reasons no one knows",
+            "author": {"id": "123", "username": "pr_author_username"},
         }
         repository_service = mocker.MagicMock(
+            service="github",
             get_commit=mock.AsyncMock(return_value=f),
             get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
         )
@@ -709,7 +746,16 @@ class TestPullRequestFetcher(object):
         assert res.commentid is None
         assert res.diff is None
         assert res.flare is None
-        assert res.author == commit.author
+        assert (
+            res.author
+            == dbsession.query(Owner)
+            .filter(
+                Owner.service == "github",
+                Owner.service_id == get_pull_request_result["author"]["id"],
+                Owner.username == get_pull_request_result["author"]["username"],
+            )
+            .first()
+        )
 
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_no_compared_to(
@@ -718,7 +764,7 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository)
+        pull = PullFactory.create(repository=repository, author=None)
         compared_to_commit = CommitFactory.create(
             repository=repository, branch="master", merged=True
         )
@@ -741,8 +787,10 @@ class TestPullRequestFetcher(object):
             "id": str(pull.pullid),
             "state": "open",
             "title": "Creating new code for reasons no one knows",
+            "author": {"id": "123", "username": "pr_author_username"},
         }
         repository_service = mocker.MagicMock(
+            service="github",
             get_commit=mock.AsyncMock(
                 side_effect=TorngitObjectNotFoundError("response", "message")
             ),
@@ -768,7 +816,16 @@ class TestPullRequestFetcher(object):
         assert res.commentid is None
         assert res.diff is None
         assert res.flare is None
-        assert res.author is pull.author
+        assert (
+            res.author
+            == dbsession.query(Owner)
+            .filter(
+                Owner.service == "github",
+                Owner.service_id == get_pull_request_result["author"]["id"],
+                Owner.username == get_pull_request_result["author"]["username"],
+            )
+            .first()
+        )
 
     @pytest.mark.asyncio
     async def test_fetch_and_update_pull_request_information_torngitexception(

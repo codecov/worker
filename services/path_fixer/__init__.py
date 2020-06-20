@@ -26,8 +26,18 @@ def invert_pattern(string: str) -> str:
 
 
 class PathFixer(object):
+    """
+    Applies default path fixes and any fixes specified in the codecov yaml file to resolve file paths in coverage reports.
+    Also applies any "ignore" and "paths" yaml fields to determine which files to include in the report.
+    """
+
     @classmethod
     def init_from_user_yaml(cls, commit_yaml: dict, toc: str, flags: typing.Sequence):
+        """
+        @param commit_yaml: Codecov yaml file in effect for this commit.
+        @param toc: List of files prepended to the uploaded report. Not all report formats provide this.
+        @param flags: Coverage flags specified by the user, if any.
+        """
         path_patterns = list(
             map(invert_pattern, read_yaml_field(commit_yaml, ("ignore",)) or [])
         )
@@ -88,6 +98,7 @@ class PathFixer(object):
             # applied pre and post
             path = self.custom_fixes(path, True)
         if not self.path_matcher(path):
+            # don't include the file if yaml specified paths to include/ignore and it's not in the list to include
             return None
         return path
 
@@ -106,20 +117,40 @@ class PathFixer(object):
 class BasePathAwarePathFixer(PathFixer):
     def __init__(self, original_path_fixer, base_path) -> None:
         self.original_path_fixer = original_path_fixer
+        self.unexpected_results = []
+
+        # base_path argument is the file path after the "# path=" in the report containing report location, if provided.
+        # to get the base path we use, strip the coverage report from the path to get the base path
+        # e.g.: "path/to/coverage.xml" --> "path/to/"
         self.base_path = PurePath(base_path).parent if base_path is not None else None
-        self.unexpected_results = set()
 
     def __call__(self, path: str) -> str:
-        current_result = self.original_path_fixer(path)
+        original_path_fixer_result = self.original_path_fixer(path)
         if not self.base_path or not self.original_path_fixer.toc:
-            return current_result
+            return original_path_fixer_result
         if not os.path.isabs(path):
             adjusted_path = os.path.join(self.base_path, path)
-            possible_different_result = self.original_path_fixer(adjusted_path)
-            if current_result != possible_different_result:
-                event_data = tuple([path, current_result, possible_different_result])
-                self.unexpected_results.add(event_data)
-        return current_result
+            base_path_aware_result = self.original_path_fixer(adjusted_path)
+            if original_path_fixer_result != base_path_aware_result:
+                event_data = {
+                    "original_path": path,
+                    "original_path_fixer_result": original_path_fixer_result,
+                    "base_path_aware_result": base_path_aware_result,
+                }
+                self.unexpected_results.append(event_data)
+
+                if original_path_fixer_result is None:
+                    log.info(
+                        "Original path fixer couldn't resolve file path, returning base path aware result",
+                        extra=dict(
+                            base=self.base_path,
+                            path_patterns=self.original_path_fixer.path_patterns,
+                            yaml_fixes=self.original_path_fixer.yaml_fixes,
+                            event_data=event_data,
+                        ),
+                    )
+                    return base_path_aware_result
+        return original_path_fixer_result
 
     def log_abnormalities(self) -> bool:
         """
@@ -127,7 +158,7 @@ class BasePathAwarePathFixer(PathFixer):
         Returns:
             bool: Whether abnormalities were noted or not
         """
-        if self.unexpected_results:
+        if len(self.unexpected_results) > 0:
             log.info(
                 "Paths would not match due to the relative path calculation (no real effect yet)",
                 extra=dict(

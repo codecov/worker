@@ -45,7 +45,7 @@ make build.base
 make build
 ```
 
-To run this as part of the whole infrasctructure, you will be better served by getting the main database and running `docker-compose up` from there
+To run this as part of the whole infrasctructure, you will be better served by getting the main codebase and running `docker-compose up` from there
 
 ### Getting into enterprise mode
 
@@ -62,6 +62,16 @@ The source of truth on which version we use is in the file `VERSION`. Every scri
 That file is manually updated. We use semantic versioning.
 
 If you are unsure whether you need to change that version at a given moment, the answer is that you probaby don't then. We have multiple deploys on the same version, and only change it when we want to cut a version to enterprise.
+
+## Upgrading Dependencies
+
+This repository uses `pip-tools` to manage dependencies, so make sure you've installed it with `pip install pip-tools`. To add or update dependencies, change `requirements.in`,  Then run
+
+```
+pip-compile requirements.in
+```
+
+Do not change `requirements.txt` directly
 
 ## Code Structure
 

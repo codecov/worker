@@ -16,7 +16,6 @@ from celery_config import upload_task_name
 from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
-from services.bots import get_repo_admin_bot_token
 from services.redis import get_redis_connection, download_archive_from_redis, Redis
 from services.repository import (
     get_repo_provider_service,
@@ -328,10 +327,7 @@ class UploadTask(BaseCodecovTask):
         # try to add webhook
         if should_post_webhook:
             try:
-                admin_token = get_repo_admin_bot_token(repository)
-                hook_result = await create_webhook_on_provider(
-                    repository_service, token=admin_token
-                )
+                hook_result = await create_webhook_on_provider(repository_service)
                 hookid = hook_result["id"]
                 log.info("Registered hook %s for repo %s", hookid, repository.repoid)
                 repository.hookid = hookid

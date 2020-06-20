@@ -2,7 +2,7 @@
 
 #GCLOUD_SERVICE_KEY := $(shell cat ~/.gcloud/codecov-enterprise-sandbox-03eb0a0ecaf2.json | base64 --wrap=0)
 GCR_REPO := gcr.io/test6u3411ty6xqh462sri/codecov-worker
-REQUIREMENTS_TAG := requirements-v5-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)
+REQUIREMENTS_TAG := requirements-v6-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)
 SEMANTIC_VERSION := `cat VERSION`
 IMAGE_VERSION := ${SEMANTIC_VERSION}-$(shell git rev-parse --short=7 HEAD)
 VERSION := release-$(shell git rev-parse --short=7 HEAD)
@@ -45,6 +45,17 @@ tag:
 	docker pull ${GCR_REPO}:latest
 	docker tag ${GCR_REPO}:latest ${GCR_REPO}:${VERSION}
 	docker push ${GCR_REPO}:${VERSION}
+
+# build and tag with staging tag
+# - when the docker image is uploaded to GCR with the "staging" tag, spinnaker will automatically detect the new image and deploy to the staging k8s cluster
+# - spinnaker pipeline: https://spinnaker.codecov.dev/?to=https%3A%2F%2Fspinnaker.codecov.dev%2F%23%2Fsearch#/applications/codecov-staging/executions?pipeline=worker
+staging:
+	docker build \
+		-f  dockerscripts/Dockerfile.circle . \
+		-t ${GCR_REPO}:staging-${VERSION} \
+		--build-arg RELEASE_VERSION=${IMAGE_VERSION} \
+		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG} && \
+	docker push ${GCR_REPO}:staging-${VERSION}
 
 # CIRCLECI
 # job: deploy

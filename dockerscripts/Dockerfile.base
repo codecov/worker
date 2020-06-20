@@ -8,7 +8,7 @@ RUN             apk update \
                 postgresql-dev \
                 musl-dev \
                 libxslt-dev \
-                python-dev \
+                python3-dev \
                 libffi-dev \
                 gcc \
                 libcurl \
@@ -27,9 +27,7 @@ WORKDIR         /pip-packages/
 ENV             PYCURL_SSL_LIBRARY=openssl
 
 RUN             git config --global url."git@github.com:".insteadOf "https://github.com/"
-RUN             pip download -r /requirements.txt
-RUN             pip download setuptools wheel
-
+RUN             pip wheel -r /requirements.txt
 
 
 
@@ -41,13 +39,11 @@ RUN             apk add --no-cache postgresql-libs && \
                 musl-dev \ 
                 postgresql-dev \
                 libxslt-dev \
-                python-dev \ 
                 python3-dev \
                 build-base \
                 curl-dev
 
 RUN             apk add libffi-dev openssl-dev
-ENV             PYCURL_SSL_LIBRARY=openssl
 RUN             wget -q -O /usr/local/bin/berglas https://storage.googleapis.com/berglas/0.5.0/linux_amd64/berglas && \
                 chmod +x /usr/local/bin/berglas
 

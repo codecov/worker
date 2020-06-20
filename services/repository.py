@@ -10,12 +10,10 @@ from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitError,
 )
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.exc import FlushError
-from sqlalchemy.dialects.postgresql import insert, dialect
+from sqlalchemy.dialects.postgresql import insert
 
 from shared.config import get_config, get_verify_ssl
-from services.bots import get_repo_appropriate_bot_token
+from services.bots import get_repo_appropriate_bot_token, get_token_type_mapping
 from database.models import Owner, Commit, Pull, Repository
 from services.yaml import read_yaml_field
 
@@ -24,7 +22,9 @@ log = logging.getLogger(__name__)
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
 
-def get_repo_provider_service(repository, commit=None) -> torngit.base.BaseHandler:
+def get_repo_provider_service(
+    repository, commit=None
+) -> torngit.base.TorngitBaseAdapter:
     _timeouts = [
         get_config("setup", "http", "timeouts", "connect", default=15),
         get_config("setup", "http", "timeouts", "receive", default=30),
@@ -44,6 +44,7 @@ def get_repo_provider_service(repository, commit=None) -> torngit.base.BaseHandl
             username=repository.owner.username,
         ),
         token=token,
+        token_type_mapping=get_token_type_mapping(repository),
         verify_ssl=get_verify_ssl(service),
         timeouts=_timeouts,
         oauth_consumer_token=dict(
@@ -115,7 +116,7 @@ async def update_commit_from_provider_info(repository_service, commit):
                 ),
             )
         else:
-            commit_author = get_author_from_commit(
+            commit_author = get_or_create_author(
                 db_session,
                 commit.repository.service,
                 author_info["id"],
@@ -160,23 +161,36 @@ async def update_commit_from_provider_info(repository_service, commit):
         )
 
 
-def get_author_from_commit(db_session, service, author_id, username, email, name):
-    author = (
-        db_session.query(Owner)
-        .filter_by(service_id=str(author_id), service=service)
-        .first()
+def get_or_create_author(
+    db_session, service, service_id, username, email=None, name=None,
+) -> Owner:
+    query = db_session.query(Owner).filter(
+        Owner.service == service, Owner.service_id == str(service_id),
     )
+    author = query.first()
     if author:
         return author
-    author = Owner(
-        service_id=str(author_id),
-        service=service,
-        username=username,
-        name=name,
-        email=email,
-    )
-    db_session.add(author)
-    return author
+
+    db_session.begin(nested=True)
+    try:
+        author = Owner(
+            service=service,
+            service_id=str(service_id),
+            username=username,
+            name=name,
+            email=email,
+        )
+        db_session.add(author)
+        db_session.commit()
+        return author
+    except IntegrityError:
+        log.warning(
+            "IntegrityError in get_or_create_author",
+            extra=dict(service=service, service_id=service_id, username=username),
+        )
+        db_session.rollback()
+        author = query.one()
+        return author
 
 
 async def create_webhook_on_provider(repository_service, token=None):
@@ -280,7 +294,6 @@ async def fetch_and_update_pull_request_information_from_commit(
     )
     pull = enriched_pull.database_pull
     if pull is not None:
-        pull.author = commit.author
         pull.head = commit.commitid
     return enriched_pull
 
@@ -366,4 +379,15 @@ async def fetch_and_update_pull_request_information(
     db_session.flush()
     pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
     db_session.refresh(pull)
+
+    if pull is not None and not pull.author:
+        pr_author = get_or_create_author(
+            db_session,
+            repository_service.service,
+            pull_information["author"]["id"],
+            pull_information["author"]["username"],
+        )
+        if pr_author:
+            pull.author = pr_author
+
     return EnrichedPull(database_pull=pull, provider_pull=pull_information)
