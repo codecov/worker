@@ -52,7 +52,7 @@ class TestSendEmailTask(object):
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_send_email_invalid_list(
+    async def test_send_email_invalid_list_with_list_type(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
@@ -63,26 +63,32 @@ class TestSendEmailTask(object):
         assert result is None
 
     @pytest.mark.asyncio
+    async def test_send_email_invalid_list_with_email_type(
+        self, mocker, mock_configuration, dbsession, codecov_vcr
+    ):
+        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        dbsession.add(owner)
+        result = await SendEmailTask().run_async(
+            db_session=dbsession, ownerid=1, email_type="fake-list"
+        )
+        assert result is None
+
+    @pytest.mark.asyncio
     async def test_send_email_no_list(
+        self, mocker, mock_configuration, dbsession, codecov_vcr
+    ):
+        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        dbsession.add(owner)
+        result = await SendEmailTask().run_async(
+            db_session=dbsession, ownerid=1
+        )
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_send_email_invalid_owner_no_list_type(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=999999999
         )
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_send_email_no_owner(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
-    ):
-        result = await SendEmailTask().run_async(
-            db_session=dbsession, list_type="end-of-trial"
-        )
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_send_email_no_arguments(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
-    ):
-        result = await SendEmailTask().run_async(db_session=dbsession)
         assert result is None

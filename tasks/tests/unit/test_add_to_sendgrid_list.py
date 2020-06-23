@@ -70,13 +70,24 @@ class TestAddToSendgridListTask(object):
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_add_to_list_invalid_list(
+    async def test_add_to_list_invalid_list_with_list_type(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
         result = await SendEmailTask().run_async(
-            db_session=dbsession, ownerid=1, list_type="fake-list"
+            db_session=dbsession, ownerid=owner.id, list_type="fake-list"
+        )
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_add_to_list_invalid_list_with_email_type(
+        self, mocker, mock_configuration, dbsession, codecov_vcr
+    ):
+        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        dbsession.add(owner)
+        result = await SendEmailTask().run_async(
+            db_session=dbsession, ownerid=owner.id, email_type="fake-list"
         )
         assert result is None
 
@@ -84,23 +95,18 @@ class TestAddToSendgridListTask(object):
     async def test_add_to_list_no_list(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
+        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        dbsession.add(owner)
+        result = await AddToSendgridListTask().run_async(
+            db_session=dbsession, ownerid=1
+        )
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_add_to_list_invalid_owner_no_list_type(
+        self, mocker, mock_configuration, dbsession, codecov_vcr
+    ):
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=-1
         )
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_add_to_list_no_owner(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
-    ):
-        result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, list_type="end-of-trial"
-        )
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_add_to_list_no_arguments(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
-    ):
-        result = await AddToSendgridListTask().run_async(db_session=dbsession)
         assert result is None
