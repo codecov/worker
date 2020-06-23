@@ -35,10 +35,12 @@ class Sendgrid(object):
                 data = safe_load(stream)
                 self.config = data[list_type]
             except YAMLError as e:
-                log.error("Unable to read email config file")
+                log.error("Unable to read email config file {}".format(e))
+            except KeyError as e:
+                log.error("Unable to find list_type {}: {}".format(list_type, e))
 
     def add_to_list(self, email):
-        if self.config.get("list_id") is None:
+        if self.config is None or self.config.get("list_id") is None:
             return None
 
         data = {

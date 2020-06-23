@@ -79,9 +79,7 @@ class TestSendEmailTask(object):
     ):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
-        result = await SendEmailTask().run_async(
-            db_session=dbsession, ownerid=1
-        )
+        result = await SendEmailTask().run_async(db_session=dbsession, ownerid=1)
         assert result is None
 
     @pytest.mark.asyncio
