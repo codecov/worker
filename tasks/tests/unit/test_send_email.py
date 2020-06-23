@@ -58,7 +58,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
         result = await SendEmailTask().run_async(
-            db_session=dbsession, ownerid=1, list_type="fake-list"
+            db_session=dbsession, ownerid=owner.ownerid, list_type="fake-list"
         )
         assert result is None
 
@@ -69,7 +69,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
         result = await SendEmailTask().run_async(
-            db_session=dbsession, ownerid=1, email_type="fake-list"
+            db_session=dbsession, ownerid=owner.ownerid, email_type="fake-list"
         )
         assert result is None
 
@@ -79,7 +79,9 @@ class TestSendEmailTask(object):
     ):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
-        result = await SendEmailTask().run_async(db_session=dbsession, ownerid=1)
+        result = await SendEmailTask().run_async(
+            db_session=dbsession, ownerid=owner.ownerid
+        )
         assert result is None
 
     @pytest.mark.asyncio

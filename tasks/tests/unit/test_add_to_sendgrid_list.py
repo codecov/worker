@@ -76,7 +76,7 @@ class TestAddToSendgridListTask(object):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, ownerid=owner.id, list_type="fake-list"
+            db_session=dbsession, ownerid=owner.ownerid, list_type="fake-list"
         )
         assert result is None
 
@@ -87,7 +87,7 @@ class TestAddToSendgridListTask(object):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, ownerid=owner.id, email_type="fake-list"
+            db_session=dbsession, ownerid=owner.ownerid, email_type="fake-list"
         )
         assert result is None
 
@@ -98,7 +98,7 @@ class TestAddToSendgridListTask(object):
         owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, ownerid=1
+            db_session=dbsession, ownerid=owner.ownerid
         )
         assert result is None
 
