@@ -56,7 +56,7 @@ class StatusNotifier(AbstractBaseNotifier):
             return False
         return True
 
-    def carryforward_behavior(self, comparison) -> bool:
+    def get_carryforward_behavior(self, comparison) -> bool:
         """
         The codecov yaml specifies how status checks should be handled when coverage has been carriedforward. 
         This can be set at the global level for all checks, or at the component level for an individual check.
@@ -80,8 +80,8 @@ class StatusNotifier(AbstractBaseNotifier):
 
         carryforward_behavior_default = read_yaml_field(
             self.current_yaml,
-            ("coverage", "status", "carryforward_behavior_default"),
-            "include",  # TODO confirm this
+            ("coverage", "status", "default_rules", "carryforward_behavior"),
+            "include",
         )
         log.info(
             "Using global carryforward behavior setting",
@@ -95,21 +95,28 @@ class StatusNotifier(AbstractBaseNotifier):
         )
         return carryforward_behavior_default
 
-    # TODO: confirm whether to use "some" or "all"
-    def some_coverage_was_carriedforward(self, comparison) -> bool:
+    def coverage_was_carriedforward(self, comparison) -> bool:
         """
-        Indicates whether any of the commit's sessions contain carriedforward coverage for any of the status check's flags.
+        Indicates whether the commit's sessions contain carriedforward coverage for the status check's flags.
         """
-        flags_included_in_status = self.notifier_yaml_settings.get("flags", [])
-        coverage_was_carriedforward = False
-        for session_id, session in comparison.head.report.sessions.items():
-            session_flags = session.flags or []
+        flags_included_in_status_check = set(
+            self.notifier_yaml_settings.get("flags", [])
+        )
+        flags_with_coverage_carriedforward = set()
 
-            if session.session_type == SessionType.carriedforward and set(
-                flags_included_in_status
-            ).intersection(set(session_flags)):
-                coverage_was_carriedforward = True
-                break
+        for session_id, session in comparison.head.report.sessions.items():
+            if session.session_type == SessionType.carriedforward:
+                status_flags_in_carriedforward_session = set(
+                    getattr(session, "flags", [])
+                ).intersection(flags_included_in_status_check)
+
+                flags_with_coverage_carriedforward.update(
+                    status_flags_in_carriedforward_session
+                )
+
+        coverage_was_carriedforward = (
+            flags_included_in_status_check == flags_with_coverage_carriedforward
+        )
 
         log_message = (
             "Coverage on this status check was "
@@ -122,7 +129,8 @@ class StatusNotifier(AbstractBaseNotifier):
                 commit=comparison.head.commit.commitid,
                 repoid=comparison.head.commit.repoid,
                 notifier_name=self.name,
-                flags_included_in_status=flags_included_in_status,
+                flags_included_in_status_check=flags_included_in_status_check,
+                flags_with_coverage_carriedforward=flags_with_coverage_carriedforward,
             ),
         )
         return coverage_was_carriedforward
@@ -178,8 +186,10 @@ class StatusNotifier(AbstractBaseNotifier):
                     payload = await self.build_payload(comparison)
 
                     # apply carryforward_behavior yaml settings
-                    if self.some_coverage_was_carriedforward(comparison):
-                        carryforward_behavior = self.carryforward_behavior(comparison)
+                    if self.coverage_was_carriedforward(comparison):
+                        carryforward_behavior = self.get_carryforward_behavior(
+                            comparison
+                        )
 
                         log_message = {
                             "pass": "Automatically passing status check because coverage was carriedforward and carryforward behavior was set to 'pass'",

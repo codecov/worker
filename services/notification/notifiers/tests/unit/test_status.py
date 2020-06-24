@@ -471,7 +471,7 @@ class TestBaseStatusNotifier(object):
             current_yaml={
                 "coverage": {
                     "status": {
-                        "carryforward_behavior_default": "exclude",
+                        "default_rules": {"carryforward_behavior": "exclude"},
                         "project": {
                             "component_check": {"carryforward_behavior": "pass"},
                         },
@@ -480,7 +480,7 @@ class TestBaseStatusNotifier(object):
             },
         )
         notifier.context = "fake"
-        assert notifier.carryforward_behavior(comparison) == "pass"
+        assert notifier.get_carryforward_behavior(comparison) == "pass"
 
         # uses global setting if no component setting provided
         # comparison = sample_comparison
@@ -492,14 +492,14 @@ class TestBaseStatusNotifier(object):
             current_yaml={
                 "coverage": {
                     "status": {
-                        "carryforward_behavior_default": "exclude",
+                        "default_rules": {"carryforward_behavior": "exclude"},
                         "project": {"component_check": {}},
                     },
                 }
             },
         )
         notifier.context = "fake"
-        assert notifier.carryforward_behavior(comparison) == "exclude"
+        assert notifier.get_carryforward_behavior(comparison) == "exclude"
 
         # defaults to include if neither setting was provided
         # comparison = sample_comparison
@@ -511,9 +511,9 @@ class TestBaseStatusNotifier(object):
             current_yaml={"coverage": {"status": {"project": {"component_check": {}}}}},
         )
         notifier.context = "fake"
-        assert notifier.carryforward_behavior(comparison) == "include"
+        assert notifier.get_carryforward_behavior(comparison) == "include"
 
-    def test_some_coverage_carriedforward_when_true(
+    def test_coverage_carriedforward_when_all_carriedforward(
         self, sample_comparison_coverage_carriedforward
     ):
         comparison = sample_comparison_coverage_carriedforward
@@ -525,9 +525,9 @@ class TestBaseStatusNotifier(object):
             current_yaml={},
         )
         notifier.context = "fake"
-        assert notifier.some_coverage_was_carriedforward(comparison) is True
+        assert notifier.coverage_was_carriedforward(comparison) is True
 
-    def test_some_coverage_carriedforward_when_false(
+    def test_some_coverage_carriedforward_when_none_carriedforward(
         self, sample_comparison_coverage_carriedforward
     ):
         comparison = sample_comparison_coverage_carriedforward
@@ -539,7 +539,21 @@ class TestBaseStatusNotifier(object):
             current_yaml={},
         )
         notifier.context = "fake"
-        assert notifier.some_coverage_was_carriedforward(comparison) is False
+        assert notifier.coverage_was_carriedforward(comparison) is False
+
+    def test_some_coverage_carriedforward_when_some_carriedforward(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": ["unit", "integration"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifier.context = "fake"
+        assert notifier.coverage_was_carriedforward(comparison) is False
 
 
 class TestProjectStatusNotifier(object):
