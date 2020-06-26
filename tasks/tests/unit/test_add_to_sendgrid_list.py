@@ -21,7 +21,7 @@ class TestAddToSendgridListTask(object):
     ):
         owner = OwnerFactory.create(email="tom@codecov.io")
         dbsession.add(owner)
-        ddbsession.flush()
+        dbsession.flush()
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="new-oauthed-users"
         )
@@ -39,7 +39,7 @@ class TestAddToSendgridListTask(object):
     ):
         owner = OwnerFactory.create(email="tom@codecov.io")
         dbsession.add(owner)
-        ddbsession.flush()
+        dbsession.flush()
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
         )
@@ -60,7 +60,7 @@ class TestAddToSendgridListTask(object):
     ):
         owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
-        ddbsession.flush()
+        dbsession.flush()
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="fake-list"
         )
@@ -72,7 +72,7 @@ class TestAddToSendgridListTask(object):
     ):
         owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
-        ddbsession.flush()
+        dbsession.flush()
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid
         )
