@@ -21,6 +21,7 @@ class TestSendEmailTask(object):
     ):
         owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
+        ddbsession.flush()
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
         )
@@ -37,6 +38,7 @@ class TestSendEmailTask(object):
     ):
         owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
+        ddbsession.flush()
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, email_type="end-of-trial"
         )
@@ -57,6 +59,7 @@ class TestSendEmailTask(object):
     ):
         owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
+        ddbsession.flush()
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="fake-list"
         )
@@ -68,6 +71,7 @@ class TestSendEmailTask(object):
     ):
         owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
+        ddbsession.flush()
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, email_type="fake-list"
         )
@@ -79,6 +83,7 @@ class TestSendEmailTask(object):
     ):
         owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
+        ddbsession.flush()
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid
         )

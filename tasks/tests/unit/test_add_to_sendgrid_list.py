@@ -21,25 +21,9 @@ class TestAddToSendgridListTask(object):
     ):
         owner = OwnerFactory.create(email="tom@codecov.io")
         dbsession.add(owner)
+        ddbsession.flush()
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="new-oauthed-users"
-        )
-        assert result.get("job_id", None) == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
-
-    @pytest.mark.asyncio
-    async def test_new_oauthed_users_email_with_email_type(
-        self,
-        mocker,
-        mock_configuration,
-        dbsession,
-        codecov_vcr,
-        mock_storage,
-        mock_redis,
-    ):
-        owner = OwnerFactory.create(email="tom@codecov.io")
-        dbsession.add(owner)
-        result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, ownerid=owner.ownerid, email_type="new-oauthed-users"
         )
         assert result.get("job_id", None) == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
 
@@ -55,6 +39,7 @@ class TestAddToSendgridListTask(object):
     ):
         owner = OwnerFactory.create(email="tom@codecov.io")
         dbsession.add(owner)
+        ddbsession.flush()
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
         )
@@ -75,19 +60,9 @@ class TestAddToSendgridListTask(object):
     ):
         owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
+        ddbsession.flush()
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="fake-list"
-        )
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_add_to_list_invalid_list_with_email_type(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
-    ):
-        owner = OwnerFactory.create(email="felipe@codecov.io")
-        dbsession.add(owner)
-        result = await AddToSendgridListTask().run_async(
-            db_session=dbsession, ownerid=owner.ownerid, email_type="fake-list"
         )
         assert result is None
 
@@ -97,6 +72,7 @@ class TestAddToSendgridListTask(object):
     ):
         owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
+        ddbsession.flush()
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid
         )
