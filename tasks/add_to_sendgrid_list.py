@@ -9,13 +9,10 @@ log = logging.getLogger(__name__)
 
 
 class AddToSendgridListTask(BaseCodecovTask):
-    async def run_async(
-        self, db_session, ownerid, list_type=None, *args, **kwargs
-    ):
+    async def run_async(self, db_session, ownerid, list_type=None, *args, **kwargs):
         if list_type is None:
             log.error(
-                "Did not receive a Sendgrid list type",
-                extra=dict(ownerid=ownerid),
+                "Did not receive a Sendgrid list type", extra=dict(ownerid=ownerid),
             )
             return None
 
