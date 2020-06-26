@@ -6,6 +6,5 @@ ARG             RELEASE_VERSION
 
 ENV             RELEASE_VERSION $RELEASE_VERSION
 
-COPY            --from=gcr.io/berglas/berglas:0.5.0 /bin/berglas /usr/local/bin/berglas
 COPY            . /worker
 WORKDIR         /worker
