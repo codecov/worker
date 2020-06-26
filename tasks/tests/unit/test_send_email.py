@@ -19,7 +19,7 @@ class TestSendEmailTask(object):
         mock_storage,
         mock_redis,
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
@@ -35,7 +35,7 @@ class TestSendEmailTask(object):
         mock_storage,
         mock_redis,
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, email_type="end-of-trial"
@@ -55,7 +55,7 @@ class TestSendEmailTask(object):
     async def test_send_email_invalid_list_with_list_type(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="fake-list"
@@ -66,7 +66,7 @@ class TestSendEmailTask(object):
     async def test_send_email_invalid_list_with_email_type(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, email_type="fake-list"
@@ -77,7 +77,7 @@ class TestSendEmailTask(object):
     async def test_send_email_no_list(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
         result = await SendEmailTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid

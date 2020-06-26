@@ -19,7 +19,7 @@ class TestAddToSendgridListTask(object):
         mock_storage,
         mock_redis,
     ):
-        owner = OwnerFactory.create(ownerid=1, email="tom@codecov.io")
+        owner = OwnerFactory.create(email="tom@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="new-oauthed-users"
@@ -36,7 +36,7 @@ class TestAddToSendgridListTask(object):
         mock_storage,
         mock_redis,
     ):
-        owner = OwnerFactory.create(ownerid=1, email="tom@codecov.io")
+        owner = OwnerFactory.create(email="tom@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, email_type="new-oauthed-users"
@@ -53,7 +53,7 @@ class TestAddToSendgridListTask(object):
         mock_storage,
         mock_redis,
     ):
-        owner = OwnerFactory.create(ownerid=1, email="tom@codecov.io")
+        owner = OwnerFactory.create(email="tom@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="end-of-trial"
@@ -73,7 +73,7 @@ class TestAddToSendgridListTask(object):
     async def test_add_to_list_invalid_list_with_list_type(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, list_type="fake-list"
@@ -84,7 +84,7 @@ class TestAddToSendgridListTask(object):
     async def test_add_to_list_invalid_list_with_email_type(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid, email_type="fake-list"
@@ -95,7 +95,7 @@ class TestAddToSendgridListTask(object):
     async def test_add_to_list_no_list(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
-        owner = OwnerFactory.create(ownerid=1, email="felipe@codecov.io")
+        owner = OwnerFactory.create(email="felipe@codecov.io")
         dbsession.add(owner)
         result = await AddToSendgridListTask().run_async(
             db_session=dbsession, ownerid=owner.ownerid
