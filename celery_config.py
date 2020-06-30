@@ -97,6 +97,7 @@ ghm_sync_plans_task_name = "app.tasks.ghm_sync_plans.SyncPlans"
 send_email_task_name = "app.tasks.send_email.SendEmail"
 remove_webhook_task_name = "app.tasks.remove_webhook.RemoveOldHook"
 synchronize_task_name = "app.tasks.synchronize.Synchronize"
+add_to_sendgrid_list_task_name = "app.tasks.add_to_sendgrid_list.AddToSendgridList"
 
 task_annotations = {notify_task_name: {"soft_time_limit": 45, "time_limit": 60,}}
 
@@ -174,6 +175,11 @@ task_routes = {
     synchronize_task_name: {
         "queue": get_config(
             "setup", "tasks", "synchronize", "queue", default=task_default_queue
+        )
+    },
+    add_to_sendgrid_list: {
+        "queue": get_config(
+            "setup", "tasks", "add_to_sendgrid_list", "queue", default=task_default_queue
         )
     },
 }
