@@ -177,7 +177,7 @@ task_routes = {
             "setup", "tasks", "synchronize", "queue", default=task_default_queue
         )
     },
-    add_to_sendgrid_list: {
+    add_to_sendgrid_list_task_name: {
         "queue": get_config(
             "setup",
             "tasks",
