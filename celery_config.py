@@ -179,7 +179,11 @@ task_routes = {
     },
     add_to_sendgrid_list: {
         "queue": get_config(
-            "setup", "tasks", "add_to_sendgrid_list", "queue", default=task_default_queue
+            "setup",
+            "tasks",
+            "add_to_sendgrid_list",
+            "queue",
+            default=task_default_queue,
         )
     },
 }
