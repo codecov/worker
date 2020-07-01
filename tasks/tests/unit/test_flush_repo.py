@@ -37,7 +37,7 @@ class TestFlushRepo(object):
             commit = CommitFactory.create(repository=repo)
             dbsession.add(commit)
         for i in range(17):
-            pull = PullFactory.create(repository=repo)
+            pull = PullFactory.create(repository=repo, pullid=i + 100)
             dbsession.add(pull)
         for i in range(23):
             branch = BranchFactory.create(repository=repo)
@@ -78,7 +78,7 @@ class TestFlushRepo(object):
             commit = CommitFactory.create(repository=repo)
             dbsession.add(commit)
         for i in range(17):
-            pull = PullFactory.create(repository=repo)
+            pull = PullFactory.create(repository=repo, pullid=i + 100)
             dbsession.add(pull)
         for i in range(23):
             branch = BranchFactory.create(repository=repo)
