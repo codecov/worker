@@ -1,5 +1,4 @@
 import logging
-import os
 from enum import Enum
 from sqlalchemy import func
 from typing import Tuple
@@ -10,6 +9,9 @@ from services.repository import EnrichedPull
 
 
 log = logging.getLogger(__name__)
+
+# For more context on PR decorations, see here:
+# https://codecovio.atlassian.net/wiki/spaces/ENG/pages/34603058/PR+based+Billing+Refactor
 
 
 class Decoration(Enum):

@@ -95,45 +95,47 @@ class StatusNotifier(AbstractBaseNotifier):
         )
         return carryforward_behavior_default
 
-    def coverage_was_carriedforward(self, comparison) -> bool:
+    def flag_coverage_was_carriedforward(self, comparison) -> bool:
         """
-        Indicates whether the commit's sessions contain carriedforward coverage for the status check's flags.
+        Indicates whether coverage was carried forward for all the flags on this status check.
+        If there are no flags on the status check, this will return false.
         """
         flags_included_in_status_check = set(
             self.notifier_yaml_settings.get("flags", [])
         )
         flags_with_coverage_carriedforward = set()
 
-        for session_id, session in comparison.head.report.sessions.items():
-            if session.session_type == SessionType.carriedforward:
-                status_flags_in_carriedforward_session = set(
-                    getattr(session, "flags", [])
-                ).intersection(flags_included_in_status_check)
+        if flags_included_in_status_check and comparison.head.report.sessions:
+            for session_id, session in comparison.head.report.sessions.items():
+                if session.session_type == SessionType.carriedforward:
+                    # Figure out which flags in this session are included in this status check
+                    status_flags_in_carriedforward_session = set(
+                        getattr(session, "flags", [])
+                    ).intersection(flags_included_in_status_check)
 
-                flags_with_coverage_carriedforward.update(
-                    status_flags_in_carriedforward_session
-                )
+                    flags_with_coverage_carriedforward.update(
+                        status_flags_in_carriedforward_session
+                    )
 
-        coverage_was_carriedforward = (
+        # If the sets are equal and not empty, then the status check had flags and all those flags carried forward coverage
+        flag_coverage_was_carriedforward = bool(flags_included_in_status_check) and (
             flags_included_in_status_check == flags_with_coverage_carriedforward
         )
 
-        log_message = (
-            "Coverage on this status check was "
-            + ("" if coverage_was_carriedforward else " not")
-            + " carriedforward."
-        )
         log.info(
-            log_message,
+            "Determined whether flag coverage on this status check was carried forward",
             extra=dict(
+                flag_coverage_was_carriedforward=flag_coverage_was_carriedforward,
                 commit=comparison.head.commit.commitid,
                 repoid=comparison.head.commit.repoid,
                 notifier_name=self.name,
-                flags_included_in_status_check=flags_included_in_status_check,
-                flags_with_coverage_carriedforward=flags_with_coverage_carriedforward,
+                flags_included_in_status_check=list(flags_included_in_status_check),
+                flags_with_coverage_carriedforward=list(
+                    flags_with_coverage_carriedforward
+                ),
             ),
         )
-        return coverage_was_carriedforward
+        return flag_coverage_was_carriedforward
 
     async def get_diff(self, comparison: Comparison):
         repository_service = self.repository_service
@@ -186,22 +188,18 @@ class StatusNotifier(AbstractBaseNotifier):
                     payload = await self.build_payload(comparison)
 
                     # apply carryforward_behavior yaml settings
-                    if self.coverage_was_carriedforward(comparison):
+                    if self.flag_coverage_was_carriedforward(comparison):
                         carryforward_behavior = self.get_carryforward_behavior(
                             comparison
                         )
 
-                        log_message = {
-                            "pass": "Automatically passing status check because coverage was carriedforward and carryforward behavior was set to 'pass'",
-                            "exclude": "Not sending status check because coverage was carriedforward and carryforward behavior was set to 'exclude'",
-                            "include": "Sending status check even though coverage was carriedforward because carryforward behavior was set to 'include'",
-                        }
                         log.info(
-                            log_message[carryforward_behavior],
+                            "Applying carryforward behavior based on YAML settings",
                             extra=dict(
                                 commit=comparison.head.commit.commitid,
                                 repoid=comparison.head.commit.repoid,
                                 notifier_name=self.name,
+                                carryforward_behavior=carryforward_behavior,
                             ),
                         )
 

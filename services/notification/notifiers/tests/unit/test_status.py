@@ -513,7 +513,7 @@ class TestBaseStatusNotifier(object):
         notifier.context = "fake"
         assert notifier.get_carryforward_behavior(comparison) == "include"
 
-    def test_coverage_carriedforward_when_all_carriedforward(
+    def test_flag_coverage_carriedforward_when_all_carriedforward(
         self, sample_comparison_coverage_carriedforward
     ):
         comparison = sample_comparison_coverage_carriedforward
@@ -525,9 +525,9 @@ class TestBaseStatusNotifier(object):
             current_yaml={},
         )
         notifier.context = "fake"
-        assert notifier.coverage_was_carriedforward(comparison) is True
+        assert notifier.flag_coverage_was_carriedforward(comparison) is True
 
-    def test_some_coverage_carriedforward_when_none_carriedforward(
+    def test_flag_coverage_carriedforward_when_none_carriedforward(
         self, sample_comparison_coverage_carriedforward
     ):
         comparison = sample_comparison_coverage_carriedforward
@@ -539,9 +539,9 @@ class TestBaseStatusNotifier(object):
             current_yaml={},
         )
         notifier.context = "fake"
-        assert notifier.coverage_was_carriedforward(comparison) is False
+        assert notifier.flag_coverage_was_carriedforward(comparison) is False
 
-    def test_some_coverage_carriedforward_when_some_carriedforward(
+    def test_flag_coverage_carriedforward_when_some_carriedforward(
         self, sample_comparison_coverage_carriedforward
     ):
         comparison = sample_comparison_coverage_carriedforward
@@ -553,7 +553,21 @@ class TestBaseStatusNotifier(object):
             current_yaml={},
         )
         notifier.context = "fake"
-        assert notifier.coverage_was_carriedforward(comparison) is False
+        assert notifier.flag_coverage_was_carriedforward(comparison) is False
+
+    def test_flag_coverage_carriedforward_when_no_status_flags(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifier.context = "fake"
+        assert notifier.flag_coverage_was_carriedforward(comparison) is False
 
 
 class TestProjectStatusNotifier(object):
@@ -795,7 +809,6 @@ class TestProjectStatusNotifier(object):
         self, sample_comparison_coverage_carriedforward, mock_repo_provider
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
-        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
         notifier = ProjectStatusNotifier(
             repository=sample_comparison_coverage_carriedforward.head.commit.repository,
             title="title",
@@ -812,6 +825,38 @@ class TestProjectStatusNotifier(object):
             explanation="exclude_carriedforward_checks",
             data_sent=None,
             data_received=None,
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_on_carryforward_no_flags(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},  # no flags on this check
+            notifier_site_settings=True,
+            current_yaml={
+                "coverage": {
+                    "status": {"default_rules": {"carryforward_behavior": "exclude"},},
+                }
+            },
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "title": "codecov/project/title",
+                "state": "success",
+                "message": f"85.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+            },
+            data_received={"id": "some_id"},
         )
         result = await notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result

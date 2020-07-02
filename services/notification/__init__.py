@@ -64,14 +64,7 @@ class NotificationService(object):
                             current_yaml=self.current_yaml,
                             decoration_type=decoration_type,
                         )
-                elif key != "carryforward_behavior_default":
-                    log.warning(
-                        "User has unexpected status type",
-                        extra=dict(
-                            repoid=self.repository.repoid,
-                            current_yaml=self.current_yaml,
-                        ),
-                    )
+
         comment_yaml_field = read_yaml_field(self.current_yaml, ("comment",))
         if comment_yaml_field:
             for pull_notifier_class in get_pull_request_notifiers():
