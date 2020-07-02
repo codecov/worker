@@ -178,7 +178,6 @@ task_routes = {
         )
     },
     add_to_sendgrid_list_task_name: {
-        "queue": task_default_queue,
-        )
+        "queue": task_default_queue
     },
 }
