@@ -32,7 +32,7 @@ class StatusSetPendingTask(BaseCodecovTask):
             "Set pending",
             extra=dict(
                 repoid=repoid,
-                commitid=commitid,
+                commit=commitid,
                 branch=branch,
                 on_a_pull_request=on_a_pull_request,
             ),

@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 import json
 import logging
 
-import requests
+import httpx
 from requests.exceptions import RequestException
 from shared.config import get_config
 
@@ -101,7 +101,7 @@ class StandardNotifier(AbstractBaseNotifier):
                 else nullcontext()
             ):
                 if self.should_notify_comparison(comparison):
-                    result = self.do_notify(comparison, **extra_data)
+                    result = await self.do_notify(comparison, **extra_data)
                 else:
                     result = NotificationResult(
                         notification_attempted=False,
@@ -122,9 +122,9 @@ class StandardNotifier(AbstractBaseNotifier):
             flags=self.notifier_yaml_settings.get("flags"),
         )
 
-    def do_notify(self, comparison) -> NotificationResult:
+    async def do_notify(self, comparison) -> NotificationResult:
         data = self.build_payload(comparison)
-        result = self.send_actual_notification(data)
+        result = await self.send_actual_notification(data)
         return NotificationResult(
             notification_attempted=result["notification_attempted"],
             notification_successful=result["notification_successful"],
@@ -230,24 +230,25 @@ class RequestsYamlBasedNotifier(StandardNotifier):
         "User-Agent": "Codecov",
     }
 
-    def send_actual_notification(self, data: Mapping[str, Any]):
+    async def send_actual_notification(self, data: Mapping[str, Any]):
         _timeouts = get_config("setup", "http", "timeouts", "external", default=10)
         kwargs = dict(timeout=_timeouts, headers=self.json_headers)
         try:
             with metrics.timer(
                 f"worker.services.notifications.notifiers.{self.name}.actual_connection"
             ):
-                res = requests.post(
-                    url=self.notifier_yaml_settings["url"],
-                    data=json.dumps(data, cls=EnhancedJSONEncoder),
-                    **kwargs,
-                )
+                async with httpx.AsyncClient() as client:
+                    res = await client.post(
+                        url=self.notifier_yaml_settings["url"],
+                        data=json.dumps(data, cls=EnhancedJSONEncoder),
+                        **kwargs,
+                    )
             return {
                 "notification_attempted": True,
                 "notification_successful": res.status_code < 400,
                 "explanation": None if res.status_code else res.message,
             }
-        except RequestException:
+        except httpx.HTTPError:
             log.warning(
                 "Unable to send notification to server due to a connection error",
                 exc_info=True,

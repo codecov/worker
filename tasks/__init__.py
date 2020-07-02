@@ -1,3 +1,4 @@
+from tasks.add_to_sendgrid_list import add_to_sendgrid_list_task
 from tasks.delete_owner import delete_owner_task
 from tasks.flush_repo import flush_repo
 from tasks.github_marketplace import ghm_sync_plans_task

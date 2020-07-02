@@ -11,12 +11,11 @@ from shared.torngit.exceptions import (
 from services.repository import (
     get_repo_provider_service,
     fetch_appropriate_parent_for_commit,
-    get_author_from_commit,
+    get_or_create_author,
     update_commit_from_provider_info,
     get_repo_provider_service_by_id,
     fetch_and_update_pull_request_information_from_commit,
     fetch_and_update_pull_request_information,
-    get_or_create_pull_author,
 )
 from database.models import Owner
 from database.tests.factories import (
@@ -122,36 +121,6 @@ class TestRepositoryServiceTestCase(object):
             "secret": None,
         }
 
-    def test_get_or_create_pull_author_existing(self, dbsession):
-        pr_author = OwnerFactory.create(
-            service="bitbucket",
-            service_id="123",
-            email="different_email@email.com",
-            username="cool_coder_99",
-        )
-        dbsession.add(pr_author)
-        dbsession.flush()
-        res = get_or_create_pull_author(
-            dbsession, pr_author.service, pr_author.service_id, pr_author.username
-        )
-        assert res == pr_author
-
-    def test_get_or_create_pull_author_created(self, mocker, dbsession):
-        service = "github"
-        service_id = "1337"
-        username = "h4x0r"
-        res = get_or_create_pull_author(dbsession, service, service_id, username)
-        pr_author = (
-            dbsession.query(Owner)
-            .filter(
-                Owner.service == service,
-                Owner.service_id == service_id,
-                Owner.username == username,
-            )
-            .first()
-        )
-        assert res == pr_author
-
     @pytest.mark.asyncio
     async def test_fetch_appropriate_parent_for_commit_grandparent(
         self, dbsession, mock_repo_provider
@@ -237,13 +206,13 @@ class TestRepositoryServiceTestCase(object):
         )
         assert expected_result == result
 
-    def test_get_author_from_commit_doesnt_exist(self, dbsession):
+    def test_get_or_create_author_doesnt_exist(self, dbsession):
         service = "github"
         author_id = "123"
         username = "username"
         email = "email"
         name = "name"
-        author = get_author_from_commit(
+        author = get_or_create_author(
             dbsession, service, author_id, username, email, name
         )
         dbsession.flush()
@@ -262,7 +231,7 @@ class TestRepositoryServiceTestCase(object):
         assert author.oauth_token is None
         assert author.bot_id is None
 
-    def test_get_author_from_commit_already_exists(self, dbsession):
+    def test_get_or_create_author_already_exists(self, dbsession):
         owner = OwnerFactory.create(
             service="bitbucket",
             service_id="975",
@@ -277,7 +246,7 @@ class TestRepositoryServiceTestCase(object):
         username = "username"
         email = "email"
         name = "name"
-        author = get_author_from_commit(
+        author = get_or_create_author(
             dbsession, service, author_id, username, email, name
         )
         dbsession.flush()

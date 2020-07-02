@@ -1,12 +1,13 @@
 import pytest
 from decimal import Decimal
-from services.notification.notifiers.comment import (
-    CommentNotifier,
+from services.notification.notifiers.comment import CommentNotifier
+from services.notification.notifiers.mixins.message import (
     diff_to_string,
     format_number_to_str,
+    sort_by_importance,
+    Change,
 )
 from services.decoration import Decoration
-from services.notification.notifiers.comment.helpers import sort_by_importance, Change
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
 from shared.reports.types import ReportTotals
@@ -490,7 +491,7 @@ class TestCommentNotifier(object):
             f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
         ]
-        res = notifier._create_message(comparison, diff, pull_dict)
+        res = notifier.create_message(comparison, diff, pull_dict)
         print(res)
         assert expected_result == res
 

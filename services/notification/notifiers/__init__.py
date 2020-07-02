@@ -10,6 +10,13 @@ from services.notification.notifiers.status import (
     PatchStatusNotifier,
     ChangesStatusNotifier,
 )
+
+from services.notification.notifiers.checks import (
+    ProjectChecksNotifier,
+    PatchChecksNotifier,
+    ChangesChecksNotifier,
+)
+
 from typing import Type, Dict, List
 
 

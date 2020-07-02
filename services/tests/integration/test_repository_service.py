@@ -3,7 +3,6 @@ import pytest
 from services.repository import (
     get_repo_provider_service,
     fetch_appropriate_parent_for_commit,
-    get_author_from_commit,
     update_commit_from_provider_info,
 )
 from database.tests.factories import RepositoryFactory

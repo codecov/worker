@@ -47,5 +47,8 @@ RUN             apk add --no-cache postgresql-libs && \
 WORKDIR         /pip-packages/
 COPY            --from=build /pip-packages/ /pip-packages/
 
+RUN             wget -q -O /usr/local/bin/berglas https://storage.googleapis.com/berglas/0.5.0/linux_amd64/berglas && \
+                chmod +x /usr/local/bin/berglas
+
 RUN             rm -rf /pip-packages/src
 RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages/*

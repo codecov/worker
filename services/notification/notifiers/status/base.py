@@ -327,7 +327,7 @@ class StatusNotifier(AbstractBaseNotifier):
                     "Status not posted because this user can see but not set statuses on this repo",
                     extra=dict(
                         data_sent=notification_result_data_sent,
-                        commitid=comparison.head.commit.commitid,
+                        commit=comparison.head.commit.commitid,
                         repoid=comparison.head.commit.repoid,
                     ),
                 )
