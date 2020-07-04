@@ -1,12 +1,14 @@
 import pytest
 
 from shared.reports.resources import Report
+from celery_config import new_user_activated_task_name
 from celery.exceptions import Retry, MaxRetriesExceededError
 from shared.torngit.exceptions import TorngitClientError, TorngitServer5xxCodeError
 from redis.exceptions import LockError
 
 from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.notify import NotifyTask
+from services.decoration import DecorationDetails
 from services.report import ReportService
 from services.repository import EnrichedPull
 from services.notification.notifiers.base import (
@@ -21,6 +23,48 @@ from database.tests.factories import (
     OwnerFactory,
     PullFactory,
 )
+
+
+@pytest.fixture
+def enriched_pull(dbsession):
+    repository = RepositoryFactory.create(
+        owner__username="codecov",
+        owner__unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
+        owner__plan="users-pr-inappm",
+        name="example-python",
+        image_token="abcdefghij",
+        private=True,
+    )
+    dbsession.add(repository)
+    dbsession.flush()
+    base_commit = CommitFactory.create(repository=repository)
+    head_commit = CommitFactory.create(repository=repository)
+    pull = PullFactory.create(
+        repository=repository,
+        base=base_commit.commitid,
+        head=head_commit.commitid,
+        state="merged",
+    )
+    dbsession.add(base_commit)
+    dbsession.add(head_commit)
+    dbsession.add(pull)
+    dbsession.flush()
+    provider_pull = {
+        "author": {"id": "7123", "username": "tomcat"},
+        "base": {
+            "branch": "master",
+            "commitid": "b92edba44fdd29fcc506317cc3ddeae1a723dd08",
+        },
+        "head": {
+            "branch": "reason/some-testing",
+            "commitid": "a06aef4356ca35b34c5486269585288489e578db",
+        },
+        "number": "1",
+        "id": "1",
+        "state": "open",
+        "title": "Creating new code for reasons no one knows",
+    }
+    return EnrichedPull(database_pull=pull, provider_pull=provider_pull)
 
 
 class TestNotifyTaskHelpers(object):
@@ -74,6 +118,100 @@ class TestNotifyTaskHelpers(object):
         dbsession.add(wrong_parent_commit)
         dbsession.flush()
         assert task.fetch_parent(commit) == right_parent_commit
+
+    def test_determine_decoration_type_from_pull_does_not_attempt_activation(
+        self, dbsession, mocker, enriched_pull
+    ):
+        mock_activate_user = mocker.patch("tasks.notify.activate_user")
+        decoration_details = DecorationDetails(
+            decoration_type=Decoration.standard,
+            reason="Auto activate not needed",
+            should_attempt_author_auto_activation=False,
+        )
+        mock_determine_decoration_details = mocker.patch(
+            "tasks.notify.determine_decoration_details", return_value=decoration_details
+        )
+        task = NotifyTask()
+        res = task.determine_decoration_type_from_pull(enriched_pull)
+        assert res == Decoration.standard
+        mock_determine_decoration_details.assert_called_with(enriched_pull)
+        assert not mock_activate_user.called
+
+    def test_determine_decoration_type_from_pull_auto_activation_fails(
+        self, dbsession, mocker, enriched_pull, with_sql_functions
+    ):
+        pr_author = OwnerFactory.create(
+            username=enriched_pull.provider_pull["author"]["username"],
+            service_id=enriched_pull.provider_pull["author"]["id"],
+        )
+        dbsession.add(pr_author)
+        dbsession.flush()
+        mock_activate_user = mocker.patch(
+            "tasks.notify.activate_user", return_value=False
+        )
+        mock_schedule_new_user_activated_task = mocker.patch(
+            "tasks.notify.NotifyTask.schedule_new_user_activated_task"
+        )
+        decoration_details = DecorationDetails(
+            decoration_type=Decoration.upgrade,
+            reason="User must be activated",
+            should_attempt_author_auto_activation=True,
+            activation_org_ownerid=enriched_pull.database_pull.repository.owner.ownerid,
+            activation_author_ownerid=pr_author.ownerid,
+        )
+        mock_determine_decoration_details = mocker.patch(
+            "tasks.notify.determine_decoration_details", return_value=decoration_details
+        )
+        task = NotifyTask()
+        res = task.determine_decoration_type_from_pull(enriched_pull)
+        assert res == Decoration.upgrade
+        mock_determine_decoration_details.assert_called_with(enriched_pull)
+        mock_activate_user.assert_called_with(
+            enriched_pull.database_pull.repository.owner.ownerid, pr_author.ownerid
+        )
+        assert not mock_schedule_new_user_activated_task.called
+
+    def test_determine_decoration_type_from_pull_attempt_activation(
+        self, dbsession, mocker, enriched_pull, with_sql_functions
+    ):
+        pr_author = OwnerFactory.create(
+            username=enriched_pull.provider_pull["author"]["username"],
+            service_id=enriched_pull.provider_pull["author"]["id"],
+        )
+        dbsession.add(pr_author)
+        dbsession.flush()
+        mock_activate_user = mocker.patch(
+            "tasks.notify.activate_user", return_value=True
+        )
+        decoration_details = DecorationDetails(
+            decoration_type=Decoration.upgrade,
+            reason="User must be activated",
+            should_attempt_author_auto_activation=True,
+            activation_org_ownerid=enriched_pull.database_pull.repository.owner.ownerid,
+            activation_author_ownerid=pr_author.ownerid,
+        )
+        mock_determine_decoration_details = mocker.patch(
+            "tasks.notify.determine_decoration_details", return_value=decoration_details
+        )
+        mocked_send_task = mocker.patch(
+            "tasks.notify.celery_app.send_task", return_value=None
+        )
+        task = NotifyTask()
+        res = task.determine_decoration_type_from_pull(enriched_pull)
+        assert res == Decoration.standard
+        mock_determine_decoration_details.assert_called_with(enriched_pull)
+        mock_activate_user.assert_called_with(
+            enriched_pull.database_pull.repository.owner.ownerid, pr_author.ownerid
+        )
+        assert mocked_send_task.call_count == 1
+        mocked_send_task.assert_called_with(
+            new_user_activated_task_name,
+            args=None,
+            kwargs=dict(
+                org_ownerid=enriched_pull.database_pull.repository.owner.ownerid,
+                user_ownerid=pr_author.ownerid,
+            ),
+        )
 
 
 class TestNotifyTask(object):

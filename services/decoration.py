@@ -1,11 +1,7 @@
 import logging
-import os
-from enum import Enum
+from dataclasses import dataclass
 from sqlalchemy import func
-from typing import Tuple
 
-from app import celery_app
-from celery_config import new_user_activated_task_name
 from database.models import Owner
 from database.enums import Decoration
 from services.billing import is_pr_billing_plan
@@ -14,28 +10,37 @@ from services.repository import EnrichedPull
 log = logging.getLogger(__name__)
 
 
-def get_decoration_type_and_reason(
-    enriched_pull: EnrichedPull,
-) -> Tuple[Decoration, str]:
+@dataclass
+class DecorationDetails(object):
+    decoration_type: Decoration
+    reason: str
+    should_attempt_author_auto_activation: bool = False
+    activation_org_ownerid: int = None
+    activation_author_ownerid: int = None
+
+
+def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
     """
-    Determine which type of decoration we should do and why
+    Determine the decoration details from pull information. We also check if the pull author needs to be activated
 
     Returns:
-        (Decoration, str): tuple of the decoration type and the reason for using that decoration
+        DecorationDetails: the decoration type and reason along with whether auto-activation of the author should be attempted
     """
     if enriched_pull:
         db_pull = enriched_pull.database_pull
         provider_pull = enriched_pull.provider_pull
 
         if not provider_pull:
-            return (
-                Decoration.standard,
-                "Can't determine PR author - no pull info from provider",
+            return DecorationDetails(
+                decoration_type=Decoration.standard,
+                reason="Can't determine PR author - no pull info from provider",
             )
 
         if db_pull.repository.private is False:
             # public repo or repo we arent certain is private should be standard
-            return (Decoration.standard, "Public repo")
+            return DecorationDetails(
+                decoration_type=Decoration.standard, reason="Public repo",
+            )
 
         org = db_pull.repository.owner
 
@@ -54,7 +59,9 @@ def get_decoration_type_and_reason(
             )
 
         if not is_pr_billing_plan(org.plan):
-            return (Decoration.standard, "Org not on PR plan")
+            return DecorationDetails(
+                decoration_type=Decoration.standard, reason="Org not on PR plan",
+            )
 
         pr_author = (
             db_session.query(Owner)
@@ -74,59 +81,28 @@ def get_decoration_type_and_reason(
                     author_username=provider_pull["author"]["username"],
                 ),
             )
-            return (Decoration.upgrade, "PR author not found in database")
+            return DecorationDetails(
+                decoration_type=Decoration.upgrade,
+                reason="PR author not found in database",
+            )
 
         if pr_author.ownerid in org.plan_activated_users:
-            return (Decoration.standard, "User is currently activated")
+            return DecorationDetails(
+                decoration_type=Decoration.standard,
+                reason="User is currently activated",
+            )
 
         if not org.plan_auto_activate:
-            return (Decoration.upgrade, "User must be manually activated")
-
-        log.info(
-            "Attempting PR author auto activation",
-            extra=dict(
-                org_ownerid=org.ownerid,
-                author_ownerid=pr_author.ownerid,
-                pullid=db_pull.pullid,
-            ),
-        )
-
-        # TODO: later we can decide the best way for this logic to be shared across
-        # worker and codecov-api - ideally moving logic from database to application layer
-        (activation_success,) = db_session.query(
-            func.public.try_to_auto_activate(org.ownerid, pr_author.ownerid)
-        ).first()
-
-        if not activation_success:
-            log.info(
-                "PR author auto activation was not successful",
-                extra=dict(
-                    org_ownerid=org.ownerid,
-                    author_ownerid=pr_author.ownerid,
-                    pullid=db_pull.pullid,
-                ),
+            return DecorationDetails(
+                decoration_type=Decoration.upgrade,
+                reason="User must be manually activated",
             )
-            return (Decoration.upgrade, "PR author auto activation failed")
-
-        # NOTE: for GitLab we will use the pull repo ownerid for the org_ownerid
-        # in the future we may want to use the root group ownerid and let the
-        # NewUserActivatedTask traverse the subgroups
-        log.info(
-            "PR author auto activation was successful - kicking off NewUserActivatedTask",
-            extra=dict(
-                org_ownerid=db_pull.repository.owner.ownerid,
-                author_ownerid=pr_author.ownerid,
-                pullid=db_pull.pullid,
-            ),
-        )
-        celery_app.send_task(
-            new_user_activated_task_name,
-            args=None,
-            kwargs=dict(
-                org_ownerid=db_pull.repository.owner.ownerid,
-                user_ownerid=pr_author.ownerid,
-            ),
-        )
-
-        return (Decoration.standard, "PR author auto activation success")
-    return (Decoration.standard, "No pull")
+        else:
+            return DecorationDetails(
+                decoration_type=Decoration.upgrade,
+                reason="User must be activated",
+                should_attempt_author_auto_activation=True,
+                activation_org_ownerid=org.ownerid,
+                activation_author_ownerid=pr_author.ownerid,
+            )
+    return DecorationDetails(decoration_type=Decoration.standard, reason="No pull")

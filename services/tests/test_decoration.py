@@ -1,14 +1,12 @@
-import os
 import pytest
 
-from celery_config import new_user_activated_task_name
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
     PullFactory,
     RepositoryFactory,
 )
-from services.decoration import Decoration, get_decoration_type_and_reason
+from services.decoration import Decoration, determine_decoration_details
 from services.repository import EnrichedPull
 
 
@@ -157,112 +155,52 @@ def gitlab_enriched_pull_root(dbsession, gitlab_root_group):
 
 class TestDecorationServiceTestCase(object):
     def test_get_decoration_type_no_pull(self, mocker):
-        decoration_type, reason = get_decoration_type_and_reason(None)
+        decoration_details = determine_decoration_details(None)
 
-        assert decoration_type == Decoration.standard
-        assert reason == "No pull"
+        assert decoration_details.decoration_type == Decoration.standard
+        assert decoration_details.reason == "No pull"
+        assert decoration_details.should_attempt_author_auto_activation is False
 
     def test_get_decoration_type_no_provider_pull(self, mocker, enriched_pull):
         enriched_pull.provider_pull = None
 
-        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
+        decoration_details = determine_decoration_details(enriched_pull)
 
-        assert decoration_type == Decoration.standard
-        assert reason == "Can't determine PR author - no pull info from provider"
+        assert decoration_details.decoration_type == Decoration.standard
+        assert (
+            decoration_details.reason
+            == "Can't determine PR author - no pull info from provider"
+        )
+        assert decoration_details.should_attempt_author_auto_activation is False
 
     def test_get_decoration_type_public_repo(self, dbsession, mocker, enriched_pull):
         enriched_pull.database_pull.repository.private = False
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
+        decoration_details = determine_decoration_details(enriched_pull)
 
-        assert decoration_type == Decoration.standard
-        assert reason == "Public repo"
+        assert decoration_details.decoration_type == Decoration.standard
+        assert decoration_details.reason == "Public repo"
+        assert decoration_details.should_attempt_author_auto_activation is False
 
     def test_get_decoration_type_not_pr_plan(self, dbsession, mocker, enriched_pull):
         enriched_pull.database_pull.repository.owner.plan = "users-inappm"
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
+        decoration_details = determine_decoration_details(enriched_pull)
 
-        assert decoration_type == Decoration.standard
-        assert reason == "Org not on PR plan"
+        assert decoration_details.decoration_type == Decoration.standard
+        assert decoration_details.reason == "Org not on PR plan"
+        assert decoration_details.should_attempt_author_auto_activation is False
 
     def test_get_decoration_type_pr_author_not_in_db(self, mocker, enriched_pull):
         enriched_pull.provider_pull["author"]["id"] = "190"
 
-        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
+        decoration_details = determine_decoration_details(enriched_pull)
 
-        assert decoration_type == Decoration.upgrade
-        assert reason == "PR author not found in database"
-
-    def test_get_decoration_type_pr_author_auto_activate_success(
-        self, dbsession, mocker, enriched_pull, with_sql_functions
-    ):
-        mocked_send_task = mocker.patch(
-            "services.decoration.celery_app.send_task", return_value=False
-        )
-
-        enriched_pull.database_pull.repository.owner.plan_user_count = 10
-        enriched_pull.database_pull.repository.owner.plan_activated_users = []
-        enriched_pull.database_pull.repository.owner.plan_auto_activate = True
-
-        pr_author = OwnerFactory.create(
-            username=enriched_pull.provider_pull["author"]["username"],
-            service_id=enriched_pull.provider_pull["author"]["id"],
-        )
-        dbsession.add(pr_author)
-        dbsession.flush()
-
-        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
-        dbsession.commit()
-
-        assert mocked_send_task.call_count == 1
-        mocked_send_task.assert_called_with(
-            new_user_activated_task_name,
-            args=None,
-            kwargs=dict(
-                org_ownerid=enriched_pull.database_pull.repository.owner.ownerid,
-                user_ownerid=pr_author.ownerid,
-            ),
-        )
-        assert decoration_type == Decoration.standard
-        assert reason == "PR author auto activation success"
-        assert enriched_pull.database_pull.repository.owner.plan_activated_users == [
-            pr_author.ownerid
-        ]
-
-    def test_get_decoration_type_pr_author_auto_activate_failure(
-        self, dbsession, mocker, enriched_pull, with_sql_functions
-    ):
-        # already at max user count
-        existing_activated_users = [1234, 5678, 9012]
-        enriched_pull.database_pull.repository.owner.plan_user_count = 3
-        enriched_pull.database_pull.repository.owner.plan_activated_users = (
-            existing_activated_users
-        )
-        enriched_pull.database_pull.repository.owner.plan_auto_activate = True
-
-        pr_author = OwnerFactory.create(
-            username=enriched_pull.provider_pull["author"]["username"],
-            service_id=enriched_pull.provider_pull["author"]["id"],
-        )
-        dbsession.add(pr_author)
-        dbsession.flush()
-
-        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
-        dbsession.commit()
-
-        assert decoration_type == Decoration.upgrade
-        assert reason == "PR author auto activation failed"
-        assert (
-            pr_author.ownerid
-            not in enriched_pull.database_pull.repository.owner.plan_activated_users
-        )
-        assert (
-            enriched_pull.database_pull.repository.owner.plan_activated_users
-            == existing_activated_users
-        )
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "PR author not found in database"
+        assert decoration_details.should_attempt_author_auto_activation is False
 
     def test_get_decoration_type_pr_author_manual_activation_required(
         self, dbsession, mocker, enriched_pull, with_sql_functions
@@ -278,11 +216,12 @@ class TestDecorationServiceTestCase(object):
         dbsession.add(pr_author)
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
+        decoration_details = determine_decoration_details(enriched_pull)
         dbsession.commit()
 
-        assert decoration_type == Decoration.upgrade
-        assert reason == "User must be manually activated"
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "User must be manually activated"
+        assert decoration_details.should_attempt_author_auto_activation is False
         assert (
             pr_author.ownerid
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
@@ -304,11 +243,43 @@ class TestDecorationServiceTestCase(object):
         enriched_pull.database_pull.repository.owner.plan_auto_activate = False
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type_and_reason(enriched_pull)
+        decoration_details = determine_decoration_details(enriched_pull)
         dbsession.commit()
 
-        assert decoration_type == Decoration.standard
-        assert reason == "User is currently activated"
+        assert decoration_details.decoration_type == Decoration.standard
+        assert decoration_details.reason == "User is currently activated"
+        assert decoration_details.should_attempt_author_auto_activation is False
+
+    def test_get_decoration_type_should_attempt_pr_author_auto_activation(
+        self, dbsession, mocker, enriched_pull
+    ):
+        enriched_pull.database_pull.repository.owner.plan_user_count = 3
+        enriched_pull.database_pull.repository.owner.plan_activated_users = []
+        enriched_pull.database_pull.repository.owner.plan_auto_activate = True
+
+        pr_author = OwnerFactory.create(
+            username=enriched_pull.provider_pull["author"]["username"],
+            service_id=enriched_pull.provider_pull["author"]["id"],
+        )
+        dbsession.add(pr_author)
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull)
+        dbsession.commit()
+
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "User must be activated"
+        assert decoration_details.should_attempt_author_auto_activation is True
+        assert (
+            decoration_details.activation_org_ownerid
+            == enriched_pull.database_pull.repository.owner.ownerid
+        )
+        assert decoration_details.activation_author_ownerid == pr_author.ownerid
+        # activation hasnt happened yet
+        assert (
+            pr_author.ownerid
+            not in enriched_pull.database_pull.repository.owner.plan_activated_users
+        )
 
 
 class TestDecorationServiceGitLabTestCase(object):
@@ -323,12 +294,11 @@ class TestDecorationServiceGitLabTestCase(object):
         gitlab_root_group.plan = "users-inappm"
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type_and_reason(
-            gitlab_enriched_pull_subgroup
-        )
+        decoration_details = determine_decoration_details(gitlab_enriched_pull_subgroup)
 
-        assert decoration_type == Decoration.standard
-        assert reason == "Org not on PR plan"
+        assert decoration_details.decoration_type == Decoration.standard
+        assert decoration_details.reason == "Org not on PR plan"
+        assert decoration_details.should_attempt_author_auto_activation is False
 
     def test_get_decoration_type_pr_author_not_in_db_gitlab_subgroup(
         self,
@@ -339,133 +309,11 @@ class TestDecorationServiceGitLabTestCase(object):
     ):
         gitlab_enriched_pull_subgroup.provider_pull["author"]["id"] = "190"
 
-        decoration_type, reason = get_decoration_type_and_reason(
-            gitlab_enriched_pull_subgroup
-        )
+        decoration_details = determine_decoration_details(gitlab_enriched_pull_subgroup)
 
-        assert decoration_type == Decoration.upgrade
-        assert reason == "PR author not found in database"
-
-    def test_get_decoration_type_pr_author_auto_activate_success_gitlab_root(
-        self,
-        dbsession,
-        mocker,
-        gitlab_root_group,
-        gitlab_enriched_pull_root,
-        with_sql_functions,
-    ):
-        mocked_send_task = mocker.patch(
-            "services.decoration.celery_app.send_task", return_value=False
-        )
-
-        gitlab_root_group.plan_user_count = 10
-        gitlab_root_group.plan_activated_users = []
-        gitlab_root_group.plan_auto_activate = True
-
-        pr_author = OwnerFactory.create(
-            username=gitlab_enriched_pull_root.provider_pull["author"]["username"],
-            service="gitlab",
-            service_id=gitlab_enriched_pull_root.provider_pull["author"]["id"],
-        )
-        dbsession.add(pr_author)
-        dbsession.flush()
-
-        decoration_type, reason = get_decoration_type_and_reason(
-            gitlab_enriched_pull_root
-        )
-        dbsession.commit()
-
-        assert mocked_send_task.call_count == 1
-        mocked_send_task.assert_called_with(
-            new_user_activated_task_name,
-            args=None,
-            kwargs=dict(
-                org_ownerid=gitlab_enriched_pull_root.database_pull.repository.owner.ownerid,
-                user_ownerid=pr_author.ownerid,
-            ),
-        )
-        assert decoration_type == Decoration.standard
-        assert reason == "PR author auto activation success"
-        assert gitlab_root_group.plan_activated_users == [pr_author.ownerid]
-
-    def test_get_decoration_type_pr_author_auto_activate_success_gitlab_subgroup(
-        self,
-        dbsession,
-        mocker,
-        gitlab_root_group,
-        gitlab_enriched_pull_subgroup,
-        with_sql_functions,
-    ):
-        mocked_send_task = mocker.patch(
-            "services.decoration.celery_app.send_task", return_value=False
-        )
-
-        gitlab_root_group.plan_user_count = 10
-        gitlab_root_group.plan_activated_users = []
-        gitlab_root_group.plan_auto_activate = True
-
-        pr_author = OwnerFactory.create(
-            username=gitlab_enriched_pull_subgroup.provider_pull["author"]["username"],
-            service="gitlab",
-            service_id=gitlab_enriched_pull_subgroup.provider_pull["author"]["id"],
-        )
-        dbsession.add(pr_author)
-        dbsession.flush()
-
-        decoration_type, reason = get_decoration_type_and_reason(
-            gitlab_enriched_pull_subgroup
-        )
-        dbsession.commit()
-
-        assert mocked_send_task.call_count == 1
-        mocked_send_task.assert_called_with(
-            new_user_activated_task_name,
-            args=None,
-            kwargs=dict(
-                org_ownerid=gitlab_enriched_pull_subgroup.database_pull.repository.owner.ownerid,
-                user_ownerid=pr_author.ownerid,
-            ),
-        )
-        assert decoration_type == Decoration.standard
-        assert reason == "PR author auto activation success"
-        assert gitlab_root_group.plan_activated_users == [pr_author.ownerid]
-
-    def test_get_decoration_type_pr_author_auto_activate_failure_gitlab_subgroup(
-        self,
-        dbsession,
-        mocker,
-        gitlab_root_group,
-        gitlab_enriched_pull_subgroup,
-        with_sql_functions,
-    ):
-        # already at max user count
-        existing_activated_users = [1234, 5678, 9012]
-        gitlab_root_group.plan_user_count = 3
-        gitlab_root_group.plan_activated_users = existing_activated_users
-        gitlab_root_group.plan_auto_activate = True
-
-        pr_author = OwnerFactory.create(
-            username=gitlab_enriched_pull_subgroup.provider_pull["author"]["username"],
-            service="gitlab",
-            service_id=gitlab_enriched_pull_subgroup.provider_pull["author"]["id"],
-        )
-        dbsession.add(pr_author)
-        dbsession.flush()
-
-        decoration_type, reason = get_decoration_type_and_reason(
-            gitlab_enriched_pull_subgroup
-        )
-        dbsession.commit()
-
-        assert decoration_type == Decoration.upgrade
-        assert reason == "PR author auto activation failed"
-        assert pr_author.ownerid not in gitlab_root_group.plan_activated_users
-        assert gitlab_root_group.plan_activated_users == existing_activated_users
-        # shouldn't be in subgroup plan_activated_users either
-        assert (
-            pr_author.ownerid
-            not in gitlab_enriched_pull_subgroup.database_pull.repository.owner.plan_activated_users
-        )
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "PR author not found in database"
+        assert decoration_details.should_attempt_author_auto_activation is False
 
     def test_get_decoration_type_pr_author_manual_activation_required_gitlab_subgroup(
         self,
@@ -487,13 +335,13 @@ class TestDecorationServiceGitLabTestCase(object):
         dbsession.add(pr_author)
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type_and_reason(
-            gitlab_enriched_pull_subgroup
-        )
+        decoration_details = determine_decoration_details(gitlab_enriched_pull_subgroup)
         dbsession.commit()
 
-        assert decoration_type == Decoration.upgrade
-        assert reason == "User must be manually activated"
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "User must be manually activated"
+        assert decoration_details.should_attempt_author_auto_activation is False
+
         assert pr_author.ownerid not in gitlab_root_group.plan_activated_users
         # shouldn't be in subgroup plan_activated_users either
         assert (
@@ -521,10 +369,40 @@ class TestDecorationServiceGitLabTestCase(object):
         gitlab_root_group.plan_auto_activate = False
         dbsession.flush()
 
-        decoration_type, reason = get_decoration_type_and_reason(
-            gitlab_enriched_pull_subgroup
-        )
+        decoration_details = determine_decoration_details(gitlab_enriched_pull_subgroup)
         dbsession.commit()
 
-        assert decoration_type == Decoration.standard
-        assert reason == "User is currently activated"
+        assert decoration_details.decoration_type == Decoration.standard
+        assert decoration_details.reason == "User is currently activated"
+        assert decoration_details.should_attempt_author_auto_activation is False
+
+    def test_get_decoration_type_should_attempt_pr_author_auto_activation(
+        self,
+        dbsession,
+        mocker,
+        gitlab_root_group,
+        gitlab_enriched_pull_subgroup,
+        with_sql_functions,
+    ):
+        pr_author = OwnerFactory.create(
+            username=gitlab_enriched_pull_subgroup.provider_pull["author"]["username"],
+            service="gitlab",
+            service_id=gitlab_enriched_pull_subgroup.provider_pull["author"]["id"],
+        )
+        dbsession.add(pr_author)
+        dbsession.flush()
+        gitlab_root_group.plan_user_count = 3
+        gitlab_root_group.plan_activated_users = []
+        gitlab_root_group.plan_auto_activate = True
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(gitlab_enriched_pull_subgroup)
+        dbsession.commit()
+
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "User must be activated"
+        assert decoration_details.should_attempt_author_auto_activation is True
+        assert decoration_details.activation_org_ownerid == gitlab_root_group.ownerid
+        assert decoration_details.activation_author_ownerid == pr_author.ownerid
+        # activation hasnt happened yet
+        assert pr_author.ownerid not in gitlab_root_group.plan_activated_users

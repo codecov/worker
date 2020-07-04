@@ -1,5 +1,6 @@
 import logging
 
+from sqlalchemy import func
 from sqlalchemy.orm.session import Session
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from celery.exceptions import MaxRetriesExceededError
@@ -10,10 +11,14 @@ from app import celery_app
 from celery_config import (
     notify_task_name,
     status_set_error_task_name,
+    new_user_activated_task_name,
 )
+from database.enums import Decoration
 from database.models import Commit, Pull
 from helpers.exceptions import RepositoryWithoutValidBotError
+from services.activation import activate_user
 from services.commit_status import RepositoryCIFilter
+from services.decoration import determine_decoration_details
 from services.notification.types import Comparison, FullCommit
 from services.notification import NotificationService
 from services.report import ReportService
@@ -248,7 +253,11 @@ class NotifyTask(BaseCodecovTask):
             base=FullCommit(commit=base_commit, report=base_report),
         )
 
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        decoration_type = self.determine_decoration_type_from_pull(enriched_pull)
+
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, decoration_type
+        )
         return await notifications_service.notify(comparison)
 
     def fetch_pull_request_base(self, pull: Pull) -> Commit:
@@ -305,6 +314,35 @@ class NotifyTask(BaseCodecovTask):
         return (
             read_yaml_field(current_yaml, ("codecov", "notify", "wait_for_ci"), True)
             and ci_results is None
+        )
+
+    def determine_decoration_type_from_pull(
+        self, enriched_pull: EnrichedPull
+    ) -> Decoration:
+        """
+        Get and process decoration details and attempt auto activation if necessary
+        """
+        decoration_details = determine_decoration_details(enriched_pull)
+        decoration_type = decoration_details.decoration_type
+
+        if decoration_details.should_attempt_author_auto_activation:
+            successful_activation = activate_user(
+                decoration_details.activation_org_ownerid,
+                decoration_details.activation_author_ownerid,
+            )
+            if successful_activation:
+                self.schedule_new_user_activated_task(
+                    decoration_details.activation_org_ownerid,
+                    decoration_details.activation_author_ownerid,
+                )
+                decoration_type = Decoration.standard
+        return decoration_type
+
+    def schedule_new_user_activated_task(self, org_ownerid, user_ownerid):
+        celery_app.send_task(
+            new_user_activated_task_name,
+            args=None,
+            kwargs=dict(org_ownerid=org_ownerid, user_ownerid=user_ownerid,),
         )
 
     async def fetch_and_update_whether_ci_passed(
