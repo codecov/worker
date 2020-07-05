@@ -51,6 +51,7 @@ class TestYamlService(BaseTestCase):
                 "status": {"project": True, "patch": True, "changes": False},
             },
             "comment": {"layout": "reach,diff,flags,tree,reach", "behavior": "default"},
+            "github_checks": {"annotations": False},
         }
         result = get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
         assert expected_result == result
