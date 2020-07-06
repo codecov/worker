@@ -116,6 +116,7 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
             "st": "carriedforward",
             "t": None,
             "u": None,
+            "se": {"carriedforward_from": "123456789sha"},
         },
         "3": {
             "N": None,
@@ -123,7 +124,7 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
             "c": None,
             "d": None,
             "e": None,
-            "f": ["unit", "enterprise"],
+            "f": ["integration"],
             "j": None,
             "n": None,
             "p": None,
@@ -308,11 +309,12 @@ def sample_comparison(dbsession, request, sample_report):
 def sample_comparison_coverage_carriedforward(
     dbsession, request, sample_commit_with_report_already_carriedforward
 ):
-    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    head_commit = sample_commit_with_report_already_carriedforward
+    base_commit = CommitFactory.create(repository=head_commit.repository)
+
+    repository = head_commit.repository
     dbsession.add(repository)
     dbsession.flush()
-    base_commit = CommitFactory.create(repository=repository)
-    head_commit = sample_commit_with_report_already_carriedforward
     pull = PullFactory.create(
         repository=repository, base=base_commit.commitid, head=head_commit.commitid
     )
@@ -325,9 +327,10 @@ def sample_comparison_coverage_carriedforward(
     report = ReportService(yaml_dict).build_report_from_commit(head_commit)
     base_full_commit = FullCommit(commit=base_commit, report=report)
     head_full_commit = FullCommit(commit=head_commit, report=report)
+
     return Comparison(
-        head=base_full_commit,
-        base=head_full_commit,
+        head=head_full_commit,
+        base=base_full_commit,
         enriched_pull=EnrichedPull(
             database_pull=pull,
             provider_pull={
