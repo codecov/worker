@@ -185,7 +185,7 @@ class ReportService(object):
             parent_report,
             flags_to_carryforward,
             paths_to_carryforward,
-            session_extras=dict(carryforwardorwarded_from=parent_commit.commitid),
+            session_extras=dict(carriedforward_from=parent_commit.commitid),
         )
 
     def build_report_from_raw_content(

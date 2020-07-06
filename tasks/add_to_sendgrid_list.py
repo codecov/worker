@@ -9,6 +9,8 @@ log = logging.getLogger(__name__)
 
 
 class AddToSendgridListTask(BaseCodecovTask):
+    name = "app.tasks.add_to_sendgrid_list.AddToSendgridList"
+
     async def run_async(self, db_session, ownerid, list_type=None, *args, **kwargs):
         if list_type is None:
             log.error(

@@ -1,6 +1,11 @@
 import re
 from services.notification.changes import get_changes
-from services.urls import get_pull_url, get_commit_url
+from services.urls import (
+    get_pull_url,
+    get_commit_url,
+    get_pull_graph_url,
+    get_commit_url_from_commit_sha,
+)
 from itertools import starmap
 from base64 import b64encode
 from collections import namedtuple
@@ -8,7 +13,6 @@ from services.yaml.reader import read_yaml_field, round_number, get_minimum_prec
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report, ReportTotals
 from decimal import Decimal
-from services.urls import get_pull_graph_url
 from typing import Sequence, List
 from services.notification.changes import Change
 
@@ -42,20 +46,41 @@ class MessageMixin(object):
         head_flags = head_report.flags if head_report else {}
         missing_flags = set(base_flags.keys()) - set(head_flags.keys())
         flags = []
+        show_carriedforward_flags = settings.get("show_carryforward_flags", False)
         for name, flag in head_flags.items():
-            flags.append(
-                {
-                    "name": name,
-                    "before": base_flags.get(name, null).totals,
-                    "after": flag.totals,
-                    "diff": flag.apply_diff(diff) if walk(diff, ("files",)) else None,
-                }
-            )
+            if (show_carriedforward_flags is True) or (  # Include all flags
+                show_carriedforward_flags is False
+                and flag.carriedforward
+                is False  # Only include flags without carriedforward coverage
+            ):
+                flags.append(
+                    {
+                        "name": name,
+                        "before": base_flags.get(name, null).totals,
+                        "after": flag.totals,
+                        "diff": flag.apply_diff(diff)
+                        if walk(diff, ("files",))
+                        else None,
+                        "carriedforward": flag.carriedforward,
+                        "carriedforward_from": flag.carriedforward_from,
+                    }
+                )
 
         for flag in missing_flags:
             flags.append(
-                {"name": flag, "before": base_flags[flag], "after": None, "diff": None}
+                {
+                    "name": flag,
+                    "before": base_flags[flag],
+                    "after": None,
+                    "diff": None,
+                    "carriedforward": False,
+                    "carriedforward_from": None,
+                }
             )
+
+        # TODO: get icons working
+        # flag_icon_url = ""
+        # carriedforward_flag_icon_url = ""
 
         # bool: show complexity
         if read_yaml_field(self.current_yaml, ("codecov", "ui", "hide_complexity")):
@@ -65,14 +90,6 @@ class MessageMixin(object):
                 (base_report.totals if base_report else ReportTotals()).complexity
                 or (head_report.totals if head_report else ReportTotals()).complexity
             )
-
-        # table layout
-        table_header = (
-            "| Coverage \u0394 |"
-            + (" Complexity \u0394 |" if show_complexity else "")
-            + " |"
-        )
-        table_layout = "|---|---|---|" + ("---|" if show_complexity else "")
 
         change = (
             Decimal(head_report.totals.coverage) - Decimal(base_report.totals.coverage)
@@ -234,16 +251,69 @@ class MessageMixin(object):
                 lambda l: l.strip(), (settings["layout"] or "").split(",")
             ):
                 if layout.startswith("flag") and flags:
+                    # Even if "show_carryforward_flags" is true, we don't want to show that column if there isn't actually carriedforward coverage,
+                    # so figure out if we actually have any carriedforward coverage to show
+                    has_carriedforward_flags = any(
+                        flag["carriedforward"] is True
+                        for flag in flags  # If "show_carryforward_flags" yaml setting is set to false there won't be any flags in this list with carriedforward coverage.
+                    )
+
+                    table_header = (
+                        "| Coverage \u0394 |"
+                        + (" Complexity \u0394 |" if show_complexity else "")
+                        + " |"
+                        + (" *Carryforward flag |" if has_carriedforward_flags else "")
+                    )
+                    table_layout = (
+                        "|---|---|---|"
+                        + ("---|" if show_complexity else "")
+                        + ("---|" if has_carriedforward_flags else "")
+                    )
+
                     write("| Flag " + table_header)
                     write(table_layout)
                     for flag in sorted(flags, key=lambda f: f["name"]):
+                        carriedforward, carriedforward_from = (
+                            flag["carriedforward"],
+                            flag["carriedforward_from"],
+                        )
+                        # Format the message for the "carriedforward" column, if the flag was carried forward
+                        if carriedforward is True:
+                            # The "from <link to parent commit>" text will only appear if we actually know which commit we carried forward from
+                            carriedforward_from_url = (
+                                get_commit_url_from_commit_sha(
+                                    self.repository, carriedforward_from
+                                )
+                                if carriedforward_from
+                                else ""
+                            )
+
+                            carriedforward_message = (
+                                " Carriedforward"
+                                + (
+                                    f" from [{carriedforward_from[:7]}]({carriedforward_from_url})"
+                                    if carriedforward_from and carriedforward_from_url
+                                    else ""
+                                )
+                                + " |"
+                            )
+                        else:
+                            carriedforward_message = (
+                                " |" if has_carriedforward_flags else ""
+                            )
+
                         write(
-                            "| #{name} {metrics}".format(
+                            "| #{name} {metrics}{cf}".format(
                                 name=flag["name"],
                                 metrics=make_metrics(
                                     flag["before"], flag["after"], flag["diff"]
                                 ),
+                                cf=carriedforward_message,
                             )
+                        )
+                    if has_carriedforward_flags:
+                        write(
+                            "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
                         )
 
                 elif layout == "diff":
@@ -282,6 +352,14 @@ class MessageMixin(object):
                     ]
 
                     if files_in_diff or changes:
+                        table_header = (
+                            "| Coverage \u0394 |"
+                            + (" Complexity \u0394 |" if show_complexity else "")
+                            + " |"
+                        )
+                        table_layout = "|---|---|---|" + (
+                            "---|" if show_complexity else ""
+                        )
                         # add table headers
                         write(
                             "| [Impacted Files]({0}?src=pr&el=tree) {1}".format(

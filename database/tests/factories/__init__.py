@@ -4,7 +4,7 @@ from datetime import datetime
 import factory
 from database import models, enums
 from hashlib import sha1
-from factory import Factory
+from factory import Factory, fuzzy
 
 from services.encryption import encryptor
 
@@ -65,7 +65,7 @@ class PullFactory(Factory):
     class Meta:
         model = models.Pull
 
-    pullid = factory.Sequence(lambda n: 3 * n + 10)
+    pullid = factory.Sequence(lambda n: 10 + (7 * n) % 90)
     state = "open"
 
     repository = factory.SubFactory(RepositoryFactory)
