@@ -1,4 +1,7 @@
+import logging
 from sqlalchemy import func
+
+log = logging.getLogger(__name__)
 
 
 def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
@@ -15,7 +18,11 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
     ).first()
 
     log.info(
-        f"Auto activation was {'' if activation_success else 'not'} successful",
-        extra=dict(org_ownerid=org_ownerid, author_ownerid=user_ownerid,),
+        "Auto activation attempted",
+        extra=dict(
+            org_ownerid=org_ownerid,
+            author_ownerid=user_ownerid,
+            activation_success=activation_success,
+        ),
     )
     return activation_success

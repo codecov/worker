@@ -50,7 +50,6 @@ class NewUserActivatedTask(BaseCodecovTask):
             }
 
         pulls = self.get_pulls_authored_by_user(db_session, org_ownerid, user_ownerid)
-        log.info("pulls", extra=dict(pulls=pulls))
 
         # NOTE: we could also notify through pulls_sync task but we will notify directly here
         for pull in pulls:

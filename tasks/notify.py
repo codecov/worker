@@ -327,6 +327,7 @@ class NotifyTask(BaseCodecovTask):
 
         if decoration_details.should_attempt_author_auto_activation:
             successful_activation = activate_user(
+                enriched_pull.database_pull.get_db_session(),
                 decoration_details.activation_org_ownerid,
                 decoration_details.activation_author_ownerid,
             )

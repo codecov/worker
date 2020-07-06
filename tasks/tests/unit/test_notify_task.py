@@ -167,7 +167,9 @@ class TestNotifyTaskHelpers(object):
         assert res == Decoration.upgrade
         mock_determine_decoration_details.assert_called_with(enriched_pull)
         mock_activate_user.assert_called_with(
-            enriched_pull.database_pull.repository.owner.ownerid, pr_author.ownerid
+            dbsession,
+            enriched_pull.database_pull.repository.owner.ownerid,
+            pr_author.ownerid,
         )
         assert not mock_schedule_new_user_activated_task.called
 
@@ -201,7 +203,9 @@ class TestNotifyTaskHelpers(object):
         assert res == Decoration.standard
         mock_determine_decoration_details.assert_called_with(enriched_pull)
         mock_activate_user.assert_called_with(
-            enriched_pull.database_pull.repository.owner.ownerid, pr_author.ownerid
+            dbsession,
+            enriched_pull.database_pull.repository.owner.ownerid,
+            pr_author.ownerid,
         )
         assert mocked_send_task.call_count == 1
         mocked_send_task.assert_called_with(
