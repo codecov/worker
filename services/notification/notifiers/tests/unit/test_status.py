@@ -520,7 +520,7 @@ class TestBaseStatusNotifier(object):
         notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
             title="component_check",
-            notifier_yaml_settings={"flags": ["unit", "enterprise"]},
+            notifier_yaml_settings={"flags": ["integration", "enterprise"]},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -534,7 +534,7 @@ class TestBaseStatusNotifier(object):
         notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
             title="component_check",
-            notifier_yaml_settings={"flags": ["integration"]},
+            notifier_yaml_settings={"flags": ["unit", "ui"]},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -784,7 +784,7 @@ class TestProjectStatusNotifier(object):
             title="title",
             notifier_yaml_settings={
                 "carryforward_behavior": "pass",
-                "flags": ["unit", "enterprise"],
+                "flags": ["integration", "enterprise"],
             },
             notifier_site_settings=True,
             current_yaml={},
@@ -795,7 +795,7 @@ class TestProjectStatusNotifier(object):
             notification_successful=True,
             explanation=None,
             data_sent={
-                "message": f"50.00% (+0.00%) compared to {base_commit.commitid[:7]} [Carried forward]",
+                "message": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]} [Carried forward]",
                 "state": "success",
                 "title": "codecov/project/title",
             },
@@ -814,7 +814,7 @@ class TestProjectStatusNotifier(object):
             title="title",
             notifier_yaml_settings={
                 "carryforward_behavior": "exclude",
-                "flags": ["unit", "enterprise"],
+                "flags": ["integration", "enterprise"],
             },
             notifier_site_settings=True,
             current_yaml={},
@@ -1124,7 +1124,7 @@ class TestPatchStatusNotifier(object):
             title="title",
             notifier_yaml_settings={
                 "carryforward_behavior": "pass",
-                "flags": ["unit", "enterprise"],
+                "flags": ["integration", "enterprise"],
             },
             notifier_site_settings=True,
             current_yaml={},
@@ -1156,7 +1156,7 @@ class TestPatchStatusNotifier(object):
             title="title",
             notifier_yaml_settings={
                 "carryforward_behavior": "exclude",
-                "flags": ["unit", "enterprise"],
+                "flags": ["integration", "enterprise"],
             },
             notifier_site_settings=True,
             current_yaml={},
@@ -1272,7 +1272,7 @@ class TestChangesStatusNotifier(object):
             title="title",
             notifier_yaml_settings={
                 "carryforward_behavior": "pass",
-                "flags": ["unit", "enterprise"],
+                "flags": ["integration"],
             },
             notifier_site_settings=True,
             current_yaml={},
@@ -1302,7 +1302,7 @@ class TestChangesStatusNotifier(object):
             title="title",
             notifier_yaml_settings={
                 "carryforward_behavior": "exclude",
-                "flags": ["unit", "enterprise"],
+                "flags": ["enterprise"],
             },
             notifier_site_settings=True,
             current_yaml={},

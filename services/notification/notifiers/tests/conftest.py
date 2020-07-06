@@ -81,7 +81,7 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
             "c": None,
             "d": None,
             "e": None,
-            "f": [],
+            "f": ["ui"],
             "j": None,
             "n": None,
             "p": None,
