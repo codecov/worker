@@ -2,6 +2,7 @@ import logging
 from contextlib import nullcontext
 
 from shared.torngit.exceptions import TorngitClientError, TorngitError
+from shared.utils.sessions import SessionType
 from shared.analytics_tracking import track_event
 
 from helpers.match import match
@@ -14,6 +15,7 @@ from services.notification.notifiers.base import (
 from services.repository import get_repo_provider_service
 from services.urls import get_commit_url, get_compare_url
 from services.yaml.reader import get_paths_from_flags
+from services.yaml import read_yaml_field
 from typing import Dict
 
 
@@ -54,6 +56,87 @@ class StatusNotifier(AbstractBaseNotifier):
             return False
         return True
 
+    def get_carryforward_behavior(self, comparison) -> bool:
+        """
+        The codecov yaml specifies how status checks should be handled when coverage has been carriedforward. 
+        This can be set at the global level for all checks, or at the component level for an individual check.
+        """
+        # Use component level setting, if one is specified
+        component_carryforward_behavior = self.notifier_yaml_settings.get(
+            "carryforward_behavior"
+        )
+        if component_carryforward_behavior is not None:
+            log.info(
+                "Status check specifies a carryforward behavior",
+                extra=dict(
+                    commit=comparison.head.commit.commitid,
+                    repoid=comparison.head.commit.repoid,
+                    notifier_name=self.name,
+                    notifier_yaml_settings=self.notifier_yaml_settings,
+                    carryforward_behavior=component_carryforward_behavior,
+                ),
+            )
+            return component_carryforward_behavior
+
+        carryforward_behavior_default = read_yaml_field(
+            self.current_yaml,
+            ("coverage", "status", "default_rules", "carryforward_behavior"),
+            "include",
+        )
+        log.info(
+            "Using global carryforward behavior setting",
+            extra=dict(
+                commit=comparison.head.commit.commitid,
+                repoid=comparison.head.commit.repoid,
+                notifier_name=self.name,
+                notifier_yaml_settings=self.notifier_yaml_settings,
+                carryforward_behavior=carryforward_behavior_default,
+            ),
+        )
+        return carryforward_behavior_default
+
+    def flag_coverage_was_carriedforward(self, comparison) -> bool:
+        """
+        Indicates whether coverage was carried forward for all the flags on this status check.
+        If there are no flags on the status check, this will return false.
+        """
+        flags_included_in_status_check = set(
+            self.notifier_yaml_settings.get("flags", [])
+        )
+        flags_with_coverage_carriedforward = set()
+
+        if flags_included_in_status_check and comparison.head.report.sessions:
+            for session_id, session in comparison.head.report.sessions.items():
+                if session.session_type == SessionType.carriedforward:
+                    # Figure out which flags in this session are included in this status check
+                    status_flags_in_carriedforward_session = set(
+                        getattr(session, "flags", [])
+                    ).intersection(flags_included_in_status_check)
+
+                    flags_with_coverage_carriedforward.update(
+                        status_flags_in_carriedforward_session
+                    )
+
+        # If the sets are equal and not empty, then the status check had flags and all those flags carried forward coverage
+        flag_coverage_was_carriedforward = bool(flags_included_in_status_check) and (
+            flags_included_in_status_check == flags_with_coverage_carriedforward
+        )
+
+        log.info(
+            "Determined whether flag coverage on this status check was carried forward",
+            extra=dict(
+                flag_coverage_was_carriedforward=flag_coverage_was_carriedforward,
+                commit=comparison.head.commit.commitid,
+                repoid=comparison.head.commit.repoid,
+                notifier_name=self.name,
+                flags_included_in_status_check=list(flags_included_in_status_check),
+                flags_with_coverage_carriedforward=list(
+                    flags_with_coverage_carriedforward
+                ),
+            ),
+        )
+        return flag_coverage_was_carriedforward
+
     async def get_diff(self, comparison: Comparison):
         repository_service = self.repository_service
         head = comparison.head.commit
@@ -91,6 +174,8 @@ class StatusNotifier(AbstractBaseNotifier):
                 explanation="not_fit_criteria",
                 data_sent=None,
             )
+        # Filter the coverage report based on fields in this notification's YAML settings
+        # e.g. if "paths" is specified, exclude the coverage not on those paths
         _filters = self.get_notifier_filters()
         base_full_commit = comparison.base
         try:
@@ -101,6 +186,39 @@ class StatusNotifier(AbstractBaseNotifier):
                     else nullcontext()
                 ):
                     payload = await self.build_payload(comparison)
+
+                    # apply carryforward_behavior yaml settings
+                    if self.flag_coverage_was_carriedforward(comparison):
+                        carryforward_behavior = self.get_carryforward_behavior(
+                            comparison
+                        )
+
+                        log.info(
+                            "Applying carryforward behavior based on YAML settings",
+                            extra=dict(
+                                commit=comparison.head.commit.commitid,
+                                repoid=comparison.head.commit.repoid,
+                                notifier_name=self.name,
+                                carryforward_behavior=carryforward_behavior,
+                            ),
+                        )
+
+                        if carryforward_behavior == "pass":
+                            # Override the payload to pass the status check automatically
+                            payload["state"] = "success"
+                            payload["message"] = (
+                                payload["message"] + " [Carried forward]"
+                            )
+
+                        elif carryforward_behavior == "exclude":
+                            return NotificationResult(
+                                notification_attempted=False,
+                                notification_successful=None,
+                                explanation="exclude_carriedforward_checks",
+                                data_sent=None,
+                                data_received=None,
+                            )
+
             if (
                 comparison.pull
                 and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
