@@ -534,7 +534,7 @@ class TestBaseStatusNotifier(object):
         notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
             title="component_check",
-            notifier_yaml_settings={"flags": ["unit", "ui"]},
+            notifier_yaml_settings={"flags": ["unit"]},
             notifier_site_settings=True,
             current_yaml={},
         )
