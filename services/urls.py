@@ -42,6 +42,16 @@ def get_commit_url(commit: Commit) -> str:
     )
 
 
+def get_commit_url_from_commit_sha(repository, commit_sha) -> str:
+    return SiteUrls.commit_url.get_url(
+        base_url=get_base_url(),
+        service_short=services_short_dict.get(repository.service),
+        username=repository.owner.username,
+        project_name=repository.name,
+        commit_sha=commit_sha,
+    )
+
+
 def get_graph_url(commit: Commit, graph_filename: str, **kwargs) -> str:
     url = SiteUrls.graph_url.get_url(
         base_url=get_base_url(),
