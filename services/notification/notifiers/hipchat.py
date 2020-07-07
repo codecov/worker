@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from database.enums import Notification
 from services.notification.notifiers.generics import (
     RequestsYamlBasedNotifier,
     Comparison,
@@ -20,6 +21,10 @@ class HipchatNotifier(RequestsYamlBasedNotifier):
     )
 
     COMPARISON_STRING = "<strong>{compare_message}</strong> <code>{compare_notation}{compare_coverage}%</code> "
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.hipchat
 
     def build_payload(self, comparison: Comparison):
         card = None

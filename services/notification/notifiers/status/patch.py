@@ -1,3 +1,4 @@
+from database.enums import Notification
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.status.base import StatusNotifier
 from services.notification.notifiers.mixins.status import StatusPatchMixin
@@ -17,6 +18,10 @@ class PatchStatusNotifier(StatusPatchMixin, StatusNotifier):
     """
 
     context = "patch"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.status_patch
 
     async def build_payload(self, comparison: Comparison):
         state, message = await self.get_patch_status(comparison)

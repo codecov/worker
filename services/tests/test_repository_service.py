@@ -527,7 +527,7 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository)
+        pull = PullFactory.create(repository=repository, author=None)
         commit = CommitFactory.create(
             message="",
             pullid=pull.pullid,
@@ -604,7 +604,9 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository, title="purposelly bad title")
+        pull = PullFactory.create(
+            repository=repository, title="purposelly bad title", author=None
+        )
         second_pull = PullFactory.create(repository=repository)
         commit = CommitFactory.create(
             message="",
@@ -685,7 +687,7 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository)
+        pull = PullFactory.create(repository=repository, author=None)
         commit = CommitFactory.create(
             message="",
             pullid=pull.pullid,
@@ -764,7 +766,7 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository)
+        pull = PullFactory.create(repository=repository, author=None)
         compared_to_commit = CommitFactory.create(
             repository=repository, branch="master", merged=True
         )

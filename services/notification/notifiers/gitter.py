@@ -1,5 +1,6 @@
 from shared.torngit.enums import Endpoints
 
+from database.enums import Notification
 from services.notification.notifiers.generics import (
     RequestsYamlBasedNotifier,
     Comparison,
@@ -18,6 +19,10 @@ class GitterNotifier(RequestsYamlBasedNotifier):
     )
 
     COMPARISON_STRING = "*{compare_message}* {compare_notation}{compare_coverage}% "
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.gitter
 
     def build_payload(self, comparison: Comparison):
         compare_dict = self.generate_compare_dict(comparison)

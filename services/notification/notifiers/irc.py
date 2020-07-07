@@ -2,6 +2,8 @@ import socket
 from typing import Mapping, Any
 import logging
 from io import BytesIO
+
+from database.enums import Notification
 from services.notification.notifiers.generics import StandardNotifier, Comparison
 from typing import List
 
@@ -52,6 +54,10 @@ class IRCNotifier(StandardNotifier):
     )
 
     COMPARISON_STRING = "*{compare_message}* `{compare_notation}{compare_coverage}%` "
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.irc
 
     def send_actual_notification(self, data: Mapping[str, Any]) -> dict:
         # https://github.com/travis-ci/travis-tasks/blob/94c97165d7ecf89d986609614667ae86dff7e9ce/lib/travis/addons/irc/client.rb

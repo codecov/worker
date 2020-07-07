@@ -182,3 +182,63 @@ def mock_repo_provider(mocker):
     )
     m.return_value = provider_instance
     yield provider_instance
+
+
+@pytest.fixture
+def with_sql_functions(dbsession):
+    dbsession.execute(
+        """CREATE FUNCTION array_append_unique(anyarray, anyelement) RETURNS anyarray
+                LANGUAGE sql IMMUTABLE
+                AS $_$
+            select case when $2 is null
+                    then $1
+                    else array_remove($1, $2) || array[$2]
+                    end;
+            $_$;"""
+    )
+    dbsession.execute(
+        """create or replace function try_to_auto_activate(int, int) returns boolean as $$
+            update owners
+            set plan_activated_users = (
+                case when coalesce(array_length(plan_activated_users, 1), 0) < plan_user_count  -- we have credits
+                    then array_append_unique(plan_activated_users, $2)  -- add user
+                    else plan_activated_users
+                    end)
+            where ownerid=$1
+            returning (plan_activated_users @> array[$2]);
+            $$ language sql volatile strict;"""
+    )
+    dbsession.execute(
+        """create or replace function get_gitlab_root_group(int) returns jsonb as $$
+            /* get root group by following parent_service_id to highest level */
+            with recursive tree as (
+                select o.service_id,
+                o.parent_service_id,
+                o.ownerid,
+                1 as depth
+                from owners o
+                where o.ownerid = $1
+                and o.service = 'gitlab'
+                and o.parent_service_id is not null
+
+                union all
+
+                select o.service_id,
+                o.parent_service_id,
+                o.ownerid,
+                depth + 1 as depth
+                from tree t
+                join owners o
+                on o.service_id = t.parent_service_id
+                /* avoid infinite loop in case of cycling (2 > 5 > 3 > 2 > 5...) up to Gitlab max subgroup depth of 20 */
+                where depth <= 20
+            ), data as (
+                select t.ownerid,
+                t.service_id
+                from tree t
+                where t.parent_service_id is null
+            )
+            select to_jsonb(data) from data limit 1;
+            $$ language sql stable strict;"""
+    )
+    dbsession.flush()

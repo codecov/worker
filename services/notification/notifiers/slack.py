@@ -1,3 +1,4 @@
+from database.enums import Notification
 from services.notification.notifiers.generics import (
     RequestsYamlBasedNotifier,
     Comparison,
@@ -18,6 +19,10 @@ class SlackNotifier(RequestsYamlBasedNotifier):
     COMPARISON_STRING = (
         "*{compare_message}* `<{compare_url}|{compare_notation}{compare_coverage}%>` "
     )
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.slack
 
     def build_payload(self, comparison: Comparison):
         message = self.generate_message(comparison)

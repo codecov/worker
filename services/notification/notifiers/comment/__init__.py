@@ -7,6 +7,7 @@ from shared.torngit.exceptions import (
     TorngitServerFailureError,
 )
 
+from database.enums import Notification
 from services.notification.notifiers.base import (
     NotificationResult,
     AbstractBaseNotifier,
@@ -43,6 +44,10 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     @property
     def name(self) -> str:
         return "comment"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.comment
 
     async def get_diff(self, comparison: Comparison):
         repository_service = self.repository_service
@@ -312,6 +317,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             "username"
         )
         return [
-            f"The author of this PR, {author_username}, is not an active member of this organization on Codecov.",
+            f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
             f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment.",
+            f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+            f"Please don't hesitate to email us at success@codecov.io with any questions.",
         ]

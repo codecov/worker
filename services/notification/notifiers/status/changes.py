@@ -1,4 +1,5 @@
 import logging
+from database.enums import Notification
 from services.notification.notifiers.mixins.status import StatusChangesMixin
 from services.notification.notifiers.status.base import StatusNotifier
 from typing import Any, Dict, Tuple
@@ -21,6 +22,10 @@ class ChangesStatusNotifier(StatusChangesMixin, StatusNotifier):
     """
 
     context = "changes"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.status_changes
 
     async def build_payload(self, comparison) -> Dict[str, str]:
         state, message = await self.get_changes_status(comparison)

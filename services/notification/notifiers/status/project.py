@@ -1,5 +1,6 @@
 import logging
 
+from database.enums import Notification
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.mixins.status import StatusProjectMixin
 from services.notification.notifiers.status.base import StatusNotifier
@@ -26,6 +27,10 @@ class ProjectStatusNotifier(StatusProjectMixin, StatusNotifier):
     """
 
     context = "project"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.status_project
 
     async def build_payload(self, comparison: Comparison):
         state, message = self.get_project_status(comparison)

@@ -584,8 +584,10 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         provider_pull = comparison.enriched_pull.provider_pull
         expected_result = [
-            f"The author of this PR, {provider_pull['author']['username']}, is not an active member of this organization on Codecov.",
+            f"The author of this PR, {provider_pull['author']['username']}, is not an activated member of this organization on Codecov.",
             f"Please [activate this user on Codecov](test.example.br/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
+            f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+            f"Please don't hesitate to email us at success@codecov.io with any questions.",
         ]
         li = 0
         for exp, res in zip(expected_result, result):

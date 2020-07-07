@@ -4,9 +4,10 @@ from database.tests.factories import (
     CommitFactory,
     BranchFactory,
     PullFactory,
+    CommitNotificationFactory,
 )
 
-from database.models import Owner, Repository, Commit, Branch, Pull
+from database.models import Owner, Repository, Commit, Branch, Pull, CommitNotification
 
 
 class TestReprModels(object):
@@ -71,4 +72,20 @@ class TestReprModels(object):
         dbsession.refresh(factoried_pull)
         assert f"Pull<{factoried_pull.pullid}@repo<{factoried_pull.repoid}>>" == repr(
             factoried_pull
+        )
+
+    def test_notification_repr(self, dbsession):
+        simple_notification = CommitNotification()
+        assert "Notification<None@commit<None>>" == repr(simple_notification)
+        factoried_notification = CommitNotificationFactory.create()
+        assert (
+            f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commit_id}>>"
+            == repr(factoried_notification)
+        )
+        dbsession.add(factoried_notification)
+        dbsession.flush()
+        dbsession.refresh(factoried_notification)
+        assert (
+            f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commit_id}>>"
+            == repr(factoried_notification)
         )

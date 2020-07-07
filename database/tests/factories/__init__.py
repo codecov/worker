@@ -2,7 +2,7 @@ from uuid import uuid4
 from datetime import datetime
 
 import factory
-from database import models
+from database import models, enums
 from hashlib import sha1
 from factory import Factory, fuzzy
 
@@ -69,6 +69,7 @@ class PullFactory(Factory):
     state = "open"
 
     repository = factory.SubFactory(RepositoryFactory)
+    author = factory.SubFactory(OwnerFactory)
 
 
 class CommitFactory(Factory):
@@ -77,6 +78,7 @@ class CommitFactory(Factory):
 
     message = factory.Faker("sentence")
 
+    id_ = factory.Sequence(lambda n: n)
     commitid = factory.LazyAttribute(
         lambda o: sha1(o.message.encode("utf-8")).hexdigest()
     )
@@ -141,3 +143,14 @@ class CommitFactory(Factory):
         lambda o: sha1((o.message + "parent").encode("utf-8")).hexdigest()
     )
     state = "complete"
+
+
+class CommitNotificationFactory(Factory):
+    class Meta:
+        model = models.CommitNotification
+
+    notification_type = enums.Notification.comment.value
+    decoration_type = enums.Decoration.standard.value
+    state = enums.NotificationState.pending
+
+    commit = factory.SubFactory(CommitFactory)

@@ -4,8 +4,10 @@ from asyncio import TimeoutError as AsyncioTimeoutError, CancelledError
 import mock
 from celery.exceptions import SoftTimeLimitExceeded
 
-from services.notification import NotificationService
+from database.enums import Notification, NotificationState, Decoration
 from database.tests.factories import RepositoryFactory
+from services.decoration import Decoration
+from services.notification import NotificationService
 from services.notification.notifiers.base import NotificationResult
 from services.notification.types import Comparison, FullCommit, EnrichedPull
 from database.tests.factories import (
@@ -73,17 +75,22 @@ class TestNotificationService(object):
         good_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=True),
             title="good_notifier",
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
             notify=mock.AsyncMock(),
         )
         bad_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=True),
             title="bad_notifier",
-            notify=mock.AsyncMock(),
+            notification_type=Notification.status_project,
+            decoration_type=Decoration.standard,
         )
         disabled_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=False),
-            notify=mock.AsyncMock(),
             title="disabled_notifier",
+            notification_type=Notification.status_patch,
+            decoration_type=Decoration.standard,
+            notify=mock.AsyncMock(),
         )
         good_notifier.notify.return_value = NotificationResult(
             notification_attempted=True,
@@ -122,8 +129,13 @@ class TestNotificationService(object):
     async def test_notify_individual_notifier_timeout(self, mocker, sample_comparison):
         current_yaml = {}
         commit = sample_comparison.head.commit
-        notifier = mocker.MagicMock(title="fake_notifier", notify=mock.AsyncMock())
-        notifier.notify.side_effect = AsyncioTimeoutError()
+        notifier = mocker.MagicMock(
+            title="fake_notifier",
+            notify=mock.AsyncMock(),
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
+        )
+        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
@@ -135,12 +147,96 @@ class TestNotificationService(object):
         }
 
     @pytest.mark.asyncio
+    async def test_notify_individual_notifier_timeout_notification_created(
+        self, mocker, dbsession, sample_comparison
+    ):
+        current_yaml = {}
+        commit = sample_comparison.head.commit
+        notifier = mocker.MagicMock(
+            title="fake_notifier",
+            notify=mock.AsyncMock(),
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
+        )
+        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifications_service = NotificationService(commit.repository, current_yaml)
+        res = await notifications_service.notify_individual_notifier(
+            notifier, sample_comparison
+        )
+        assert res == {
+            "notifier": notifier.name,
+            "result": None,
+            "title": "fake_notifier",
+        }
+        dbsession.flush()
+        pull = sample_comparison.enriched_pull.database_pull
+        pull_commit_notifications = pull.get_head_commit_notifications()
+        assert len(pull_commit_notifications) == 1
+
+        pull_commit_notification = pull_commit_notifications[0]
+        assert pull_commit_notification is not None
+        assert pull_commit_notification.notification_type == notifier.notification_type
+        assert pull_commit_notification.decoration_type == notifier.decoration_type
+        assert pull_commit_notification.state == NotificationState.error
+
+    @pytest.mark.asyncio
+    async def test_notify_individual_notifier_notification_created_then_updated(
+        self, mocker, dbsession, sample_comparison
+    ):
+        current_yaml = {}
+        commit = sample_comparison.head.commit
+        notifier = mocker.MagicMock(
+            title="fake_notifier",
+            notify=mock.AsyncMock(),
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
+        )
+        # first attempt not successful
+        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifications_service = NotificationService(commit.repository, current_yaml)
+        res = await notifications_service.notify_individual_notifier(
+            notifier, sample_comparison
+        )
+        assert res == {
+            "notifier": notifier.name,
+            "result": None,
+            "title": "fake_notifier",
+        }
+        dbsession.flush()
+        pull = sample_comparison.enriched_pull.database_pull
+        pull_commit_notifications = pull.get_head_commit_notifications()
+        assert len(pull_commit_notifications) == 1
+
+        pull_commit_notification = pull_commit_notifications[0]
+        assert pull_commit_notification is not None
+        assert pull_commit_notification.decoration_type == notifier.decoration_type
+        assert pull_commit_notification.state == NotificationState.error
+
+        # second attempt successful
+        notifier.notify.return_value = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation="",
+            data_sent={"some": "data"},
+        )
+        res = await notifications_service.notify_individual_notifier(
+            notifier, sample_comparison
+        )
+        dbsession.commit()
+        assert pull_commit_notification.state == NotificationState.success
+
+    @pytest.mark.asyncio
     async def test_notify_individual_notifier_cancellation(
         self, mocker, sample_comparison
     ):
         current_yaml = {}
         commit = sample_comparison.head.commit
-        notifier = mocker.MagicMock(title="fake_notifier", notify=mock.AsyncMock())
+        notifier = mocker.MagicMock(
+            title="fake_notifier",
+            notify=mock.AsyncMock(),
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
+        )
         notifier.notify.side_effect = CancelledError()
         notifications_service = NotificationService(commit.repository, current_yaml)
         with pytest.raises(CancelledError):
@@ -156,14 +252,21 @@ class TestNotificationService(object):
             is_enabled=mocker.MagicMock(return_value=True),
             notify=mock.AsyncMock(),
             title="good_notifier",
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
         )
         bad_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=True),
             notify=mock.AsyncMock(),
             title="bad_notifier",
+            notification_type=Notification.status_patch,
+            decoration_type=Decoration.standard,
         )
         disabled_notifier = mocker.MagicMock(
-            is_enabled=mocker.MagicMock(return_value=False), title="disabled_notifier"
+            is_enabled=mocker.MagicMock(return_value=False),
+            title="disabled_notifier",
+            notification_type=Notification.status_changes,
+            decoration_type=Decoration.standard,
         )
         good_notifier.notify.return_value = NotificationResult(
             notification_attempted=True,
@@ -183,6 +286,22 @@ class TestNotificationService(object):
         notifications_service = NotificationService(commit.repository, current_yaml)
         with pytest.raises(SoftTimeLimitExceeded):
             await notifications_service.notify(sample_comparison)
+
+        dbsession.flush()
+        pull_commit_notifications = (
+            sample_comparison.enriched_pull.database_pull.get_head_commit_notifications()
+        )
+        assert len(pull_commit_notifications) == 2
+        for commit_notification in pull_commit_notifications:
+            assert commit_notification.state in (
+                NotificationState.success,
+                NotificationState.error,
+            )
+            assert commit_notification.decoration_type == Decoration.standard
+            assert commit_notification.notification_type in (
+                Notification.comment,
+                Notification.status_patch,
+            )
 
     @pytest.mark.asyncio
     async def test_not_licensed_enterprise(self, mocker, dbsession, sample_comparison):
