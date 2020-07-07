@@ -31,6 +31,9 @@ class ChecksNotifier(AbstractBaseNotifier):
     def get_notifier_filters(self) -> dict:
         return dict(flags=self.notifier_yaml_settings.get("flags"),)
 
+    def get_upgrade_message(self) -> str:
+        return "Please activate this user to display a detailed status check"
+
     async def build_payload(self, comparison) -> Dict[str, str]:
         raise NotImplementedError()
 

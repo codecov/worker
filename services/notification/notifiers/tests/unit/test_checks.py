@@ -7,6 +7,7 @@ from services.notification.notifiers.checks import (
 )
 from services.notification.notifiers.checks.base import ChecksNotifier
 from shared.reports.resources import ReportLine, ReportFile, Report
+from services.decoration import Decoration
 
 
 @pytest.fixture
@@ -523,7 +524,7 @@ class TestPatchChecksNotifier(object):
         notifier = PatchChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -532,6 +533,29 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": "Codecov Report",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_flag_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n66.67% of diff hit (target 50.00%)",
+            },
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_upgrade_payload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = PatchChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        expected_result = {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nPlease activate this user to display a detailed status check",
             },
         }
         result = await notifier.build_payload(sample_comparison)
@@ -576,7 +600,7 @@ class TestPatchChecksNotifier(object):
         notifier = PatchChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={"target": "70%"},
+            notifier_yaml_settings={"target": "70%", "paths": ["pathone"]},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -737,7 +761,7 @@ class TestPatchChecksNotifier(object):
         notifier = PatchChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -796,7 +820,7 @@ class TestPatchChecksNotifier(object):
         notifier = PatchChecksNotifier(
             repository=comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"paths": ["pathone"]},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -833,6 +857,29 @@ class TestChangesChecksNotifier(object):
             "output": {
                 "title": "Codecov Report",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo unexpected coverage changes found",
+            },
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_upgrade_payload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ChangesChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        expected_result = {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nPlease activate this user to display a detailed status check",
             },
         }
         result = await notifier.build_payload(sample_comparison)
@@ -903,7 +950,7 @@ class TestProjectChecksNotifier(object):
         notifier = ProjectChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -917,6 +964,29 @@ class TestProjectChecksNotifier(object):
             },
         }
         assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_upgrade_payload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        expected_result = {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nPlease activate this user to display a detailed status check",
+            },
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
 
     @pytest.mark.asyncio
     async def test_build_default_payload(
@@ -951,7 +1021,7 @@ class TestProjectChecksNotifier(object):
         notifier = ProjectChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={"target": "57%"},
+            notifier_yaml_settings={"target": "57%", "flags": ["flagone"]},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -978,7 +1048,7 @@ class TestProjectChecksNotifier(object):
         notifier = ProjectChecksNotifier(
             repository=comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
             current_yaml={},
         )

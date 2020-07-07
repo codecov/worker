@@ -1,6 +1,6 @@
 import pytest
 from asyncio import TimeoutError as AsyncioTimeoutError, CancelledError
-
+import os
 import mock
 from celery.exceptions import SoftTimeLimitExceeded
 
@@ -67,6 +67,29 @@ class TestNotificationService(object):
         assert instance.notifier_yaml_settings == {"field": "1y ago"}
         assert instance.site_settings == ["slack.com"]
         assert instance.current_yaml == current_yaml
+
+    def test_get_notifiers_instances_checks(
+        self, dbsession, mock_configuration, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__integration_id=123,
+            yaml={"codecov": {"max_report_age": "1y ago"}},
+            name="example-python",
+            using_integration=True,
+        )
+
+        dbsession.add(repository)
+        dbsession.flush()
+        current_yaml = {
+            "coverage": {"status": {"project": True, "patch": True, "changes": True}}
+        }
+        mocker.patch.dict(
+            os.environ, {"CHECKS_WHITELISTED_OWNERS": f"0,{repository.owner.ownerid}"}
+        )
+        service = NotificationService(repository, current_yaml)
+        instances = list(service.get_notifiers_instances())
+        names = [instance.name for instance in instances]
+        assert names == ["checks-project", "checks-patch", "checks-changes"]
 
     @pytest.mark.asyncio
     async def test_notify_general_exception(self, mocker, dbsession, sample_comparison):

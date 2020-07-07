@@ -30,12 +30,20 @@ def get_all_notifier_classes_mapping() -> Dict[str, Type[AbstractBaseNotifier]]:
     }
 
 
-def get_status_notifier_class(status_type: str) -> Type[AbstractBaseNotifier]:
-    if status_type == "patch":
+def get_status_notifier_class(
+    status_type: str, class_type: str = "status"
+) -> Type[AbstractBaseNotifier]:
+    if status_type == "patch" and class_type == "checks":
+        return PatchChecksNotifier
+    if status_type == "project" and class_type == "checks":
+        return ProjectChecksNotifier
+    if status_type == "changes" and class_type == "checks":
+        return ChangesChecksNotifier
+    if status_type == "patch" and class_type == "status":
         return PatchStatusNotifier
-    if status_type == "project":
+    if status_type == "project" and class_type == "status":
         return ProjectStatusNotifier
-    if status_type == "changes":
+    if status_type == "changes" and class_type == "status":
         return ChangesStatusNotifier
 
 

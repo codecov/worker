@@ -15,9 +15,23 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         return self.create_message(comparison, diff, pull_dict, "checks")
 
     async def build_payload(self, comparison: Comparison):
+        """
+            This method build the paylod of the project github checks.
+
+            We only show/add the comment message to the top-level check of a project.
+            We do not show/add the message on checks that are used with paths/flags.
+        """
         state, summary = self.get_project_status(comparison)
         codecov_link = self.get_codecov_pr_link(comparison)
-        if self.title != "default":
+
+        should_use_upgrade = self.should_use_upgrade_decoration()
+        if should_use_upgrade:
+            summary = self.get_upgrade_message()
+
+        flags = self.notifier_yaml_settings.get("flags")
+        paths = self.notifier_yaml_settings.get("paths")
+
+        if flags is not None or paths is not None or should_use_upgrade:
             return {
                 "state": state,
                 "output": {

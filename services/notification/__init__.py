@@ -2,7 +2,7 @@ import logging
 import dataclasses
 from typing import List
 import asyncio
-
+import os
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 
 from shared.config import get_config
@@ -56,10 +56,33 @@ class NotificationService(object):
                     )
         status_fields = read_yaml_field(self.current_yaml, ("coverage", "status"))
         if status_fields:
+            whitelisted_ownerids = os.getenv("CHECKS_WHITELISTED_OWNERS", "").split(",")
+            whitelisted_ownerids = [
+                int(ownerid.strip())
+                for ownerid in whitelisted_ownerids
+                if ownerid != ""
+            ]
             for key, value in status_fields.items():
                 if key in ["patch", "project", "changes"]:
                     for title, status_config in default_if_true(value):
-                        notifier_class = get_status_notifier_class(key)
+                        notifier_class_type = "status"
+                        if (
+                            self.repository.using_integration
+                            and self.repository.owner.integration_id
+                            and (
+                                self.repository.owner.service == "github"
+                                or self.repository.owner.service == "github_enterprise"
+                            )
+                            and self.repository.owner.ownerid in whitelisted_ownerids
+                        ):
+                            checks_yaml_field = read_yaml_field(
+                                self.current_yaml, ("github_checks",)
+                            )
+                            if checks_yaml_field is not False:
+                                notifier_class_type = "checks"
+                        notifier_class = get_status_notifier_class(
+                            key, notifier_class_type
+                        )
                         yield notifier_class(
                             repository=self.repository,
                             title=title,
