@@ -112,14 +112,13 @@ class StandardNotifier(AbstractBaseNotifier):
         return result
 
     def get_notifier_filters(self) -> dict:
+        flag_list = self.notifier_yaml_settings.get("flags") or []
         return dict(
             paths=set(
-                get_paths_from_flags(
-                    self.current_yaml, self.notifier_yaml_settings.get("flags")
-                )
+                get_paths_from_flags(self.current_yaml, flag_list)
                 + (self.notifier_yaml_settings.get("paths") or [])
             ),
-            flags=self.notifier_yaml_settings.get("flags"),
+            flags=flag_list,
         )
 
     async def do_notify(self, comparison) -> NotificationResult:

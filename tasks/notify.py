@@ -167,7 +167,11 @@ class NotifyTask(BaseCodecovTask):
         if self.should_send_notifications(current_yaml, commit, ci_results):
             log.info(
                 "We are going to be sending notifications",
-                extra=dict(commit=commit.commitid, repoid=commit.repoid),
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    current_yaml=current_yaml,
+                ),
             )
             enriched_pull = await fetch_and_update_pull_request_information_from_commit(
                 repository_service, commit, current_yaml
