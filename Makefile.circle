@@ -57,6 +57,14 @@ staging:
 		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG} && \
 	docker push ${GCR_REPO}:staging-${VERSION}
 
+production:
+	docker build \
+		-f  dockerscripts/Dockerfile.circle . \
+		-t ${GCR_REPO}:production-${VERSION} \
+		--build-arg RELEASE_VERSION=${IMAGE_VERSION} \
+		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG} && \
+	docker push ${GCR_REPO}:production-${VERSION}
+
 # CIRCLECI
 # job: deploy
 # deploys tagged version to production k8s
