@@ -555,6 +555,20 @@ class TestBaseStatusNotifier(object):
         notifier.context = "fake"
         assert notifier.flag_coverage_was_carriedforward(comparison) is False
 
+    def test_flag_coverage_carriedforward_when_no_flags_anyway(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": None},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifier.context = "fake"
+        assert notifier.flag_coverage_was_carriedforward(comparison) is False
+
     def test_flag_coverage_carriedforward_when_no_status_flags(
         self, sample_comparison_coverage_carriedforward
     ):

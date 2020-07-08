@@ -101,7 +101,7 @@ class StatusNotifier(AbstractBaseNotifier):
         If there are no flags on the status check, this will return false.
         """
         flags_included_in_status_check = set(
-            self.notifier_yaml_settings.get("flags", [])
+            self.notifier_yaml_settings.get("flags") or []
         )
         flags_with_coverage_carriedforward = set()
 
@@ -155,14 +155,13 @@ class StatusNotifier(AbstractBaseNotifier):
         return self._repository_service
 
     def get_notifier_filters(self) -> dict:
+        flag_list = self.notifier_yaml_settings.get("flags") or []
         return dict(
             paths=set(
-                get_paths_from_flags(
-                    self.current_yaml, self.notifier_yaml_settings.get("flags")
-                )
+                get_paths_from_flags(self.current_yaml, flag_list)
                 + (self.notifier_yaml_settings.get("paths") or [])
             ),
-            flags=self.notifier_yaml_settings.get("flags"),
+            flags=flag_list,
         )
 
     async def notify(self, comparison: Comparison):
