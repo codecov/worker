@@ -777,6 +777,7 @@ class TestPatchChecksNotifier(object):
             },
         }
         result = await notifier.build_payload(sample_comparison)
+        assert notifier.notification_type.value == "checks_patch"
         assert expected_result == result
 
     @pytest.mark.asyncio
@@ -861,6 +862,7 @@ class TestChangesChecksNotifier(object):
         }
         result = await notifier.build_payload(sample_comparison)
         assert expected_result == result
+        assert notifier.notification_type.value == "checks_changes"
 
     @pytest.mark.asyncio
     async def test_build_upgrade_payload(
@@ -964,6 +966,7 @@ class TestProjectChecksNotifier(object):
             },
         }
         assert result == expected_result
+        assert notifier.notification_type.value == "checks_project"
 
     @pytest.mark.asyncio
     async def test_build_upgrade_payload(

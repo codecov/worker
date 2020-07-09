@@ -3,11 +3,16 @@ from services.notification.notifiers.checks.base import ChecksNotifier
 from typing import Any, Tuple
 from services.notification.notifiers.mixins.message import MessageMixin
 from services.notification.notifiers.mixins.status import StatusProjectMixin
+from database.enums import Notification
 
 
 class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
 
     context = "project"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.checks_project
 
     async def get_message(self, comparison: Comparison):
         diff = await self.get_diff(comparison)

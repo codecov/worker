@@ -2,11 +2,16 @@ from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.checks.base import ChecksNotifier
 from services.notification.notifiers.mixins.status import StatusPatchMixin
 from services.yaml import read_yaml_field
+from database.enums import Notification
 
 
 class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
 
     context = "patch"
+
+    @property
+    def notification_type(self) -> Notification:
+        return Notification.checks_patch
 
     async def build_payload(self, comparison: Comparison):
         """
