@@ -7,7 +7,12 @@ from services.notification.notifiers.base import (
     NotificationResult,
 )
 from typing import Dict
-from services.urls import get_commit_url, get_compare_url, get_pull_url
+from services.urls import (
+    get_commit_url,
+    get_compare_url,
+    get_pull_url,
+    get_org_account_url,
+)
 from services.repository import get_repo_provider_service
 
 log = logging.getLogger(__name__)
@@ -31,8 +36,22 @@ class ChecksNotifier(AbstractBaseNotifier):
     def get_notifier_filters(self) -> dict:
         return dict(flags=self.notifier_yaml_settings.get("flags"),)
 
-    def get_upgrade_message(self) -> str:
-        return "Please activate this user to display a detailed status check"
+    def get_upgrade_message(self, comparison: Comparison) -> str:
+        db_pull = comparison.enriched_pull.database_pull
+        links = {
+            "org_account": get_org_account_url(db_pull),
+        }
+        author_username = comparison.enriched_pull.provider_pull["author"].get(
+            "username"
+        )
+        return "\n".join(
+            [
+                f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
+                f"Please [activate this user on Codecov]({links['org_account']}/users) to display a detailed status check.",
+                f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+                f"Please don't hesitate to email us at success@codecov.io with any questions.",
+            ]
+        )
 
     async def build_payload(self, comparison) -> Dict[str, str]:
         raise NotImplementedError()

@@ -31,7 +31,7 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
 
         should_use_upgrade = self.should_use_upgrade_decoration()
         if should_use_upgrade:
-            summary = self.get_upgrade_message()
+            summary = self.get_upgrade_message(comparison)
 
         flags = self.notifier_yaml_settings.get("flags")
         paths = self.notifier_yaml_settings.get("paths")

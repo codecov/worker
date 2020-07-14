@@ -17,7 +17,7 @@ class ChangesChecksNotifier(StatusChangesMixin, ChecksNotifier):
 
         should_use_upgrade = self.should_use_upgrade_decoration()
         if should_use_upgrade:
-            message = self.get_upgrade_message()
+            message = self.get_upgrade_message(comparison)
 
         return {
             "state": state,
