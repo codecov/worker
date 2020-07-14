@@ -179,7 +179,7 @@ workflows:
             - test
           filters:
             branches:
-              only: staging
+              only: master
       - production:
           requires:
             - build
