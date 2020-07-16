@@ -81,7 +81,6 @@ class StatusNotifier(AbstractBaseNotifier):
         carryforward_behavior_default = read_yaml_field(
             self.current_yaml,
             ("coverage", "status", "default_rules", "carryforward_behavior"),
-            "include",
         )
         log.info(
             "Using global carryforward behavior setting",
@@ -206,10 +205,18 @@ class StatusNotifier(AbstractBaseNotifier):
                             # Override the payload to pass the status check automatically
                             payload["state"] = "success"
                             payload["message"] = (
+                                payload["message"]
+                                + " [Passed automatically due to carried forward coverage]"
+                            )
+
+                        elif carryforward_behavior == "include":
+                            # Just add a message indicating that the coverage was carried forward
+                            payload["message"] = (
                                 payload["message"] + " [Carried forward]"
                             )
 
                         elif carryforward_behavior == "exclude":
+                            # Don't send the notification
                             return NotificationResult(
                                 notification_attempted=False,
                                 notification_successful=None,

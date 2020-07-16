@@ -466,21 +466,21 @@ class TestBaseStatusNotifier(object):
         notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
             title="component_check",
-            notifier_yaml_settings={"carryforward_behavior": "pass"},
+            notifier_yaml_settings={"carryforward_behavior": "include"},
             notifier_site_settings=True,
             current_yaml={
                 "coverage": {
                     "status": {
                         "default_rules": {"carryforward_behavior": "exclude"},
                         "project": {
-                            "component_check": {"carryforward_behavior": "pass"},
+                            "component_check": {"carryforward_behavior": "include"},
                         },
                     },
                 }
             },
         )
         notifier.context = "fake"
-        assert notifier.get_carryforward_behavior(comparison) == "pass"
+        assert notifier.get_carryforward_behavior(comparison) == "include"
 
         # uses global setting if no component setting provided
         # comparison = sample_comparison
@@ -500,18 +500,6 @@ class TestBaseStatusNotifier(object):
         )
         notifier.context = "fake"
         assert notifier.get_carryforward_behavior(comparison) == "exclude"
-
-        # defaults to include if neither setting was provided
-        # comparison = sample_comparison
-        notifier = StatusNotifier(
-            repository=comparison.head.commit.repository,
-            title="component_check",
-            notifier_yaml_settings={},
-            notifier_site_settings=True,
-            current_yaml={"coverage": {"status": {"project": {"component_check": {}}}}},
-        )
-        notifier.context = "fake"
-        assert notifier.get_carryforward_behavior(comparison) == "include"
 
     def test_flag_coverage_carriedforward_when_all_carriedforward(
         self, sample_comparison_coverage_carriedforward
@@ -809,7 +797,7 @@ class TestProjectStatusNotifier(object):
             notification_successful=True,
             explanation=None,
             data_sent={
-                "message": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]} [Carried forward]",
+                "message": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]} [Passed automatically due to carried forward coverage]",
                 "state": "success",
                 "title": "codecov/project/title",
             },
@@ -1150,7 +1138,7 @@ class TestPatchStatusNotifier(object):
             notification_successful=True,
             explanation=None,
             data_sent={
-                "message": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]} [Carried forward]",
+                "message": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]} [Passed automatically due to carried forward coverage]",
                 "state": "success",
                 "title": "codecov/patch/title",
             },
@@ -1296,7 +1284,7 @@ class TestChangesStatusNotifier(object):
             notification_successful=True,
             explanation=None,
             data_sent={
-                "message": "No unexpected coverage changes found [Carried forward]",
+                "message": "No unexpected coverage changes found [Passed automatically due to carried forward coverage]",
                 "state": "success",
                 "title": "codecov/changes/title",
             },

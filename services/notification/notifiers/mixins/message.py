@@ -22,6 +22,12 @@ zero_change_regex = re.compile("0.0+%?")
 
 class MessageMixin(object):
     def create_message(self, comparison, diff, pull_dict, message_type="comment"):
+        """
+            Assemble the various components of the PR comments message in accordance with their YAML configuration.
+            See https://docs.codecov.io/docs/pull-request-comments for more context on the different parts of a PR comment.
+
+            Returns the PR comment message as a list of strings, where each item in the list corresponds to a line in the comment.  
+        """
         changes = get_changes(comparison.base.report, comparison.head.report, diff)
         base_report = comparison.base.report
         head_report = comparison.head.report
@@ -130,6 +136,7 @@ class MessageMixin(object):
             "",
         ]
         write = message.append
+        # note: since we're using append, calling write("") will add a newline to the message
 
         if base_report is None:
             base_report = Report()
@@ -311,9 +318,16 @@ class MessageMixin(object):
                                 cf=carriedforward_message,
                             )
                         )
+
                     if has_carriedforward_flags:
+                        write("")
                         write(
                             "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
+                        )
+                    if show_carriedforward_flags is False:
+                        write("")
+                        write(
+                            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
                         )
 
                 elif layout == "diff":

@@ -661,6 +661,9 @@ class TestNotifyTask(object):
                                 "|---|---|---|",
                                 "| #unit | `85.00% <ø> (ø)` | |",
                                 "",
+                                "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
+                                "",
+                                "",
                                 "",
                                 "------",
                                 "",

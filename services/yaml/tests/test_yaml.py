@@ -48,9 +48,18 @@ class TestYamlService(BaseTestCase):
                 "precision": 2,
                 "round": "down",
                 "range": [70.0, 100.0],
-                "status": {"project": True, "patch": True, "changes": False},
+                "status": {
+                    "project": True,
+                    "patch": True,
+                    "changes": False,
+                    "default_rules": {"carryforward_behavior": "pass"},
+                },
             },
-            "comment": {"layout": "reach,diff,flags,tree,reach", "behavior": "default"},
+            "comment": {
+                "layout": "reach,diff,flags,tree,reach",
+                "behavior": "default",
+                "show_carryforward_flags": False,
+            },
             "github_checks": {"annotations": False},
         }
         result = get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
