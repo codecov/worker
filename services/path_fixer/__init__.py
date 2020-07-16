@@ -6,8 +6,8 @@ from pathlib import PurePath
 from collections import defaultdict
 from typing import Optional
 
-from pathmap import _resolve_path
-from pathmap.tree import Tree
+from helpers.pathmap import _resolve_path
+from helpers.pathmap.tree import Tree
 
 from services.path_fixer.fixpaths import _remove_known_bad_paths
 from services.path_fixer.user_path_fixes import UserPathFixes
