@@ -60,7 +60,7 @@ class TestYamlService(BaseTestCase):
                 "behavior": "default",
                 "show_carryforward_flags": False,
             },
-            "github_checks": {"annotations": False},
+            "github_checks": {"annotations": True},
         }
         result = get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
         assert expected_result == result
