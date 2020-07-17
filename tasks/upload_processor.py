@@ -2,6 +2,7 @@ from json import loads
 from time import time
 import logging
 import re
+import random
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.utils.sessions import Session
@@ -86,9 +87,13 @@ class UploadProcessorTask(BaseCodecovTask):
             log.warning(
                 "Unable to acquire lock for key %s. Retrying",
                 lock_name,
-                extra=dict(commit=commitid, repoid=repoid),
+                extra=dict(
+                    commit=commitid, repoid=repoid, number_retries=self.request.retries
+                ),
             )
-            self.schedule_for_later_try()
+            max_retry = 200 * 2 ** self.request.retries
+            retry_in = random.randint(max_retry / 2, max_retry)
+            self.retry(max_retries=15, countdown=retry_in)
 
     async def process_async_within_lock(
         self,

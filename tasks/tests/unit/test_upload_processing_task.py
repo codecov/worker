@@ -242,6 +242,7 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        mocked_random = mocker.patch("random.randint", return_value=179)
         with pytest.raises(celery.exceptions.Retry):
             await UploadProcessorTask().run_async(
                 dbsession,
@@ -251,7 +252,8 @@ class TestUploadProcessorTask(object):
                 commit_yaml={},
                 arguments_list=[{"url": "url"}],
             )
-        mocked_3.assert_called_with(countdown=20, max_retries=5)
+        mocked_3.assert_called_with(countdown=179, max_retries=15)
+        mocked_random.assert_called_with(100, 200)
 
     @pytest.mark.asyncio
     async def test_upload_processing_task_call_with_not_ready_report(
