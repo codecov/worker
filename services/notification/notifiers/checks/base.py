@@ -91,27 +91,24 @@ class ChecksNotifier(AbstractBaseNotifier):
 
         _filters = self.get_notifier_filters()
         base_full_commit = comparison.base
-        try:
-            with comparison.head.report.filter(**_filters):
-                with (
-                    base_full_commit.report.filter(**_filters)
-                    if comparison.has_base_report()
-                    else nullcontext()
-                ):
-                    payload = await self.build_payload(comparison)
-            if (
-                comparison.pull
-                and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
-                and comparison.base.commit is not None
+        with comparison.head.report.filter(**_filters):
+            with (
+                base_full_commit.report.filter(**_filters)
+                if comparison.has_base_report()
+                else nullcontext()
             ):
-                payload["url"] = get_compare_url(
-                    comparison.base.commit, comparison.head.commit
-                )
-            else:
-                payload["url"] = get_commit_url(comparison.head.commit)
-            return await self.send_notification(comparison, payload)
-        except Exception as e:
-            log.error(e)
+                payload = await self.build_payload(comparison)
+        if (
+            comparison.pull
+            and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
+            and comparison.base.commit is not None
+        ):
+            payload["url"] = get_compare_url(
+                comparison.base.commit, comparison.head.commit
+            )
+        else:
+            payload["url"] = get_commit_url(comparison.head.commit)
+        return await self.send_notification(comparison, payload)
 
     async def get_diff(self, comparison: Comparison):
         repository_service = self.repository_service
