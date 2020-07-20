@@ -127,11 +127,32 @@ class UploadTask(BaseCodecovTask):
                 if arguments:
                     yield loads(arguments)
 
+    def is_currently_processing(self, redis_connection, repoid, commitid):
+        upload_processing_lock_name = f"upload_processing_lock_{repoid}_{commitid}"
+        if redis_connection.get(upload_processing_lock_name):
+            return True
+        return False
+
     async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
         log.info("Received upload task", extra=dict(repoid=repoid, commit=commitid))
         repoid = int(repoid)
         lock_name = f"upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
+        if (
+            self.is_currently_processing(redis_connection, repoid, commitid)
+            and self.request.retries == 0
+        ):
+            log.info(
+                "Waiting longer to collect more jobs for processing",
+                extra=dict(
+                    repoid=repoid,
+                    commtid=commitid,
+                    has_pending_jobs=self.has_pending_jobs(
+                        redis_connection, repoid, commitid
+                    ),
+                ),
+            )
+            self.retry(countdown=200)
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
                 return await self.run_async_within_lock(
@@ -302,6 +323,7 @@ class UploadTask(BaseCodecovTask):
                     repoid=commit.repoid,
                     commit=commit.commitid,
                     argument_list=argument_list,
+                    number_arguments=len(argument_list),
                 ),
             )
             return chain(*chain_to_call).apply_async()
