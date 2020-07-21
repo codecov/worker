@@ -565,6 +565,57 @@ class TestUploadTaskUnit(object):
         }
 
     @pytest.mark.asyncio
+    async def test_run_async_currently_processing(self, dbsession, mocker, mock_redis):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        mocked_is_currently_processing = mocker.patch.object(
+            UploadTask, "is_currently_processing", return_value=True
+        )
+        mocked_run_async_within_lock = mocker.patch.object(
+            UploadTask, "run_async_within_lock", return_value=True
+        )
+        task = UploadTask()
+        task.request.retries = 0
+        with pytest.raises(Retry):
+            await task.run_async(dbsession, commit.repoid, commit.commitid)
+        mocked_is_currently_processing.assert_called_with(
+            mock_redis, commit.repoid, commit.commitid
+        )
+        assert not mocked_run_async_within_lock.called
+
+    @pytest.mark.asyncio
+    async def test_run_async_currently_processing_second_retry(
+        self, dbsession, mocker, mock_redis
+    ):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        mocked_is_currently_processing = mocker.patch.object(
+            UploadTask, "is_currently_processing", return_value=True
+        )
+        mocked_run_async_within_lock = mocker.patch.object(
+            UploadTask, "run_async_within_lock", return_value={"some": "value"}
+        )
+        task = UploadTask()
+        task.request.retries = 1
+        result = await task.run_async(dbsession, commit.repoid, commit.commitid)
+        mocked_is_currently_processing.assert_called_with(
+            mock_redis, commit.repoid, commit.commitid
+        )
+        assert mocked_run_async_within_lock.called
+        assert result == {"some": "value"}
+
+    def test_is_currently_processing(self, mock_redis):
+        repoid = 1
+        commitid = "adsdadsadfdsjnskgiejrw"
+        lock_name = f"upload_processing_lock_{repoid}_{commitid}"
+        mock_redis.keys[lock_name] = "val"
+        task = UploadTask()
+        assert task.is_currently_processing(mock_redis, repoid, commitid)
+        assert not task.is_currently_processing(mock_redis, repoid, "pol")
+
+    @pytest.mark.asyncio
     async def test_run_async_unobtainable_lock_retry(
         self, dbsession, mocker, mock_redis
     ):
