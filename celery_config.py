@@ -37,6 +37,8 @@ result_backend = get_config("services", "celery_broker") or get_config(
     "services", "redis_url"
 )
 
+result_backend_transport_options = {"visibility_timeout": 60 * 60 * 5}  # 5 hours
+
 task_default_queue = get_config(
     "setup", "tasks", "celery", "default_queue", default="celery"
 )

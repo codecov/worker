@@ -92,7 +92,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 ),
             )
             max_retry = 200 * 3 ** self.request.retries
-            retry_in = random.randint(max_retry / 2, max_retry)
+            retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
             self.retry(max_retries=5, countdown=retry_in)
 
     async def process_async_within_lock(
