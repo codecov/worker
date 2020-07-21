@@ -252,7 +252,7 @@ class TestUploadProcessorTask(object):
                 commit_yaml={},
                 arguments_list=[{"url": "url"}],
             )
-        mocked_3.assert_called_with(countdown=179, max_retries=15)
+        mocked_3.assert_called_with(countdown=179, max_retries=5)
         mocked_random.assert_called_with(100, 200)
 
     @pytest.mark.asyncio
