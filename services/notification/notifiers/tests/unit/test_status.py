@@ -797,7 +797,7 @@ class TestProjectStatusNotifier(object):
             notification_successful=True,
             explanation=None,
             data_sent={
-                "message": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]} [Passed automatically due to carried forward coverage]",
+                "message": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]} [Auto passed due to CF Flags]",
                 "state": "success",
                 "title": "codecov/project/title",
             },
@@ -1138,7 +1138,7 @@ class TestPatchStatusNotifier(object):
             notification_successful=True,
             explanation=None,
             data_sent={
-                "message": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]} [Passed automatically due to carried forward coverage]",
+                "message": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]} [Auto passed due to CF Flags]",
                 "state": "success",
                 "title": "codecov/patch/title",
             },
@@ -1284,7 +1284,7 @@ class TestChangesStatusNotifier(object):
             notification_successful=True,
             explanation=None,
             data_sent={
-                "message": "No unexpected coverage changes found [Passed automatically due to carried forward coverage]",
+                "message": "No unexpected coverage changes found [Auto passed due to CF Flags]",
                 "state": "success",
                 "title": "codecov/changes/title",
             },

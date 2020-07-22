@@ -205,8 +205,7 @@ class StatusNotifier(AbstractBaseNotifier):
                             # Override the payload to pass the status check automatically
                             payload["state"] = "success"
                             payload["message"] = (
-                                payload["message"]
-                                + " [Passed automatically due to carried forward coverage]"
+                                payload["message"] + " [Auto passed due to CF Flags]"
                             )
 
                         elif carryforward_behavior == "include":
