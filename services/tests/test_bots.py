@@ -228,6 +228,7 @@ class TestBotsService(BaseTestCase):
         with pytest.raises(OwnerWithoutValidBotError):
             get_owner_appropriate_bot_token(owner, using_integration=False)
 
+    @pytest.mark.skip(reason="removing this functionality. delete once you see this")
     def test_get_owner_appropriate_bot_token_with_user_with_integration_bot_using_it(
         self, mock_configuration, codecov_vcr
     ):
