@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 
 from services.yaml import read_yaml_field
 from shared.reports.resources import Report, ReportFile
@@ -59,7 +60,8 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
     _cur_branch_detected = None
     _cur_line_branch = None
     line_branches = {}
-    lines = {}
+    lines = defaultdict(list)
+    line_types = {}
 
     for line in gcov.splitlines():
         if "LCOV_EXCL_START" in line:
@@ -87,7 +89,7 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
                 _cur_branch_detected = False  # first set to false, prove me true
 
                 # class
-                if lines[ln][1] == "m":
+                if line_types[ln] == "m":
                     if (
                         read_yaml_field(settings, ("branch_detection", "method"))
                         is not True
@@ -95,7 +97,7 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
                         continue
                 # loop
                 elif detect_loop(data):
-                    lines[ln] = (lines[ln][0], "b")
+                    line_types[ln] = "b"
                     if (
                         read_yaml_field(settings, ("branch_detection", "loop"))
                         is not True
@@ -103,7 +105,7 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
                         continue
                 # conditional
                 elif detect_conditional(data):
-                    lines[ln] = (lines[ln][0], "b")
+                    line_types[ln] = "b"
                     if (
                         read_yaml_field(settings, ("branch_detection", "conditional"))
                         is not True
@@ -185,18 +187,22 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
                     continue
 
             if next_is_func:
-                lines[ln] = (coverage, "m")
+                line_types[ln] = "m"
             else:
-                lines[ln] = (coverage, None)
+                line_types[ln] = None
+            lines[ln].append(coverage)
 
             next_is_func = False
 
     _file = ReportFile(filename, ignore=ignore_func)
-    for ln, (coverage, _type) in lines.items():
+    for ln, coverages in lines.items():
+        _type = line_types[ln]
         branches = line_branches.get(ln)
         if branches:
             coverage = "%s/%s" % tuple(branches)
-
-        _file.append(ln, ReportLine(coverage, _type, [[sesisonid, coverage]]))
+            _file.append(ln, ReportLine(coverage, _type, [[sesisonid, coverage]]))
+        else:
+            for coverage in coverages:
+                _file.append(ln, ReportLine(coverage, _type, [[sesisonid, coverage]]))
 
     return _file
