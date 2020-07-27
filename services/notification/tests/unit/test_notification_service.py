@@ -14,6 +14,8 @@ from database.tests.factories import (
     CommitFactory,
     PullFactory,
 )
+from services.notification.notifiers.checks import ProjectChecksNotifier
+from shared.reports.resources import ReportLine, ReportFile, Report
 
 
 @pytest.fixture
@@ -168,6 +170,53 @@ class TestNotificationService(object):
             "result": None,
             "title": "fake_notifier",
         }
+
+    @pytest.mark.asyncio
+    async def test_notify_individual_checks_notifier(
+        self, mocker, sample_comparison, mock_repo_provider
+    ):
+        current_yaml = {}
+        commit = sample_comparison.head.commit
+        report = Report()
+        first_deleted_file = ReportFile("file_1.go")
+        first_deleted_file.append(1, ReportLine(coverage=0))
+        first_deleted_file.append(2, ReportLine(coverage=0))
+        first_deleted_file.append(3, ReportLine(coverage=0))
+        first_deleted_file.append(5, ReportLine(coverage=0))
+        report.append(first_deleted_file)
+        sample_comparison.head.report = report
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"flags": ["flagone"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifications_service = NotificationService(commit.repository, current_yaml)
+        res = await notifications_service.notify_individual_notifier(
+            notifier, sample_comparison
+        )
+        expected_result = {
+            "notifier": "checks-project",
+            "title": "title",
+            "result": {
+                "notification_attempted": True,
+                "notification_successful": True,
+                "explanation": None,
+                "data_sent": {
+                    "state": "success",
+                    "output": {
+                        "title": "Codecov Report",
+                        "summary": f"[View this Pull Request on Codecov](None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo report found to compare against",
+                    },
+                    "url": f"None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/compare/{sample_comparison.base.commit.commitid}...{sample_comparison.head.commit.commitid}",
+                },
+                "data_received": None,
+            },
+        }
+        assert res == expected_result
 
     @pytest.mark.asyncio
     async def test_notify_individual_notifier_timeout_notification_created(
