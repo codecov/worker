@@ -37,6 +37,115 @@ branch  1 taken 3
     1:   16:@implementation blah;
 """
 
+txt_duplicate = """        -:    0:Source:/project/rsl/h264/Mp4NaluParser.h
+209*:13:
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+4:13:
+call    0 returned 100%::
+call    1 returned 100%::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+90:13:
+call    0 returned 100%::
+call    1 returned 100%::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+90:13:
+call    0 returned 100%::
+call    1 returned 100%::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+7:13:
+call    0 returned 100%::
+call    1 returned 100%::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+18:13:
+call    0 returned 100%::
+call    1 returned 100%::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+_ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
+func
+#####:13:
+call    0 never executed::
+call    1 never executed::
+func
+730:15:
+call    0 returned 100%::
+call    1 returned 100%::
+730:16:
+call    0 returned 100%::
+730:17:
+94222*:19:
+94222*:20:
+_ZNK3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEE7IsEmptyEv::
+"""
+
 
 class TestGcov(BaseTestCase):
     def test_report(self):
@@ -64,6 +173,33 @@ class TestGcov(BaseTestCase):
             ]
         }
 
+        assert expected_result_archive == processed_report["archive"]
+
+    def test_report_duplicate_lines(self):
+        report = gcov.from_txt(
+            "#project#rsl#h264#Mp4NaluParser.h.gcov.reduced",
+            txt_duplicate,
+            str,
+            {},
+            0,
+            {"branch_detection": {"conditional": True, "loop": True}},
+        )
+        processed_report = self.convert_report_to_better_readable(report)
+
+        print(processed_report["archive"])
+        expected_result_archive = {
+            "project/rsl/h264/Mp4NaluParser.h": [
+                (13, 90, "m", [[0, 90, None, None, None]], None, None),
+                (15, 730, "m", [[0, 730, None, None, None]], None, None),
+                (16, 730, None, [[0, 730, None, None, None]], None, None),
+                (17, 730, None, [[0, 730, None, None, None]], None, None),
+            ]
+        }
+
+        assert (
+            expected_result_archive["project/rsl/h264/Mp4NaluParser.h"]
+            == processed_report["archive"]["project/rsl/h264/Mp4NaluParser.h"]
+        )
         assert expected_result_archive == processed_report["archive"]
 
     def test_no_cond_branch_report(self):
