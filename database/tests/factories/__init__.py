@@ -145,6 +145,23 @@ class CommitFactory(Factory):
     state = "complete"
 
 
+class ReportFactory(Factory):
+    class Meta:
+        model = models.CommitReport
+
+    commit = factory.SubFactory(CommitFactory)
+
+
+class UploadFactory(Factory):
+    class Meta:
+        model = models.Upload
+
+    report = factory.SubFactory(ReportFactory)
+    state = "complete"
+    upload_extras = {}
+    upload_type = "uploaded"
+
+
 class CommitNotificationFactory(Factory):
     class Meta:
         model = models.CommitNotification

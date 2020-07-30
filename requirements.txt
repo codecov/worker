@@ -83,7 +83,7 @@ sentry-sdk==0.14.4        # via -r requirements.in
 six==1.11.0               # via analytics-python, cryptography, ecdsa, google-api-core, google-auth, google-resumable-media, packaging, protobuf, python-dateutil, shared, sqlalchemy-utils, vcrpy
 sniffio==1.1.0            # via httpcore, httpx
 sqlalchemy-utils==0.33.11  # via -r requirements.in, pytest-sqlalchemy
-sqlalchemy==1.2.19        # via -r requirements.in, pytest-sqlalchemy, sqlalchemy-utils
+sqlalchemy==1.3.17        # via -r requirements.in, pytest-sqlalchemy, sqlalchemy-utils
 statsd==3.3.0             # via -r requirements.in, shared
 stripe==2.42.0            # via -r requirements.in
 text-unidecode==1.3       # via faker

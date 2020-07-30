@@ -12,8 +12,10 @@ from tasks.upload import UploadTask
 from tasks.upload_processor import upload_processor_task
 from tasks.upload_finisher import upload_finisher_task
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
+from database.models import Upload
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
+from services.report import ReportService
 
 here = Path(__file__)
 
@@ -77,7 +79,7 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        redis_queue = [{"url": url}]
+        redis_queue = [{"url": url, "build": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocked_3 = mocker.patch.object(UploadTask, "app")
         mocked_3.send_task.return_value = True
@@ -100,13 +102,28 @@ class TestUploadTaskIntegration(object):
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id is None
+        assert commit.report is not None
+        assert commit.report.details is not None
+        sessions = commit.report.uploads
+        assert len(sessions) == 1
+        first_session = (
+            dbsession.query(Upload)
+            .filter_by(report_id=commit.report.id, build_code="some_random_build")
+            .first()
+        )
         t1 = upload_processor_task.signature(
             args=({},),
             kwargs=dict(
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=redis_queue,
+                arguments_list=[
+                    {
+                        "url": url,
+                        "build": "some_random_build",
+                        "upload_pk": first_session.id,
+                    }
+                ],
             ),
         )
         t2 = upload_finisher_task.signature(
@@ -165,14 +182,14 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
         redis_queue = [
-            {"part": "part1"},
-            {"part": "part2"},
-            {"part": "part3"},
-            {"part": "part4"},
-            {"part": "part5"},
-            {"part": "part6"},
-            {"part": "part7"},
-            {"part": "part8"},
+            {"build": "part1"},
+            {"build": "part2"},
+            {"build": "part3"},
+            {"build": "part4"},
+            {"build": "part5"},
+            {"build": "part6"},
+            {"build": "part7"},
+            {"build": "part8"},
         ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocked_3 = mocker.patch.object(UploadTask, "app")
@@ -202,7 +219,11 @@ class TestUploadTaskIntegration(object):
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=redis_queue[0:3],
+                arguments_list=[
+                    {"build": "part1", "upload_pk": mocker.ANY},
+                    {"build": "part2", "upload_pk": mocker.ANY},
+                    {"build": "part3", "upload_pk": mocker.ANY},
+                ],
             ),
         )
         t2 = upload_processor_task.signature(
@@ -211,7 +232,11 @@ class TestUploadTaskIntegration(object):
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=redis_queue[3:6],
+                arguments_list=[
+                    {"build": "part4", "upload_pk": mocker.ANY},
+                    {"build": "part5", "upload_pk": mocker.ANY},
+                    {"build": "part6", "upload_pk": mocker.ANY},
+                ],
             ),
         )
         t3 = upload_processor_task.signature(
@@ -220,7 +245,10 @@ class TestUploadTaskIntegration(object):
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=redis_queue[6:],
+                arguments_list=[
+                    {"build": "part7", "upload_pk": mocker.ANY},
+                    {"build": "part8", "upload_pk": mocker.ANY},
+                ],
             ),
         )
         t_final = upload_finisher_task.signature(
@@ -236,7 +264,7 @@ class TestUploadTaskIntegration(object):
         #     args=None,
         #     kwargs={'repoid': commit.repository.repoid, 'commitid': commit.commitid}
         # )
-        mock_redis.lock.assert_called_with(
+        mock_redis.lock.assert_any_call(
             f"upload_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,
             timeout=300,
@@ -262,7 +290,7 @@ class TestUploadTaskIntegration(object):
         owner = OwnerFactory.create(
             service="github",
             username="ThiagoCodecov",
-            unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            unencrypted_oauth_token="test76zow6xgh7modd88noxr245j2z25t4ustoff",
         )
         dbsession.add(owner)
 
@@ -287,7 +315,7 @@ class TestUploadTaskIntegration(object):
         dbsession.add(parent_commit)
         dbsession.add(commit)
         dbsession.flush()
-        redis_queue = [{"part": "part1"}]
+        redis_queue = [{"build": "part1"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mock_redis.lists[
             f"testuploads/{commit.repoid}/{commit.commitid}"
@@ -298,7 +326,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id == "c5b67303452bbff57cc1f49984339cde39eb1db5"
         assert not mocked_1.called
-        mock_redis.lock.assert_called_with(
+        mock_redis.lock.assert_any_call(
             f"upload_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,
             timeout=300,
@@ -306,7 +334,7 @@ class TestUploadTaskIntegration(object):
 
     @pytest.mark.asyncio
     async def test_upload_task_no_bot(
-        self, mocker, mock_configuration, dbsession, mock_redis
+        self, mocker, mock_configuration, dbsession, mock_redis, mock_storage
     ):
         mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
         mocked_3 = mocker.patch.object(UploadTask, "app")
@@ -314,7 +342,7 @@ class TestUploadTaskIntegration(object):
         mocked_fetch_yaml = mocker.patch.object(
             UploadTask, "fetch_commit_yaml_and_possibly_store"
         )
-        redis_queue = [{"part": "part1"}, {"part": "part2"}]
+        redis_queue = [{"build": "part1"}, {"build": "part2"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mock_get_repo_service = mocker.patch("tasks.upload.get_repo_provider_service")
         mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
@@ -338,13 +366,18 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         mocked_1.assert_called_with(
-            commit, {"codecov": {"max_report_age": "764y ago"}}, redis_queue
+            commit,
+            {"codecov": {"max_report_age": "764y ago"}},
+            [
+                {"build": "part1", "upload_pk": mocker.ANY},
+                {"build": "part2", "upload_pk": mocker.ANY},
+            ],
         )
         assert not mocked_fetch_yaml.called
 
     @pytest.mark.asyncio
     async def test_upload_task_bot_no_permissions(
-        self, mocker, mock_configuration, dbsession, mock_redis
+        self, mocker, mock_configuration, dbsession, mock_redis, mock_storage
     ):
         mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
         mocked_3 = mocker.patch.object(UploadTask, "app")
@@ -352,7 +385,7 @@ class TestUploadTaskIntegration(object):
         mocked_fetch_yaml = mocker.patch.object(
             UploadTask, "fetch_commit_yaml_and_possibly_store"
         )
-        redis_queue = [{"part": "part1"}, {"part": "part2"}]
+        redis_queue = [{"build": "part1"}, {"build": "part2"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mock_get_repo_service = mocker.patch("tasks.upload.get_repo_provider_service")
         mock_get_repo_service.side_effect = TorngitRepoNotFoundError(
@@ -377,18 +410,29 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         mocked_1.assert_called_with(
-            commit, {"codecov": {"max_report_age": "764y ago"}}, redis_queue
+            commit,
+            {"codecov": {"max_report_age": "764y ago"}},
+            [
+                {"build": "part1", "upload_pk": mocker.ANY},
+                {"build": "part2", "upload_pk": mocker.ANY},
+            ],
         )
         assert not mocked_fetch_yaml.called
 
     @pytest.mark.asyncio
     async def test_upload_task_bot_unauthorized(
-        self, mocker, mock_configuration, dbsession, mock_redis, mock_repo_provider
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_redis,
+        mock_repo_provider,
+        mock_storage,
     ):
         mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
         mock_app = mocker.patch.object(UploadTask, "app")
         mock_app.send_task.return_value = True
-        redis_queue = [{"part": "part1"}, {"part": "part2"}]
+        redis_queue = [{"build": "part1"}, {"build": "part2"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mock_repo_provider.get_commit.side_effect = TorngitClientError(
             401, "response", "message"
@@ -415,8 +459,27 @@ class TestUploadTaskIntegration(object):
         assert {"was_setup": False, "was_updated": False} == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
+        assert commit.report is not None
+        assert commit.report.details is not None
+        sessions = commit.report.uploads
+        assert len(sessions) == 2
+        first_session = (
+            dbsession.query(Upload)
+            .filter_by(report_id=commit.report.id, build_code="part1")
+            .first()
+        )
+        second_session = (
+            dbsession.query(Upload)
+            .filter_by(report_id=commit.report.id, build_code="part2")
+            .first()
+        )
         mocked_schedule_task.assert_called_with(
-            commit, {"codecov": {"max_report_age": "764y ago"}}, redis_queue
+            commit,
+            {"codecov": {"max_report_age": "764y ago"}},
+            [
+                {"build": "part1", "upload_pk": first_session.id},
+                {"build": "part2", "upload_pk": second_session.id},
+            ],
         )
 
 

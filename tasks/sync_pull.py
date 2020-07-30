@@ -141,7 +141,7 @@ class PullSyncTask(BaseCodecovTask):
                 "pull_updated": False,
                 "reason": "not_in_provider",
             }
-        report_service = ReportService()
+        report_service = ReportService(current_yaml)
         head_commit = pull.get_head_commit()
         if head_commit is None:
             log.info(
