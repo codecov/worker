@@ -57,6 +57,7 @@ class NotificationService(object):
         status_fields = read_yaml_field(self.current_yaml, ("coverage", "status"))
         if status_fields:
             whitelisted_ownerids = os.getenv("CHECKS_WHITELISTED_OWNERS", "").split(",")
+            whitelisted_percentage = int(os.getenv("CHECKS_WHITELISTED_PERCENTAGE", 0))
             whitelisted_ownerids = [
                 int(ownerid.strip())
                 for ownerid in whitelisted_ownerids
@@ -73,7 +74,11 @@ class NotificationService(object):
                                 self.repository.owner.service == "github"
                                 or self.repository.owner.service == "github_enterprise"
                             )
-                            and self.repository.owner.ownerid in whitelisted_ownerids
+                            and (
+                                self.repository.owner.ownerid in whitelisted_ownerids
+                                or self.repository.owner.ownerid % 100
+                                <= whitelisted_percentage
+                            )
                         ):
                             checks_yaml_field = read_yaml_field(
                                 self.current_yaml, ("github_checks",)

@@ -93,6 +93,33 @@ class TestNotificationService(object):
         names = [instance.name for instance in instances]
         assert names == ["checks-project", "checks-patch", "checks-changes"]
 
+    def test_get_notifiers_instances_checks_percentage_whitelist(
+        self, dbsession, mock_configuration, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__integration_id=123,
+            owner__ownerid=1234,
+            yaml={"codecov": {"max_report_age": "1y ago"}},
+            name="example-python",
+            using_integration=True,
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        current_yaml = {
+            "coverage": {"status": {"project": True, "patch": True, "changes": True}}
+        }
+        mocker.patch.dict(
+            os.environ,
+            {
+                "CHECKS_WHITELISTED_OWNERS": f"0,1",
+                "CHECKS_WHITELISTED_PERCENTAGE": "35",
+            },
+        )
+        service = NotificationService(repository, current_yaml)
+        instances = list(service.get_notifiers_instances())
+        names = [instance.name for instance in instances]
+        assert names == ["checks-project", "checks-patch", "checks-changes"]
+
     @pytest.mark.asyncio
     async def test_notify_general_exception(self, mocker, dbsession, sample_comparison):
         current_yaml = {}
