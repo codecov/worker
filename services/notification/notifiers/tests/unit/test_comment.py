@@ -491,7 +491,7 @@ class TestCommentNotifier(object):
             f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
         ]
-        res = notifier.create_message(comparison, diff, pull_dict)
+        res = notifier.create_message(comparison, diff, pull_dict, {"layout": "files"})
         print(res)
         assert expected_result == res
 

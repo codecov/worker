@@ -306,7 +306,9 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         with metrics.timer("worker.services.notifications.notifiers.comment.get_diff"):
             diff = await self.get_diff(comparison)
         pull_dict = comparison.enriched_pull.provider_pull
-        return self.create_message(comparison, diff, pull_dict)
+        return self.create_message(
+            comparison, diff, pull_dict, self.notifier_yaml_settings
+        )
 
     def _create_upgrade_message(self, comparison):
         db_pull = comparison.enriched_pull.database_pull
