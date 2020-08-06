@@ -20,6 +20,7 @@ from services.activation import activate_user
 from services.commit_status import RepositoryCIFilter
 from services.decoration import determine_decoration_details
 from services.notification.types import Comparison, FullCommit
+from services.notification.comparison import ComparisonProxy
 from services.notification import NotificationService
 from services.report import ReportService
 from services.redis import get_redis_connection, Redis
@@ -251,10 +252,12 @@ class NotifyTask(BaseCodecovTask):
         head_report,
         enriched_pull: EnrichedPull,
     ):
-        comparison = Comparison(
-            head=FullCommit(commit=commit, report=head_report),
-            enriched_pull=enriched_pull,
-            base=FullCommit(commit=base_commit, report=base_report),
+        comparison = ComparisonProxy(
+            Comparison(
+                head=FullCommit(commit=commit, report=head_report),
+                enriched_pull=enriched_pull,
+                base=FullCommit(commit=base_commit, report=base_report),
+            )
         )
 
         decoration_type = self.determine_decoration_type_from_pull(enriched_pull)
