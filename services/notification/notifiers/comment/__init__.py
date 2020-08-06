@@ -50,15 +50,18 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         return Notification.comment
 
     async def get_diff(self, comparison: Comparison):
-        repository_service = self.repository_service
-        head = comparison.head.commit
-        base = comparison.base.commit
-        if base is None:
-            return None
-        pull_diff = await repository_service.get_compare(
-            base.commitid, head.commitid, with_commits=False
-        )
-        return pull_diff["diff"]
+        return await comparison.get_diff()
+
+    async def has_enough_changes(self, comparison):
+        diff = await comparison.get_diff()
+        changes = await comparison.get_changes()
+        print(changes)
+        if changes:
+            return True
+        res = comparison.head.report.calculate_diff(diff)
+        if res["general"].lines > 0:
+            return True
+        return False
 
     async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
         if comparison.pull is None:
@@ -95,6 +98,15 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                     notification_attempted=False,
                     notification_successful=None,
                     explanation="not_enough_builds",
+                    data_sent=None,
+                    data_received=None,
+                )
+        if self.notifier_yaml_settings.get("require_changes"):
+            if not (await self.has_enough_changes(comparison)):
+                return NotificationResult(
+                    notification_attempted=False,
+                    notification_successful=None,
+                    explanation="changes_required",
                     data_sent=None,
                     data_received=None,
                 )
