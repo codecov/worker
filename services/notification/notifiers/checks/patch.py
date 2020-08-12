@@ -37,7 +37,6 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
 
         flags = self.notifier_yaml_settings.get("flags")
         paths = self.notifier_yaml_settings.get("paths")
-
         if (
             flags is not None
             or paths is not None
@@ -55,6 +54,7 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
         #  TODO: Look into why the apply diff in get_patch_status is not saving state at this point
         comparison.head.report.apply_diff(diff)
         annotations = self.create_annotations(comparison, diff)
+
         return {
             "state": state,
             "output": {

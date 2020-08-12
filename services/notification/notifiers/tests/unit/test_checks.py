@@ -516,6 +516,25 @@ class TestBaseChecksNotifier(object):
 
 
 class TestPatchChecksNotifier(object):
+    def test_paginate_annotations(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = PatchChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"flags": ["flagone"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        sample_array = list(range(1, 61, 1))
+        expected_result = [
+            list(range(1, 51, 1)),
+            list(range(51, 61, 1)),
+        ]
+        result = list(notifier.paginate_annotations(sample_array))
+        assert expected_result == result
+
     @pytest.mark.asyncio
     async def test_build_flag_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
@@ -804,6 +823,59 @@ class TestPatchChecksNotifier(object):
         assert result.data_sent == {
             "state": "success",
             "output": {"title": "Codecov Report", "summary": "Summary"},
+        }
+
+    @pytest.mark.asyncio
+    async def test_send_notification_annotations_paginations(
+        self, sample_comparison, mocker, mock_repo_provider
+    ):
+        comparison = sample_comparison
+        payload = {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"Summary",
+                "annotations": list(range(1, 61, 1)),
+            },
+        }
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = PatchChecksNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        expected_calls = [
+            {
+                "output": {
+                    "title": "Codecov Report",
+                    "summary": "Summary",
+                    "annotations": list(range(1, 51, 1)),
+                }
+            },
+            {
+                "output": {
+                    "title": "Codecov Report",
+                    "summary": "Summary",
+                    "annotations": list(range(51, 61, 1)),
+                }
+            },
+        ]
+        result = await notifier.send_notification(sample_comparison, payload)
+        assert result.notification_successful == True
+        assert result.explanation is None
+        calls = [call[1] for call in mock_repo_provider.update_check_run.call_args_list]
+        assert expected_calls == calls
+        assert mock_repo_provider.update_check_run.call_count == 2
+        assert result.data_sent == {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"Summary",
+                "annotations": list(range(1, 61, 1)),
+            },
         }
 
     @pytest.mark.asyncio

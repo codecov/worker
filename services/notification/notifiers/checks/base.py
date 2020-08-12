@@ -23,6 +23,8 @@ class ChecksNotifier(AbstractBaseNotifier):
         super().__init__(*args, **kwargs)
         self._repository_service = None
 
+    ANNOTATIONS_PER_REQUEST = 50
+
     def is_enabled(self) -> bool:
         return True
 
@@ -52,6 +54,10 @@ class ChecksNotifier(AbstractBaseNotifier):
                 f"Please don't hesitate to email us at success@codecov.io with any questions.",
             ]
         )
+
+    def paginate_annotations(self, annotations):
+        for i in range(0, len(annotations), self.ANNOTATIONS_PER_REQUEST):
+            yield annotations[i : i + self.ANNOTATIONS_PER_REQUEST]
 
     async def build_payload(self, comparison) -> Dict[str, str]:
         raise NotImplementedError()
@@ -258,9 +264,24 @@ class ChecksNotifier(AbstractBaseNotifier):
         check_id = await repository_service.create_check_run(
             check_name=title, head_sha=head.commitid
         )
-        await repository_service.update_check_run(
-            check_id, state, output=payload["output"]
-        )
+        output = payload.get("output", [])
+        if len(output.get("annotations", [])) > self.ANNOTATIONS_PER_REQUEST:
+            annotation_pages = list(
+                self.paginate_annotations(output.get("annotations"))
+            )
+            for annotation_page in annotation_pages:
+                await repository_service.update_check_run(
+                    check_id,
+                    state,
+                    output={
+                        "title": output.get("title"),
+                        "summary": output.get("summary"),
+                        "annotations": annotation_page,
+                    },
+                )
+        else:
+            await repository_service.update_check_run(check_id, state, output=output)
+
         return NotificationResult(
             notification_attempted=True,
             notification_successful=True,
