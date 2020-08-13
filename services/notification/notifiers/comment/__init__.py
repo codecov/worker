@@ -38,8 +38,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         if not result.notification_attempted or not result.notification_successful:
             return
         data_received = result.data_received
-        if data_received and data_received.get("id"):
-            pull.commentid = data_received.get("id")
+        if data_received:
+            if data_received.get("id"):
+                pull.commentid = data_received.get("id")
+            elif data_received.get("deleted_comment"):
+                pull.commentid = None
 
     @property
     def name(self) -> str:
@@ -55,7 +58,6 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     async def has_enough_changes(self, comparison):
         diff = await comparison.get_diff()
         changes = await comparison.get_changes()
-        print(changes)
         if changes:
             return True
         res = comparison.head.report.calculate_diff(diff)
@@ -101,14 +103,36 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                     data_sent=None,
                     data_received=None,
                 )
+        pull = comparison.pull
         if self.notifier_yaml_settings.get("require_changes"):
             if not (await self.has_enough_changes(comparison)):
+                data_received = None
+                if pull.commentid is not None:
+                    log.info(
+                        "Deleting comment because there are not enough changes according to YAML",
+                        extra=dict(
+                            repoid=pull.repoid,
+                            pullid=pull.pullid,
+                            commentid=pull.commentid,
+                        ),
+                    )
+                    try:
+                        await self.repository_service.delete_comment(
+                            pull.pullid, pull.commentid
+                        )
+                        data_received = {"deleted_comment": True}
+                    except TorngitClientError:
+                        log.warning(
+                            "Comment could not be deleted due to client permissions",
+                            exc_info=True,
+                        )
+                        data_received = {"deleted_comment": False}
                 return NotificationResult(
                     notification_attempted=False,
                     notification_successful=None,
                     explanation="changes_required",
                     data_sent=None,
-                    data_received=None,
+                    data_received=data_received,
                 )
         try:
             with metrics.timer(
@@ -131,7 +155,6 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 data_sent=None,
                 data_received=None,
             )
-        pull = comparison.pull
         data = {"message": message, "commentid": pull.commentid, "pullid": pull.pullid}
         try:
             with metrics.timer(
