@@ -2544,3 +2544,20 @@ class TestReportService(BaseTestCase):
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         with pytest.raises(NotReadyToBuildReportYetError):
             ReportService(yaml_dict).create_new_report_for_commit(commit)
+
+    def test_create_new_report_for_commit_parent_has_no_report(
+        self, mock_storage, dbsession
+    ):
+        parent = CommitFactory.create()
+        dbsession.add(parent)
+        dbsession.flush()
+        commit = CommitFactory.create(
+            parent_commit_id=parent.commitid, repository=parent.repository
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        report_service = ReportService(
+            {"flags": {"enterprise": {"carryforward": True}}}
+        )
+        r = report_service.create_new_report_for_commit(commit)
+        assert r.files == []

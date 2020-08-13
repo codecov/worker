@@ -170,6 +170,18 @@ class ReportService(object):
             )
             return Report()
         parent_report = self.get_existing_report_for_commit(parent_commit)
+        if parent_report is None:
+            log.warning(
+                "Could not carryforward report from another commit because parent has no report",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    parent_commit=parent_commit.commitid,
+                    flags_to_carryforward=flags_to_carryforward,
+                    paths_to_carryforward=paths_to_carryforward,
+                ),
+            )
+            return Report()
         log.info(
             "Generating carriedforward report",
             extra=dict(
