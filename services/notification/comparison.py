@@ -1,9 +1,32 @@
+from typing import List, Optional
+
+from shared.reports.types import Change
+
+
 from services.repository import get_repo_provider_service
 from services.notification.changes import get_changes
 from services.notification.types import Comparison
 
 
 class ComparisonProxy(object):
+
+    """The idea of this class is to produce a wrapper around Comparison with functionalities that
+        are useful to the notifications context.
+
+        What ComparisonProxy aims to do is to provide a bunch of common calculations (like
+            get_changes and get_diff) with a specific set of assumptions very fit for the
+            notification use-cases (like the one that we should use the head commit repository
+            to fetch data, or that there is even a repository we can fetch data from,
+            and that whatever information is fetched at first would not change).
+
+        This is not really meant for other places where a comparison might be used (
+            like when one really only needs the actual in-database and in-report information).
+            A pure Comparison should be used for those cases
+
+    Attributes:
+        comparison (Comparison): The original comparison we want to wrap and proxy
+    """
+
     def __init__(self, comparison: Comparison):
         self.comparison = comparison
         self._repository_service = None
@@ -49,7 +72,7 @@ class ComparisonProxy(object):
             self._diff = pull_diff["diff"]
         return self._diff
 
-    async def get_changes(self):
+    async def get_changes(self) -> Optional[List[Change]]:
         if self._changes is None:
             diff = await self.get_diff()
             self._changes = get_changes(
