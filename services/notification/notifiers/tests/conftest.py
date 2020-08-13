@@ -4,6 +4,7 @@ from shared.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.notification.types import FullCommit, Comparison
+from services.notification.comparison import ComparisonProxy
 from services.repository import EnrichedPull
 from services.archive import ArchiveService
 from services.report import ReportService
@@ -258,10 +259,12 @@ def create_sample_comparison(dbsession, request, sample_report):
         repository = base_commit.repository
         base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
         head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-        return Comparison(
-            head=head_full_commit,
-            base=base_full_commit,
-            enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+        return ComparisonProxy(
+            Comparison(
+                head=head_full_commit,
+                base=base_full_commit,
+                enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+            )
         )
 
     return _comparison
@@ -284,24 +287,26 @@ def sample_comparison(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(
-        head=head_full_commit,
-        base=base_full_commit,
-        enriched_pull=EnrichedPull(
-            database_pull=pull,
-            provider_pull={
-                "author": {"id": "12345", "username": "codecov-test-user"},
-                "base": {"branch": "master", "commitid": base_commit.commitid,},
-                "head": {
-                    "branch": "reason/some-testing",
-                    "commitid": head_commit.commitid,
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "author": {"id": "12345", "username": "codecov-test-user"},
+                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "head": {
+                        "branch": "reason/some-testing",
+                        "commitid": head_commit.commitid,
+                    },
+                    "number": str(pull.pullid),
+                    "id": str(pull.pullid),
+                    "state": "open",
+                    "title": "Creating new code for reasons no one knows",
                 },
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            },
-        ),
+            ),
+        )
     )
 
 
@@ -328,24 +333,26 @@ def sample_comparison_coverage_carriedforward(
     base_full_commit = FullCommit(commit=base_commit, report=report)
     head_full_commit = FullCommit(commit=head_commit, report=report)
 
-    return Comparison(
-        head=head_full_commit,
-        base=base_full_commit,
-        enriched_pull=EnrichedPull(
-            database_pull=pull,
-            provider_pull={
-                "author": {"id": "12345", "username": "codecov-test-user"},
-                "base": {"branch": "master", "commitid": base_commit.commitid},
-                "head": {
-                    "branch": "reason/some-testing",
-                    "commitid": head_commit.commitid,
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "author": {"id": "12345", "username": "codecov-test-user"},
+                    "base": {"branch": "master", "commitid": base_commit.commitid},
+                    "head": {
+                        "branch": "reason/some-testing",
+                        "commitid": head_commit.commitid,
+                    },
+                    "number": str(pull.pullid),
+                    "id": str(pull.pullid),
+                    "state": "open",
+                    "title": "Creating new code for reasons no one knows",
                 },
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            },
-        ),
+            ),
+        )
     )
 
 
@@ -366,24 +373,26 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=sample_report)
     head_full_commit = FullCommit(commit=head_commit, report=get_small_report())
-    return Comparison(
-        head=head_full_commit,
-        base=base_full_commit,
-        enriched_pull=EnrichedPull(
-            database_pull=pull,
-            provider_pull={
-                "author": {"id": "12345", "username": "codecov-test-user"},
-                "base": {"branch": "master", "commitid": base_commit.commitid,},
-                "head": {
-                    "branch": "reason/some-testing",
-                    "commitid": head_commit.commitid,
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "author": {"id": "12345", "username": "codecov-test-user"},
+                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "head": {
+                        "branch": "reason/some-testing",
+                        "commitid": head_commit.commitid,
+                    },
+                    "number": str(pull.pullid),
+                    "id": str(pull.pullid),
+                    "state": "open",
+                    "title": "Creating new code for reasons no one knows",
                 },
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            },
-        ),
+            ),
+        )
     )
 
 
@@ -404,24 +413,26 @@ def sample_comparison_no_change(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=sample_report)
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(
-        head=head_full_commit,
-        base=base_full_commit,
-        enriched_pull=EnrichedPull(
-            database_pull=pull,
-            provider_pull={
-                "author": {"id": "12345", "username": "codecov-test-user"},
-                "base": {"branch": "master", "commitid": base_commit.commitid,},
-                "head": {
-                    "branch": "reason/some-testing",
-                    "commitid": head_commit.commitid,
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "author": {"id": "12345", "username": "codecov-test-user"},
+                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "head": {
+                        "branch": "reason/some-testing",
+                        "commitid": head_commit.commitid,
+                    },
+                    "number": str(pull.pullid),
+                    "id": str(pull.pullid),
+                    "state": "open",
+                    "title": "Creating new code for reasons no one knows",
                 },
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            },
-        ),
+            ),
+        )
     )
 
 
@@ -438,10 +449,12 @@ def sample_comparison_without_pull(dbsession, request, sample_report):
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(
-        head=head_full_commit,
-        base=base_full_commit,
-        enriched_pull=EnrichedPull(database_pull=None, provider_pull=None),
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(database_pull=None, provider_pull=None),
+        )
     )
 
 
@@ -462,10 +475,12 @@ def sample_comparison_database_pull_without_provider(dbsession, request, sample_
     repository = base_commit.repository
     base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-    return Comparison(
-        head=head_full_commit,
-        base=base_full_commit,
-        enriched_pull=EnrichedPull(database_pull=pull, provider_pull=None),
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(database_pull=pull, provider_pull=None),
+        )
     )
 
 
@@ -485,24 +500,26 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
     dbsession.flush()
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
     base_full_commit = FullCommit(commit=base_commit, report=None)
-    return Comparison(
-        head=head_full_commit,
-        base=base_full_commit,
-        enriched_pull=EnrichedPull(
-            database_pull=pull,
-            provider_pull={
-                "author": {"id": "12345", "username": "codecov-test-user"},
-                "base": {"branch": "master", "commitid": base_commit.commitid,},
-                "head": {
-                    "branch": "reason/some-testing",
-                    "commitid": head_commit.commitid,
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "author": {"id": "12345", "username": "codecov-test-user"},
+                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "head": {
+                        "branch": "reason/some-testing",
+                        "commitid": head_commit.commitid,
+                    },
+                    "number": str(pull.pullid),
+                    "id": str(pull.pullid),
+                    "state": "open",
+                    "title": "Creating new code for reasons no one knows",
                 },
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            },
-        ),
+            ),
+        )
     )
 
 
@@ -520,25 +537,27 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
     dbsession.flush()
     head_full_commit = FullCommit(commit=head_commit, report=sample_report)
     base_full_commit = FullCommit(commit=None, report=None)
-    return Comparison(
-        head=head_full_commit,
-        base=base_full_commit,
-        enriched_pull=EnrichedPull(
-            database_pull=pull,
-            provider_pull={
-                "author": {"id": "12345", "username": "codecov-test-user"},
-                "base": {
-                    "branch": "master",
-                    "commitid": "cdf9aa4bd2c6bcd8a662864097cb62a85a2fd55b",
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "author": {"id": "12345", "username": "codecov-test-user"},
+                    "base": {
+                        "branch": "master",
+                        "commitid": "cdf9aa4bd2c6bcd8a662864097cb62a85a2fd55b",
+                    },
+                    "head": {
+                        "branch": "reason/some-testing",
+                        "commitid": head_commit.commitid,
+                    },
+                    "number": str(pull.pullid),
+                    "id": str(pull.pullid),
+                    "state": "open",
+                    "title": "Creating new code for reasons no one knows",
                 },
-                "head": {
-                    "branch": "reason/some-testing",
-                    "commitid": head_commit.commitid,
-                },
-                "number": str(pull.pullid),
-                "id": str(pull.pullid),
-                "state": "open",
-                "title": "Creating new code for reasons no one knows",
-            },
-        ),
+            ),
+        )
     )

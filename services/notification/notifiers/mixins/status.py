@@ -72,8 +72,7 @@ class StatusChangesMixin(object):
                 return (state, description)
 
         # filter changes
-        diff_json = await self.get_diff(comparison)
-        changes = get_changes(comparison.base.report, comparison.head.report, diff_json)
+        changes = await comparison.get_changes()
         if changes:
             changes = list(filter(self.is_a_change_worth_noting, changes))
 

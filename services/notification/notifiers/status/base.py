@@ -137,15 +137,7 @@ class StatusNotifier(AbstractBaseNotifier):
         return flag_coverage_was_carriedforward
 
     async def get_diff(self, comparison: Comparison):
-        repository_service = self.repository_service
-        head = comparison.head.commit
-        base = comparison.base.commit
-        if base is None:
-            return None
-        pull_diff = await repository_service.get_compare(
-            base.commitid, head.commitid, with_commits=False
-        )
-        return pull_diff["diff"]
+        return await comparison.get_diff()
 
     @property
     def repository_service(self):
