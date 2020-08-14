@@ -460,30 +460,49 @@ class TestBaseStatusNotifier(object):
                 True,
             )
 
-    def test_get_carryforward_behavior(self, sample_comparison):
+    def test_determine_status_check_behavior_to_apply(self, sample_comparison):
         # uses component level setting if provided
         comparison = sample_comparison
         notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
             title="component_check",
-            notifier_yaml_settings={"carryforward_behavior": "include"},
+            notifier_yaml_settings={
+                "carryforward_behavior": "include",
+                "flag_coverage_not_uploaded_behavior": "exclude",
+            },
             notifier_site_settings=True,
             current_yaml={
                 "coverage": {
                     "status": {
-                        "default_rules": {"carryforward_behavior": "exclude"},
+                        "default_rules": {
+                            "carryforward_behavior": "exclude",
+                            "flag_coverage_not_uploaded_behavior": "pass",
+                        },
                         "project": {
-                            "component_check": {"carryforward_behavior": "include"},
+                            "component_check": {
+                                "carryforward_behavior": "include",
+                                "flag_coverage_not_uploaded_behavior": "exclude",
+                            },
                         },
                     },
                 }
             },
         )
         notifier.context = "fake"
-        assert notifier.get_carryforward_behavior(comparison) == "include"
+        assert (
+            notifier.determine_status_check_behavior_to_apply(
+                comparison, "carryforward_behavior"
+            )
+            == "include"
+        )
+        assert (
+            notifier.determine_status_check_behavior_to_apply(
+                comparison, "flag_coverage_not_uploaded_behavior"
+            )
+            == "exclude"
+        )
 
         # uses global setting if no component setting provided
-        # comparison = sample_comparison
         notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
             title="component_check",
@@ -492,14 +511,46 @@ class TestBaseStatusNotifier(object):
             current_yaml={
                 "coverage": {
                     "status": {
-                        "default_rules": {"carryforward_behavior": "exclude"},
+                        "default_rules": {
+                            "carryforward_behavior": "exclude",
+                            "flag_coverage_not_uploaded_behavior": "include",
+                        },
                         "project": {"component_check": {}},
                     },
                 }
             },
         )
         notifier.context = "fake"
-        assert notifier.get_carryforward_behavior(comparison) == "exclude"
+        assert (
+            notifier.determine_status_check_behavior_to_apply(
+                comparison, "carryforward_behavior"
+            )
+            == "exclude"
+        )
+        assert (
+            notifier.determine_status_check_behavior_to_apply(
+                comparison, "flag_coverage_not_uploaded_behavior"
+            )
+            == "include"
+        )
+
+        # returns None if nothing set for cf behavior field
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={
+                "coverage": {"status": {"default_rules": {}, "project": {},},}
+            },
+        )
+        notifier.context = "fake"
+        assert (
+            notifier.determine_status_check_behavior_to_apply(
+                comparison, "carryforward_behavior"
+            )
+            == None
+        )
 
     def test_flag_coverage_carriedforward_when_all_carriedforward(
         self, sample_comparison_coverage_carriedforward
@@ -570,6 +621,62 @@ class TestBaseStatusNotifier(object):
         )
         notifier.context = "fake"
         assert notifier.flag_coverage_was_carriedforward(comparison) is False
+
+    def test_flag_coverage_was_uploaded_when_none_uploaded(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": ["missing"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifier.context = "fake"
+        assert notifier.flag_coverage_was_uploaded(comparison) is False
+
+    def test_flag_coverage_was_uploaded_when_all_uploaded(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": ["unit"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifier.context = "fake"
+        assert notifier.flag_coverage_was_uploaded(comparison) is True
+
+    def test_flag_coverage_was_uploaded_when_some_uploaded(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": ["unit", "enterprise", "missing"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifier.context = "fake"
+        assert notifier.flag_coverage_was_uploaded(comparison) is True
+
+    def test_flag_coverage_was_uploaded_when_no_status_flags(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": None},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        notifier.context = "fake"
+        assert notifier.flag_coverage_was_uploaded(comparison) is True
 
 
 class TestProjectStatusNotifier(object):
@@ -857,6 +964,222 @@ class TestProjectStatusNotifier(object):
                 "title": "codecov/project/title",
                 "state": "success",
                 "message": f"85.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+            },
+            data_received={"id": "some_id"},
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_pass_behavior_when_coverage_not_uploaded(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "pass",
+                "flags": ["integration", "missing"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": f"25.00% (+0.00%) compared to {base_commit.commitid[:7]} [Auto passed due to carriedforward or missing coverage]",
+                "state": "success",
+                "title": "codecov/project/title",
+            },
+            data_received={"id": "some_id"},
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_pass_behavior_when_coverage_uploaded(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "pass",
+                "flags": ["unit"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": f"25.00% (+0.00%) compared to {base_commit.commitid[:7]}",  # no message indicating auto-pass
+                "state": "success",
+                "title": "codecov/project/title",
+            },
+            data_received={"id": "some_id"},
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_include_behavior_when_coverage_not_uploaded(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "include",
+                "flags": ["integration", "enterprise"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
+                "state": "success",
+                "title": "codecov/project/title",
+            },
+            data_received={"id": "some_id"},
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_behavior_when_coverage_not_uploaded(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "exclude",
+                "flags": ["missing"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        expected_result = NotificationResult(
+            notification_attempted=False,
+            notification_successful=None,
+            explanation="exclude_flag_coverage_not_uploaded_checks",
+            data_sent=None,
+            data_received=None,
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_behavior_when_coverage_uploaded(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "exclude",
+                "flags": ["unit"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": f"25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+                "state": "success",
+                "title": "codecov/project/title",
+            },
+            data_received={"id": "some_id"},
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_behavior_when_some_coverage_uploaded(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "exclude",
+                "flags": [
+                    "unit",
+                    "missing",
+                    "integration",
+                ],  # only "unit" was uploaded, but this should still notify
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
+                "state": "success",
+                "title": "codecov/project/title",
+            },
+            data_received={"id": "some_id"},
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_behavior_no_flags(
+        self, sample_comparison_coverage_carriedforward, mock_repo_provider
+    ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        mock_repo_provider.set_commit_status.return_value = {"id": "some_id"}
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "exclude",
+                "flags": None,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        # should send the check as normal if there are no flags
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": f"85.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+                "state": "success",
+                "title": "codecov/project/title",
             },
             data_received={"id": "some_id"},
         )
