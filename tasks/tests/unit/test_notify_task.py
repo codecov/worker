@@ -354,6 +354,9 @@ class TestNotifyTask(object):
         assert result["notifications"][0] == expected_result["notifications"][0]
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
+        dbsession.flush()
+        dbsession.refresh(commit)
+        assert commit.notified is True
 
     @pytest.mark.asyncio
     async def test_simple_call_should_delay(
