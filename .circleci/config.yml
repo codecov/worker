@@ -157,6 +157,14 @@ jobs:
         command: |-
           make -f Makefile.circle tag
           make -f Makefile.circle deploy
+  
+  dockerhub:
+    executor: codecov-deploy
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - run: make dockerhub.deploy GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
 
 workflows:
   version: 2
@@ -194,3 +202,10 @@ workflows:
           filters:
             branches:
               only: production
+      - dockerhub:
+          requires:
+            - build
+            - test
+          filters:
+            branches:
+              only: master
