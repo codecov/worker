@@ -16,6 +16,8 @@ RUN             apk update \
                 curl-dev \
                 && pip install --upgrade pip
 
+ARG             GH_ACCESS_TOKEN
+
 COPY            requirements.txt /
 RUN             sed -i 's+https://github.com+https://'"${GH_ACCESS_TOKEN}"'@github.com+g' /requirements.txt
 WORKDIR         /pip-packages/
