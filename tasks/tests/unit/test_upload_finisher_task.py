@@ -37,6 +37,7 @@ class TestUploadFinisherTask(object):
             repository__branch="thisbranch",
             repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
             repository__owner__username="ThiagoCodecov",
+            notified=True,
             repository__yaml={
                 "codecov": {"max_report_age": "1y ago"}
             },  # Sorry, this is a timebomb now
@@ -53,6 +54,7 @@ class TestUploadFinisherTask(object):
             commitid=commit.commitid,
             commit_yaml={},
         )
+        assert commit.notified is False
         expected_result = {"notifications_called": True}
         assert expected_result == result
         dbsession.refresh(commit)
