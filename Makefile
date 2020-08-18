@@ -2,8 +2,11 @@ sha := $(shell git rev-parse --short=7 HEAD)
 release_version = `cat VERSION`
 _gcr := gcr.io/test6u3411ty6xqh462sri/codecov
 ssh_private_key = `cat ~/.ssh/codecov-io_rsa`
-
-
+build_date ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
+name ?= worker
+tag ?= $(shell echo $$(git rev-list --count HEAD)$$(git show -s --format=.%ad.%h --date=format:%Y-%m-%d))
+branch = $(shell git branch | grep \* | cut -f2 -d' ')
+gh_access_token := $(shell echo ${GH_ACCESS_TOKEN})
 
 build.local:
 	docker build -f dockerscripts/Dockerfile . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}"
@@ -22,6 +25,20 @@ build.enterprise:
 # need to push a test image for enterprise to test in sandbox deployments.
 build.enterprise-private: 
 	docker build -f dockerscripts/Dockerfile.enterprise . -t codecov/worker-private:${release_version}-${sha}
+
+# for portable builds to dockerhub, for use with local development and
+# acceptance testing.
+build.portable:
+	docker build -f dockerscripts/Dockerfile.portable . -t codecov/$(name)-portable \
+		--label "org.label-schema.build-date"="$(build_date)" \
+		--label "org.label-schema.name"="$(name)" \
+		--label "org.label-schema.vcs-ref"="$(sha)" \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="$(tag)" \
+		--label "org.vcs-branch"="$(branch)" \
+		--build-arg GH_ACCESS_TOKEN=${gh_access_token} \
+		--build-arg COMMIT_SHA="${sha}" \
+		--build-arg RELEASE_VERSION="${release_version}"
 
 test:
 	python -m pytest --cov=./
