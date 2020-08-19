@@ -639,7 +639,7 @@ class TestNotifyTask(object):
                         "data_sent": {
                             "message": [
                                 "# [Codecov](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=h1) Report",
-                                "> Merging [#18](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=desc) into [master](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775&el=desc) will **not change** coverage.",
+                                "> Merging [#18](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=desc) into [master](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775?el=desc) will **not change** coverage.",
                                 "> The diff coverage is `n/a`.",
                                 "",
                                 "[![Impacted file tree graph](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=tree)",
