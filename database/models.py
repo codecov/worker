@@ -111,6 +111,7 @@ class Commit(CodecovBaseModel):
     commitid = Column(types.Text, primary_key=True)
     deleted = Column(types.Boolean)
     message = Column(types.Text)
+    notified = Column(types.Boolean)
     merged = Column(types.Boolean)
     parent_commit_id = Column("parent", types.Text)
     pullid = Column(types.Integer)

@@ -89,3 +89,13 @@ class TestReprModels(object):
             f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commit_id}>>"
             == repr(factoried_notification)
         )
+
+    def test_commit_notified(self, dbsession):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        assert commit.notified is None
+        commit.notified = True
+        dbsession.flush()
+        dbsession.refresh(commit)
+        assert commit.notified is True
