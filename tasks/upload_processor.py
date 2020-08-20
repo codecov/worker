@@ -280,9 +280,20 @@ class UploadProcessorTask(BaseCodecovTask):
             upload_obj.order_number = session.id
             upload_totals = upload_obj.totals
             if upload_totals is None:
-                upload_totals = UploadLevelTotals(upload_id=upload_obj.id)
+                upload_totals = UploadLevelTotals(
+                    upload_id=upload_obj.id,
+                    branches=0,
+                    coverage=0,
+                    hits=0,
+                    lines=0,
+                    methods=0,
+                    misses=0,
+                    partials=0,
+                    files=0,
+                )
                 db_session.add(upload_totals)
-            upload_totals.update_from_totals(session.totals)
+            if session.totals is not None:
+                upload_totals.update_from_totals(session.totals)
             return {"successful": True, "report": result}
         except ReportExpiredException:
             expired_report_result = {
