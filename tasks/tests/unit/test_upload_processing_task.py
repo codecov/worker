@@ -8,6 +8,7 @@ from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotal
 from shared.storage.exceptions import FileNotInStorageError
 
 from tasks.upload_processor import UploadProcessorTask
+from database.models import CommitReport, ReportDetails
 from database.tests.factories import CommitFactory, UploadFactory
 from helpers.exceptions import (
     ReportExpiredException,
@@ -50,6 +51,12 @@ class TestUploadProcessorTask(object):
             repository__name="example-python",
         )
         dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        dbsession.add(report_details)
         dbsession.flush()
         result = await UploadProcessorTask().run_async(
             dbsession,
@@ -132,7 +139,13 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        upload = UploadFactory.create(report__commit=commit, state="started")
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        dbsession.add(report_details)
+        dbsession.flush()
+        upload = UploadFactory.create(report=current_report_row, state="started")
         dbsession.add(upload)
         dbsession.flush()
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
@@ -237,6 +250,12 @@ class TestUploadProcessorTask(object):
             repository__name="example-python",
         )
         dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        dbsession.add(report_details)
         dbsession.flush()
         result = await UploadProcessorTask().run_async(
             dbsession,
@@ -409,6 +428,12 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        dbsession.add(report_details)
+        dbsession.flush()
         redis_queue = [
             {"url": "url", "what": "huh"},
             {"url": "url2", "extra_param": 45},
@@ -525,6 +550,12 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        dbsession.add(report_details)
+        dbsession.flush()
         redis_queue = [
             {"url": "url", "what": "huh"},
             {"url": "url2", "extra_param": 45},
@@ -581,6 +612,12 @@ class TestUploadProcessorTask(object):
             },  # Sorry for the timebomb
         )
         dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        dbsession.add(report_details)
         dbsession.flush()
         redis_queue = [
             {"url": "url", "what": "huh"},

@@ -24,7 +24,7 @@ from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from helpers.metrics import metrics
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
-from services.report import ReportService, NotReadyToBuildReportYetError
+from services.report import ReportService, Report
 from services.repository import get_repo_provider_service
 from shared.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
@@ -101,33 +101,6 @@ class UploadProcessorTask(BaseCodecovTask):
             retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
             self.retry(max_retries=5, countdown=retry_in)
 
-    def initialize_report_db_objects(self, commit):
-        # This is just here for the temporary moment of deplpying
-        db_session = commit.get_db_session()
-        current_report_row = (
-            db_session.query(CommitReport).filter_by(commit_id=commit.id_).first()
-        )
-        if not current_report_row:
-            log.warning(
-                "Commit does not have report row yet",
-                extra=dict(commit=commit.commitid, repoid=commit.repoid),
-            )
-            current_report_row = CommitReport(commit_id=commit.id_)
-            db_session.add(current_report_row)
-            db_session.flush()
-        report_details = (
-            db_session.query(ReportDetails)
-            .filter_by(report_id=current_report_row.id)
-            .first()
-        )
-        if not report_details:
-            report_details = ReportDetails(
-                report_id=current_report_row.id_, files_array=[]
-            )
-            db_session.add(report_details)
-            db_session.flush()
-        return current_report_row
-
     async def process_async_within_lock(
         self,
         *,
@@ -155,22 +128,20 @@ class UploadProcessorTask(BaseCodecovTask):
         try_later = []
         report_service = ReportService(commit_yaml)
         with metrics.timer(f"worker.tasks.{self.name}.build_original_report"):
-            try:
-                report = report_service.build_report_from_commit(commit)
-                if commit.report_json is None and not report.is_empty():
-                    # commit didn't have a report saved, but when we created the report
-                    # it was here
-                    log.warning(
-                        "Commit was not CFF before when it should",
-                        extra=dict(commit=commit.commitid, repoid=commit.repoid),
-                    )
-            except NotReadyToBuildReportYetError:
-                log.warning(
-                    "Unable to build the existing commit report due to a temporary situation. Retrying",
-                    extra=dict(repoid=repoid, commit=commitid,),
-                )
-                self.schedule_for_later_try()
-        commit_report = self.initialize_report_db_objects(commit)
+            report = report_service.get_existing_report_for_commit(commit)
+            if report is None:
+                report = Report()
+        commit_report = (
+            db_session.query(CommitReport).filter_by(commit_id=commit.id_).first()
+        )
+        if commit_report is None:
+            log.warning(
+                "Commit does not have report row yet",
+                extra=dict(commit=commit.commitid, repoid=commit.repoid),
+            )
+            commit_report = CommitReport(commit_id=commit.id_)
+            db_session.add(commit_report)
+            db_session.flush()
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")

@@ -246,12 +246,7 @@ class UploadTask(BaseCodecovTask):
                 commit_yaml=None,
             )
         report_service = ReportService(commit_yaml)
-        upload_processing_lock_name = f"upload_processing_lock_{repoid}_{commitid}"
-        # Temporary lock because for a bit both tasks will be saving report data
-        # Sixty minutes after deploying this, we can remove this, along
-        #   with the UploadProcessorTask code that does carryforwarding
-        with redis_connection.lock(upload_processing_lock_name):
-            commit_report = report_service.initialize_and_save_report(commit)
+        commit_report = report_service.initialize_and_save_report(commit)
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, repoid, commitid):
             normalized_arguments = self.normalize_upload_arguments(
