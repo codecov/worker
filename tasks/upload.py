@@ -13,7 +13,11 @@ from shared.torngit.exceptions import (
 
 from app import celery_app
 from celery_config import upload_task_name
-from database.models import Commit
+from database.models import (
+    Commit,
+    Upload,
+    RepositoryFlag,
+)
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.redis import get_redis_connection, download_archive_from_redis, Redis
@@ -22,6 +26,7 @@ from services.repository import (
     update_commit_from_provider_info,
     create_webhook_on_provider,
 )
+from services.report import ReportService
 from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
 from shared.validation.exceptions import InvalidYamlException
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
@@ -205,7 +210,6 @@ class UploadTask(BaseCodecovTask):
         )
         commit = commits.first()
         assert commit, "Commit not found in database."
-
         repository = commit.repository
         repository_service = None
         was_updated, was_setup = False, False
@@ -231,23 +235,34 @@ class UploadTask(BaseCodecovTask):
                 extra=dict(repoid=repoid, commit=commitid),
                 exc_info=True,
             )
+        if repository_service:
+            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(
+                commit, repository_service
+            )
+        else:
+            commit_yaml = get_final_yaml(
+                owner_yaml=repository.owner.yaml,
+                repo_yaml=repository.yaml,
+                commit_yaml=None,
+            )
+        report_service = ReportService(commit_yaml)
+        upload_processing_lock_name = f"upload_processing_lock_{repoid}_{commitid}"
+        # Temporary lock because for a bit both tasks will be saving report data
+        # Sixty minutes after deploying this, we can remove this, along
+        #   with the UploadProcessorTask code that does carryforwarding
+        with redis_connection.lock(upload_processing_lock_name):
+            commit_report = report_service.initialize_and_save_report(commit)
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, repoid, commitid):
             normalized_arguments = self.normalize_upload_arguments(
                 commit, arguments, redis_connection
             )
+            upload = report_service.create_report_upload(
+                normalized_arguments, commit_report
+            )
+            normalized_arguments["upload_pk"] = upload.id_
             argument_list.append(normalized_arguments)
         if argument_list:
-            if repository_service:
-                commit_yaml = await self.fetch_commit_yaml_and_possibly_store(
-                    commit, repository_service
-                )
-            else:
-                commit_yaml = get_final_yaml(
-                    owner_yaml=repository.owner.yaml,
-                    repo_yaml=repository.yaml,
-                    commit_yaml=None,
-                )
             db_session.commit()
             self.schedule_task(commit, commit_yaml, argument_list)
         else:
@@ -359,7 +374,6 @@ class UploadTask(BaseCodecovTask):
                 log.warning(
                     "Failed to create project webhook",
                     extra=dict(repoid=repository.repoid, commit=commit.commitid),
-                    exc_info=True,
                 )
         return False
 

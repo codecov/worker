@@ -104,18 +104,18 @@ class Commit(CodecovBaseModel):
 
     __tablename__ = "commits"
 
-    id_ = Column("id", types.BigInteger, unique=True)
+    id_ = Column("id", types.BigInteger, primary_key=True)
     author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))
     branch = Column(types.Text)
     ci_passed = Column(types.Boolean)
-    commitid = Column(types.Text, primary_key=True)
+    commitid = Column(types.Text)
     deleted = Column(types.Boolean)
     message = Column(types.Text)
     notified = Column(types.Boolean)
     merged = Column(types.Boolean)
     parent_commit_id = Column("parent", types.Text)
     pullid = Column(types.Integer)
-    repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
+    repoid = Column(types.Integer, ForeignKey("repos.repoid"))
     report_json = Column("report", postgresql.JSON)
     state = Column(types.String(256))
     timestamp = Column(types.DateTime, nullable=False)
@@ -127,6 +127,7 @@ class Commit(CodecovBaseModel):
     notifications = relationship(
         "CommitNotification", backref=backref("commits", cascade="delete")
     )
+    report = relationship("CommitReport", uselist=False, back_populates="commit")
 
     def __repr__(self):
         return f"Commit<{self.commitid}@repo<{self.repoid}>>"

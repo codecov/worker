@@ -1,13 +1,23 @@
 import logging
-from typing import Mapping, Any, Optional
+import uuid
+from typing import Mapping, Any, Optional, Sequence
+from json import loads
 
 from shared.metrics import metrics
 from shared.reports.resources import Report
 from shared.reports.editable import EditableReport
 from shared.storage.exceptions import FileNotInStorageError
 from shared.reports.carryforward import generate_carryforward_report
+from shared.utils.sessions import SessionType
 
-from database.models import Commit
+from database.models import Commit, Upload, Repository
+from database.models.reports import (
+    ReportLevelTotals,
+    UploadLevelTotals,
+    CommitReport,
+    ReportDetails,
+    RepositoryFlag,
+)
 from services.archive import ArchiveService
 from services.report.raw_upload_processor import process_raw_upload
 from services.yaml.reader import read_yaml_field, get_paths_from_flags
@@ -20,8 +30,149 @@ class NotReadyToBuildReportYetError(Exception):
 
 
 class ReportService(object):
-    def __init__(self, current_yaml: Mapping[str, Any] = None):
+
+    """This is the class that will handle anything report-handling related
+
+    Attributes:
+        current_yaml (Mapping[str, Any]): The configuration we need to follow.
+            It's always the user yaml, but might have different uses on different places
+    """
+
+    def __init__(self, current_yaml: Mapping[str, Any]):
         self.current_yaml = current_yaml
+
+    def has_initialized_report(self, commit: Commit) -> bool:
+        """Says whether a commit has already initialized its report or not
+
+        Args:
+            commit (Commit): The commit we want to know about
+
+        Returns:
+            bool: Whether the commit already has initialized a report
+        """
+        return commit.report_json is not None
+
+    def initialize_and_save_report(self, commit: Commit) -> CommitReport:
+        """
+            Initializes the commit report
+
+        
+            This is one of the main entrypoint of this class. It takes care of:
+                - Creating the most basic models relating to that commit
+                    report (CommitReport and ReportDetails), if needed
+                - If that commit is old-style (was created before the report models were installed),
+                    it takes care of backfilling all the information from the report into the new
+                    report models
+                - If that commit needs something to be carryforwarded, it does that logic and
+                    already saves the report into the database and storage
+        
+        Args:
+            commit (Commit): The commit we want to initialize
+        
+        Returns:
+            CommitReport: The CommitReport for that commit
+        """
+        db_session = commit.get_db_session()
+        current_report_row = (
+            db_session.query(CommitReport).filter_by(commit_id=commit.id_).first()
+        )
+        if not current_report_row:
+            # This happens if the commit report is being created for the first time
+            # or backfilled
+            current_report_row = CommitReport(commit_id=commit.id_)
+            db_session.add(current_report_row)
+            db_session.flush()
+            report_details = (
+                db_session.query(ReportDetails)
+                .filter_by(report_id=current_report_row.id_)
+                .first()
+            )
+            if report_details is None:
+                report_details = ReportDetails(
+                    report_id=current_report_row.id_, files_array=[]
+                )
+                db_session.add(report_details)
+                db_session.flush()
+            actual_report = self.get_existing_report_for_commit(commit)
+            if actual_report is not None:
+                # This case means the report exists in our system, it was just not saved
+                #   yet into the new models therefore it needs backfilling
+                self.save_full_report(commit, actual_report)
+        if not self.has_initialized_report(commit):
+            report = self.create_new_report_for_commit(commit)
+            if not report.is_empty():
+                # This means there is a report to carryforward
+                self.save_full_report(commit, report)
+        return current_report_row
+
+    def create_report_upload(
+        self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
+    ) -> Upload:
+        """Creates an `Upload` from the user-given arguments to a job
+
+        The end goal here is that the `Upload` should have all the information needed to
+            hypothetically redo the job later
+
+        Args:
+            normalized_arguments (Mapping[str, str]): The arguments as given by the user
+            commit_report (CommitReport): The commit_report we will attach this `Uplaod` to
+
+        Returns:
+            Upload
+        """
+        db_session = commit_report.get_db_session()
+        upload = Upload(
+            external_id=normalized_arguments.get("reportid"),
+            build_code=normalized_arguments.get("build"),
+            build_url=normalized_arguments.get("url"),
+            env=None,
+            report_id=commit_report.id_,
+            job_code=normalized_arguments.get("job"),
+            name=normalized_arguments.get("name"),
+            provider=normalized_arguments.get("service"),
+            state="started",
+            storage_path=normalized_arguments.get("url"),
+            order_number=None,
+            upload_extras={},
+            upload_type=SessionType.uploaded.value,
+        )
+        db_session.add(upload)
+        db_session.flush()
+        flags = normalized_arguments.get("flags")
+        flags = flags.split(",") if flags else []
+        self._attach_flags_to_upload(upload, flags)
+        db_session.flush()
+        return upload
+
+    def _attach_flags_to_upload(self, upload: Upload, flag_names: Sequence[str]):
+        """Internal function that manages creating the proper `RepositoryFlag`s and attach the sessions to them
+
+        Args:
+            upload (Upload): Description
+            flag_names (Sequence[str]): Description
+
+        Returns:
+            TYPE: Description
+        """
+        all_flags = []
+        db_session = upload.get_db_session()
+        repoid = upload.report.commit.repoid
+        for individual_flag in flag_names:
+            existing_flag = (
+                db_session.query(RepositoryFlag)
+                .filter_by(repository_id=repoid, flag_name=individual_flag)
+                .first()
+            )
+            if not existing_flag:
+                existing_flag = RepositoryFlag(
+                    repository_id=repoid, flag_name=individual_flag
+                )
+                db_session.add(existing_flag)
+                db_session.flush()
+            upload.flags.append(existing_flag)
+            db_session.flush()
+            all_flags.append(existing_flag)
+        return all_flags
 
     def build_report(self, chunks, files, sessions, totals) -> Report:
         report_class = Report
@@ -35,6 +186,9 @@ class ReportService(object):
                 chunks=chunks, files=files, sessions=sessions, totals=totals
             )
 
+    def get_archive_service(self, repository: Repository) -> ArchiveService:
+        return ArchiveService(repository)
+
     def build_report_from_commit(self, commit) -> Report:
         return self._do_build_report_from_commit(commit)
 
@@ -43,8 +197,8 @@ class ReportService(object):
         if commit.report_json is None:
             return None
         try:
-            chunks_archive_service = ArchiveService(commit.repository)
-            chunks = chunks_archive_service.read_chunks(commitid)
+            archive_service = self.get_archive_service(commit.repository)
+            chunks = archive_service.read_chunks(commitid)
         except FileNotInStorageError:
             log.warning(
                 "File for chunks not found in storage",
@@ -165,7 +319,7 @@ class ReportService(object):
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
-                    some_flags_to_carryforward=flags_to_carryforward[:100],
+                    some_flags_to_carryforward=flags_to_carryforward[:50],
                 ),
             )
             return Report()
@@ -201,6 +355,86 @@ class ReportService(object):
         )
 
     def build_report_from_raw_content(
-        self, commit_yaml, master, reports, flags, session
+        self, master: Optional[Report], reports, flags, session
     ) -> Any:
-        return process_raw_upload(commit_yaml, master, reports, flags, session)
+        return process_raw_upload(self.current_yaml, master, reports, flags, session)
+
+    def save_report(self, commit: Commit, report: Report):
+        archive_service = self.get_archive_service(commit.repository)
+        db_session = commit.get_db_session()
+        totals, network_json_str = report.to_database()
+        network = loads(network_json_str)
+        archive_data = report.to_archive().encode()
+        url = archive_service.write_chunks(commit.commitid, archive_data)
+        commit.state = "complete" if report else "error"
+        commit.totals = totals
+        commit.report_json = network
+        files_array = [
+            {
+                "filename": k,
+                "file_index": v.file_index,
+                "file_totals": v.file_totals,
+                "session_totals": v.session_totals,
+                "diff_totals": v.diff_totals,
+            }
+            for k, v in report._files.items()
+        ]
+        if commit.report:
+            commit.report.details.files_array = files_array
+            report_totals = commit.report.totals
+            if report_totals is None:
+                report_totals = ReportLevelTotals(report_id=commit.report.id)
+                db_session.add(report_totals)
+            report_totals.update_from_totals(report.totals)
+            db_session.flush()
+        log.info(
+            "Archived report",
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid,
+                url=url,
+                new_report_sessions=network.get("sessions"),
+            ),
+        )
+        return {"url": url}
+
+    def save_full_report(self, commit: Commit, report: Report):
+        """
+            Saves the report (into database and storage) AND takes care of backfilling its sessions
+                like they were never in the database (useful for backfilling and carryforward cases)
+
+        Args:
+            commit (Commit): The commit we want to save the report to
+            report (Report): The current report
+
+        Returns:
+            TYPE: Description
+        """
+        res = self.save_report(commit, report)
+        db_session = commit.get_db_session()
+        for sess_id, session in report.sessions.items():
+            upload = Upload(
+                build_code=session.build,
+                build_url=session.url,
+                env=session.env,
+                external_id=uuid.uuid4(),
+                job_code=session.job,
+                name=session.name,
+                order_number=sess_id,
+                provider=session.provider,
+                report_id=commit.report.id_,
+                state="complete",
+                storage_path=session.archive,
+                upload_extras=session.session_extras or {},
+                upload_type=session.session_type.value
+                if session.session_type is not None
+                else "unknown",
+            )
+            db_session.add(upload)
+            db_session.flush()
+            self._attach_flags_to_upload(upload, session.flags if session.flags else [])
+            if session.totals is not None:
+                upload_totals = UploadLevelTotals(upload_id=upload.id_)
+                db_session.add(upload_totals)
+                upload_totals.update_from_totals(session.totals)
+        return res

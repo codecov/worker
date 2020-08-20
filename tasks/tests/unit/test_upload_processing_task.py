@@ -5,9 +5,10 @@ import celery
 from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
+from shared.storage.exceptions import FileNotInStorageError
 
 from tasks.upload_processor import UploadProcessorTask
-from database.tests.factories import CommitFactory
+from database.tests.factories import CommitFactory, UploadFactory
 from helpers.exceptions import (
     ReportExpiredException,
     ReportEmptyError,
@@ -117,6 +118,95 @@ class TestUploadProcessorTask(object):
         )
 
     @pytest.mark.asyncio
+    async def test_upload_processor_call_with_upload_obj(
+        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis,
+    ):
+        mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
+        mocked_1.return_value = None
+        commit = CommitFactory.create(
+            message="dsidsahdsahdsa",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
+            repository__owner__username="ThiagoCodecov",
+            repository__name="example-python",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        upload = UploadFactory.create(report__commit=commit, state="started")
+        dbsession.add(upload)
+        dbsession.flush()
+        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        with open(here.parent.parent / "samples" / "sample_uploaded_report_1.txt") as f:
+            content = f.read()
+            mock_storage.write_file("archive", url, content)
+        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        mocked_3 = mocker.patch.object(UploadProcessorTask, "app")
+        mocked_3.send_task.return_value = True
+        result = await UploadProcessorTask().process_async_within_lock(
+            db_session=dbsession,
+            redis_connection=mock_redis,
+            previous_results={},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+            arguments_list=redis_queue,
+        )
+        expected_result = {
+            "processings_so_far": [
+                {"arguments": {"url": url, "upload_pk": upload.id_}, "successful": True}
+            ]
+        }
+        assert expected_result == result
+        assert commit.message == "dsidsahdsahdsa"
+        assert upload.state == "processed"
+        expected_generated_report = {
+            "files": {
+                "awesome/__init__.py": [
+                    0,
+                    [0, 14, 10, 4, 0, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+                    [[0, 14, 10, 4, 0, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "tests/__init__.py": [
+                    1,
+                    [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0],
+                    [[0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+                "tests/test_sample.py": [
+                    2,
+                    [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
+                    [[0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+            },
+            "sessions": {
+                "0": {
+                    "N": None,
+                    "a": url,
+                    "c": None,
+                    "e": None,
+                    "f": None,
+                    "j": None,
+                    "n": None,
+                    "p": None,
+                    "t": [3, 24, 19, 5, 0, "79.16667", 0, 0, 0, 0, 0, 0, 0],
+                    "u": None,
+                    "d": commit.report_json["sessions"]["0"]["d"],
+                    "st": "uploaded",
+                    "se": {},
+                }
+            },
+        }
+        assert (
+            commit.report_json["files"]["awesome/__init__.py"]
+            == expected_generated_report["files"]["awesome/__init__.py"]
+        )
+        assert commit.report_json["files"] == expected_generated_report["files"]
+        assert commit.report_json == expected_generated_report
+        mocked_1.assert_called_with(commit.commitid)
+
+    @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_upload_task_call_existing_chunks(
         self,
@@ -217,7 +307,13 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         mocked_2.assert_called_with(
-            mocker.ANY, mock_redis, {}, commit, mocker.ANY, False, url="url"
+            mocker.ANY,
+            mock_redis,
+            commit,
+            mocker.ANY,
+            False,
+            url="url",
+            upload_pk=mocker.ANY,
         )
         mocked_3.assert_called_with(countdown=20, max_retries=5)
 
@@ -293,9 +389,12 @@ class TestUploadProcessorTask(object):
             UploadProcessorTask, "do_process_individual_report"
         )
         false_report = mocker.MagicMock(
-            to_database=mocker.MagicMock(return_value=({}, "{}"))
+            to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
         )
-        mocked_2.side_effect = [false_report, ReportExpiredException()]
+        mocked_2.side_effect = [
+            (false_report, mocker.MagicMock(id=1, totals=ReportTotals())),
+            ReportExpiredException(),
+        ]
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
         mocked_4.send_task.return_value = True
@@ -338,6 +437,60 @@ class TestUploadProcessorTask(object):
         assert commit.state == "complete"
 
     @pytest.mark.asyncio
+    async def test_upload_task_process_individual_report_with_notfound_report(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_repo_provider,
+        mock_storage,
+        mock_redis,
+    ):
+        mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
+        mocked_1.return_value = None
+        mocked_2 = mocker.patch.object(
+            UploadProcessorTask, "do_process_individual_report"
+        )
+        false_report = mocker.MagicMock(
+            to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
+        )
+        mocked_2.side_effect = FileNotInStorageError()
+        # Mocking retry to also raise the exception so we can see how it is called
+        mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
+        mocked_4.send_task.return_value = True
+        commit = CommitFactory.create(
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
+            repository__owner__username="ThiagoCodecov",
+            repository__yaml={"codecov": {"max_report_age": False}},
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        upload = UploadFactory.create(report__commit=commit)
+        dbsession.add(upload)
+        arguments = {"url": "url2", "extra_param": 45}
+        task = UploadProcessorTask()
+        task.request.retries = 1
+        result = task.process_individual_report(
+            report_service=ReportService({"codecov": {"max_report_age": False}}),
+            redis_connection=mock_redis,
+            commit=commit,
+            report=false_report,
+            upload_obj=upload,
+            **arguments,
+        )
+        expected_result = {
+            "error_type": "file_not_in_storage",
+            "report": None,
+            "should_retry": False,
+            "successful": False,
+        }
+        assert expected_result == result
+        assert commit.state == "complete"
+        assert upload.state == "error"
+
+    @pytest.mark.asyncio
     async def test_upload_task_call_with_empty_report(
         self,
         mocker,
@@ -353,9 +506,12 @@ class TestUploadProcessorTask(object):
             UploadProcessorTask, "do_process_individual_report"
         )
         false_report = mocker.MagicMock(
-            to_database=mocker.MagicMock(return_value=({}, "{}"))
+            to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
         )
-        mocked_2.side_effect = [false_report, ReportEmptyError()]
+        mocked_2.side_effect = [
+            (false_report, mocker.MagicMock(id=1, totals=ReportTotals())),
+            ReportEmptyError(),
+        ]
         mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
         mocked_4.send_task.return_value = True
         commit = CommitFactory.create(
@@ -490,7 +646,7 @@ class TestUploadProcessorTask(object):
         )
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
-            chunks_archive_service=chunks_archive_service,
+            report_service=ReportService({}),
             repository=commit.repository,
             commit=commit,
             report=report,
@@ -534,7 +690,7 @@ class TestUploadProcessorTask(object):
         chunks_archive_service = ArchiveService(commit.repository)
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
-            chunks_archive_service=chunks_archive_service,
+            report_service=ReportService({}),
             repository=commit.repository,
             commit=commit,
             report=report,
@@ -596,7 +752,7 @@ class TestUploadProcessorTask(object):
         mock_repo_provider.get_commit_diff.return_value = f
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
-            chunks_archive_service=chunks_archive_service,
+            report_service=ReportService({}),
             commit=commit,
             repository=commit.repository,
             report=report,
@@ -663,7 +819,7 @@ class TestUploadProcessorTask(object):
         mock_repo_provider.get_commit_diff.return_value = f
         result = await UploadProcessorTask().save_report_results(
             db_session=dbsession,
-            chunks_archive_service=chunks_archive_service,
+            report_service=ReportService({}),
             commit=commit,
             repository=commit.repository,
             report=report,
