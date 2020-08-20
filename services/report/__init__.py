@@ -30,18 +30,55 @@ class NotReadyToBuildReportYetError(Exception):
 
 
 class ReportService(object):
+
+    """This is the class that will handle anything report-handling related
+
+    Attributes:
+        current_yaml (Mapping[str, Any]): The configuration we need to follow.
+            It's always the user yaml, but might have different uses on different places
+    """
+
     def __init__(self, current_yaml: Mapping[str, Any]):
         self.current_yaml = current_yaml
 
-    def has_initialized_report(self, commit):
+    def has_initialized_report(self, commit: Commit) -> bool:
+        """Says whether a commit has already initialized its report or not
+
+        Args:
+            commit (Commit): The commit we want to know about
+
+        Returns:
+            bool: Whether the commit already has initialized a report
+        """
         return commit.report_json is not None
 
-    def initialize_and_save_report(self, commit):
+    def initialize_and_save_report(self, commit: Commit) -> CommitReport:
+        """
+            Initializes the commit report
+
+        
+            This is one of the main entrypoint of this class. It takes care of:
+                - Creating the most basic models relating to that commit
+                    report (CommitReport and ReportDetails), if needed
+                - If that commit is old-style (was created before the report models were installed),
+                    it takes care of backfilling all the information from the report into the new
+                    report models
+                - If that commit needs something to be carryforwarded, it does that logic and
+                    already saves the report into the database and storage
+        
+        Args:
+            commit (Commit): The commit we want to initialize
+        
+        Returns:
+            CommitReport: The CommitReport for that commit
+        """
         db_session = commit.get_db_session()
         current_report_row = (
             db_session.query(CommitReport).filter_by(commit_id=commit.id_).first()
         )
         if not current_report_row:
+            # This happens if the commit report is being created for the first time
+            # or backfilled
             current_report_row = CommitReport(commit_id=commit.id_)
             db_session.add(current_report_row)
             db_session.flush()
@@ -58,16 +95,31 @@ class ReportService(object):
                 db_session.flush()
             actual_report = self.get_existing_report_for_commit(commit)
             if actual_report is not None:
+                # This case means the report exists in our system, it was just not saved
+                #   yet into the new models therefore it needs backfilling
                 self.save_full_report(commit, actual_report)
         if not self.has_initialized_report(commit):
             report = self.create_new_report_for_commit(commit)
             if not report.is_empty():
+                # This means there is a report to carryforward
                 self.save_full_report(commit, report)
         return current_report_row
 
     def create_report_upload(
         self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
     ) -> Upload:
+        """Creates an `Upload` from the user-given arguments to a job
+
+        The end goal here is that the `Upload` should have all the information needed to
+            hypothetically redo the job later
+
+        Args:
+            normalized_arguments (Mapping[str, str]): The arguments as given by the user
+            commit_report (CommitReport): The commit_report we will attach this `Uplaod` to
+
+        Returns:
+            Upload
+        """
         db_session = commit_report.get_db_session()
         upload = Upload(
             external_id=normalized_arguments.get("reportid"),
@@ -93,6 +145,15 @@ class ReportService(object):
         return upload
 
     def _attach_flags_to_upload(self, upload: Upload, flag_names: Sequence[str]):
+        """Internal function that manages creating the proper `RepositoryFlag`s and attach the sessions to them
+
+        Args:
+            upload (Upload): Description
+            flag_names (Sequence[str]): Description
+
+        Returns:
+            TYPE: Description
+        """
         all_flags = []
         db_session = upload.get_db_session()
         repoid = upload.report.commit.repoid
@@ -328,11 +389,27 @@ class ReportService(object):
             db_session.flush()
         log.info(
             "Archived report",
-            extra=dict(repoid=commit.repoid, commit=commit.commitid, url=url,),
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid,
+                url=url,
+                new_report_sessions=network.get("sessions"),
+            ),
         )
         return {"url": url}
 
     def save_full_report(self, commit: Commit, report: Report):
+        """
+            Saves the report (into database and storage) AND takes care of backfilling its sessions
+                like they were never in the database (useful for backfilling and carryforward cases)
+
+        Args:
+            commit (Commit): The commit we want to save the report to
+            report (Report): The current report
+
+        Returns:
+            TYPE: Description
+        """
         res = self.save_report(commit, report)
         db_session = commit.get_db_session()
         for sess_id, session in report.sessions.items():
