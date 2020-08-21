@@ -25,6 +25,9 @@ from services.commit_notifications import (
 from services.yaml import read_yaml_field
 from services.license import is_properly_licensed
 from typing import Any, Iterator
+from services.notification.notifiers.checks.checks_with_fallback import (
+    ChecksWithFallback,
+)
 
 log = logging.getLogger(__name__)
 
@@ -63,6 +66,7 @@ class NotificationService(object):
                 for ownerid in whitelisted_ownerids
                 if ownerid != ""
             ]
+            checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
             for key, value in status_fields.items():
                 if key in ["patch", "project", "changes"]:
                     for title, status_config in default_if_true(value):
@@ -79,23 +83,46 @@ class NotificationService(object):
                                 or self.repository.owner.ownerid % 100
                                 <= whitelisted_percentage
                             )
+                            and checks_yaml_field is not False
                         ):
-                            checks_yaml_field = read_yaml_field(
-                                self.current_yaml, ("github_checks",)
+
+                            status_notifier = get_status_notifier_class(
+                                key, notifier_class_type
                             )
-                            if checks_yaml_field is not False:
-                                notifier_class_type = "checks"
-                        notifier_class = get_status_notifier_class(
-                            key, notifier_class_type
-                        )
-                        yield notifier_class(
-                            repository=self.repository,
-                            title=title,
-                            notifier_yaml_settings=status_config,
-                            notifier_site_settings={},
-                            current_yaml=self.current_yaml,
-                            decoration_type=self.decoration_type,
-                        )
+                            notifier_class_type = "checks"
+                            checks_notifier = get_status_notifier_class(
+                                key, notifier_class_type
+                            )
+                            yield ChecksWithFallback(
+                                checks_notifier=checks_notifier(
+                                    repository=self.repository,
+                                    title=title,
+                                    notifier_yaml_settings=status_config,
+                                    notifier_site_settings={},
+                                    current_yaml=self.current_yaml,
+                                    decoration_type=self.decoration_type,
+                                ),
+                                status_notifier=status_notifier(
+                                    repository=self.repository,
+                                    title=title,
+                                    notifier_yaml_settings=status_config,
+                                    notifier_site_settings={},
+                                    current_yaml=self.current_yaml,
+                                    decoration_type=self.decoration_type,
+                                ),
+                            )
+                        else:
+                            notifier_class = get_status_notifier_class(
+                                key, notifier_class_type
+                            )
+                            yield notifier_class(
+                                repository=self.repository,
+                                title=title,
+                                notifier_yaml_settings=status_config,
+                                notifier_site_settings={},
+                                current_yaml=self.current_yaml,
+                                decoration_type=self.decoration_type,
+                            )
 
         comment_yaml_field = read_yaml_field(self.current_yaml, ("comment",))
         if comment_yaml_field:

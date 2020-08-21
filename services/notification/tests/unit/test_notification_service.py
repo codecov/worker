@@ -94,7 +94,11 @@ class TestNotificationService(object):
         service = NotificationService(repository, current_yaml)
         instances = list(service.get_notifiers_instances())
         names = [instance.name for instance in instances]
-        assert names == ["checks-project", "checks-patch", "checks-changes"]
+        assert names == [
+            "checks-with-fallback",
+            "checks-with-fallback",
+            "checks-with-fallback",
+        ]
 
     def test_get_notifiers_instances_checks_percentage_whitelist(
         self, dbsession, mock_configuration, mocker
@@ -120,7 +124,7 @@ class TestNotificationService(object):
         )
         service = NotificationService(repository, current_yaml)
         instances = list(service.get_notifiers_instances())
-        names = [instance.name for instance in instances]
+        names = [instance._checks_notifier.name for instance in instances]
         assert names == ["checks-project", "checks-patch", "checks-changes"]
 
     @pytest.mark.asyncio

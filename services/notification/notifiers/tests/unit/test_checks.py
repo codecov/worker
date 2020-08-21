@@ -1,10 +1,16 @@
 import pytest
-
+from unittest.mock import Mock
+from asyncio import Future
 from services.notification.notifiers.checks import (
     ProjectChecksNotifier,
     ChangesChecksNotifier,
     PatchChecksNotifier,
 )
+from services.notification.notifiers.status import PatchStatusNotifier
+from services.notification.notifiers.checks.checks_with_fallback import (
+    ChecksWithFallback,
+)
+from shared.torngit.exceptions import TorngitClientError
 from services.notification.notifiers.checks.base import ChecksNotifier
 from shared.reports.resources import ReportLine, ReportFile, Report
 from services.decoration import Decoration
@@ -246,6 +252,92 @@ def multiple_diff_changes():
             },
         }
     }
+
+
+class TestChecksWithFallback(object):
+    @pytest.mark.asyncio
+    async def test_checks_403_failure(
+        self, sample_comparison, mocker, mock_repo_provider
+    ):
+        mock_repo_provider.create_check_run = Mock(
+            side_effect=TorngitClientError(
+                code=403, response="No Access", message="No Access"
+            )
+        )
+
+        checks_notifier = PatchChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"flags": ["flagone"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        status_notifier = mocker.MagicMock(
+            PatchStatusNotifier(
+                repository=sample_comparison.head.commit.repository,
+                title="title",
+                notifier_yaml_settings={"flags": ["flagone"]},
+                notifier_site_settings=True,
+                current_yaml={},
+            )
+        )
+        status_notifier.notify.return_value = "success"
+        fallback_notifier = ChecksWithFallback(
+            checks_notifier=checks_notifier, status_notifier=status_notifier
+        )
+        assert fallback_notifier.name == "checks-with-fallback"
+        assert fallback_notifier.title == "title"
+        assert fallback_notifier.is_enabled() == True
+        assert fallback_notifier.notification_type.value == "checks_patch"
+        assert fallback_notifier.decoration_type == None
+
+        res = await fallback_notifier.notify(sample_comparison)
+        fallback_notifier.store_results(sample_comparison, res)
+        assert status_notifier.notify.call_count == 1
+        assert fallback_notifier.name == "checks-with-fallback"
+        assert fallback_notifier.title == "title"
+        assert fallback_notifier.is_enabled() == True
+        assert fallback_notifier.notification_type.value == "checks_patch"
+        assert fallback_notifier.decoration_type == None
+        assert res == "success"
+
+    @pytest.mark.asyncio
+    async def test_checks_failure(self, sample_comparison, mocker, mock_repo_provider):
+        mock_repo_provider.create_check_run = Mock(
+            side_effect=TorngitClientError(
+                code=409, response="No Access", message="No Access"
+            )
+        )
+
+        checks_notifier = PatchChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"flags": ["flagone"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        status_notifier = mocker.MagicMock(
+            PatchStatusNotifier(
+                repository=sample_comparison.head.commit.repository,
+                title="title",
+                notifier_yaml_settings={"flags": ["flagone"]},
+                notifier_site_settings=True,
+                current_yaml={},
+            )
+        )
+        status_notifier.notify.return_value = "success"
+        fallback_notifier = ChecksWithFallback(
+            checks_notifier=checks_notifier, status_notifier=status_notifier
+        )
+        assert fallback_notifier.name == "checks-with-fallback"
+        assert fallback_notifier.title == "title"
+        assert fallback_notifier.is_enabled() == True
+        assert fallback_notifier.notification_type.value == "checks_patch"
+        assert fallback_notifier.decoration_type == None
+
+        with pytest.raises(TorngitClientError) as e:
+            res = await fallback_notifier.notify(sample_comparison)
+            assert r.code == 409
 
 
 class TestBaseChecksNotifier(object):
