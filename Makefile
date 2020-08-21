@@ -4,7 +4,6 @@ _gcr := gcr.io/test6u3411ty6xqh462sri/codecov
 ssh_private_key = `cat ~/.ssh/codecov-io_rsa`
 build_date ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
 name ?= worker
-tag ?= $(shell echo $$(git rev-list --count HEAD)$$(git show -s --format=.%ad.%h --date=format:%Y-%m-%d))
 branch = $(shell git branch | grep \* | cut -f2 -d' ')
 gh_access_token := $(shell echo ${GH_ACCESS_TOKEN})
 
@@ -29,12 +28,12 @@ build.enterprise-private:
 # for portable builds to dockerhub, for use with local development and
 # acceptance testing.
 build.portable:
-	docker build -f dockerscripts/Dockerfile.portable . -t codecov/$(name)-portable \
+	docker build -f dockerscripts/Dockerfile . -t codecov/$(name)-portable \
 		--label "org.label-schema.build-date"="$(build_date)" \
 		--label "org.label-schema.name"="$(name)" \
 		--label "org.label-schema.vcs-ref"="$(sha)" \
 		--label "org.label-schema.vendor"="Codecov" \
-		--label "org.label-schema.version"="$(tag)" \
+		--label "org.label-schema.version"="${release_version}-${sha}" \
 		--label "org.vcs-branch"="$(branch)" \
 		--build-arg GH_ACCESS_TOKEN=${gh_access_token} \
 		--build-arg COMMIT_SHA="${sha}" \
@@ -58,6 +57,15 @@ push.enterprise-private:
 
 push.enterprise:
 	docker push codecov/enterprise-worker:${release_version}
+
+# Triggers the deploy job depending on if the command is called locally, in a PR or on master.
+dockerhub.deploy: dockerhub.deploy-$(release_env)
+
+# Deploy the docker container as the latest image for master/tags.
+dockerhub.deploy-master: build.portable
+	docker tag codecov/$(name)-portable codecov/$(name):${release_version}-${sha}
+	docker push codecov/$(name):latest
+	docker push codecov/$(name):${release_version}-${sha}
 
 worker-new.deploy:
 	kubectl set image deployment/worker-new-standard worker-new-standard=${_gcr}-worker:${release_version}-${sha}
