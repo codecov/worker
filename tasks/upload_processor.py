@@ -108,6 +108,10 @@ class UploadProcessorTask(BaseCodecovTask):
             db_session.query(CommitReport).filter_by(commit_id=commit.id_).first()
         )
         if not current_report_row:
+            log.warning(
+                "Commit does not have report row yet",
+                extra=dict(commit=commit.commitid, repoid=commit.repoid),
+            )
             current_report_row = CommitReport(commit_id=commit.id_)
             db_session.add(current_report_row)
             db_session.flush()
@@ -153,6 +157,13 @@ class UploadProcessorTask(BaseCodecovTask):
         with metrics.timer(f"worker.tasks.{self.name}.build_original_report"):
             try:
                 report = report_service.build_report_from_commit(commit)
+                if commit.report_json is None and not report.is_empty():
+                    # commit didn't have a report saved, but when we created the report
+                    # it was here
+                    log.warning(
+                        "Commit was not CFF before when it should",
+                        extra=dict(commit=commit.commitid, repoid=commit.repoid),
+                    )
             except NotReadyToBuildReportYetError:
                 log.warning(
                     "Unable to build the existing commit report due to a temporary situation. Retrying",
