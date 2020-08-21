@@ -45,7 +45,11 @@ As described in the repo README, there should be a couple of cares when using ta
 
 4. It is ok for tasks to schedule other tasks (which is different than directly calling code from them), but it is not ok for a task to wait for other task to finish. This is the textbook example of causes of a deadlock. If you really need to coordinate different tasks, consider using celery's built-in tools, like chaining/grouping/chording tasks.
 
-5. Tasks should not receive complex types as parameters at their main function. The only acceptable basic types for a task to receive as parameter are int, float, str, Decimal. Lists and dicts are acceptable as long as they only contain other acceptable types. Avoid temptation to use Enums, for example, even if they look easy enough to deal with. After the main function, feel free to pass whatever you want to whoever you want.
+5. Tasks should not receive complex types as parameters at their main function. The only acceptable basic types for a task to receive as parameter are int, float, str. Lists and dicts are acceptable as long as they only contain other acceptable types. Avoid temptation to use Enums, for example, even if they look easy enough to deal with (been there, broke that). After the main function, feel free to pass whatever you want to whoever you want, since you are already inside your own python code anyway.
+    - The reason for that is about how those tasks are serialized and deserialized when sent to the worker. Task arguments are stored to redis ( or another non-python queue system) when it's scheduled. So its data (read, arguments) has to be serialized to a no-python-specific format in order to be saved there and deserialized when it gets back to python.
+    - The most two common serializers provided out of the box by celery are `json` (current default) and `pickle` (previous default)
+    - `pickle` is a system that python users for serializer/deserializing python objects. It's a very sensitive to changs in the the code. Such that in some "simple" changes can unexpectedely make the pickler crash with old versions of a pickled object. Add this to point number 8 below, and there is a risk of the pickler crashing on each deploy. Also, pickle stopped being the default for a reason (security purposes and harder to read when the data on redis)
+    `json` is only meant for json-serializable objects (which are only the above-allowed objects). Hooking it with your own serializer/deserializer for getting custom objects opens its own can of worms. It's usually cleaner and easier to pass a "dried-up" version of the object (like its id or a dict containing all its relevant info) and "hydrate" the object yourself inside the function.
 
 6. Task return types usually don't matter much, but be aware that our system is not meant to have the task returned values used anywhere else. A normal practice is to return a small dict with some decent information about the task general result. This eases testing and the results are also logged to some extent on datadog.
     - They aren't used anywhere because a) they aren't saved anywhere, and b) some of them they take so long, that there is not a sensible way to make customers wait for them.
@@ -59,6 +63,8 @@ As described in the repo README, there should be a couple of cares when using ta
     - A deploy on web might be happening at the same time, and both new_web and old_web workers will send tasks to both old_version worker and new_version workers.
 
 9. Tasks are the only things in the worker system that are allowed to do actual database `COMMIT;`s. The base class mixin will already take care of commit the changes for you at the end of the task either way, but feel free to commit earlier whenever it is needed
+    - This is done so the services can all build on top of each other with the safety that they will not unexpectedly do a db commit before the caller is ready to commit that data.
+    - This also frees `services` functions to do nested db transactions without any function it calls accidentally commiting the nested transaction
 
 ## Adding new tasks
 
