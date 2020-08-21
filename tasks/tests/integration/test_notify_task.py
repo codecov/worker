@@ -428,7 +428,9 @@ class TestNotifyTask(object):
                     "status": {"project": True, "patch": True, "changes": True},
                     "notify": {
                         "webhook": {
-                            "default": {"url": "https://enntvaucxboe.x.pipedream.net"}
+                            "default": {
+                                "url": "https://6da6786648c8a8e5b8b09bc6562af8b4.m.pipedream.net"
+                            }
                         },
                         "slack": {
                             "default": {
