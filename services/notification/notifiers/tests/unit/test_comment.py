@@ -1917,6 +1917,26 @@ class TestCommentNotifier(object):
         assert await notifier.has_enough_changes(sample_comparison)
 
     @pytest.mark.asyncio
+    async def test_has_enough_changes_no_diff(
+        self, sample_comparison_without_base_report, mock_repo_provider
+    ):
+        mock_repo_provider.get_compare.return_value = {"diff": None}
+        notifier = CommentNotifier(
+            repository=sample_comparison_without_base_report.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "reach, diff, flags, files, footer",
+                "behavior": "default",
+                "after_n_builds": 1,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        assert not (
+            await notifier.has_enough_changes(sample_comparison_without_base_report)
+        )
+
+    @pytest.mark.asyncio
     async def test_has_enough_changes_exact_same_report_diff_intersection_report(
         self, sample_comparison_no_change, mock_repo_provider
     ):
