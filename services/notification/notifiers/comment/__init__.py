@@ -61,7 +61,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         if changes:
             return True
         res = comparison.head.report.calculate_diff(diff)
-        if res["general"].lines > 0:
+        if res is not None and res["general"].lines > 0:
             return True
         return False
 
