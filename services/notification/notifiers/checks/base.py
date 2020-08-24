@@ -1,6 +1,6 @@
 import logging
 from contextlib import nullcontext
-
+from shared.torngit.exceptions import TorngitClientError, TorngitError
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     Comparison,
@@ -253,24 +253,77 @@ class ChecksNotifier(AbstractBaseNotifier):
         state = payload["state"]
         state = "success" if self.notifier_yaml_settings.get("informational") else state
         # We need to first create the check run, get that id and update the status
-        check_id = await repository_service.create_check_run(
-            check_name=title, head_sha=head.commitid
-        )
+        try:
+            check_id = await repository_service.create_check_run(
+                check_name=title, head_sha=head.commitid
+            )
+        except TorngitClientError as e:
+            if e.code == 403:
+                raise e
+            log.warning(
+                "Unable to send checks notification due to a client-side error",
+                exc_info=True,
+                extra=dict(
+                    repoid=comparison.head.commit.repoid,
+                    commit=comparison.head.commit.commitid,
+                    notifier_name=self.name,
+                ),
+            )
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=False,
+                explanation="client_side_error_provider",
+                data_sent=payload,
+            )
+        except TorngitError:
+            log.warning(
+                "Unable to send checks notification due to an unexpected error",
+                exc_info=True,
+                extra=dict(
+                    repoid=comparison.head.commit.repoid,
+                    commit=comparison.head.commit.commitid,
+                    notifier_name=self.name,
+                ),
+            )
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=False,
+                explanation="server_side_error_provider",
+                data_sent=payload,
+            )
+
         output = payload.get("output", [])
         if len(output.get("annotations", [])) > self.ANNOTATIONS_PER_REQUEST:
             annotation_pages = list(
                 self.paginate_annotations(output.get("annotations"))
             )
             for annotation_page in annotation_pages:
-                await repository_service.update_check_run(
-                    check_id,
-                    state,
-                    output={
-                        "title": output.get("title"),
-                        "summary": output.get("summary"),
-                        "annotations": annotation_page,
-                    },
-                )
+                try:
+                    await repository_service.update_check_run(
+                        check_id,
+                        state,
+                        output={
+                            "title": output.get("title"),
+                            "summary": output.get("summary"),
+                            "annotations": annotation_page,
+                        },
+                    )
+                except TorngitError:
+                    log.warning(
+                        "Unable to update checks notification due to an unexpected error",
+                        exc_info=True,
+                        extra=dict(
+                            repoid=comparison.head.commit.repoid,
+                            commit=comparison.head.commit.commitid,
+                            notifier_name=self.name,
+                        ),
+                    )
+                    return NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=False,
+                        explanation="server_side_error_provider",
+                        data_sent=payload,
+                    )
         else:
             await repository_service.update_check_run(check_id, state, output=output)
 

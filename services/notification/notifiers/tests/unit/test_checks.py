@@ -10,7 +10,7 @@ from services.notification.notifiers.status import PatchStatusNotifier
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
-from shared.torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitClientError, TorngitError
 from services.notification.notifiers.checks.base import ChecksNotifier
 from shared.reports.resources import ReportLine, ReportFile, Report
 from services.decoration import Decoration
@@ -335,9 +335,21 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.notification_type.value == "checks_patch"
         assert fallback_notifier.decoration_type == None
 
-        with pytest.raises(TorngitClientError) as e:
-            res = await fallback_notifier.notify(sample_comparison)
-            assert r.code == 409
+        res = await fallback_notifier.notify(sample_comparison)
+        assert res.notification_successful == False
+        assert res.explanation == "client_side_error_provider"
+
+        mock_repo_provider.create_check_run = Mock(side_effect=TorngitError())
+
+        res = await fallback_notifier.notify(sample_comparison)
+        assert res.notification_successful == False
+        assert res.explanation == "server_side_error_provider"
+
+        mock_repo_provider.create_check_run.return_value = 1234
+        mock_repo_provider.update_check_run = Mock(side_effect=TorngitError())
+        res = await fallback_notifier.notify(sample_comparison)
+        assert res.notification_successful == False
+        assert res.explanation == "server_side_error_provider"
 
 
 class TestBaseChecksNotifier(object):
