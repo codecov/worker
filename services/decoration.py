@@ -89,7 +89,10 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
                 reason="PR author not found in database",
             )
 
-        if pr_author.ownerid in org.plan_activated_users:
+        if (
+            org.plan_activated_users is not None
+            and pr_author.ownerid in org.plan_activated_users
+        ):
             return DecorationDetails(
                 decoration_type=Decoration.standard,
                 reason="User is currently activated",
