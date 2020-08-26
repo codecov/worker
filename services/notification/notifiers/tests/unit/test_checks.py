@@ -1010,7 +1010,7 @@ class TestPatchChecksNotifier(object):
             "state": "success",
             "output": {
                 "title": "Codecov Report",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n66.67% of diff hit (target 50.00%)",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nCoverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
             },
             "url": f"test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
         }
@@ -1265,3 +1265,141 @@ class TestProjectChecksNotifier(object):
         }
         result = await notifier.build_payload(comparison)
         assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_check_notify_no_path_match(
+        self, sample_comparison, mocker, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        payload = {
+            "state": "success",
+            "output": {"title": "Codecov Report", "summary": f"Summary",},
+        }
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+
+        notifier = ProjectChecksNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"paths": ["pathone"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == True
+        assert result.explanation is None
+        assert result.data_sent == {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n0.00% (+0.00%) compared to {base_commit.commitid[0:7]}",
+            },
+            "url": f"test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+        }
+
+    @pytest.mark.asyncio
+    async def test_check_notify_single_path_match(
+        self, sample_comparison, mocker, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        payload = {
+            "state": "success",
+            "output": {"title": "Codecov Report", "summary": f"Summary",},
+        }
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+
+        notifier = ProjectChecksNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"paths": ["file_1.go"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == True
+        assert result.explanation is None
+        assert result.data_sent == {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_single_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n62.50% (+12.50%) compared to {base_commit.commitid[0:7]}",
+            },
+            "url": f"test.example.br/gh/test_check_notify_single_path_match/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+        }
+
+    @pytest.mark.asyncio
+    async def test_check_notify_multiple_path_match(
+        self, sample_comparison, mocker, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        payload = {
+            "state": "success",
+            "output": {"title": "Codecov Report", "summary": f"Summary",},
+        }
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+
+        notifier = ProjectChecksNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"paths": ["file_2.py", "file_1.go"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == True
+        assert result.explanation is None
+        assert result.data_sent == {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_multiple_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
+            },
+            "url": f"test.example.br/gh/test_check_notify_multiple_path_match/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+        }
+
+    @pytest.mark.asyncio
+    async def test_check_notify_with_paths(
+        self, sample_comparison, mocker, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        payload = {
+            "state": "success",
+            "output": {"title": "Codecov Report", "summary": f"Summary",},
+        }
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+
+        notifier = ProjectChecksNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == True
+        assert result.explanation is None
+        assert result.data_sent == {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_with_paths/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
+            },
+            "url": f"test.example.br/gh/test_check_notify_with_paths/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+        }

@@ -1,5 +1,6 @@
 import logging
 from contextlib import nullcontext
+from services.yaml.reader import get_paths_from_flags
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
@@ -36,7 +37,14 @@ class ChecksNotifier(AbstractBaseNotifier):
         return f"checks-{self.context}"
 
     def get_notifier_filters(self) -> dict:
-        return dict(flags=self.notifier_yaml_settings.get("flags"),)
+        flag_list = self.notifier_yaml_settings.get("flags") or []
+        return dict(
+            paths=set(
+                get_paths_from_flags(self.current_yaml, flag_list)
+                + (self.notifier_yaml_settings.get("paths") or [])
+            ),
+            flags=flag_list,
+        )
 
     def get_upgrade_message(self, comparison: Comparison) -> str:
         db_pull = comparison.enriched_pull.database_pull

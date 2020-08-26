@@ -43,7 +43,7 @@ jobs:
       - run:
           name: Running linter
           command: |
-            pip3 install black
+            pip3 install -Iv black==19.10b0
             black --check .
   build:
     executor: codecov-deploy
