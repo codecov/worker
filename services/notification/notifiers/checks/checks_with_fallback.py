@@ -4,6 +4,8 @@ from services.notification.notifiers.base import AbstractBaseNotifier
 
 log = logging.getLogger(__name__)
 
+from .exceptions import NoOpenPullRequest
+
 
 class ChecksWithFallback(AbstractBaseNotifier):
     """
@@ -59,3 +61,5 @@ class ChecksWithFallback(AbstractBaseNotifier):
                 )
                 return await self._status_notifier.notify(comparison)
             raise e
+        except NoOpenPullRequest:
+            return await self._status_notifier.notify(comparison)

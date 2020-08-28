@@ -351,60 +351,94 @@ class TestChecksWithFallback(object):
         assert res.notification_successful == False
         assert res.explanation == "server_side_error_provider"
 
-
-class TestBaseChecksNotifier(object):
     @pytest.mark.asyncio
-    async def test_checks_no_pull(self, sample_comparison_without_pull):
+    async def test_checks_no_pull(self, sample_comparison_without_pull, mocker):
         comparison = sample_comparison_without_pull
-        only_pulls_notifier = ChecksNotifier(
+        checks_notifier = PatchChecksNotifier(
             repository=comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await only_pulls_notifier.notify(comparison)
-        assert result.notification_successful is None
-        assert result.explanation == "no_pull_request"
-        assert result.data_sent is None
-        assert result.data_received is None
+        status_notifier = mocker.MagicMock(
+            PatchStatusNotifier(
+                repository=comparison.head.commit.repository,
+                title="title",
+                notifier_yaml_settings={"flags": ["flagone"]},
+                notifier_site_settings=True,
+                current_yaml={},
+            )
+        )
+        status_notifier.notify.return_value = "success"
+        fallback_notifier = ChecksWithFallback(
+            checks_notifier=checks_notifier, status_notifier=status_notifier
+        )
+        result = await fallback_notifier.notify(sample_comparison_without_pull)
+        assert result == "success"
+        assert status_notifier.notify.call_count == 1
 
     @pytest.mark.asyncio
     async def test_notify_pull_request_not_in_provider(
-        self, dbsession, sample_comparison_database_pull_without_provider
+        self, dbsession, sample_comparison_database_pull_without_provider, mocker
     ):
-        notifier = ChecksNotifier(
-            repository=sample_comparison_database_pull_without_provider.head.commit.repository,
+        comparison = sample_comparison_database_pull_without_provider
+        checks_notifier = PatchChecksNotifier(
+            repository=comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(sample_comparison_database_pull_without_provider)
-        assert result.notification_successful is None
-        assert result.explanation == "pull_request_not_in_provider"
-        assert result.data_sent is None
-        assert result.data_received is None
+        status_notifier = mocker.MagicMock(
+            PatchStatusNotifier(
+                repository=comparison.head.commit.repository,
+                title="title",
+                notifier_yaml_settings={"flags": ["flagone"]},
+                notifier_site_settings=True,
+                current_yaml={},
+            )
+        )
+        status_notifier.notify.return_value = "success"
+        fallback_notifier = ChecksWithFallback(
+            checks_notifier=checks_notifier, status_notifier=status_notifier
+        )
+        result = await fallback_notifier.notify(comparison)
+        assert result == "success"
+        assert status_notifier.notify.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_notify_closed_pull_request(self, dbsession, sample_comparison):
-        notifier = ChecksNotifier(
+    async def test_notify_closed_pull_request(
+        self, dbsession, sample_comparison, mocker
+    ):
+        sample_comparison.pull.state = "closed"
+
+        checks_notifier = PatchChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
             current_yaml={},
         )
-        sample_comparison.pull.state = "closed"
-        dbsession.flush()
-        dbsession.refresh(sample_comparison.pull)
-        result = await notifier.notify(sample_comparison)
-        assert not result.notification_attempted
-        assert result.notification_successful is None
-        assert result.explanation == "pull_request_closed"
-        assert result.data_sent is None
-        assert result.data_received is None
+        status_notifier = mocker.MagicMock(
+            PatchStatusNotifier(
+                repository=sample_comparison.head.commit.repository,
+                title="title",
+                notifier_yaml_settings={"flags": ["flagone"]},
+                notifier_site_settings=True,
+                current_yaml={},
+            )
+        )
+        status_notifier.notify.return_value = "success"
+        fallback_notifier = ChecksWithFallback(
+            checks_notifier=checks_notifier, status_notifier=status_notifier
+        )
+        result = await fallback_notifier.notify(sample_comparison)
+        assert result == "success"
+        assert status_notifier.notify.call_count == 1
 
+
+class TestBaseChecksNotifier(object):
     def test_create_annotations_single_segment(self, sample_comparison):
         notifier = ChecksNotifier(
             repository=sample_comparison.head.commit.repository,

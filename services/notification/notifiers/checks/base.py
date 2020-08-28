@@ -15,6 +15,7 @@ from services.urls import (
     get_org_account_url,
 )
 from services.repository import get_repo_provider_service
+from .exceptions import NoOpenPullRequest
 
 log = logging.getLogger(__name__)
 
@@ -75,33 +76,18 @@ class ChecksNotifier(AbstractBaseNotifier):
         return f"codecov/{self.context}{status_piece}"
 
     async def notify(self, comparison: Comparison):
-        if comparison.pull is None:
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="no_pull_request",
-                data_sent=None,
-                data_received=None,
-            )
+        if comparison.pull is None or ():
+            log.info("Faling back to commit_status: Not a pull request")
+            raise NoOpenPullRequest
         if (
             comparison.enriched_pull is None
             or comparison.enriched_pull.provider_pull is None
         ):
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="pull_request_not_in_provider",
-                data_sent=None,
-                data_received=None,
-            )
+            log.info("Faling back to commit_status: Pull request not in provider")
+            raise NoOpenPullRequest
         if comparison.pull.state != "open":
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="pull_request_closed",
-                data_sent=None,
-                data_received=None,
-            )
+            log.info("Faling back to commit_status: Pull request closed")
+            raise NoOpenPullRequest
 
         _filters = self.get_notifier_filters()
         base_full_commit = comparison.base
