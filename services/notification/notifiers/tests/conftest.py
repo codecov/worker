@@ -330,6 +330,7 @@ def sample_comparison_coverage_carriedforward(
 
     yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
     report = ReportService(yaml_dict).build_report_from_commit(head_commit)
+    report.reset()  # need to reset the report to get it to recalculate totals correctly
     base_full_commit = FullCommit(commit=base_commit, report=report)
     head_full_commit = FullCommit(commit=head_commit, report=report)
 

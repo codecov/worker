@@ -963,7 +963,7 @@ class TestProjectStatusNotifier(object):
             data_sent={
                 "title": "codecov/project/title",
                 "state": "success",
-                "message": f"85.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+                "message": f"65.38% (+0.00%) compared to {base_commit.commitid[:7]}",
             },
             data_received={"id": "some_id"},
         )
@@ -1177,7 +1177,7 @@ class TestProjectStatusNotifier(object):
             notification_successful=True,
             explanation=None,
             data_sent={
-                "message": f"85.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+                "message": f"65.38% (+0.00%) compared to {base_commit.commitid[:7]}",
                 "state": "success",
                 "title": "codecov/project/title",
             },

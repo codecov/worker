@@ -52,47 +52,6 @@ class MessageMixin(object):
             else None,
         }
 
-        # flags
-        base_flags = base_report.flags if base_report else {}
-        head_flags = head_report.flags if head_report else {}
-        missing_flags = set(base_flags.keys()) - set(head_flags.keys())
-        flags = []
-        show_carriedforward_flags = settings.get("show_carryforward_flags", False)
-        for name, flag in head_flags.items():
-            if (show_carriedforward_flags is True) or (  # Include all flags
-                show_carriedforward_flags is False
-                and flag.carriedforward
-                is False  # Only include flags without carriedforward coverage
-            ):
-                flags.append(
-                    {
-                        "name": name,
-                        "before": base_flags.get(name, null).totals,
-                        "after": flag.totals,
-                        "diff": flag.apply_diff(diff)
-                        if walk(diff, ("files",))
-                        else None,
-                        "carriedforward": flag.carriedforward,
-                        "carriedforward_from": flag.carriedforward_from,
-                    }
-                )
-
-        for flag in missing_flags:
-            flags.append(
-                {
-                    "name": flag,
-                    "before": base_flags[flag],
-                    "after": None,
-                    "diff": None,
-                    "carriedforward": False,
-                    "carriedforward_from": None,
-                }
-            )
-
-        # TODO: get icons working
-        # flag_icon_url = ""
-        # carriedforward_flag_icon_url = ""
-
         # bool: show complexity
         if read_yaml_field(self.current_yaml, ("codecov", "ui", "hide_complexity")):
             show_complexity = False
@@ -262,78 +221,128 @@ class MessageMixin(object):
             for layout in map(
                 lambda l: l.strip(), (settings["layout"] or "").split(",")
             ):
-                if layout.startswith("flag") and flags:
-                    # Even if "show_carryforward_flags" is true, we don't want to show that column if there isn't actually carriedforward coverage,
-                    # so figure out if we actually have any carriedforward coverage to show
-                    has_carriedforward_flags = any(
-                        flag["carriedforward"] is True
-                        for flag in flags  # If "show_carryforward_flags" yaml setting is set to false there won't be any flags in this list with carriedforward coverage.
-                    )
+                if layout.startswith("flag"):
+                    # flags
+                    base_flags = base_report.flags if base_report else {}
+                    head_flags = head_report.flags if head_report else {}
+                    missing_flags = set(base_flags.keys()) - set(head_flags.keys())
+                    flags = []
 
-                    table_header = (
-                        "| Coverage \u0394 |"
-                        + (" Complexity \u0394 |" if show_complexity else "")
-                        + " |"
-                        + (" *Carryforward flag |" if has_carriedforward_flags else "")
+                    show_carriedforward_flags = settings.get(
+                        "show_carryforward_flags", False
                     )
-                    table_layout = (
-                        "|---|---|---|"
-                        + ("---|" if show_complexity else "")
-                        + ("---|" if has_carriedforward_flags else "")
-                    )
+                    for name, flag in head_flags.items():
+                        if (show_carriedforward_flags is True) or (  # Include all flags
+                            show_carriedforward_flags is False
+                            and flag.carriedforward
+                            is False  # Only include flags without carriedforward coverage
+                        ):
+                            flags.append(
+                                {
+                                    "name": name,
+                                    "before": base_flags.get(name, null).totals,
+                                    "after": flag.totals,
+                                    "diff": flag.apply_diff(diff)
+                                    if walk(diff, ("files",))
+                                    else None,
+                                    "carriedforward": flag.carriedforward,
+                                    "carriedforward_from": flag.carriedforward_from,
+                                }
+                            )
 
-                    write("| Flag " + table_header)
-                    write(table_layout)
-                    for flag in sorted(flags, key=lambda f: f["name"]):
-                        carriedforward, carriedforward_from = (
-                            flag["carriedforward"],
-                            flag["carriedforward_from"],
+                    for flag in missing_flags:
+                        flags.append(
+                            {
+                                "name": flag,
+                                "before": base_flags[flag],
+                                "after": None,
+                                "diff": None,
+                                "carriedforward": False,
+                                "carriedforward_from": None,
+                            }
                         )
-                        # Format the message for the "carriedforward" column, if the flag was carried forward
-                        if carriedforward is True:
-                            # The "from <link to parent commit>" text will only appear if we actually know which commit we carried forward from
-                            carriedforward_from_url = (
-                                get_commit_url_from_commit_sha(
-                                    self.repository, carriedforward_from
-                                )
-                                if carriedforward_from
+
+                    # TODO: get icons working
+                    # flag_icon_url = ""
+                    # carriedforward_flag_icon_url = ""
+
+                    if flags:
+                        # Even if "show_carryforward_flags" is true, we don't want to show that column if there isn't actually carriedforward coverage,
+                        # so figure out if we actually have any carriedforward coverage to show
+                        has_carriedforward_flags = any(
+                            flag["carriedforward"] is True
+                            for flag in flags  # If "show_carryforward_flags" yaml setting is set to false there won't be any flags in this list with carriedforward coverage.
+                        )
+
+                        table_header = (
+                            "| Coverage \u0394 |"
+                            + (" Complexity \u0394 |" if show_complexity else "")
+                            + " |"
+                            + (
+                                " *Carryforward flag |"
+                                if has_carriedforward_flags
                                 else ""
                             )
+                        )
+                        table_layout = (
+                            "|---|---|---|"
+                            + ("---|" if show_complexity else "")
+                            + ("---|" if has_carriedforward_flags else "")
+                        )
 
-                            carriedforward_message = (
-                                " Carriedforward"
-                                + (
-                                    f" from [{carriedforward_from[:7]}]({carriedforward_from_url})"
-                                    if carriedforward_from and carriedforward_from_url
+                        write("| Flag " + table_header)
+                        write(table_layout)
+                        for flag in sorted(flags, key=lambda f: f["name"]):
+                            carriedforward, carriedforward_from = (
+                                flag["carriedforward"],
+                                flag["carriedforward_from"],
+                            )
+                            # Format the message for the "carriedforward" column, if the flag was carried forward
+                            if carriedforward is True:
+                                # The "from <link to parent commit>" text will only appear if we actually know which commit we carried forward from
+                                carriedforward_from_url = (
+                                    get_commit_url_from_commit_sha(
+                                        self.repository, carriedforward_from
+                                    )
+                                    if carriedforward_from
                                     else ""
                                 )
-                                + " |"
-                            )
-                        else:
-                            carriedforward_message = (
-                                " |" if has_carriedforward_flags else ""
+
+                                carriedforward_message = (
+                                    " Carriedforward"
+                                    + (
+                                        f" from [{carriedforward_from[:7]}]({carriedforward_from_url})"
+                                        if carriedforward_from
+                                        and carriedforward_from_url
+                                        else ""
+                                    )
+                                    + " |"
+                                )
+                            else:
+                                carriedforward_message = (
+                                    " |" if has_carriedforward_flags else ""
+                                )
+
+                            write(
+                                "| #{name} {metrics}{cf}".format(
+                                    name=flag["name"],
+                                    metrics=make_metrics(
+                                        flag["before"], flag["after"], flag["diff"]
+                                    ),
+                                    cf=carriedforward_message,
+                                )
                             )
 
-                        write(
-                            "| #{name} {metrics}{cf}".format(
-                                name=flag["name"],
-                                metrics=make_metrics(
-                                    flag["before"], flag["after"], flag["diff"]
-                                ),
-                                cf=carriedforward_message,
+                        if has_carriedforward_flags and show_carriedforward_flags:
+                            write("")
+                            write(
+                                "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
                             )
-                        )
-
-                    if has_carriedforward_flags:
-                        write("")
-                        write(
-                            "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
-                        )
-                    if show_carriedforward_flags is False:
-                        write("")
-                        write(
-                            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
-                        )
+                        elif not show_carriedforward_flags:
+                            write("")
+                            write(
+                                "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
+                            )
 
                 elif layout == "diff":
                     write("```diff")
