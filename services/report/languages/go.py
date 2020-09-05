@@ -1,6 +1,5 @@
 from collections import defaultdict
 from itertools import groupby
-
 from shared.utils import merge
 
 from services.yaml import read_yaml_field
@@ -83,7 +82,7 @@ def from_txt(string, fix, ignored_lines, sessionid, yaml):
                     _cur_file = None
                     continue
 
-            lines = files.setdefault(filename, defaultdict(list))
+            lines = files.setdefault(filename, defaultdict(set))
 
         columns, _, hits = data.split(" ", 2)
         hits = int(hits)
@@ -93,14 +92,14 @@ def from_txt(string, fix, ignored_lines, sessionid, yaml):
 
         # add start of line
         if sl == el:
-            lines[sl].append([sc, ec, hits])
+            lines[sl].add((sc, ec, hits))
         else:
-            lines[sl].append([sc, None, hits])
+            lines[sl].add((sc, None, hits))
             # add middles
-            [lines[ln].append([0, None, hits]) for ln in range(sl + 1, el)]
+            [lines[ln].add((0, None, hits)) for ln in range(sl + 1, el)]
             if ec > 2:
                 # add end of line
-                lines[el].append([None, ec, hits])
+                lines[el].add((None, ec, hits))
 
     # create a file
     report = Report()
@@ -137,7 +136,7 @@ def combine_partials(partials):
     """
     # only 1 partial: return same
     if len(partials) == 1:
-        return partials
+        return list(partials)
 
     columns = defaultdict(list)
     # fill in the partials WITH end values: (_, X, _)
