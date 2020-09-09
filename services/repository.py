@@ -26,8 +26,8 @@ def get_repo_provider_service(
     repository, commit=None
 ) -> torngit.base.TorngitBaseAdapter:
     _timeouts = [
-        get_config("setup", "http", "timeouts", "connect", default=15),
-        get_config("setup", "http", "timeouts", "receive", default=30),
+        get_config("setup", "http", "timeouts", "connect", default=30),
+        get_config("setup", "http", "timeouts", "receive", default=60),
     ]
     service = repository.owner.service
     token = get_repo_appropriate_bot_token(repository)

@@ -181,7 +181,7 @@ class NotificationService(object):
             with metrics.timer(
                 f"worker.services.notifications.notifiers.{notifier.name}"
             ):
-                res = await asyncio.wait_for(notifier.notify(comparison), timeout=30)
+                res = await notifier.notify(comparison)
             individual_result = {
                 "notifier": notifier.name,
                 "title": notifier.title,
