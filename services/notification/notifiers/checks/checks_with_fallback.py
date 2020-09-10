@@ -4,8 +4,6 @@ from services.notification.notifiers.base import AbstractBaseNotifier
 
 log = logging.getLogger(__name__)
 
-from .exceptions import NoOpenPullRequest
-
 
 class ChecksWithFallback(AbstractBaseNotifier):
     """
@@ -47,7 +45,14 @@ class ChecksWithFallback(AbstractBaseNotifier):
 
     async def notify(self, comparison):
         try:
-            return await self._checks_notifier.notify(comparison)
+            res = await self._checks_notifier.notify(comparison)
+            if not res.notification_successful and (
+                res.explanation == "no_pull_request"
+                or res.explanation == "pull_request_not_in_provider"
+                or res.explanation == "pull_request_closed"
+            ):
+                res = await self._status_notifier.notify(comparison)
+            return res
         except TorngitClientError as e:
             if e.code == 403:
                 log.info(
@@ -61,5 +66,3 @@ class ChecksWithFallback(AbstractBaseNotifier):
                 )
                 return await self._status_notifier.notify(comparison)
             raise e
-        except NoOpenPullRequest:
-            return await self._status_notifier.notify(comparison)

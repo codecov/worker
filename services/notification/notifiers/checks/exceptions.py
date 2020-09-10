@@ -1,2 +1,0 @@
-class NoOpenPullRequest(Exception):
-    pass
