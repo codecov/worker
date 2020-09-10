@@ -15,6 +15,8 @@ from services.urls import (
     get_org_account_url,
 )
 from services.repository import get_repo_provider_service
+from helpers.metrics import metrics
+
 
 log = logging.getLogger(__name__)
 
@@ -224,6 +226,7 @@ class ChecksNotifier(AbstractBaseNotifier):
             previous_line = line
         return line_headers
 
+    @metrics.timer("worker.services.notifications.notifiers.checks.create_annotations")
     def create_annotations(self, comparison, diff):
         files_with_change = [
             {"type": _diff["type"], "path": path, "segments": _diff["segments"]}
@@ -265,9 +268,12 @@ class ChecksNotifier(AbstractBaseNotifier):
         state = "success" if self.notifier_yaml_settings.get("informational") else state
         # We need to first create the check run, get that id and update the status
         try:
-            check_id = await repository_service.create_check_run(
-                check_name=title, head_sha=head.commitid
-            )
+            with metrics.timer(
+                "worker.services.notifications.notifiers.checks.create_check_run"
+            ):
+                check_id = await repository_service.create_check_run(
+                    check_name=title, head_sha=head.commitid
+                )
         except TorngitClientError as e:
             if e.code == 403:
                 raise e
@@ -308,17 +314,27 @@ class ChecksNotifier(AbstractBaseNotifier):
             annotation_pages = list(
                 self.paginate_annotations(output.get("annotations"))
             )
+            log.info(
+                "Paginating annotations",
+                extra=dict(
+                    number_pages=len(annotation_pages),
+                    number_annotations=len(output.get("annotations")),
+                ),
+            )
             for annotation_page in annotation_pages:
                 try:
-                    await repository_service.update_check_run(
-                        check_id,
-                        state,
-                        output={
-                            "title": output.get("title"),
-                            "summary": output.get("summary"),
-                            "annotations": annotation_page,
-                        },
-                    )
+                    with metrics.timer(
+                        "worker.services.notifications.notifiers.checks.update_check_run"
+                    ):
+                        await repository_service.update_check_run(
+                            check_id,
+                            state,
+                            output={
+                                "title": output.get("title"),
+                                "summary": output.get("summary"),
+                                "annotations": annotation_page,
+                            },
+                        )
                 except TorngitError:
                     log.warning(
                         "Unable to update checks notification due to an unexpected error",
