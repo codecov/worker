@@ -18,7 +18,7 @@ class ChecksWithFallback(AbstractBaseNotifier):
         self._status_notifier = status_notifier
         self._decoration_type = checks_notifier.decoration_type
         self._title = checks_notifier.title
-        self._name = "checks-with-fallback"
+        self._name = f"{checks_notifier.name}-with-fallback"
         self._notification_type = checks_notifier.notification_type
 
     def is_enabled(self):

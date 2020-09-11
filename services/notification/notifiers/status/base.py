@@ -6,6 +6,7 @@ from shared.utils.sessions import SessionType
 from shared.analytics_tracking import track_event
 
 from helpers.match import match
+from helpers.metrics import metrics
 from helpers.environment import is_enterprise
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
@@ -447,14 +448,17 @@ class StatusNotifier(AbstractBaseNotifier):
                 "message": message,
             }
             try:
-                res = await repository_service.set_commit_status(
-                    commit=head.commitid,
-                    status=state,
-                    context=title,
-                    coverage=float(head_report.totals.coverage),
-                    description=message,
-                    url=url,
-                )
+                with metrics.timer(
+                    "worker.services.notifications.notifiers.status.set_commit_status"
+                ):
+                    res = await repository_service.set_commit_status(
+                        commit=head.commitid,
+                        status=state,
+                        context=title,
+                        coverage=float(head_report.totals.coverage),
+                        description=message,
+                        url=url,
+                    )
             except TorngitClientError:
                 log.warning(
                     "Status not posted because this user can see but not set statuses on this repo",
