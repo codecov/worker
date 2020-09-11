@@ -158,7 +158,11 @@ class NotificationService(object):
                 notification_tasks.append(
                     self.notify_individual_notifier(notifier, comparison)
                 )
-        return await asyncio.gather(*notification_tasks)
+        results = []
+        for i in range(0, len(notification_tasks), 3):
+            task_chunk = notification_tasks[i : i + 3]
+            results.extend(await asyncio.gather(*task_chunk))
+        return results
 
     async def notify_individual_notifier(
         self, notifier, comparison
@@ -180,7 +184,7 @@ class NotificationService(object):
         try:
             with metrics.timer(
                 f"worker.services.notifications.notifiers.{notifier.name}"
-            ):
+            ) as notify_timer:
                 res = await notifier.notify(comparison)
             individual_result = {
                 "notifier": notifier.name,
@@ -191,6 +195,7 @@ class NotificationService(object):
             log.info(
                 "Individual notification done",
                 extra=dict(
+                    timing_ms=notify_timer.ms,
                     individual_result=individual_result,
                     commit=commit.commitid,
                     base_commit=base_commit.commitid

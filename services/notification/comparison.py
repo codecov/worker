@@ -1,4 +1,5 @@
 from typing import List, Optional
+import asyncio
 
 from shared.reports.types import Change
 
@@ -32,6 +33,8 @@ class ComparisonProxy(object):
         self._repository_service = None
         self._diff = None
         self._changes = None
+        self._diff_lock = asyncio.Lock()
+        self._changes_lock = asyncio.Lock()
 
     @property
     def repository_service(self):
@@ -61,21 +64,24 @@ class ComparisonProxy(object):
         return self.comparison.pull
 
     async def get_diff(self):
-        if self._diff is None:
-            head = self.comparison.head.commit
-            base = self.comparison.base.commit
-            if base is None:
-                return None
-            pull_diff = await self.repository_service.get_compare(
-                base.commitid, head.commitid, with_commits=False
-            )
-            self._diff = pull_diff["diff"]
-        return self._diff
+        async with self._diff_lock:
+            if self._diff is None:
+                head = self.comparison.head.commit
+                base = self.comparison.base.commit
+                if base is None:
+                    return None
+                pull_diff = await self.repository_service.get_compare(
+                    base.commitid, head.commitid, with_commits=False
+                )
+                self._diff = pull_diff["diff"]
+            return self._diff
 
     async def get_changes(self) -> Optional[List[Change]]:
-        if self._changes is None:
-            diff = await self.get_diff()
-            self._changes = get_changes(
-                self.comparison.base.report, self.comparison.head.report, diff
-            )
-        return self._changes
+        # Just make sure to not cause a deadlock between this and get_diff
+        async with self._changes_lock:
+            if self._changes is None:
+                diff = await self.get_diff()
+                self._changes = get_changes(
+                    self.comparison.base.report, self.comparison.head.report, diff
+                )
+            return self._changes
