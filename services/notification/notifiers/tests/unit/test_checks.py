@@ -285,7 +285,7 @@ class TestChecksWithFallback(object):
         fallback_notifier = ChecksWithFallback(
             checks_notifier=checks_notifier, status_notifier=status_notifier
         )
-        assert fallback_notifier.name == "checks-with-fallback"
+        assert fallback_notifier.name == "checks-patch-with-fallback"
         assert fallback_notifier.title == "title"
         assert fallback_notifier.is_enabled() == True
         assert fallback_notifier.notification_type.value == "checks_patch"
@@ -294,7 +294,7 @@ class TestChecksWithFallback(object):
         res = await fallback_notifier.notify(sample_comparison)
         fallback_notifier.store_results(sample_comparison, res)
         assert status_notifier.notify.call_count == 1
-        assert fallback_notifier.name == "checks-with-fallback"
+        assert fallback_notifier.name == "checks-patch-with-fallback"
         assert fallback_notifier.title == "title"
         assert fallback_notifier.is_enabled() == True
         assert fallback_notifier.notification_type.value == "checks_patch"
@@ -329,7 +329,7 @@ class TestChecksWithFallback(object):
         fallback_notifier = ChecksWithFallback(
             checks_notifier=checks_notifier, status_notifier=status_notifier
         )
-        assert fallback_notifier.name == "checks-with-fallback"
+        assert fallback_notifier.name == "checks-patch-with-fallback"
         assert fallback_notifier.title == "title"
         assert fallback_notifier.is_enabled() == True
         assert fallback_notifier.notification_type.value == "checks_patch"

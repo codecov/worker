@@ -93,11 +93,11 @@ class TestNotificationService(object):
         )
         service = NotificationService(repository, current_yaml)
         instances = list(service.get_notifiers_instances())
-        names = [instance.name for instance in instances]
+        names = sorted([instance.name for instance in instances])
         assert names == [
-            "checks-with-fallback",
-            "checks-with-fallback",
-            "checks-with-fallback",
+            "checks-changes-with-fallback",
+            "checks-patch-with-fallback",
+            "checks-project-with-fallback",
         ]
 
     def test_get_notifiers_instances_checks_percentage_whitelist(
