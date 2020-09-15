@@ -22,7 +22,16 @@ def from_json(json, fix, ignored_lines, sessionid):
 
         _file = ReportFile(fn, ignore=ignored_lines.get(fn))
 
-        for ln, cov in enumerate(data["coverage"], start=1):
+        # Structure depends on which Simplecov version was used so we need to handle either structure
+        coverage = data["coverage"]
+        coverage_to_check = (
+            coverage["lines"]
+            if isinstance(coverage, dict)
+            and coverage.get("lines")  # Simplecov version >= 0.18
+            else coverage  # Simplecov version < 0.18
+        )
+
+        for ln, cov in enumerate(coverage_to_check, start=1):
             _file[ln] = ReportLine(coverage=cov, sessions=[[sessionid, cov]])
 
         report.append(_file)
