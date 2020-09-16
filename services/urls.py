@@ -21,6 +21,7 @@ class SiteUrls(Enum):
     repository_url = "{base_url}/{service_short}/{username}/{project_name}"
     graph_url = "{base_url}/{service_short}/{username}/{project_name}/commit/{commit_sha}/graphs/{graph_filename}"
     pull_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}"
+    new_client_pull_url= "https://app.codecov.io/{service_short}/{username}/{project_name}/compare/{pull_id}"
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
     org_acccount_url = "{base_url}/account/{service_short}/{username}"
 
@@ -87,6 +88,17 @@ def get_repository_url(repository: Repository) -> str:
 
 def get_pull_url(pull: Pull) -> str:
     repository = pull.repository
+    if repository.repoid in [
+        6711778, # worker
+        6744385, # codecov-api
+        7106762, # codecov-client
+    ]:
+        return SiteUrls.new_client_pull_url.get_url(
+            service_short=services_short_dict.get(repository.service),
+            username=repository.owner.username,
+            project_name=repository.name,
+            pull_id=pull.pullid,
+        )
     return SiteUrls.pull_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(repository.service),
