@@ -143,5 +143,6 @@ class TestLcov(BaseTestCase):
 
     def test_detect(self):
         assert lcov.detect(b"hello\nend_of_record\n") is True
+        assert lcov.detect(txt) is True
         assert lcov.detect(b"hello_end_of_record") is False
         assert lcov.detect(b"") is False
