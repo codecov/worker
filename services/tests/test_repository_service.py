@@ -310,6 +310,111 @@ class TestRepositoryServiceTestCase(object):
         assert commit.totals is None
         assert commit.report_json is None
         assert commit.branch == "newbranchyeah"
+        assert commit.merged is False
+        assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
+        assert commit.parent_commit_id == possible_parent_commit.commitid
+        assert commit.state == "complete"
+
+    @pytest.mark.asyncio
+    async def test_update_commit_from_provider_info_no_pullid_on_defaultbranch(
+        self, dbsession, mocker, mock_repo_provider
+    ):
+        repository = RepositoryFactory.create(branch="superbranch")
+        dbsession.add(repository)
+        dbsession.flush()
+        possible_parent_commit = CommitFactory.create(
+            message="possible_parent_commit", pullid=None, repository=repository
+        )
+        commit = CommitFactory.create(
+            message="",
+            author=None,
+            pullid=None,
+            totals=None,
+            branch="papapa",
+            report_json=None,
+            repository=repository,
+        )
+        dbsession.add(possible_parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        mock_repo_provider.find_pull_request.return_value = None
+        mock_repo_provider.get_best_effort_branches.return_value = [
+            "superbranch",
+            "else",
+            "pokemon",
+        ]
+        mock_repo_provider.get_commit.return_value = {
+            "author": {
+                "id": None,
+                "username": None,
+                "email": "email@email.com",
+                "name": "Mario",
+            },
+            "message": "This message is brought to you by",
+            "parents": [possible_parent_commit.commitid],
+            "timestamp": "2018-07-09T23:39:20Z",
+        }
+        await update_commit_from_provider_info(mock_repo_provider, commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        assert commit.author is None
+        assert commit.message == "This message is brought to you by"
+        assert commit.pullid is None
+        assert commit.totals is None
+        assert commit.report_json is None
+        assert commit.branch == "superbranch"
+        assert commit.merged is True
+        assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
+        assert commit.parent_commit_id == possible_parent_commit.commitid
+        assert commit.state == "complete"
+
+    @pytest.mark.asyncio
+    async def test_update_commit_from_provider_info_no_pullid_not_on_defaultbranch(
+        self, dbsession, mocker, mock_repo_provider
+    ):
+        repository = RepositoryFactory.create(branch="superbranch")
+        dbsession.add(repository)
+        dbsession.flush()
+        possible_parent_commit = CommitFactory.create(
+            message="possible_parent_commit", pullid=None, repository=repository
+        )
+        commit = CommitFactory.create(
+            message="",
+            author=None,
+            pullid=None,
+            branch="papapa",
+            totals=None,
+            report_json=None,
+            repository=repository,
+        )
+        dbsession.add(possible_parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        mock_repo_provider.find_pull_request.return_value = None
+        mock_repo_provider.get_best_effort_branches.return_value = ["else", "pokemon"]
+        mock_repo_provider.get_commit.return_value = {
+            "author": {
+                "id": None,
+                "username": None,
+                "email": "email@email.com",
+                "name": "Mario",
+            },
+            "message": "This message is brought to you by",
+            "parents": [possible_parent_commit.commitid],
+            "timestamp": "2018-07-09T23:39:20Z",
+        }
+        await update_commit_from_provider_info(mock_repo_provider, commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        assert commit.author is None
+        assert commit.message == "This message is brought to you by"
+        assert commit.pullid is None
+        assert commit.totals is None
+        assert commit.report_json is None
+        assert commit.branch == "papapa"
+        assert commit.merged is False
         assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
         assert commit.parent_commit_id == possible_parent_commit.commitid
         assert commit.state == "complete"

@@ -11,6 +11,7 @@ from shared.torngit.exceptions import (
     TorngitError,
 )
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 
 from shared.config import get_config, get_verify_ssl
 from services.bots import get_repo_appropriate_bot_token, get_token_type_mapping
@@ -137,12 +138,20 @@ async def update_commit_from_provider_info(repository_service, commit):
                 pullid=commit.pullid
             )
             commit.branch = commit_updates["head"]["branch"]
-
+            commit.merged = False
+        else:
+            possible_branches = await repository_service.get_best_effort_branches(
+                commit.commitid
+            )
+            if commit.repository.branch in possible_branches:
+                commit.merged = True
+                commit.branch = commit.repository.branch
+            else:
+                commit.merged = False
         commit.message = git_commit["message"]
         commit.parent_commit_id = await fetch_appropriate_parent_for_commit(
             repository_service, commit, git_commit
         )
-        commit.merged = False
         commit.author = commit_author
         commit.updatestamp = datetime.now()
         commit.timestamp = git_commit["timestamp"]
@@ -157,7 +166,12 @@ async def update_commit_from_provider_info(repository_service, commit):
                 ]["branch"]
         log.info(
             "Updated commit with info from git provider",
-            extra=dict(repoid=commit.repoid, commit=commit.commitid),
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid,
+                branch_value=commit.branch,
+                author_value=commit.author_id,
+            ),
         )
 
 
