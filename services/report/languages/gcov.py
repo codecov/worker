@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-
+from io import BytesIO
 from services.yaml import read_yaml_field
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
@@ -24,16 +24,13 @@ detect_conditional = re.compile(r"^\s+((if\s?\()|(\} else if\s?\())").match
 
 
 def detect(report):
-    return "0:Source:" in report.split("\n", 1)[0]
+    return b"0:Source:" in report.split(b"\n", 1)[0]
 
 
 def from_txt(name, string, fix, ignored_lines, sesisonid, settings):
+    line_iterator = iter(BytesIO(string))
     # clean and strip lines
-    if "\n" in string:
-        filename, gcov_content = string.split("\n", 1)
-    else:
-        filename = string
-        gcov_content = ""
+    filename = next(line_iterator).decode(errors="replace").rstrip("\n")
     filename = filename.split(":")[3].lstrip("./")
     if name and name.endswith(filename + ".gcov"):
         filename = fix(name[:-5]) or fix(filename)
@@ -45,13 +42,13 @@ def from_txt(name, string, fix, ignored_lines, sesisonid, settings):
     report = Report()
     report.append(
         _process_gcov_file(
-            filename, ignored_lines.get(filename), gcov_content, sesisonid, settings
+            filename, ignored_lines.get(filename), line_iterator, sesisonid, settings
         )
     )
     return report
 
 
-def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
+def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sesisonid, settings):
     ignore = False
     ln = None
     next_is_func = False
@@ -63,7 +60,8 @@ def _process_gcov_file(filename, ignore_func, gcov, sesisonid, settings):
     lines = defaultdict(list)
     line_types = {}
 
-    for line in gcov.splitlines():
+    for encoded_line in gcov_line_iterator:
+        line = encoded_line.decode(errors="replace").rstrip("\n")
         if "LCOV_EXCL_START" in line:
             ignore = True
 

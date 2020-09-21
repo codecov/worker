@@ -4,7 +4,7 @@ from tests.base import BaseTestCase
 from services.report.languages import lcov
 
 
-txt = """TN:
+txt = b"""TN:
 SF:file.js
 FNDA:76,jsx
 FN:76,(anonymous_1)
@@ -142,6 +142,7 @@ class TestLcov(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_detect(self):
-        assert lcov.detect("hello\nend_of_record\n") is True
-        assert lcov.detect("hello_end_of_record") is False
-        assert lcov.detect("") is False
+        assert lcov.detect(b"hello\nend_of_record\n") is True
+        assert lcov.detect(txt) is True
+        assert lcov.detect(b"hello_end_of_record") is False
+        assert lcov.detect(b"") is False

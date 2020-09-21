@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
@@ -5,7 +7,7 @@ from services.report.languages.base import BaseLanguageProcessor
 
 class DLSTProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
-        return bool(content[-7:] == "covered")
+        return bool(content[-7:] == b"covered")
 
     def process(
         self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
@@ -14,14 +16,14 @@ class DLSTProcessor(BaseLanguageProcessor):
 
 
 def from_string(filename, string, fix, ignored_lines, sessionid):
-    string = string.splitlines()
     if filename:
         # src/file.lst => src/file.d
         filename = fix("%sd" % filename[:-3])
 
     if not filename:
         # file.d => src/file.d
-        filename = string.pop(-1).split(" is ", 1)[0]
+        last_line = string[string.rfind(b"\n") :].decode(errors="replace").strip()
+        filename = last_line.split(" is ", 1)[0]
         if filename.startswith("source "):
             filename = filename[7:]
 
@@ -30,7 +32,8 @@ def from_string(filename, string, fix, ignored_lines, sessionid):
             return None
 
     _file = ReportFile(filename, ignore=ignored_lines.get(filename))
-    for ln, line in enumerate(string, start=1):
+    for ln, encoded_line in enumerate(BytesIO(string), start=1):
+        line = encoded_line.decode(errors="replace").rstrip("\n")
         try:
             coverage = int(line.split("|", 1)[0].strip())
             _file[ln] = ReportLine(coverage, None, [[sessionid, coverage]])
