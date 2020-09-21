@@ -5,7 +5,7 @@ from typing import BinaryIO, List, Optional
 class ParsedUploadedReportFile(object):
     def __init__(self, filename: Optional[str], file_contents: BinaryIO):
         self.filename = filename
-        self.contents = file_contents.getvalue()
+        self.contents = file_contents.getvalue().strip()
 
     @property
     def file_contents(self):

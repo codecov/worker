@@ -383,7 +383,7 @@ class TestProcessReport(BaseTestCase):
             (
                 "lcov.from_txt",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"\nend_of_record")
+                    filename=None, file_contents=BytesIO(b"content\nend_of_record")
                 ),
             ),
             (
