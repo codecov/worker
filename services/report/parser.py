@@ -40,9 +40,9 @@ class ParsedRawReport(object):
 
 class RawReportParser(object):
 
-    network_separator = b"<<<<<< network\n"
-    env_separator = b"<<<<<< ENV\n"
-    eof_separator = b"<<<<<< EOF\n"
+    network_separator = b"<<<<<< network"
+    env_separator = b"<<<<<< ENV"
+    eof_separator = b"<<<<<< EOF"
 
     separator_lines = [
         network_separator,
@@ -63,8 +63,8 @@ class RawReportParser(object):
             "footer": None,
         }
         for current_line in raw_report:
-            if current_line in cls.separator_lines:
-                current_section_information["footer"] = current_line
+            if current_line.rstrip() in cls.separator_lines:
+                current_section_information["footer"] = current_line.rstrip()
                 current_section_information["contents"].seek(0)
                 sections.append(current_section_information)
                 current_section_information = {
