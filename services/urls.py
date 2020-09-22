@@ -22,7 +22,7 @@ class SiteUrls(Enum):
     repository_url = "{base_url}/{service_short}/{username}/{project_name}"
     graph_url = "{base_url}/{service_short}/{username}/{project_name}/commit/{commit_sha}/graphs/{graph_filename}"
     pull_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}"
-    new_client_pull_url= "https://app.codecov.io/{service_short}/{username}/{project_name}/compare/{pull_id}"
+    new_client_pull_url = "https://app.codecov.io/{service_short}/{username}/{project_name}/compare/{pull_id}"
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
     org_acccount_url = "{base_url}/account/{service_short}/{username}"
 
