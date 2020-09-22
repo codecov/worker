@@ -51,12 +51,21 @@ class ChecksWithFallback(AbstractBaseNotifier):
                 or res.explanation == "pull_request_not_in_provider"
                 or res.explanation == "pull_request_closed"
             ):
+                log.info(
+                    "Couldn't use checks notifier, falling back to status notifiers",
+                    extra=dict(
+                        notifier=self._checks_notifier.name,
+                        repoid=comparison.head.commit.repoid,
+                        notifier_title=self._checks_notifier.title,
+                        commit=comparison.head.commit,
+                    ),
+                )
                 res = await self._status_notifier.notify(comparison)
             return res
         except TorngitClientError as e:
             if e.code == 403:
                 log.info(
-                    "Checks notifier failed, falling back to status notifiers",
+                    "Checks notifier failed due to torngit error, falling back to status notifiers",
                     extra=dict(
                         notifier=self._checks_notifier.name,
                         repoid=comparison.head.commit.repoid,

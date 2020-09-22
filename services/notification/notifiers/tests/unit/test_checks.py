@@ -14,6 +14,7 @@ from shared.torngit.exceptions import TorngitClientError, TorngitError
 from services.notification.notifiers.checks.base import ChecksNotifier
 from shared.reports.resources import ReportLine, ReportFile, Report
 from services.decoration import Decoration
+from services.notification.notifiers.base import NotificationResult
 
 
 @pytest.fixture
@@ -1437,3 +1438,271 @@ class TestProjectChecksNotifier(object):
             },
             "url": f"test.example.br/gh/test_check_notify_with_paths/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
         }
+
+    @pytest.mark.asyncio
+    async def test_notify_pass_behavior_when_coverage_not_uploaded(
+        self,
+        sample_comparison_coverage_carriedforward,
+        mock_repo_provider,
+        mock_configuration,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "pass",
+                "flags": ["integration", "missing"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        head_commit = sample_comparison_coverage_carriedforward.head.commit
+
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "state": "success",
+                "output": {
+                    "title": "Codecov Report",
+                    "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n25.00% (+0.00%) compared to {base_commit.commitid[:7]} [Auto passed due to carriedforward or missing coverage]",
+                },
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            },
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_pass_behavior_when_coverage_uploaded(
+        self,
+        sample_comparison_coverage_carriedforward,
+        mock_repo_provider,
+        mock_configuration,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "pass",
+                "flags": ["unit"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        head_commit = sample_comparison_coverage_carriedforward.head.commit
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "state": "success",
+                "output": {
+                    "title": "Codecov Report",
+                    "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+                },
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            },
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_include_behavior_when_coverage_not_uploaded(
+        self,
+        sample_comparison_coverage_carriedforward,
+        mock_repo_provider,
+        mock_configuration,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "include",
+                "flags": ["integration", "enterprise"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        head_commit = sample_comparison_coverage_carriedforward.head.commit
+
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "state": "success",
+                "output": {
+                    "title": "Codecov Report",
+                    "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
+                },
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            },
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_behavior_when_coverage_not_uploaded(
+        self,
+        sample_comparison_coverage_carriedforward,
+        mock_repo_provider,
+        mock_configuration,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "exclude",
+                "flags": ["missing"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        expected_result = NotificationResult(
+            notification_attempted=False,
+            notification_successful=None,
+            explanation="exclude_flag_coverage_not_uploaded_checks",
+            data_sent=None,
+            data_received=None,
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_behavior_when_coverage_uploaded(
+        self,
+        sample_comparison_coverage_carriedforward,
+        mock_repo_provider,
+        mock_configuration,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "exclude",
+                "flags": ["unit"],
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        head_commit = sample_comparison_coverage_carriedforward.head.commit
+
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "state": "success",
+                "output": {
+                    "title": "Codecov Report",
+                    "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+                },
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            },
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_behavior_when_some_coverage_uploaded(
+        self,
+        sample_comparison_coverage_carriedforward,
+        mock_repo_provider,
+        mock_configuration,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "exclude",
+                "flags": [
+                    "unit",
+                    "missing",
+                    "integration",
+                ],  # only "unit" was uploaded, but this should still notify
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        head_commit = sample_comparison_coverage_carriedforward.head.commit
+
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "state": "success",
+                "output": {
+                    "title": "Codecov Report",
+                    "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
+                },
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            },
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_exclude_behavior_no_flags(
+        self,
+        sample_comparison_coverage_carriedforward,
+        mock_repo_provider,
+        mock_configuration,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison_coverage_carriedforward.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "flag_coverage_not_uploaded_behavior": "exclude",
+                "flags": None,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        head_commit = sample_comparison_coverage_carriedforward.head.commit
+
+        # should send the check as normal if there are no flags
+        expected_result = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "state": "success",
+                "output": {
+                    "title": "Codecov Report",
+                    "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n65.38% (+0.00%) compared to {base_commit.commitid[:7]}",
+                },
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            },
+        )
+        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert expected_result == result

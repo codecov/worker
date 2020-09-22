@@ -61,50 +61,31 @@ class StatusNotifier(AbstractBaseNotifier):
         self, comparison, field_name
     ) -> str or None:
         """
-        Used for fields that can be set at the global level for all checks, or at the component level for an individual check.
+        Used for fields that can be set at the global level for all checks in "default_rules", or at the component level for an individual check.
+        For more context, see https://docs.codecov.io/docs/commit-status#default_rules
         """
-        # Use component level setting, if one is specified
+        # Get the component level setting, if one is specified
         component_behavior = self.notifier_yaml_settings.get(field_name)
-        if component_behavior is not None:
-            # Logging so we can track how many users have set "carryforward_behavior"
-            # TODO: remove this logging after we decide whether to deprecate that field or not
-            if field_name == "carryforward_behavior":
-                log.info(
-                    "The YAML file explicitly set a value for carryforward_behavior",
-                    extra=dict(
-                        location="component",
-                        field_name=field_name,
-                        behavior=component_behavior,
-                        commit=comparison.head.commit.commitid,
-                        repoid=comparison.head.commit.repoid,
-                        notifier_name=self.name,
-                        notifier_yaml_settings=self.notifier_yaml_settings,
-                    ),
-                )
-
-            log.info(
-                "Status check specifies a behavior at the component level",
-                extra=dict(
-                    field_name=field_name,
-                    behavior=component_behavior,
-                    commit=comparison.head.commit.commitid,
-                    repoid=comparison.head.commit.repoid,
-                    notifier_name=self.name,
-                    notifier_yaml_settings=self.notifier_yaml_settings,
-                ),
-            )
-            return component_behavior
-
         # Get the value set at the global level via the default_rules key. This can be 'None' if no value was provided.
         # If provided, this is populated either by the YAML file directly or by the defaults set in 'shared'.
         default_rules_behavior = read_yaml_field(
             self.current_yaml, ("coverage", "status", "default_rules", field_name),
         )
+
+        behavior_to_apply = (
+            component_behavior
+            if component_behavior is not None
+            else default_rules_behavior
+        )
+
+        location = "component" if component_behavior is not None else "default_rules"
+
         log.info(
-            "Using behavior setting from default_rules for status check",
+            "Determined status check behavior to apply",
             extra=dict(
+                location=location,
                 field_name=field_name,
-                behavior=default_rules_behavior,
+                behavior=behavior_to_apply,
                 commit=comparison.head.commit.commitid,
                 repoid=comparison.head.commit.repoid,
                 notifier_name=self.name,
@@ -112,23 +93,7 @@ class StatusNotifier(AbstractBaseNotifier):
             ),
         )
 
-        # Logging so we can track how many users have set "carryforward_behavior"
-        # TODO: remove this logging after we decide whether to deprecate that field or not
-        if default_rules_behavior is not None and field_name == "carryforward_behavior":
-            log.info(
-                "The YAML file explicitly set a value for carryforward_behavior",
-                extra=dict(
-                    location="default_rules",
-                    field_name=field_name,
-                    behavior=default_rules_behavior,
-                    commit=comparison.head.commit.commitid,
-                    repoid=comparison.head.commit.repoid,
-                    notifier_name=self.name,
-                    notifier_yaml_settings=self.notifier_yaml_settings,
-                ),
-            )
-
-        return default_rules_behavior
+        return behavior_to_apply
 
     def flag_coverage_was_uploaded(self, comparison) -> bool:
         """
@@ -186,54 +151,6 @@ class StatusNotifier(AbstractBaseNotifier):
         )
         return flag_coverage_was_uploaded
 
-    def flag_coverage_was_carriedforward(self, comparison) -> bool:
-        """
-        Indicates whether coverage was carried forward for all the flags on this status check.
-        If there are no flags on the status check, this will return false.
-        """
-        flags_included_in_status_check = set(
-            self.notifier_yaml_settings.get("flags") or []
-        )
-        flags_with_coverage_carriedforward = set()
-
-        if (
-            flags_included_in_status_check
-            and comparison.head.report.sessions
-            and bool(
-                flags_included_in_status_check
-            )  # only loop if there are flags defined on the check
-        ):
-            for session_id, session in comparison.head.report.sessions.items():
-                if session.session_type == SessionType.carriedforward:
-                    # Figure out which flags in this session are included in this status check
-                    status_flags_in_carriedforward_session = set(
-                        getattr(session, "flags", []) or []
-                    ).intersection(flags_included_in_status_check)
-
-                    flags_with_coverage_carriedforward.update(
-                        status_flags_in_carriedforward_session
-                    )
-
-        # If the sets are equal and not empty, then the status check had flags and all those flags carried forward coverage
-        flag_coverage_was_carriedforward = bool(flags_included_in_status_check) and (
-            flags_included_in_status_check == flags_with_coverage_carriedforward
-        )
-
-        log.info(
-            "Determined whether flag coverage on this status check was carried forward",
-            extra=dict(
-                flag_coverage_was_carriedforward=flag_coverage_was_carriedforward,
-                commit=comparison.head.commit.commitid,
-                repoid=comparison.head.commit.repoid,
-                notifier_name=self.name,
-                flags_included_in_status_check=list(flags_included_in_status_check),
-                flags_with_coverage_carriedforward=list(
-                    flags_with_coverage_carriedforward
-                ),
-            ),
-        )
-        return flag_coverage_was_carriedforward
-
     async def get_diff(self, comparison: Comparison):
         return await comparison.get_diff()
 
@@ -275,11 +192,10 @@ class StatusNotifier(AbstractBaseNotifier):
                 ):
                     payload = await self.build_payload(comparison)
 
-                    # get the behavior to apply if flag coverage wasn't uploaded
+                    # If flag coverage wasn't uploaded, apply the appropriate behavior
                     flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
                         comparison, "flag_coverage_not_uploaded_behavior"
                     )
-
                     if (
                         flag_coverage_not_uploaded_behavior != "include"
                         and not self.flag_coverage_was_uploaded(comparison)
@@ -295,60 +211,16 @@ class StatusNotifier(AbstractBaseNotifier):
                         )
 
                         if flag_coverage_not_uploaded_behavior == "pass":
-                            # Override the payload to pass the status check automatically
                             payload["state"] = "success"
                             payload["message"] = (
                                 payload["message"]
                                 + " [Auto passed due to carriedforward or missing coverage]"
                             )
-
                         elif flag_coverage_not_uploaded_behavior == "exclude":
-                            # Don't send the notification
                             return NotificationResult(
                                 notification_attempted=False,
                                 notification_successful=None,
                                 explanation="exclude_flag_coverage_not_uploaded_checks",
-                                data_sent=None,
-                                data_received=None,
-                            )
-
-                    # apply carryforward_behavior yaml settings, if specified
-                    carryforward_behavior = self.determine_status_check_behavior_to_apply(
-                        comparison, "carryforward_behavior"
-                    )
-                    if (
-                        carryforward_behavior is not None
-                        and self.flag_coverage_was_carriedforward(comparison)
-                    ):
-                        log.info(
-                            "Status check flag coverage was carried forward, applying carryforward behavior based on YAML settings",
-                            extra=dict(
-                                commit=comparison.head.commit.commitid,
-                                repoid=comparison.head.commit.repoid,
-                                notifier_name=self.name,
-                                carryforward_behavior=carryforward_behavior,
-                            ),
-                        )
-
-                        if carryforward_behavior == "pass":
-                            # Override the payload to pass the status check automatically
-                            payload["state"] = "success"
-                            payload["message"] = (
-                                payload["message"] + " [Auto passed due to CF Flags]"
-                            )
-
-                        elif carryforward_behavior == "include":
-                            # Just add a message indicating that the coverage was carried forward
-                            payload["message"] = (
-                                payload["message"] + " [Carried forward]"
-                            )
-
-                        elif carryforward_behavior == "exclude":
-                            # Don't send the notification
-                            return NotificationResult(
-                                notification_attempted=False,
-                                notification_successful=None,
-                                explanation="exclude_carriedforward_checks",
                                 data_sent=None,
                                 data_received=None,
                             )

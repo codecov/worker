@@ -3,10 +3,10 @@ from contextlib import nullcontext
 from services.yaml.reader import get_paths_from_flags
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from services.notification.notifiers.base import (
-    AbstractBaseNotifier,
     Comparison,
     NotificationResult,
 )
+from services.notification.notifiers.status.base import StatusNotifier
 from typing import Dict
 from services.urls import (
     get_commit_url,
@@ -21,7 +21,7 @@ from helpers.metrics import metrics
 log = logging.getLogger(__name__)
 
 
-class ChecksNotifier(AbstractBaseNotifier):
+class ChecksNotifier(StatusNotifier):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._repository_service = None
@@ -78,7 +78,15 @@ class ChecksNotifier(AbstractBaseNotifier):
 
     async def notify(self, comparison: Comparison):
         if comparison.pull is None or ():
-            log.info("Faling back to commit_status: Not a pull request")
+            log.info(
+                "Faling back to commit_status: Not a pull request",
+                extra=dict(
+                    notifier=self.name,
+                    repoid=comparison.head.commit.repoid,
+                    notifier_title=self.title,
+                    commit=comparison.head.commit,
+                ),
+            )
             return NotificationResult(
                 notification_attempted=False,
                 notification_successful=None,
@@ -90,7 +98,15 @@ class ChecksNotifier(AbstractBaseNotifier):
             comparison.enriched_pull is None
             or comparison.enriched_pull.provider_pull is None
         ):
-            log.info("Faling back to commit_status: Pull request not in provider")
+            log.info(
+                "Faling back to commit_status: Pull request not in provider",
+                extra=dict(
+                    notifier=self.name,
+                    repoid=comparison.head.commit.repoid,
+                    notifier_title=self.title,
+                    commit=comparison.head.commit,
+                ),
+            )
             return NotificationResult(
                 notification_attempted=False,
                 notification_successful=None,
@@ -99,7 +115,15 @@ class ChecksNotifier(AbstractBaseNotifier):
                 data_received=None,
             )
         if comparison.pull.state != "open":
-            log.info("Faling back to commit_status: Pull request closed")
+            log.info(
+                "Faling back to commit_status: Pull request closed",
+                extra=dict(
+                    notifier=self.name,
+                    repoid=comparison.head.commit.repoid,
+                    notifier_title=self.title,
+                    commit=comparison.head.commit,
+                ),
+            )
             return NotificationResult(
                 notification_attempted=False,
                 notification_successful=None,
@@ -117,6 +141,39 @@ class ChecksNotifier(AbstractBaseNotifier):
                 else nullcontext()
             ):
                 payload = await self.build_payload(comparison)
+
+                # If flag coverage wasn't uploaded, apply the appropriate behavior
+                flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
+                    comparison, "flag_coverage_not_uploaded_behavior"
+                )
+                if (
+                    flag_coverage_not_uploaded_behavior != "include"
+                    and not self.flag_coverage_was_uploaded(comparison)
+                ):
+                    log.info(
+                        "Status check flag coverage was not uploaded, applying behavior based on YAML settings",
+                        extra=dict(
+                            commit=comparison.head.commit.commitid,
+                            repoid=comparison.head.commit.repoid,
+                            notifier_name=self.name,
+                            flag_coverage_not_uploaded_behavior=flag_coverage_not_uploaded_behavior,
+                        ),
+                    )
+
+                    if flag_coverage_not_uploaded_behavior == "pass":
+                        payload["state"] = "success"
+                        payload["output"]["summary"] = (
+                            payload["output"]["summary"]
+                            + " [Auto passed due to carriedforward or missing coverage]"
+                        )
+                    elif flag_coverage_not_uploaded_behavior == "exclude":
+                        return NotificationResult(
+                            notification_attempted=False,
+                            notification_successful=None,
+                            explanation="exclude_flag_coverage_not_uploaded_checks",
+                            data_sent=None,
+                            data_received=None,
+                        )
         if (
             comparison.pull
             and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
