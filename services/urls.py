@@ -2,6 +2,7 @@ from database.models import Commit, Repository, Pull
 from enum import Enum
 from urllib.parse import urlencode
 from shared.config import get_config
+import os
 
 services_short_dict = dict(
     github="gh",
@@ -88,11 +89,12 @@ def get_repository_url(repository: Repository) -> str:
 
 def get_pull_url(pull: Pull) -> str:
     repository = pull.repository
-    if repository.repoid in [
-        6711778, # worker
-        6744385, # codecov-api
-        7106762, # codecov-client
-    ]:
+    new_compare_whitelisted_ownerids = [
+        int(ownerid.strip())
+        for ownerid in os.getenv("NEW_COMPARE_WHITELISTED_OWNERS", "").split(",")
+        if ownerid != ""
+    ]
+    if repository.owner.ownerid in new_compare_whitelisted_ownerids:
         return SiteUrls.new_client_pull_url.get_url(
             service_short=services_short_dict.get(repository.service),
             username=repository.owner.username,
