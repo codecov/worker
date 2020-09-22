@@ -111,7 +111,7 @@ simple_no_toc = b"""
 </coverage>
 <<<<<< EOF"""
 
-more_complex = b"""PRODUCTION_TOKEN=testbk0a5ldblu3njjtg9kkcgv4ya9ghk77k
+more_complex = b"""PRODUCTION_TOKEN=aaaaaaaa-e799-40d4-b89d-cea4b18f29a4
 <<<<<< ENV
 ./codecov.yaml
 Makefile
@@ -182,6 +182,36 @@ unit.coverage.xml
 </coverage>
 <<<<<< EOF"""
 
+more_complex_with_line_end = b"""PRODUCTION_TOKEN=aaaaaaaa-e799-40d4-b89d-cea4b18f29a4
+<<<<<< ENV
+./codecov.yaml
+Makefile
+awesome/__init__.py
+awesome/code_fib.py
+dev.sh
+tests/__init__.py
+tests/test_number_two.py
+tests/test_sample.py
+unit.coverage.xml
+<<<<<< network
+# path=unit.coverage.xml
+<?xml version="1.0" ?>
+<coverage branch-rate="0" branches-covered="0">
+    <packages>
+    </packages>
+</coverage>
+<<<<<< EOF
+# path=profile.cov
+mode: count
+github.com/path/ckey/key.go:43.38,47.2 1 1
+github.com/path/ckey/key.go:51.82,58.45 2 12
+github.com/path/ckey/key.go:64.2,66.33 3 12
+github.com/path/ckey/key.go:70.2,72.41 2 12
+github.com/path/ckey/key.go:58.45,60.3 1 12
+github.com/path/ckey/key.go:60.8,62.3 1 0
+<<<<<< EOF
+"""
+
 
 class TestParser(object):
     def test_parser_with_toc(self):
@@ -208,3 +238,30 @@ class TestParser(object):
         assert res.uploaded_files[0].contents.startswith(b'<?xml version="1.0" ?>')
         assert res.uploaded_files[0].contents.endswith(b"</coverage>")
         assert res.uploaded_files[1].filename is None
+        assert res.uploaded_files[1].contents.startswith(b'<?xml version="1.0" ?>')
+        assert res.uploaded_files[1].contents.endswith(b"</coverage>")
+
+    def test_parser_more_complete_with_line_end(self):
+        res = RawReportParser.parse_raw_report_from_bytes(more_complex_with_line_end)
+        assert res.has_toc()
+        assert res.has_env()
+        assert not res.has_path_fixes()
+        assert len(res.uploaded_files) == 2
+        assert res.uploaded_files[0].filename == "unit.coverage.xml"
+        assert (
+            res.uploaded_files[0].contents
+            == b'<?xml version="1.0" ?>\n<coverage branch-rate="0" branches-covered="0">\n    <packages>\n    </packages>\n</coverage>'
+        )
+        assert res.uploaded_files[1].filename == "profile.cov"
+        expected_second_file = b"\n".join(
+            [
+                b"mode: count",
+                b"github.com/path/ckey/key.go:43.38,47.2 1 1",
+                b"github.com/path/ckey/key.go:51.82,58.45 2 12",
+                b"github.com/path/ckey/key.go:64.2,66.33 3 12",
+                b"github.com/path/ckey/key.go:70.2,72.41 2 12",
+                b"github.com/path/ckey/key.go:58.45,60.3 1 12",
+                b"github.com/path/ckey/key.go:60.8,62.3 1 0",
+            ]
+        )
+        assert res.uploaded_files[1].contents == expected_second_file
