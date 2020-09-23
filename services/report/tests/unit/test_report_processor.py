@@ -1,8 +1,6 @@
 import json
-from io import BytesIO
 
 from services.report.report_processor import report_type_matching
-from services.report.parser import ParsedUploadedReportFile
 
 xcode_report = """/Users/distiller/project/Auth0/A0ChallengeGenerator.m:
    28|       |@implementation A0SHA256ChallengeGenerator
@@ -15,62 +13,22 @@ xcode_report = """/Users/distiller/project/Auth0/A0ChallengeGenerator.m:
 
 class TestReportTypeMatching(object):
     def test_report_type_matching(self):
+        assert report_type_matching("name", "")[1] == "txt"
+        assert report_type_matching("name", "{}")[1] == "txt"
+        assert report_type_matching("name", xcode_report)[1] == "txt"
+        assert report_type_matching("name", json.dumps({"value": 1}))[1] == "json"
         assert (
             report_type_matching(
-                ParsedUploadedReportFile(filename="name", file_contents=BytesIO(b""))
-            )[1]
-            == "txt"
-        )
-        assert (
-            report_type_matching(
-                ParsedUploadedReportFile(filename="name", file_contents=BytesIO(b"{}"))
-            )[1]
-            == "txt"
-        )
-        assert (
-            report_type_matching(
-                ParsedUploadedReportFile(
-                    filename="name", file_contents=BytesIO(xcode_report.encode())
-                )
-            )[1]
-            == "txt"
-        )
-        assert (
-            report_type_matching(
-                ParsedUploadedReportFile(
-                    filename="name",
-                    file_contents=BytesIO(json.dumps({"value": 1}).encode()),
-                )
-            )[1]
-            == "json"
-        )
-        assert (
-            report_type_matching(
-                ParsedUploadedReportFile(
-                    filename="name",
-                    file_contents=BytesIO(
-                        '<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>'.encode()
-                    ),
-                )
+                "name",
+                '<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>',
             )[1]
             == "xml"
         )
         assert (
             report_type_matching(
-                ParsedUploadedReportFile(
-                    filename="name",
-                    file_contents=BytesIO(
-                        '\uFEFF<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>'.encode()
-                    ),
-                )
+                "name",
+                '\uFEFF<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>',
             )[1]
             == "xml"
         )
-        assert (
-            report_type_matching(
-                ParsedUploadedReportFile(
-                    filename="name", file_contents=BytesIO("normal file".encode())
-                )
-            )[1]
-            == "txt"
-        )
+        assert report_type_matching("name", "normal file")[1] == "txt"

@@ -10,7 +10,7 @@ class TestArchiveService(BaseTestCase):
         mock_read_file.return_value = b"\x80abc"
         repo = RepositoryFactory.create()
         service = ArchiveService(repo)
-        expected_result = b"\x80abc"
+        expected_result = "�abc"
         path = "path/to/file"
         result = service.read_file(path)
         assert expected_result == result

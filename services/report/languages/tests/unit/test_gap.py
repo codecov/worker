@@ -2,7 +2,7 @@ from tests.base import BaseTestCase
 from services.report.languages import gap
 
 
-RAW = b"""{"Type":"S","File":"lib/error.g","FileId":37}
+RAW = """{"Type":"S","File":"lib/error.g","FileId":37}
 {"Type":"R","Line":1,"FileId":37}
 {"Type":"E","Line":2,"FileId":37}
 {"Type":"R","Line":3,"FileId":37}
@@ -47,6 +47,6 @@ class TestGap(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_detect(self):
-        assert gap.detect(b"") is False
-        assert gap.detect(b'{"Type":"S","File":"lib/error.g","FileId":37}') is True
-        assert gap.detect(b'{"coverage"}') is False
+        assert gap.detect("") is False
+        assert gap.detect('{"Type":"S","File":"lib/error.g","FileId":37}') is True
+        assert gap.detect('{"coverage"}') is False
