@@ -1,14 +1,12 @@
-from io import BytesIO
-
 from services.report.languages.helpers import remove_non_ascii
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine, LineSession
 from shared.helpers.numeric import maxint
-from services.report.languages.base import BaseLanguageProcessor
 
 START_PARTIAL = "\033[0;41m"
 END_PARTIAL = "\033[0m"
 NAME_COLOR = "\033[0;36m"
+from services.report.languages.base import BaseLanguageProcessor
 
 
 class XCodeProcessor(BaseLanguageProcessor):
@@ -72,8 +70,7 @@ def from_txt(content, fix, ignored_lines, sessionid):
     _file = None
     ln_i = 1
     cov_i = 0
-    for encoded_line in BytesIO(content):
-        line = encoded_line.decode(errors="replace").rstrip("\n")
+    for line in content.splitlines():
         if line:
             line = remove_non_ascii(line).strip(" ")
             if line[0] not in ("-", "|", "w"):

@@ -2,7 +2,7 @@ from tests.base import BaseTestCase
 from services.report.languages import go
 
 
-txt = b"""mode: atomic
+txt = """mode: atomic
 source:1.1,1.10 1 1
 source:7.14,9.10 1 1
 source:11.26,13.2 1 1
@@ -13,7 +13,7 @@ source:15.19,17.2 1 0
 source:15.19,17.2 1 1
 """
 
-huge_txt = b"""mode: count
+huge_txt = """mode: count
 path/file.go:18.95,22.51 3 0
 path/file.go:28.2,29.61 2 0
 path/file.go:37.2,37.15 1 0

@@ -173,10 +173,10 @@ class ArchiveService(object):
     """
 
     @metrics.timer("services.archive.read_file")
-    def read_file(self, path) -> bytes:
+    def read_file(self, path) -> str:
         contents = self.storage.read_file(self.root, path)
         log.info("Downloaded file", extra=dict(content_len=len(contents)))
-        return contents
+        return contents.decode(errors="replace")
 
     """
     Generic method to delete a file from the archive.
@@ -207,7 +207,7 @@ class ArchiveService(object):
             version="v4", repo_hash=self.storage_hash, commitid=commit_sha
         )
 
-        return self.read_file(path).decode(errors="replace")
+        return self.read_file(path)
 
     """
     Delete a chunk file from the archive
