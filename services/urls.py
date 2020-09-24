@@ -2,6 +2,7 @@ from database.models import Commit, Repository, Pull
 from enum import Enum
 from urllib.parse import urlencode
 from shared.config import get_config
+import os
 
 services_short_dict = dict(
     github="gh",
@@ -21,6 +22,7 @@ class SiteUrls(Enum):
     repository_url = "{base_url}/{service_short}/{username}/{project_name}"
     graph_url = "{base_url}/{service_short}/{username}/{project_name}/commit/{commit_sha}/graphs/{graph_filename}"
     pull_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}"
+    new_client_pull_url = "https://app.codecov.io/{service_short}/{username}/{project_name}/compare/{pull_id}"
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
     org_acccount_url = "{base_url}/account/{service_short}/{username}"
 
@@ -87,6 +89,18 @@ def get_repository_url(repository: Repository) -> str:
 
 def get_pull_url(pull: Pull) -> str:
     repository = pull.repository
+    new_compare_whitelisted_ownerids = [
+        int(ownerid.strip())
+        for ownerid in os.getenv("NEW_COMPARE_WHITELISTED_OWNERS", "").split(",")
+        if ownerid != ""
+    ]
+    if repository.owner.ownerid in new_compare_whitelisted_ownerids:
+        return SiteUrls.new_client_pull_url.get_url(
+            service_short=services_short_dict.get(repository.service),
+            username=repository.owner.username,
+            project_name=repository.name,
+            pull_id=pull.pullid,
+        )
     return SiteUrls.pull_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(repository.service),
