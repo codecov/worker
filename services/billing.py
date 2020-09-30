@@ -13,4 +13,8 @@ class BillingPlan(Enum):
 
 
 def is_pr_billing_plan(plan: str) -> bool:
-    return plan in [BillingPlan.pr_monthly.value, BillingPlan.pr_yearly.value]
+    return plan in [
+        BillingPlan.pr_monthly.value,
+        BillingPlan.pr_yearly.value,
+        BillingPlan.users_free.value,
+    ]

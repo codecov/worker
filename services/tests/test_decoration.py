@@ -281,6 +281,38 @@ class TestDecorationServiceTestCase(object):
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
         )
 
+    def test_get_decoration_type_should_attempt_pr_author_auto_activation_users_free(
+        self, dbsession, mocker, enriched_pull
+    ):
+        enriched_pull.database_pull.repository.owner.plan = "users-free"
+        enriched_pull.database_pull.repository.owner.plan_user_count = 5
+        enriched_pull.database_pull.repository.owner.plan_activated_users = []
+        enriched_pull.database_pull.repository.owner.plan_auto_activate = True
+
+        pr_author = OwnerFactory.create(
+            username=enriched_pull.provider_pull["author"]["username"],
+            service_id=enriched_pull.provider_pull["author"]["id"],
+        )
+        dbsession.add(pr_author)
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull)
+        dbsession.commit()
+
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "User must be activated"
+        assert decoration_details.should_attempt_author_auto_activation is True
+        assert (
+            decoration_details.activation_org_ownerid
+            == enriched_pull.database_pull.repository.owner.ownerid
+        )
+        assert decoration_details.activation_author_ownerid == pr_author.ownerid
+        # activation hasnt happened yet
+        assert (
+            pr_author.ownerid
+            not in enriched_pull.database_pull.repository.owner.plan_activated_users
+        )
+
 
 class TestDecorationServiceGitLabTestCase(object):
     def test_get_decoration_type_not_pr_plan_gitlab_subgroup(
