@@ -1,4 +1,6 @@
 import logging
+import json
+import os
 from typing import Any, Mapping, List
 
 from shared.torngit.exceptions import (
@@ -16,6 +18,7 @@ from services.notification.types import Comparison
 from helpers.metrics import metrics
 from services.repository import get_repo_provider_service
 from services.urls import get_org_account_url
+from services.redis import get_redis_connection
 
 from services.notification.notifiers.mixins.message import MessageMixin
 
@@ -43,6 +46,41 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 pull.commentid = data_received.get("id")
             elif data_received.get("deleted_comment"):
                 pull.commentid = None
+
+    async def cache_changes(self, comparison: Comparison):
+        """
+        Caches the list of files with changes for a given comparison.
+        This information will be used API-side to speed up responses.
+        """
+        if comparison.pull.repository.owner in os.environ.get(
+            "OWNERS_WITH_CACHED_CHANGES"
+        ):
+            log.info(
+                "Caching files with changes",
+                extra=dict(
+                    pullid=comparison.pull.pullid, repoid=comparison.pull.repoid,
+                ),
+            )
+            redis = get_redis_connection()
+            hash_field = "".join(
+                (
+                    comparison.pull.repository.owner.username,
+                    comparison.pull.repository.name,
+                    f"{comparison.comparison.base.commit.commitid}...{comparison.comparison.head.commit.commitid}",
+                )
+            )
+            changes = await comparison.get_changes()
+            redis.hset(
+                "compare-files",
+                hash_field,
+                json.dumps([change.path for change in changes]),
+            )
+            log.info(
+                "Finished caching files with changes",
+                extra=dict(
+                    pullid=comparison.pull.pullid, repoid=comparison.pull.repoid,
+                ),
+            )
 
     @property
     def name(self) -> str:
@@ -138,6 +176,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             with metrics.timer(
                 "worker.services.notifications.notifiers.comment.build_message"
             ):
+                self.cache_changes(comparison)
                 message = await self.build_message(comparison)
         except TorngitClientError:
             log.warning(
