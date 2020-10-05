@@ -83,7 +83,7 @@ def report_type_matching(report: ParsedUploadedReportFile) -> Tuple[Any, Optiona
             return None, None
         try:
             parser = etree.XMLParser(recover=True, resolve_entities=False)
-            processed = etree.parse(report.file_contents, parser=parser).getroot()
+            processed = etree.fromstring(raw_report, parser=parser)
             if processed is not None and len(processed) > 0:
                 return processed, "xml"
         except ValueError:
