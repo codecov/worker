@@ -1,4 +1,5 @@
 from collections import defaultdict
+from io import BytesIO
 
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
@@ -6,7 +7,7 @@ from services.report.languages.base import BaseLanguageProcessor
 
 
 class LcovProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: bytes, first_line, name):
         return detect(content)
 
     def process(
@@ -16,20 +17,20 @@ class LcovProcessor(BaseLanguageProcessor):
 
 
 def detect(report):
-    return "\nend_of_record" in report
+    return b"\nend_of_record" in report
 
 
 def from_txt(reports, fix, ignored_lines, sessionid):
     # http://ltp.sourceforge.net/coverage/lcov/geninfo.1.php
     report = Report()
     # merge same files
-    for string in reports.split("\nend_of_record"):
+    for string in reports.split(b"\nend_of_record"):
         report.append(_process_file(string, fix, ignored_lines, sessionid))
 
     return report
 
 
-def _process_file(doc, fix, ignored_lines, sessionid):
+def _process_file(doc: bytes, fix, ignored_lines, sessionid):
     lines = {}
     branches = defaultdict(dict)
     fln, fh = {}, {}
@@ -37,8 +38,8 @@ def _process_file(doc, fix, ignored_lines, sessionid):
     CPP = False
     skip_lines = []
     _file = None
-    for line in doc.splitlines():
-        line = line.strip()
+    for encoded_line in BytesIO(doc):
+        line = encoded_line.decode(errors="replace").rstrip("\n")
         if line == "" or ":" not in line:
             continue
 
