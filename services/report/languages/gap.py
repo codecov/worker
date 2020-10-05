@@ -1,4 +1,5 @@
 from json import loads, dumps
+from io import BytesIO
 
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
@@ -7,9 +8,9 @@ from services.report.languages.base import BaseLanguageProcessor
 
 class GapProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
-        if not isinstance(content, str):
+        if not isinstance(content, bytes):
             # Its a list of jsons, so the system might mistake this as a json type
-            content = dumps(content)
+            content = dumps(content).encode()
         return detect(content)
 
     def process(
@@ -20,12 +21,12 @@ class GapProcessor(BaseLanguageProcessor):
         return from_string(content, path_fixer, ignored_lines, sessionid)
 
 
-def detect(string):
-    _string = string.split("\n", 1)[0]
+def detect(string: bytes):
+    _string = string.split(b"\n", 1)[0]
     try:
         val = loads(_string)
         return "Type" in val and "File" in val
-    except ValueError as ex:
+    except ValueError:
         return False
 
 
@@ -34,7 +35,8 @@ def from_string(string, fix, ignored_lines, sessionid):
     report = Report()
     _file = None
     skip = True
-    for line in string.splitlines():
+    for encoded_line in BytesIO(string):
+        line = encoded_line.decode(errors="replace").rstrip("\n")
         if line:
             line = loads(line)
             if line["Type"] == "S":

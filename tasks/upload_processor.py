@@ -13,10 +13,8 @@ from shared.torngit.exceptions import TorngitClientError
 from app import celery_app
 from database.models import (
     Commit,
-    ReportLevelTotals,
     Upload,
     CommitReport,
-    ReportDetails,
     UploadLevelTotals,
 )
 from shared.config import get_config
@@ -25,6 +23,7 @@ from helpers.metrics import metrics
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService, Report
+from services.report.parser import RawReportParser
 from services.repository import get_repo_provider_service
 from shared.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
@@ -439,9 +438,11 @@ class UploadProcessorTask(BaseCodecovTask):
         """
         log.debug("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
         if archive_url:
-            return archive_service.read_file(archive_url)
+            content = archive_service.read_file(archive_url)
         else:
-            return download_archive_from_redis(redis_connection, redis_key)
+            log.warning("Still using redis when we shouldn't")
+            content = download_archive_from_redis(redis_connection, redis_key)
+        return RawReportParser.parse_raw_report_from_bytes(content)
 
     def should_delete_archive(self, commit_yaml):
         if get_config("services", "minio", "expire_raw_after_n_days"):
