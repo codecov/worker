@@ -5,7 +5,7 @@ from services.report.languages import xcodeplist
 here = Path(__file__)
 folder = here.parent
 
-sample_small_plist = b"""<?xml version="1.0" encoding="UTF-8"?>
+sample_small_plist = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -44,9 +44,7 @@ class TestXCodePlist(BaseTestCase):
         return contents
 
     def test_report(self):
-        report = xcodeplist.from_xml(
-            self.readfile("xccoverage.xml").encode(), str, {}, 0
-        )
+        report = xcodeplist.from_xml(self.readfile("xccoverage.xml"), str, {}, 0)
         archive = report.to_archive()
         expect = self.readfile("xcodeplist.txt")
         assert archive == expect

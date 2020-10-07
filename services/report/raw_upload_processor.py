@@ -12,7 +12,6 @@ from services.report.fixes import get_fixes_from_raw
 from services.path_fixer.fixpaths import clean_toc
 from services.path_fixer import PathFixer
 from services.report.report_processor import process_report
-from services.report.parser import ParsedUploadedReportFile
 from services.yaml import read_yaml_field
 from typing import Any
 
@@ -27,18 +26,26 @@ def invert_pattern(string: str) -> str:
 
 
 def process_raw_upload(
-    commit_yaml, original_report, reports: ParsedUploadedReportFile, flags, session=None
+    commit_yaml, original_report, reports, flags, session=None
 ) -> Any:
     toc, env = None, None
 
     # ----------------------
     # Extract `git ls-files`
     # ----------------------
-    if reports.has_toc():
-        toc = reports.toc.read().decode(errors="replace").strip()
+    _network = reports.find("<<<<<< network\n")
+    if _network > -1:
+        toc = reports[:_network].strip()
+        reports = reports[_network + 15 :].strip()
+
+    # --------------------
+    # Extract env from toc
+    # --------------------
+    if toc:
+        if "<<<<<< ENV\n" in toc:
+            env, toc = tuple(toc.split("<<<<<< ENV\n", 1))
+
         toc = clean_toc(toc)
-    if reports.has_env():
-        env = reports.env.read().decode(errors="replace")
 
     # --------------------
     # Create Master Report
@@ -53,10 +60,10 @@ def process_raw_upload(
     # ------------------
     # Extract bash fixes
     # ------------------
-    if reports.has_path_fixes():
-        ignored_file_lines = get_fixes_from_raw(
-            reports.path_fixes.read().decode(errors="replace"), path_fixer
-        )
+    _fl = reports.find("\n# path=fixes\n")
+    if _fl > -1:
+        ignored_file_lines = get_fixes_from_raw(reports[_fl + 14 :], path_fixer)
+        reports = reports[:_fl]
     else:
         ignored_file_lines = None
 
@@ -74,24 +81,31 @@ def process_raw_upload(
     skip_files = set()
 
     # [javascript] check for both coverage.json and coverage/coverage.lcov
-    for report_file in reports.uploaded_files:
-        if report_file.filename == "coverage/coverage.json":
-            skip_files.add("coverage/coverage.lcov")
+    if (
+        "# path=coverage/coverage.lcov" in reports
+        and "# path=coverage/coverage.json" in reports
+    ):
+        skip_files.add("coverage/coverage.lcov")
 
     # ---------------
     # Process reports
     # ---------------
-    for report_file in reports.uploaded_files:
-        current_filename = report_file.filename
-        if report_file.contents:
-            if current_filename in skip_files:
-                log.info("Skipping file %s", current_filename)
-                continue
+    for report in reports.split("<<<<<< EOF"):
+        report = report.strip()
+        if report:
+            current_filename = None
+            if report.startswith("# path="):
+                current_filename = report.split("\n", 1)[0].split("# path=")[1]
+                if current_filename in skip_files:
+                    log.info(
+                        "Skipping file %s", report.split("\n", 1)[0].split("# path=")[1]
+                    )
+                    continue
             path_fixer_to_use = path_fixer.get_relative_path_aware_pathfixer(
                 current_filename
             )
             report = process_report(
-                report=report_file,
+                report=report,
                 commit_yaml=commit_yaml,
                 sessionid=sessionid,
                 ignored_lines=ignored_file_lines or {},
@@ -112,6 +126,10 @@ def process_raw_upload(
                 original_report.merge(report, joined=joined)
             path_fixer_to_use.log_abnormalities()
 
+    # exit if empty
+    if original_report.is_empty():
+        raise ReportEmptyError("No files found in report.")
+
     if path_fixer.calculated_paths.get(None):
         ignored_files = sorted(path_fixer.calculated_paths.pop(None))
         log.info(
@@ -122,10 +140,6 @@ def process_raw_upload(
                 session=sessionid,
             ),
         )
-
-    # exit if empty
-    if original_report.is_empty():
-        raise ReportEmptyError("No files found in report.")
 
     path_with_same_results = [
         (key, len(value), list(value)[:10])
