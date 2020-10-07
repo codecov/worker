@@ -2,7 +2,7 @@ from tests.base import BaseTestCase
 from services.report.languages import gcov
 from shared.reports.resources import Report
 
-txt = b"""    -:    0:Source:tmp.c
+txt = """    -:    0:Source:tmp.c
     -:    1:not covered source
     1:    2:hit source
 #####:    3:missed source
@@ -37,7 +37,7 @@ branch  1 taken 3
     1:   16:@implementation blah;
 """
 
-txt_duplicate = b"""        -:    0:Source:/project/rsl/h264/Mp4NaluParser.h
+txt_duplicate = """        -:    0:Source:/project/rsl/h264/Mp4NaluParser.h
 209*:13:
 _ZN3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEEC2Ev::
 func
@@ -220,7 +220,7 @@ class TestGcov(BaseTestCase):
     def test_single_line_report(self):
         report = gcov.from_txt(
             "",
-            b"        -:    0:Source:another_tmp.c",
+            "        -:    0:Source:another_tmp.c",
             str,
             {},
             1,
@@ -297,13 +297,13 @@ class TestGcov(BaseTestCase):
         )
 
     def test_detect(self):
-        assert gcov.detect(b"   -: 0:Source:black") is True
-        assert gcov.detect(b"..... 0:Source:white") is True
-        assert gcov.detect(b"") is False
-        assert gcov.detect(b"0:Source") is False
+        assert gcov.detect("   -: 0:Source:black") is True
+        assert gcov.detect("..... 0:Source:white") is True
+        assert gcov.detect("") is False
+        assert gcov.detect("0:Source") is False
 
     def test_ignored(self):
         assert (
-            gcov.from_txt("", b"   -: 0:Source:black\n", lambda a: None, {}, 0, {})
+            gcov.from_txt("", "   -: 0:Source:black\n", lambda a: None, {}, 0, {})
             is None
         )
