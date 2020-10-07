@@ -2007,6 +2007,27 @@ class TestCommentNotifier(object):
         assert sample_comparison.pull.commentid is None
 
     @pytest.mark.asyncio
+    async def test_cache_changes_stores_changes_in_redis_if_owner_is_whitelisted(
+        self, dbsession, sample_comparison, mock_redis, mock_repo_provider
+    ):
+        os.environ[
+            "OWNERS_WITH_CACHED_CHANGES"
+        ] = f"{sample_comparison.pull.repository.owner.ownerid}"
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "reach, diff, flags, files, footer",
+                "behavior": "default",
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+
+        await notifier.cache_changes(sample_comparison)
+        mock_redis.hset.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_notify_closed_pull_request(self, dbsession, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
