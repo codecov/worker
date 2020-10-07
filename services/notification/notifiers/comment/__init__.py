@@ -52,9 +52,12 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         Caches the list of files with changes for a given comparison.
         This information will be used API-side to speed up responses.
         """
-        if comparison.pull.repository.owner in os.environ.get(
-            "OWNERS_WITH_CACHED_CHANGES"
-        ):
+        owners_with_cached_changes = [
+            int(ownerid.strip())
+            for ownerid in os.getenv("OWNERS_WITH_CACHED_CHANGES", "").split(",")
+            if ownerid != ""
+        ]
+        if comparison.pull.repository.owner.ownerid in owners_with_cached_changes:
             log.info(
                 "Caching files with changes",
                 extra=dict(
@@ -62,7 +65,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 ),
             )
             redis = get_redis_connection()
-            hash_field = "".join(
+            hash_field = "/".join(
                 (
                     comparison.pull.repository.owner.username,
                     comparison.pull.repository.name,
@@ -176,7 +179,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             with metrics.timer(
                 "worker.services.notifications.notifiers.comment.build_message"
             ):
-                self.cache_changes(comparison)
+                await self.cache_changes(comparison)
                 message = await self.build_message(comparison)
         except TorngitClientError:
             log.warning(
