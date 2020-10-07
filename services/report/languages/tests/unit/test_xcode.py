@@ -4,7 +4,7 @@ from tests.base import BaseTestCase
 from services.report.languages import xcode
 
 
-txt = """/source:
+txt = b"""/source:
        |   1|line
       1|   2|line
   ------------------
@@ -56,7 +56,7 @@ class TestXCode(BaseTestCase):
 
     def test_removes_last(self):
         report = xcode.from_txt(
-            """\nnothing\n/file:\n    1 |   1|line\n/totally_empty:""", str, {}, 0
+            b"""\nnothing\n/file:\n    1 |   1|line\n/totally_empty:""", str, {}, 0
         )
         processed_report = self.convert_report_to_better_readable(report)
         import pprint

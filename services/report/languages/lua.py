@@ -6,11 +6,11 @@ from services.report.languages.base import BaseLanguageProcessor
 
 
 class LuaProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: bytes, first_line, name):
         return detect(content)
 
     def process(
-        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
+        self, name, content: bytes, path_fixer, ignored_lines, sessionid, repo_yaml=None
     ):
         return from_txt(content, path_fixer, ignored_lines, sessionid)
 
@@ -18,14 +18,14 @@ class LuaProcessor(BaseLanguageProcessor):
 docs = re.compile(r"^=+\n", re.M).split
 
 
-def detect(report):
-    return report[:7] == "======="
+def detect(report: bytes):
+    return report[:7] == b"======="
 
 
-def from_txt(string, fix, ignored_lines, sessionid):
+def from_txt(string: bytes, fix, ignored_lines, sessionid):
     filename = None
     report = Report()
-    for string in docs(string.replace("\t", " ")):
+    for string in docs(string.decode(errors="replace").replace("\t", " ")):
         string = string.strip()
         if string == "Summary":
             filename = None
