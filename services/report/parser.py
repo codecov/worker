@@ -60,6 +60,14 @@ class RawReportParser(object):
 
     @classmethod
     def _find_place_to_cut(cls, raw_report: bytes):
+        """Finds the locations of all separators in the report, as listed above.
+
+        Args:
+            raw_report (bytes): the raw_report to parse
+
+        Yields:
+            tuple: tuple in the format (separator_location, separator)
+        """
         common_base = b"<<<<<<"
         starting_point = 0
         while 0 <= starting_point <= len(raw_report):
@@ -78,6 +86,15 @@ class RawReportParser(object):
 
     @classmethod
     def _get_sections_to_cut(cls, raw_report: bytes):
+        """Finds which are the sections to cut when parsing `raw_report`.
+            It yields, for each section, where it starts, ends and what separator it uses
+
+        Args:
+            raw_report (bytes): the raw_report to parse
+
+        Yields:
+            tuple: tuple in the format (start_index, end_index, separator used)
+        """
         places_to_cut = sorted(cls._find_place_to_cut(raw_report))
         if places_to_cut:
             yield (0, places_to_cut[0][0], places_to_cut[0][1])
@@ -93,6 +110,23 @@ class RawReportParser(object):
 
     @classmethod
     def cut_sections(cls, raw_report: bytes):
+        """Cuts `raw_report` into the sections that we recognize in a report
+
+        This function takes the proper steps to find all the relevant sections of a report:
+            - toc: the 'network', list of files present on this report
+            - env: the envvars the user set on the upload
+            - uploaded_files: the actual report files
+            - path_fixes: the patfixes some languages need
+
+        and splits them, also taking care of 'strip()' them, removing whitespaces,
+            as the original logic also does.
+
+        Args:
+            raw_report (bytes): the raw_report to parse
+
+        Yields:
+            dict: Dicts with contents, filename and footer of each section
+        """
         whitespaces = set(string.whitespace.encode())
         sections = cls._get_sections_to_cut(raw_report)
         for start, end, separator in sections:
