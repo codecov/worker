@@ -396,13 +396,12 @@ class UploadProcessorTask(BaseCodecovTask):
             archive=archive_url or url,
             url=build_url,
         )
-        with metrics.timer(f"worker.tasks.{self.name}.process_report") as t:
-            report = report_service.build_report_from_raw_content(
-                master=current_report,
-                reports=raw_uploaded_report,
-                flags=flags,
-                session=session,
-            )
+        report = report_service.build_report_from_raw_content(
+            master=current_report,
+            reports=raw_uploaded_report,
+            flags=flags,
+            session=session,
+        )
 
         log.info(
             "Successfully processed report",
@@ -413,8 +412,6 @@ class UploadProcessorTask(BaseCodecovTask):
                 commit=commit.commitid,
                 reportid=reportid,
                 commit_yaml=report_service.current_yaml,
-                timing_ms=t.ms,
-                content_len=raw_uploaded_report.size,
             ),
         )
         return (report, session)

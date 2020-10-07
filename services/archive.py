@@ -172,12 +172,10 @@ class ArchiveService(object):
     Generic method to read a file from the archive
     """
 
+    @metrics.timer("services.archive.read_file")
     def read_file(self, path) -> bytes:
-        with metrics.timer("services.archive.read_file") as t:
-            contents = self.storage.read_file(self.root, path)
-        log.info(
-            "Downloaded file", extra=dict(timing_ms=t.ms, content_len=len(contents))
-        )
+        contents = self.storage.read_file(self.root, path)
+        log.info("Downloaded file", extra=dict(content_len=len(contents)))
         return contents
 
     """

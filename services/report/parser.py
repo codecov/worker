@@ -6,7 +6,6 @@ class ParsedUploadedReportFile(object):
     def __init__(self, filename: Optional[str], file_contents: BinaryIO):
         self.filename = filename
         self.contents = self._strip(file_contents)
-        self.size = len(self.contents)
 
     @property
     def file_contents(self):
@@ -71,10 +70,6 @@ class ParsedRawReport(object):
 
     def has_path_fixes(self) -> bool:
         return self.path_fixes is not None
-
-    @property
-    def size(self):
-        return sum(f.size for f in self.uploaded_files)
 
 
 class RawReportParser(object):
