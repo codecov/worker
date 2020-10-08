@@ -163,7 +163,7 @@ class ChecksNotifier(StatusNotifier):
                     if flag_coverage_not_uploaded_behavior == "pass":
                         payload["state"] = "success"
                         payload["output"]["summary"] = (
-                            payload["output"]["summary"]
+                            payload.get("output", {}).get("summary", "")
                             + " [Auto passed due to carriedforward or missing coverage]"
                         )
                     elif flag_coverage_not_uploaded_behavior == "exclude":
@@ -408,8 +408,67 @@ class ChecksNotifier(StatusNotifier):
                         explanation="server_side_error_provider",
                         data_sent=payload,
                     )
+                except TorngitClientError as e:
+                    if e.code == 403:
+                        raise e
+                    log.warning(
+                        "Unable to send checks notification due to a client-side error",
+                        exc_info=True,
+                        extra=dict(
+                            repoid=comparison.head.commit.repoid,
+                            commit=comparison.head.commit.commitid,
+                            notifier_name=self.name,
+                        ),
+                    )
+                    return NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=False,
+                        explanation="client_side_error_provider",
+                        data_sent=payload,
+                    )
+
         else:
-            await repository_service.update_check_run(check_id, state, output=output)
+            try:
+                with metrics.timer(
+                    "worker.services.notifications.notifiers.checks.update_check_run"
+                ):
+                    await repository_service.update_check_run(
+                        check_id, state, output=output
+                    )
+            except TorngitError:
+                log.warning(
+                    "Unable to update checks notification due to an unexpected error",
+                    exc_info=True,
+                    extra=dict(
+                        repoid=comparison.head.commit.repoid,
+                        commit=comparison.head.commit.commitid,
+                        notifier_name=self.name,
+                    ),
+                )
+                return NotificationResult(
+                    notification_attempted=True,
+                    notification_successful=False,
+                    explanation="server_side_error_provider",
+                    data_sent=payload,
+                )
+            except TorngitClientError as e:
+                if e.code == 403:
+                    raise e
+                log.warning(
+                    "Unable to update checks notification due to a client-side error",
+                    exc_info=True,
+                    extra=dict(
+                        repoid=comparison.head.commit.repoid,
+                        commit=comparison.head.commit.commitid,
+                        notifier_name=self.name,
+                    ),
+                )
+                return NotificationResult(
+                    notification_attempted=True,
+                    notification_successful=False,
+                    explanation="client_side_error_provider",
+                    data_sent=payload,
+                )
 
         return NotificationResult(
             notification_attempted=True,

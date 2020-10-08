@@ -230,10 +230,13 @@ class NotificationService(object):
                 ),
             )
             return individual_result
-        except asyncio.CancelledError:
+        except asyncio.CancelledError as e:
             log.warning(
                 "Individual notifier cancelled",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+                extra=dict(
+                    repoid=commit.repoid, commit=commit.commitid, exception=str(e)
+                ),
+                exc_info=True,
             )
             individual_result = {
                 "notifier": notifier.name,
