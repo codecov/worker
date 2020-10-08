@@ -69,7 +69,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 (
                     comparison.pull.repository.owner.username,
                     comparison.pull.repository.name,
-                    f"{comparison.comparison.base.commit.commitid}...{comparison.comparison.head.commit.commitid}",
+                    f"{comparison.pull.pullid}",
                 )
             )
             changes = await comparison.get_changes()

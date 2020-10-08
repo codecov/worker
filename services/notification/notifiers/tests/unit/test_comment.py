@@ -1,4 +1,5 @@
 import pytest
+import json
 import os
 from decimal import Decimal
 from services.notification.notifiers.comment import CommentNotifier
@@ -1949,7 +1950,16 @@ class TestCommentNotifier(object):
         )
 
         await notifier.cache_changes(sample_comparison)
-        mock_redis.hset.assert_called_once()
+        await sample_comparison.get_changes()
+        mock_redis.hset.assert_called_once_with(
+            "compare-files",
+            "/".join((
+                sample_comparison.pull.repository.owner.username,
+                sample_comparison.pull.repository.name,
+                f"{sample_comparison.pull.pullid}"
+            )),
+            json.dumps(["file_1.go", "file_2.py"])
+        )
 
     @pytest.mark.asyncio
     async def test_notify_closed_pull_request(self, dbsession, sample_comparison):
