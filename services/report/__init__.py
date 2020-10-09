@@ -98,6 +98,16 @@ class ReportService(object):
                 # This case means the report exists in our system, it was just not saved
                 #   yet into the new models therefore it needs backfilling
                 self.save_full_report(commit, actual_report)
+        elif current_report_row.details is None:
+            log.warning(
+                "Commit unexpectedly had CommitReport but no details",
+                extra=dict(commit=commit.commitid, repoid=commit.repoid),
+            )
+            report_details = ReportDetails(
+                report_id=current_report_row.id_, files_array=[]
+            )
+            db_session.add(report_details)
+            db_session.flush()
         if not self.has_initialized_report(commit):
             report = self.create_new_report_for_commit(commit)
             if not report.is_empty():
