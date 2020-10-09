@@ -1,4 +1,7 @@
+import pytest
+
 from services.github import get_github_integration_token
+from helpers.exceptions import RepositoryWithoutValidBotError
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
 # one on which the code ran
@@ -45,6 +48,48 @@ class TestGithubSpecificLogic(object):
         mocked_post.return_value.json.return_value = {"token": "arriba"}
         mocker.patch("services.github.get_pem", return_value=fake_private_key)
         assert get_github_integration_token(service, integration_id) == "arriba"
+        mocked_post.assert_called_with(
+            "https://api.github.com/app/installations/1/access_tokens",
+            headers={
+                "Accept": "application/vnd.github.machine-man-preview+json",
+                "Authorization": mocker.ANY,
+                "User-Agent": "Codecov",
+            },
+        )
+
+    def test_get_github_integration_token_not_found(self, mocker, mock_configuration):
+        service = "github"
+        mock_configuration._params["github_enterprise"] = {"url": "http://legit-github"}
+        integration_id = 1
+        mocked_post = mocker.patch("services.github.requests.post")
+        mocked_post.return_value.status_code = 404
+        mocker.patch("services.github.get_pem", return_value=fake_private_key)
+        with pytest.raises(RepositoryWithoutValidBotError):
+            get_github_integration_token(service, integration_id)
+        mocked_post.assert_called_with(
+            "https://api.github.com/app/installations/1/access_tokens",
+            headers={
+                "Accept": "application/vnd.github.machine-man-preview+json",
+                "Authorization": mocker.ANY,
+                "User-Agent": "Codecov",
+            },
+        )
+
+    def test_get_github_integration_token_unauthorized(
+        self, mocker, mock_configuration
+    ):
+        service = "github"
+        mock_configuration._params["github_enterprise"] = {"url": "http://legit-github"}
+        integration_id = 1
+        mocked_post = mocker.patch("services.github.requests.post")
+        mocked_post.return_value.status_code = 403
+        mocked_post.return_value.json.return_value = {
+            "message": "This installation has been suspended",
+            "documentation_url": "https://docs.github.com/rest/reference/apps#create-an-installation-access-token-for-an-app",
+        }
+        mocker.patch("services.github.get_pem", return_value=fake_private_key)
+        with pytest.raises(RepositoryWithoutValidBotError):
+            get_github_integration_token(service, integration_id)
         mocked_post.assert_called_with(
             "https://api.github.com/app/installations/1/access_tokens",
             headers={
