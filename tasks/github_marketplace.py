@@ -5,6 +5,7 @@ from datetime import datetime
 from app import celery_app
 from celery_config import ghm_sync_plans_task_name
 from database.models import Owner, Repository
+from services.billing import BillingPlan
 from services.github_marketplace import GitHubMarketplaceService
 from services.stripe import stripe
 from tasks.base import BaseCodecovTask
@@ -77,26 +78,20 @@ class SyncPlansTask(BaseCodecovTask):
             ),
         )
 
-        plan_type_synced = None
-        plan_removed = False
-
-        if not purchase_object:
-            self.remove_plan(db_session, ghm_service, service_id)
-            plan_removed = True
-        elif (
+        if (
             action != "cancelled"
+            and purchase_object
             and purchase_object["plan"]["id"] in ghm_service.plan_ids
         ):
             self.create_or_update_plan(
                 db_session, ghm_service, service_id, purchase_object
             )
             plan_type_synced = "paid"
-
         else:
             self.create_or_update_to_free_plan(db_session, ghm_service, service_id)
             plan_type_synced = "free"
 
-        return dict(plan_type_synced=plan_type_synced, plan_removed=plan_removed)
+        return dict(plan_type_synced=plan_type_synced)
 
     def sync_all(self, db_session, ghm_service, action):
         """
@@ -187,35 +182,6 @@ class SyncPlansTask(BaseCodecovTask):
             {Repository.activated: False}, synchronize_session=False
         )
 
-    def remove_plan(self, db_session, ghm_service, service_id):
-        """
-        Remove plan for existing owner or create new owner entry
-        """
-        log.info("Remove plan", extra=dict(service_id=service_id))
-
-        owner = (
-            db_session.query(Owner)
-            .filter(Owner.service == "github", Owner.service_id == str(service_id))
-            .first()
-        )
-
-        if owner:
-            owner.plan = None
-            owner.plan_user_count = 0
-            owner.plan_activated_users = None
-
-            self.deactivate_repos(db_session, owner.ownerid)
-        else:
-            # get user data from GitHub and add to owners table
-            user_data = ghm_service.get_user(service_id)
-            self.create_owner(
-                db_session,
-                service_id,
-                user_data["login"],
-                user_data["name"],
-                user_data["email"],
-            )
-
     def create_or_update_plan(
         self, db_session, ghm_service, service_id, purchase_object
     ):
@@ -273,12 +239,7 @@ class SyncPlansTask(BaseCodecovTask):
 
         if owner:
             # deactivate repos and remove all activated users for this owner
-
-            # NOTE: when we went to per user billing, we also needed to preserve legacy behavior, so we created a
-            # free trial per user plan which is represented as `users-free` since `null` is used by legacy
-            # to denote free trial of per repo billing
-            plan = owner.plan
-            owner.plan = "users-free" if plan == "users" else plan
+            owner.plan = BillingPlan.users_free.value
             owner.plan_user_count = 5
             owner.plan_activated_users = None
 
