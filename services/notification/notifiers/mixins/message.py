@@ -1,4 +1,6 @@
 import re
+import logging
+
 from services.notification.changes import get_changes
 from services.urls import (
     get_pull_url,
@@ -15,9 +17,113 @@ from shared.reports.resources import Report, ReportTotals
 from decimal import Decimal
 from typing import Sequence, List
 from services.notification.changes import Change
+from helpers.metrics import metrics
+
+log = logging.getLogger(__name__)
 
 null = namedtuple("_", ["totals"])(None)
 zero_change_regex = re.compile("0.0+%?")
+
+
+def make_metrics(before, after, relative, show_complexity, yaml):
+    coverage_good = None
+    icon = " |"
+    if after is None:
+        # e.g. missing flags
+        coverage = " `?` |"
+        complexity = " `?` |" if show_complexity else ""
+
+    elif after is False:
+        # e.g. file deleted
+        coverage = " |"
+        complexity = " |" if show_complexity else ""
+
+    else:
+        if type(before) is list:
+            before = ReportTotals(*before)
+        if type(after) is list:
+            after = ReportTotals(*after)
+
+        layout = " `{absolute} <{relative}> ({impact})` |"
+
+        coverage_change = (
+            (float(after.coverage) - float(before.coverage)) if before else None
+        )
+        coverage_good = (coverage_change > 0) if before else None
+        coverage = layout.format(
+            absolute=format_number_to_str(yaml, after.coverage, style="{0}%"),
+            relative=format_number_to_str(
+                yaml,
+                relative.coverage if relative else 0,
+                style="{0}%",
+                if_null="\xF8",
+            ),
+            impact=format_number_to_str(
+                yaml,
+                coverage_change,
+                style="{0}%",
+                if_zero="\xF8",
+                if_null="\xF8",
+                plus=True,
+            )
+            if before
+            else "?"
+            if before is None
+            else "\xF8",
+        )
+
+        if show_complexity:
+            is_string = isinstance(relative.complexity if relative else "", str)
+            style = "{0}%" if is_string else "{0}"
+            complexity_change = (
+                Decimal(after.complexity) - Decimal(before.complexity)
+                if before
+                else None
+            )
+            complexity_good = (complexity_change < 0) if before else None
+            complexity = layout.format(
+                absolute=style.format(format_number_to_str(yaml, after.complexity)),
+                relative=style.format(
+                    format_number_to_str(
+                        yaml, relative.complexity if relative else 0, if_null="\xF8",
+                    )
+                ),
+                impact=style.format(
+                    format_number_to_str(
+                        yaml,
+                        complexity_change,
+                        if_zero="\xF8",
+                        if_null="\xF8",
+                        plus=True,
+                    )
+                    if before
+                    else "?"
+                ),
+            )
+
+            show_up_arrow = coverage_good and complexity_good
+            show_down_arrow = (coverage_good is False and coverage_change != 0) and (
+                complexity_good is False and complexity_change != 0
+            )
+            icon = (
+                " :arrow_up: |"
+                if show_up_arrow
+                else " :arrow_down: |"
+                if show_down_arrow
+                else " |"
+            )
+
+        else:
+            complexity = ""
+            icon = (
+                " :arrow_up: |"
+                if coverage_good
+                else " :arrow_down: |"
+                if coverage_good is False and coverage_change != 0
+                else " |"
+            )
+
+    return "".join(("|", coverage, complexity, icon))
 
 
 class MessageMixin(object):
@@ -106,390 +212,362 @@ class MessageMixin(object):
             base_report = Report()
 
         if head_report:
-
-            def make_metrics(before, after, relative):
-                coverage_good = None
-                icon = " |"
-                if after is None:
-                    # e.g. missing flags
-                    coverage = " `?` |"
-                    complexity = " `?` |" if show_complexity else ""
-
-                elif after is False:
-                    # e.g. file deleted
-                    coverage = " |"
-                    complexity = " |" if show_complexity else ""
-
-                else:
-                    if type(before) is list:
-                        before = ReportTotals(*before)
-                    if type(after) is list:
-                        after = ReportTotals(*after)
-
-                    layout = " `{absolute} <{relative}> ({impact})` |"
-
-                    coverage_change = (
-                        (float(after.coverage) - float(before.coverage))
-                        if before
-                        else None
-                    )
-                    coverage_good = (coverage_change > 0) if before else None
-                    coverage = layout.format(
-                        absolute=format_number_to_str(
-                            yaml, after.coverage, style="{0}%"
-                        ),
-                        relative=format_number_to_str(
-                            yaml,
-                            relative.coverage if relative else 0,
-                            style="{0}%",
-                            if_null="\xF8",
-                        ),
-                        impact=format_number_to_str(
-                            yaml,
-                            coverage_change,
-                            style="{0}%",
-                            if_zero="\xF8",
-                            if_null="\xF8",
-                            plus=True,
-                        )
-                        if before
-                        else "?"
-                        if before is None
-                        else "\xF8",
-                    )
-
-                    if show_complexity:
-                        is_string = isinstance(
-                            relative.complexity if relative else "", str
-                        )
-                        style = "{0}%" if is_string else "{0}"
-                        complexity_change = (
-                            Decimal(after.complexity) - Decimal(before.complexity)
-                            if before
-                            else None
-                        )
-                        complexity_good = (complexity_change < 0) if before else None
-                        complexity = layout.format(
-                            absolute=style.format(
-                                format_number_to_str(yaml, after.complexity)
-                            ),
-                            relative=style.format(
-                                format_number_to_str(
-                                    yaml,
-                                    relative.complexity if relative else 0,
-                                    if_null="\xF8",
-                                )
-                            ),
-                            impact=style.format(
-                                format_number_to_str(
-                                    yaml,
-                                    complexity_change,
-                                    if_zero="\xF8",
-                                    if_null="\xF8",
-                                    plus=True,
-                                )
-                                if before
-                                else "?"
-                            ),
-                        )
-
-                        show_up_arrow = coverage_good and complexity_good
-                        show_down_arrow = (
-                            coverage_good is False and coverage_change != 0
-                        ) and (complexity_good is False and complexity_change != 0)
-                        icon = (
-                            " :arrow_up: |"
-                            if show_up_arrow
-                            else " :arrow_down: |"
-                            if show_down_arrow
-                            else " |"
-                        )
-
-                    else:
-                        complexity = ""
-                        icon = (
-                            " :arrow_up: |"
-                            if coverage_good
-                            else " :arrow_down: |"
-                            if coverage_good is False and coverage_change != 0
-                            else " |"
-                        )
-
-                return "".join(("|", coverage, complexity, icon))
-
             # loop through layouts
             for layout in map(
                 lambda l: l.strip(), (settings["layout"] or "").split(",")
             ):
                 if layout.startswith("flag"):
-                    # flags
-                    base_flags = base_report.flags if base_report else {}
-                    head_flags = head_report.flags if head_report else {}
-                    missing_flags = set(base_flags.keys()) - set(head_flags.keys())
-                    flags = []
-
-                    show_carriedforward_flags = settings.get(
-                        "show_carryforward_flags", False
+                    section_writer = FlagSectionWriter(
+                        self.repository, layout, show_complexity, settings, current_yaml
                     )
-                    for name, flag in head_flags.items():
-                        if (show_carriedforward_flags is True) or (  # Include all flags
-                            show_carriedforward_flags is False
-                            and flag.carriedforward
-                            is False  # Only include flags without carriedforward coverage
-                        ):
-                            flags.append(
-                                {
-                                    "name": name,
-                                    "before": base_flags.get(name, null).totals,
-                                    "after": flag.totals,
-                                    "diff": flag.apply_diff(diff)
-                                    if walk(diff, ("files",))
-                                    else None,
-                                    "carriedforward": flag.carriedforward,
-                                    "carriedforward_from": flag.carriedforward_from,
-                                }
-                            )
-
-                    for flag in missing_flags:
-                        flags.append(
-                            {
-                                "name": flag,
-                                "before": base_flags[flag],
-                                "after": None,
-                                "diff": None,
-                                "carriedforward": False,
-                                "carriedforward_from": None,
-                            }
-                        )
-
-                    # TODO: get icons working
-                    # flag_icon_url = ""
-                    # carriedforward_flag_icon_url = ""
-
-                    if flags:
-                        # Even if "show_carryforward_flags" is true, we don't want to show that column if there isn't actually carriedforward coverage,
-                        # so figure out if we actually have any carriedforward coverage to show
-                        has_carriedforward_flags = any(
-                            flag["carriedforward"] is True
-                            for flag in flags  # If "show_carryforward_flags" yaml setting is set to false there won't be any flags in this list with carriedforward coverage.
-                        )
-
-                        table_header = (
-                            "| Coverage \u0394 |"
-                            + (" Complexity \u0394 |" if show_complexity else "")
-                            + " |"
-                            + (
-                                " *Carryforward flag |"
-                                if has_carriedforward_flags
-                                else ""
-                            )
-                        )
-                        table_layout = (
-                            "|---|---|---|"
-                            + ("---|" if show_complexity else "")
-                            + ("---|" if has_carriedforward_flags else "")
-                        )
-
-                        write("| Flag " + table_header)
-                        write(table_layout)
-                        for flag in sorted(flags, key=lambda f: f["name"]):
-                            carriedforward, carriedforward_from = (
-                                flag["carriedforward"],
-                                flag["carriedforward_from"],
-                            )
-                            # Format the message for the "carriedforward" column, if the flag was carried forward
-                            if carriedforward is True:
-                                # The "from <link to parent commit>" text will only appear if we actually know which commit we carried forward from
-                                carriedforward_from_url = (
-                                    get_commit_url_from_commit_sha(
-                                        self.repository, carriedforward_from
-                                    )
-                                    if carriedforward_from
-                                    else ""
-                                )
-
-                                carriedforward_message = (
-                                    " Carriedforward"
-                                    + (
-                                        f" from [{carriedforward_from[:7]}]({carriedforward_from_url})"
-                                        if carriedforward_from
-                                        and carriedforward_from_url
-                                        else ""
-                                    )
-                                    + " |"
-                                )
-                            else:
-                                carriedforward_message = (
-                                    " |" if has_carriedforward_flags else ""
-                                )
-
-                            write(
-                                "| #{name} {metrics}{cf}".format(
-                                    name=flag["name"],
-                                    metrics=make_metrics(
-                                        flag["before"], flag["after"], flag["diff"]
-                                    ),
-                                    cf=carriedforward_message,
-                                )
-                            )
-
-                        if has_carriedforward_flags and show_carriedforward_flags:
-                            write("")
-                            write(
-                                "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
-                            )
-                        elif not show_carriedforward_flags:
-                            write("")
-                            write(
-                                "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
-                            )
-
                 elif layout == "diff":
-                    write("```diff")
-                    lines = diff_to_string(
-                        current_yaml,
-                        pull_dict["base"][
-                            "branch"
-                        ],  # important because base may be null
-                        base_report.totals if base_report else None,
-                        "#%s" % pull.pullid,
-                        head_report.totals,
+                    section_writer = DiffSectionWriter(
+                        self.repository, layout, show_complexity, settings, current_yaml
                     )
-                    for l in lines:
-                        write(l)
-                    write("```")
-
                 elif layout.startswith(("files", "tree")):
-
-                    # create list of files changed in diff
-                    files_in_diff = [
-                        (
-                            _diff["type"],
-                            path,
-                            make_metrics(
-                                base_report.get(path, null).totals or False,
-                                head_report.get(path, null).totals or False,
-                                _diff["totals"],
-                            ),
-                            Decimal(_diff["totals"].coverage)
-                            if _diff["totals"].coverage is not None
-                            else None,
-                        )
-                        for path, _diff in (diff["files"] if diff else {}).items()
-                        if _diff.get("totals")
-                    ]
-
-                    if files_in_diff or changes:
-                        table_header = (
-                            "| Coverage \u0394 |"
-                            + (" Complexity \u0394 |" if show_complexity else "")
-                            + " |"
-                        )
-                        table_layout = "|---|---|---|" + (
-                            "---|" if show_complexity else ""
-                        )
-                        # add table headers
-                        write(
-                            "| [Impacted Files]({0}?src=pr&el=tree) {1}".format(
-                                links["pull"], table_header
-                            )
-                        )
-                        write(table_layout)
-
-                        # get limit of results to show
-                        limit = int(layout.split(":")[1] if ":" in layout else 10)
-                        mentioned = []
-
-                        def tree_cell(typ, path, metrics, _=None):
-                            if path not in mentioned:
-                                # mentioned: for files that are in diff and changes
-                                mentioned.append(path)
-                                return "| {rm}[{path}]({compare}/diff?src=pr&el=tree#diff-{hash}){rm} {metrics}".format(
-                                    rm="~~" if typ == "deleted" else "",
-                                    path=escape_markdown(ellipsis(path, 50, False)),
-                                    compare=links["pull"],
-                                    hash=b64encode(path.encode()).decode(),
-                                    metrics=metrics,
-                                )
-
-                        # add to comment
-                        for line in starmap(
-                            tree_cell,
-                            sorted(files_in_diff, key=lambda a: a[3] or Decimal("0"))[
-                                :limit
-                            ],
-                        ):
-                            write(line)
-
-                        # reduce limit
-                        limit = limit - len(files_in_diff)
-
-                        # append changes
-                        if limit > 0 and changes:
-                            most_important_changes = sort_by_importance(changes)[:limit]
-                            for change in most_important_changes:
-                                celled = tree_cell(
-                                    "changed",
-                                    change.path,
-                                    make_metrics(
-                                        base_report.get(change.path, null).totals
-                                        or False,
-                                        head_report.get(change.path, null).totals
-                                        or False,
-                                        None,
-                                    ),
-                                )
-                                write(celled)
-
-                        remaining = len(changes or []) - limit
-                        if remaining > 0:
-                            write(
-                                "| ... and [{n} more]({href}/diff?src=pr&el=tree-more) | |".format(
-                                    n=remaining, href=links["pull"]
-                                )
-                            )
-
+                    section_writer = FileSectionWriter(
+                        self.repository, layout, show_complexity, settings, current_yaml
+                    )
                 elif layout == "reach":
-                    write(
-                        "[![Impacted file tree graph]({})]({}?src=pr&el=tree)".format(
-                            get_pull_graph_url(
-                                pull,
-                                "tree.svg",
-                                width=650,
-                                height=150,
-                                src="pr",
-                                token=pull.repository.image_token,
-                            ),
-                            links["pull"],
-                        )
+                    section_writer = ReachSectionWriter(
+                        self.repository, layout, show_complexity, settings, current_yaml
                     )
-
                 elif layout == "footer":
-                    write("------")
-                    write("")
-                    write(
-                        "[Continue to review full report at Codecov]({0}?src=pr&el=continue).".format(
-                            links["pull"]
-                        )
+                    section_writer = FooterSectionWriter(
+                        self.repository, layout, show_complexity, settings, current_yaml
                     )
-                    write(
-                        "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)"
+                else:
+                    log.warning(
+                        "Improper layout name",
+                        extra=dict(
+                            repoid=comparison.head.commit.repoid,
+                            layout_name=layout,
+                            commit=comparison.head.commit.commitid,
+                        ),
                     )
-                    write(
-                        "> `\u0394 = absolute <relative> (impact)`, `\xF8 = not affected`, `? = missing data`"
+                    section_writer = NullSectionWriter(
+                        layout, show_complexity, settings, current_yaml
                     )
-                    write(
-                        "> Powered by [Codecov]({pull}?src=pr&el=footer). Last update [{base}...{head}]({pull}?src=pr&el=lastupdated). Read the [comment docs]({comment}).".format(
-                            pull=links["pull"],
-                            base=pull_dict["base"]["commitid"][:7],
-                            head=pull_dict["head"]["commitid"][:7],
-                            comment="https://docs.codecov.io/docs/pull-request-comments",
-                        )
-                    )
-
+                with metrics.timer(
+                    f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
+                ):
+                    for line in section_writer.write_section(
+                        comparison, diff, changes, links
+                    ):
+                        write(line)
                 write("")  # nl at end of each layout
 
         return [m for m in message if m is not None]
+
+
+class BaseSectionWriter(object):
+    def __init__(self, repository, layout, show_complexity, settings, current_yaml):
+        self.repository = repository
+        self.layout = layout
+        self.show_complexity = show_complexity
+        self.settings = settings
+        self.current_yaml = current_yaml
+
+    @property
+    def name(self):
+        return self.__class__.__name__
+
+
+class NullSectionWriter(object):
+    def write_section(*args, **kwargs):
+        pass
+
+
+class FooterSectionWriter(BaseSectionWriter):
+    def write_section(
+        self, comparison, diff, changes, links,
+    ):
+        pull_dict = comparison.enriched_pull.provider_pull
+        yield ("------")
+        yield ("")
+        yield (
+            "[Continue to review full report at Codecov]({0}?src=pr&el=continue).".format(
+                links["pull"]
+            )
+        )
+        yield (
+            "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)"
+        )
+        yield (
+            "> `\u0394 = absolute <relative> (impact)`, `\xF8 = not affected`, `? = missing data`"
+        )
+        yield (
+            "> Powered by [Codecov]({pull}?src=pr&el=footer). Last update [{base}...{head}]({pull}?src=pr&el=lastupdated). Read the [comment docs]({comment}).".format(
+                pull=links["pull"],
+                base=pull_dict["base"]["commitid"][:7],
+                head=pull_dict["head"]["commitid"][:7],
+                comment="https://docs.codecov.io/docs/pull-request-comments",
+            )
+        )
+
+
+class ReachSectionWriter(BaseSectionWriter):
+    def write_section(
+        self, comparison, diff, changes, links,
+    ):
+        pull = comparison.enriched_pull.database_pull
+        yield (
+            "[![Impacted file tree graph]({})]({}?src=pr&el=tree)".format(
+                get_pull_graph_url(
+                    pull,
+                    "tree.svg",
+                    width=650,
+                    height=150,
+                    src="pr",
+                    token=pull.repository.image_token,
+                ),
+                links["pull"],
+            )
+        )
+
+
+class DiffSectionWriter(BaseSectionWriter):
+    def write_section(
+        self, comparison, diff, changes, links,
+    ):
+        base_report = comparison.base.report
+        head_report = comparison.head.report
+        if base_report is None:
+            base_report = Report()
+        pull_dict = comparison.enriched_pull.provider_pull
+        pull = comparison.enriched_pull.database_pull
+        yield ("```diff")
+        lines = diff_to_string(
+            self.current_yaml,
+            pull_dict["base"]["branch"],  # important because base may be null
+            base_report.totals if base_report else None,
+            "#%s" % pull.pullid,
+            head_report.totals,
+        )
+        for l in lines:
+            yield (l)
+        yield ("```")
+
+
+class FileSectionWriter(BaseSectionWriter):
+    def write_section(
+        self, comparison, diff, changes, links,
+    ):
+        # create list of files changed in diff
+        base_report = comparison.base.report
+        head_report = comparison.head.report
+        if base_report is None:
+            base_report = Report()
+        files_in_diff = [
+            (
+                _diff["type"],
+                path,
+                make_metrics(
+                    base_report.get(path, null).totals or False,
+                    head_report.get(path, null).totals or False,
+                    _diff["totals"],
+                    self.show_complexity,
+                    self.current_yaml,
+                ),
+                Decimal(_diff["totals"].coverage)
+                if _diff["totals"].coverage is not None
+                else None,
+            )
+            for path, _diff in (diff["files"] if diff else {}).items()
+            if _diff.get("totals")
+        ]
+
+        if files_in_diff or changes:
+            table_header = (
+                "| Coverage \u0394 |"
+                + (" Complexity \u0394 |" if self.show_complexity else "")
+                + " |"
+            )
+            table_layout = "|---|---|---|" + ("---|" if self.show_complexity else "")
+            # add table headers
+            yield (
+                "| [Impacted Files]({0}?src=pr&el=tree) {1}".format(
+                    links["pull"], table_header
+                )
+            )
+            yield (table_layout)
+
+            # get limit of results to show
+            limit = int(self.layout.split(":")[1] if ":" in self.layout else 10)
+            mentioned = []
+
+            def tree_cell(typ, path, metrics, _=None):
+                if path not in mentioned:
+                    # mentioned: for files that are in diff and changes
+                    mentioned.append(path)
+                    return "| {rm}[{path}]({compare}/diff?src=pr&el=tree#diff-{hash}){rm} {metrics}".format(
+                        rm="~~" if typ == "deleted" else "",
+                        path=escape_markdown(ellipsis(path, 50, False)),
+                        compare=links["pull"],
+                        hash=b64encode(path.encode()).decode(),
+                        metrics=metrics,
+                    )
+
+            # add to comment
+            for line in starmap(
+                tree_cell,
+                sorted(files_in_diff, key=lambda a: a[3] or Decimal("0"))[:limit],
+            ):
+                yield (line)
+
+            # reduce limit
+            limit = limit - len(files_in_diff)
+
+            # append changes
+            if limit > 0 and changes:
+                most_important_changes = sort_by_importance(changes)[:limit]
+                for change in most_important_changes:
+                    celled = tree_cell(
+                        "changed",
+                        change.path,
+                        make_metrics(
+                            base_report.get(change.path, null).totals or False,
+                            head_report.get(change.path, null).totals or False,
+                            None,
+                            self.show_complexity,
+                            self.current_yaml,
+                        ),
+                    )
+                    yield (celled)
+
+            remaining = len(changes or []) - limit
+            if remaining > 0:
+                yield (
+                    "| ... and [{n} more]({href}/diff?src=pr&el=tree-more) | |".format(
+                        n=remaining, href=links["pull"]
+                    )
+                )
+
+
+class FlagSectionWriter(BaseSectionWriter):
+    def write_section(
+        self, comparison, diff, changes, links,
+    ):
+        # flags
+        base_report = comparison.base.report
+        head_report = comparison.head.report
+        if base_report is None:
+            base_report = Report()
+        base_flags = base_report.flags if base_report else {}
+        head_flags = head_report.flags if head_report else {}
+        missing_flags = set(base_flags.keys()) - set(head_flags.keys())
+        flags = []
+
+        show_carriedforward_flags = self.settings.get("show_carryforward_flags", False)
+        for name, flag in head_flags.items():
+            if (show_carriedforward_flags is True) or (  # Include all flags
+                show_carriedforward_flags is False
+                and flag.carriedforward
+                is False  # Only include flags without carriedforward coverage
+            ):
+                flags.append(
+                    {
+                        "name": name,
+                        "before": base_flags.get(name, null).totals,
+                        "after": flag.totals,
+                        "diff": flag.apply_diff(diff)
+                        if walk(diff, ("files",))
+                        else None,
+                        "carriedforward": flag.carriedforward,
+                        "carriedforward_from": flag.carriedforward_from,
+                    }
+                )
+
+        for flag in missing_flags:
+            flags.append(
+                {
+                    "name": flag,
+                    "before": base_flags[flag],
+                    "after": None,
+                    "diff": None,
+                    "carriedforward": False,
+                    "carriedforward_from": None,
+                }
+            )
+
+        # TODO: get icons working
+        # flag_icon_url = ""
+        # carriedforward_flag_icon_url = ""
+
+        if flags:
+            # Even if "show_carryforward_flags" is true, we don't want to show that column if there isn't actually carriedforward coverage,
+            # so figure out if we actually have any carriedforward coverage to show
+            has_carriedforward_flags = any(
+                flag["carriedforward"] is True
+                for flag in flags  # If "show_carryforward_flags" yaml setting is set to false there won't be any flags in this list with carriedforward coverage.
+            )
+
+            table_header = (
+                "| Coverage \u0394 |"
+                + (" Complexity \u0394 |" if self.show_complexity else "")
+                + " |"
+                + (" *Carryforward flag |" if has_carriedforward_flags else "")
+            )
+            table_layout = (
+                "|---|---|---|"
+                + ("---|" if self.show_complexity else "")
+                + ("---|" if has_carriedforward_flags else "")
+            )
+
+            yield ("| Flag " + table_header)
+            yield (table_layout)
+            for flag in sorted(flags, key=lambda f: f["name"]):
+                carriedforward, carriedforward_from = (
+                    flag["carriedforward"],
+                    flag["carriedforward_from"],
+                )
+                # Format the message for the "carriedforward" column, if the flag was carried forward
+                if carriedforward is True:
+                    # The "from <link to parent commit>" text will only appear if we actually know which commit we carried forward from
+                    carriedforward_from_url = (
+                        get_commit_url_from_commit_sha(
+                            self.repository, carriedforward_from
+                        )
+                        if carriedforward_from
+                        else ""
+                    )
+
+                    carriedforward_message = (
+                        " Carriedforward"
+                        + (
+                            f" from [{carriedforward_from[:7]}]({carriedforward_from_url})"
+                            if carriedforward_from and carriedforward_from_url
+                            else ""
+                        )
+                        + " |"
+                    )
+                else:
+                    carriedforward_message = " |" if has_carriedforward_flags else ""
+
+                yield (
+                    "| #{name} {metrics}{cf}".format(
+                        name=flag["name"],
+                        metrics=make_metrics(
+                            flag["before"],
+                            flag["after"],
+                            flag["diff"],
+                            self.show_complexity,
+                            self.current_yaml,
+                        ),
+                        cf=carriedforward_message,
+                    )
+                )
+
+            if has_carriedforward_flags and show_carriedforward_flags:
+                yield ("")
+                yield (
+                    "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
+                )
+            elif not show_carriedforward_flags:
+                yield ("")
+                yield (
+                    "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
+                )
 
 
 def format_number_to_str(
