@@ -202,7 +202,6 @@ class PullSyncTask(BaseCodecovTask):
         Caches the list of files with changes for a given comparison.
         This information will be used API-side to speed up responses.
         """
-        breakpoint()
         owners_with_cached_changes = [
             int(ownerid.strip())
             for ownerid in os.getenv("OWNERS_WITH_CACHED_CHANGES", "").split(",")
@@ -216,15 +215,16 @@ class PullSyncTask(BaseCodecovTask):
             redis = get_redis_connection()
             hash_field = "/".join(
                 (
+                    pull.repository.owner.service,
                     pull.repository.owner.username,
                     pull.repository.name,
                     f"{pull.pullid}",
                 )
             )
-            redis.hset(
-                "compare-files",
+            redis.set(
                 hash_field,
                 json.dumps([change.path for change in changes]),
+                ex=604800,  # 1 week in seconds
             )
             log.info(
                 "Finished caching files with changes",

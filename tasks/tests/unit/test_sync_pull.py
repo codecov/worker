@@ -331,7 +331,7 @@ class TestPullSyncTask(object):
         dbsession.add(repository)
         dbsession.flush()
         base_commit = CommitFactory.create(repository=repository)
-        head_commit = CommitFactory.create(repository=repository,)
+        head_commit = CommitFactory.create(repository=repository)
         dbsession.add(base_commit)
         dbsession.add(head_commit)
         pull = PullFactory.create(
@@ -352,10 +352,15 @@ class TestPullSyncTask(object):
         task = PullSyncTask()
         task.cache_changes(pull, changes)
 
-        mock_redis.hset.assert_called_once_with(
-            "compare-files",
+        mock_redis.set.assert_called_once_with(
             "/".join(
-                (pull.repository.owner.username, pull.repository.name, f"{pull.pullid}")
+                (
+                    pull.repository.owner.service,
+                    pull.repository.owner.username,
+                    pull.repository.name,
+                    f"{pull.pullid}",
+                ),
             ),
             json.dumps(["f.py"]),
+            ex=604800,
         )
