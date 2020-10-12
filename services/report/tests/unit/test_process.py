@@ -405,6 +405,15 @@ class TestProcessReport(BaseTestCase):
                 ),
             ),
             (
+                "gap.from_string",
+                ParsedUploadedReportFile(
+                    filename=None,
+                    file_contents=BytesIO(
+                        b'{"Type": "S", "File": "a"}\n{"Type":"R","Line":1,"FileId":37}'
+                    ),
+                ),
+            ),
+            (
                 "v1.from_json",
                 ParsedUploadedReportFile(
                     filename=None, file_contents=BytesIO(b'{"RSpec": {"coverage": {}}}')

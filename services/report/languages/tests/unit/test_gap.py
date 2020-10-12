@@ -46,7 +46,19 @@ class TestGap(BaseTestCase):
 
         assert expected_result_archive == processed_report["archive"]
 
+    def test_report_from_dict(self):
+        data = {"Type": "S", "File": "lib/error.g", "FileId": 37}
+        name = "aaa"
+        report = gap.GapProcessor().process(name, data, str, {}, 0)
+        processed_report = self.convert_report_to_better_readable(report)
+        # import pprint
+        # pprint.pprint(processed_report['archive'])
+        expected_result_archive = {}
+
+        assert expected_result_archive == processed_report["archive"]
+
     def test_detect(self):
         assert gap.detect(b"") is False
         assert gap.detect(b'{"Type":"S","File":"lib/error.g","FileId":37}') is True
         assert gap.detect(b'{"coverage"}') is False
+        assert gap.detect(b"-1.7") is False
