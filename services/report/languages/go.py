@@ -76,7 +76,8 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, yaml):
             else:
                 fixed = fix(filename)
 
-                filename = file_name_replacement[filename] = fixed
+                file_name_replacement[filename] = fixed
+                filename = fixed
                 if filename is None:
                     ignored_files.append(_cur_file)
                     _cur_file = None
