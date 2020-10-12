@@ -341,22 +341,21 @@ class TestPullSyncTask(object):
             head=head_commit.commitid,
         )
 
-        os.environ[
-            "OWNERS_WITH_CACHED_CHANGES"
-        ] = f"{pull.repository.owner.ownerid}"
+        os.environ["OWNERS_WITH_CACHED_CHANGES"] = f"{pull.repository.owner.ownerid}"
 
         changes = [Change(path="f.py")]
-        mocker.patch("tasks.sync_pull.get_changes", lambda base_report, head_report, diff: changes)
+        mocker.patch(
+            "tasks.sync_pull.get_changes",
+            lambda base_report, head_report, diff: changes,
+        )
 
         task = PullSyncTask()
         task.cache_changes(pull, changes)
 
         mock_redis.hset.assert_called_once_with(
             "compare-files",
-            "/".join((
-                pull.repository.owner.username,
-                pull.repository.name,
-                f"{pull.pullid}"
-            )),
-            json.dumps(["f.py"])
+            "/".join(
+                (pull.repository.owner.username, pull.repository.name, f"{pull.pullid}")
+            ),
+            json.dumps(["f.py"]),
         )

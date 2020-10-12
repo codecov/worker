@@ -211,9 +211,7 @@ class PullSyncTask(BaseCodecovTask):
         if pull.repository.owner.ownerid in owners_with_cached_changes:
             log.info(
                 "Caching files with changes",
-                extra=dict(
-                    pullid=pull.pullid, repoid=pull.repoid,
-                ),
+                extra=dict(pullid=pull.pullid, repoid=pull.repoid,),
             )
             redis = get_redis_connection()
             hash_field = "/".join(
@@ -230,9 +228,7 @@ class PullSyncTask(BaseCodecovTask):
             )
             log.info(
                 "Finished caching files with changes",
-                extra=dict(
-                    pullid=pull.pullid, repoid=pull.repoid,
-                ),
+                extra=dict(pullid=pull.pullid, repoid=pull.repoid,),
             )
 
     async def update_pull_from_reports(
