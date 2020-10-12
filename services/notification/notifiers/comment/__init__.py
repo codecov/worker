@@ -1,6 +1,4 @@
 import logging
-import json
-import os
 from typing import Any, Mapping, List
 
 from shared.torngit.exceptions import (

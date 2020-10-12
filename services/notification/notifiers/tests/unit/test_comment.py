@@ -1,6 +1,4 @@
 import pytest
-import json
-import os
 from decimal import Decimal
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message import (
@@ -1931,7 +1929,6 @@ class TestCommentNotifier(object):
         dbsession.refresh(sample_comparison.pull)
         assert sample_comparison.pull.commentid is None
 
-    @pytest.mark.asyncio
     @pytest.mark.asyncio
     async def test_notify_closed_pull_request(self, dbsession, sample_comparison):
         notifier = CommentNotifier(
