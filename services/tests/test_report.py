@@ -2982,6 +2982,23 @@ class TestReportService(BaseTestCase):
         assert r.details.files_array == []
         assert len(mock_storage.storage["archive"]) == 0
 
+    def test_initialize_and_save_report_report_but_no_details(
+        self, dbsession, mock_storage
+    ):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(report_row)
+        dbsession.flush()
+        report_service = ReportService({})
+        r = report_service.initialize_and_save_report(commit)
+        dbsession.refresh(report_row)
+        assert r is not None
+        assert r.details is not None
+        assert r.details.files_array == []
+        assert len(mock_storage.storage["archive"]) == 0
+
     def test_initialize_and_save_report_carryforward_needed(
         self, dbsession, sample_commit_with_report_big, mocker, mock_storage
     ):
