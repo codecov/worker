@@ -8,25 +8,23 @@ from services.report.languages.base import BaseLanguageProcessor
 
 class GapProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
-        if not isinstance(content, bytes):
-            # Its a list of jsons, so the system might mistake this as a json type
-            content = dumps(content).encode()
-        return detect(content)
+        return detect(first_line)
 
     def process(
         self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
     ):
-        if not isinstance(content, str):
+        if isinstance(content, dict):
             content = dumps(content)
+        if isinstance(content, str):
+            content = content.encode()
         return from_string(content, path_fixer, ignored_lines, sessionid)
 
 
 def detect(string: bytes):
-    _string = string.split(b"\n", 1)[0]
     try:
-        val = loads(_string)
+        val = loads(string)
         return "Type" in val and "File" in val
-    except ValueError:
+    except (TypeError, ValueError):
         return False
 
 
