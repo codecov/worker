@@ -14,6 +14,7 @@ from collections import namedtuple
 from services.yaml.reader import read_yaml_field, round_number, get_minimum_precision
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report, ReportTotals
+from shared.validation.helpers import LayoutStructure
 from decimal import Decimal
 from typing import Sequence, List
 from services.notification.changes import Change
@@ -237,16 +238,17 @@ class MessageMixin(object):
                         self.repository, layout, show_complexity, settings, current_yaml
                     )
                 else:
-                    log.warning(
-                        "Improper layout name",
-                        extra=dict(
-                            repoid=comparison.head.commit.repoid,
-                            layout_name=layout,
-                            commit=comparison.head.commit.commitid,
-                        ),
-                    )
+                    if layout not in LayoutStructure.acceptable_objects:
+                        log.warning(
+                            "Improper layout name",
+                            extra=dict(
+                                repoid=comparison.head.commit.repoid,
+                                layout_name=layout,
+                                commit=comparison.head.commit.commitid,
+                            ),
+                        )
                     section_writer = NullSectionWriter(
-                        layout, show_complexity, settings, current_yaml
+                        self.repository, layout, show_complexity, settings, current_yaml
                     )
                 with metrics.timer(
                     f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
@@ -273,9 +275,9 @@ class BaseSectionWriter(object):
         return self.__class__.__name__
 
 
-class NullSectionWriter(object):
+class NullSectionWriter(BaseSectionWriter):
     def write_section(*args, **kwargs):
-        pass
+        return []
 
 
 class FooterSectionWriter(BaseSectionWriter):

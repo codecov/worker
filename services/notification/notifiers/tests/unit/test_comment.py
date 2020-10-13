@@ -568,6 +568,95 @@ class TestCommentNotifier(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_build_message_more_sections(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        pull = comparison.pull
+        all_sections = [
+            "reach, diff, flags, files, footer",
+            "changes",
+            "file",
+            "header",
+            "suggestions",
+            "sunburst",
+            "uncovered",
+            "random_section",
+        ]
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": ",".join(all_sections)},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = sample_comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `66.67%`.",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"```diff",
+            f"@@              Coverage Diff              @@",
+            f"##             master      #{pull.pullid}       +/-   ##",
+            f"=============================================",
+            f"+ Coverage     50.00%   60.00%   +10.00%     ",
+            f"+ Complexity       11       10        -1     ",
+            f"=============================================",
+            f"  Files             2        2               ",
+            f"  Lines             6       10        +4     ",
+            f"  Branches          0        1        +1     ",
+            f"=============================================",
+            f"+ Hits              3        6        +3     ",
+            f"  Misses            3        3               ",
+            f"- Partials          0        1        +1     ",
+            f"```",
+            f"",
+            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| #integration | `?` | `?` | |",
+            f"| #unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"",
+            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            f"",
+            f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"",
+            f"------",
+            f"",
+            f"[Continue to review full report at "
+            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"> **Legend** - [Click here to learn "
+            f"more](https://docs.codecov.io/docs/codecov-delta)",
+            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            f"> Powered by "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"Last update "
+            f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            f"",
+            f"",
+            f"",
+            f"",
+            f"",
+            f"",
+            f"",
+            f"",
+        ]
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
     async def test_build_upgrade_message(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
