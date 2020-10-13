@@ -337,12 +337,9 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     async def build_message(self, comparison: Comparison) -> List[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
-
-        with metrics.timer("worker.services.notifications.notifiers.comment.get_diff"):
-            diff = await self.get_diff(comparison)
         pull_dict = comparison.enriched_pull.provider_pull
-        return self.create_message(
-            comparison, diff, pull_dict, self.notifier_yaml_settings
+        return await self.create_message(
+            comparison, pull_dict, self.notifier_yaml_settings
         )
 
     def _create_upgrade_message(self, comparison):

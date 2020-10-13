@@ -355,121 +355,131 @@ class TestCommentNotifier(object):
         )
         assert notifier.is_enabled()
 
-    def test_create_message_files_section(
-        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    @pytest.mark.asyncio
+    async def test_create_message_files_section(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+        mocker,
     ):
         comparison = sample_comparison
-        diff = {
-            "files": {
-                "file_1.go": {
-                    "type": "modified",
-                    "before": None,
-                    "segments": [
-                        {
-                            "header": ["105", "8", "105", "9"],
-                            "lines": [
-                                " Overview",
-                                " --------",
-                                " ",
-                                "-Main website: `Codecov <https://codecov.io/>`_.",
-                                "-Main website: `Codecov <https://codecov.io/>`_.",
-                                "+",
-                                "+website: `Codecov <https://codecov.io/>`_.",
-                                "+website: `Codecov <https://codecov.io/>`_.",
-                                " ",
-                                " .. code-block:: shell-session",
-                                " ",
-                            ],
-                        },
-                        {
-                            "header": ["1046", "12", "1047", "19"],
-                            "lines": [
-                                " ",
-                                " You may need to configure a ``.coveragerc`` file. Learn more",
-                                " ",
-                                "-We highly suggest adding `source` to your ``.coveragerc``",
-                                "+We highly suggest adding ``source`` to your ``.coveragerc`",
-                                " ",
-                                " .. code-block:: ini",
-                                " ",
-                                "    [run]",
-                                "    source=your_package_name",
-                                "+   ",
-                                "+If there are multiple sources, you instead should add ``include",
-                                "+",
-                                "+.. code-block:: ini",
-                                "+",
-                                "+   [run]",
-                                "+   include=your_package_name/*",
-                                " ",
-                                " unittests",
-                                " ---------",
-                            ],
-                        },
-                        {
-                            "header": ["10150", "5", "10158", "4"],
-                            "lines": [
-                                " * Twitter: `@codecov <https://twitter.com/codecov>`_.",
-                                " * Email: `hello@codecov.io <hello@codecov.io>`_.",
-                                " ",
-                                "-We are happy to help if you have any questions. ",
-                                "-",
-                                "+We are happy to help if you have any questions. .",
-                            ],
-                        },
-                    ],
-                    "stats": {"added": 11, "removed": 4},
-                },
-                "file_2.py": {
-                    "type": "modified",
-                    "before": None,
-                    "segments": [
-                        {
-                            "header": ["10", "8", "10", "9"],
-                            "lines": [
-                                " Overview",
-                                " --------",
-                                " ",
-                                "-Main website: `Codecov <https://codecov.io/>`_.",
-                                "-Main website: `Codecov <https://codecov.io/>`_.",
-                                "+",
-                                "+website: `Codecov <https://codecov.io/>`_.",
-                                "+website: `Codecov <https://codecov.io/>`_.",
-                                " ",
-                                " .. code-block:: shell-session",
-                                " ",
-                            ],
-                        },
-                        {
-                            "header": ["50", "12", "51", "19"],
-                            "lines": [
-                                " ",
-                                " You may need to configure a ``.coveragerc`` file. Learn more `here <http://coverage.readthedocs.org/en/latest/config.html>`_. Start with this `generic .coveragerc <https://gist.github.com/codecov-io/bf15bde2c7db1a011b6e>`_ for example.",
-                                " ",
-                                "-We highly suggest adding `source` to your ``.coveragerc`` which solves a number of issues collecting coverage.",
-                                "+We highly suggest adding ``source`` to your ``.coveragerc``, which solves a number of issues collecting coverage.",
-                                " ",
-                                " .. code-block:: ini",
-                                " ",
-                                "    [run]",
-                                "    source=your_package_name",
-                                "+   ",
-                                "+If there are multiple sources, you instead should add ``include`` to your ``.coveragerc``",
-                                "+",
-                                "+.. code-block:: ini",
-                                "+",
-                                "+   [run]",
-                                "+   include=your_package_name/*",
-                                " ",
-                                " unittests",
-                                " ---------",
-                            ],
-                        },
-                    ],
-                    "stats": {"added": 11, "removed": 4},
-                },
-            }
-        }
+        mocker.patch.object(
+            comparison,
+            "get_diff",
+            return_value={
+                "files": {
+                    "file_1.go": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {
+                                "header": ["105", "8", "105", "9"],
+                                "lines": [
+                                    " Overview",
+                                    " --------",
+                                    " ",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "+",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    " ",
+                                    " .. code-block:: shell-session",
+                                    " ",
+                                ],
+                            },
+                            {
+                                "header": ["1046", "12", "1047", "19"],
+                                "lines": [
+                                    " ",
+                                    " You may need to configure a ``.coveragerc`` file. Learn more",
+                                    " ",
+                                    "-We highly suggest adding `source` to your ``.coveragerc``",
+                                    "+We highly suggest adding ``source`` to your ``.coveragerc`",
+                                    " ",
+                                    " .. code-block:: ini",
+                                    " ",
+                                    "    [run]",
+                                    "    source=your_package_name",
+                                    "+   ",
+                                    "+If there are multiple sources, you instead should add ``include",
+                                    "+",
+                                    "+.. code-block:: ini",
+                                    "+",
+                                    "+   [run]",
+                                    "+   include=your_package_name/*",
+                                    " ",
+                                    " unittests",
+                                    " ---------",
+                                ],
+                            },
+                            {
+                                "header": ["10150", "5", "10158", "4"],
+                                "lines": [
+                                    " * Twitter: `@codecov <https://twitter.com/codecov>`_.",
+                                    " * Email: `hello@codecov.io <hello@codecov.io>`_.",
+                                    " ",
+                                    "-We are happy to help if you have any questions. ",
+                                    "-",
+                                    "+We are happy to help if you have any questions. .",
+                                ],
+                            },
+                        ],
+                        "stats": {"added": 11, "removed": 4},
+                    },
+                    "file_2.py": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {
+                                "header": ["10", "8", "10", "9"],
+                                "lines": [
+                                    " Overview",
+                                    " --------",
+                                    " ",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "+",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    " ",
+                                    " .. code-block:: shell-session",
+                                    " ",
+                                ],
+                            },
+                            {
+                                "header": ["50", "12", "51", "19"],
+                                "lines": [
+                                    " ",
+                                    " You may need to configure a ``.coveragerc`` file. Learn more `here <http://coverage.readthedocs.org/en/latest/config.html>`_. Start with this `generic .coveragerc <https://gist.github.com/codecov-io/bf15bde2c7db1a011b6e>`_ for example.",
+                                    " ",
+                                    "-We highly suggest adding `source` to your ``.coveragerc`` which solves a number of issues collecting coverage.",
+                                    "+We highly suggest adding ``source`` to your ``.coveragerc``, which solves a number of issues collecting coverage.",
+                                    " ",
+                                    " .. code-block:: ini",
+                                    " ",
+                                    "    [run]",
+                                    "    source=your_package_name",
+                                    "+   ",
+                                    "+If there are multiple sources, you instead should add ``include`` to your ``.coveragerc``",
+                                    "+",
+                                    "+.. code-block:: ini",
+                                    "+",
+                                    "+   [run]",
+                                    "+   include=your_package_name/*",
+                                    " ",
+                                    " unittests",
+                                    " ---------",
+                                ],
+                            },
+                        ],
+                        "stats": {"added": 11, "removed": 4},
+                    },
+                }
+            },
+        )
         pull_dict = {"base": {"branch": "master"}}
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -491,7 +501,7 @@ class TestCommentNotifier(object):
             f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
         ]
-        res = notifier.create_message(comparison, diff, pull_dict, {"layout": "files"})
+        res = await notifier.create_message(comparison, pull_dict, {"layout": "files"})
         print(res)
         assert expected_result == res
 

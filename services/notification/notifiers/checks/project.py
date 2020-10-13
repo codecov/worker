@@ -16,9 +16,8 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         return Notification.checks_project
 
     async def get_message(self, comparison: Comparison, yaml_comment_settings):
-        diff = await self.get_diff(comparison)
         pull_dict = comparison.enriched_pull.provider_pull
-        return self.create_message(comparison, diff, pull_dict, yaml_comment_settings)
+        return await self.create_message(comparison, pull_dict, yaml_comment_settings)
 
     async def build_payload(self, comparison: Comparison):
         """
