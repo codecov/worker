@@ -748,6 +748,7 @@ class TestPatchChecksNotifier(object):
             },
         }
         result = await notifier.build_payload(sample_comparison)
+        assert expected_result["output"]["summary"] == result["output"]["summary"]
         assert expected_result == result
 
     @pytest.mark.asyncio
@@ -1222,9 +1223,113 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": "Codecov Report",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
-                "text": f"# [Codecov](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report\n> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) will **increase** coverage by `10.00%`.\n> The diff coverage is `66.67%`.\n\n| [Impacted Files](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |\n|---|---|---|---|\n| [file\\_1.go](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |\n| [file\\_2.py](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |\n",
+                "text": "\n".join(
+                    [
+                        f"# [Codecov](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
+                        f"> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) will **increase** coverage by `10.00%`.",
+                        f"> The diff coverage is `66.67%`.",
+                        f"",
+                        f"| [Impacted Files](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+                        f"|---|---|---|---|",
+                        f"| [file\\_1.go](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+                        f"| [file\\_2.py](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+                        f"",
+                    ]
+                ),
             },
         }
+        assert expected_result["output"]["text"].split("\n") == result["output"][
+            "text"
+        ].split("\n")
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_default_payload_with_flags(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="default",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={"comment": {"layout": "files, flags"}},
+        )
+        result = await notifier.build_payload(sample_comparison)
+        repo = sample_comparison.head.commit.repository
+        base_commit = sample_comparison.base.commit
+        expected_result = {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "text": "\n".join(
+                    [
+                        f"# [Codecov](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
+                        f"> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) will **increase** coverage by `10.00%`.",
+                        f"> The diff coverage is `66.67%`.",
+                        f"",
+                        f"| [Impacted Files](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+                        f"|---|---|---|---|",
+                        f"| [file\\_1.go](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+                        f"| [file\\_2.py](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+                        f"",
+                    ]
+                ),
+            },
+        }
+        assert expected_result["output"]["text"].split("\n") == result["output"][
+            "text"
+        ].split("\n")
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_default_payload_with_flags_and_footer(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        test_name = "test_build_default_payload_with_flags_and_footer"
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="default",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={"comment": {"layout": "files, flags, footer"}},
+        )
+        result = await notifier.build_payload(sample_comparison)
+        repo = sample_comparison.head.commit.repository
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        expected_result = {
+            "state": "success",
+            "output": {
+                "title": "Codecov Report",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "text": "\n".join(
+                    [
+                        f"# [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
+                        f"> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) into [master](test.example.br/gh/{test_name}/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) will **increase** coverage by `10.00%`.",
+                        f"> The diff coverage is `66.67%`.",
+                        f"",
+                        f"| [Impacted Files](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+                        f"|---|---|---|---|",
+                        f"| [file\\_1.go](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+                        f"| [file\\_2.py](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+                        f"",
+                        f"------",
+                        f"",
+                        f"[Continue to review full report at Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=continue).",
+                        f"> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
+                        f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+                        f"> Powered by [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=footer). Last update [{base_commit.commitid[:7]}...{head_commit.commitid[:7]}](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+                        f"",
+                    ]
+                ),
+            },
+        }
+        assert expected_result["output"]["text"].split("\n") == result["output"][
+            "text"
+        ].split("\n")
         assert expected_result == result
 
     @pytest.mark.asyncio

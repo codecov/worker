@@ -37,6 +37,10 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         flags = self.notifier_yaml_settings.get("flags")
         paths = self.notifier_yaml_settings.get("paths")
         yaml_comment_settings = read_yaml_field(self.current_yaml, ("comment",)) or {}
+        if "flag" in yaml_comment_settings.get("layout", ""):
+            old_flags_list = yaml_comment_settings.get("layout", "").split(",")
+            new_flags_list = [x for x in old_flags_list if "flag" not in x]
+            yaml_comment_settings["layout"] = ",".join(new_flags_list)
 
         if (
             flags is not None
