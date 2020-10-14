@@ -36,16 +36,18 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         flags = self.notifier_yaml_settings.get("flags")
         paths = self.notifier_yaml_settings.get("paths")
         yaml_comment_settings = read_yaml_field(self.current_yaml, ("comment",)) or {}
-        if "flag" in yaml_comment_settings.get("layout", ""):
-            old_flags_list = yaml_comment_settings.get("layout", "").split(",")
+        # copying to a new variable because we will be modifying that
+        settings_to_be_used = dict(yaml_comment_settings)
+        if "flag" in settings_to_be_used.get("layout", ""):
+            old_flags_list = settings_to_be_used.get("layout", "").split(",")
             new_flags_list = [x for x in old_flags_list if "flag" not in x]
-            yaml_comment_settings["layout"] = ",".join(new_flags_list)
+            settings_to_be_used["layout"] = ",".join(new_flags_list)
 
         if (
             flags is not None
             or paths is not None
             or should_use_upgrade
-            or not yaml_comment_settings
+            or not settings_to_be_used
         ):
             return {
                 "state": state,
@@ -55,7 +57,7 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
                 },
             }
 
-        message = await self.get_message(comparison, yaml_comment_settings)
+        message = await self.get_message(comparison, settings_to_be_used)
         return {
             "state": state,
             "output": {
