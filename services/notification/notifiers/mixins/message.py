@@ -551,7 +551,7 @@ class FlagSectionWriter(BaseSectionWriter):
                     carriedforward_message = " |" if has_carriedforward_flags else ""
 
                 yield (
-                    "| #{name} {metrics}{cf}".format(
+                    "| {name} {metrics}{cf}".format(
                         name=flag["name"],
                         metrics=make_metrics(
                             flag["before"],
