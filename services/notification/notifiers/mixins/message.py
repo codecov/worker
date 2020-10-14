@@ -1,5 +1,10 @@
 import re
 import logging
+from decimal import Decimal
+from typing import Sequence, List
+from itertools import starmap
+from base64 import b64encode
+from collections import namedtuple
 
 from services.notification.changes import get_changes
 from services.urls import (
@@ -8,17 +13,13 @@ from services.urls import (
     get_pull_graph_url,
     get_commit_url_from_commit_sha,
 )
-from itertools import starmap
-from base64 import b64encode
-from collections import namedtuple
 from services.yaml.reader import read_yaml_field, round_number, get_minimum_precision
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
-from decimal import Decimal
-from typing import Sequence, List
 from services.notification.changes import Change
 from helpers.metrics import metrics
+from services.notification.comparison import ComparisonProxy
 
 log = logging.getLogger(__name__)
 
@@ -128,7 +129,9 @@ def make_metrics(before, after, relative, show_complexity, yaml):
 
 
 class MessageMixin(object):
-    def create_message(self, comparison, diff, pull_dict, yaml_settings):
+    async def create_message(
+        self, comparison: ComparisonProxy, pull_dict, yaml_settings
+    ):
         """
             Assemble the various components of the PR comments message in accordance with their YAML configuration.
             See https://docs.codecov.io/docs/pull-request-comments for more context on the different parts of a PR comment.
@@ -142,7 +145,8 @@ class MessageMixin(object):
                           Thus, the comment block of the codecov YAML is passed as the "yaml_settings" parameter for these Notifiers.
         
         """
-        changes = get_changes(comparison.base.report, comparison.head.report, diff)
+        changes = await comparison.get_changes()
+        diff = await comparison.get_diff()
         base_report = comparison.base.report
         head_report = comparison.head.report
         pull = comparison.pull
