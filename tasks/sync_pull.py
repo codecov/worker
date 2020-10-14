@@ -213,8 +213,9 @@ class PullSyncTask(BaseCodecovTask):
                 extra=dict(pullid=pull.pullid, repoid=pull.repoid,),
             )
             redis = get_redis_connection()
-            hash_field = "/".join(
+            key = "/".join(
                 (
+                    "compare-changed-files",
                     pull.repository.owner.service,
                     pull.repository.owner.username,
                     pull.repository.name,
@@ -222,9 +223,9 @@ class PullSyncTask(BaseCodecovTask):
                 )
             )
             redis.set(
-                hash_field,
+                key,
                 json.dumps([change.path for change in changes]),
-                ex=604800,  # 1 week in seconds
+                ex=86400,  # 1 day in seconds
             )
             log.info(
                 "Finished caching files with changes",

@@ -355,6 +355,7 @@ class TestPullSyncTask(object):
         mock_redis.set.assert_called_once_with(
             "/".join(
                 (
+                    "compare-changed-files",
                     pull.repository.owner.service,
                     pull.repository.owner.username,
                     pull.repository.name,
@@ -362,5 +363,5 @@ class TestPullSyncTask(object):
                 ),
             ),
             json.dumps(["f.py"]),
-            ex=604800,
+            ex=86400,
         )
