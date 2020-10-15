@@ -1,5 +1,7 @@
 from pathlib import Path
 import pytest
+import os
+import json
 
 from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitClientError
@@ -8,6 +10,7 @@ from tasks.sync_pull import PullSyncTask
 from database.tests.factories import RepositoryFactory, CommitFactory, PullFactory
 from services.repository import EnrichedPull
 from helpers.exceptions import RepositoryWithoutValidBotError
+from shared.reports.types import Change
 
 here = Path(__file__)
 
@@ -319,4 +322,46 @@ class TestPullSyncTask(object):
         assert task.was_pr_merged_with_squash(["some_other_stuff"], ancestors_tree)
         assert not task.was_pr_merged_with_squash(
             ["some_other_stuff", "some_commit"], ancestors_tree
+        )
+
+    def test_cache_changes_stores_changed_files_in_redis_if_owner_is_whitelisted(
+        self, dbsession, mock_redis, mock_repo_provider, mocker
+    ):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        base_commit = CommitFactory.create(repository=repository)
+        head_commit = CommitFactory.create(repository=repository)
+        dbsession.add(base_commit)
+        dbsession.add(head_commit)
+        pull = PullFactory.create(
+            state="open",
+            repository=repository,
+            base=base_commit.commitid,
+            head=head_commit.commitid,
+        )
+
+        os.environ["OWNERS_WITH_CACHED_CHANGES"] = f"{pull.repository.owner.ownerid}"
+
+        changes = [Change(path="f.py")]
+        mocker.patch(
+            "tasks.sync_pull.get_changes",
+            lambda base_report, head_report, diff: changes,
+        )
+
+        task = PullSyncTask()
+        task.cache_changes(pull, changes)
+
+        mock_redis.set.assert_called_once_with(
+            "/".join(
+                (
+                    "compare-changed-files",
+                    pull.repository.owner.service,
+                    pull.repository.owner.username,
+                    pull.repository.name,
+                    f"{pull.pullid}",
+                ),
+            ),
+            json.dumps(["f.py"]),
+            ex=86400,
         )

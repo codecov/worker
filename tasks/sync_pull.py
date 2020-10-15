@@ -1,7 +1,9 @@
 import logging
 from datetime import datetime
-from typing import Sequence, Dict, Any, Set
+from typing import Sequence, Dict, Any, Set, List
 from collections import deque
+import os
+import json
 
 import sqlalchemy.orm
 from celery_config import pulls_task_name, notify_task_name
@@ -23,6 +25,8 @@ from services.yaml import get_final_yaml
 from services.report import ReportService, Report
 from tasks.base import BaseCodecovTask
 from app import celery_app
+from shared.reports.types import Change
+from services.redis import get_redis_connection
 
 
 log = logging.getLogger(__name__)
@@ -193,6 +197,41 @@ class PullSyncTask(BaseCodecovTask):
             "reason": "success",
         }
 
+    def cache_changes(self, pull: Pull, changes: List[Change]):
+        """
+        Caches the list of files with changes for a given comparison.
+        This information will be used API-side to speed up responses.
+        """
+        owners_with_cached_changes = [
+            int(ownerid.strip())
+            for ownerid in os.getenv("OWNERS_WITH_CACHED_CHANGES", "").split(",")
+            if ownerid != ""
+        ]
+        if pull.repository.owner.ownerid in owners_with_cached_changes:
+            log.info(
+                "Caching files with changes",
+                extra=dict(pullid=pull.pullid, repoid=pull.repoid,),
+            )
+            redis = get_redis_connection()
+            key = "/".join(
+                (
+                    "compare-changed-files",
+                    pull.repository.owner.service,
+                    pull.repository.owner.username,
+                    pull.repository.name,
+                    f"{pull.pullid}",
+                )
+            )
+            redis.set(
+                key,
+                json.dumps([change.path for change in changes]),
+                ex=86400,  # 1 day in seconds
+            )
+            log.info(
+                "Finished caching files with changes",
+                extra=dict(pullid=pull.pullid, repoid=pull.repoid,),
+            )
+
     async def update_pull_from_reports(
         self,
         pull: Pull,
@@ -207,6 +246,8 @@ class PullSyncTask(BaseCodecovTask):
             )
             diff = compare_dict["diff"]
             changes = get_changes(base_report, head_report, diff)
+            if changes:
+                self.cache_changes(pull, changes)
             if head_report:
                 color = read_yaml_field(current_yaml, ("coverage", "range"))
                 pull.diff = head_report.apply_diff(diff)
