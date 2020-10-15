@@ -6,6 +6,7 @@ from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureEr
 from celery.exceptions import MaxRetriesExceededError
 from redis.exceptions import LockError
 from celery.exceptions import SoftTimeLimitExceeded
+from shared.reports.readonly import ReadOnlyReport
 
 from app import celery_app
 from celery_config import (
@@ -186,10 +187,14 @@ class NotifyTask(BaseCodecovTask):
 
             report_service = ReportService(current_yaml)
             if base_commit is not None:
-                base_report = report_service.get_existing_report_for_commit(base_commit)
+                base_report = report_service.get_existing_report_for_commit(
+                    base_commit, report_class=ReadOnlyReport
+                )
             else:
                 base_report = None
-            head_report = report_service.get_existing_report_for_commit(commit)
+            head_report = report_service.get_existing_report_for_commit(
+                commit, report_class=ReadOnlyReport
+            )
             if head_report is None:
                 return {
                     "notified": False,

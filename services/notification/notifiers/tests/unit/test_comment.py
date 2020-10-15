@@ -11,6 +11,7 @@ from services.decoration import Decoration
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
 from shared.reports.types import ReportTotals
+from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
@@ -1466,7 +1467,9 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        sample_comparison.head.report = sample_report_without_flags
+        sample_comparison.head.report = ReadOnlyReport.create_from_report(
+            sample_report_without_flags
+        )
         comparison = sample_comparison
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(sample_comparison)

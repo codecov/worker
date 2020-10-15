@@ -1,5 +1,6 @@
 import pytest
 from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.reports.readonly import ReadOnlyReport
 from shared.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
@@ -285,8 +286,12 @@ def sample_comparison(dbsession, request, sample_report):
     dbsession.add(pull)
     dbsession.flush()
     repository = base_commit.repository
-    base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
-    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(get_small_report())
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
@@ -333,8 +338,12 @@ def sample_comparison_coverage_carriedforward(
     report._totals = (
         None  # need to reset the report to get it to recalculate totals correctly
     )
-    base_full_commit = FullCommit(commit=base_commit, report=report)
-    head_full_commit = FullCommit(commit=head_commit, report=report)
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(report)
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(report)
+    )
 
     return ComparisonProxy(
         Comparison(
@@ -374,8 +383,12 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
     dbsession.add(pull)
     dbsession.flush()
     repository = base_commit.repository
-    base_full_commit = FullCommit(commit=base_commit, report=sample_report)
-    head_full_commit = FullCommit(commit=head_commit, report=get_small_report())
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(get_small_report())
+    )
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
@@ -414,8 +427,12 @@ def sample_comparison_no_change(dbsession, request, sample_report):
     dbsession.add(pull)
     dbsession.flush()
     repository = base_commit.repository
-    base_full_commit = FullCommit(commit=base_commit, report=sample_report)
-    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
@@ -450,8 +467,12 @@ def sample_comparison_without_pull(dbsession, request, sample_report):
     dbsession.add(head_commit)
     dbsession.flush()
     repository = base_commit.repository
-    base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
-    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(get_small_report())
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
@@ -476,8 +497,12 @@ def sample_comparison_database_pull_without_provider(dbsession, request, sample_
     dbsession.add(pull)
     dbsession.flush()
     repository = base_commit.repository
-    base_full_commit = FullCommit(commit=base_commit, report=get_small_report())
-    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(get_small_report())
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
@@ -501,7 +526,9 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
     dbsession.add(base_commit)
     dbsession.add(pull)
     dbsession.flush()
-    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
     base_full_commit = FullCommit(commit=base_commit, report=None)
     return ComparisonProxy(
         Comparison(
@@ -538,7 +565,9 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
     dbsession.add(head_commit)
     dbsession.add(pull)
     dbsession.flush()
-    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
     base_full_commit = FullCommit(commit=None, report=None)
     return ComparisonProxy(
         Comparison(

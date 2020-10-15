@@ -335,6 +335,7 @@ class TestNotifyTask(object):
             commitid=commit.commitid,
             current_yaml={"coverage": {"status": {"patch": True}}},
         )
+        print(result)
         expected_result = {
             "notified": True,
             "notifications": [
@@ -351,6 +352,7 @@ class TestNotifyTask(object):
                 }
             ],
         }
+        assert result["notifications"] == expected_result["notifications"]
         assert result["notifications"][0] == expected_result["notifications"][0]
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result

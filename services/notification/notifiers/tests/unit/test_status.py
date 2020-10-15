@@ -7,7 +7,7 @@ from shared.torngit.exceptions import (
     TorngitServerUnreachableError,
     TorngitRepoNotFoundError,
 )
-
+from shared.reports.readonly import ReadOnlyReport
 from services.decoration import Decoration
 from services.notification.notifiers.status import (
     ProjectStatusNotifier,
@@ -157,8 +157,8 @@ def comparison_with_multiple_changes(sample_comparison):
     second_unrelated_file.append(16, ReportLine(coverage=1))
     second_unrelated_file.append(32, ReportLine(coverage=0))
     second_report.append(second_unrelated_file)
-    sample_comparison.base.report = first_report
-    sample_comparison.head.report = second_report
+    sample_comparison.base.report = ReadOnlyReport.create_from_report(first_report)
+    sample_comparison.head.report = ReadOnlyReport.create_from_report(second_report)
     return sample_comparison
 
 

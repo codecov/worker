@@ -6,6 +6,7 @@ from json import loads
 from shared.metrics import metrics
 from shared.reports.resources import Report
 from shared.reports.editable import EditableReport
+from shared.reports.readonly import ReadOnlyReport
 from shared.storage.exceptions import FileNotInStorageError
 from shared.reports.carryforward import generate_carryforward_report
 from shared.utils.sessions import SessionType
@@ -184,15 +185,18 @@ class ReportService(object):
             all_flags.append(existing_flag)
         return all_flags
 
-    def build_report(self, chunks, files, sessions, totals) -> Report:
-        report_class = Report
-        for sess in sessions.values():
-            if sess.get("st") == "carriedforward":
-                report_class = EditableReport
+    def build_report(
+        self, chunks, files, sessions, totals, report_class=None
+    ) -> Report:
+        if report_class is None:
+            report_class = Report
+            for sess in sessions.values():
+                if sess.get("st") == "carriedforward":
+                    report_class = EditableReport
         with metrics.timer(
             f"services.report.ReportService.build_report.{report_class.__name__}"
         ):
-            return report_class(
+            return report_class.from_chunks(
                 chunks=chunks, files=files, sessions=sessions, totals=totals
             )
 
@@ -202,7 +206,9 @@ class ReportService(object):
     def build_report_from_commit(self, commit) -> Report:
         return self._do_build_report_from_commit(commit)
 
-    def get_existing_report_for_commit(self, commit) -> Optional[Report]:
+    def get_existing_report_for_commit(
+        self, commit, report_class=None
+    ) -> Optional[Report]:
         commitid = commit.commitid
         if commit.report_json is None:
             return None
@@ -220,7 +226,9 @@ class ReportService(object):
         files = commit.report_json["files"]
         sessions = commit.report_json["sessions"]
         totals = commit.totals
-        res = self.build_report(chunks, files, sessions, totals)
+        res = self.build_report(
+            chunks, files, sessions, totals, report_class=report_class
+        )
         return res
 
     def _do_build_report_from_commit(self, commit) -> Report:

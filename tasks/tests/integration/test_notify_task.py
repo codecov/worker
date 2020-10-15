@@ -131,6 +131,11 @@ class TestNotifyTask(object):
                 }
             ],
         }
+        assert (
+            result["notifications"][0]["result"]
+            == expected_result["notifications"][0]["result"]
+        )
+        assert result["notifications"][0] == expected_result["notifications"][0]
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
 
@@ -701,6 +706,9 @@ class TestNotifyTask(object):
                 == actual["result"]["notification_successful"]
             )
             assert expected["result"]["explanation"] == actual["result"]["explanation"]
+            assert expected["result"]["data_sent"].get("message") == actual["result"][
+                "data_sent"
+            ].get("message")
             assert expected["result"]["data_sent"] == actual["result"]["data_sent"]
             assert (
                 expected["result"]["data_received"] == actual["result"]["data_received"]

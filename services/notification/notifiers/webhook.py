@@ -33,7 +33,7 @@ class WebhookNotifier(RequestsYamlBasedNotifier):
             "author": author_dict,
             "url": get_commit_url(commit),
             "timestamp": commit.timestamp.isoformat(),
-            "totals": dataclasses.asdict(full_commit.report.totals)
+            "totals": full_commit.report.totals.asdict()
             if full_commit.report is not None
             else None,
             "commitid": commit.commitid,

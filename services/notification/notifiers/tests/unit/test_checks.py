@@ -11,6 +11,7 @@ from services.notification.notifiers.status import PatchStatusNotifier
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
+from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from services.notification.notifiers.checks.base import ChecksNotifier
 from shared.reports.resources import ReportLine, ReportFile, Report
@@ -193,8 +194,8 @@ def comparison_with_multiple_changes(sample_comparison):
     second_unrelated_file.append(16, ReportLine(coverage=1))
     second_unrelated_file.append(32, ReportLine(coverage=0))
     second_report.append(second_unrelated_file)
-    sample_comparison.base.report = first_report
-    sample_comparison.head.report = second_report
+    sample_comparison.base.report = ReadOnlyReport.create_from_report(first_report)
+    sample_comparison.head.report = ReadOnlyReport.create_from_report(second_report)
     return sample_comparison
 
 
@@ -844,6 +845,9 @@ class TestPatchChecksNotifier(object):
             },
         }
         result = await notifier.build_payload(sample_comparison)
+        assert expected_result["state"] == result["state"]
+        assert expected_result["output"]["summary"] == result["output"]["summary"]
+        assert expected_result["output"] == result["output"]
         assert expected_result == result
 
     @pytest.mark.asyncio
@@ -883,6 +887,8 @@ class TestPatchChecksNotifier(object):
             },
         }
         result = await notifier.build_payload(comparison_with_multiple_changes)
+        assert expected_result["state"] == result["state"]
+        assert expected_result["output"] == result["output"]
         assert expected_result == result
         # assert that the value of diff was not changed
         for filename in original_value["files"]:
@@ -1473,9 +1479,9 @@ class TestProjectChecksNotifier(object):
         base_commit = sample_comparison.base.commit
         head_commit = sample_comparison.head.commit
         result = await notifier.notify(sample_comparison)
-        assert result.notification_successful == True
+        assert result.notification_successful is True
         assert result.explanation is None
-        assert result.data_sent == {
+        expected_result = {
             "state": "success",
             "output": {
                 "title": f"62.50% (+12.50%) compared to {base_commit.commitid[0:7]}",
@@ -1483,6 +1489,12 @@ class TestProjectChecksNotifier(object):
             },
             "url": f"test.example.br/gh/test_check_notify_single_path_match/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
         }
+        assert result.data_sent["state"] == expected_result["state"]
+        assert (
+            result.data_sent["output"]["summary"]
+            == expected_result["output"]["summary"]
+        )
+        assert result.data_sent["output"] == expected_result["output"]
 
     @pytest.mark.asyncio
     async def test_check_notify_multiple_path_match(
@@ -1590,6 +1602,11 @@ class TestProjectChecksNotifier(object):
             },
         )
         result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert (
+            expected_result.data_sent["output"]["summary"]
+            == result.data_sent["output"]["summary"]
+        )
+        assert expected_result.data_sent["output"] == result.data_sent["output"]
         assert expected_result == result
 
     @pytest.mark.asyncio
@@ -1819,4 +1836,10 @@ class TestProjectChecksNotifier(object):
             },
         )
         result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        assert (
+            expected_result.data_sent["output"]["summary"]
+            == result.data_sent["output"]["summary"]
+        )
+        assert expected_result.data_sent["output"] == result.data_sent["output"]
+        assert expected_result.data_sent == result.data_sent
         assert expected_result == result

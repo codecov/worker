@@ -1,6 +1,7 @@
 import pytest
 
 from services.notification.notifiers.comment import CommentNotifier
+from shared.reports.readonly import ReadOnlyReport
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.notification.types import FullCommit, Comparison, EnrichedPull
 from services.notification.comparison import ComparisonProxy
@@ -36,8 +37,12 @@ def sample_comparison(dbsession, request, sample_report, small_report):
     dbsession.add(pull)
     dbsession.flush()
     repository = base_commit.repository
-    base_full_commit = FullCommit(commit=base_commit, report=small_report)
-    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(small_report)
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
@@ -95,8 +100,12 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
     dbsession.add(pull)
     dbsession.flush()
     repository = base_commit.repository
-    base_full_commit = FullCommit(commit=base_commit, report=small_report)
-    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(small_report)
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
