@@ -163,7 +163,7 @@ class StatusNotifier(AbstractBaseNotifier):
     def get_notifier_filters(self) -> dict:
         flag_list = self.notifier_yaml_settings.get("flags") or []
         return dict(
-            paths=set(
+            path_patterns=set(
                 get_paths_from_flags(self.current_yaml, flag_list)
                 + (self.notifier_yaml_settings.get("paths") or [])
             ),
@@ -181,16 +181,13 @@ class StatusNotifier(AbstractBaseNotifier):
             )
         # Filter the coverage report based on fields in this notification's YAML settings
         # e.g. if "paths" is specified, exclude the coverage not on those paths
-        _filters = self.get_notifier_filters()
-        base_full_commit = comparison.base
+        filtered_comparison = comparison.get_filtered_comparison(
+            **self.get_notifier_filters()
+        )
         try:
-            with comparison.head.report.filter(**_filters):
-                with (
-                    base_full_commit.report.filter(**_filters)
-                    if comparison.has_base_report()
-                    else nullcontext()
-                ):
-                    payload = await self.build_payload(comparison)
+            with nullcontext():
+                with nullcontext():
+                    payload = await self.build_payload(filtered_comparison)
 
                     # If flag coverage wasn't uploaded, apply the appropriate behavior
                     flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(

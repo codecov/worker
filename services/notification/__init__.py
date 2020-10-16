@@ -159,8 +159,9 @@ class NotificationService(object):
                     self.notify_individual_notifier(notifier, comparison)
                 )
         results = []
-        for i in range(0, len(notification_tasks), 3):
-            task_chunk = notification_tasks[i : i + 3]
+        chunk_size = 3
+        for i in range(0, len(notification_tasks), chunk_size):
+            task_chunk = notification_tasks[i : i + chunk_size]
             results.extend(await asyncio.gather(*task_chunk))
         return results
 

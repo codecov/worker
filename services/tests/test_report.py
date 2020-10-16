@@ -422,7 +422,7 @@ class TestReportService(BaseTestCase):
             complexity_total=0,
             diff=[1, 2, 1, 1, 0, "50.00000", 0, 0, 0, 0, 0, 0, 0],
         )
-        res.reset()
+        res._totals = None
         assert res.totals.files == 3
         assert res.totals.lines == 20
         assert res.totals.hits == 17
