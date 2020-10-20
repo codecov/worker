@@ -23,9 +23,12 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
         state, message = await self.get_patch_status(comparison)
         codecov_link = self.get_codecov_pr_link(comparison)
 
+        title = message
+
         should_use_upgrade = self.should_use_upgrade_decoration()
         if should_use_upgrade:
             message = self.get_upgrade_message(comparison)
+            title = "Codecov Report"
 
         checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
 
@@ -46,7 +49,7 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
             return {
                 "state": state,
                 "output": {
-                    "title": "Codecov Report",
+                    "title": f"{title}",
                     "summary": "\n\n".join([codecov_link, message]),
                 },
             }
@@ -58,7 +61,7 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
         return {
             "state": state,
             "output": {
-                "title": "Codecov Report",
+                "title": f"{title}",
                 "summary": "\n\n".join([codecov_link, message]),
                 "annotations": annotations,
             },

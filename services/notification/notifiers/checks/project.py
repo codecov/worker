@@ -29,10 +29,12 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         state, summary = self.get_project_status(comparison)
         codecov_link = self.get_codecov_pr_link(comparison)
 
+        title = summary
+
         should_use_upgrade = self.should_use_upgrade_decoration()
         if should_use_upgrade:
             summary = self.get_upgrade_message(comparison)
-
+            title = "Codecov Report"
         flags = self.notifier_yaml_settings.get("flags")
         paths = self.notifier_yaml_settings.get("paths")
         yaml_comment_settings = read_yaml_field(self.current_yaml, ("comment",)) or {}
@@ -52,7 +54,7 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
             return {
                 "state": state,
                 "output": {
-                    "title": "Codecov Report",
+                    "title": f"{title}",
                     "summary": "\n\n".join([codecov_link, summary]),
                 },
             }
@@ -61,7 +63,7 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         return {
             "state": state,
             "output": {
-                "title": "Codecov Report",
+                "title": f"{title}",
                 "summary": "\n\n".join([codecov_link, summary]),
                 "text": "\n".join(message),
             },

@@ -15,14 +15,17 @@ class ChangesChecksNotifier(StatusChangesMixin, ChecksNotifier):
         state, message = await self.get_changes_status(comparison)
         codecov_link = self.get_codecov_pr_link(comparison)
 
+        title = message
+
         should_use_upgrade = self.should_use_upgrade_decoration()
         if should_use_upgrade:
             message = self.get_upgrade_message(comparison)
+            title = "Codecov Report"
 
         return {
             "state": state,
             "output": {
-                "title": "Codecov Report",
+                "title": f"{title}",
                 "summary": "\n\n".join([codecov_link, message]),
             },
         }

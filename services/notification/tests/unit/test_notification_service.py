@@ -242,7 +242,7 @@ class TestNotificationService(object):
                 "data_sent": {
                     "state": "success",
                     "output": {
-                        "title": "Codecov Report",
+                        "title": "No report found to compare against",
                         "summary": f"[View this Pull Request on Codecov](None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo report found to compare against",
                     },
                     "url": f"None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/compare/{sample_comparison.base.commit.commitid}...{sample_comparison.head.commit.commitid}",
