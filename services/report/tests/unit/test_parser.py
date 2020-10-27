@@ -297,6 +297,25 @@ unit.coverage.xml
 mode: count
 github.com/path/ckey/key.go:43.38,47.2 1 1"""
 
+cases_emptylines_betweenpath_and_content = b"""p2/redis/b_test.go
+p1/driver.go
+p1/driver_test.go
+p1/options.go
+p2/a.go
+p2/a_test.go
+<<<<<< network
+# path=coverage.txt
+
+mode: count
+mode: count
+github.com/mypath/bugsbunny.go:10.33,13.20 1 3
+github.com/mypath/bugsbunny.go:19.2,20.36 2 2
+github.com/mypath/bugsbunny.go:26.2,26.22 1 2
+github.com/mypath/bugsbunny.go:31.2,38.16 3 2
+github.com/mypath/bugsbunny.go:41.2,43.12 2 2
+github.com/mypath/bugsbunny.go:13.20,16.3 2 1
+github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
+
 
 class TestParser(object):
     def test_parser_with_toc(self):
@@ -443,3 +462,35 @@ class TestParser(object):
             [b"mode: count", b"github.com/path/ckey/key.go:43.38,47.2 1 1",]
         )
         assert res.uploaded_files[1].contents == expected_second_file
+
+    def test_cases_emptylines_betweenpath_and_content(self):
+        res = RawReportParser.parse_raw_report_from_bytes(
+            cases_emptylines_betweenpath_and_content
+        )
+        assert res.has_toc()
+        assert res.toc.getvalue() == b"\n".join(
+            [
+                b"p2/redis/b_test.go",
+                b"p1/driver.go",
+                b"p1/driver_test.go",
+                b"p1/options.go",
+                b"p2/a.go",
+                b"p2/a_test.go",
+            ]
+        )
+        assert not res.has_env()
+        assert not res.has_path_fixes()
+        assert len(res.uploaded_files) == 1
+        assert res.uploaded_files[0].filename == "coverage.txt"
+        assert (
+            res.uploaded_files[0].contents
+            == b"""mode: count
+mode: count
+github.com/mypath/bugsbunny.go:10.33,13.20 1 3
+github.com/mypath/bugsbunny.go:19.2,20.36 2 2
+github.com/mypath/bugsbunny.go:26.2,26.22 1 2
+github.com/mypath/bugsbunny.go:31.2,38.16 3 2
+github.com/mypath/bugsbunny.go:41.2,43.12 2 2
+github.com/mypath/bugsbunny.go:13.20,16.3 2 1
+github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
+        )

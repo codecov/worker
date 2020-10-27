@@ -143,6 +143,8 @@ class RawReportParser(object):
                     first_line = next(iter(content))
                     filename = first_line.split(b"# path=")[1].decode().strip()
                     i_start = i_start + len(first_line)
+                    while i_start < i_end and raw_report[i_start] in whitespaces:
+                        i_start += 1
                 yield {
                     "contents": BytesIO(raw_report[i_start:i_end]),
                     "filename": filename,
