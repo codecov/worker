@@ -1,84 +1,141 @@
 interactions:
 - request:
-    body: null
+    body: ''
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      accept: [application/json]
+      accept-encoding: ['gzip, deflate']
+      connection: [keep-alive]
+      host: [api.github.com]
+      user-agent: [Default]
     method: GET
-    uri: https://api.github.com/user/orgs?page=1
+    uri: https://api.github.com/user/memberships/orgs?page=1
   response:
-    content: '[{"login":"codecov","id":8226205,"node_id":"MDEyOk9yZ2FuaXphdGlvbjgyMjYyMDU=","url":"https://api.github.com/orgs/codecov","repos_url":"https://api.github.com/orgs/codecov/repos","events_url":"https://api.github.com/orgs/codecov/events","hooks_url":"https://api.github.com/orgs/codecov/hooks","issues_url":"https://api.github.com/orgs/codecov/issues","members_url":"https://api.github.com/orgs/codecov/members{/member}","public_members_url":"https://api.github.com/orgs/codecov/public_members{/member}","avatar_url":"https://avatars3.githubusercontent.com/u/8226205?v=4","description":"Empower
-      developers with tools to improve code quality and testing."}]'
+    content: '[{"url":"https://api.github.com/orgs/codecov/memberships/ThiagoCodecov","state":"active","role":"member","organization_url":"https://api.github.com/orgs/codecov","user":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"organization":{"login":"codecov","id":8226205,"node_id":"MDEyOk9yZ2FuaXphdGlvbjgyMjYyMDU=","url":"https://api.github.com/orgs/codecov","repos_url":"https://api.github.com/orgs/codecov/repos","events_url":"https://api.github.com/orgs/codecov/events","hooks_url":"https://api.github.com/orgs/codecov/hooks","issues_url":"https://api.github.com/orgs/codecov/issues","members_url":"https://api.github.com/orgs/codecov/members{/member}","public_members_url":"https://api.github.com/orgs/codecov/public_members{/member}","avatar_url":"https://avatars3.githubusercontent.com/u/8226205?v=4","description":"Empower
+      developers with tools to improve code quality and testing."}},{"url":"https://api.github.com/orgs/ThiagoCodecovTeam/memberships/ThiagoCodecov","state":"active","role":"admin","organization_url":"https://api.github.com/orgs/ThiagoCodecovTeam","user":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"organization":{"login":"ThiagoCodecovTeam","id":57222756,"node_id":"MDEyOk9yZ2FuaXphdGlvbjU3MjIyNzU2","url":"https://api.github.com/orgs/ThiagoCodecovTeam","repos_url":"https://api.github.com/orgs/ThiagoCodecovTeam/repos","events_url":"https://api.github.com/orgs/ThiagoCodecovTeam/events","hooks_url":"https://api.github.com/orgs/ThiagoCodecovTeam/hooks","issues_url":"https://api.github.com/orgs/ThiagoCodecovTeam/issues","members_url":"https://api.github.com/orgs/ThiagoCodecovTeam/members{/member}","public_members_url":"https://api.github.com/orgs/ThiagoCodecovTeam/public_members{/member}","avatar_url":"https://avatars0.githubusercontent.com/u/57222756?v=4","description":null}}]'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 24 Oct 2019 22:06:06 GMT']
-      Etag: [W/"dc069f2696a19f8b0cee3784d657ea74"]
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP']
-      X-Accepted-Oauth-Scopes: ['admin:org, read:org, repo, user, write:org']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['B146:6840:114CA8:2EDE55:5DB2204E']
-      X-Oauth-Scopes: [repo]
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4999']
-      X-Ratelimit-Reset: ['1571958366']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      access-control-allow-origin: ['*']
+      access-control-expose-headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Reset,
+          X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type,
+          Deprecation, Sunset']
+      cache-control: ['private, max-age=60, s-maxage=60']
+      content-encoding: [gzip]
+      content-security-policy: [default-src 'none']
+      content-type: [application/json; charset=utf-8]
+      date: ['Thu, 29 Oct 2020 20:54:49 GMT']
+      etag: [W/"b239a71030388622987b9d420e2ce04b583f3e139c278acbf24001de841cddd7"]
+      referrer-policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      server: [GitHub.com]
+      status: [200 OK]
+      strict-transport-security: [max-age=31536000; includeSubdomains; preload]
+      transfer-encoding: [chunked]
+      vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
+          X-Requested-With']
+      x-accepted-oauth-scopes: ['admin:org, read:org, repo, user, write:org']
+      x-content-type-options: [nosniff]
+      x-frame-options: [deny]
+      x-github-media-type: [github.v3]
+      x-github-request-id: ['121B:46D9:4E122:D6EC6:5F9B2C19']
+      x-oauth-scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
+          workflow, write:discussion']
+      x-ratelimit-limit: ['5000']
+      x-ratelimit-remaining: ['4987']
+      x-ratelimit-reset: ['1604007913']
+      x-ratelimit-used: ['13']
+      x-xss-protection: [1; mode=block]
+    http_version: HTTP/1.1
     status_code: 200
-    url: https://api.github.com/user/orgs?page=1
 - request:
-    body: null
+    body: ''
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      accept: [application/json]
+      accept-encoding: ['gzip, deflate']
+      connection: [keep-alive]
+      host: [api.github.com]
+      user-agent: [Default]
     method: GET
     uri: https://api.github.com/users/codecov
   response:
     content: '{"login":"codecov","id":8226205,"node_id":"MDEyOk9yZ2FuaXphdGlvbjgyMjYyMDU=","avatar_url":"https://avatars3.githubusercontent.com/u/8226205?v=4","gravatar_id":"","url":"https://api.github.com/users/codecov","html_url":"https://github.com/codecov","followers_url":"https://api.github.com/users/codecov/followers","following_url":"https://api.github.com/users/codecov/following{/other_user}","gists_url":"https://api.github.com/users/codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/codecov/subscriptions","organizations_url":"https://api.github.com/users/codecov/orgs","repos_url":"https://api.github.com/users/codecov/repos","events_url":"https://api.github.com/users/codecov/events{/privacy}","received_events_url":"https://api.github.com/users/codecov/received_events","type":"Organization","site_admin":false,"name":"Codecov","company":null,"blog":"https://codecov.io/","location":null,"email":"hello@codecov.io","hireable":null,"bio":"Empower
-      developers with tools to improve code quality and testing.","public_repos":89,"public_gists":0,"followers":0,"following":0,"created_at":"2014-07-21T16:22:31Z","updated_at":"2019-09-25T18:53:30Z"}'
+      developers with tools to improve code quality and testing.","twitter_username":null,"public_repos":98,"public_gists":0,"followers":0,"following":0,"created_at":"2014-07-21T16:22:31Z","updated_at":"2020-10-28T19:29:26Z"}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 24 Oct 2019 22:06:06 GMT']
-      Etag: [W/"166555d71f2c61d50a44129cfc25b7d9"]
-      Last-Modified: ['Wed, 25 Sep 2019 18:53:30 GMT']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP']
-      X-Accepted-Oauth-Scopes: ['']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['B14C:76D8:33F37F:6D36A4:5DB2204E']
-      X-Oauth-Scopes: [repo]
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4996']
-      X-Ratelimit-Reset: ['1571958366']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      access-control-allow-origin: ['*']
+      access-control-expose-headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Reset,
+          X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type,
+          Deprecation, Sunset']
+      cache-control: ['private, max-age=60, s-maxage=60']
+      content-encoding: [gzip]
+      content-security-policy: [default-src 'none']
+      content-type: [application/json; charset=utf-8]
+      date: ['Thu, 29 Oct 2020 20:54:49 GMT']
+      etag: [W/"c24e96a03914be633678cca4f59e1941e1b1ecbdd5be7f45527a0b98e71e15a8"]
+      last-modified: ['Wed, 28 Oct 2020 19:29:26 GMT']
+      referrer-policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      server: [GitHub.com]
+      status: [200 OK]
+      strict-transport-security: [max-age=31536000; includeSubdomains; preload]
+      transfer-encoding: [chunked]
+      vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
+          X-Requested-With']
+      x-accepted-oauth-scopes: ['']
+      x-content-type-options: [nosniff]
+      x-frame-options: [deny]
+      x-github-media-type: [github.v3]
+      x-github-request-id: ['121B:46D9:4E128:D6ECA:5F9B2C19']
+      x-oauth-scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
+          workflow, write:discussion']
+      x-ratelimit-limit: ['5000']
+      x-ratelimit-remaining: ['4986']
+      x-ratelimit-reset: ['1604007913']
+      x-ratelimit-used: ['14']
+      x-xss-protection: [1; mode=block]
+    http_version: HTTP/1.1
     status_code: 200
-    url: https://api.github.com/users/codecov
+- request:
+    body: ''
+    headers:
+      accept: [application/json]
+      accept-encoding: ['gzip, deflate']
+      connection: [keep-alive]
+      host: [api.github.com]
+      user-agent: [Default]
+    method: GET
+    uri: https://api.github.com/users/ThiagoCodecovTeam
+  response:
+    content: '{"login":"ThiagoCodecovTeam","id":57222756,"node_id":"MDEyOk9yZ2FuaXphdGlvbjU3MjIyNzU2","avatar_url":"https://avatars0.githubusercontent.com/u/57222756?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecovTeam","html_url":"https://github.com/ThiagoCodecovTeam","followers_url":"https://api.github.com/users/ThiagoCodecovTeam/followers","following_url":"https://api.github.com/users/ThiagoCodecovTeam/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecovTeam/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecovTeam/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecovTeam/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecovTeam/orgs","repos_url":"https://api.github.com/users/ThiagoCodecovTeam/repos","events_url":"https://api.github.com/users/ThiagoCodecovTeam/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecovTeam/received_events","type":"Organization","site_admin":false,"name":null,"company":null,"blog":"","location":null,"email":null,"hireable":null,"bio":null,"twitter_username":null,"public_repos":0,"public_gists":0,"followers":0,"following":0,"created_at":"2019-10-31T13:07:24Z","updated_at":"2019-10-31T13:07:24Z"}'
+    headers:
+      access-control-allow-origin: ['*']
+      access-control-expose-headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Reset,
+          X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type,
+          Deprecation, Sunset']
+      cache-control: ['private, max-age=60, s-maxage=60']
+      content-encoding: [gzip]
+      content-security-policy: [default-src 'none']
+      content-type: [application/json; charset=utf-8]
+      date: ['Thu, 29 Oct 2020 20:54:50 GMT']
+      etag: [W/"9fba591d890817ee6895ef095a4eae5de9577c942e16afc4c9c856a00c9a91b0"]
+      last-modified: ['Thu, 31 Oct 2019 13:07:24 GMT']
+      referrer-policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      server: [GitHub.com]
+      status: [200 OK]
+      strict-transport-security: [max-age=31536000; includeSubdomains; preload]
+      transfer-encoding: [chunked]
+      vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
+          X-Requested-With']
+      x-accepted-oauth-scopes: ['']
+      x-content-type-options: [nosniff]
+      x-frame-options: [deny]
+      x-github-media-type: [github.v3]
+      x-github-request-id: ['121B:46D9:4E12B:D6ED6:5F9B2C19']
+      x-oauth-scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
+          workflow, write:discussion']
+      x-ratelimit-limit: ['5000']
+      x-ratelimit-remaining: ['4985']
+      x-ratelimit-reset: ['1604007913']
+      x-ratelimit-used: ['15']
+      x-xss-protection: [1; mode=block]
+    http_version: HTTP/1.1
+    status_code: 200
+version: 1

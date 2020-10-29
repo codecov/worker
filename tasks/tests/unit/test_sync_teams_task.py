@@ -21,7 +21,7 @@ class TestSyncTeamsTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_no_teams(self, mocker, mock_configuration, dbsession, codecov_vcr):
-        token = "bcaa0dc0c66b4a8c8c65ac919a1a91aa"
+        token = "testv2ztxs03zwys22v36ama292esl13swroe6dj"
         user = OwnerFactory.create(
             organizations=[], service="github", unencrypted_oauth_token=token
         )
@@ -36,7 +36,7 @@ class TestSyncTeamsTaskUnit(object):
     async def test_team_removed(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
-        token = "bcaa0dc0c66b4a8c8c65ac919a1a91aa"
+        token = "testv2ztxs03zwys22v36ama292esl13swroe6dj"
         prev_team = OwnerFactory.create(service="github", username="Evil_Corp",)
         dbsession.add(prev_team)
         user = OwnerFactory.create(
@@ -55,7 +55,7 @@ class TestSyncTeamsTaskUnit(object):
     async def test_team_data_updated(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
-        token = "bcaa0dc0c66b4a8c8c65ac919a1a91aa"
+        token = "testh0ry1fe5tiysbtbh6x47fdwotcsoyv7orqrd"
         last_updated = "2018-06-01 01:02:30"
         old_team = OwnerFactory.create(
             service="github",
@@ -78,9 +78,9 @@ class TestSyncTeamsTaskUnit(object):
         assert old_team.ownerid in user.organizations
 
         # old team in db should have its data updated
-        assert old_team.email == "hello@codecov.io"
+        assert old_team.email is None
         assert old_team.username == "codecov"
-        assert old_team.name == "Codecov"
+        assert old_team.name == "codecov"
         assert str(old_team.updatestamp) > last_updated
 
     @pytest.mark.asyncio
