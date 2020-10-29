@@ -135,7 +135,7 @@ class SyncReposTask(BaseCodecovTask):
 
         #  choose a bot
         if private_project_ids:
-            owner_ids_to_set = list(map(str, owners_by_id.values()))
+            owner_ids_to_set = sorted(map(str, owners_by_id.values()))
             self.set_bot(db_session, ownerid, service, owner_ids_to_set)
 
     def upsert_owner(self, db_session, service, service_id, username):

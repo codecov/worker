@@ -7,176 +7,74 @@ interactions:
     method: GET
     uri: https://api.github.com/installation/repositories?per_page=100&page=1
   response:
-    body: {string: '{
-  "total_count": 3,
-  "repositories": [
-    {
-      "id": 159089634,
-      "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
-      "name": "pytest",
-      "full_name": "1nf1n1t3l00p/pytest",
-      "owner": {
-        "login": "1nf1n1t3l00p",
-        "id": 45343385,
-        "node_id": "MDQ6VXNlcjE=",
-        "avatar_url": "https://github.com/images/error/octocat_happy.gif",
-        "gravatar_id": "",
-        "url": "https://api.github.com/users/octocat",
-        "html_url": "https://github.com/octocat",
-        "followers_url": "https://api.github.com/users/octocat/followers",
-        "following_url": "https://api.github.com/users/octocat/following{/other_user}",
-        "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
-        "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
-        "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
-        "organizations_url": "https://api.github.com/users/octocat/orgs",
-        "repos_url": "https://api.github.com/users/octocat/repos",
-        "events_url": "https://api.github.com/users/octocat/events{/privacy}",
-        "received_events_url": "https://api.github.com/users/octocat/received_events",
-        "type": "User",
-        "site_admin": false
-      },
-      "private": false,
-      "html_url": "https://github.com/octocat/Hello-World",
-      "description": "This your first repo!",
-      "fork": false,
-      "url": "https://api.github.com/repos/octocat/Hello-World"
-    },
-    {
-      "id": 164948070,
-      "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
-      "name": "spack",
-      "full_name": "1nf1n1t3l00p/spack",
-      "owner": {
-        "login": "1nf1n1t3l00p",
-        "id": 45343385,
-        "node_id": "MDQ6VXNlcjE=",
-        "avatar_url": "https://github.com/images/error/octocat_happy.gif",
-        "gravatar_id": "",
-        "url": "https://api.github.com/users/octocat",
-        "html_url": "https://github.com/octocat",
-        "followers_url": "https://api.github.com/users/octocat/followers",
-        "following_url": "https://api.github.com/users/octocat/following{/other_user}",
-        "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
-        "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
-        "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
-        "organizations_url": "https://api.github.com/users/octocat/orgs",
-        "repos_url": "https://api.github.com/users/octocat/repos",
-        "events_url": "https://api.github.com/users/octocat/events{/privacy}",
-        "received_events_url": "https://api.github.com/users/octocat/received_events",
-        "type": "User",
-        "site_admin": false
-      },
-      "private": false,
-      "html_url": "https://github.com/octocat/Hello-World",
-      "description": "This your first repo!",
-      "fork": false,
-      "url": "https://api.github.com/repos/octocat/Hello-World"
-    },
-    {
-      "id": 213786132,
-      "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5",
-      "name": "pub",
-      "full_name": "1nf1n1t3l00p/pub",
-      "owner": {
-        "login": "1nf1n1t3l00p",
-        "id": 45343385,
-        "node_id": "MDQ6VXNlcjE=",
-        "avatar_url": "https://github.com/images/error/octocat_happy.gif",
-        "gravatar_id": "",
-        "url": "https://api.github.com/users/octocat",
-        "html_url": "https://github.com/octocat",
-        "followers_url": "https://api.github.com/users/octocat/followers",
-        "following_url": "https://api.github.com/users/octocat/following{/other_user}",
-        "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
-        "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
-        "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
-        "organizations_url": "https://api.github.com/users/octocat/orgs",
-        "repos_url": "https://api.github.com/users/octocat/repos",
-        "events_url": "https://api.github.com/users/octocat/events{/privacy}",
-        "received_events_url": "https://api.github.com/users/octocat/received_events",
-        "type": "User",
-        "site_admin": false
-      },
-      "private": false,
-      "html_url": "https://github.com/octocat/Hello-World",
-      "description": "This your first repo!",
-      "fork": false,
-      "url": "https://api.github.com/repos/octocat/Hello-World"
-    }
-  ]
-}'}
+    content: '{ "total_count": 3, "repositories": [ { "id": 159089634, "node_id":
+      "MDEwOlJlcG9zaXRvcnkxMjk2MjY5", "name": "pytest", "full_name": "1nf1n1t3l00p/pytest",
+      "owner": { "login": "1nf1n1t3l00p", "id": 45343385, "node_id": "MDQ6VXNlcjE=",
+      "avatar_url": "https://github.com/images/error/octocat_happy.gif", "gravatar_id":
+      "", "url": "https://api.github.com/users/octocat", "html_url": "https://github.com/octocat",
+      "followers_url": "https://api.github.com/users/octocat/followers", "following_url":
+      "https://api.github.com/users/octocat/following{/other_user}", "gists_url":
+      "https://api.github.com/users/octocat/gists{/gist_id}", "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/octocat/subscriptions", "organizations_url":
+      "https://api.github.com/users/octocat/orgs", "repos_url": "https://api.github.com/users/octocat/repos",
+      "events_url": "https://api.github.com/users/octocat/events{/privacy}", "received_events_url":
+      "https://api.github.com/users/octocat/received_events", "type": "User", "site_admin":
+      false }, "private": false, "html_url": "https://github.com/octocat/Hello-World",
+      "description": "This your first repo!", "fork": false, "url": "https://api.github.com/repos/octocat/Hello-World"
+      }, { "id": 164948070, "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5", "name": "spack",
+      "full_name": "1nf1n1t3l00p/spack", "owner": { "login": "1nf1n1t3l00p", "id":
+      45343385, "node_id": "MDQ6VXNlcjE=", "avatar_url": "https://github.com/images/error/octocat_happy.gif",
+      "gravatar_id": "", "url": "https://api.github.com/users/octocat", "html_url":
+      "https://github.com/octocat", "followers_url": "https://api.github.com/users/octocat/followers",
+      "following_url": "https://api.github.com/users/octocat/following{/other_user}",
+      "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}", "starred_url":
+      "https://api.github.com/users/octocat/starred{/owner}{/repo}", "subscriptions_url":
+      "https://api.github.com/users/octocat/subscriptions", "organizations_url": "https://api.github.com/users/octocat/orgs",
+      "repos_url": "https://api.github.com/users/octocat/repos", "events_url": "https://api.github.com/users/octocat/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/octocat/received_events",
+      "type": "User", "site_admin": false }, "private": false, "html_url": "https://github.com/octocat/Hello-World",
+      "description": "This your first repo!", "fork": false, "url": "https://api.github.com/repos/octocat/Hello-World"
+      }, { "id": 213786132, "node_id": "MDEwOlJlcG9zaXRvcnkxMjk2MjY5", "name": "pub",
+      "full_name": "1nf1n1t3l00p/pub", "owner": { "login": "1nf1n1t3l00p", "id": 45343385,
+      "node_id": "MDQ6VXNlcjE=", "avatar_url": "https://github.com/images/error/octocat_happy.gif",
+      "gravatar_id": "", "url": "https://api.github.com/users/octocat", "html_url":
+      "https://github.com/octocat", "followers_url": "https://api.github.com/users/octocat/followers",
+      "following_url": "https://api.github.com/users/octocat/following{/other_user}",
+      "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}", "starred_url":
+      "https://api.github.com/users/octocat/starred{/owner}{/repo}", "subscriptions_url":
+      "https://api.github.com/users/octocat/subscriptions", "organizations_url": "https://api.github.com/users/octocat/orgs",
+      "repos_url": "https://api.github.com/users/octocat/repos", "events_url": "https://api.github.com/users/octocat/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/octocat/received_events",
+      "type": "User", "site_admin": false }, "private": false, "html_url": "https://github.com/octocat/Hello-World",
+      "description": "This your first repo!", "fork": false, "url": "https://api.github.com/repos/octocat/Hello-World"
+      } ] }'
     headers:
-    - !!python/tuple
-      - Server
-      - [GitHub.com]
-    - !!python/tuple
-      - Date
-      - ['Thu, 20 Feb 2020 03:21:56 GMT']
-    - !!python/tuple
-      - Content-Type
-      - [application/json; charset=utf-8]
-    - !!python/tuple
-      - Transfer-Encoding
-      - [chunked]
-    - !!python/tuple
-      - Connection
-      - [close]
-    - !!python/tuple
-      - Status
-      - [403 Forbidden]
-    - !!python/tuple
-      - X-Ratelimit-Limit
-      - ['5000']
-    - !!python/tuple
-      - X-Ratelimit-Remaining
-      - ['4999']
-    - !!python/tuple
-      - X-Ratelimit-Reset
-      - ['1582172516']
-    - !!python/tuple
-      - X-Oauth-Scopes
-      - ['repo, user']
-    - !!python/tuple
-      - X-Accepted-Oauth-Scopes
-      - ['']
-    - !!python/tuple
-      - X-Github-Media-Type
-      - [github.machine-man-preview; format=json]
-    - !!python/tuple
-      - Access-Control-Expose-Headers
-      - ['ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
-          X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
-          X-GitHub-Media-Type']
-    - !!python/tuple
-      - Access-Control-Allow-Origin
-      - ['*']
-    - !!python/tuple
-      - Strict-Transport-Security
-      - [max-age=31536000; includeSubdomains; preload]
-    - !!python/tuple
-      - X-Frame-Options
-      - [deny]
-    - !!python/tuple
-      - X-Content-Type-Options
-      - [nosniff]
-    - !!python/tuple
-      - X-Xss-Protection
-      - [1; mode=block]
-    - !!python/tuple
-      - Referrer-Policy
-      - ['origin-when-cross-origin, strict-origin-when-cross-origin']
-    - !!python/tuple
-      - Content-Security-Policy
-      - [default-src 'none']
-    - !!python/tuple
-      - Vary
-      - ['Accept-Encoding, Accept, X-Requested-With']
-    - !!python/tuple
-      - X-Github-Request-Id
-      - ['B880:4CF4:AD5BEB:1A3160D:5E4DFB54']
-    - !!python/tuple
-      - X-Consumed-Content-Encoding
-      - [gzip]
+      Access-Control-Allow-Origin: ['*']
+      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
+          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
+          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
+      Connection: [close]
+      Content-Security-Policy: [default-src 'none']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Thu, 20 Feb 2020 03:21:56 GMT']
+      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
+      Server: [GitHub.com]
+      Status: [403 Forbidden]
+      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
+      Transfer-Encoding: [chunked]
+      Vary: ['Accept-Encoding, Accept, X-Requested-With']
+      X-Accepted-Oauth-Scopes: ['']
+      X-Consumed-Content-Encoding: [gzip]
+      X-Content-Type-Options: [nosniff]
+      X-Frame-Options: [deny]
+      X-Github-Media-Type: [github.machine-man-preview; format=json]
+      X-Github-Request-Id: ['B880:4CF4:AD5BEB:1A3160D:5E4DFB54']
+      X-Oauth-Scopes: ['repo, user']
+      X-Ratelimit-Limit: ['5000']
+      X-Ratelimit-Remaining: ['4999']
+      X-Ratelimit-Reset: ['1582172516']
+      X-Xss-Protection: [1; mode=block]
     status: {code: 200, message: OK}
+    status_code: 200
     url: https://api.github.com/installation/repositories?per_page=100&page=1
 version: 1
