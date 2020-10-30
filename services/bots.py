@@ -83,7 +83,7 @@ def _get_repo_appropriate_bot(repo):
 
 
 def get_owner_appropriate_bot_token(owner, using_integration) -> Dict:
-    if owner.integration_id:
+    if owner.integration_id and using_integration:
         github_token = get_github_integration_token(owner.service, owner.integration_id)
         return dict(key=github_token)
     return encryptor.decrypt_token(_get_owner_or_appropriate_bot(owner).oauth_token)
