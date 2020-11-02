@@ -1,5 +1,5 @@
 # BUILD STAGE - Download dependencies from GitHub that require SSH access
-FROM python:3.7.7-alpine as build
+FROM python:3.7.9-alpine as build
 
 RUN             apk update \
                 && apk add --update --no-cache \

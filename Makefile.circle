@@ -2,7 +2,7 @@
 
 #GCLOUD_SERVICE_KEY := $(shell cat ~/.gcloud/codecov-enterprise-sandbox-03eb0a0ecaf2.json | base64 --wrap=0)
 GCR_REPO := gcr.io/test6u3411ty6xqh462sri/codecov-worker
-REQUIREMENTS_TAG := requirements-v6-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)
+REQUIREMENTS_TAG := requirements-v7-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)
 SEMANTIC_VERSION := `cat VERSION`
 IMAGE_VERSION := ${SEMANTIC_VERSION}-$(shell git rev-parse --short=7 HEAD)
 VERSION := release-$(shell git rev-parse --short=7 HEAD)
