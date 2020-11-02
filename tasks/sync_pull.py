@@ -183,6 +183,7 @@ class PullSyncTask(BaseCodecovTask):
         await self.update_pull_from_reports(
             pull, repository_service, base_report, head_report, current_yaml
         )
+        db_session.commit()
         notifier_was_called = False
         if should_send_notifications:
             notifier_was_called = True
