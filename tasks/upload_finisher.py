@@ -55,7 +55,9 @@ class UploadFinisherTask(BaseCodecovTask):
         assert commit, "Commit not found in database."
         redis_connection = get_redis_connection()
         with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+            db_session.commit()
             commit.notified = False
+            db_session.commit()
             result = await self.finish_reports_processing(
                 db_session, commit, commit_yaml, processing_results
             )

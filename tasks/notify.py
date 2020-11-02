@@ -208,12 +208,15 @@ class NotifyTask(BaseCodecovTask):
                 "Notifications done",
                 extra=dict(
                     notifications=notifications,
+                    notification_count=len(notifications),
                     commit=commit.commitid,
                     repoid=commit.repoid,
                     pullid=pull.pullid if pull is not None else None,
                 ),
             )
+            db_session.commit()
             commit.notified = True
+            db_session.commit()
             return {"notified": True, "notifications": notifications}
         else:
             log.info(
