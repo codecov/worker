@@ -1010,6 +1010,57 @@ class TestProjectStatusNotifier(object):
         result = await notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
+    @pytest.mark.asyncio
+    async def test_notify_path_filter(
+        self, sample_comparison, mock_repo_provider, mock_configuration, mocker
+    ):
+        mocked_send_notification = mocker.patch.object(
+            ProjectStatusNotifier, "send_notification"
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"paths": ["file_1.go"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison.base.commit
+        expected_result = {
+            "message": f"62.50% (+12.50%) compared to {base_commit.commitid[:7]}",
+            "state": "success",
+            "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/compare/{base_commit.commitid}...{sample_comparison.head.commit.commitid}",
+        }
+        result = await notifier.notify(sample_comparison)
+        assert result == mocked_send_notification.return_value
+        mocked_send_notification.assert_called_with(sample_comparison, expected_result)
+
+    @pytest.mark.asyncio
+    async def test_notify_path_and_flags_filter(
+        self, sample_comparison, mock_repo_provider, mock_configuration, mocker
+    ):
+        mocked_send_notification = mocker.patch.object(
+            ProjectStatusNotifier, "send_notification"
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"paths": ["file_1.go"], "flags": ["unit"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison.base.commit
+        expected_result = {
+            # base report does not have unit flag, so its coverage is 100%
+            "message": f"100.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+            "state": "success",
+            "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/compare/{base_commit.commitid}...{sample_comparison.head.commit.commitid}",
+        }
+        result = await notifier.notify(sample_comparison)
+        assert result == mocked_send_notification.return_value
+        mocked_send_notification.assert_called_with(sample_comparison, expected_result)
+
 
 class TestPatchStatusNotifier(object):
     @pytest.mark.asyncio
