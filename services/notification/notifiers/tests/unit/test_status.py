@@ -1402,3 +1402,28 @@ class TestChangesStatusNotifier(object):
         }
         result = await notifier.build_payload(comparison)
         assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_notify_path_filter(
+        self, sample_comparison, mock_repo_provider, mock_configuration, mocker
+    ):
+        mocked_send_notification = mocker.patch.object(
+            ChangesStatusNotifier, "send_notification"
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ChangesStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"paths": ["file_1.go"]},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        base_commit = sample_comparison.base.commit
+        expected_result = {
+            "message": "No unexpected coverage changes found",
+            "state": "success",
+            "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/compare/{base_commit.commitid}...{sample_comparison.head.commit.commitid}",
+        }
+        result = await notifier.notify(sample_comparison)
+        assert result == mocked_send_notification.return_value
+        mocked_send_notification.assert_called_with(sample_comparison, expected_result)

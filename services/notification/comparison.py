@@ -3,10 +3,9 @@ import asyncio
 
 from shared.reports.types import Change
 
-
 from services.repository import get_repo_provider_service
 from services.notification.changes import get_changes
-from services.notification.types import Comparison
+from services.notification.types import Comparison, FullCommit
 
 
 class ComparisonProxy(object):
@@ -35,6 +34,11 @@ class ComparisonProxy(object):
         self._changes = None
         self._diff_lock = asyncio.Lock()
         self._changes_lock = asyncio.Lock()
+
+    def get_filtered_comparison(self, flags, path_patterns):
+        if not flags and not path_patterns:
+            return self
+        return FilteredComparison(self, flags=flags, path_patterns=path_patterns)
 
     @property
     def repository_service(self):
@@ -85,3 +89,40 @@ class ComparisonProxy(object):
                     self.comparison.base.report, self.comparison.head.report, diff
                 )
             return self._changes
+
+
+class FilteredComparison(object):
+    def __init__(self, real_comparison: ComparisonProxy, *, flags, path_patterns):
+        self.flags = flags
+        self.path_patterns = path_patterns
+        self.real_comparison = real_comparison
+        self._changes = None
+        self.base = FullCommit(
+            commit=real_comparison.base.commit,
+            report=real_comparison.base.report.filter(flags=flags, paths=path_patterns)
+            if self.has_base_report()
+            else None,
+        )
+        self.head = FullCommit(
+            commit=real_comparison.head.commit,
+            report=real_comparison.head.report.filter(flags=flags, paths=path_patterns),
+        )
+        self._changes_lock = asyncio.Lock()
+
+    async def get_diff(self):
+        return await self.real_comparison.get_diff()
+
+    def has_base_report(self):
+        return self.real_comparison.has_base_report()
+
+    async def get_changes(self) -> Optional[List[Change]]:
+        # Just make sure to not cause a deadlock between this and get_diff
+        async with self._changes_lock:
+            if self._changes is None:
+                diff = await self.get_diff()
+                self._changes = get_changes(self.base.report, self.head.report, diff)
+            return self._changes
+
+    @property
+    def pull(self):
+        return self.real_comparison.pull

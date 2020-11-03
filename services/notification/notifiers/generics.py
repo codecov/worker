@@ -91,17 +91,13 @@ class StandardNotifier(AbstractBaseNotifier):
         return True
 
     async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
-        head_full_commit = comparison.head
-        base_full_commit = comparison.base
-        _filters = self.get_notifier_filters()
-        with head_full_commit.report.filter(**_filters):
-            with (
-                base_full_commit.report.filter(**_filters)
-                if (base_full_commit.report is not None)
-                else nullcontext()
-            ):
-                if self.should_notify_comparison(comparison):
-                    result = await self.do_notify(comparison, **extra_data)
+        filtered_comparison = comparison.get_filtered_comparison(
+            **self.get_notifier_filters()
+        )
+        with nullcontext():
+            with nullcontext():
+                if self.should_notify_comparison(filtered_comparison):
+                    result = await self.do_notify(filtered_comparison, **extra_data)
                 else:
                     result = NotificationResult(
                         notification_attempted=False,
@@ -114,7 +110,7 @@ class StandardNotifier(AbstractBaseNotifier):
     def get_notifier_filters(self) -> dict:
         flag_list = self.notifier_yaml_settings.get("flags") or []
         return dict(
-            paths=set(
+            path_patterns=set(
                 get_paths_from_flags(self.current_yaml, flag_list)
                 + (self.notifier_yaml_settings.get("paths") or [])
             ),
