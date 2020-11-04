@@ -136,14 +136,14 @@ class MessageMixin(object):
             Assemble the various components of the PR comments message in accordance with their YAML configuration.
             See https://docs.codecov.io/docs/pull-request-comments for more context on the different parts of a PR comment.
 
-            Returns the PR comment message as a list of strings, where each item in the list corresponds to a line in the comment.  
-        
+            Returns the PR comment message as a list of strings, where each item in the list corresponds to a line in the comment.
+
             Parameters:
                 yaml_settings: YAML settings for notifier
 
-                    Note: Github Checks Notifers are initialized with "status" YAML settings. 
+                    Note: Github Checks Notifers are initialized with "status" YAML settings.
                           Thus, the comment block of the codecov YAML is passed as the "yaml_settings" parameter for these Notifiers.
-        
+
         """
         changes = await comparison.get_changes()
         diff = await comparison.get_diff()
@@ -178,7 +178,7 @@ class MessageMixin(object):
             else Decimal(0)
         )
         if base_report and head_report:
-            message_internal = "> Merging [#{pull}]({links[pull]}?src=pr&el=desc) into [{base}]({links[base]}?el=desc) will **{message}** coverage{coverage}.".format(
+            message_internal = "> Merging [#{pull}](head {links[pull]}?src=pr&el=desc) into [{base}](base {links[base]}?el=desc) will **{message}** coverage{coverage}.".format(
                 pull=pull.pullid,
                 base=pull_dict["base"]["branch"],
                 # ternary operator, see https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator
