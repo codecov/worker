@@ -178,9 +178,11 @@ class MessageMixin(object):
             else Decimal(0)
         )
         if base_report and head_report:
-            message_internal = "> Merging [#{pull}](head {links[pull]}?src=pr&el=desc) into [{base}](base {links[base]}?el=desc) will **{message}** coverage{coverage}.".format(
+            message_internal = "> Merging [#{pull}]({links[pull]}?src=pr&el=desc) ({commitid_head}) into [{base}]({links[base]}?el=desc) ({commitid_base}) will **{message}** coverage{coverage}.".format(
                 pull=pull.pullid,
                 base=pull_dict["base"]["branch"],
+                commitid_head=pull_dict["head"]["commitid"][:7],
+                commitid_base=pull_dict["base"]["commitid"][:7],
                 # ternary operator, see https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator
                 message={False: "decrease", "na": "not change", True: "increase"}[
                     (change > 0) if change != 0 else "na"
