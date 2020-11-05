@@ -480,14 +480,7 @@ class TestCommentNotifier(object):
                 }
             },
         )
-        pull_dict = {
-            "base": {
-                "branch": "master"
-            },
-            "head": {
-                "commitid": "12345678"
-            }
-        }
+        pull_dict = {"base": {"branch": "master"}, "head": {"commitid": "12345678"}}
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
