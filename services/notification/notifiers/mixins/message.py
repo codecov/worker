@@ -182,7 +182,7 @@ class MessageMixin(object):
                 pull=pull.pullid,
                 base=pull_dict["base"]["branch"],
                 commitid_head=pull_dict["head"]["commitid"][:7],
-                commitid_base=pull_dict["base"]["commitid"][:7],
+                commitid_base=comparison.base.commit.commitid[:7],
                 # ternary operator, see https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator
                 message={False: "decrease", "na": "not change", True: "increase"}[
                     (change > 0) if change != 0 else "na"
