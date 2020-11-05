@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import Mock
 from asyncio import Future
+from copy import deepcopy
 from services.notification.notifiers.checks import (
     ProjectChecksNotifier,
     ChangesChecksNotifier,
@@ -854,6 +855,7 @@ class TestPatchChecksNotifier(object):
         multiple_diff_changes,
     ):
         json_diff = multiple_diff_changes
+        original_value = deepcopy(multiple_diff_changes)
         mock_repo_provider.get_compare.return_value = {"diff": json_diff}
 
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
@@ -882,6 +884,11 @@ class TestPatchChecksNotifier(object):
         }
         result = await notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result == result
+        # assert that the value of diff was not changed
+        for filename in original_value["files"]:
+            assert original_value["files"][filename].get(
+                "segments"
+            ) == multiple_diff_changes["files"][filename].get("segments")
 
     @pytest.mark.asyncio
     async def test_build_payload_no_diff(
