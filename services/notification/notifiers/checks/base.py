@@ -222,8 +222,8 @@ class ChecksNotifier(StatusNotifier):
 
         lines_diff = []
         for segment in segments:
-            header = segment["header"]
-            lines = segment["lines"]
+            header = segment["header"].copy()
+            lines = segment["lines"].copy()
             base_ln = int(header[0])
             head_ln = int(header[2])
             while not len(lines) == 0:
