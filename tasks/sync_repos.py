@@ -127,16 +127,19 @@ class SyncReposTask(BaseCodecovTask):
             "Updating permissions",
             extra=dict(ownerid=ownerid, username=username, repoids=private_project_ids),
         )
+        removed_permissions = set(owner.permission) - set(private_project_ids)
+        if removed_permissions:
+            log.warning(
+                "Owner had permissions that are being removed",
+                extra=dict(
+                    old_permissions=owner.permission,
+                    new_permissions=private_project_ids,
+                    removed_permissions=sorted(removed_permissions),
+                ),
+            )
 
         # update user permissions
-        owner.permission = sorted(
-            map(int, list(set((owner.permission or []) + private_project_ids)))
-        )
-
-        #  choose a bot
-        if private_project_ids:
-            owner_ids_to_set = sorted(map(str, owners_by_id.values()))
-            self.set_bot(db_session, ownerid, service, owner_ids_to_set)
+        owner.permission = sorted(set(private_project_ids))
 
     def upsert_owner(self, db_session, service, service_id, username):
         log.info(
@@ -282,24 +285,6 @@ class SyncReposTask(BaseCodecovTask):
                     repo_id = new_repo.repoid
 
         return repo_id
-
-    def set_bot(self, db_session, ownerid, service, owner_ids):
-        # remove myself
-        if str(ownerid) in owner_ids:
-            owner_ids.remove(str(ownerid))
-
-        if owner_ids and (
-            not is_enterprise()
-            or get_config(service, "bot")  # is production
-            is None  # or no bot is set in yaml
-        ):
-            # we can see private repos, make me the bot
-            db_session.query(Owner).filter(
-                Owner.service == service,
-                Owner.ownerid.in_(list(owner_ids)),
-                Owner.bot_id.is_(None),
-                Owner.oauth_token.is_(None),
-            ).update({Owner.bot_id: ownerid}, synchronize_session=False)
 
 
 RegisteredSyncReposTask = celery_app.register_task(SyncReposTask())
