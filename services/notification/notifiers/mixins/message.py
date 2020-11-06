@@ -181,7 +181,7 @@ class MessageMixin(object):
             message_internal = "> Merging [#{pull}]({links[pull]}?src=pr&el=desc) ({commitid_head}) into [{base}]({links[base]}?el=desc) ({commitid_base}) will **{message}** coverage{coverage}.".format(
                 pull=pull.pullid,
                 base=pull_dict["base"]["branch"],
-                commitid_head=pull_dict["head"]["commitid"][:7],
+                commitid_head=comparison.head.commit.commitid[:7],
                 commitid_base=comparison.base.commit.commitid[:7],
                 # ternary operator, see https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator
                 message={False: "decrease", "na": "not change", True: "increase"}[
