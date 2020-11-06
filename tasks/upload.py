@@ -13,11 +13,7 @@ from shared.torngit.exceptions import (
 
 from app import celery_app
 from celery_config import upload_task_name
-from database.models import (
-    Commit,
-    Upload,
-    RepositoryFlag,
-)
+from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.redis import get_redis_connection, download_archive_from_redis, Redis
@@ -26,7 +22,7 @@ from services.repository import (
     update_commit_from_provider_info,
     create_webhook_on_provider,
 )
-from services.report import ReportService
+from services.report import ReportService, NotReadyToBuildReportYetError
 from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
 from shared.validation.exceptions import InvalidYamlException
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
@@ -246,7 +242,14 @@ class UploadTask(BaseCodecovTask):
                 commit_yaml=None,
             )
         report_service = ReportService(commit_yaml)
-        commit_report = report_service.initialize_and_save_report(commit)
+        try:
+            commit_report = report_service.initialize_and_save_report(commit)
+        except NotReadyToBuildReportYetError:
+            log.warning(
+                "Commit not yet ready to build its initial report",
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+            )
+            self.retry(countdown=60)
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, repoid, commitid):
             normalized_arguments = self.normalize_upload_arguments(
