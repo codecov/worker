@@ -15,7 +15,7 @@ from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFact
 from database.models import Upload
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
-from services.report import ReportService
+from services.report import ReportService, NotReadyToBuildReportYetError
 
 here = Path(__file__)
 
@@ -896,3 +896,25 @@ class TestUploadTaskUnit(object):
             "ab164bf3f7d947f2a0681b215404873e",
             token=None,
         )
+
+    @pytest.mark.asyncio
+    async def test_upload_not_ready_to_build_report(
+        self, dbsession, mocker, mock_configuration, mock_repo_provider, mock_redis
+    ):
+        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        mocker.patch.object(UploadTask, "has_pending_jobs", return_value=True)
+        task = UploadTask()
+        mock_repo_provider.data = mocker.MagicMock()
+        mock_repo_provider.service = "github"
+        mocker.patch.object(
+            ReportService,
+            "initialize_and_save_report",
+            side_effect=NotReadyToBuildReportYetError(),
+        )
+        with pytest.raises(Retry):
+            await task.run_async_within_lock(
+                dbsession, mock_redis, commit.repoid, commit.commitid
+            )
