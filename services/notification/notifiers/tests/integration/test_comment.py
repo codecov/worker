@@ -197,7 +197,7 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "# [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
-            "> Merging [#15](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) into [master](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) will **increase** coverage by `10.00%`.",
+            "> Merging [#15](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) (2e2600a) into [master](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) (4535be1) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
             "[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)",
@@ -293,7 +293,7 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "# [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1) Report",
-            "> Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc) into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4?el=desc) will **increase** coverage by `10.00%`.",
+            "> Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc) (46ce216) into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4?el=desc) (842f7c8) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
             "[![Impacted file tree graph](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree)",
