@@ -135,6 +135,8 @@ class SyncReposTask(BaseCodecovTask):
                     old_permissions=owner.permission,
                     new_permissions=private_project_ids,
                     removed_permissions=sorted(removed_permissions),
+                    ownerid=ownerid,
+                    username=username,
                 ),
             )
 
