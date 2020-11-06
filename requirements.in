@@ -1,4 +1,4 @@
--e git+https://github.com/codecov/shared.git@v0.3.38#egg=shared
+-e git+https://github.com/codecov/shared.git@v0.3.39#egg=shared
 boto3~=1.9.218
 celery~=4.4.2
 coverage~=5.1
