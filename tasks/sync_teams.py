@@ -55,6 +55,18 @@ class SyncTeamsTask(BaseCodecovTask):
 
         team_ids = [team["ownerid"] for team in updated_teams]
 
+        removed_orgs = set(owner.organizations or []) - set(team_ids)
+        if removed_orgs:
+            log.warning(
+                "Owner had access to organization that are being removed",
+                extra=dict(
+                    old_orgs=owner.organizations,
+                    new_orgs=team_ids,
+                    removed_orgs=sorted(removed_orgs),
+                    ownerid=ownerid,
+                ),
+            )
+
         owner.updatestamp = datetime.now()
         owner.organizations = team_ids
 
