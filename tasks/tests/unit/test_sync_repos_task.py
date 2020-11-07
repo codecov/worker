@@ -1,7 +1,9 @@
 import json
 from pathlib import Path
-
 import pytest
+
+from shared.torngit.exceptions import TorngitClientError
+from celery.exceptions import SoftTimeLimitExceeded
 
 from tasks.sync_repos import SyncReposTask
 from database.tests.factories import OwnerFactory, RepositoryFactory
@@ -498,3 +500,52 @@ class TestSyncReposTaskUnit(object):
         for repo in repos:
             # repos are no longer using integration
             assert repo.using_integration is False
+
+    @pytest.mark.asyncio
+    async def test_sync_repos_no_github_access(
+        self, mocker, mock_configuration, dbsession, mock_owner_provider
+    ):
+        token = "ecd73a086eadc85db68747a66bdbd662a785a072"
+        repos = [RepositoryFactory.create(private=True) for _ in range(10)]
+        dbsession.add_all(repos)
+        dbsession.flush()
+        user = OwnerFactory.create(
+            organizations=[],
+            service="github",
+            username="1nf1n1t3l00p",
+            unencrypted_oauth_token=token,
+            permission=sorted([r.repoid for r in repos]),
+            service_id="45343385",
+        )
+        assert len(user.permission) > 0
+        dbsession.add(user)
+        dbsession.flush()
+        mock_owner_provider.list_repos.side_effect = TorngitClientError(
+            "code", "response", "message"
+        )
+        await SyncReposTask().run_async(
+            dbsession, ownerid=user.ownerid, using_integration=False
+        )
+        assert user.permission == []  # repos were removed
+
+    @pytest.mark.asyncio
+    async def test_sync_repos_timeout(
+        self, mocker, mock_configuration, dbsession, mock_owner_provider
+    ):
+        repos = [RepositoryFactory.create(private=True) for _ in range(10)]
+        dbsession.add_all(repos)
+        dbsession.flush()
+        user = OwnerFactory.create(
+            organizations=[], permission=sorted([r.repoid for r in repos]),
+        )
+        assert len(user.permission) > 0
+        dbsession.add(user)
+        dbsession.flush()
+        mock_owner_provider.list_repos.side_effect = SoftTimeLimitExceeded()
+        with pytest.raises(SoftTimeLimitExceeded):
+            await SyncReposTask().run_async(
+                dbsession, ownerid=user.ownerid, using_integration=False
+            )
+        assert user.permission == sorted(
+            [r.repoid for r in repos]
+        )  # repos were removed

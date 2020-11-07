@@ -185,6 +185,14 @@ def mock_repo_provider(mocker):
 
 
 @pytest.fixture
+def mock_owner_provider(mocker):
+    m = mocker.patch("services.owner._get_owner_provider_service_instance")
+    provider_instance = mocker.MagicMock(GithubHandler)
+    m.return_value = provider_instance
+    yield provider_instance
+
+
+@pytest.fixture
 def with_sql_functions(dbsession):
     dbsession.execute(
         """CREATE FUNCTION array_append_unique(anyarray, anyelement) RETURNS anyarray
