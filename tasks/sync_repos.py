@@ -1,10 +1,13 @@
 import logging
 from datetime import datetime
+
 from sqlalchemy.dialects.postgresql import insert
+from celery.exceptions import SoftTimeLimitExceeded
 
 from app import celery_app
 from celery_config import sync_repos_task_name
-from shared.config import get_config
+from shared.torngit.exceptions import TorngitClientError
+
 from helpers.environment import is_enterprise
 from tasks.base import BaseCodecovTask
 from database.models import Owner, Repository
@@ -84,7 +87,31 @@ class SyncReposTask(BaseCodecovTask):
         private_project_ids = []
 
         # get my repos (and team repos)
-        repos = await git.list_repos()
+        try:
+            repos = await git.list_repos()
+        except SoftTimeLimitExceeded:
+            old_permissions = owner.permission or []
+            log.warning(
+                "System timed out while listing repos",
+                extra=dict(
+                    ownerid=owner.ownerid,
+                    old_permissions=old_permissions[:100],
+                    number_old_permissions=len(old_permissions),
+                ),
+            )
+            raise
+        except TorngitClientError as e:
+            old_permissions = owner.permission or []
+            log.warning(
+                "Unable to verify user permissions on Github. Dropping all permissions",
+                extra=dict(
+                    ownerid=owner.ownerid,
+                    old_permissions=old_permissions[:100],
+                    number_old_permissions=len(old_permissions),
+                ),
+            )
+            owner.permission = []
+            return
         owners_by_id = {}
 
         for repo in repos:
@@ -127,16 +154,19 @@ class SyncReposTask(BaseCodecovTask):
             "Updating permissions",
             extra=dict(ownerid=ownerid, username=username, repoids=private_project_ids),
         )
-        removed_permissions = set(owner.permission) - set(private_project_ids)
+        old_permissions = owner.permission or []
+        removed_permissions = set(old_permissions) - set(private_project_ids)
         if removed_permissions:
             log.warning(
                 "Owner had permissions that are being removed",
                 extra=dict(
-                    old_permissions=owner.permission,
-                    new_permissions=private_project_ids,
+                    old_permissions=old_permissions[:100],
+                    number_old_permissions=len(old_permissions),
+                    new_permissions=private_project_ids[:100],
+                    number_new_permissions=len(private_project_ids),
                     removed_permissions=sorted(removed_permissions),
                     ownerid=ownerid,
-                    username=username,
+                    username=owner.username,
                 ),
             )
 
