@@ -149,6 +149,7 @@ class SyncReposTask(BaseCodecovTask):
                     private_project_ids.append(int(_repoid))
             if repo["repo"]["private"]:
                 private_project_ids.append(int(repoid))
+            db_session.commit()
 
         log.info(
             "Updating permissions",
