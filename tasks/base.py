@@ -81,6 +81,12 @@ class BaseCodecovTask(celery_app.Task):
                     exc_info=True,
                 )
                 get_db_session.remove()
+        except InvalidRequestError:
+            log.warning(
+                "DB session cannot be operated on any longer. Closing it and removing it",
+                exc_info=True,
+            )
+            get_db_session.remove()
 
     def on_retry(self, *args, **kwargs):
         res = super().on_retry(*args, **kwargs)
