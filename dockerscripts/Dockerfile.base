@@ -14,6 +14,8 @@ RUN             apk update \
                 libcurl \
                 build-base \
                 curl-dev \
+                rust \
+                cargo \
                 && pip install --upgrade pip
 
 ARG             SSH_PRIVATE_KEY

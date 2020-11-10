@@ -14,16 +14,20 @@ RUN             apk update \
                 libcurl \
                 build-base \
                 curl-dev \
+                rust \
+                cargo \
                 && pip install --upgrade pip
 
-ARG             GH_ACCESS_TOKEN
+ARG             SSH_PRIVATE_KEY
+RUN             mkdir /root/.ssh/
+RUN             echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa
+RUN             ssh-keyscan -H github.com >> /root/.ssh/known_hosts
+RUN             chmod 600 /root/.ssh/id_rsa
 
 COPY            requirements.txt /
-RUN             sed -i 's+https://github.com+https://'"${GH_ACCESS_TOKEN}"'@github.com+g' /requirements.txt
 WORKDIR         /pip-packages/
 ENV             PYCURL_SSL_LIBRARY=openssl
 
-RUN             git config --global url."git@github.com:".insteadOf "https://github.com/"
 RUN             pip wheel -r /requirements.txt
 
 
