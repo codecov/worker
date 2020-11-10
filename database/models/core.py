@@ -65,7 +65,7 @@ class Repository(CodecovBaseModel):
     private = Column(types.Boolean)
     updatestamp = Column(types.DateTime)
     yaml = Column(postgresql.JSON)
-    deleted = Column(types.Boolean)
+    deleted = Column(types.Boolean, nullable=False, default=False)
     branch = Column(types.Text)
     image_token = Column(
         types.Text,
