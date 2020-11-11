@@ -177,7 +177,7 @@ class NotifyTask(BaseCodecovTask):
             enriched_pull = await fetch_and_update_pull_request_information_from_commit(
                 repository_service, commit, current_yaml
             )
-            if enriched_pull:
+            if enriched_pull and enriched_pull.database_pull:
                 pull = enriched_pull.database_pull
                 base_commit = self.fetch_pull_request_base(pull)
             else:

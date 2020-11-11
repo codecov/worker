@@ -359,6 +359,47 @@ class TestNotifyTask(object):
         assert commit.notified is True
 
     @pytest.mark.asyncio
+    async def test_simple_call_no_pullrequest_found(
+        self, dbsession, mocker, mock_storage, mock_configuration
+    ):
+        mocked_submit_third_party_notifications = mocker.patch.object(
+            NotifyTask, "submit_third_party_notifications"
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mocker.patch.object(NotifyTask, "app")
+        mocker.patch.object(NotifyTask, "should_send_notifications", return_value=True)
+        fetch_and_update_whether_ci_passed_result = {}
+        mocker.patch.object(
+            NotifyTask,
+            "fetch_and_update_whether_ci_passed",
+            return_value=fetch_and_update_whether_ci_passed_result,
+        )
+        mocked_fetch_pull = mocker.patch(
+            "tasks.notify.fetch_and_update_pull_request_information_from_commit",
+        )
+        mocker.patch.object(
+            ReportService, "get_existing_report_for_commit", return_value=Report()
+        )
+        mocked_fetch_pull.return_value = EnrichedPull(None, None)
+        commit = CommitFactory.create(message="", pullid=None,)
+        dbsession.add(commit)
+        dbsession.flush()
+        task = NotifyTask()
+        result = await task.run_async_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml={"coverage": {"status": {"patch": True}}},
+        )
+        assert result == {
+            "notified": True,
+            "notifications": mocked_submit_third_party_notifications.return_value,
+        }
+        dbsession.flush()
+        dbsession.refresh(commit)
+        assert commit.notified is True
+
+    @pytest.mark.asyncio
     async def test_simple_call_should_delay(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
