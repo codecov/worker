@@ -1,4 +1,4 @@
--e git+ssh://git@github.com/codecov/shared.git@thiago/rust/package-installation#egg=shared
+-e git+ssh://git@github.com/codecov/shared.git@v0.4.0#egg=shared
 boto3~=1.9.218
 celery~=4.4.2
 coverage~=5.1
