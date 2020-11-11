@@ -63,12 +63,15 @@ def _get_repo_provider_service_instance(service_name, **adapter_params):
 async def fetch_appropriate_parent_for_commit(
     repository_service, commit: Commit, git_commit=None
 ):
+    closest_parent_without_message = None
     db_session = commit.get_db_session()
     commitid = commit.commitid
     if git_commit:
         parents = git_commit["parents"]
         possible_commit_query = db_session.query(Commit).filter(
-            Commit.commitid.in_(parents), Commit.repoid == commit.repoid
+            Commit.commitid.in_(parents),
+            Commit.repoid == commit.repoid,
+            ~Commit.message.is_(None),
         )
         possible_commit = possible_commit_query.first()
         if possible_commit:
@@ -80,13 +83,31 @@ async def fetch_appropriate_parent_for_commit(
         parent_commits = [p["commitid"] for p in parents]
         closest_parent = (
             db_session.query(Commit)
-            .filter(Commit.commitid.in_(parent_commits), Commit.repoid == commit.repoid)
+            .filter(
+                Commit.commitid.in_(parent_commits),
+                Commit.repoid == commit.repoid,
+                ~Commit.message.is_(None),
+            )
             .first()
         )
         if closest_parent:
             return closest_parent.commitid
+        if closest_parent_without_message is None:
+            res = (
+                db_session.query(Commit.commitid)
+                .filter(
+                    Commit.commitid.in_(parent_commits), Commit.repoid == commit.repoid
+                )
+                .first()
+            )
+            if res:
+                closest_parent_without_message = res[0]
         elements = parents
-    return None
+    log.warning(
+        "Unable to find a parent commit that was properly found on Github",
+        extra=dict(commit=commit.commitid, repoid=commit.repoid),
+    )
+    return closest_parent_without_message
 
 
 async def update_commit_from_provider_info(repository_service, commit):

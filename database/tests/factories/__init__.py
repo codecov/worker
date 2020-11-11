@@ -80,7 +80,9 @@ class CommitFactory(Factory):
 
     id_ = factory.Sequence(lambda n: n)
     commitid = factory.LazyAttribute(
-        lambda o: sha1(o.message.encode("utf-8")).hexdigest()
+        lambda o: sha1(
+            (o.message if o.message is not None else "nomessage").encode("utf-8")
+        ).hexdigest()
     )
     ci_passed = True
     pullid = 1
@@ -140,7 +142,11 @@ class CommitFactory(Factory):
         },
     }
     parent_commit_id = factory.LazyAttribute(
-        lambda o: sha1((o.message + "parent").encode("utf-8")).hexdigest()
+        lambda o: sha1(
+            (o.message if o.message is not None else "nomessage" + "parent").encode(
+                "utf-8"
+            )
+        ).hexdigest()
     )
     state = "complete"
 
