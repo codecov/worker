@@ -125,5 +125,5 @@ class StatusProjectMixin(object):
         change_coverage = round_number(
             self.current_yaml, head_coverage - target_coverage
         )
-        message = f"{head_coverage_rounded}% (+{change_coverage}%) compared to {comparison.base.commit.commitid[:7]}"
+        message = f"{head_coverage_rounded}% ({change_coverage:+}%) compared to {comparison.base.commit.commitid[:7]}"
         return (state, message)

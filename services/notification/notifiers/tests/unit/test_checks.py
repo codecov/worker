@@ -1366,6 +1366,30 @@ class TestProjectChecksNotifier(object):
         assert expected_result == result
 
     @pytest.mark.asyncio
+    async def test_build_default_payload_negative_change_comment_off(
+        self, sample_comparison_negative_change, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison_negative_change.head.commit.repository,
+            title="default",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={"comment": False},
+        )
+        result = await notifier.build_payload(sample_comparison_negative_change)
+        repo = sample_comparison_negative_change.head.commit.repository
+        base_commit = sample_comparison_negative_change.base.commit
+        expected_result = {
+            "state": "failure",
+            "output": {
+                "title": f"50.00% (-10.00%) compared to {base_commit.commitid[:7]}",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_default_payload_negative_change_comment_off/{repo.name}/pull/{sample_comparison_negative_change.pull.pullid}?src=pr&el=h1)\n\n50.00% (-10.00%) compared to {base_commit.commitid[:7]}",
+            },
+        }
+        assert expected_result == result
+
+    @pytest.mark.asyncio
     async def test_build_payload_not_auto(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
