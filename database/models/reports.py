@@ -39,10 +39,29 @@ class RepositoryFlag(CodecovBaseModel, MixinBaseClass):
 class CommitReport(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_commitreport"
     commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
-    commit = relationship("Commit", foreign_keys=[commit_id], back_populates="report")
-    details = relationship("ReportDetails", back_populates="report", uselist=False)
-    totals = relationship("ReportLevelTotals", back_populates="report", uselist=False)
-    uploads = relationship("Upload", back_populates="report")
+    commit = relationship(
+        "Commit",
+        foreign_keys=[commit_id],
+        back_populates="report",
+        cascade="all, delete",
+    )
+    details = relationship(
+        "ReportDetails",
+        back_populates="report",
+        uselist=False,
+        cascade="all, delete",
+        passive_deletes=True,
+    )
+    totals = relationship(
+        "ReportLevelTotals",
+        back_populates="report",
+        uselist=False,
+        cascade="all, delete",
+        passive_deletes=True,
+    )
+    uploads = relationship(
+        "Upload", back_populates="report", cascade="all, delete", passive_deletes=True
+    )
 
 
 association_table = Table(
@@ -69,7 +88,13 @@ class Upload(CodecovBaseModel, MixinBaseClass):
     storage_path = Column(types.Text)
     order_number = Column(types.Integer)
     flags = relationship(RepositoryFlag, secondary=association_table)
-    totals = relationship("UploadLevelTotals", back_populates="upload", uselist=False)
+    totals = relationship(
+        "UploadLevelTotals",
+        back_populates="upload",
+        uselist=False,
+        cascade="all, delete",
+        passive_deletes=True,
+    )
     upload_extras = Column(postgresql.JSON, nullable=False)
     upload_type = Column(types.String(100), nullable=False)
 
