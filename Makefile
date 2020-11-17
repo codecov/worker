@@ -55,8 +55,11 @@ push.worker-new:
 push.enterprise-private:
 	docker push codecov/worker-private:${release_version}-${sha}
 
+#push enterprise
 push.enterprise:
 	docker push codecov/enterprise-worker:${release_version}
+	docker tag codecov/enterprise-worker:${release_version} codecov/enterprise-worker:latest-stable
+	docker push codecov/enterprise-worker:latest-stable
 
 # Triggers the deploy job depending on if the command is called locally, in a PR or on master.
 dockerhub.deploy: dockerhub.deploy-$(release_env)
