@@ -329,6 +329,7 @@ class UploadTask(BaseCodecovTask):
                 ),
             )
             chain_to_call.append(finish_sig)
+            res = chain(*chain_to_call).apply_async()
             log.info(
                 "Scheduling task for %s different reports",
                 len(argument_list),
@@ -337,9 +338,10 @@ class UploadTask(BaseCodecovTask):
                     commit=commit.commitid,
                     argument_list=argument_list,
                     number_arguments=len(argument_list),
+                    scheduled_task_ids=res.as_tuple(),
                 ),
             )
-            return chain(*chain_to_call).apply_async()
+            return res
         log.info(
             "Not scheduling task because there were no reports to be processed found",
             extra=dict(
@@ -404,7 +406,12 @@ class UploadTask(BaseCodecovTask):
         self, commit: Commit, arguments: Mapping[str, Any], redis_connection: Redis
     ):
         """
-            Normalizes and validates the argument list from the user
+            Normalizes and validates the argument list from the user.
+
+            Does things like:
+
+                - replacing a redis-stored value with a storage one (by doing an upload)
+                - Removing unecessary sensitive information for the arguments
         """
         commit_sha = commit.commitid
         reportid = arguments.get("reportid")
@@ -422,6 +429,7 @@ class UploadTask(BaseCodecovTask):
                 ),
             )
             arguments["url"] = written_path
+        arguments.pop("token", None)
         return arguments
 
 
