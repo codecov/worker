@@ -521,6 +521,22 @@ class TestUploadTaskUnit(object):
         }
         assert expected_result == result
 
+    def test_normalize_upload_arguments_token_removal(
+        self, dbsession, mock_redis, mock_storage
+    ):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        reportid = "5fbeee8b-5a41-4925-b59d-470b9d171235"
+        previous_arguments = {"reportid": reportid, "token": "value"}
+        result = UploadTask().normalize_upload_arguments(
+            commit, previous_arguments, mock_redis
+        )
+        expected_result = {
+            "reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235",
+        }
+        assert expected_result == result
+
     def test_normalize_upload_arguments(
         self, dbsession, mock_redis, mock_storage, mocker
     ):
