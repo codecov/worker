@@ -62,6 +62,7 @@ class TestWebhookNotifier(object):
             "branch": "new_branch",
             "message": head_commit.message,
         }
+        assert result["totals"] == expected_result["totals"]
         assert result == expected_result
 
     def test_build_commit_payload_gitlab(

@@ -15,7 +15,11 @@ class StatusPatchMixin(object):
             )
         else:
             target_coverage = (
-                Decimal(comparison.base.report.totals.coverage)
+                Decimal(
+                    comparison.base.report.totals.coverage
+                    if comparison.base.report.totals.coverage is not None
+                    else "0.0"
+                )
                 if comparison.has_base_report()
                 else None
             )
@@ -115,8 +119,16 @@ class StatusProjectMixin(object):
             state = self.notifier_yaml_settings.get("if_not_found", "success")
             message = "No report found to compare against"
             return (state, message)
-        target_coverage = Decimal(comparison.base.report.totals.coverage)
-        head_coverage = Decimal(comparison.head.report.totals.coverage)
+        target_coverage = Decimal(
+            comparison.base.report.totals.coverage
+            if comparison.base.report.totals.coverage is not None
+            else "0.0"
+        )
+        head_coverage = Decimal(
+            comparison.head.report.totals.coverage
+            if comparison.head.report.totals.coverage is not None
+            else "0.0"
+        )
         head_coverage_rounded = round_number(self.current_yaml, head_coverage)
         if head_coverage == target_coverage:
             state = "success"
