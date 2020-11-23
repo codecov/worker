@@ -28,13 +28,19 @@ class OwnerFactory(Factory):
     admins = []
     permission = []
     organizations = []
-    service = "github"
+    service = factory.Iterator(["gitlab", "github", "bitbucket"])
     free = 0
     unencrypted_oauth_token = factory.LazyFunction(lambda: uuid4().hex)
 
     oauth_token = factory.LazyAttribute(
         lambda o: encrypt_oauth_token(o.unencrypted_oauth_token)
     )
+
+    @classmethod
+    def create_from_test_request(cls, request, *args, **kwargs):
+        if "username" not in kwargs:
+            kwargs["username"] = request.node.name[-100:]
+        return cls(*args, **kwargs)
 
 
 class RepositoryFactory(Factory):

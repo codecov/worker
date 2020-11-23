@@ -89,6 +89,7 @@ class TestUploadTaskIntegration(object):
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
             repository__owner__username="ThiagoCodecov",
+            repository__owner__service="github",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
         )
@@ -200,6 +201,7 @@ class TestUploadTaskIntegration(object):
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
             repository__owner__username="ThiagoCodecov",
+            repository__owner__service="github",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
         )

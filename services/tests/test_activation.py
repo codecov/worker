@@ -6,11 +6,13 @@ from services.activation import activate_user
 
 
 class TestActivationServiceTestCase(object):
-    def test_activate_user_no_seats(self, dbsession, mocker, with_sql_functions):
+    def test_activate_user_no_seats(
+        self, request, dbsession, mocker, with_sql_functions
+    ):
         org = OwnerFactory.create(
             plan_user_count=0, plan_activated_users=[], plan_auto_activate=True
         )
-        user = OwnerFactory.create()
+        user = OwnerFactory.create_from_test_request(request)
         dbsession.add(org)
         dbsession.add(user)
         dbsession.flush()
@@ -20,11 +22,13 @@ class TestActivationServiceTestCase(object):
         dbsession.commit()
         assert user.ownerid not in org.plan_activated_users
 
-    def test_activate_user_success(self, dbsession, mocker, with_sql_functions):
+    def test_activate_user_success(
+        self, request, dbsession, mocker, with_sql_functions
+    ):
         org = OwnerFactory.create(
             plan_user_count=1, plan_activated_users=[], plan_auto_activate=True
         )
-        user = OwnerFactory.create()
+        user = OwnerFactory.create_from_test_request(request)
         dbsession.add(org)
         dbsession.add(user)
         dbsession.flush()
@@ -35,7 +39,7 @@ class TestActivationServiceTestCase(object):
         assert user.ownerid in org.plan_activated_users
 
     def test_activate_user_success_for_users_free(
-        self, dbsession, mocker, with_sql_functions
+        self, request, dbsession, mocker, with_sql_functions
     ):
         org = OwnerFactory.create(
             plan="users-free",
@@ -43,7 +47,7 @@ class TestActivationServiceTestCase(object):
             plan_activated_users=None,
             plan_auto_activate=True,
         )
-        user = OwnerFactory.create()
+        user = OwnerFactory.create_from_test_request(request)
         dbsession.add(org)
         dbsession.add(user)
         dbsession.flush()

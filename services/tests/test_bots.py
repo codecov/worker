@@ -38,9 +38,10 @@ class TestBotsService(BaseTestCase):
             using_integration=False,
             bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
             owner=OwnerFactory.create(
+                service="github",
                 unencrypted_oauth_token="not_so_simple_code",
                 bot=OwnerFactory.create(
-                    unencrypted_oauth_token="now_that_code_is_complex"
+                    service="github", unencrypted_oauth_token="now_that_code_is_complex"
                 ),
             ),
         )
@@ -336,9 +337,10 @@ class TestBotsService(BaseTestCase):
             using_integration=False,
             bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
             owner=OwnerFactory.create(
+                service="github",
                 unencrypted_oauth_token="not_so_simple_code",
                 bot=OwnerFactory.create(
-                    unencrypted_oauth_token="now_that_code_is_complex"
+                    service="github", unencrypted_oauth_token="now_that_code_is_complex"
                 ),
             ),
         )
@@ -384,8 +386,9 @@ class TestBotsService(BaseTestCase):
             using_integration=False,
             bot=OwnerFactory.create(unencrypted_oauth_token=None),
             owner=OwnerFactory.create(
+                service="github",
                 unencrypted_oauth_token=None,
-                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+                bot=OwnerFactory.create(service="github", unencrypted_oauth_token=None),
             ),
         )
         dbsession.add(repo)
@@ -551,9 +554,10 @@ class TestBotsService(BaseTestCase):
             using_integration=False,
             bot=None,
             owner=OwnerFactory.create(
+                service="github",
                 unencrypted_oauth_token=None,
                 integration_id=90,
-                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+                bot=OwnerFactory.create(service="github", unencrypted_oauth_token=None),
             ),
         )
         dbsession.add(repo)

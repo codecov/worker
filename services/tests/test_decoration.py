@@ -14,6 +14,7 @@ from services.repository import EnrichedPull
 def enriched_pull(dbsession):
     repository = RepositoryFactory.create(
         owner__username="codecov",
+        owner__service="github",
         owner__unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
         owner__plan="users-pr-inappm",
         name="example-python",
@@ -22,9 +23,10 @@ def enriched_pull(dbsession):
     )
     dbsession.add(repository)
     dbsession.flush()
-    base_commit = CommitFactory.create(repository=repository)
-    head_commit = CommitFactory.create(repository=repository)
+    base_commit = CommitFactory.create(repository=repository, author__service="github")
+    head_commit = CommitFactory.create(repository=repository, author__service="github")
     pull = PullFactory.create(
+        author__service="github",
         repository=repository,
         base=base_commit.commitid,
         head=head_commit.commitid,
@@ -210,6 +212,7 @@ class TestDecorationServiceTestCase(object):
         enriched_pull.database_pull.repository.owner.plan_auto_activate = False
 
         pr_author = OwnerFactory.create(
+            service="github",
             username=enriched_pull.provider_pull["author"]["username"],
             service_id=enriched_pull.provider_pull["author"]["id"],
         )
@@ -231,6 +234,7 @@ class TestDecorationServiceTestCase(object):
         self, dbsession, mocker, enriched_pull
     ):
         pr_author = OwnerFactory.create(
+            service="github",
             username=enriched_pull.provider_pull["author"]["username"],
             service_id=enriched_pull.provider_pull["author"]["id"],
         )
@@ -258,6 +262,7 @@ class TestDecorationServiceTestCase(object):
         enriched_pull.database_pull.repository.owner.plan_auto_activate = True
 
         pr_author = OwnerFactory.create(
+            service="github",
             username=enriched_pull.provider_pull["author"]["username"],
             service_id=enriched_pull.provider_pull["author"]["id"],
         )
@@ -290,6 +295,7 @@ class TestDecorationServiceTestCase(object):
         enriched_pull.database_pull.repository.owner.plan_auto_activate = True
 
         pr_author = OwnerFactory.create(
+            service="github",
             username=enriched_pull.provider_pull["author"]["username"],
             service_id=enriched_pull.provider_pull["author"]["id"],
         )
@@ -447,6 +453,7 @@ class TestDecorationServiceGitLabTestCase(object):
         enriched_pull.database_pull.repository.owner.plan_auto_activate = True
 
         pr_author = OwnerFactory.create(
+            service="github",
             username=enriched_pull.provider_pull["author"]["username"],
             service_id=enriched_pull.provider_pull["author"]["id"],
         )

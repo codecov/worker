@@ -2,3 +2,4 @@ ignore:
   - conftest.py
   - "**/conftest.py"
   - "**/tests**/test_*.py"
+  - "database/tests/factories/__init__.py"

@@ -26,6 +26,7 @@ class TestNotifyTask(object):
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
             owner__username="ThiagoCodecov",
             owner__service_id="44376991",
+            owner__service="github",
             yaml={"codecov": {"max_report_age": "1y ago"}},
             name="example-python",
         )
@@ -73,6 +74,7 @@ class TestNotifyTask(object):
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
             owner__username="ThiagoCodecov",
+            owner__service="github",
             owner__service_id="44376991",
             name="example-python",
         )
@@ -148,6 +150,7 @@ class TestNotifyTask(object):
         ] = "https://myexamplewebsite.io"
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
+            owner__service="github",
             owner__username="ThiagoCodecov",
             owner__service_id="44376991",
             name="example-python",
@@ -268,6 +271,7 @@ class TestNotifyTask(object):
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
+            owner__service="github",
             owner__username="ThiagoCodecov",
             owner__service_id="44376991",
             name="example-python",
@@ -378,6 +382,7 @@ class TestNotifyTask(object):
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
             owner__username="ThiagoCodecov",
+            owner__service="github",
             owner__service_id="44376991",
             owner__email="thiago@test123.com",
             name="example-python",
@@ -729,6 +734,7 @@ class TestNotifyTask(object):
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token="4877ed9686b74b0ee46af7f41a07a4d8063a8afa",
             owner__username="ThiagoCodecov",
+            owner__service="github",
             owner__service_id="44376991",
             name="example-python",
         )

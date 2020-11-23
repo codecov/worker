@@ -228,7 +228,8 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
         ],
     }
     commit = CommitFactory.create(
-        report_json={"sessions": sessions_dict, "files": file_headers}
+        report_json={"sessions": sessions_dict, "files": file_headers},
+        repository__owner__service="github",
     )
     dbsession.add(commit)
     dbsession.flush()
@@ -273,11 +274,15 @@ def create_sample_comparison(dbsession, request, sample_report):
 
 @pytest.fixture
 def sample_comparison(dbsession, request, sample_report):
-    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    repository = RepositoryFactory.create(
+        owner__username=request.node.name, owner__service="github"
+    )
     dbsession.add(repository)
     dbsession.flush()
-    base_commit = CommitFactory.create(repository=repository)
-    head_commit = CommitFactory.create(repository=repository, branch="new_branch")
+    base_commit = CommitFactory.create(repository=repository, author__service="github")
+    head_commit = CommitFactory.create(
+        repository=repository, branch="new_branch", author__service="github"
+    )
     pull = PullFactory.create(
         repository=repository, base=base_commit.commitid, head=head_commit.commitid
     )
@@ -370,7 +375,9 @@ def sample_comparison_coverage_carriedforward(
 
 @pytest.fixture
 def sample_comparison_negative_change(dbsession, request, sample_report):
-    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    repository = RepositoryFactory.create(
+        owner__username=request.node.name, owner__service="github"
+    )
     dbsession.add(repository)
     dbsession.flush()
     base_commit = CommitFactory.create(repository=repository)
@@ -414,7 +421,9 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
 
 @pytest.fixture
 def sample_comparison_no_change(dbsession, request, sample_report):
-    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    repository = RepositoryFactory.create(
+        owner__username=request.node.name, owner__service="github"
+    )
     dbsession.add(repository)
     dbsession.flush()
     base_commit = CommitFactory.create(repository=repository)
@@ -458,11 +467,15 @@ def sample_comparison_no_change(dbsession, request, sample_report):
 
 @pytest.fixture
 def sample_comparison_without_pull(dbsession, request, sample_report):
-    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    repository = RepositoryFactory.create(
+        owner__username=request.node.name, owner__service="github"
+    )
     dbsession.add(repository)
     dbsession.flush()
-    base_commit = CommitFactory.create(repository=repository)
-    head_commit = CommitFactory.create(repository=repository, branch="new_branch")
+    base_commit = CommitFactory.create(repository=repository, author__service="github")
+    head_commit = CommitFactory.create(
+        repository=repository, branch="new_branch", author__service="github"
+    )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
     dbsession.flush()
@@ -514,11 +527,15 @@ def sample_comparison_database_pull_without_provider(dbsession, request, sample_
 
 @pytest.fixture
 def sample_comparison_without_base_report(dbsession, request, sample_report):
-    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    repository = RepositoryFactory.create(
+        owner__username=request.node.name, owner__service="github"
+    )
     dbsession.add(repository)
     dbsession.flush()
-    base_commit = CommitFactory.create(repository=repository)
-    head_commit = CommitFactory.create(repository=repository, branch="new_branch")
+    base_commit = CommitFactory.create(repository=repository, author__service="github")
+    head_commit = CommitFactory.create(
+        repository=repository, branch="new_branch", author__service="github"
+    )
     pull = PullFactory.create(
         repository=repository, base=base_commit.commitid, head=head_commit.commitid
     )
@@ -555,7 +572,9 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
 
 @pytest.fixture
 def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
-    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    repository = RepositoryFactory.create(
+        owner__username=request.node.name, owner__service="github"
+    )
     dbsession.add(repository)
     dbsession.flush()
     head_commit = CommitFactory.create(repository=repository, branch="new_branch")
