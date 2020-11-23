@@ -149,10 +149,6 @@ jobs:
     - run:
         <<: *k8s_auth
     - run:
-        name: Git tag release
-        command: |
-          make -f Makefile.circle add-release-tag
-    - run:
         name: deploy to k8s
         command: |-
           make -f Makefile.circle tag
@@ -171,16 +167,10 @@ workflows:
   build-test-deploy:
     jobs:
       - linter
-      - build:
-          filters:
-            tags:
-              only: /.*/
+      - build
       - test:
           requires:
             - build
-          filters:
-            tags:
-              only: /.*/
       - staging:
           requires:
             - build
@@ -193,6 +183,8 @@ workflows:
             - build
             - test
           filters:
+            tags:
+              only: "/^production-[0-9]{4}-[0-9]{2}-[0-9]{4}/"
             branches:
               only: production
       - deploy:
