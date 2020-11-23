@@ -17,6 +17,8 @@ from database.models import (
     CommitReport,
     UploadLevelTotals,
 )
+from celery_config import upload_processor_task_name
+
 from shared.config import get_config
 from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from helpers.metrics import metrics
@@ -55,7 +57,7 @@ class UploadProcessorTask(BaseCodecovTask):
         number of `uploads` to be processed
     """
 
-    name = "app.tasks.upload_processor.UploadProcessorTask"
+    name = upload_processor_task_name
 
     def schedule_for_later_try(self):
         retry_in = FIRST_RETRY_DELAY * 3 ** self.request.retries
