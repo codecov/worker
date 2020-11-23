@@ -91,6 +91,7 @@ pulls_task_name = "app.tasks.pulls.Sync"
 status_set_error_task_name = "app.tasks.status.SetError"
 status_set_pending_task_name = "app.tasks.status.SetPending"
 upload_task_name = "app.tasks.upload.Upload"
+upload_processor_task_name = "app.tasks.upload_processor.UploadProcessorTask"
 archive_task_name = "app.tasks.archive.MigrateToArchive"
 bot_task_name = "app.tasks.bot.VerifyBot"
 comment_task_name = "app.tasks.comment.Comment"
@@ -141,6 +142,11 @@ task_routes = {
         )
     },
     upload_task_name: {
+        "queue": get_config(
+            "setup", "tasks", "upload", "queue", default=task_default_queue
+        )
+    },
+    upload_processor_task_name: {
         "queue": get_config(
             "setup", "tasks", "upload", "queue", default=task_default_queue
         )
