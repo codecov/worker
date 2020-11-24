@@ -21,7 +21,9 @@ from shared.reports.resources import ReportLine, ReportFile, Report
 
 @pytest.fixture
 def sample_comparison(dbsession, request):
-    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    repository = RepositoryFactory.create(
+        owner__username=request.node.name, owner__service="github"
+    )
     dbsession.add(repository)
     dbsession.flush()
     base_commit = CommitFactory.create(repository=repository)
@@ -78,6 +80,7 @@ class TestNotificationService(object):
     ):
         repository = RepositoryFactory.create(
             owner__integration_id=123,
+            owner__service="github",
             yaml={"codecov": {"max_report_age": "1y ago"}},
             name="example-python",
             using_integration=True,
@@ -105,6 +108,7 @@ class TestNotificationService(object):
     ):
         repository = RepositoryFactory.create(
             owner__integration_id=123,
+            owner__service="github",
             owner__ownerid=1234,
             yaml={"codecov": {"max_report_age": "1y ago"}},
             name="example-python",

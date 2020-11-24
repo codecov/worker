@@ -14,7 +14,7 @@ class TestReprModels(object):
     def test_owner_repr(self, dbsession):
         simple_owner = Owner()
         assert "Owner<None@service<None>>" == repr(simple_owner)
-        factoried_owner = OwnerFactory.create()
+        factoried_owner = OwnerFactory.create(service="github")
         assert "Owner<None@service<github>>" == repr(factoried_owner)
         dbsession.add(factoried_owner)
         dbsession.flush()

@@ -37,6 +37,8 @@ class TestUploadFinisherTask(object):
             repository__branch="thisbranch",
             repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
             repository__owner__username="ThiagoCodecov",
+            repository__owner__service="github",
+            author__service="github",
             notified=True,
             repository__yaml={
                 "codecov": {"max_report_age": "1y ago"}

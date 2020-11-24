@@ -129,6 +129,7 @@ class TestWebhookNotifier(object):
     ):
         repository = RepositoryFactory.create(
             owner__username="test_build_commit_payload_no_author",
+            owner__service="github",
         )
         dbsession.add(repository)
         dbsession.flush()

@@ -11,6 +11,7 @@ from services.decoration import Decoration
 @pytest.fixture
 def sample_comparison(dbsession, request, sample_report, small_report):
     repository = RepositoryFactory.create(
+        owner__service="github",
         owner__username="ThiagoCodecov",
         name="example-python",
         owner__unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
@@ -136,6 +137,7 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
 def sample_comparison_for_upgrade(dbsession, request, sample_report, small_report):
     repository = RepositoryFactory.create(
         owner__username="1nf1n1t3l00p",
+        owner__service="github",
         name="priv_example",
         owner__unencrypted_oauth_token="test1p40fvqsw2hoxl55kvhd4sakchhehblihuth",
         image_token="abcdefghij",

@@ -4,7 +4,7 @@ import os
 
 
 def test_get_pull_url_returns_new_compare_url_for_whitelisted_owners():
-    owner = OwnerFactory.create(ownerid=10)
+    owner = OwnerFactory.create(ownerid=10, service="github")
 
     os.environ["NEW_COMPARE_WHITELISTED_OWNERS"] = f"{owner.ownerid}, 55, 34"
 
