@@ -115,6 +115,10 @@ class FilteredComparison(object):
     def has_base_report(self):
         return self.real_comparison.has_base_report()
 
+    @property
+    def enriched_pull(self):
+        return self.real_comparison.enriched_pull
+
     async def get_changes(self) -> Optional[List[Change]]:
         # Just make sure to not cause a deadlock between this and get_diff
         async with self._changes_lock:
