@@ -134,7 +134,7 @@ class UploadFinisherTask(BaseCodecovTask):
                     )
                     if pull:
                         head = pull.get_head_commit()
-                        if head is None or head.timestamp < commit.timestamp:
+                        if head is None or head.timestamp <= commit.timestamp:
                             pull.head = commit.commitid
                         if pull.head == commit.commitid:
                             db_session.commit()
