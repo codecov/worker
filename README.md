@@ -73,6 +73,24 @@ pip-compile requirements.in
 
 Do not change `requirements.txt` directly
 
+## Deploying
+
+To deploy, all you have to do is create a release (preferred option) or push a tag with the pattern production-date-number. More specifically, it needs to follow the regex:
+
+```
+^production-[0-9]{4}-[0-9]{2}-[0-9]{4}
+```
+
+Which means, for example:
+
+- `production-2020-11-0001` - First deploy of 2020-11
+- `production-2020-12-0015` - Fifteenth deploy of 2020-12
+
+Notice that, while the dates are really useful for understanding when code was deployed, it doesn't affect whether or not your release will go to production. If your regex matches the pattern, regardless of what date is tagged, that version will go to production.
+
+To create releases on Github, you can go to https://github.com/codecov/worker/releases or use Github CLI. to push tags you can follow instructions on https://git-scm.com/book/en/v2/Git-Basics-Tagging
+
+
 ## Code Structure
 
 Before getting into changing the code, try to use the following structure (feel free to suggest changes.Some bits of it are based on our experience)
