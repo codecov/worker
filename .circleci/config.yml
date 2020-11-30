@@ -167,10 +167,16 @@ workflows:
   build-test-deploy:
     jobs:
       - linter
-      - build
+      - build:
+          filters:
+            tags:
+              only: /.*/
       - test:
           requires:
             - build
+          filters:
+            tags:
+              only: /.*/
       - staging:
           requires:
             - build
