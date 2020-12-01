@@ -2,6 +2,7 @@ import pytest
 
 from database.tests.factories import OwnerFactory, RepositoryFactory
 from database.models import Owner, Repository
+from services.billing import BillingPlan
 from services.github_marketplace import GitHubMarketplaceService
 from tasks.github_marketplace import SyncPlansTask
 
@@ -159,8 +160,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         result = await task.run_async(
             dbsession, sender=sender, account=account, action=action
         )
-        assert result["plan_type_synced"] is None
-        assert result["plan_removed"] is True
+        assert result["plan_type_synced"] is "free"
 
         owner = (
             dbsession.query(Owner)
@@ -171,8 +171,8 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner is not None
         assert owner.username == "some-org"
         assert owner.plan_provider == "github"
-        assert owner.plan is None
-        assert owner.plan_user_count == 0
+        assert owner.plan == BillingPlan.users_free.value
+        assert owner.plan_user_count == 5
         assert owner.plan_activated_users == None
 
     @pytest.mark.asyncio
