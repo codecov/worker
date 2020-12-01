@@ -72,6 +72,7 @@ async def fetch_appropriate_parent_for_commit(
             Commit.commitid.in_(parents),
             Commit.repoid == commit.repoid,
             ~Commit.message.is_(None),
+            ~Commit.deleted.is_(True),
         )
         possible_commit = possible_commit_query.first()
         if possible_commit:
@@ -87,6 +88,7 @@ async def fetch_appropriate_parent_for_commit(
                 Commit.commitid.in_(parent_commits),
                 Commit.repoid == commit.repoid,
                 ~Commit.message.is_(None),
+                ~Commit.deleted.is_(True),
             )
             .first()
         )
@@ -96,7 +98,9 @@ async def fetch_appropriate_parent_for_commit(
             res = (
                 db_session.query(Commit.commitid)
                 .filter(
-                    Commit.commitid.in_(parent_commits), Commit.repoid == commit.repoid
+                    Commit.commitid.in_(parent_commits),
+                    Commit.repoid == commit.repoid,
+                    ~Commit.deleted.is_(True),
                 )
                 .first()
             )
