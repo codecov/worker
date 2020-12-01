@@ -126,9 +126,18 @@ class Commit(CodecovBaseModel):
     author = relationship(Owner)
     repository = relationship(Repository, backref=backref("commits", cascade="delete"))
     notifications = relationship(
-        "CommitNotification", backref=backref("commits", cascade="delete")
+        "CommitNotification",
+        backref=backref("commits"),
+        cascade="all, delete",
+        passive_deletes=True,
     )
-    report = relationship("CommitReport", uselist=False, back_populates="commit")
+    report = relationship(
+        "CommitReport",
+        uselist=False,
+        back_populates="commit",
+        cascade="all, delete",
+        passive_deletes=True,
+    )
 
     def __repr__(self):
         return f"Commit<{self.commitid}@repo<{self.repoid}>>"
