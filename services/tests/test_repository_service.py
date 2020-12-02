@@ -189,6 +189,44 @@ class TestRepositoryServiceTestCase(object):
         assert grandparent_commit_id == result
 
     @pytest.mark.asyncio
+    async def test_fetch_appropriate_parent_for_commit_parent_is_deleted(
+        self, dbsession, mock_repo_provider
+    ):
+        grandparent_commit_id = "8aa5aa054aaa21cf5a664acd504a1af6f5caafaa"
+        parent_commit_id = "a" * 32
+        repository = RepositoryFactory.create()
+        parent_with_no_message = CommitFactory.create(
+            commitid=parent_commit_id,
+            repository=repository,
+            message="message",
+            parent_commit_id=None,
+            deleted=True,
+        )
+        parent_commit = CommitFactory.create(
+            commitid=grandparent_commit_id, repository=repository
+        )
+        commit = CommitFactory.create(parent_commit_id=None, repository=repository)
+        f = {
+            "commitid": commit.commitid,
+            "parents": [
+                {
+                    "commitid": parent_commit_id,
+                    "parents": [{"commitid": grandparent_commit_id, "parents": []}],
+                }
+            ],
+        }
+        dbsession.add(parent_commit)
+        dbsession.add(commit)
+        dbsession.add(parent_with_no_message)
+        dbsession.flush()
+        git_commit = {"parents": [parent_commit_id]}
+        mock_repo_provider.get_ancestors_tree.return_value = f
+        result = await fetch_appropriate_parent_for_commit(
+            mock_repo_provider, commit, git_commit
+        )
+        assert grandparent_commit_id == result
+
+    @pytest.mark.asyncio
     async def test_fetch_appropriate_parent_for_commit_parent_has_no_message_but_nothing_better(
         self, dbsession, mock_repo_provider
     ):
