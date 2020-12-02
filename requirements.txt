@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements.in
 #
--e git+ssh://git@github.com/codecov/shared.git@v0.4.4#egg=shared  # via -r requirements.in
+-e git+ssh://git@github.com/codecov/shared.git@v0.4.5#egg=shared  # via -r requirements.in
 amqp==2.5.2               # via kombu
 analytics-python==1.3.0b1  # via shared
 asn1crypto==1.3.0         # via cryptography
@@ -39,7 +39,6 @@ httpcore==0.12.0          # via httpx
 httplib2==0.18.1          # via oauth2
 httpx==0.16.1             # via -r requirements.in, shared
 idna==2.8                 # via requests, rfc3986, yarl
-importlib-metadata==1.7.0  # via kombu, pluggy, pytest
 jmespath==0.10.0          # via boto3, botocore
 kombu==4.6.8              # via celery
 lxml==4.3.5               # via -r requirements.in
@@ -72,7 +71,7 @@ pyyaml==3.13              # via -r requirements.in, vcrpy
 redis==3.2.1              # via -r requirements.in
 requests==2.22.0          # via -r requirements.in, analytics-python, google-api-core, stripe
 rfc3986[idna2008]==1.4.0  # via httpx
-git+ssh://git@github.com/codecov/ribs@v0.1.2#egg=ribs  # via shared
+git+ssh://git@github.com/codecov/ribs@v0.1.3#egg=ribs  # via shared
 rsa==4.0                  # via google-auth
 s3transfer==0.2.1         # via boto3
 schema==0.7.0             # via shared
@@ -94,7 +93,6 @@ voluptuous==0.11.7        # via shared
 wcwidth==0.1.9            # via pytest
 wrapt==1.12.1             # via vcrpy
 yarl==1.4.2               # via vcrpy
-zipp==3.1.0               # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
