@@ -55,4 +55,4 @@ RUN             wget -q -O /usr/local/bin/berglas https://storage.googleapis.com
                 chmod +x /usr/local/bin/berglas
 
 RUN             rm -rf /pip-packages/src
-RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages/*
+RUN             pip install --no-deps --no-index --find-links=/pip-packages/ /pip-packages/*

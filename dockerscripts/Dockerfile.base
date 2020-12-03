@@ -51,7 +51,7 @@ WORKDIR         /pip-packages/
 COPY            --from=build /pip-packages/ /pip-packages/
 
 RUN             rm -rf /pip-packages/src
-RUN             pip install --no-index --find-links=/pip-packages/ /pip-packages/*
+RUN             pip install --no-deps --no-index --find-links=/pip-packages/ /pip-packages/*
 
 RUN             addgroup -S application \
                 && adduser -S codecov -G application
