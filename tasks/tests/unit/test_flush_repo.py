@@ -1,4 +1,6 @@
 import pytest
+from sqlalchemy import null
+from sqlalchemy.dialects import postgresql
 
 from tasks.flush_repo import FlushRepoTask
 from database.tests.factories import (
@@ -7,6 +9,7 @@ from database.tests.factories import (
     PullFactory,
     BranchFactory,
 )
+from database.models import Repository
 from services.archive import ArchiveService
 
 
@@ -70,7 +73,7 @@ class TestFlushRepo(object):
 
     @pytest.mark.asyncio
     async def test_flush_repo_little_bit_of_everything(self, dbsession, mock_storage):
-        repo = RepositoryFactory.create()
+        repo = RepositoryFactory.create(cache_do_not_use={})
         dbsession.add(repo)
         dbsession.flush()
         archive_service = ArchiveService(repo)
@@ -94,3 +97,25 @@ class TestFlushRepo(object):
             "deleted_commits_count": 8,
             "deleted_pulls_count": 17,
         }
+        dbsession.flush()
+        dbsession.refresh(repo)
+        # Those assertions are almost tautological. If they start being a
+        # problem, don't hesitate to delete them
+        assert (
+            dbsession.query(Repository)
+            .filter(
+                Repository.repoid == repo.repoid, Repository.cache_do_not_use == null()
+            )
+            .count()
+            == 1
+        )
+        assert (
+            dbsession.query(Repository)
+            .filter(
+                Repository.repoid == repo.repoid,
+                Repository.cache_do_not_use == postgresql.JSON.NULL,
+            )
+            .count()
+            == 0
+        )
+        assert repo.cache_do_not_use is None

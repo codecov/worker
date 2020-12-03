@@ -77,7 +77,7 @@ class Repository(CodecovBaseModel):
     hookid = Column(types.Text)
     activated = Column(types.Boolean, default=False)
     using_integration = Column(types.Boolean)
-    cache_do_not_use = Column("cache", postgresql.JSON)
+    cache_do_not_use = Column("cache", postgresql.JSONB)
 
     owner = relationship(
         Owner, foreign_keys=[ownerid], backref=backref("owners", cascade="delete")

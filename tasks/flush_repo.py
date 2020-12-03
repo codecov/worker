@@ -1,5 +1,7 @@
 import logging
 
+from sqlalchemy import null
+
 from app import celery_app
 from database.models import Repository, Commit, Branch, Pull
 from tasks.base import BaseCodecovTask
@@ -25,7 +27,8 @@ class FlushRepoTask(BaseCodecovTask):
         )
         deleted_pulls = db_session.query(Pull).filter_by(repoid=repo.repoid).delete()
         repo.yaml = None
-        repo.cache_do_not_use = None
+        # Be aware of SQL NULL vs JSON 'null'. This is the first one
+        repo.cache_do_not_use = null()
         return {
             "deleted_commits_count": deleted_commits,
             "delete_branches_count": delete_branches,
