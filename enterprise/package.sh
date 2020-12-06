@@ -54,3 +54,4 @@ rm -rf /home/*
 rm -rf /worker
 mv /enterprise /home
 rm -rf /pyinstaller
+rm -rf /usr/local/lib/python3.8/site-packages
