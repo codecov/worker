@@ -11,13 +11,14 @@ build.local:
 	docker build -f dockerscripts/Dockerfile . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}"
 
 build.base:
-	docker build -f dockerscripts/Dockerfile.base . -t codecov/baseworker:latest --build-arg SSH_PRIVATE_KEY="${ssh_private_key}"
+	docker build -f dockerscripts/Dockerfile.requirements . -t codecov/baseworker:latest --build-arg SSH_PRIVATE_KEY="${ssh_private_key}"
 
 build:
 	$(MAKE) build.base
 	$(MAKE) build.local
 
 build.enterprise:
+	$(MAKE) build.base
 	docker build -f dockerscripts/Dockerfile.enterprise . -t codecov/enterprise-worker:${release_version}
 
 # for building and pushing private images to dockerhub. This is useful if you 
