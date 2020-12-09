@@ -75,7 +75,7 @@ def from_xml(xml: bytes, fix, ignored_lines, sessionid):
                         # append line to report
                         _file.append(
                             ln,
-                            ReportLine(
+                            ReportLine.create(
                                 coverage=coverage,
                                 type="b" if partials else None,
                                 sessions=[

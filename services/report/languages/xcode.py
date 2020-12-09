@@ -117,7 +117,7 @@ def from_txt(content, fix, ignored_lines, sessionid):
                             if partials:
                                 _file.append(
                                     ln,
-                                    ReportLine(
+                                    ReportLine.create(
                                         coverage=0,
                                         sessions=[
                                             LineSession(
@@ -146,7 +146,7 @@ def from_txt(content, fix, ignored_lines, sessionid):
 
                             try:
                                 _file.append(
-                                    ln, ReportLine(cov, None, [[sessionid, cov]])
+                                    ln, ReportLine.create(cov, None, [[sessionid, cov]])
                                 )
                             except Exception:
                                 pass

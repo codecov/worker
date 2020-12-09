@@ -30,7 +30,7 @@ def from_json(data_dict, fix, ignored_lines, sessionid):
             _file = ReportFile(filename, ignore=ignored_lines.get(filename))
             fs = _file.__setitem__
             [
-                fs(ln, ReportLine(int(cov), None, [[sessionid, int(cov)]]))
+                fs(ln, ReportLine.create(int(cov), None, [[sessionid, int(cov)]]))
                 for ln, cov in enumerate(data["coverage"])
                 if cov is not None
             ]

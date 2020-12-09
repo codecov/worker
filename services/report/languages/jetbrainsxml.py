@@ -35,7 +35,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, repo_yaml):
             if sl == el:
                 _file.append(
                     sl,
-                    ReportLine(
+                    ReportLine.create(
                         coverage=cov,
                         sessions=[
                             LineSession(
@@ -45,7 +45,9 @@ def from_xml(xml, fix, ignored_lines, sessionid, repo_yaml):
                     ),
                 )
             else:
-                _file.append(sl, ReportLine(coverage=cov, sessions=[[sessionid, cov]]))
+                _file.append(
+                    sl, ReportLine.create(coverage=cov, sessions=[[sessionid, cov]])
+                )
 
     report = Report()
     report_append = report.append

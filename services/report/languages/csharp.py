@@ -90,7 +90,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                             for ln in range(sl, el + 1):
                                 file_append(
                                     ln,
-                                    ReportLine(
+                                    ReportLine.create(
                                         coverage=coverage,
                                         type=_type,
                                         sessions=[
@@ -110,7 +110,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                         else:
                             file_append(
                                 sl,
-                                ReportLine(
+                                ReportLine.create(
                                     coverage=coverage,
                                     type=_type,
                                     sessions=[

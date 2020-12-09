@@ -42,7 +42,7 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid):
                 try:
                     cov = source.strip().split(" ")[0]
                     cov = 0 if cov[-2:] in ("*0", "0") else int(cov)
-                    _file[ln] = ReportLine(cov, None, [[sessionid, cov]])
+                    _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
 
                 except Exception:
                     pass

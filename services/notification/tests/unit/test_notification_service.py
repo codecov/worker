@@ -217,10 +217,10 @@ class TestNotificationService(object):
         commit = sample_comparison.head.commit
         report = Report()
         first_deleted_file = ReportFile("file_1.go")
-        first_deleted_file.append(1, ReportLine(coverage=0))
-        first_deleted_file.append(2, ReportLine(coverage=0))
-        first_deleted_file.append(3, ReportLine(coverage=0))
-        first_deleted_file.append(5, ReportLine(coverage=0))
+        first_deleted_file.append(1, ReportLine.create(coverage=0))
+        first_deleted_file.append(2, ReportLine.create(coverage=0))
+        first_deleted_file.append(3, ReportLine.create(coverage=0))
+        first_deleted_file.append(5, ReportLine.create(coverage=0))
         report.append(first_deleted_file)
         sample_comparison.head.report = report
         mock_repo_provider.create_check_run.return_value = 2234563

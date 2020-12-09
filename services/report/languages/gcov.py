@@ -198,9 +198,13 @@ def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sesisonid, set
         branches = line_branches.get(ln)
         if branches:
             coverage = "%s/%s" % tuple(branches)
-            _file.append(ln, ReportLine(coverage, _type, [[sesisonid, coverage]]))
+            _file.append(
+                ln, ReportLine.create(coverage, _type, [[sesisonid, coverage]])
+            )
         else:
             for coverage in coverages:
-                _file.append(ln, ReportLine(coverage, _type, [[sesisonid, coverage]]))
+                _file.append(
+                    ln, ReportLine.create(coverage, _type, [[sesisonid, coverage]])
+                )
 
     return _file

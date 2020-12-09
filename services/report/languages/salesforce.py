@@ -23,7 +23,9 @@ def from_json(json, fix, ignored_lines, sessionid):
 
             _file = ReportFile(fn, ignore=ignored_lines.get(fn))
             for ln, cov in obj["lines"].items():
-                _file[int(ln)] = ReportLine(coverage=cov, sessions=[[sessionid, cov]])
+                _file[int(ln)] = ReportLine.create(
+                    coverage=cov, sessions=[[sessionid, cov]]
+                )
 
             report.append(_file)
 

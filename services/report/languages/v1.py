@@ -59,7 +59,7 @@ def from_json(json, fix, ignored_lines, sessionid, config):
                                 cov = int(cov)
 
                         # message = messages.get(fn, {}).get(ln)
-                        _file[line_number] = ReportLine(
+                        _file[line_number] = ReportLine.create(
                             coverage=cov,
                             type="b" if type(cov) in (str, bool) else None,
                             sessions=[[sessionid, cov]],

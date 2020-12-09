@@ -26,7 +26,7 @@ def from_json(report, fix, ignored_lines, sessionid):
             report_file = ReportFile(filename, ignore=ignored_lines.get(filename))
             for ln, coverage in enumerate(_file["coverage"], start=1):
                 if coverage is not None:
-                    report_file[ln] = ReportLine(
+                    report_file[ln] = ReportLine.create(
                         coverage, None, [[sessionid, coverage]]
                     )
             _report.append(report_file)

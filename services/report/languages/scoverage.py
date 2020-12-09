@@ -60,10 +60,10 @@ def from_xml(xml, fix, ignored_lines, sessionid):
 
         if next(statement.iter("branch")).text == "true":
             cov = "%s/2" % hits
-            _file[ln] = ReportLine(cov, "b", [[sessionid, cov]])
+            _file[ln] = ReportLine.create(cov, "b", [[sessionid, cov]])
         else:
             cov = maxint(hits)
-            _file[ln] = ReportLine(cov, None, [[sessionid, cov]])
+            _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
 
     for v in files.values():
         report.append(v)

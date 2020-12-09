@@ -35,7 +35,9 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                         1 if coverage == "yes" else 0 if coverage == "no" else True
                     )
                     for ln in range(int(line["start_line"]), int(line["end_line"]) + 1):
-                        _file[ln] = ReportLine(coverage, None, [[sessionid, coverage]])
+                        _file[ln] = ReportLine.create(
+                            coverage, None, [[sessionid, coverage]]
+                        )
 
             # add files
             for v in file_by_source.values():

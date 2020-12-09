@@ -136,7 +136,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                             partials = None
                         _file.append(
                             ln,
-                            ReportLine(
+                            ReportLine.create(
                                 cov, "b", [[sessionid, cov, branches, partials]]
                             ),
                         )
@@ -167,7 +167,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                 continue
             else:
                 _file.append(
-                    ln, ReportLine(cov, None, [[sessionid, cov, None, partials]])
+                    ln, ReportLine.create(cov, None, [[sessionid, cov, None, partials]])
                 )
 
         for bid, branch in must_be_dict(data.get("branchMap")).items():
@@ -187,7 +187,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                             cur_partials = line.sessions[-1].partials
                             if not cur_partials:
                                 _, cov, partials = get_line_coverage(branch, cov, "b")
-                                _file[sl] = ReportLine(
+                                _file[sl] = ReportLine.create(
                                     cov, "b", [[sessionid, cov, mb, partials]]
                                 )
                                 continue
@@ -198,7 +198,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                                 cur_partials.append(
                                     [cur_partials[-1][1] + 2, iec, icov]
                                 )
-                                _file[sl] = ReportLine(
+                                _file[sl] = ReportLine.create(
                                     cov, "b", [[sessionid, cov, mb, cur_partials]]
                                 )
                             else:
@@ -214,7 +214,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                                     else:
                                         partials.append([ec + 2, iec, icov])
 
-                                _file[sl] = ReportLine(
+                                _file[sl] = ReportLine.create(
                                     cov,
                                     "b",
                                     [
@@ -230,7 +230,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                         else:
                             # if ( exp && expr )
                             # change to branch
-                            _file[sl] = ReportLine(
+                            _file[sl] = ReportLine.create(
                                 cov,
                                 "b",
                                 [[sessionid, cov, mb, _file[sl].sessions[-1].partials]],
@@ -238,7 +238,8 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
 
                     else:
                         _file.append(
-                            sl, ReportLine(cov, "b", [[sessionid, cov, mb, None]])
+                            sl,
+                            ReportLine.create(cov, "b", [[sessionid, cov, mb, None]]),
                         )
 
         for fid, func in must_be_dict(data["fnMap"]).items():
@@ -246,7 +247,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                 ln, cov, partials = get_line_coverage(func, data["f"][fid], "m")
                 if ln:
                     _file.append(
-                        ln, ReportLine(cov, "m", [[sessionid, cov, None, None]])
+                        ln, ReportLine.create(cov, "m", [[sessionid, cov, None, None]])
                     )
 
         report.append(_file)
@@ -265,7 +266,8 @@ def _location_to_lines(_file, location, cov, _type, sessionid):
         return
 
     _file.append(
-        int(location["start"]["line"]), ReportLine(cov, _type, [[sessionid, cov]], None)
+        int(location["start"]["line"]),
+        ReportLine.create(cov, _type, [[sessionid, cov]], None),
     )
 
 
@@ -296,7 +298,7 @@ def jscoverage(_file, data, sessionid):
             if partials:
                 partials = list(partials)
                 coverage = partials_to_line(partials)
-            _file[ln] = ReportLine(
+            _file[ln] = ReportLine.create(
                 coverage,
                 "b" if partials else None,
                 [[sessionid, coverage, None, partials]],
@@ -332,7 +334,9 @@ def from_json(report_dict, fix, ignored_lines, sessionid, config):
             for ln, coverage in data["linesCovered"].items():
                 _file.append(
                     int(ln),
-                    ReportLine(coverage=coverage, sessions=[[sessionid, coverage]]),
+                    ReportLine.create(
+                        coverage=coverage, sessions=[[sessionid, coverage]]
+                    ),
                 )
             report.append(_file)
             continue

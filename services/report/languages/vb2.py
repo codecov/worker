@@ -29,7 +29,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
             for ln in range(
                 int(line.find("LnStart").text), int(line.find("LnEnd").text) + 1
             ):
-                _file[ln] = ReportLine(cov, None, [[sessionid, cov]])
+                _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
 
     report = Report()
     for value in file_by_source.values():

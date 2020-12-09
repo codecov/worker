@@ -29,7 +29,7 @@ def from_json(json, fix, ignored_lines, sessionid):
                 if start["line"] == end["line"]
                 else None
             )
-            _file[start["line"]] = ReportLine(
+            _file[start["line"]] = ReportLine.create(
                 coverage=1, sessions=[[sessionid, 1, None, partials]]
             )
 
@@ -40,7 +40,7 @@ def from_json(json, fix, ignored_lines, sessionid):
                 if start["line"] == end["line"]
                 else None
             )
-            _file[start["line"]] = ReportLine(
+            _file[start["line"]] = ReportLine.create(
                 coverage=0, sessions=[[sessionid, 0, None, partials]]
             )
 

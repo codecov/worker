@@ -35,7 +35,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
             _file.append(
                 int(line["line"]),
-                ReportLine(coverage=coverage, sessions=[[sessionid, coverage]]),
+                ReportLine.create(coverage=coverage, sessions=[[sessionid, coverage]]),
             )
 
         report.append(_file)

@@ -105,7 +105,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 ln = int(line["nr"])
                 complexity = method_complixity.get(ln)
                 # add line to file
-                _file[ln] = ReportLine(
+                _file[ln] = ReportLine.create(
                     coverage=cov,
                     type="m" if complexity is not None else _type,
                     sessions=[[sessionid, cov, None, None, complexity]],

@@ -36,7 +36,7 @@ def from_string(filename, string, fix, ignored_lines, sessionid):
         line = encoded_line.decode(errors="replace").rstrip("\n")
         try:
             coverage = int(line.split("|", 1)[0].strip())
-            _file[ln] = ReportLine(coverage, None, [[sessionid, coverage]])
+            _file[ln] = ReportLine.create(coverage, None, [[sessionid, coverage]])
         except Exception:
             # not a vaild line
             pass

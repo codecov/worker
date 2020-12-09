@@ -52,7 +52,7 @@ def from_string(string, fix, ignored_lines, sessionid):
 
             else:
                 coverage = 0 if line["Type"] == "R" else 1
-                _file[line["Line"]] = ReportLine(
+                _file[line["Line"]] = ReportLine.create(
                     coverage, None, [[sessionid, coverage]]
                 )
 
