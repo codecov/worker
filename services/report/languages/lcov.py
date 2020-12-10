@@ -90,7 +90,7 @@ def _process_file(doc: bytes, fix, ignored_lines, sessionid):
                 continue
 
             cov = int(hit)
-            _file.append(int(line), ReportLine(cov, None, [[sessionid, cov]]))
+            _file.append(int(line), ReportLine.create(cov, None, [[sessionid, cov]]))
 
         elif method == "FN" and not JS:
             """
@@ -147,7 +147,7 @@ def _process_file(doc: bytes, fix, ignored_lines, sessionid):
         mb = [bid for bid, cov in br.items() if cov == 0]
         cov = "%s/%s" % (s, li)
         # override bc inline js: """if (True) { echo() }"""
-        _file[int(ln)] = ReportLine(
+        _file[int(ln)] = ReportLine.create(
             cov,
             "m" if ln in methods else "b",
             [[sessionid, cov, mb if mb != [] else None]],

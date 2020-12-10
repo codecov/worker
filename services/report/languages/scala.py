@@ -22,6 +22,6 @@ def from_json(data_dict, fix, ignored_lines, sessionid):
         _file = ReportFile(filename, ignore=ignored_lines.get(filename))
         fs = _file.__setitem__
         for ln, cov in f["coverage"].items():
-            fs(int(ln), ReportLine(cov, None, [[sessionid, cov]]))
+            fs(int(ln), ReportLine.create(cov, None, [[sessionid, cov]]))
         report.append(_file)
     return report

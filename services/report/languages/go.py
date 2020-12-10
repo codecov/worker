@@ -112,12 +112,12 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, yaml):
             if partials:
                 cov = partials_to_line(partials)
                 if partials[0] == [0, None, cov] or partials[0] == [None, None, cov]:
-                    _file[ln] = ReportLine(cov, None, [[sessionid, cov]])
+                    _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
                 else:
                     # partials
-                    _file[ln] = ReportLine(cov, None, [[sessionid, cov]])
+                    _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
             else:
-                _file[ln] = ReportLine(
+                _file[ln] = ReportLine.create(
                     best_in_partials, None, [[sessionid, best_in_partials]]
                 )
 

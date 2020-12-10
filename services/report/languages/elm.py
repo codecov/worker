@@ -27,7 +27,7 @@ def from_json(json, fix, ignored_lines, sessionid):
             complexity = sec.get("complexity")
             sl, sc = sec["from"]["line"], sec["from"]["column"]
             el, ec = sec["to"]["line"], sec["to"]["column"]
-            _file[sl] = ReportLine(
+            _file[sl] = ReportLine.create(
                 coverage=cov,
                 sessions=[
                     LineSession(
@@ -40,10 +40,10 @@ def from_json(json, fix, ignored_lines, sessionid):
             )
             if el > sl:
                 for ln in range(sl, el):
-                    _file[ln] = ReportLine(
+                    _file[ln] = ReportLine.create(
                         coverage=cov, sessions=[[sessionid, cov]], complexity=complexity
                     )
-                _file[sl] = ReportLine(
+                _file[sl] = ReportLine.create(
                     coverage=cov,
                     sessions=[
                         LineSession(

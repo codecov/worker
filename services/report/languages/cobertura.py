@@ -119,7 +119,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                         sessions = [[sessionid, coverage, conditions]]
                 _file.append(
                     ln,
-                    ReportLine(
+                    ReportLine.create(
                         coverage=coverage,
                         type=_type,
                         sessions=sessions or [[sessionid, coverage]],
@@ -136,12 +136,12 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             if stmt["branch"] == "true":
                 _file.append(
                     int(stmt["line"]),
-                    ReportLine(coverage, "b", [[sessionid, coverage]]),
+                    ReportLine.create(coverage, "b", [[sessionid, coverage]]),
                 )
             else:
                 _file.append(
                     int(stmt["line"]),
-                    ReportLine(
+                    ReportLine.create(
                         coverage,
                         "m" if stmt["method"] else None,
                         [[sessionid, coverage]],

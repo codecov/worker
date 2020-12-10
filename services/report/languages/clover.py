@@ -99,7 +99,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 _type = None
 
             # add line to report
-            _file[ln] = ReportLine(
+            _file[ln] = ReportLine.create(
                 coverage=coverage,
                 type=_type,
                 sessions=[[sessionid, coverage, None, None, complexity]],

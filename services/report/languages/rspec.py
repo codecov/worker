@@ -32,7 +32,7 @@ def from_json(json, fix, ignored_lines, sessionid):
         )
 
         for ln, cov in enumerate(coverage_to_check, start=1):
-            _file[ln] = ReportLine(coverage=cov, sessions=[[sessionid, cov]])
+            _file[ln] = ReportLine.create(coverage=cov, sessions=[[sessionid, cov]])
 
         report.append(_file)
 
