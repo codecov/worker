@@ -48,6 +48,49 @@ class TestBotsService(BaseTestCase):
         expected_result = {"key": "somekey"}
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
+    def test_get_repo_appropriate_bot_enterprise_yes_bot(
+        self, mock_configuration, mocker
+    ):
+        mocker.patch("services.bots.is_enterprise", return_value=True)
+        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
+        repo = RepositoryFactory.create(
+            private=True,
+            using_integration=False,
+            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
+            owner=OwnerFactory.create(
+                service="github",
+                unencrypted_oauth_token="not_so_simple_code",
+                bot=OwnerFactory.create(
+                    service="github", unencrypted_oauth_token="now_that_code_is_complex"
+                ),
+            ),
+        )
+        expected_result = {"key": "somekey"}
+        assert get_repo_appropriate_bot_token(repo) == expected_result
+
+    def test_get_repo_appropriate_bot_enterprise_no_bot(
+        self, mock_configuration, mocker
+    ):
+        mocker.patch("services.bots.is_enterprise", return_value=True)
+        repo = RepositoryFactory.create(
+            private=True,
+            using_integration=False,
+            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
+            owner=OwnerFactory.create(
+                service="github",
+                unencrypted_oauth_token="not_so_simple_code",
+                bot=OwnerFactory.create(
+                    service="github", unencrypted_oauth_token="now_that_code_is_complex"
+                ),
+            ),
+        )
+        expected_result = {
+            "username": repo.bot.username,
+            "key": "simple_code",
+            "secret": None,
+        }
+        assert get_repo_appropriate_bot_token(repo) == expected_result
+
     def test_get_repo_appropriate_bot_token_public_bot_without_key(
         self, mock_configuration
     ):
