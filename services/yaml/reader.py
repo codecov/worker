@@ -19,7 +19,7 @@ def read_yaml_field(yaml_dict, keys, _else=None) -> Any:
             else:
                 yaml_dict = getattr(yaml_dict, key)
         return yaml_dict
-    except (AttributeError, KeyError):
+    except (TypeError, AttributeError, KeyError):
         return _else
 
 

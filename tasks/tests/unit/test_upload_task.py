@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 from celery.exceptions import Retry
+from shared.yaml import UserYaml
 
 import pytest
 import mock
@@ -369,7 +370,7 @@ class TestUploadTaskIntegration(object):
         assert commit.parent_commit_id is None
         mocked_1.assert_called_with(
             commit,
-            {"codecov": {"max_report_age": "764y ago"}},
+            UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
                 {"build": "part1", "upload_pk": mocker.ANY},
                 {"build": "part2", "upload_pk": mocker.ANY},
@@ -413,7 +414,7 @@ class TestUploadTaskIntegration(object):
         assert commit.parent_commit_id is None
         mocked_1.assert_called_with(
             commit,
-            {"codecov": {"max_report_age": "764y ago"}},
+            UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
                 {"build": "part1", "upload_pk": mocker.ANY},
                 {"build": "part2", "upload_pk": mocker.ANY},
@@ -477,7 +478,7 @@ class TestUploadTaskIntegration(object):
         )
         mocked_schedule_task.assert_called_with(
             commit,
-            {"codecov": {"max_report_age": "764y ago"}},
+            UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
                 {"build": "part1", "upload_pk": first_session.id},
                 {"build": "part2", "upload_pk": second_session.id},
@@ -576,7 +577,7 @@ class TestUploadTaskUnit(object):
 
     def test_schedule_task_with_no_tasks(self, dbsession):
         commit = CommitFactory.create()
-        commit_yaml = {}
+        commit_yaml = UserYaml({})
         argument_list = []
         dbsession.add(commit)
         dbsession.flush()
@@ -586,7 +587,7 @@ class TestUploadTaskUnit(object):
     def test_schedule_task_with_one_task(self, dbsession, mocker):
         mocked_chain = mocker.patch("tasks.upload.chain")
         commit = CommitFactory.create()
-        commit_yaml = {"codecov": {"max_report_age": "100y ago"}}
+        commit_yaml = UserYaml({"codecov": {"max_report_age": "100y ago"}})
         argument_dict = {"argument_dict": 1}
         argument_list = [argument_dict]
         dbsession.add(commit)
@@ -598,13 +599,15 @@ class TestUploadTaskUnit(object):
             kwargs=dict(
                 repoid=commit.repoid,
                 commitid=commit.commitid,
-                commit_yaml=commit_yaml,
+                commit_yaml=commit_yaml.to_dict(),
                 arguments_list=argument_list,
             ),
         )
         t2 = upload_finisher_task.signature(
             kwargs=dict(
-                repoid=commit.repoid, commitid=commit.commitid, commit_yaml=commit_yaml
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml=commit_yaml.to_dict(),
             ),
         )
         mocked_chain.assert_called_with(t1, t2)
@@ -742,7 +745,7 @@ class TestUploadTaskUnit(object):
             commit, repository_service
         )
         expected_result = {"codecov": {"notify": {}, "require_ci_to_pass": True}}
-        assert result == expected_result
+        assert result.to_dict() == expected_result
         repository_service.get_source.assert_called_with(
             "codecov.yaml", commit.commitid
         )
@@ -778,7 +781,7 @@ class TestUploadTaskUnit(object):
             "codecov": {"notify": {}, "require_ci_to_pass": True},
             "coverage": {"precision": 14},
         }
-        assert result == expected_result
+        assert result.to_dict() == expected_result
         repository_service.get_source.assert_called_with(
             ".codecov.yaml", commit.commitid
         )
@@ -818,7 +821,7 @@ class TestUploadTaskUnit(object):
             "codecov": {"notify": {}, "require_ci_to_pass": True},
             "coverage": {"precision": 14},
         }
-        assert result == expected_result
+        assert result.to_dict() == expected_result
         assert commit.repository.yaml == {
             "codecov": {"notify": {}, "require_ci_to_pass": True}
         }
@@ -851,7 +854,7 @@ class TestUploadTaskUnit(object):
             "coverage": {"precision": 2, "round": "up"},
             "codecov": {"max_report_age": "1y ago"},
         }
-        assert result == expected_result
+        assert result.to_dict() == expected_result
         assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
 
     @pytest.mark.asyncio
@@ -890,7 +893,7 @@ class TestUploadTaskUnit(object):
             "codecov": {"max_report_age": "1y ago"},
             "comment": {"behavior": "new"},
         }
-        assert result == expected_result
+        assert result.to_dict() == expected_result
         assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
 
     @pytest.mark.asyncio

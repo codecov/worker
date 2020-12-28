@@ -2,13 +2,13 @@ import logging
 import re
 from copy import deepcopy
 
+from shared.yaml import UserYaml
+
 from app import celery_app
 from tasks.base import BaseCodecovTask
 from database.models import Commit, Pull
-
 from services.redis import get_redis_connection
 from services.yaml import read_yaml_field
-
 from celery_config import (
     notify_task_name,
     status_set_pending_task_name,
@@ -55,6 +55,7 @@ class UploadFinisherTask(BaseCodecovTask):
         assert commit, "Commit not found in database."
         redis_connection = get_redis_connection()
         with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+            commit_yaml = UserYaml(commit_yaml)
             db_session.commit()
             commit.notified = False
             db_session.commit()
@@ -88,7 +89,7 @@ class UploadFinisherTask(BaseCodecovTask):
         return result
 
     async def finish_reports_processing(
-        self, db_session, commit, commit_yaml, processing_results
+        self, db_session, commit, commit_yaml: UserYaml, processing_results
     ):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
@@ -117,13 +118,15 @@ class UploadFinisherTask(BaseCodecovTask):
                     extra=dict(
                         repoid=repoid,
                         commit=commitid,
-                        commit_yaml=commit_yaml,
+                        commit_yaml=commit_yaml.to_dict(),
                         processing_results=processing_results,
                     ),
                 )
                 self.app.tasks[notify_task_name].apply_async(
                     kwargs=dict(
-                        repoid=repoid, commitid=commitid, current_yaml=commit_yaml
+                        repoid=repoid,
+                        commitid=commitid,
+                        current_yaml=commit_yaml.to_dict(),
                     ),
                 )
                 if commit.pullid:
@@ -152,7 +155,7 @@ class UploadFinisherTask(BaseCodecovTask):
                     extra=dict(
                         repoid=repoid,
                         commit=commitid,
-                        commit_yaml=commit_yaml,
+                        commit_yaml=commit_yaml.to_dict(),
                         processing_results=processing_results,
                     ),
                 )
