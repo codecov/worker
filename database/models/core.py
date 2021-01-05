@@ -39,6 +39,13 @@ class Owner(CodecovBaseModel):
     bot_id = Column("bot", types.Integer, ForeignKey("owners.ownerid"))
 
     bot = relationship("Owner", remote_side=[ownerid])
+    repositories = relationship(
+        "Repository",
+        back_populates="owner",
+        foreign_keys="Repository.ownerid",
+        cascade="all, delete",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         Index("owner_service_ids", "service", "service_id", unique=True),
@@ -79,9 +86,7 @@ class Repository(CodecovBaseModel):
     using_integration = Column(types.Boolean)
     cache_do_not_use = Column("cache", postgresql.JSONB)
 
-    owner = relationship(
-        Owner, foreign_keys=[ownerid], backref=backref("owners", cascade="delete")
-    )
+    owner = relationship(Owner, foreign_keys=[ownerid], back_populates="repositories",)
     bot = relationship(Owner, foreign_keys=[bot_id])
 
     __table_args__ = (
