@@ -3,10 +3,12 @@ from datetime import datetime
 from enum import Enum, auto
 from functools import lru_cache
 from typing import Optional
+from worker.services.billing import is_pr_billing_plan
 
 from shared.license import get_current_license
 from shared.config import get_config
 from sqlalchemy import func
+from sqlalchemy.sql import text
 
 from database.models import Owner, Repository
 from helpers.environment import is_enterprise
@@ -57,13 +59,28 @@ def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseR
     if current_license.url:
         if get_config("setup", "codecov_url") != current_license.url:
             return InvalidLicenseReason.url_mismatch
+    
     if current_license.number_allowed_users:
-        query = (
-            db_session.query(func.count(), Owner.service)
-            .filter(Owner.oauth_token.isnot(None))
-            .group_by(Owner.service)
-            .all()
-        )
+        if current_license.is_pr_billing_plan:
+            # PR Billing must count _all_ plan_activated_users in db
+            query_string = text("""
+                        WITH all_plan_activated_users AS (
+                            SELECT 
+                                UNNEST(o.plan_activated_users) AS activated_owner_id
+                            FROM owners o
+                        ) SELECT count(*) as count
+                        FROM all_plan_activated_users""")
+            query = (
+                db_session.execute(query_string).all()
+            )
+        else:
+            # non PR billing must count all owners with oauth_token != None.
+            query = (
+                db_session.query(func.count(), Owner.service)
+                .filter(Owner.oauth_token.isnot(None))
+                .group_by(Owner.service)
+                .all()
+            )
         for result in query:
             if result[0] > current_license.number_allowed_users:
                 return InvalidLicenseReason.users_exceeded
