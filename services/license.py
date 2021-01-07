@@ -61,7 +61,7 @@ def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseR
             return InvalidLicenseReason.url_mismatch
 
     if current_license.number_allowed_users:
-        if current_license.is_pr_billing_plan:
+        if current_license.is_pr_billing:
             # PR Billing must count _all_ plan_activated_users in db
             query_string = text(
                 """
