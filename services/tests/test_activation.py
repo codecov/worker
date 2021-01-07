@@ -69,6 +69,8 @@ class TestActivationServiceTestCase(object):
         self, request, dbsession, mock_configuration, mocker, with_sql_functions
     ):
 
+        mocker.patch("helpers.environment.is_enterprise", return_value=True)
+
         org = OwnerFactory.create(
             service="github",
             oauth_token=None,
@@ -95,6 +97,8 @@ class TestActivationServiceTestCase(object):
     def test_activate_user_failure_for_enterprise_pr_billing_no_seats(
         self, request, dbsession, mock_configuration, mocker, with_sql_functions
     ):
+
+        mocker.patch("helpers.environment.is_enterprise", return_value=True)
         # Create two orgs to ensure our seat availability checking works across
         # multiple organizations.
         org = OwnerFactory.create(
