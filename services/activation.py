@@ -45,11 +45,11 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
             return False
 
         log.info(
-            "Auto activation attempted",
+            "Enterprose PR Auto activation attempted",
             extra=dict(
                 org_ownerid=org_ownerid,
                 author_ownerid=user_ownerid,
-                activation_success=False,
+                activation_success=activation_success,
             ),
         )
 
