@@ -66,7 +66,7 @@ class TestActivationServiceTestCase(object):
         assert user.ownerid in org.plan_activated_users
 
     def test_activate_user_success_for_enterprise_pr_billing(
-        self, request, dbsession, mock_configuration
+        self, request, dbsession, mock_configuration, mocker, with_sql_functions
     ):
 
         org = OwnerFactory.create(
@@ -93,7 +93,7 @@ class TestActivationServiceTestCase(object):
         assert user.ownerid in org.plan_activated_users
 
     def test_activate_user_failure_for_enterprise_pr_billing_no_seats(
-        self, request, dbsession, mock_configuration
+        self, request, dbsession, mock_configuration, mocker, with_sql_functions
     ):
         # Create two orgs to ensure our seat availability checking works across
         # multiple organizations.
