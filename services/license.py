@@ -72,7 +72,7 @@ def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseR
                         ) SELECT count(*) as count
                         FROM all_plan_activated_users"""
             )
-            query = db_session.execute(query_string).all()
+            query = db_session.execute(query_string).fetchall()
         else:
             # non PR billing must count all owners with oauth_token != None.
             query = (
