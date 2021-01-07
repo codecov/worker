@@ -34,7 +34,15 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
             ).first()
 
         else:
-            activation_success = False
+            log.info(
+                "Auto activation failed due to invalid license",
+                extra=dict(
+                    org_ownerid=org_ownerid,
+                    author_ownerid=user_ownerid,
+                    activation_success=False,
+                ),
+            )
+            return False
 
         log.info(
             "Auto activation attempted",
