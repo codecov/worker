@@ -59,20 +59,20 @@ def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseR
     if current_license.url:
         if get_config("setup", "codecov_url") != current_license.url:
             return InvalidLicenseReason.url_mismatch
-    
+
     if current_license.number_allowed_users:
         if current_license.is_pr_billing_plan:
             # PR Billing must count _all_ plan_activated_users in db
-            query_string = text("""
+            query_string = text(
+                """
                         WITH all_plan_activated_users AS (
                             SELECT 
                                 UNNEST(o.plan_activated_users) AS activated_owner_id
                             FROM owners o
                         ) SELECT count(*) as count
-                        FROM all_plan_activated_users""")
-            query = (
-                db_session.execute(query_string).all()
+                        FROM all_plan_activated_users"""
             )
+            query = db_session.execute(query_string).all()
         else:
             # non PR billing must count all owners with oauth_token != None.
             query = (

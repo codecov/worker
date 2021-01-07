@@ -23,6 +23,6 @@ def is_pr_billing_plan(plan: str) -> bool:
         ]
     else:
         license = get_current_license()
-        if license.get('pr_billing'):
+        if license.get("pr_billing"):
             return True
         return False

@@ -13,7 +13,6 @@ from services.license import (
 )
 
 
-
 class TestActivationServiceTestCase(object):
     def test_activate_user_no_seats(
         self, request, dbsession, mocker, with_sql_functions
@@ -65,15 +64,17 @@ class TestActivationServiceTestCase(object):
         assert was_activated is True
         dbsession.commit()
         assert user.ownerid in org.plan_activated_users
-    
+
     def test_activate_user_success_for_enterprise_pr_billing(
         self, request, dbsession, mocker, with_sql_functions, mock_configuration
     ):
 
-        org = OwnerFactory.create(service="github", 
-        oauth_token=None, 
-        plan_activated_users=list(range(15,20)),
-        plan_auto_activate=True)
+        org = OwnerFactory.create(
+            service="github",
+            oauth_token=None,
+            plan_activated_users=list(range(15, 20)),
+            plan_auto_activate=True,
+        )
         dbsession.add(org)
         dbsession.flush()
 
@@ -90,23 +91,27 @@ class TestActivationServiceTestCase(object):
         assert was_activated is True
         dbsession.commit()
         assert user.ownerid in org.plan_activated_users
-    
+
     def test_activate_user_failure_for_enterprise_pr_billing_no_seats(
         self, request, dbsession, mocker, with_sql_functions, mock_configuration
     ):
         # Create two orgs to ensure our seat availability checking works across
         # multiple organizations.
-        org = OwnerFactory.create(service="github", 
-        oauth_token=None, 
-        plan_activated_users=list(range(15,20)),
-        plan_auto_activate=True)
+        org = OwnerFactory.create(
+            service="github",
+            oauth_token=None,
+            plan_activated_users=list(range(15, 20)),
+            plan_auto_activate=True,
+        )
         dbsession.add(org)
         dbsession.flush()
 
-        org_second = OwnerFactory.create(service="github", 
-        oauth_token=None, 
-        plan_activated_users=list(range(21,35)),
-        plan_auto_activate=True)
+        org_second = OwnerFactory.create(
+            service="github",
+            oauth_token=None,
+            plan_activated_users=list(range(21, 35)),
+            plan_auto_activate=True,
+        )
         dbsession.add(org_second)
         dbsession.flush()
 
@@ -123,8 +128,3 @@ class TestActivationServiceTestCase(object):
         assert was_activated is False
         dbsession.commit()
         assert user.ownerid not in org.plan_activated_users
-
-
-
-
-
