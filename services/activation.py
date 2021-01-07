@@ -45,7 +45,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
             return False
 
         log.info(
-            "Enterprose PR Auto activation attempted",
+            "Enterprise PR Auto activation attempted",
             extra=dict(
                 org_ownerid=org_ownerid,
                 author_ownerid=user_ownerid,
