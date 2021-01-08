@@ -40,3 +40,21 @@ class TestBillingServiceTestCase(object):
         dbsession.flush()
 
         assert not is_pr_billing_plan(owner.plan)
+    
+    def test_pr_author_enterprise_plan_check_non_pr_plan(
+        self, request, dbsession, mocker, mock_configuration, with_sql_functions
+    ):
+
+        owner = OwnerFactory.create(service="github")
+        dbsession.add(owner)
+        dbsession.flush()
+
+        mocker.patch("services.license.is_enterprise", return_value=True)
+        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
+
+        encrypted_license = "0dRbhbzp8TVFQp7P4e2ES9lSfyQlTo8J7LQ"
+        mock_configuration.params["setup"]["enterprise_license"] = encrypted_license
+        mock_configuration.params["setup"]["codecov_url"] = "https://codeov.mysite.com"
+
+        assert not is_pr_billing_plan(owner.plan)
+
