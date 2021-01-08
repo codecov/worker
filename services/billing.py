@@ -22,7 +22,7 @@ def is_pr_billing_plan(plan: str) -> bool:
             BillingPlan.users_free.value,
         ]
     else:
-        log.info('checking enterprise configuration')
+        log.info("checking enterprise configuration")
         license = get_current_license()
         if license.is_pr_billing:
             return True

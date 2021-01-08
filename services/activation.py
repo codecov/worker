@@ -14,8 +14,10 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
         bool: was the user successfully activated
     """
 
-    log.info("Checking the environment", extra=dict(requires_license=requires_license()))
-    
+    log.info(
+        "Checking the environment", extra=dict(requires_license=requires_license())
+    )
+
     if requires_license():
         # we will not activate if the license is invalid for any reason.
         license_status = calculate_reason_for_not_being_valid(db_session)
@@ -42,7 +44,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
                     org_ownerid=org_ownerid,
                     author_ownerid=user_ownerid,
                     activation_success=False,
-                    license_status=license_status
+                    license_status=license_status,
                 ),
             )
             return False

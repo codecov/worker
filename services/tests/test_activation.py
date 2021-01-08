@@ -7,6 +7,7 @@ from services.activation import activate_user
 
 from services.license import is_enterprise, _get_now
 
+
 class TestActivationServiceTestCase(object):
     def test_activate_user_no_seats(
         self, request, dbsession, mocker, with_sql_functions

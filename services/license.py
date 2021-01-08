@@ -87,7 +87,7 @@ def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseR
                 log.warning(
                     "Number of users is approaching license limit of %d/%d",
                     result[0],
-                    current_license.number_allowed_users
+                    current_license.number_allowed_users,
                 )
     if current_license.number_allowed_repos:
         repos = (

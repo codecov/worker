@@ -5,8 +5,8 @@ from database.tests.factories import OwnerFactory
 from services.license import is_enterprise, _get_now
 from services.billing import is_pr_billing_plan
 
-class TestBillingServiceTestCase(object):
 
+class TestBillingServiceTestCase(object):
     def test_pr_author_plan_check(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):
@@ -14,7 +14,6 @@ class TestBillingServiceTestCase(object):
         dbsession.add(owner)
         dbsession.flush()
         assert is_pr_billing_plan(owner.plan)
-        
 
     def test_pr_author_enterprise_plan_check(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
@@ -31,14 +30,13 @@ class TestBillingServiceTestCase(object):
         mock_configuration.params["setup"]["enterprise_license"] = encrypted_license
         mock_configuration.params["setup"]["codecov_url"] = "https://codecov.mysite.com"
 
-        
         assert is_pr_billing_plan(owner.plan)
-    
+
     def test_plan_not_pr_author(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):
         owner = OwnerFactory.create(service="github")
         dbsession.add(owner)
         dbsession.flush()
-        
+
         assert not is_pr_billing_plan(owner.plan)
