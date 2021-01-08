@@ -4,9 +4,10 @@ from database.models import Repository, Owner
 from services.github import get_github_integration_token
 from services.encryption import encryptor
 from helpers.exceptions import RepositoryWithoutValidBotError, OwnerWithoutValidBotError
+from helpers.environment import is_enterprise
 from shared.torngit.base import TokenType
 from shared.config import get_config
-from typing import Any, Dict
+from typing import Dict
 
 log = logging.getLogger(__name__)
 
@@ -17,11 +18,13 @@ def get_repo_appropriate_bot_token(repo: Repository) -> Dict:
             repo.owner.service, repo.owner.integration_id
         )
         return dict(key=github_token)
-    if not repo.private:
+    if not repo.private or (
+        is_enterprise() and get_config(repo.service, "bot") is not None
+    ):
         public_bot_dict = get_config(repo.service, "bot")
         if public_bot_dict and public_bot_dict.get("key"):
             log.info(
-                "Using default bot since repo is public",
+                "Using default bot",
                 extra=dict(repoid=repo.repoid, botname=public_bot_dict.get("username")),
             )
             return public_bot_dict
