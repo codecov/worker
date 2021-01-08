@@ -128,7 +128,7 @@ class TestActivationServiceTestCase(object):
         assert was_activated is False
         dbsession.commit()
         assert user.ownerid not in org.plan_activated_users
-    
+
     def test_activate_user_enterprise_pr_billing_invalid_license(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):

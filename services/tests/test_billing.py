@@ -40,7 +40,7 @@ class TestBillingServiceTestCase(object):
         dbsession.flush()
 
         assert not is_pr_billing_plan(owner.plan)
-    
+
     def test_pr_author_enterprise_plan_check_non_pr_plan(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):
@@ -57,4 +57,3 @@ class TestBillingServiceTestCase(object):
         mock_configuration.params["setup"]["codecov_url"] = "https://codeov.mysite.com"
 
         assert not is_pr_billing_plan(owner.plan)
-
