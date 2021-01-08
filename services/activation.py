@@ -1,8 +1,7 @@
 import logging
 from sqlalchemy import func
 from sqlalchemy.sql import text
-from services.license import calculate_reason_for_not_being_valid
-from helpers.environment import is_enterprise
+from services.license import calculate_reason_for_not_being_valid, requires_license
 
 log = logging.getLogger(__name__)
 
@@ -15,9 +14,12 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
         bool: was the user successfully activated
     """
 
-    if is_enterprise():
+    log.info("Checking the environment", extra=dict(requires_license=requires_license()))
+    
+    if requires_license():
         # we will not activate if the license is invalid for any reason.
-        if calculate_reason_for_not_being_valid() is None:
+        license_status = calculate_reason_for_not_being_valid(db_session)
+        if license_status is None:
             # add user_ownerid to orgs, plan activated users.
             query_string = text(
                 """
@@ -31,7 +33,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
             )
             (activation_success,) = db_session.execute(
                 query_string, {"user_ownerid": user_ownerid, "org_ownerid": org_ownerid}
-            ).first()
+            ).fetchall()
 
         else:
             log.info(
@@ -40,6 +42,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
                     org_ownerid=org_ownerid,
                     author_ownerid=user_ownerid,
                     activation_success=False,
+                    license_status=license_status
                 ),
             )
             return False
@@ -53,7 +56,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
             ),
         )
 
-        return activation_success
+        return True
 
     # TODO: we need to decide the best way for this logic to be shared across
     # worker and codecov-api - ideally moving logic from database to application layer

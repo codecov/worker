@@ -1,17 +1,11 @@
 import pytest
+from datetime import datetime
 
 from database.tests.factories import OwnerFactory
 
 from services.activation import activate_user
 
-from services.license import (
-    calculate_reason_for_not_being_valid,
-    InvalidLicenseReason,
-    has_valid_license,
-    requires_license,
-    is_properly_licensed,
-)
-
+from services.license import is_enterprise, _get_now
 
 class TestActivationServiceTestCase(object):
     def test_activate_user_no_seats(
@@ -66,10 +60,11 @@ class TestActivationServiceTestCase(object):
         assert user.ownerid in org.plan_activated_users
 
     def test_activate_user_success_for_enterprise_pr_billing(
-        self, request, dbsession, mock_configuration, mocker, with_sql_functions
+        self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):
 
-        mocker.patch("helpers.environment.is_enterprise", return_value=True)
+        mocker.patch("services.license.is_enterprise", return_value=True)
+        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
 
         org = OwnerFactory.create(
             service="github",

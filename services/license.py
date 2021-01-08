@@ -3,7 +3,6 @@ from datetime import datetime
 from enum import Enum, auto
 from functools import lru_cache
 from typing import Optional
-from worker.services.billing import is_pr_billing_plan
 
 from shared.license import get_current_license
 from shared.config import get_config
@@ -84,12 +83,11 @@ def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseR
         for result in query:
             if result[0] > current_license.number_allowed_users:
                 return InvalidLicenseReason.users_exceeded
-            elif result[0] > (current_license.number_allowed_users - 10):
+            elif result[0] > (0.9 * current_license.number_allowed_users):
                 log.warning(
-                    "Number of users is approaching license limit of %d/%d for %s.",
+                    "Number of users is approaching license limit of %d/%d",
                     result[0],
-                    current_license.number_allowed_users,
-                    result[1].upper(),
+                    current_license.number_allowed_users
                 )
     if current_license.number_allowed_repos:
         repos = (

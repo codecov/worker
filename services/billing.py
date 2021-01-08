@@ -1,7 +1,7 @@
 import logging
 from enum import Enum
 from shared.license import get_current_license
-from helpers.environment import is_enterprise
+from services.license import requires_license
 
 log = logging.getLogger(__name__)
 
@@ -15,14 +15,15 @@ class BillingPlan(Enum):
 
 
 def is_pr_billing_plan(plan: str) -> bool:
-    if not is_enterprise():
+    if not requires_license():
         return plan in [
             BillingPlan.pr_monthly.value,
             BillingPlan.pr_yearly.value,
             BillingPlan.users_free.value,
         ]
     else:
+        log.info('checking enterprise configuration')
         license = get_current_license()
-        if license.get("pr_billing"):
+        if license.is_pr_billing:
             return True
         return False
