@@ -10,6 +10,7 @@ class BillingPlan(Enum):
     users_free = "users-free"
     pr_monthly = "users-pr-inappm"
     pr_yearly = "users-pr-inappy"
+    pr_github_marketplace = "users"
 
 
 def is_pr_billing_plan(plan: str) -> bool:
@@ -17,4 +18,5 @@ def is_pr_billing_plan(plan: str) -> bool:
         BillingPlan.pr_monthly.value,
         BillingPlan.pr_yearly.value,
         BillingPlan.users_free.value,
+        BillingPlan.pr_github_marketplace.value
     ]
