@@ -70,12 +70,12 @@ pyyaml==3.13              # via -r requirements.in, vcrpy
 redis==3.2.1              # via -r requirements.in
 requests==2.22.0          # via -r requirements.in, analytics-python, google-api-core, stripe
 rfc3986[idna2008]==1.4.0  # via httpx
-git+ssh://git@github.com/codecov/ribs@v0.1.5#egg=ribs  # via shared
+git+ssh://git@github.com/codecov/ribs@v0.1.6#egg=ribs  # via shared
 rsa==4.0                  # via google-auth
 s3transfer==0.2.1         # via boto3
 schema==0.7.0             # via shared
 sentry-sdk==0.14.4        # via -r requirements.in
-git+ssh://git@github.com/codecov/shared.git@v0.4.8#egg=shared  # via -r requirements.in
+git+ssh://git@github.com/codecov/shared.git@v0.4.9#egg=shared  # via -r requirements.in
 six==1.11.0               # via analytics-python, cryptography, ecdsa, google-api-core, google-auth, google-resumable-media, packaging, protobuf, python-dateutil, shared, sqlalchemy-utils, vcrpy
 sniffio==1.1.0            # via httpcore, httpx
 sqlalchemy-utils==0.33.11  # via -r requirements.in, pytest-sqlalchemy
