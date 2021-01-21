@@ -3,7 +3,7 @@ import datetime
 import logging
 
 from sqlalchemy import Column, types, ForeignKey, Table
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects import postgresql
 
@@ -32,7 +32,7 @@ class MixinBaseClass(object):
 class RepositoryFlag(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_repositoryflag"
     repository_id = Column(types.Integer, ForeignKey("repos.repoid"))
-    repository = relationship(Repository,)
+    repository = relationship(Repository, backref=backref("flags"))
     flag_name = Column(types.String(256), nullable=False)
 
 
