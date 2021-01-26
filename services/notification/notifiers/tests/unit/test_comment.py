@@ -1,5 +1,6 @@
 import pytest
 from decimal import Decimal
+from datetime import datetime
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message import (
     diff_to_string,
@@ -696,6 +697,44 @@ class TestCommentNotifier(object):
             li += 1
             assert exp == res
         assert result == expected_result
+    
+    @pytest.mark.asyncio
+    async def test_build_upgrade_message_enterprise(
+        self, request, dbsession, mocker, mock_configuration, with_sql_functions, sample_comparison
+    ):
+        mocker.patch("helpers.environment.is_enterprise", return_value=True)
+        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
+
+        encrypted_license = "wxWEJyYgIcFpi6nBSyKQZQeaQ9Eqpo3SXyUomAqQOzOFjdYB3A8fFM1rm+kOt2ehy9w95AzrQqrqfxi9HJIb2zLOMOB9tSy52OykVCzFtKPBNsXU/y5pQKOfV7iI3w9CHFh3tDwSwgjg8UsMXwQPOhrpvl2GdHpwEhFdaM2O3vY7iElFgZfk5D9E7qEnp+WysQwHKxDeKLI7jWCnBCBJLDjBJRSz0H7AfU55RQDqtTrnR+rsLDHOzJ80/VxwVYhb"
+        mock_configuration.params["setup"]["enterprise_license"] = encrypted_license
+        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.mysite.com"
+
+        comparison = sample_comparison
+        pull = comparison.enriched_pull.database_pull
+        repository = sample_comparison.head.commit.repository
+        notifier = CommentNotifier(
+            repository=repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upgrade,
+        )
+        result = await notifier.build_message(comparison)
+        provider_pull = comparison.enriched_pull.provider_pull
+        expected_result = [
+            f"The author of this PR, {provider_pull['author']['username']}, is not activated in your Codecov Self-Hosted installation.",
+            f"Please [activate this user on Codecov](https://codecov.mysite.com/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
+            f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
+            f"Please contact your Codecov On-Premises installation administrator with any questions.",
+        ]
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            assert exp == res
+        assert result == expected_result
+
+
 
     @pytest.mark.asyncio
     async def test_build_message_hide_complexity(
