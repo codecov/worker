@@ -1,10 +1,9 @@
 import logging
-from datetime import datetime
 
 from app import celery_app
 from celery_config import delete_owner_task_name
 from tasks.base import BaseCodecovTask
-from database.models import Owner, Repository
+from database.models import Owner, Repository, Branch, Pull, Commit
 from services.archive import ArchiveService
 
 log = logging.getLogger(__name__)
@@ -31,6 +30,32 @@ class DeleteOwnerTask(BaseCodecovTask):
         self.delete_owner_from_orgs(db_session, ownerid)
 
         # finally delete the actual owner entry and depending data from other tables
+        involved_repos = db_session.query(Repository.repoid).filter(
+            Repository.ownerid == ownerid
+        )
+        log.info("Deleting branches from DB", extra=dict(ownerid=ownerid))
+        db_session.query(Branch).filter(Branch.repoid.in_(involved_repos)).delete(
+            synchronize_session=False
+        )
+        db_session.commit()
+        log.info("Deleting pulls from DB", extra=dict(ownerid=ownerid))
+        db_session.query(Pull).filter(Pull.repoid.in_(involved_repos)).delete(
+            synchronize_session=False
+        )
+        db_session.commit()
+        log.info("Deleting commits from DB", extra=dict(ownerid=ownerid))
+        db_session.query(Commit).filter(Commit.repoid.in_(involved_repos)).delete(
+            synchronize_session=False
+        )
+        db_session.commit()
+        log.info("Deleting repos from DB", extra=dict(ownerid=ownerid))
+        involved_repos.delete()
+        db_session.commit()
+        log.info("Setting other bots to NULL", extra=dict(ownerid=ownerid))
+        db_session.query(Owner).filter(Owner.bot_id == ownerid).update(
+            {Owner.bot_id: None}, synchronize_session=False
+        )
+        db_session.commit()
         log.info("Deleting owner from DB", extra=dict(ownerid=ownerid))
         db_session.delete(owner)
 

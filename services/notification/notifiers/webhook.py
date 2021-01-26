@@ -1,5 +1,4 @@
 import logging
-import dataclasses
 
 from shared.torngit.enums import Endpoints
 
