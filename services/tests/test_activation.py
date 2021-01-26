@@ -159,6 +159,8 @@ class TestActivationServiceTestCase(object):
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):
         mocker.patch("helpers.environment.is_enterprise", return_value=True)
+        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
+
         # Create two orgs to ensure our seat availability checking works across
         # multiple organizations.
         # Each org consumes 5 seats of a 10 seat license.
