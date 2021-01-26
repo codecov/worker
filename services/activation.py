@@ -68,7 +68,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
                         license_status=license_status,
                     ),
                 )
-            return False
+                return False
 
         else:
             log.info(
