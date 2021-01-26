@@ -1,7 +1,11 @@
 import logging
 from sqlalchemy import func
 from sqlalchemy.sql import text
-from services.license import get_current_license, calculate_reason_for_not_being_valid, requires_license
+from services.license import (
+    get_current_license,
+    calculate_reason_for_not_being_valid,
+    requires_license,
+)
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +43,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
                 if result[0] >= get_current_license().number_allowed_users:
                     can_activate = False
             # add user_ownerid to orgs, plan activated users.
-            if can_activate: 
+            if can_activate:
                 query_string = text(
                     """
                             UPDATE owners
@@ -51,20 +55,20 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
                                             plan_activated_users @> array[:user_ownerid]::int[] as has_access;"""
                 )
                 (activation_success,) = db_session.execute(
-                    query_string, {"user_ownerid": user_ownerid, "org_ownerid": org_ownerid}
+                    query_string,
+                    {"user_ownerid": user_ownerid, "org_ownerid": org_ownerid},
                 ).fetchall()
             else:
                 log.info(
-                "Auto activation failed due to no seats remaining",
-                extra=dict(
-                    org_ownerid=org_ownerid,
-                    author_ownerid=user_ownerid,
-                    activation_success=False,
-                    license_status=license_status,
-                ),
-            )
+                    "Auto activation failed due to no seats remaining",
+                    extra=dict(
+                        org_ownerid=org_ownerid,
+                        author_ownerid=user_ownerid,
+                        activation_success=False,
+                        license_status=license_status,
+                    ),
+                )
             return False
-
 
         else:
             log.info(

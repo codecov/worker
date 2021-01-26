@@ -154,7 +154,7 @@ class TestActivationServiceTestCase(object):
 
         was_activated = activate_user(dbsession, org.ownerid, user.ownerid)
         assert was_activated is False
-    
+
     def test_pr_billing_enterprise_no_seats_for_auto_actiavation(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):
