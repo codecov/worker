@@ -724,7 +724,7 @@ class TestCommentNotifier(object):
         provider_pull = comparison.enriched_pull.provider_pull
         expected_result = [
             f"The author of this PR, {provider_pull['author']['username']}, is not activated in your Codecov Self-Hosted installation.",
-            f"Please [activate this user on Codecov](https://codecov.mysite.com/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
+            f"Please [activate this user](https://codecov.mysite.com/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
             f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
             f"Please contact your Codecov On-Premises installation administrator with any questions.",
         ]
