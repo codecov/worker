@@ -670,9 +670,10 @@ class TestCommentNotifier(object):
 
     @pytest.mark.asyncio
     async def test_build_upgrade_message(
-        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+        self, request, dbsession, mocker, mock_configuration, with_sql_functions, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mocker.patch("services.license.is_enterprise", return_value=False)
         comparison = sample_comparison
         pull = comparison.enriched_pull.database_pull
         repository = sample_comparison.head.commit.repository
@@ -702,8 +703,7 @@ class TestCommentNotifier(object):
     async def test_build_upgrade_message_enterprise(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions, sample_comparison
     ):
-        mocker.patch("helpers.environment.is_enterprise", return_value=True)
-        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
+        mocker.patch("services.license.is_enterprise", return_value=True)
 
         encrypted_license = "wxWEJyYgIcFpi6nBSyKQZQeaQ9Eqpo3SXyUomAqQOzOFjdYB3A8fFM1rm+kOt2ehy9w95AzrQqrqfxi9HJIb2zLOMOB9tSy52OykVCzFtKPBNsXU/y5pQKOfV7iI3w9CHFh3tDwSwgjg8UsMXwQPOhrpvl2GdHpwEhFdaM2O3vY7iElFgZfk5D9E7qEnp+WysQwHKxDeKLI7jWCnBCBJLDjBJRSz0H7AfU55RQDqtTrnR+rsLDHOzJ80/VxwVYhb"
         mock_configuration.params["setup"]["enterprise_license"] = encrypted_license
