@@ -670,7 +670,13 @@ class TestCommentNotifier(object):
 
     @pytest.mark.asyncio
     async def test_build_upgrade_message(
-        self, request, dbsession, mocker, mock_configuration, with_sql_functions, sample_comparison
+        self,
+        request,
+        dbsession,
+        mocker,
+        mock_configuration,
+        with_sql_functions,
+        sample_comparison,
     ):
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
         mocker.patch("services.license.is_enterprise", return_value=False)
@@ -698,10 +704,16 @@ class TestCommentNotifier(object):
             li += 1
             assert exp == res
         assert result == expected_result
-    
+
     @pytest.mark.asyncio
     async def test_build_upgrade_message_enterprise(
-        self, request, dbsession, mocker, mock_configuration, with_sql_functions, sample_comparison
+        self,
+        request,
+        dbsession,
+        mocker,
+        mock_configuration,
+        with_sql_functions,
+        sample_comparison,
     ):
         mocker.patch("services.license.is_enterprise", return_value=True)
 
@@ -733,8 +745,6 @@ class TestCommentNotifier(object):
             li += 1
             assert exp == res
         assert result == expected_result
-
-
 
     @pytest.mark.asyncio
     async def test_build_message_hide_complexity(
