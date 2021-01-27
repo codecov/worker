@@ -17,12 +17,11 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
     Returns:
         bool: was the user successfully activated
     """
-
-    log.info(
-        "Checking the environment", extra=dict(requires_license=requires_license())
-    )
-
     if requires_license():
+        log.info(
+            "in requires_license", extra=dict(requires_license=requires_license())
+        )
+
         # we will not activate if the license is invalid for any reason.
         license_status = calculate_reason_for_not_being_valid(db_session)
         if license_status is None:
@@ -39,9 +38,12 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
             seat_query = db_session.execute(query_string).fetchall()
 
             can_activate = True
+
             for result in seat_query:
                 if result[0] >= get_current_license().number_allowed_users:
                     can_activate = False
+                    break
+            
             # add user_ownerid to orgs, plan activated users.
             if can_activate:
                 query_string = text(
@@ -58,6 +60,17 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
                     query_string,
                     {"user_ownerid": user_ownerid, "org_ownerid": org_ownerid},
                 ).fetchall()
+
+                log.info(
+                    "PR Auto activation attempted",
+                    extra=dict(
+                        org_ownerid=org_ownerid,
+                        author_ownerid=user_ownerid,
+                        activation_success=activation_success,
+                    ),
+                )
+
+                return activation_success
             else:
                 log.info(
                     "Auto activation failed due to no seats remaining",
@@ -81,17 +94,6 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
                 ),
             )
             return False
-
-        log.info(
-            "Enterprise PR Auto activation attempted",
-            extra=dict(
-                org_ownerid=org_ownerid,
-                author_ownerid=user_ownerid,
-                activation_success=activation_success,
-            ),
-        )
-
-        return True
 
     # TODO: we need to decide the best way for this logic to be shared across
     # worker and codecov-api - ideally moving logic from database to application layer
