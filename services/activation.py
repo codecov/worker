@@ -18,10 +18,6 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
         bool: was the user successfully activated
     """
     if requires_license():
-        log.info(
-            "in requires_license", extra=dict(requires_license=requires_license())
-        )
-
         # we will not activate if the license is invalid for any reason.
         license_status = calculate_reason_for_not_being_valid(db_session)
         if license_status is None:
@@ -43,7 +39,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
                 if result[0] >= get_current_license().number_allowed_users:
                     can_activate = False
                     break
-            
+
             # add user_ownerid to orgs, plan activated users.
             if can_activate:
                 query_string = text(
@@ -70,7 +66,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
                     ),
                 )
 
-                return activation_success
+                return True
             else:
                 log.info(
                     "Auto activation failed due to no seats remaining",
