@@ -167,7 +167,7 @@ class TestActivationServiceTestCase(object):
         org = OwnerFactory.create(
             service="github",
             oauth_token=None,
-            plan_activated_users=list(range(21, 24)),
+            plan_activated_users=list(range(1, 5)),
             plan_auto_activate=True,
         )
         dbsession.add(org)
@@ -176,7 +176,7 @@ class TestActivationServiceTestCase(object):
         org_second = OwnerFactory.create(
             service="github",
             oauth_token=None,
-            plan_activated_users=list(range(25, 30)),
+            plan_activated_users=list(range(6, 10)),
             plan_auto_activate=True,
         )
         dbsession.add(org_second)
