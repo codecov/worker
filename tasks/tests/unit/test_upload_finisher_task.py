@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
-import os
 
 import pytest
 
+from shared.yaml import UserYaml
 from tasks.upload_finisher import UploadFinisherTask
 from database.tests.factories import CommitFactory, RepositoryFactory, PullFactory
 
@@ -324,7 +324,7 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, commit_yaml, processing_results
+            dbsession, commit, UserYaml(commit_yaml), processing_results
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
@@ -364,7 +364,7 @@ class TestUploadFinisherTask(object):
         dbsession.add(pull)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, commit_yaml, processing_results
+            dbsession, commit, UserYaml(commit_yaml), processing_results
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
@@ -396,7 +396,7 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, commit_yaml, processing_results
+            dbsession, commit, UserYaml(commit_yaml), processing_results
         )
         assert res == {"notifications_called": False}
         assert mocked_app.send_task.call_count == 1

@@ -1,14 +1,16 @@
-from json import loads
 from time import time
 import logging
 import re
 import random
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
-from shared.utils.sessions import Session
 from redis.exceptions import LockError
-from sqlalchemy.exc import SQLAlchemyError
+from shared.config import get_config
+from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitClientError
+from shared.utils.sessions import Session
+from shared.yaml import UserYaml
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
 from database.models import (
@@ -18,8 +20,6 @@ from database.models import (
     UploadLevelTotals,
 )
 from celery_config import upload_processor_task_name
-
-from shared.config import get_config
 from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from helpers.metrics import metrics
 from services.bots import RepositoryWithoutValidBotError
@@ -27,7 +27,6 @@ from services.redis import get_redis_connection, download_archive_from_redis
 from services.report import ReportService, Report
 from services.report.parser import RawReportParser
 from services.repository import get_repo_provider_service
-from shared.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -114,6 +113,7 @@ class UploadProcessorTask(BaseCodecovTask):
         arguments_list,
         **kwargs,
     ):
+        commit_yaml = UserYaml(commit_yaml)
         log.debug("Obtained lock for repoid %d and commit %s", repoid, commitid)
         processings_so_far = previous_results.get("processings_so_far", [])
         commit = None

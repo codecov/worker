@@ -5,6 +5,7 @@ from celery_config import new_user_activated_task_name
 from celery.exceptions import Retry, MaxRetriesExceededError
 from shared.torngit.exceptions import TorngitClientError, TorngitServer5xxCodeError
 from redis.exceptions import LockError
+from shared.yaml import UserYaml
 
 from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.notify import NotifyTask
@@ -248,7 +249,7 @@ class TestNotifyTask(object):
         )
         assert result == {"notified": False, "notifications": None}
         mocked_should_send_notifications.assert_called_with(
-            {}, commit, fetch_and_update_whether_ci_passed_result
+            UserYaml({}), commit, fetch_and_update_whether_ci_passed_result
         )
 
     @pytest.mark.asyncio
@@ -284,7 +285,7 @@ class TestNotifyTask(object):
         )
         assert result == {"notified": False, "notifications": None}
         mocked_should_send_notifications.assert_called_with(
-            {}, commit, fetch_and_update_whether_ci_passed_result
+            UserYaml({}), commit, fetch_and_update_whether_ci_passed_result
         )
         mocked_fetch_yaml.assert_called_with(commit, mock_repo_provider)
 
@@ -435,7 +436,7 @@ class TestNotifyTask(object):
             )
         mocked_retry.assert_called_with(countdown=15, max_retries=10)
         mocked_should_wait_longer.assert_called_with(
-            {}, commit, fetch_and_update_whether_ci_passed_result
+            UserYaml({}), commit, fetch_and_update_whether_ci_passed_result
         )
 
     @pytest.mark.asyncio
@@ -473,7 +474,7 @@ class TestNotifyTask(object):
             )
         mocked_retry.assert_called_with(countdown=180, max_retries=5)
         mocked_should_wait_longer.assert_called_with(
-            {}, commit, fetch_and_update_whether_ci_passed_result
+            UserYaml({}), commit, fetch_and_update_whether_ci_passed_result
         )
 
     @pytest.mark.asyncio

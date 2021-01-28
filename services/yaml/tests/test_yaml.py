@@ -6,19 +6,22 @@ from shared.torngit.exceptions import TorngitClientError, TorngitServerUnreachab
 
 from database.tests.factories import CommitFactory
 from tests.base import BaseTestCase
-from services.yaml import get_final_yaml, get_current_yaml
+from shared.yaml import UserYaml
+from services.yaml import get_current_yaml
 
 
 class TestYamlService(BaseTestCase):
     def test_get_final_yaml_no_yaml_no_config_yaml(self, mock_configuration):
         expected_result = {}
-        result = get_final_yaml(owner_yaml=None, repo_yaml=None, commit_yaml=None)
-        assert expected_result == result
+        result = UserYaml.get_final_yaml(
+            owner_yaml=None, repo_yaml=None, commit_yaml=None
+        )
+        assert expected_result == result.to_dict()
 
     def test_get_final_yaml_empty_yaml_no_config_yaml(self, mock_configuration):
         expected_result = {}
-        result = get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
-        assert expected_result == result
+        result = UserYaml.get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
+        assert expected_result == result.to_dict()
 
     def test_get_final_yaml_no_yaml(self, mock_configuration):
         mock_configuration.set_params(
@@ -33,8 +36,8 @@ class TestYamlService(BaseTestCase):
             "coverage": {"precision": 2},
             "parsers": {"javascript": {"enable_partials": True}},
         }
-        result = get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
-        assert expected_result == result
+        result = UserYaml.get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
+        assert expected_result == result.to_dict()
 
     def test_get_final_yaml_no_thing_set_at_all(self, mocker, mock_configuration):
         mock_configuration._params = None
@@ -62,8 +65,8 @@ class TestYamlService(BaseTestCase):
             },
             "github_checks": {"annotations": True},
         }
-        result = get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
-        assert expected_result == result
+        result = UserYaml.get_final_yaml(owner_yaml={}, repo_yaml={}, commit_yaml={})
+        assert expected_result == result.to_dict()
 
     def test_get_final_yaml_owner_yaml(self, mock_configuration):
         mock_configuration.set_params(
@@ -81,12 +84,12 @@ class TestYamlService(BaseTestCase):
                 "new_language": "damn right",
             },
         }
-        result = get_final_yaml(
+        result = UserYaml.get_final_yaml(
             owner_yaml={"parsers": {"new_language": "damn right"}},
             repo_yaml={},
             commit_yaml={},
         )
-        assert expected_result == result
+        assert expected_result == result.to_dict()
 
     def test_get_final_yaml_both_repo_and_commit_yaml(self, mock_configuration):
         mock_configuration.set_params(
@@ -104,12 +107,12 @@ class TestYamlService(BaseTestCase):
                 "different_language": "say what",
             },
         }
-        result = get_final_yaml(
+        result = UserYaml.get_final_yaml(
             owner_yaml=None,
             repo_yaml={"parsers": {"new_language": "damn right"}},
             commit_yaml={"parsers": {"different_language": "say what"}},
         )
-        assert expected_result == result
+        assert expected_result == result.to_dict()
 
     @pytest.mark.asyncio
     async def test_get_current_yaml(self, mocker, mock_configuration):
@@ -154,7 +157,7 @@ class TestYamlService(BaseTestCase):
             }
         )
         res = await get_current_yaml(commit, valid_handler)
-        assert res == {
+        assert res.to_dict() == {
             "codecov": {"notify": {}, "require_ci_to_pass": True},
             "comment": {
                 "behavior": "default",
@@ -207,7 +210,7 @@ class TestYamlService(BaseTestCase):
             repository__owner__yaml={"codecov": {"bot": "ThiagoCodecov"}},
         )
         res = await get_current_yaml(commit, valid_handler)
-        assert res == {
+        assert res.to_dict() == {
             "codecov": {
                 "bot": "ThiagoCodecov",
                 "notify": {},
@@ -257,7 +260,7 @@ class TestYamlService(BaseTestCase):
             }
         )
         res = await get_current_yaml(commit, valid_handler)
-        assert res == {
+        assert res.to_dict() == {
             "coverage": {
                 "precision": 2,
                 "round": "down",
@@ -300,7 +303,7 @@ class TestYamlService(BaseTestCase):
             }
         )
         res = await get_current_yaml(commit, valid_handler)
-        assert res == {
+        assert res.to_dict() == {
             "coverage": {
                 "precision": 2,
                 "round": "down",
@@ -345,7 +348,7 @@ class TestYamlService(BaseTestCase):
             }
         )
         res = await get_current_yaml(commit, valid_handler)
-        assert res == {
+        assert res.to_dict() == {
             "coverage": {
                 "precision": 2,
                 "round": "down",

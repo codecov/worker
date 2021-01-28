@@ -1,9 +1,9 @@
-import json
 import mock
 from pathlib import Path
 
 import pytest
 from shared.torngit.status import Status
+from shared.yaml import UserYaml
 
 from database.tests.factories import CommitFactory
 from tasks.status_set_error import StatusSetErrorTask
@@ -24,7 +24,7 @@ class TestSetErrorTaskUnit(object):
 
         mocked_2 = mocker.patch("tasks.status_set_error.get_current_yaml")
         fetch_current_yaml = {"coverage": {"status": None}}
-        mocked_2.return_value = fetch_current_yaml
+        mocked_2.return_value = UserYaml(fetch_current_yaml)
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
@@ -86,7 +86,7 @@ class TestSetErrorTaskUnit(object):
         fetch_current_yaml = {
             "coverage": {"status": {context: {"default": {"target": 80}}}}
         }
-        mocked_2.return_value = fetch_current_yaml
+        mocked_2.return_value = UserYaml(fetch_current_yaml)
 
         commit = CommitFactory.create()
         dbsession.add(commit)
@@ -145,7 +145,7 @@ class TestSetErrorTaskUnit(object):
         fetch_current_yaml = {
             "coverage": {"status": {context: {"default": {"target": 80}}}}
         }
-        mocked_2.return_value = fetch_current_yaml
+        mocked_2.return_value = UserYaml(fetch_current_yaml)
 
         commit = CommitFactory.create()
         dbsession.add(commit)
