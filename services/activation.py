@@ -5,6 +5,7 @@ from services.license import (
     get_current_license,
     calculate_reason_for_not_being_valid,
     requires_license,
+    get_installation_plan_activated_users
 )
 
 log = logging.getLogger(__name__)
@@ -22,24 +23,10 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
         license_status = calculate_reason_for_not_being_valid(db_session)
         if license_status is None:
             # check if you have an available seat with which to activate.
-            query_string = text(
-                """
-                        WITH all_plan_activated_users AS (
-                            SELECT 
-                                UNNEST(o.plan_activated_users) AS activated_owner_id
-                            FROM owners o
-                        ) SELECT count(*) as count
-                        FROM all_plan_activated_users"""
-            )
-            seat_query = db_session.execute(query_string).fetchall()
+            seat_query = get_installation_plan_activated_users(db_session)
 
-            can_activate = True
-
-            for result in seat_query:
-                if result[0] >= get_current_license().number_allowed_users:
-                    can_activate = False
-                    break
-
+            this_license = get_current_license()
+            can_activate = all(result[0] < this_license.number_allowed_users for result in seat_query)
             # add user_ownerid to orgs, plan activated users.
             if can_activate:
                 query_string = text(

@@ -158,7 +158,7 @@ class TestActivationServiceTestCase(object):
     def test_pr_billing_enterprise_no_seats_for_auto_actiavation(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):
-        mocker.patch("helpers.environment.is_enterprise", return_value=True)
+        mocker.patch("services.license.is_enterprise", return_value=True)
         mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
 
         user = OwnerFactory.create_from_test_request(request)
@@ -185,5 +185,3 @@ class TestActivationServiceTestCase(object):
 
         was_activated = activate_user(dbsession, org.ownerid, second_user.ownerid)
         assert was_activated is False
-        dbsession.commit()
-        assert second_user.ownerid not in org.plan_activated_users

@@ -50,6 +50,18 @@ def reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReason]:
 def cached_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReason]:
     return calculate_reason_for_not_being_valid(db_session)
 
+def get_installation_plan_activated_users(db_session) -> list:
+    query_string = text(
+                """
+                        WITH all_plan_activated_users AS (
+                            SELECT 
+                                UNNEST(o.plan_activated_users) AS activated_owner_id
+                            FROM owners o
+                        ) SELECT count(*) as count
+                        FROM all_plan_activated_users"""
+            )
+    return db_session.execute(query_string).fetchall()
+
 
 def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReason]:
     current_license = get_current_license()
@@ -62,16 +74,7 @@ def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseR
     if current_license.number_allowed_users:
         if current_license.is_pr_billing:
             # PR Billing must count _all_ plan_activated_users in db
-            query_string = text(
-                """
-                        WITH all_plan_activated_users AS (
-                            SELECT 
-                                UNNEST(o.plan_activated_users) AS activated_owner_id
-                            FROM owners o
-                        ) SELECT count(*) as count
-                        FROM all_plan_activated_users"""
-            )
-            query = db_session.execute(query_string).fetchall()
+            query = get_installation_plan_activated_users(db_session)
         else:
             # non PR billing must count all owners with oauth_token != None.
             query = (
