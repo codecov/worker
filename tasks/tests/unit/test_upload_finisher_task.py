@@ -332,7 +332,7 @@ class TestUploadFinisherTask(object):
                 commitid=commit.commitid, current_yaml=commit_yaml, repoid=commit.repoid
             ),
         )
-        assert mocked_app.send_task.call_count == 1
+        assert mocked_app.send_task.call_count == 0
 
     @pytest.mark.asyncio
     async def test_finish_reports_processing_with_pull(self, dbsession, mocker):
@@ -379,7 +379,7 @@ class TestUploadFinisherTask(object):
                 "should_send_notifications": False,
             }
         )
-        assert mocked_app.send_task.call_count == 1
+        assert mocked_app.send_task.call_count == 0
 
     @pytest.mark.asyncio
     async def test_finish_reports_processing_no_notification(self, dbsession, mocker):
@@ -399,5 +399,5 @@ class TestUploadFinisherTask(object):
             dbsession, commit, UserYaml(commit_yaml), processing_results
         )
         assert res == {"notifications_called": False}
-        assert mocked_app.send_task.call_count == 1
+        assert mocked_app.send_task.call_count == 0
         assert not mocked_app.tasks["app.tasks.notify.Notify"].apply_async.called
