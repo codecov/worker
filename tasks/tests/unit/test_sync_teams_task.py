@@ -85,8 +85,14 @@ class TestSyncTeamsTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_gitlab_subgroups(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
+        self, mocker, mock_configuration, dbsession, codecov_vcr, caplog
     ):
+        import logging
+
+        caplog.set_level(logging.DEBUG)
+        print(codecov_vcr)
+        print(dir(codecov_vcr))
+        print(codecov_vcr.rewound)
         token = "testenll80qbqhofao65"
         user = OwnerFactory.create(
             organizations=[], service="gitlab", unencrypted_oauth_token=token

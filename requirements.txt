@@ -75,7 +75,7 @@ rsa==4.0                  # via google-auth
 s3transfer==0.2.1         # via boto3
 schema==0.7.0             # via shared
 sentry-sdk==0.14.4        # via -r requirements.in
-git+ssh://git@github.com/codecov/shared.git@v0.4.9#egg=shared  # via -r requirements.in
+git+ssh://git@github.com/codecov/shared.git@v0.4.11#egg=shared  # via -r requirements.in
 six==1.11.0               # via analytics-python, cryptography, ecdsa, google-api-core, google-auth, google-resumable-media, packaging, protobuf, python-dateutil, shared, sqlalchemy-utils, vcrpy
 sniffio==1.1.0            # via httpcore, httpx
 sqlalchemy-utils==0.33.11  # via -r requirements.in, pytest-sqlalchemy
