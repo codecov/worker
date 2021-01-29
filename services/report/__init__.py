@@ -6,7 +6,6 @@ from json import loads
 from shared.metrics import metrics
 from shared.reports.resources import Report
 from shared.reports.editable import EditableReport
-from shared.reports.readonly import ReadOnlyReport
 from shared.storage.exceptions import FileNotInStorageError
 from shared.reports.carryforward import generate_carryforward_report
 from shared.utils.sessions import SessionType
@@ -311,34 +310,13 @@ class ReportService(object):
         )
         if not self.current_yaml:
             return Report()
-        flags_to_carryforward = []
-        all_flags = read_yaml_field(self.current_yaml, ("flags",))
-        if all_flags:
-            for flag_name, flag_info in all_flags.items():
-                if flag_info.get("carryforward"):
-                    flags_to_carryforward.append(flag_name)
-        if not flags_to_carryforward:
+        if not self.current_yaml.has_any_carryforward():
             return Report()
-        log.info(
-            "Flags were found to be carriedforward",
-            extra=dict(
-                commit=commit.commitid,
-                repoid=commit.repoid,
-                flags_to_carryforward=flags_to_carryforward,
-            ),
-        )
-        paths_to_carryforward = get_paths_from_flags(
-            self.current_yaml, flags_to_carryforward
-        )
         parent_commit = self.get_appropriate_commit_to_carryforward_from(commit)
         if parent_commit is None:
             log.warning(
-                "Could not carryforward report from another commit despite having CF flags",
-                extra=dict(
-                    commit=commit.commitid,
-                    repoid=commit.repoid,
-                    some_flags_to_carryforward=flags_to_carryforward[:50],
-                ),
+                "Could not find parent for possible carryforward",
+                extra=dict(commit=commit.commitid, repoid=commit.repoid,),
             )
             return Report()
         parent_report = self.get_existing_report_for_commit(parent_commit)
@@ -349,11 +327,19 @@ class ReportService(object):
                     commit=commit.commitid,
                     repoid=commit.repoid,
                     parent_commit=parent_commit.commitid,
-                    flags_to_carryforward=flags_to_carryforward,
-                    paths_to_carryforward=paths_to_carryforward,
                 ),
             )
             return Report()
+        flags_to_carryforward = []
+        report_flags = parent_report.get_flag_names()
+        for flag_name in report_flags:
+            if self.current_yaml.flag_has_carryfoward(flag_name):
+                flags_to_carryforward.append(flag_name)
+        if not flags_to_carryforward:
+            return Report()
+        paths_to_carryforward = get_paths_from_flags(
+            self.current_yaml, flags_to_carryforward
+        )
         log.info(
             "Generating carriedforward report",
             extra=dict(
