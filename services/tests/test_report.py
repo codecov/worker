@@ -2908,16 +2908,16 @@ class TestReportService(BaseTestCase):
         expected_content = "\n".join(
             [
                 "{}",
-                "[1, null, [[0, 1, null, null, null]], null, [10, 2]]",
-                "[0, null, [[0, 1, null, null, null]]]",
-                "[1, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1]], null, [10, 2]]",
+                "[0, null, [[0, 1]]]",
+                "[1, null, [[0, 1]]]",
                 "",
-                "[1, null, [[0, 1, null, null, null], [1, 1, null, null, null]]]",
-                "[0, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1], [1, 1]]]",
+                "[0, null, [[0, 1]]]",
                 "",
-                "[1, null, [[0, 1, null, null, null], [1, 0, null, null, null]]]",
-                "[1, null, [[0, 1, null, null, null]]]",
-                "[0, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1], [1, 0]]]",
+                "[1, null, [[0, 1]]]",
+                "[0, null, [[0, 1]]]",
                 "<<<<< end_of_chunk >>>>>",
                 "{}",
                 "",
@@ -2931,7 +2931,7 @@ class TestReportService(BaseTestCase):
                 "",
                 "",
                 "",
-                "[1, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1]]]",
                 "",
                 "",
                 "",
@@ -2970,7 +2970,7 @@ class TestReportService(BaseTestCase):
                 "",
                 "",
                 "",
-                '["1/2", "b", [[0, 1, null, null, null]]]',
+                '["1/2", "b", [[0, 1]]]',
             ]
         )
         assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
