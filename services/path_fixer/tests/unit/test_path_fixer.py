@@ -1,6 +1,7 @@
 from tests.base import BaseTestCase
 
 from services.path_fixer import PathFixer, invert_pattern
+from shared.yaml import UserYaml
 
 
 class TestPathFixerHelpers(BaseTestCase):
@@ -55,7 +56,7 @@ class TestPathFixer(BaseTestCase):
         }
         toc = []
         flags = ["flagone"]
-        pf = PathFixer.init_from_user_yaml(commit_yaml, toc, flags)
+        pf = PathFixer.init_from_user_yaml(UserYaml(commit_yaml), toc, flags)
         assert pf("notsimple/path/to/something.py") == "notsimple/path/to/something.py"
         assert pf("complex/path/to/something.py") is None
         assert pf("before/tests-apples/test.js") == "after/test.js"

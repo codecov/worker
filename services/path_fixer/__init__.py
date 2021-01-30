@@ -43,18 +43,11 @@ class PathFixer(object):
         )
         if flags:
             for flag in flags:
+                flag_configuration = commit_yaml.get_flag_configuration(flag) or {}
                 path_patterns.extend(
-                    list(
-                        map(
-                            invert_pattern,
-                            read_yaml_field(commit_yaml, ("flags", flag, "ignore"))
-                            or [],
-                        )
-                    )
+                    list(map(invert_pattern, flag_configuration.get("ignore") or []))
                 )
-                path_patterns.extend(
-                    read_yaml_field(commit_yaml, ("flags", flag, "paths")) or []
-                )
+                path_patterns.extend(flag_configuration.get("paths") or [])
         disable_default_path_fixes = read_yaml_field(
             commit_yaml, ("codecov", "disable_default_path_fixes")
         )

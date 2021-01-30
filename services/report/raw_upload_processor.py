@@ -104,6 +104,8 @@ def process_raw_upload(
                 # skip joining if flags express this fact
                 joined = True
                 for flag in flags or []:
+                    # purposedly not ported because we don't see use cases for joined currently
+                    # will probably just delete
                     if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
                         joined = False
                         break
