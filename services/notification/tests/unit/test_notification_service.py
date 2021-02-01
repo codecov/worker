@@ -2,11 +2,13 @@ import pytest
 from asyncio import TimeoutError as AsyncioTimeoutError, CancelledError
 import os
 import mock
+
 from celery.exceptions import SoftTimeLimitExceeded
+from shared.yaml import UserYaml
+from shared.reports.resources import ReportLine, ReportFile, Report
 
 from database.enums import Notification, NotificationState, Decoration
 from database.tests.factories import RepositoryFactory
-from services.decoration import Decoration
 from services.notification import NotificationService
 from services.notification.notifiers.base import NotificationResult
 from services.notification.types import Comparison, FullCommit, EnrichedPull
@@ -16,7 +18,6 @@ from database.tests.factories import (
     PullFactory,
 )
 from services.notification.notifiers.checks import ProjectChecksNotifier
-from shared.reports.resources import ReportLine, ReportFile, Report
 
 
 @pytest.fixture
@@ -426,3 +427,36 @@ class TestNotificationService(object):
         res = await notifications_service.notify(sample_comparison)
         assert expected_result == res
         assert not mock_notify_individual_notifier.called
+
+    @pytest.mark.asyncio
+    async def test_get_statuses(self, mocker, dbsession, sample_comparison):
+        current_yaml = {
+            "coverage": {"status": {"project": True, "patch": True, "changes": True}},
+            "flags": {"banana": {"carryforward": False}},
+            "flag_management": {
+                "default_rules": {"carryforward": False},
+                "individual_flags": [
+                    {
+                        "name": "strawberry",
+                        "carryforward": True,
+                        "statuses": [{"name_prefix": "haha", "type": "patch",}],
+                    }
+                ],
+            },
+        }
+        commit = sample_comparison.head.commit
+        notifications_service = NotificationService(
+            commit.repository, UserYaml(current_yaml)
+        )
+        expected_result = [
+            ("project", "default", {}),
+            ("patch", "default", {}),
+            ("changes", "default", {}),
+            (
+                "patch",
+                "hahastrawberry",
+                {"flags": ["strawberry"], "name_prefix": "haha", "type": "patch"},
+            ),
+        ]
+        res = list(notifications_service.get_statuses(["unit", "banana", "strawberry"]))
+        assert expected_result == res
