@@ -19,7 +19,7 @@ from services.urls import get_org_account_url
 
 from services.notification.notifiers.mixins.message import MessageMixin
 
-from services.license import is_enterprise
+from services.license import requires_license
 
 log = logging.getLogger(__name__)
 
@@ -352,7 +352,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         author_username = comparison.enriched_pull.provider_pull["author"].get(
             "username"
         )
-        if not is_enterprise():
+        if not requires_license():
             return [
                 f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
                 f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment.",

@@ -1,7 +1,7 @@
 import logging
 from enum import Enum
 from shared.license import get_current_license
-from services.license import is_enterprise
+from services.license import requires_license
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class BillingPlan(Enum):
 
 
 def is_pr_billing_plan(plan: str) -> bool:
-    if not is_enterprise():
+    if not requires_license():
         return plan in [
             BillingPlan.pr_monthly.value,
             BillingPlan.pr_yearly.value,
