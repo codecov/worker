@@ -5,7 +5,7 @@ from services.license import (
     get_current_license,
     calculate_reason_for_not_being_valid,
     requires_license,
-    get_installation_plan_activated_users
+    get_installation_plan_activated_users,
 )
 
 log = logging.getLogger(__name__)
@@ -26,7 +26,9 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
             seat_query = get_installation_plan_activated_users(db_session)
 
             this_license = get_current_license()
-            can_activate = all(result[0] < this_license.number_allowed_users for result in seat_query)
+            can_activate = all(
+                result[0] < this_license.number_allowed_users for result in seat_query
+            )
             # add user_ownerid to orgs, plan activated users.
             if can_activate:
                 query_string = text(

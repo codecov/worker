@@ -50,16 +50,17 @@ def reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReason]:
 def cached_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReason]:
     return calculate_reason_for_not_being_valid(db_session)
 
+
 def get_installation_plan_activated_users(db_session) -> list:
     query_string = text(
-                """
+        """
                         WITH all_plan_activated_users AS (
                             SELECT 
                                 UNNEST(o.plan_activated_users) AS activated_owner_id
                             FROM owners o
                         ) SELECT count(*) as count
                         FROM all_plan_activated_users"""
-            )
+    )
     return db_session.execute(query_string).fetchall()
 
 
