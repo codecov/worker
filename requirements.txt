@@ -191,7 +191,7 @@ requests==2.22.0
     #   stripe
 rfc3986[idna2008]==1.4.0
     # via httpx
-git+ssh://git@github.com/codecov/ribs@v0.1.5#egg=ribs
+git+ssh://git@github.com/codecov/ribs@v0.1.6#egg=ribs
     # via shared
 rsa==4.0
     # via google-auth
@@ -201,7 +201,7 @@ schema==0.7.0
     # via shared
 sentry-sdk==0.14.4
     # via -r requirements.in
-git+ssh://git@github.com/codecov/shared.git@b7da4591344a3d2e23b6fde22464c75dfd387158#egg=shared
+git+ssh://git@github.com/codecov/shared.git@v0.4.11#egg=shared
     # via -r requirements.in
 six==1.11.0
     # via
