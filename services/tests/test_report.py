@@ -10,6 +10,7 @@ from database.models import CommitReport, ReportDetails, Upload, RepositoryFlag
 from services.archive import ArchiveService
 from shared.reports.types import ReportTotals, ReportLine
 from shared.reports.resources import ReportFile, Report, Session, SessionType
+from shared.yaml import UserYaml
 
 
 def powerset(iterable):
@@ -455,7 +456,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             [
@@ -1469,7 +1470,7 @@ class TestReportService(BaseTestCase):
             ReportService, "create_new_report_for_commit"
         )
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report_service = ReportService(yaml_dict)
+        report_service = ReportService(UserYaml(yaml_dict))
         report = report_service.build_report_from_commit(commit)
         assert report == mocked_create_new_report_for_commit.return_value
 
@@ -1487,7 +1488,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert len(report.files) == 15
         report.add_session(Session(flags=["enterprise"]))
@@ -1549,7 +1550,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).build_report_from_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).build_report_from_commit(commit)
         assert report is not None
         assert len(report.files) == 15
         report.add_session(Session(flags=["enterprise"]))
@@ -1648,7 +1649,7 @@ class TestReportService(BaseTestCase):
                 "special_flag": {"paths": ["file_0.*"]},
             }
         }
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             ["file_10.py", "file_11.py", "file_12.py", "file_13.py", "file_14.py",]
@@ -2139,7 +2140,7 @@ class TestReportService(BaseTestCase):
                 "special_flag": {"paths": ["file_0.*"]},
             }
         }
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         assert report.totals == ReportTotals(
@@ -2198,7 +2199,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         assert report.totals == ReportTotals(
@@ -2266,7 +2267,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             [
@@ -2459,7 +2460,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             [
@@ -2563,7 +2564,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         readable_report = self.convert_report_to_better_readable(report)
@@ -2593,7 +2594,31 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         with pytest.raises(NotReadyToBuildReportYetError):
-            ReportService(yaml_dict).create_new_report_for_commit(commit)
+            ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
+
+    def test_create_new_report_for_commit_potential_cf_but_not_real_cf(
+        self, dbsession, sample_commit_with_report_big
+    ):
+        parent_commit = sample_commit_with_report_big
+        dbsession.flush()
+        commit = CommitFactory.create(
+            repository=parent_commit.repository,
+            parent_commit_id=parent_commit.commitid,
+            report_json=None,
+        )
+        dbsession.add(parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.add(CommitReport(commit_id=commit.id_))
+        dbsession.flush()
+        yaml_dict = {
+            "flag_management": {
+                "default_rules": {"carryforward": False},
+                "individual_flags": [{"name": "banana", "carryforward": True}],
+            }
+        }
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
+        assert report.is_empty()
 
     def test_create_new_report_for_commit_parent_has_no_report(
         self, mock_storage, dbsession
@@ -2607,7 +2632,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         report_service = ReportService(
-            {"flags": {"enterprise": {"carryforward": True}}}
+            UserYaml({"flags": {"enterprise": {"carryforward": True}}})
         )
         r = report_service.create_new_report_for_commit(commit)
         assert r.files == []
@@ -2908,16 +2933,16 @@ class TestReportService(BaseTestCase):
         expected_content = "\n".join(
             [
                 "{}",
-                "[1, null, [[0, 1, null, null, null]], null, [10, 2]]",
-                "[0, null, [[0, 1, null, null, null]]]",
-                "[1, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1]], null, [10, 2]]",
+                "[0, null, [[0, 1]]]",
+                "[1, null, [[0, 1]]]",
                 "",
-                "[1, null, [[0, 1, null, null, null], [1, 1, null, null, null]]]",
-                "[0, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1], [1, 1]]]",
+                "[0, null, [[0, 1]]]",
                 "",
-                "[1, null, [[0, 1, null, null, null], [1, 0, null, null, null]]]",
-                "[1, null, [[0, 1, null, null, null]]]",
-                "[0, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1], [1, 0]]]",
+                "[1, null, [[0, 1]]]",
+                "[0, null, [[0, 1]]]",
                 "<<<<< end_of_chunk >>>>>",
                 "{}",
                 "",
@@ -2931,7 +2956,7 @@ class TestReportService(BaseTestCase):
                 "",
                 "",
                 "",
-                "[1, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1]]]",
                 "",
                 "",
                 "",
@@ -2970,7 +2995,7 @@ class TestReportService(BaseTestCase):
                 "",
                 "",
                 "",
-                '["1/2", "b", [[0, 1, null, null, null]]]',
+                '["1/2", "b", [[0, 1]]]',
             ]
         )
         assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
@@ -3015,7 +3040,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report_service = ReportService(yaml_dict)
+        report_service = ReportService(UserYaml(yaml_dict))
         r = report_service.initialize_and_save_report(commit)
         assert len(r.uploads) == 2
         first_upload = dbsession.query(Upload).filter_by(

@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Sequence, Dict, Any, Set, List
+from typing import Sequence, Dict, Any, List
 from collections import deque
 import os
 import json
@@ -21,12 +21,11 @@ from services.repository import (
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.notification.changes import get_changes
 from services.yaml.reader import read_yaml_field
-from services.yaml import get_final_yaml
+from shared.yaml import UserYaml
 from services.report import ReportService, Report
 from tasks.base import BaseCodecovTask
 from app import celery_app
 from shared.reports.types import Change
-from services.redis import get_redis_connection
 
 
 log = logging.getLogger(__name__)
@@ -115,7 +114,7 @@ class PullSyncTask(BaseCodecovTask):
                 "pull_updated": False,
                 "reason": "no_bot",
             }
-        current_yaml = get_final_yaml(
+        current_yaml = UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml, repo_yaml=repository.yaml
         )
         with metrics.timer(f"worker.tasks.{self.name},fetch_pull"):

@@ -5,6 +5,7 @@ from typing import Mapping, Any
 
 from celery import chain
 from redis.exceptions import LockError
+from shared.yaml import UserYaml
 from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitClientError,
@@ -23,7 +24,7 @@ from services.repository import (
     create_webhook_on_provider,
 )
 from services.report import ReportService, NotReadyToBuildReportYetError
-from services.yaml import get_final_yaml, save_repo_yaml_to_database_if_needed
+from services.yaml import save_repo_yaml_to_database_if_needed
 from shared.validation.exceptions import InvalidYamlException
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
@@ -236,7 +237,7 @@ class UploadTask(BaseCodecovTask):
                 commit, repository_service
             )
         else:
-            commit_yaml = get_final_yaml(
+            commit_yaml = UserYaml.get_final_yaml(
                 owner_yaml=repository.owner.yaml,
                 repo_yaml=repository.yaml,
                 commit_yaml=None,
@@ -299,13 +300,14 @@ class UploadTask(BaseCodecovTask):
                 exc_info=True,
             )
             commit_yaml = None
-        return get_final_yaml(
+        return UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
             commit_yaml=commit_yaml,
         )
 
     def schedule_task(self, commit, commit_yaml, argument_list):
+        commit_yaml = commit_yaml.to_dict()
         chain_to_call = []
         for i in range(0, len(argument_list), CHUNK_SIZE):
             chunk = argument_list[i : i + CHUNK_SIZE]

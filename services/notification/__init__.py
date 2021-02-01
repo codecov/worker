@@ -1,12 +1,13 @@
 import logging
 import dataclasses
-from typing import List
+from typing import List, Iterator
 import asyncio
-import os
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 
 from shared.config import get_config
+from shared.yaml import UserYaml
 from shared.helpers.yaml import default_if_true
+
 from helpers.metrics import metrics
 from services.decoration import Decoration
 from services.notification.notifiers import (
@@ -24,7 +25,6 @@ from services.commit_notifications import (
 )
 from services.yaml import read_yaml_field
 from services.license import is_properly_licensed
-from typing import Any, Iterator
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 
 class NotificationService(object):
     def __init__(
-        self, repository, current_yaml, decoration_type=Decoration.standard
+        self, repository, current_yaml: UserYaml, decoration_type=Decoration.standard
     ) -> None:
         self.repository = repository
         self.current_yaml = current_yaml
@@ -57,72 +57,47 @@ class NotificationService(object):
                         current_yaml=self.current_yaml,
                         decoration_type=self.decoration_type,
                     )
-        status_fields = read_yaml_field(self.current_yaml, ("coverage", "status"))
-        if status_fields:
-            whitelisted_ownerids = os.getenv("CHECKS_WHITELISTED_OWNERS", "").split(",")
-            whitelisted_percentage = int(os.getenv("CHECKS_WHITELISTED_PERCENTAGE", 0))
-            whitelisted_ownerids = [
-                int(ownerid.strip())
-                for ownerid in whitelisted_ownerids
-                if ownerid != ""
-            ]
-            checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
-            for key, value in status_fields.items():
-                if key in ["patch", "project", "changes"]:
-                    for title, status_config in default_if_true(value):
-                        notifier_class_type = "status"
-                        if (
-                            self.repository.using_integration
-                            and self.repository.owner.integration_id
-                            and (
-                                self.repository.owner.service == "github"
-                                or self.repository.owner.service == "github_enterprise"
-                            )
-                            and (
-                                self.repository.owner.ownerid in whitelisted_ownerids
-                                or self.repository.owner.ownerid % 100
-                                <= whitelisted_percentage
-                            )
-                            and checks_yaml_field is not False
-                        ):
-
-                            status_notifier = get_status_notifier_class(
-                                key, notifier_class_type
-                            )
-                            notifier_class_type = "checks"
-                            checks_notifier = get_status_notifier_class(
-                                key, notifier_class_type
-                            )
-                            yield ChecksWithFallback(
-                                checks_notifier=checks_notifier(
-                                    repository=self.repository,
-                                    title=title,
-                                    notifier_yaml_settings=status_config,
-                                    notifier_site_settings={},
-                                    current_yaml=self.current_yaml,
-                                    decoration_type=self.decoration_type,
-                                ),
-                                status_notifier=status_notifier(
-                                    repository=self.repository,
-                                    title=title,
-                                    notifier_yaml_settings=status_config,
-                                    notifier_site_settings={},
-                                    current_yaml=self.current_yaml,
-                                    decoration_type=self.decoration_type,
-                                ),
-                            )
-                        else:
-                            notifier_class = get_status_notifier_class(
-                                key, notifier_class_type
-                            )
-                            yield notifier_class(
-                                repository=self.repository,
-                                title=title,
-                                notifier_yaml_settings=status_config,
-                                notifier_site_settings={},
-                                current_yaml=self.current_yaml,
-                                decoration_type=self.decoration_type,
-                            )
+        checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
+        current_flags = [rf.flag_name for rf in self.repository.flags]
+        for key, title, status_config in self.get_statuses(current_flags):
+            status_notifier_class = get_status_notifier_class(key, "status")
+            if (
+                self.repository.using_integration
+                and self.repository.owner.integration_id
+                and (
+                    self.repository.owner.service == "github"
+                    or self.repository.owner.service == "github_enterprise"
+                )
+                and checks_yaml_field is not False
+            ):
+                checks_notifier = get_status_notifier_class(key, "checks")
+                yield ChecksWithFallback(
+                    checks_notifier=checks_notifier(
+                        repository=self.repository,
+                        title=title,
+                        notifier_yaml_settings=status_config,
+                        notifier_site_settings={},
+                        current_yaml=self.current_yaml,
+                        decoration_type=self.decoration_type,
+                    ),
+                    status_notifier=status_notifier_class(
+                        repository=self.repository,
+                        title=title,
+                        notifier_yaml_settings=status_config,
+                        notifier_site_settings={},
+                        current_yaml=self.current_yaml,
+                        decoration_type=self.decoration_type,
+                    ),
+                )
+            else:
+                yield status_notifier_class(
+                    repository=self.repository,
+                    title=title,
+                    notifier_yaml_settings=status_config,
+                    notifier_site_settings={},
+                    current_yaml=self.current_yaml,
+                    decoration_type=self.decoration_type,
+                )
 
         comment_yaml_field = read_yaml_field(self.current_yaml, ("comment",))
         if comment_yaml_field:
@@ -135,6 +110,20 @@ class NotificationService(object):
                     current_yaml=self.current_yaml,
                     decoration_type=self.decoration_type,
                 )
+
+    def get_statuses(self, current_flags):
+        status_fields = read_yaml_field(self.current_yaml, ("coverage", "status"))
+        if status_fields:
+            for key, value in status_fields.items():
+                if key in ["patch", "project", "changes"]:
+                    for title, status_config in default_if_true(value):
+                        yield (key, title, status_config)
+        for f_name in current_flags:
+            flag_configuration = self.current_yaml.get_flag_configuration(f_name)
+            if flag_configuration and flag_configuration.get("enabled", True):
+                for st in flag_configuration.get("statuses", []):
+                    n_st = {"flags": [f_name], **st}
+                    yield (st["type"], f"{st.get('name_prefix', '')}{f_name}", n_st)
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
         if not is_properly_licensed(comparison.head.commit.get_db_session()):

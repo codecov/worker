@@ -30,7 +30,7 @@ class OwnEncoder(JSONEncoder):
         return super().default(o)
 
 
-class Test(BaseTestCase):
+class TestNodeProcessor(BaseTestCase):
     def readjson(self, filename):
         with open(folder / filename, "r") as d:
             contents = loads(d.read())

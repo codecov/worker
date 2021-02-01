@@ -1,12 +1,12 @@
 import logging
 
-from sqlalchemy import func
-from sqlalchemy.orm.session import Session
-from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from celery.exceptions import MaxRetriesExceededError
-from redis.exceptions import LockError
 from celery.exceptions import SoftTimeLimitExceeded
+from redis.exceptions import LockError
 from shared.reports.readonly import ReadOnlyReport
+from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
+from shared.yaml import UserYaml
+from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from celery_config import (
@@ -111,6 +111,8 @@ class NotifyTask(BaseCodecovTask):
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         if current_yaml is None:
             current_yaml = await get_current_yaml(commit, repository_service)
+        else:
+            current_yaml = UserYaml.from_dict(current_yaml)
         assert commit, "Commit not found in database."
         try:
             ci_results = await self.fetch_and_update_whether_ci_passed(
