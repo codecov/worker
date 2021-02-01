@@ -5,13 +5,16 @@ import pytest
 from json import loads
 from pathlib import Path
 
+from shared.yaml import UserYaml
+from shared.reports.types import ReportTotals
+from shared.utils.sessions import Session
+from shared.reports.resources import Report
+
 from helpers.exceptions import ReportEmptyError, CorruptRawReportError
 from tests.base import BaseTestCase
 from services.report import raw_upload_processor as process
 from services.report.parser import RawReportParser, ParsedUploadedReportFile
-from shared.reports.types import ReportTotals
-from shared.utils.sessions import Session
-from shared.reports.resources import Report
+
 
 here = Path(__file__)
 folder = here.parent
@@ -204,7 +207,7 @@ class TestProcessRawUploadNotJoined(BaseTestCase):
         ):
             with pytest.raises(NotImplementedError):
                 report = process.process_raw_upload(
-                    commit_yaml=yaml,
+                    commit_yaml=UserYaml(yaml),
                     original_report=Mock(
                         merge=merge, add_session=Mock(return_value=(1, Session()))
                     ),
@@ -224,7 +227,7 @@ class TestProcessRawUploadFlags(BaseTestCase):
     )
     def test_flags(self, flag):
         master = process.process_raw_upload(
-            commit_yaml={"flags": {"docker": flag}},
+            commit_yaml=UserYaml({"flags": {"docker": flag}}),
             original_report={},
             session={},
             reports=RawReportParser.parse_raw_report_from_io(
