@@ -1,4 +1,5 @@
 import re
+from os import path
 
 from timestring import Date, TimestringInvalid
 
@@ -27,6 +28,19 @@ def Int(value):
     except ValueError:
         return int(float(value))
 
+def get_source_path(xml):
+    try:
+        for source in xml.iter("source"):
+            if isinstance(source.text, str) and source.text.startswith('/'):
+                return source.text
+    except Exception:
+        return None
+
+def prepend_source_path_to_filename(xml, filename):
+    source_path = get_source_path(xml)
+    if source_path:
+        return path.join(source_path, filename)
+    return filename
 
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     # # process timestamp
@@ -153,7 +167,8 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     path_name_fixing = []
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
-        path_name_fixing.append((filename, fix(filename)))
+        fixed_name = fix(prepend_source_path_to_filename(xml, filename))
+        path_name_fixing.append((filename, fixed_name))
 
     _set = set(("dist-packages", "site-packages"))
     report.resolve_paths(
