@@ -30,12 +30,9 @@ def Int(value):
 
 
 def get_source_path(xml):
-    try:
-        for source in xml.iter("source"):
-            if isinstance(source.text, str) and source.text.startswith("/"):
-                return source.text
-    except Exception:
-        return None
+    for source in xml.iter("source"):
+        if isinstance(source.text, str) and source.text.startswith("/"):
+            return source.text
 
 
 def prepend_source_path_to_filename(xml, filename):
