@@ -1,3 +1,4 @@
+import logging
 import re
 from os import path
 
@@ -11,6 +12,7 @@ from shared.reports.types import ReportLine
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
 
+log = logging.getLogger(__name__)
 
 class CoberturaProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
@@ -32,7 +34,10 @@ def Int(value):
 def get_source_path(xml):
     for source in xml.iter("source"):
         if isinstance(source.text, str) and source.text.startswith("/"):
+            log.info(f"Corbertura report - using source {source.text}")
             return source.text
+        else:
+            log.info(f"Corbertura report - unsupported source {source.text}")
 
 
 def prepend_source_path_to_filename(source_path, filename):
