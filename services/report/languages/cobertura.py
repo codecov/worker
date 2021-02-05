@@ -35,8 +35,7 @@ def get_source_path(xml):
             return source.text
 
 
-def prepend_source_path_to_filename(xml, filename):
-    source_path = get_source_path(xml)
+def prepend_source_path_to_filename(source_path, filename):
     if source_path:
         return path.join(source_path, filename)
     return filename
@@ -165,9 +164,10 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
     # path rename
     path_name_fixing = []
+    source_path = get_source_path(xml)
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
-        fixed_name = fix(prepend_source_path_to_filename(xml, filename))
+        fixed_name = fix(prepend_source_path_to_filename(source_path, filename))
         path_name_fixing.append((filename, fixed_name))
 
     _set = set(("dist-packages", "site-packages"))
