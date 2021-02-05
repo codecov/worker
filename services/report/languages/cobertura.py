@@ -14,6 +14,7 @@ from services.report.languages.base import BaseLanguageProcessor
 
 log = logging.getLogger(__name__)
 
+
 class CoberturaProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
         if bool(list(content.iter("coverage"))):
