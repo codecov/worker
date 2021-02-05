@@ -270,4 +270,4 @@ class TestCobertura(BaseTestCase):
             {"codecov": {"max_report_age": None}},
         )
         processed_report = self.convert_report_to_better_readable(report)
-        assert '/user/repo/file_a' in processed_report['report']['files']
+        assert "/user/repo/file_a" in processed_report["report"]["files"]

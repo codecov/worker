@@ -28,19 +28,22 @@ def Int(value):
     except ValueError:
         return int(float(value))
 
+
 def get_source_path(xml):
     try:
         for source in xml.iter("source"):
-            if isinstance(source.text, str) and source.text.startswith('/'):
+            if isinstance(source.text, str) and source.text.startswith("/"):
                 return source.text
     except Exception:
         return None
+
 
 def prepend_source_path_to_filename(xml, filename):
     source_path = get_source_path(xml)
     if source_path:
         return path.join(source_path, filename)
     return filename
+
 
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     # # process timestamp
