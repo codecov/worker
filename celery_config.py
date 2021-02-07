@@ -103,7 +103,13 @@ synchronize_task_name = "app.tasks.synchronize.Synchronize"
 new_user_activated_task_name = "app.tasks.new_user_activated.NewUserActivated"
 add_to_sendgrid_list_task_name = "app.tasks.add_to_sendgrid_list.AddToSendgridList"
 
-task_annotations = {notify_task_name: {"soft_time_limit": 60, "time_limit": 80,}}
+task_annotations = {
+    notify_task_name: {"soft_time_limit": 60, "time_limit": 80},
+    delete_owner_task_name: {
+        "soft_time_limit": 2 * task_soft_time_limit,
+        "time_limit": 2 * task_time_limit,
+    },
+}
 
 task_routes = {
     sync_teams_task_name: {
