@@ -1,10 +1,8 @@
 import logging
 import re
-from typing import Optional
+from typing import Optional, Sequence
 
 log = logging.getLogger(__name__)
-
-_remove_target_delombok = re.compile(r"[^,]*/target/delombok/[^,]*,").sub
 
 _remove_known_bad_paths = re.compile(
     r"^(\.*\/)*(%s)?"
@@ -55,20 +53,31 @@ _remove_known_bad_paths = re.compile(
 ).sub
 
 
-def clean_toc(toc: str) -> Optional[str]:
-    toc = toc.strip()
-    if toc:
-        toc = (
-            ",%s,"
-            % toc.replace("\\ ", " ")  # remove escaping spaces
-            .replace("\\", "/")  # [windows] remove backslashes
-            .replace("\n", ",")
-        ).replace(",./", ",")
+def clean_toc(toc: str) -> Sequence[str]:
+    """
+    Split a newline-delimited table of contents into a list of paths.
 
-        if "/target/delombok/" in toc:
-            toc = _remove_target_delombok(toc, "")
+    Each path will be cleaned up slightly.
+    """
 
-        return toc
+    rv = []
+    for path in toc.strip().split("\n"):
+        # Unescape escaped spaces.
+        path = path.replace("\\ ", " ")
+        # Windows: Fix backslashes.
+        path = path.replace("\\", "/")
+        # Fix relative paths which start in the current directory.
+        if path.startswith("./"):
+            path = path[2:]
+
+        # Remove delombok.
+        if "/target/delombok/" in path:
+            continue
+
+        # This path is good; save it.
+        rv.append(path)
+
+    return rv
 
 
 def first_not_null_index(_list) -> Optional[int]:

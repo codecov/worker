@@ -18,7 +18,7 @@ class TestPathFixer(BaseTestCase):
         assert pf("bower_components/sample.js") == ""
 
     def test_path_fixer_with_toc(self):
-        pf = PathFixer([], [], ",".join(["file_1.py", "folder/file_2.py"]))
+        pf = PathFixer([], [], ["file_1.py", "folder/file_2.py"])
         assert pf("fafafa/file_2.py") is None
         assert pf("folder/file_2.py") == "folder/file_2.py"
         assert pf("file_1.py") == "file_1.py"
@@ -74,7 +74,7 @@ class TestBasePathAwarePathFixer(object):
             "fixes": [r"(?s:home/thiago)::root/"],
             "ignore": ["complex/path"],
         }
-        toc = "path.c,another/path.py,root/another/path.py"
+        toc = ["path.c", "another/path.py", "root/another/path.py"]
         flags = []
         pf = PathFixer.init_from_user_yaml(commit_yaml, toc, flags)
         base_path = "/home/thiago/testing"
@@ -92,7 +92,7 @@ class TestBasePathAwarePathFixer(object):
         assert not base_aware_pf.log_abnormalities()
 
     def test_basepath_uses_own_result_if_main_is_none(self):
-        toc = "project/__init__.py,tests/__init__.py,tests/test_project.py"
+        toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
         pf = PathFixer.init_from_user_yaml({}, toc, [])
         base_path = "/home/travis/build/project/coverage.xml"
         base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)

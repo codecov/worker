@@ -168,20 +168,8 @@ class Tree:
         """
         Constructs a tree
 
-        :str: toc - The table of contents
+        :list: toc - The table of contents
         """
-        constructing = True
-        toc_index = 1
 
-        while constructing:
-            if toc_index < len(toc) - 1:
-                path = _extract_match(toc, toc_index)
-                if path:
-                    self.insert(path)
-                    toc_index = toc_index + len(path) + 1
-                else:
-                    if toc[toc_index] == ",":
-                        toc_index += 1
-            else:
-                constructing = False
-                break
+        for path in toc:
+            self.insert(path)
