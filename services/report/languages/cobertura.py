@@ -38,7 +38,7 @@ def get_source_path(xml):
             log.info(f"Corbertura report - using source {source.text}")
             return source.text
         else:
-            log.info(f"Corbertura report - unsupported source {source.text}")
+            log.info(f"Cobertura report - unsupported source", extra=dict(unsupported_value=source.text))
 
 
 def prepend_source_path_to_filename(source_path, filename):
