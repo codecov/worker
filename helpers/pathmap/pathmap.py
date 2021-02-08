@@ -73,19 +73,3 @@ def resolve_paths(toc, paths, ancestors=None):
             yield new_path
         else:
             yield None
-
-
-def resolve_by_method(toc):
-    """
-    Returns a method that can be called with a path to resolve
-    """
-    tree = Tree()
-    tree.construct_tree(toc)
-
-    def _resolve(path, ancestors=None):
-        new_path = _resolve_path(tree, path, ancestors)
-        if new_path:
-            # yield the match
-            return new_path
-
-    return _resolve
