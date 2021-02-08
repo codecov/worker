@@ -53,6 +53,32 @@ _remove_known_bad_paths = re.compile(
 ).sub
 
 
+def unquote_git_path(path: str) -> str:
+    """
+    Undo git-style Unicode armor for paths.
+    """
+
+    # This armoring is documented under git-config, `core.quotePath`, e.g. at
+    # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
+    # There is no builtin codec for this, so we'll do it ourselves.
+
+    # We'll use a string-builder technique. We'll put each byte into a list and
+    # then turn the list into a string.
+    rv = []
+    i = 0
+    while i < len(path):
+        if path[i] == "\\":
+            # Decode an escaped byte; the next three characters are octets.
+            rv.append(int(path[i + 1 : i + 4], 8))
+            i += 4
+        else:
+            # Just copy the codepoint.
+            rv.append(ord(path[i]))
+            i += 1
+    # Finally, decode with UTF-8.
+    return bytes(rv).decode("utf-8")
+
+
 def clean_toc(toc: str) -> Sequence[str]:
     """
     Split a newline-delimited table of contents into a list of paths.
@@ -62,6 +88,10 @@ def clean_toc(toc: str) -> Sequence[str]:
 
     rv = []
     for path in toc.strip().split("\n"):
+        # Detect and undo git's Unicode armoring.
+        if path.startswith('"') and path.endswith('"'):
+            path = unquote_git_path(path[1:-1])
+
         # Unescape escaped spaces.
         path = path.replace("\\ ", " ")
         # Windows: Fix backslashes.
