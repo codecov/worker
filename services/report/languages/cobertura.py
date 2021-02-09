@@ -49,6 +49,7 @@ def get_source_path(xml):
             f"Cobertura report - too many sources",
             extra=dict(unsupported_value=sources),
         )
+    return None
 
 
 def prepend_source_path_to_filename(source_path, filename):
