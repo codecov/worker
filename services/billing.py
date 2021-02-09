@@ -18,5 +18,5 @@ def is_pr_billing_plan(plan: str) -> bool:
         BillingPlan.pr_monthly.value,
         BillingPlan.pr_yearly.value,
         BillingPlan.users_free.value,
-        BillingPlan.pr_github_marketplace.value
+        BillingPlan.pr_github_marketplace.value,
     ]
