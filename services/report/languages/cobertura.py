@@ -33,15 +33,22 @@ def Int(value):
 
 
 def get_source_path(xml):
-    for source in xml.iter("source"):
-        if isinstance(source.text, str) and source.text.startswith("/"):
-            log.info(f"Corbertura report - using source {source.text}")
-            return source.text
+    sources = [source.text for source in xml.iter("source")]
+    if len(sources) == 1:
+        source = sources[0]
+        if isinstance(source, str) and source.startswith("/"):
+            log.info(f"Corbertura report - using source {source}")
+            return source
         else:
             log.info(
                 f"Cobertura report - unsupported source",
-                extra=dict(unsupported_value=source.text),
+                extra=dict(unsupported_value=source),
             )
+    if len(sources) > 1:
+        log.info(
+            f"Cobertura report - too many sources",
+            extra=dict(unsupported_value=sources),
+        )
 
 
 def prepend_source_path_to_filename(source_path, filename):
