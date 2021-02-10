@@ -1,4 +1,6 @@
+import logging
 import re
+from os import path
 
 from timestring import Date, TimestringInvalid
 
@@ -9,6 +11,8 @@ from shared.reports.types import ReportLine
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
+
+log = logging.getLogger(__name__)
 
 
 class CoberturaProcessor(BaseLanguageProcessor):
@@ -26,6 +30,32 @@ def Int(value):
         return int(value)
     except ValueError:
         return int(float(value))
+
+
+def get_source_path(xml):
+    sources = [source.text for source in xml.iter("source")]
+    if len(sources) == 1:
+        source = sources[0]
+        if isinstance(source, str) and source.startswith("/"):
+            log.info(f"Corbertura report - using source {source}")
+            return source
+        else:
+            log.info(
+                f"Cobertura report - unsupported source",
+                extra=dict(unsupported_value=source),
+            )
+    if len(sources) > 1:
+        log.info(
+            f"Cobertura report - too many sources",
+            extra=dict(unsupported_value=sources),
+        )
+    return None
+
+
+def prepend_source_path_to_filename(source_path, filename):
+    if source_path:
+        return path.join(source_path, filename)
+    return filename
 
 
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):
@@ -151,9 +181,11 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
     # path rename
     path_name_fixing = []
+    source_path = get_source_path(xml)
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
-        path_name_fixing.append((filename, fix(filename)))
+        fixed_name = fix(prepend_source_path_to_filename(source_path, filename))
+        path_name_fixing.append((filename, fixed_name))
 
     _set = set(("dist-packages", "site-packages"))
     report.resolve_paths(
