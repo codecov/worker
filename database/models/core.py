@@ -2,12 +2,13 @@ import random
 import string
 from datetime import datetime
 
-from database.base import CodecovBaseModel
-from database.enums import Notification, NotificationState, Decoration
-from sqlalchemy import Column, types, ForeignKey, ForeignKeyConstraint
+from sqlalchemy import Column, types, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects import postgresql
 from sqlalchemy import UniqueConstraint, Index
+
+from database.base import CodecovBaseModel
+from database.enums import Notification, NotificationState, Decoration
 
 
 class Owner(CodecovBaseModel):
@@ -173,6 +174,20 @@ class Branch(CodecovBaseModel):
 
     def __repr__(self):
         return f"Branch<{self.branch}@repo<{self.repoid}>>"
+
+
+class LoginSession(CodecovBaseModel):
+
+    __tablename__ = "sessions"
+
+    sessionid = Column(types.Integer, primary_key=True)
+    token = Column(postgresql.UUID(as_uuid=True))
+    name = Column(types.Text)
+    ownerid = Column(types.Integer, ForeignKey("owners.ownerid"))
+    session_type = Column("type", types.Text)
+    lastseen = Column(types.DateTime(timezone=True))
+    useragent = Column(types.Text)
+    ip = Column(types.Text)
 
 
 class Pull(CodecovBaseModel):

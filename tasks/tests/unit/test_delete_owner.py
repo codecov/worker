@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+from celery.exceptions import SoftTimeLimitExceeded, Retry
 
 from tasks.delete_owner import DeleteOwnerTask
 from database.tests.factories import (
@@ -126,3 +127,19 @@ class TestDeleteOwnerTaskUnit(object):
         DeleteOwnerTask().delete_repo_archives(dbsession, ownerid)
 
         assert mocked_delete_repo_files.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_delete_owner_timeout(
+        self, mocker, mock_configuration, mock_storage, dbsession
+    ):
+        org_ownerid = 123
+
+        org = OwnerFactory.create(ownerid=org_ownerid, service_id="9000")
+        dbsession.add(org)
+
+        dbsession.flush()
+        mocker.patch.object(
+            DeleteOwnerTask, "delete_repo_archives", side_effect=SoftTimeLimitExceeded()
+        )
+        with pytest.raises(Retry):
+            await DeleteOwnerTask().run_async(dbsession, org_ownerid)
