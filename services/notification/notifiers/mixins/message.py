@@ -764,7 +764,7 @@ def escape_markdown(value: str) -> str:
 
 def should_message_be_compact(comparison, settings):
     # bitbucket doesnt support <details/>
-    supported_services = ('github', 'gitlab')
+    supported_services = ("github", "gitlab")
     if comparison.repository_service.service not in supported_services:
         return False
-    return settings.get('hide_comment_details', False)
+    return settings.get("hide_comment_details", False)
