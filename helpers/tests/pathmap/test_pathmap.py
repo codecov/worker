@@ -3,8 +3,6 @@ from helpers.pathmap import (
     _extract_match,
     _resolve_path,
     _check_ancestors,
-    resolve_paths,
-    resolve_by_method,
     Tree,
 )
 
@@ -64,27 +62,25 @@ def test_resolve_case():
 
 
 def test_resolve_paths():
-    resolved_paths = resolve_paths(toc, before)
-    first = set([r for r in resolved_paths])
-    second = set(after)
-    assert first == second
-
-
-def test_resolve_by_method():
-    resolver = resolve_by_method(toc)
-    assert callable(resolver)
-    first = set(map(resolver, before))
-    second = set(after)
-    assert first == second
+    tree = Tree()
+    tree.construct_tree(toc)
+    for path, expected in zip(before, after):
+        assert _resolve_path(tree, path) == expected
 
 
 def test_resolve_path_when_to_short():
-    assert next(resolve_paths(",a/b/c,", ["b/c"], 0)) == "a/b/c"
-    assert next(resolve_paths(",a/b/c,", ["b/c"], 1)) == "a/b/c"
+    toc = ",a/b/c,"
+    tree = Tree()
+    tree.construct_tree(toc)
+    assert _resolve_path(tree, "b/c", 0) == "a/b/c"
+    assert _resolve_path(tree, "b/c", 1) == "a/b/c"
 
 
 def test_resolve_path_when_to_long():
-    assert next(resolve_paths(",a/b/c,", ["z/y/b/c"], 1)) == "a/b/c"
+    toc = ",a/b/c,"
+    tree = Tree()
+    tree.construct_tree(toc)
+    assert _resolve_path(tree, "z/y/b/c", 1) == "a/b/c"
 
 
 def test_check_ancestors():
@@ -109,31 +105,45 @@ def test_resolve_paths_with_ancestors():
     # default, no ancestors ============================
     paths = ["z", "R/z", "R/y/z", "x/y/z", "w/x/y/z"]
     expected = ["x/y/z", "x/y/z", "x/y/z", "x/y/z", "x/y/z"]
-    resolved = list(resolve_paths(toc, paths))
+    resolved = [_resolve_path(tree, path) for path in paths]
     assert resolved == expected
 
     # one ancestors ====================================
     paths = ["z", "R/z", "R/y/z", "x/y/z", "w/x/y/z"]
     expected = [None, None, "x/y/z", "x/y/z", "x/y/z"]
-    resolved = list(resolve_paths(toc, paths, 1))
+    resolved = [_resolve_path(tree, path, 1) for path in paths]
     assert set(resolved) == set(expected)
 
     # two ancestors ====================================
     paths = ["z", "R/z", "R/y/z", "x/y/z", "w/x/y/z"]
     expected = [None, None, None, "x/y/z", "x/y/z"]
-    resolved = list(resolve_paths(toc, paths, 2))
+    resolved = [_resolve_path(tree, path, 2) for path in paths]
     assert set(resolved) == set(expected)
 
 
 def test_resolving():
-    assert list(resolve_paths(",a/b/c,a/r/c,c,", ["r/c"], 1)) == ["a/r/c"]
-    assert list(resolve_paths(",a/b/c,a/r/c,c,", ["r/c"])) == ["a/r/c"]
-    assert list(resolve_paths(",a/b,a/b/c/d,x/y,", ["c/d"], 1)) == ["a/b/c/d"]
+    toc = ",a/b/c,a/r/c,c,"
+    tree = Tree()
+    tree.construct_tree(toc)
+    assert _resolve_path(tree, "r/c", 1) == "a/r/c"
+    assert _resolve_path(tree, "r/c") == "a/r/c"
+
+    toc = ",a/b,a/b/c/d,x/y,"
+    tree = Tree()
+    tree.construct_tree(toc)
+    assert _resolve_path(tree, "c/d", 1) == "a/b/c/d"
 
 
 def test_with_plus():
-    assert list(resolve_paths(",b+c,", ["b+c"])) == ["b+c"]
-    assert list(resolve_paths(",a/b+c,", ["b+c"])) == ["a/b+c"]
+    toc = ",b+c,"
+    tree = Tree()
+    tree.construct_tree(toc)
+    assert _resolve_path(tree, "b+c") == "b+c"
+
+    toc = ",a/b+c,"
+    tree = Tree()
+    tree.construct_tree(toc)
+    assert _resolve_path(tree, "b+c") == "a/b+c"
 
 
 def test_case_sensitive_ancestors():
@@ -155,7 +165,6 @@ def test_path_should_not_resolve():
 
 
 def test_path_should_not_resolve_case_insensative():
-    resolvers = []
     toc = ",a/b/C,"
     path = "a/B/c"
     tree = Tree()
@@ -165,13 +174,16 @@ def test_path_should_not_resolve_case_insensative():
 
 
 def test_ancestors_original_missing():
-    results = list(resolve_paths(",shorter.h,", ["a/long/path/shorter.h"], 1))
-    assert results == ["shorter.h"]
+    toc = ",shorter.h,"
+    tree = Tree()
+    tree.construct_tree(toc)
+    assert _resolve_path(tree, "a/long/path/shorter.h", 1) == "shorter.h"
 
 
 def test_ancestors_absolute_path():
     toc = ",examples/ChurchNumerals.scala,tests/src/test/scala/at/logic/gapt/examples/ChurchNumerals.scala,"
-    paths = ["/home/travis/build/gapt/gapt/examples/ChurchNumerals.scala"]
-    resolved = list(resolve_paths(toc, paths, 1))
+    tree = Tree()
+    tree.construct_tree(toc)
+    path = "/home/travis/build/gapt/gapt/examples/ChurchNumerals.scala"
 
-    assert resolved == ["examples/ChurchNumerals.scala"]
+    assert _resolve_path(tree, path, 1) == "examples/ChurchNumerals.scala"
