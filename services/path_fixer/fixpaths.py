@@ -70,7 +70,9 @@ def clean_toc(toc: str) -> Sequence[str]:
         if path.startswith("./"):
             path = path[2:]
 
-        # Remove delombok.
+        # Unconditionally remove delombok'd Java source code.
+        # This can happen when folks upload code which uses the Lombok Java library.
+        # This code would confuse coverage, duplicating real code, so we discard it. ~ C.
         if "/target/delombok/" in path:
             continue
 
