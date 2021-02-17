@@ -38,6 +38,10 @@ def from_json(json, fix, ignored_lines, sessionid, config):
             if fn is None:
                 continue
 
+            # Simplecov json formatter version >=0.18
+            if isinstance(lns, dict) and lns.get("lines"):
+                lns = lns.get("lines")
+
             lns = list_to_dict(lns)
             if lns:
                 _file = ReportFile(fn, ignore=ignored_lines.get(fn))
