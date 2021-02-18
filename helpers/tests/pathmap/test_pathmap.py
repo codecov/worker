@@ -23,7 +23,7 @@ after = [
     "a/Path With Space",
 ]
 
-toc = ",".join(map(lambda x: "" if x is None else x, after)) + ","
+toc = ["" if x is None else x for x in after]
 
 
 # ========= END Mock data ==========
@@ -56,7 +56,7 @@ def test_resolve_path():
 
 def test_resolve_case():
     tree = Tree()
-    tree.construct_tree(",Aa/Bb/cc,Aa/Bb/Cc,")
+    tree.construct_tree(["Aa/Bb/cc", "Aa/Bb/Cc"])
     assert _resolve_path(tree, "aa/bb/cc") == "Aa/Bb/cc"
     assert _resolve_path(tree, "aa/bb/Cc") == "Aa/Bb/Cc"
 
@@ -69,7 +69,7 @@ def test_resolve_paths():
 
 
 def test_resolve_path_when_to_short():
-    toc = ",a/b/c,"
+    toc = ["a/b/c"]
     tree = Tree()
     tree.construct_tree(toc)
     assert _resolve_path(tree, "b/c", 0) == "a/b/c"
@@ -77,7 +77,7 @@ def test_resolve_path_when_to_short():
 
 
 def test_resolve_path_when_to_long():
-    toc = ",a/b/c,"
+    toc = ["a/b/c"]
     tree = Tree()
     tree.construct_tree(toc)
     assert _resolve_path(tree, "z/y/b/c", 1) == "a/b/c"
@@ -98,7 +98,7 @@ def test_check_ancestors():
 
 
 def test_resolve_paths_with_ancestors():
-    toc = ",x/y/z,"
+    toc = ["x/y/z"]
     tree = Tree()
     tree.construct_tree(toc)
 
@@ -122,32 +122,32 @@ def test_resolve_paths_with_ancestors():
 
 
 def test_resolving():
-    toc = ",a/b/c,a/r/c,c,"
+    toc = ["a/b/c", "a/r/c", "c"]
     tree = Tree()
     tree.construct_tree(toc)
     assert _resolve_path(tree, "r/c", 1) == "a/r/c"
     assert _resolve_path(tree, "r/c") == "a/r/c"
 
-    toc = ",a/b,a/b/c/d,x/y,"
+    toc = ["a/b", "a/b/c/d", "x/y"]
     tree = Tree()
     tree.construct_tree(toc)
     assert _resolve_path(tree, "c/d", 1) == "a/b/c/d"
 
 
 def test_with_plus():
-    toc = ",b+c,"
+    toc = ["b+c"]
     tree = Tree()
     tree.construct_tree(toc)
     assert _resolve_path(tree, "b+c") == "b+c"
 
-    toc = ",a/b+c,"
+    toc = ["a/b+c"]
     tree = Tree()
     tree.construct_tree(toc)
     assert _resolve_path(tree, "b+c") == "a/b+c"
 
 
 def test_case_sensitive_ancestors():
-    toc = ",src/HeapDump/GCHeapDump.cs,"
+    toc = ["src/HeapDump/GCHeapDump.cs"]
     tree = Tree()
     tree.construct_tree(toc)
     path = "C:/projects/perfview/src/heapDump/GCHeapDump.cs"
@@ -156,7 +156,7 @@ def test_case_sensitive_ancestors():
 
 
 def test_path_should_not_resolve():
-    toc = ",four/six/three.py,"
+    toc = ["four/six/three.py"]
     path = "four/six/seven.py"
     tree = Tree()
     tree.construct_tree(toc)
@@ -165,7 +165,7 @@ def test_path_should_not_resolve():
 
 
 def test_path_should_not_resolve_case_insensative():
-    toc = ",a/b/C,"
+    toc = ["a/b/C"]
     path = "a/B/c"
     tree = Tree()
     tree.construct_tree(toc)
@@ -174,14 +174,17 @@ def test_path_should_not_resolve_case_insensative():
 
 
 def test_ancestors_original_missing():
-    toc = ",shorter.h,"
+    toc = ["shorter.h"]
     tree = Tree()
     tree.construct_tree(toc)
     assert _resolve_path(tree, "a/long/path/shorter.h", 1) == "shorter.h"
 
 
 def test_ancestors_absolute_path():
-    toc = ",examples/ChurchNumerals.scala,tests/src/test/scala/at/logic/gapt/examples/ChurchNumerals.scala,"
+    toc = [
+        "examples/ChurchNumerals.scala",
+        "tests/src/test/scala/at/logic/gapt/examples/ChurchNumerals.scala",
+    ]
     tree = Tree()
     tree.construct_tree(toc)
     path = "/home/travis/build/gapt/gapt/examples/ChurchNumerals.scala"
