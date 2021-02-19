@@ -103,8 +103,14 @@ synchronize_task_name = "app.tasks.synchronize.Synchronize"
 new_user_activated_task_name = "app.tasks.new_user_activated.NewUserActivated"
 add_to_sendgrid_list_task_name = "app.tasks.add_to_sendgrid_list.AddToSendgridList"
 
+notify_soft_time_limit = int(
+    get_config("setup", "tasks", "notify", "timeout", default=60)
+)
 task_annotations = {
-    notify_task_name: {"soft_time_limit": 60, "time_limit": 80},
+    notify_task_name: {
+        "soft_time_limit": notify_soft_time_limit,
+        "time_limit": notify_soft_time_limit + 20,
+    },
     delete_owner_task_name: {
         "soft_time_limit": 2 * task_soft_time_limit,
         "time_limit": 2 * task_time_limit,
