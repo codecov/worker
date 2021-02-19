@@ -68,9 +68,14 @@ def unquote_git_path(path: str) -> str:
     i = 0
     while i < len(path):
         if path[i] == "\\":
-            # Decode an escaped byte; the next three characters are octets.
-            rv.append(int(path[i + 1 : i + 4], 8))
-            i += 4
+            if path[i + 1] == "\\":
+                # Decode an escaped backslash.
+                rv.append(ord("\\"))
+                i += 2
+            else:
+                # Decode an escaped byte; the next three characters are octets.
+                rv.append(int(path[i + 1 : i + 4], 8))
+                i += 4
         else:
             # Just copy the codepoint.
             rv.append(ord(path[i]))
