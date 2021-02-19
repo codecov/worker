@@ -19,6 +19,7 @@ paths = [
 
 # Hand-written filenames.
 unquoted_files = {
+    "boring.txt": "boring.txt",
     "back\\\\slash.txt": "back\\slash.txt",
     "\\360\\237\\215\\255.txt": "🍭.txt",
 }
@@ -35,14 +36,12 @@ class TestFixpaths(BaseTestCase):
 
     def test_some_real_git_paths(self):
         prefix = "services/path_fixer/tests/testdir"
-        filenames = os.listdir(prefix)
+        filenames = [
+            "café.txt",
+            "comma,txt",
+            "🍭.txt",
+        ]
         joined = [os.path.join(prefix, filename) for filename in filenames]
-        # Test fixture: Summon a TOC by invoking `git ls-files` on a prepared
-        # test directory. We can't run git within our typical test container,
-        # so I've pre-run it here. You could imagine instead doing:
-        # process = subprocess.run(["git", "ls-files", prefix], capture_output=True)
-        # toc = process.stdout
-        # You'll have to keep this in sync manually. Sorry. ~ C.
         toc = """"services/path_fixer/tests/testdir/caf\\303\\251.txt"
 services/path_fixer/tests/testdir/comma,txt
 "services/path_fixer/tests/testdir/\\360\\237\\215\\255.txt"
