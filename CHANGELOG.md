@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Retired Gitlab v3 specific support
 
 ### Fixed
+- Fixed visibility timeout issues, that in some cases could have caused the same task to be rerun more than once.
 
 ### Security
 
