@@ -104,7 +104,7 @@ new_user_activated_task_name = "app.tasks.new_user_activated.NewUserActivated"
 add_to_sendgrid_list_task_name = "app.tasks.add_to_sendgrid_list.AddToSendgridList"
 
 notify_soft_time_limit = int(
-    get_config("setup", "tasks", "celery", "notify_soft_time_limit", default=60)
+    get_config("setup", "tasks", "notify", "timeout", default=60)
 )
 task_annotations = {
     notify_task_name: {
