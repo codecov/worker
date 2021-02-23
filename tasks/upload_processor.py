@@ -128,7 +128,7 @@ class UploadProcessorTask(BaseCodecovTask):
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         report_service = ReportService(commit_yaml)
-        with metrics.timer(f"worker.tasks.{self.name}.build_original_report"):
+        with metrics.timer(f"worker.task.{self.name}.build_original_report"):
             report = report_service.get_existing_report_for_commit(commit)
             if report is None:
                 report = Report()
@@ -174,7 +174,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         db_session.add(upload_obj)
                         db_session.flush()
                     with metrics.timer(
-                        f"worker.tasks.{self.name}.process_individual_report"
+                        f"worker.task.{self.name}.process_individual_report"
                     ):
                         result = self.process_individual_report(
                             report_service,
@@ -211,7 +211,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 n_processed,
                 extra=dict(repoid=repoid, commit=commitid),
             )
-            with metrics.timer(f"worker.tasks.{self.name}.save_report_results"):
+            with metrics.timer(f"worker.task.{self.name}.save_report_results"):
                 results_dict = await self.save_report_results(
                     db_session, report_service, repository, commit, report, pr
                 )
@@ -398,7 +398,7 @@ class UploadProcessorTask(BaseCodecovTask):
             archive=archive_url or url,
             url=build_url,
         )
-        with metrics.timer(f"worker.tasks.{self.name}.process_report") as t:
+        with metrics.timer(f"worker.task.{self.name}.process_report") as t:
             report = report_service.build_report_from_raw_content(
                 master=current_report,
                 reports=raw_uploaded_report,
