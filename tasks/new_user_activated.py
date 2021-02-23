@@ -105,7 +105,7 @@ class NewUserActivatedTask(BaseCodecovTask):
 
         return is_pr_billing_plan(owner.plan)
 
-    @metrics.timer("worker.tasks.new_user_activated.get_pulls_authored_by_user")
+    @metrics.timer("worker.task.new_user_activated.get_pulls_authored_by_user")
     def get_pulls_authored_by_user(
         self, db_session, org_ownerid: int, user_ownerid: int
     ) -> Iterator[Pull]:
