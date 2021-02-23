@@ -22,6 +22,8 @@ unquoted_files = {
     "boring.txt": "boring.txt",
     "back\\\\slash.txt": "back\\slash.txt",
     "\\360\\237\\215\\255.txt": "🍭.txt",
+    "users/crovercraft/bootstrap/Icon\\r": "users/crovercraft/bootstrap/Icon",
+    'test/fixture/vcr_cassettes/clickhouse/get_breakdown_values_escaped_\\".json': 'test/fixture/vcr_cassettes/clickhouse/get_breakdown_values_escaped_".json',
 }
 
 
@@ -40,11 +42,13 @@ class TestFixpaths(BaseTestCase):
             "café.txt",
             "comma,txt",
             "🍭.txt",
+            'fixture/get_breakdown_values_escaped_".json',
         ]
         joined = [os.path.join(prefix, filename) for filename in filenames]
         toc = """"services/path_fixer/tests/testdir/caf\\303\\251.txt"
 services/path_fixer/tests/testdir/comma,txt
 "services/path_fixer/tests/testdir/\\360\\237\\215\\255.txt"
+"services/path_fixer/tests/testdir/fixture/get_breakdown_values_escaped_\\".json"
 """
         cleaned = fixpaths.clean_toc(toc)
         joined.sort()

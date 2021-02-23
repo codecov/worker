@@ -1,5 +1,6 @@
 import logging
 import re
+import string
 from typing import Optional, Sequence
 
 log = logging.getLogger(__name__)
@@ -68,14 +69,17 @@ def unquote_git_path(path: str) -> str:
     i = 0
     while i < len(path):
         if path[i] == "\\":
-            if path[i + 1] == "\\":
-                # Decode an escaped backslash.
-                rv.append(ord("\\"))
+            if path[i + 1] == "r":
+                # The examples all match "users/.../Icon\r"
+                # https://apple.stackexchange.com/questions/31867/what-is-icon-r-file-and-how-do-i-delete-them
                 i += 2
-            else:
+            elif path[i + 1] in string.octdigits:
                 # Decode an escaped byte; the next three characters are octets.
                 rv.append(int(path[i + 1 : i + 4], 8))
                 i += 4
+            else:
+                rv.append(ord(path[i + 1]))
+                i += 2
         else:
             # Just copy the codepoint.
             rv.append(ord(path[i]))
