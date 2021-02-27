@@ -2,13 +2,11 @@ git+ssh://git@github.com/codecov/shared.git@v0.4.12#egg=shared
 boto3~=1.9
 celery~=4.4
 coverage~=5.1
-cryptography~=2.7
 factory-boy~=2.11
 google-cloud-storage~=1.18
 httpx~=0.14
 lxml~=4.3
 mock~=4.0
-protobuf<3.12
 psycopg2~=2.8
 PyJWT~=1.7
 pytest-asyncio~=0.10
