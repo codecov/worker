@@ -37,7 +37,6 @@ def get_source_path(xml):
     if len(sources) == 1:
         source = sources[0]
         if isinstance(source, str) and source.startswith("/"):
-            log.info(f"Corbertura report - using source {source}")
             return source
         else:
             log.info(
