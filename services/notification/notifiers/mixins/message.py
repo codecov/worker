@@ -220,6 +220,31 @@ class MessageMixin(object):
 
         is_compact_message = should_message_be_compact(comparison, settings)
 
+        if (
+            comparison.enriched_pull.provider_pull is not None
+            and comparison.head.commit.commitid
+            != comparison.enriched_pull.provider_pull["head"]["commitid"]
+        ):
+            # Temporary log so we understand when this happens
+            log.info(
+                "Notifying user that current head and pull head differ",
+                extra=dict(
+                    repoid=comparison.head.commit.repoid,
+                    commit=comparison.head.commit.commitid,
+                    pull_head=comparison.enriched_pull.provider_pull["head"][
+                        "commitid"
+                    ],
+                ),
+            )
+            write(
+                "> :exclamation: Current head {current_head} differs from pull request most recent head {pull_head}. Consider uploading reports for the commit {pull_head} to get more accurate results".format(
+                    pull_head=comparison.enriched_pull.provider_pull["head"][
+                        "commitid"
+                    ][:7],
+                    current_head=comparison.head.commit.commitid[:7],
+                )
+            )
+
         if is_compact_message:
             write("<details><summary>Details</summary>\n")
 
