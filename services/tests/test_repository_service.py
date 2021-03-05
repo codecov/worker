@@ -682,6 +682,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_information_from_commit_new_pull_commits_in_place(
         self, dbsession, mocker
     ):
+        now = datetime.utcnow()
         commit = CommitFactory.create(
             message="", pullid=1, totals=None, report_json=None,
         )
@@ -713,7 +714,7 @@ class TestPullRequestFetcher(object):
         assert res.repoid == commit.repoid
         assert res.pullid == 1
         assert res.issueid == 1
-        assert res.updatestamp is None
+        assert res.updatestamp > now
         assert res.state == "open"
         assert res.title == "Creating new code for reasons no one knows"
         assert res.base == base_commit.commitid
@@ -737,6 +738,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_information_from_commit_existing_pull_commits_in_place(
         self, dbsession, mocker
     ):
+        now = datetime.utcnow()
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -790,7 +792,7 @@ class TestPullRequestFetcher(object):
         assert res.repoid == commit.repoid
         assert res.pullid == pull.pullid
         assert res.issueid == pull.pullid
-        assert res.updatestamp is None
+        assert res.updatestamp > now
         assert res.state == "open"
         assert res.title == "Creating new code for reasons no one knows"
         assert res.base == base_commit.commitid
@@ -814,6 +816,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_multiple_pulls_same_repo(
         self, dbsession, mocker
     ):
+        now = datetime.utcnow()
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -873,7 +876,7 @@ class TestPullRequestFetcher(object):
         assert res.repoid == commit.repoid
         assert res.pullid == pull.pullid
         assert res.issueid == pull.pullid
-        assert res.updatestamp is None
+        assert res.updatestamp > now
         assert res.state == "open"
         assert res.title == "Creating new code for reasons no one knows"
         assert res.base == base_commit.commitid
@@ -897,6 +900,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_information_from_commit_different_compared_to(
         self, dbsession, mocker
     ):
+        now = datetime.utcnow()
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -952,7 +956,7 @@ class TestPullRequestFetcher(object):
         assert res.repoid == commit.repoid
         assert res.pullid == pull.pullid
         assert res.issueid == pull.pullid
-        assert res.updatestamp is None
+        assert res.updatestamp > now
         assert res.state == "open"
         assert res.title == "Creating new code for reasons no one knows"
         assert res.base == "somecommitid"
@@ -976,6 +980,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_information_no_compared_to(
         self, dbsession, mocker
     ):
+        now = datetime.utcnow()
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -1022,7 +1027,7 @@ class TestPullRequestFetcher(object):
         assert res.repoid == commit.repoid
         assert res.pullid == pull.pullid
         assert res.issueid == pull.pullid
-        assert res.updatestamp is None
+        assert res.updatestamp > now
         assert res.state == "open"
         assert res.title == "Creating new code for reasons no one knows"
         assert res.base == "somecommitid"

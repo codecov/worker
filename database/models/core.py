@@ -198,7 +198,7 @@ class Pull(CodecovBaseModel):
     pullid = Column(types.Integer, nullable=False, primary_key=True)
     issueid = Column(types.Integer)
     updatestamp = Column(
-        types.DateTime, default=datetime.utcnow(), onupdate=datetime.utcnow()
+        types.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
     state = Column(types.Text, nullable=False, default="open")
     title = Column(types.Text)
