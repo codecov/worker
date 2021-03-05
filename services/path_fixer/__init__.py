@@ -4,7 +4,7 @@ import logging
 import random
 from pathlib import PurePath
 from collections import defaultdict
-from typing import Optional
+from typing import Optional, Sequence
 
 from helpers.pathmap import _resolve_path
 from helpers.pathmap.tree import Tree
@@ -32,7 +32,9 @@ class PathFixer(object):
     """
 
     @classmethod
-    def init_from_user_yaml(cls, commit_yaml: dict, toc: str, flags: typing.Sequence):
+    def init_from_user_yaml(
+        cls, commit_yaml: dict, toc: Sequence[str], flags: Sequence
+    ):
         """
         @param commit_yaml: Codecov yaml file in effect for this commit.
         @param toc: List of files prepended to the uploaded report. Not all report formats provide this.

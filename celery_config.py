@@ -37,7 +37,7 @@ result_backend = get_config("services", "celery_broker") or get_config(
     "services", "redis_url"
 )
 
-result_backend_transport_options = {"visibility_timeout": 60 * 60 * 5}  # 5 hours
+broker_transport_options = {"visibility_timeout": 60 * 60 * 5}  # 5 hours
 result_extended = True
 task_default_queue = get_config(
     "setup", "tasks", "celery", "default_queue", default="celery"
@@ -103,7 +103,19 @@ synchronize_task_name = "app.tasks.synchronize.Synchronize"
 new_user_activated_task_name = "app.tasks.new_user_activated.NewUserActivated"
 add_to_sendgrid_list_task_name = "app.tasks.add_to_sendgrid_list.AddToSendgridList"
 
-task_annotations = {notify_task_name: {"soft_time_limit": 60, "time_limit": 80,}}
+notify_soft_time_limit = int(
+    get_config("setup", "tasks", "notify", "timeout", default=60)
+)
+task_annotations = {
+    notify_task_name: {
+        "soft_time_limit": notify_soft_time_limit,
+        "time_limit": notify_soft_time_limit + 20,
+    },
+    delete_owner_task_name: {
+        "soft_time_limit": 2 * task_soft_time_limit,
+        "time_limit": 2 * task_time_limit,
+    },
+}
 
 task_routes = {
     sync_teams_task_name: {

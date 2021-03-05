@@ -218,6 +218,11 @@ class MessageMixin(object):
         if base_report is None:
             base_report = Report()
 
+        is_compact_message = should_message_be_compact(comparison, settings)
+
+        if is_compact_message:
+            write("<details><summary>Details</summary>\n")
+
         if head_report:
             # loop through layouts
             for layout in map(
@@ -264,6 +269,9 @@ class MessageMixin(object):
                     ):
                         write(line)
                 write("")  # nl at end of each layout
+
+        if is_compact_message:
+            write("</details>")
 
         return [m for m in message if m is not None]
 
@@ -752,3 +760,11 @@ def ellipsis(text, length, cut_from="left") -> str:
 
 def escape_markdown(value: str) -> str:
     return value.replace("`", "\\`").replace("*", "\\*").replace("_", "\\_")
+
+
+def should_message_be_compact(comparison, settings):
+    # bitbucket doesnt support <details/>
+    supported_services = ("github", "gitlab")
+    if comparison.repository_service.service not in supported_services:
+        return False
+    return settings.get("hide_comment_details", False)

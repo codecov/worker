@@ -2,12 +2,13 @@ import random
 import string
 from datetime import datetime
 
-from database.base import CodecovBaseModel
-from database.enums import Notification, NotificationState, Decoration
-from sqlalchemy import Column, types, ForeignKey, ForeignKeyConstraint
+from sqlalchemy import Column, types, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects import postgresql
 from sqlalchemy import UniqueConstraint, Index
+
+from database.base import CodecovBaseModel
+from database.enums import Notification, NotificationState, Decoration
 
 
 class Owner(CodecovBaseModel):
@@ -175,6 +176,20 @@ class Branch(CodecovBaseModel):
         return f"Branch<{self.branch}@repo<{self.repoid}>>"
 
 
+class LoginSession(CodecovBaseModel):
+
+    __tablename__ = "sessions"
+
+    sessionid = Column(types.Integer, primary_key=True)
+    token = Column(postgresql.UUID(as_uuid=True))
+    name = Column(types.Text)
+    ownerid = Column(types.Integer, ForeignKey("owners.ownerid"))
+    session_type = Column("type", types.Text)
+    lastseen = Column(types.DateTime(timezone=True))
+    useragent = Column(types.Text)
+    ip = Column(types.Text)
+
+
 class Pull(CodecovBaseModel):
 
     __tablename__ = "pulls"
@@ -182,7 +197,9 @@ class Pull(CodecovBaseModel):
     repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
     pullid = Column(types.Integer, nullable=False, primary_key=True)
     issueid = Column(types.Integer)
-    updatestamp = Column(types.DateTime)
+    updatestamp = Column(
+        types.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     state = Column(types.Text, nullable=False, default="open")
     title = Column(types.Text)
     base = Column(types.Text)

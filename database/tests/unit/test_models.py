@@ -99,3 +99,17 @@ class TestReprModels(object):
         dbsession.flush()
         dbsession.refresh(commit)
         assert commit.notified is True
+
+
+class TestPullModel(object):
+    def test_updatestamp_update(self, dbsession):
+        factoried_pull = PullFactory.create(updatestamp=None)
+        assert factoried_pull.updatestamp is None
+        dbsession.add(factoried_pull)
+        dbsession.flush()
+        assert factoried_pull.updatestamp is not None
+        val = factoried_pull.updatestamp
+        factoried_pull.title = "Super Mario Bros"
+        dbsession.flush()
+        assert factoried_pull.updatestamp is not None
+        assert factoried_pull.updatestamp > val
