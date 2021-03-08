@@ -6,6 +6,7 @@ from sqlalchemy import Column, types, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects import postgresql
 from sqlalchemy import UniqueConstraint, Index
+from sqlalchemy.schema import FetchedValue
 
 from database.base import CodecovBaseModel
 from database.enums import Notification, NotificationState, Decoration
@@ -14,30 +15,41 @@ from database.enums import Notification, NotificationState, Decoration
 class Owner(CodecovBaseModel):
     __tablename__ = "owners"
     ownerid = Column(types.Integer, primary_key=True)
-    service = Column(types.String(100), nullable=False)
-    service_id = Column(types.Text, nullable=False)
+    service = Column(types.String(100), nullable=False, server_default=FetchedValue())
+    service_id = Column(types.Text, nullable=False, server_default=FetchedValue())
 
-    name = Column(types.String(100))
-    email = Column(types.String(300))
-    username = Column(types.String(100))
-    plan_activated_users = Column(postgresql.ARRAY(types.Integer))
-    admins = Column(postgresql.ARRAY(types.Integer))
-    permission = Column(postgresql.ARRAY(types.Integer))
-    organizations = Column(postgresql.ARRAY(types.Integer))
-    free = Column(types.Integer, nullable=False, default=0)
-    integration_id = Column(types.Integer)
-    yaml = Column(postgresql.JSON)
-    oauth_token = Column(types.Text)
-    avatar_url = Column(types.Text)
-    updatestamp = Column(types.DateTime)
-    parent_service_id = Column(types.Text)
-    plan_provider = Column(types.Text)
-    plan = Column(types.Text)
-    plan_user_count = Column(types.SmallInteger)
-    plan_auto_activate = Column(types.Boolean)
-    stripe_customer_id = Column(types.Text)
-    stripe_subscription_id = Column(types.Text)
-    bot_id = Column("bot", types.Integer, ForeignKey("owners.ownerid"))
+    name = Column(types.String(100), server_default=FetchedValue())
+    email = Column(types.String(300), server_default=FetchedValue())
+    username = Column(types.String(100), server_default=FetchedValue())
+    plan_activated_users = Column(
+        postgresql.ARRAY(types.Integer), server_default=FetchedValue()
+    )
+    admins = Column(postgresql.ARRAY(types.Integer), server_default=FetchedValue())
+    permission = Column(postgresql.ARRAY(types.Integer), server_default=FetchedValue())
+    organizations = Column(
+        postgresql.ARRAY(types.Integer), server_default=FetchedValue()
+    )
+    free = Column(
+        types.Integer, nullable=False, default=0, server_default=FetchedValue()
+    )
+    integration_id = Column(types.Integer, server_default=FetchedValue())
+    yaml = Column(postgresql.JSON, server_default=FetchedValue())
+    oauth_token = Column(types.Text, server_default=FetchedValue())
+    avatar_url = Column(types.Text, server_default=FetchedValue())
+    updatestamp = Column(types.DateTime, server_default=FetchedValue())
+    parent_service_id = Column(types.Text, server_default=FetchedValue())
+    plan_provider = Column(types.Text, server_default=FetchedValue())
+    plan = Column(types.Text, server_default=FetchedValue())
+    plan_user_count = Column(types.SmallInteger, server_default=FetchedValue())
+    plan_auto_activate = Column(types.Boolean, server_default=FetchedValue())
+    stripe_customer_id = Column(types.Text, server_default=FetchedValue())
+    stripe_subscription_id = Column(types.Text, server_default=FetchedValue())
+    bot_id = Column(
+        "bot",
+        types.Integer,
+        ForeignKey("owners.ownerid"),
+        server_default=FetchedValue(),
+    )
 
     bot = relationship("Owner", remote_side=[ownerid])
     repositories = relationship(
