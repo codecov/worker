@@ -134,7 +134,7 @@ class ReportService(object):
         upload = Upload(
             external_id=normalized_arguments.get("reportid"),
             build_code=normalized_arguments.get("build"),
-            build_url=normalized_arguments.get("url"),
+            build_url=normalized_arguments.get("build_url"),
             env=None,
             report_id=commit_report.id_,
             job_code=normalized_arguments.get("job"),

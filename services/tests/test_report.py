@@ -3335,3 +3335,58 @@ class TestReportService(BaseTestCase):
         res = report_service.initialize_and_save_report(commit)
         assert res == current_report_row
         assert not mocker_save_full_report.called
+
+    def test_create_report_upload(self, dbsession):
+        arguments = {
+            "branch": "master",
+            "build": "646048900",
+            "build_url": "http://github.com/greenlantern/reponame/actions/runs/646048900",
+            "cmd_args": "n,F,Q,C",
+            "commit": "1280bf4b8d596f41b101ac425758226c021876da",
+            "job": "thisjob",
+            "flags": "unittest",
+            "name": "L MinGW 64-bit",
+            "owner": "greenlantern",
+            "package": "github-action-20210309-2b87ace",
+            "pr": "33",
+            "repo": "reponame",
+            "reportid": "6e2b6449-4e60-43f8-80ae-2c03a5c03d92",
+            "service": "github-actions",
+            "slug": "greenlantern/reponame",
+            "upload_pk": "42593902",
+            "url": "v4/raw/2021-03-12/C00AE6C87E34AF41A6D38D154C609782/1280bf4b8d596f41b101ac425758226c021876da/6e2b6449-4e60-43f8-80ae-2c03a5c03d92.txt",
+            "using_global_token": "false",
+            "version": "v4",
+        }
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_service = ReportService({})
+        res = report_service.create_report_upload(arguments, current_report_row)
+        dbsession.flush()
+        assert res.build_code == "646048900"
+        assert (
+            res.build_url
+            == "http://github.com/greenlantern/reponame/actions/runs/646048900"
+        )
+        assert res.env is None
+        assert res.job_code == "thisjob"
+        assert res.name == "L MinGW 64-bit"
+        assert res.provider == "github-actions"
+        assert res.report_id == current_report_row.id_
+        assert res.state == "started"
+        assert (
+            res.storage_path
+            == "v4/raw/2021-03-12/C00AE6C87E34AF41A6D38D154C609782/1280bf4b8d596f41b101ac425758226c021876da/6e2b6449-4e60-43f8-80ae-2c03a5c03d92.txt"
+        )
+        assert res.order_number is None
+        assert res.totals is None
+        assert res.upload_extras == {}
+        assert res.upload_type == "uploaded"
+        assert len(res.flags) == 1
+        first_flag = res.flags[0]
+        assert first_flag.flag_name == "unittest"
+        assert first_flag.repository_id == commit.repoid
