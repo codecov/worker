@@ -216,7 +216,7 @@ workflows:
           filters:
             tags:
               only:
-                - feature/circle-enterprise
+                - master
                 - /enterprise-.*/
       - test:
           requires:
@@ -247,7 +247,7 @@ workflows:
             - test
           filters:
             branches:
-              only: feature/circle-enterprise
+              only: master
       - enterprise-release:
           context: "DockerHub Push Context"
           requires:
