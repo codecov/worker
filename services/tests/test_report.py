@@ -396,7 +396,7 @@ class TestReportService(BaseTestCase):
         res = ReportService({}).build_report_from_commit(commit)
         assert res is not None
         assert res.files == []
-        assert tuple(res.totals) == (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        assert tuple(res.totals) == (0, 0, 0, 0, 0, None, 0, 0, 0, 0, 0, 0, 0)
 
     def test_build_report_from_commit(self, mocker, mock_storage):
         commit = CommitFactory.create()
@@ -1520,7 +1520,7 @@ class TestReportService(BaseTestCase):
                 "M": 0,
                 "N": 0,
                 "b": 0,
-                "c": 0,
+                "c": None,
                 "d": 0,
                 "diff": None,
                 "f": 0,
@@ -2149,7 +2149,7 @@ class TestReportService(BaseTestCase):
             hits=0,
             misses=0,
             partials=0,
-            coverage=0,
+            coverage=None,
             branches=0,
             methods=0,
             messages=0,
@@ -2161,13 +2161,13 @@ class TestReportService(BaseTestCase):
         readable_report = self.convert_report_to_better_readable(report)
         expected_results = {
             "archive": {},
-            "report": {"files": {}, "sessions": {},},
+            "report": {"files": {}, "sessions": {}},
             "totals": {
                 "C": 0,
                 "M": 0,
                 "N": 0,
                 "b": 0,
-                "c": 0,
+                "c": None,
                 "d": 0,
                 "diff": None,
                 "f": 0,
@@ -2208,7 +2208,7 @@ class TestReportService(BaseTestCase):
             hits=0,
             misses=0,
             partials=0,
-            coverage=0,
+            coverage=None,
             branches=0,
             methods=0,
             messages=0,
@@ -2226,7 +2226,7 @@ class TestReportService(BaseTestCase):
                 "M": 0,
                 "N": 0,
                 "b": 0,
-                "c": 0,
+                "c": None,
                 "d": 0,
                 "diff": None,
                 "f": 0,

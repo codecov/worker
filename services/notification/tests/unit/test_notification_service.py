@@ -218,10 +218,10 @@ class TestNotificationService(object):
         commit = sample_comparison.head.commit
         report = Report()
         first_deleted_file = ReportFile("file_1.go")
-        first_deleted_file.append(1, ReportLine.create(coverage=0))
-        first_deleted_file.append(2, ReportLine.create(coverage=0))
-        first_deleted_file.append(3, ReportLine.create(coverage=0))
-        first_deleted_file.append(5, ReportLine.create(coverage=0))
+        first_deleted_file.append(1, ReportLine.create(coverage=0, sessions=[]))
+        first_deleted_file.append(2, ReportLine.create(coverage=0, sessions=[]))
+        first_deleted_file.append(3, ReportLine.create(coverage=0, sessions=[]))
+        first_deleted_file.append(5, ReportLine.create(coverage=0, sessions=[]))
         report.append(first_deleted_file)
         sample_comparison.head.report = report
         mock_repo_provider.create_check_run.return_value = 2234563
@@ -247,14 +247,16 @@ class TestNotificationService(object):
                 "data_sent": {
                     "state": "success",
                     "output": {
-                        "title": "No report found to compare against",
-                        "summary": f"[View this Pull Request on Codecov](None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo report found to compare against",
+                        "title": "No coverage information found on head",
+                        "summary": f"[View this Pull Request on Codecov](None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo coverage information found on head",
                     },
                     "url": f"None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/compare/{sample_comparison.base.commit.commitid}...{sample_comparison.head.commit.commitid}",
                 },
                 "data_received": None,
             },
         }
+        assert res["result"]["data_sent"] == expected_result["result"]["data_sent"]
+        assert res["result"] == expected_result["result"]
         assert res == expected_result
 
     @pytest.mark.asyncio
