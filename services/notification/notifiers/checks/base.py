@@ -131,10 +131,12 @@ class ChecksNotifier(StatusNotifier):
                 data_sent=None,
                 data_received=None,
             )
+
+        payload = None
         filtered_comparison = comparison.get_filtered_comparison(
             **self.get_notifier_filters()
         )
-        with nullcontext():
+        try:
             with nullcontext():
                 payload = await self.build_payload(filtered_comparison)
 
@@ -170,17 +172,51 @@ class ChecksNotifier(StatusNotifier):
                             data_sent=None,
                             data_received=None,
                         )
-        if (
-            comparison.pull
-            and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
-            and comparison.base.commit is not None
-        ):
-            payload["url"] = get_compare_url(
-                comparison.base.commit, comparison.head.commit
+            if (
+                comparison.pull
+                and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
+                and comparison.base.commit is not None
+            ):
+                payload["url"] = get_compare_url(
+                    comparison.base.commit, comparison.head.commit
+                )
+            else:
+                payload["url"] = get_commit_url(comparison.head.commit)
+            return await self.send_notification(comparison, payload)
+        except TorngitClientError as e:
+            if e.code == 403:
+                raise e
+            log.warning(
+                "Unable to send checks notification to user due to a client-side error",
+                exc_info=True,
+                extra=dict(
+                    repoid=comparison.head.commit.repoid,
+                    commit=comparison.head.commit.commitid,
+                    notifier_name=self.name,
+                ),
             )
-        else:
-            payload["url"] = get_commit_url(comparison.head.commit)
-        return await self.send_notification(comparison, payload)
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=False,
+                explanation="client_side_error_provider",
+                data_sent=payload,
+            )
+        except TorngitError:
+            log.warning(
+                "Unable to send checks notification to user due to an unexpected error",
+                exc_info=True,
+                extra=dict(
+                    repoid=comparison.head.commit.repoid,
+                    commit=comparison.head.commit.commitid,
+                    notifier_name=self.name,
+                ),
+            )
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=False,
+                explanation="server_side_error_provider",
+                data_sent=payload,
+            )
 
     async def get_diff(self, comparison: Comparison):
         return await comparison.get_diff()
@@ -320,46 +356,11 @@ class ChecksNotifier(StatusNotifier):
         state = payload["state"]
         state = "success" if self.notifier_yaml_settings.get("informational") else state
         # We need to first create the check run, get that id and update the status
-        try:
-            with metrics.timer(
-                "worker.services.notifications.notifiers.checks.create_check_run"
-            ):
-                check_id = await repository_service.create_check_run(
-                    check_name=title, head_sha=head.commitid
-                )
-        except TorngitClientError as e:
-            if e.code == 403:
-                raise e
-            log.warning(
-                "Unable to send checks notification due to a client-side error",
-                exc_info=True,
-                extra=dict(
-                    repoid=comparison.head.commit.repoid,
-                    commit=comparison.head.commit.commitid,
-                    notifier_name=self.name,
-                ),
-            )
-            return NotificationResult(
-                notification_attempted=True,
-                notification_successful=False,
-                explanation="client_side_error_provider",
-                data_sent=payload,
-            )
-        except TorngitError:
-            log.warning(
-                "Unable to send checks notification due to an unexpected error",
-                exc_info=True,
-                extra=dict(
-                    repoid=comparison.head.commit.repoid,
-                    commit=comparison.head.commit.commitid,
-                    notifier_name=self.name,
-                ),
-            )
-            return NotificationResult(
-                notification_attempted=True,
-                notification_successful=False,
-                explanation="server_side_error_provider",
-                data_sent=payload,
+        with metrics.timer(
+            "worker.services.notifications.notifiers.checks.create_check_run"
+        ):
+            check_id = await repository_service.create_check_run(
+                check_name=title, head_sha=head.commitid
             )
 
         output = payload.get("output", [])
@@ -375,95 +376,25 @@ class ChecksNotifier(StatusNotifier):
                 ),
             )
             for annotation_page in annotation_pages:
-                try:
-                    with metrics.timer(
-                        "worker.services.notifications.notifiers.checks.update_check_run"
-                    ):
-                        await repository_service.update_check_run(
-                            check_id,
-                            state,
-                            output={
-                                "title": output.get("title"),
-                                "summary": output.get("summary"),
-                                "annotations": annotation_page,
-                            },
-                        )
-                except TorngitError:
-                    log.warning(
-                        "Unable to update checks notification due to an unexpected error",
-                        exc_info=True,
-                        extra=dict(
-                            repoid=comparison.head.commit.repoid,
-                            commit=comparison.head.commit.commitid,
-                            notifier_name=self.name,
-                        ),
-                    )
-                    return NotificationResult(
-                        notification_attempted=True,
-                        notification_successful=False,
-                        explanation="server_side_error_provider",
-                        data_sent=payload,
-                    )
-                except TorngitClientError as e:
-                    if e.code == 403:
-                        raise e
-                    log.warning(
-                        "Unable to send checks notification due to a client-side error",
-                        exc_info=True,
-                        extra=dict(
-                            repoid=comparison.head.commit.repoid,
-                            commit=comparison.head.commit.commitid,
-                            notifier_name=self.name,
-                        ),
-                    )
-                    return NotificationResult(
-                        notification_attempted=True,
-                        notification_successful=False,
-                        explanation="client_side_error_provider",
-                        data_sent=payload,
-                    )
-
-        else:
-            try:
                 with metrics.timer(
                     "worker.services.notifications.notifiers.checks.update_check_run"
                 ):
                     await repository_service.update_check_run(
-                        check_id, state, output=output
+                        check_id,
+                        state,
+                        output={
+                            "title": output.get("title"),
+                            "summary": output.get("summary"),
+                            "annotations": annotation_page,
+                        },
                     )
-            except TorngitError:
-                log.warning(
-                    "Unable to update checks notification due to an unexpected error",
-                    exc_info=True,
-                    extra=dict(
-                        repoid=comparison.head.commit.repoid,
-                        commit=comparison.head.commit.commitid,
-                        notifier_name=self.name,
-                    ),
-                )
-                return NotificationResult(
-                    notification_attempted=True,
-                    notification_successful=False,
-                    explanation="server_side_error_provider",
-                    data_sent=payload,
-                )
-            except TorngitClientError as e:
-                if e.code == 403:
-                    raise e
-                log.warning(
-                    "Unable to update checks notification due to a client-side error",
-                    exc_info=True,
-                    extra=dict(
-                        repoid=comparison.head.commit.repoid,
-                        commit=comparison.head.commit.commitid,
-                        notifier_name=self.name,
-                    ),
-                )
-                return NotificationResult(
-                    notification_attempted=True,
-                    notification_successful=False,
-                    explanation="client_side_error_provider",
-                    data_sent=payload,
+
+        else:
+            with metrics.timer(
+                "worker.services.notifications.notifiers.checks.update_check_run"
+            ):
+                await repository_service.update_check_run(
+                    check_id, state, output=output
                 )
 
         return NotificationResult(

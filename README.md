@@ -19,14 +19,17 @@ If you already know how to do it (and how you like it), just do what you already
 
 Then you should clone this project when inside `workerenv` folder.
 
-### Cloning and installing dependencies
+### Installing dependencies
 
-After cloning this, run
+Make sure to:
+- Install rust. See https://www.rust-lang.org/tools/install
+- Have access to any private codecov repos listed in the requirements.txt file. See [here](https://codecovio.atlassian.net/wiki/spaces/ENG/pages/1270743045/Setup) for help on getting that set up.
+
+To install the dependencies, run
 
 ```
 pip install -r requirements.txt
 ```
-(Make sure you have access to the repos listed there. A couple of them are private and are under the codecov organization)
 
 ### Running Tests
 

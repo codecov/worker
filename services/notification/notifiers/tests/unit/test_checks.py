@@ -1064,6 +1064,35 @@ class TestPatchChecksNotifier(object):
             "url": f"test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
         }
 
+    @pytest.mark.asyncio
+    async def test_notification_exception(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = PatchChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+
+        # Test exception handling when there's a TorngitClientError
+        mock_repo_provider.get_compare = Mock(
+            side_effect=TorngitClientError(code=400, response="Error", message="Error")
+        )
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == False
+        assert result.explanation == "client_side_error_provider"
+        assert result.data_sent is None
+
+        # Test exception handling when there's a TorngitError
+        mock_repo_provider.get_compare = Mock(side_effect=TorngitError())
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == False
+        assert result.explanation == "server_side_error_provider"
+        assert result.data_sent is None
+
 
 class TestChangesChecksNotifier(object):
     @pytest.mark.asyncio
