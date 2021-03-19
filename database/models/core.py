@@ -24,6 +24,7 @@ class Owner(CodecovBaseModel):
     plan_activated_users = Column(
         postgresql.ARRAY(types.Integer), server_default=FetchedValue()
     )
+    createstamp = Column(types.DateTime, default=datetime.utcnow)
     admins = Column(postgresql.ARRAY(types.Integer), server_default=FetchedValue())
     permission = Column(postgresql.ARRAY(types.Integer), server_default=FetchedValue())
     organizations = Column(
