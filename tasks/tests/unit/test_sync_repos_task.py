@@ -27,7 +27,6 @@ class TestSyncReposTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_upsert_owner_add_new(self, mocker, mock_configuration, dbsession):
-        now = datetime.utcnow()
         service = "github"
         service_id = "123456"
         username = "some_org"
@@ -50,7 +49,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert new_entry is not None
         assert new_entry.username == username
-        assert new_entry.createstamp > now
+        assert new_entry.createstamp is None
 
     @pytest.mark.asyncio
     async def test_upsert_owner_update_existing(
@@ -61,17 +60,18 @@ class TestSyncReposTaskUnit(object):
         service_id = "123456"
         old_username = "codecov_org"
         new_username = "Codecov"
+        now = datetime.utcnow()
         existing_owner = OwnerFactory.create(
             ownerid=ownerid,
             organizations=[],
             service=service,
             username=old_username,
             permission=[],
+            createstamp=now,
             service_id=service_id,
         )
         dbsession.add(existing_owner)
         dbsession.flush()
-        now = datetime.utcnow()
 
         upserted_ownerid = SyncReposTask().upsert_owner(
             dbsession, service, service_id, new_username
@@ -85,7 +85,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert updated_owner is not None
         assert updated_owner.username == new_username
-        assert updated_owner.createstamp < now
+        assert updated_owner.createstamp == now
 
     @pytest.mark.asyncio
     async def test_upsert_repo_update_existing(
