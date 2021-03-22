@@ -66,7 +66,7 @@ pytest==5.4.3             # via -r requirements.in, pytest-asyncio, pytest-cov, 
 python-dateutil==2.8.1    # via -r requirements.in, analytics-python, botocore, faker, minio
 python-json-logger==0.1.11  # via -r requirements.in
 pytz==2021.1              # via celery, google-api-core, minio, timestring
-pyyaml==3.13              # via -r requirements.in, vcrpy
+pyyaml==5.4.1             # via -r requirements.in, vcrpy
 redis==3.5.3              # via -r requirements.in
 requests==2.25.1          # via -r requirements.in, analytics-python, google-api-core, google-cloud-storage, stripe
 rfc3986[idna2008]==1.4.0  # via httpx
