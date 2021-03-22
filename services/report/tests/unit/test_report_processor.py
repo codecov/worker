@@ -66,11 +66,13 @@ class TestReportTypeMatching(object):
             )[1]
             == "xml"
         )
-        assert (
-            report_type_matching(
-                ParsedUploadedReportFile(
-                    filename="name", file_contents=BytesIO("normal file".encode())
-                )
-            )[1]
-            == "txt"
-        )
+        assert report_type_matching(
+            ParsedUploadedReportFile(
+                filename="name", file_contents=BytesIO("normal file".encode())
+            )
+        ) == (b"normal file", "txt")
+        assert report_type_matching(
+            ParsedUploadedReportFile(
+                filename="name", file_contents=BytesIO("1".encode())
+            )
+        ) == (b"1", "txt")
