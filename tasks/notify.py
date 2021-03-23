@@ -160,7 +160,7 @@ class NotifyTask(BaseCodecovTask):
                         commit=commit.commitid,
                         max_retries=max_retries,
                         next_countdown_would_be=countdown,
-                        current_yaml=current_yaml,
+                        current_yaml=current_yaml.to_dict(),
                     ),
                 )
                 return {
@@ -174,7 +174,7 @@ class NotifyTask(BaseCodecovTask):
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
-                    current_yaml=current_yaml,
+                    current_yaml=current_yaml.to_dict(),
                 ),
             )
             enriched_pull = await fetch_and_update_pull_request_information_from_commit(
