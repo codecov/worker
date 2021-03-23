@@ -60,7 +60,7 @@ def make_metrics(before, after, relative, show_complexity, yaml):
         coverage_good = (coverage_change > 0) if coverage_change is not None else None
         coverage = layout.format(
             absolute=format_number_to_str(
-                yaml, after.coverage, style="{0}%", if_null="\xF8",
+                yaml, after.coverage, style="{0}%", if_null="\u2205",
             ),
             relative=format_number_to_str(
                 yaml,
@@ -73,7 +73,7 @@ def make_metrics(before, after, relative, show_complexity, yaml):
                 coverage_change,
                 style="{0}%",
                 if_zero="\xF8",
-                if_null="\xF8",
+                if_null="\u2205",
                 plus=True,
             )
             if before
