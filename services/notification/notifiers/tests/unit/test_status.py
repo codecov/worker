@@ -1053,7 +1053,7 @@ class TestProjectStatusNotifier(object):
         base_commit = sample_comparison.base.commit
         expected_result = {
             # base report does not have unit flag, so there is no coverage there
-            "message": f"No report found to compare against",
+            "message": "No coverage information found on base report",
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/compare/{base_commit.commitid}...{sample_comparison.head.commit.commitid}",
         }

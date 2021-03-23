@@ -116,12 +116,13 @@ class StatusProjectMixin(object):
             expected_coverage_str = round_number(self.current_yaml, target_coverage)
             message = f"{head_coverage_str}% (target {expected_coverage_str}%)"
             return (state, message)
-        if (
-            comparison.base.report is None
-            or comparison.base.report.totals.coverage is None
-        ):
+        if comparison.base.report is None:
             state = self.notifier_yaml_settings.get("if_not_found", "success")
             message = "No report found to compare against"
+            return (state, message)
+        if comparison.base.report.totals.coverage is None:
+            state = self.notifier_yaml_settings.get("if_not_found", "success")
+            message = "No coverage information found on base report"
             return (state, message)
         target_coverage = Decimal(comparison.base.report.totals.coverage)
         head_coverage = Decimal(comparison.head.report.totals.coverage)
