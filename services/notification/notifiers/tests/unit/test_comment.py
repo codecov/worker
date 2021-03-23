@@ -10,13 +10,66 @@ from services.notification.notifiers.mixins.message import (
 from services.decoration import Decoration
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.base import NotificationResult
-from shared.reports.types import ReportTotals
+from shared.reports.types import ReportTotals, ReportLine, LineSession
 from shared.reports.readonly import ReadOnlyReport
+from shared.reports.resources import Report, ReportFile
+from shared.utils.sessions import Session
 from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
     TorngitClientError,
 )
+from services.notification.notifiers.tests.conftest import generate_sample_comparison
+
+
+@pytest.fixture
+def sample_comparison_bunch_empty_flags(request, dbsession):
+    head_report = Report()
+    head_report.add_session(Session(flags=["first"]))
+    head_report.add_session(Session(flags=["second"]))
+    head_report.add_session(Session(flags=["third"]))
+    head_report.add_session(Session(flags=["fourth"]))
+    head_report.add_session(Session(flags=["fifth"]))
+    head_report.add_session(Session(flags=["sixth"]))
+    base_report = Report()
+    base_report.add_session(Session(flags=["first"]))
+    base_report.add_session(Session(flags=["second"]))
+    base_report.add_session(Session(flags=["third"]))
+    base_report.add_session(Session(flags=["fourth"]))
+    base_report.add_session(Session(flags=["seventh"]))
+    base_report.add_session(Session(flags=["eighth"]))
+    print(base_report.sessions)
+    # assert False
+    file_1 = ReportFile("space.py")
+    file_1.append(
+        1,
+        ReportLine.create(
+            coverage=1, sessions=[LineSession(0, 1), LineSession(1, "1/2")]
+        ),
+    )
+    file_1.append(
+        40,
+        ReportLine.create(coverage=1, sessions=[LineSession(5, 1), LineSession(1, 1)]),
+    )
+    head_report.append(file_1)
+    file_2 = ReportFile("jupiter.py")
+    file_2.append(
+        1,
+        ReportLine.create(
+            coverage=1, sessions=[LineSession(0, 1), LineSession(2, "1/2")]
+        ),
+    )
+    file_2.append(
+        40,
+        ReportLine.create(coverage=1, sessions=[LineSession(5, 1), LineSession(2, 1)]),
+    )
+    base_report.append(file_2)
+    return generate_sample_comparison(
+        request.node.name,
+        dbsession,
+        ReadOnlyReport.create_from_report(base_report),
+        ReadOnlyReport.create_from_report(head_report),
+    )
 
 
 @pytest.fixture
@@ -572,6 +625,53 @@ class TestCommentNotifier(object):
             f"",
         ]
         li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_flags_empty_coverage(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_bunch_empty_flags,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_bunch_empty_flags
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "flags"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **not change** coverage.",
+            f"> The diff coverage is `n/a`.",
+            f"",
+            f"| Flag | Coverage Δ | |",
+            "|---|---|---|",
+            "| eighth | `?` | |",
+            "| fifth | `ø <ø> (?)` | |",
+            "| first | `100.00% <ø> (ø)` | |",
+            "| fourth | `ø <ø> (ø)` | |",
+            "| second | `50.00% <ø> (ø)` | |",
+            "| seventh | `?` | |",
+            "| sixth | `100.00% <ø> (?)` | |",
+            "| third | `ø <ø> (ø)` | |",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
+        ]
+        li = 0
+        print("\n".join(result))
         for exp, res in zip(expected_result, result):
             li += 1
             print(li)
