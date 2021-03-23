@@ -154,7 +154,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         repoid=repoid,
                         commit=commitid,
                         arguments=arguments,
-                        commit_yaml=commit_yaml,
+                        commit_yaml=commit_yaml.to_dict(),
                     ),
                 )
                 individual_info = {"arguments": arguments.copy()}
@@ -196,7 +196,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         "Unable to process report %s",
                         arguments.get("reportid"),
                         extra=dict(
-                            commit_yaml=commit_yaml,
+                            commit_yaml=commit_yaml.to_dict(),
                             repoid=repoid,
                             commit=commitid,
                             arguments=arguments,
@@ -222,7 +222,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
-                    commit_yaml=commit_yaml,
+                    commit_yaml=commit_yaml.to_dict(),
                     url=results_dict.get("url"),
                 ),
             )
@@ -415,7 +415,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 repoid=commit.repoid,
                 commit=commit.commitid,
                 reportid=reportid,
-                commit_yaml=report_service.current_yaml,
+                commit_yaml=report_service.current_yaml.to_dict(),
                 timing_ms=t.ms,
                 content_len=raw_uploaded_report.size,
             ),
