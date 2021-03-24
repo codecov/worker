@@ -1502,8 +1502,8 @@ class TestProjectChecksNotifier(object):
         assert result.data_sent == {
             "state": "success",
             "output": {
-                "title": f"0.00% (+0.00%) compared to {base_commit.commitid[0:7]}",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n0.00% (+0.00%) compared to {base_commit.commitid[0:7]}",
+                "title": "No coverage information found on head",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo coverage information found on head",
             },
             "url": f"test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
         }
