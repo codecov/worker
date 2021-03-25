@@ -128,7 +128,8 @@ class AbstractTotals(MixinBaseClass):
 
     def update_from_totals(self, totals):
         self.branches = totals.branches
-        self.coverage = totals.coverage
+        # Temporary until the table starts accepting NULLs
+        self.coverage = totals.coverage if totals.coverage is not None else 0
         self.hits = totals.hits
         self.lines = totals.lines
         self.methods = totals.methods

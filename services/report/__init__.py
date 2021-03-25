@@ -372,6 +372,13 @@ class ReportService(object):
         url = archive_service.write_chunks(commit.commitid, archive_data)
         commit.state = "complete" if report else "error"
         commit.totals = totals
+        if (
+            commit.totals is not None
+            and "c" in commit.totals
+            and commit.totals["c"] is None
+        ):
+            # temporary measure until we ensure the API and frontend don't expect not-null coverages
+            commit.totals["c"] = 0
         commit.report_json = network
         files_array = [
             {
