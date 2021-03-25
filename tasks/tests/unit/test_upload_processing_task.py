@@ -411,9 +411,10 @@ class TestUploadProcessorTask(object):
         mocked_2 = mocker.patch.object(
             UploadProcessorTask, "do_process_individual_report"
         )
-        false_report = mocker.MagicMock(
-            to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
-        )
+        false_report = Report()
+        false_report_file = ReportFile("file.c")
+        false_report_file.append(18, ReportLine.create(1, []))
+        false_report.append(false_report_file)
         mocked_2.side_effect = [
             (false_report, mocker.MagicMock(id=1, totals=ReportTotals())),
             ReportExpiredException(),
@@ -534,9 +535,10 @@ class TestUploadProcessorTask(object):
         mocked_2 = mocker.patch.object(
             UploadProcessorTask, "do_process_individual_report"
         )
-        false_report = mocker.MagicMock(
-            to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
-        )
+        false_report = Report()
+        false_report_file = ReportFile("file.c")
+        false_report_file.append(18, ReportLine.create(1, []))
+        false_report.append(false_report_file)
         mocked_2.side_effect = [
             (false_report, mocker.MagicMock(id=1, totals=ReportTotals())),
             ReportEmptyError(),

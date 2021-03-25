@@ -2779,6 +2779,44 @@ class TestReportService(BaseTestCase):
             },
         ]
 
+    def test_save_report_empty_report(self, dbsession, mock_storage):
+        report = Report()
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_)
+        dbsession.add(report_details)
+        dbsession.flush()
+        report_service = ReportService({})
+        res = report_service.save_report(commit, report)
+        storage_hash = report_service.get_archive_service(
+            commit.repository
+        ).storage_hash
+        assert res == {
+            "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
+        }
+        assert commit.totals == {
+            "f": 0,
+            "n": 0,
+            "h": 0,
+            "m": 0,
+            "p": 0,
+            "c": 0,
+            "b": 0,
+            "d": 0,
+            "M": 0,
+            "s": 0,
+            "C": 0,
+            "N": 0,
+            "diff": None,
+        }
+        assert commit.report_json == {"files": {}, "sessions": {}}
+        assert res["url"] in mock_storage.storage["archive"]
+        assert mock_storage.storage["archive"][res["url"]].decode() == ""
+
     def test_save_report(self, dbsession, mock_storage, sample_report):
         commit = CommitFactory.create()
         dbsession.add(commit)
