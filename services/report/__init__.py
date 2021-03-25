@@ -364,6 +364,8 @@ class ReportService(object):
         return process_raw_upload(self.current_yaml, master, reports, flags, session)
 
     def save_report(self, commit: Commit, report: Report):
+        if len(report._chunks) > 2 * len(report._files):
+            report.repack()
         archive_service = self.get_archive_service(commit.repository)
         db_session = commit.get_db_session()
         totals, network_json_str = report.to_database()

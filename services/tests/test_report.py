@@ -3038,6 +3038,206 @@ class TestReportService(BaseTestCase):
         )
         assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
 
+    def test_save_report_file_needing_repack(
+        self, dbsession, mock_storage, sample_report
+    ):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_)
+        dbsession.add(report_details)
+        dbsession.flush()
+        report_service = ReportService({})
+        f = ReportFile("hahafile.txt")
+        f.append(1, ReportLine.create(1))
+        sample_report.append(f)
+        f2 = ReportFile("poultry.c")
+        f2.append(12, ReportLine.create(1))
+        sample_report.append(f2)
+        f3 = ReportFile("pulse.py")
+        f3.append(2, ReportLine.create(1))
+        sample_report.append(f3)
+        print(sample_report.files)
+        del sample_report["file_2.py"]
+        del sample_report["hahafile.txt"]
+        del sample_report["pulse.py"]
+        assert len(sample_report._chunks) > 2 * len(sample_report._files)
+        res = report_service.save_report(commit, sample_report)
+        storage_hash = report_service.get_archive_service(
+            commit.repository
+        ).storage_hash
+        assert res == {
+            "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
+        }
+        assert len(current_report_row.uploads) == 0
+        assert report_details.files_array == [
+            {
+                "filename": "file_1.go",
+                "file_index": 0,
+                "file_totals": ReportTotals(
+                    files=0,
+                    lines=8,
+                    hits=5,
+                    misses=3,
+                    partials=0,
+                    coverage="62.50000",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=10,
+                    complexity_total=2,
+                    diff=0,
+                ),
+                "session_totals": [
+                    ReportTotals(
+                        files=0,
+                        lines=8,
+                        hits=5,
+                        misses=3,
+                        partials=0,
+                        coverage="62.50000",
+                        branches=0,
+                        methods=0,
+                        messages=0,
+                        sessions=0,
+                        complexity=10,
+                        complexity_total=2,
+                        diff=0,
+                    )
+                ],
+                "diff_totals": None,
+            },
+            {
+                "filename": "poultry.c",
+                "file_index": 1,
+                "file_totals": ReportTotals(
+                    files=0,
+                    lines=1,
+                    hits=1,
+                    misses=0,
+                    partials=0,
+                    coverage="100",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+                "session_totals": [
+                    None,
+                    ReportTotals(
+                        files=0,
+                        lines=1,
+                        hits=1,
+                        misses=0,
+                        partials=0,
+                        coverage="100",
+                        branches=0,
+                        methods=0,
+                        messages=0,
+                        sessions=0,
+                        complexity=0,
+                        complexity_total=0,
+                        diff=0,
+                    ),
+                ],
+                "diff_totals": None,
+            },
+        ]
+        expected = {
+            "files": {
+                "file_1.go": [
+                    0,
+                    [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
+                    [[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]],
+                    None,
+                ],
+                "poultry.c": [
+                    1,
+                    [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+            },
+            "sessions": {
+                "0": {
+                    "t": [2, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "d": None,
+                    "a": None,
+                    "f": ["unit"],
+                    "c": "circleci",
+                    "n": "aycaramba",
+                    "N": None,
+                    "j": None,
+                    "u": None,
+                    "p": None,
+                    "e": None,
+                    "st": "uploaded",
+                    "se": {},
+                },
+                "1": {
+                    "t": None,
+                    "d": None,
+                    "a": None,
+                    "f": ["integration"],
+                    "c": "travis",
+                    "n": "poli",
+                    "N": None,
+                    "j": None,
+                    "u": None,
+                    "p": None,
+                    "e": None,
+                    "st": "carriedforward",
+                    "se": {},
+                },
+            },
+        }
+        assert (
+            commit.report_json["sessions"]["0"]["t"] == expected["sessions"]["0"]["t"]
+        )
+        assert commit.report_json["sessions"]["0"] == expected["sessions"]["0"]
+        assert commit.report_json["sessions"] == expected["sessions"]
+        assert commit.report_json["files"] == expected["files"]
+        assert commit.report_json == expected
+        assert res["url"] in mock_storage.storage["archive"]
+        print(mock_storage.storage["archive"][res["url"]])
+        expected_content = "\n".join(
+            [
+                "{}",
+                "[1, null, [[0, 1]], null, [10, 2]]",
+                "[0, null, [[0, 1]]]",
+                "[1, null, [[0, 1]]]",
+                "",
+                "[1, null, [[0, 1], [1, 1]]]",
+                "[0, null, [[0, 1]]]",
+                "",
+                "[1, null, [[0, 1], [1, 0]]]",
+                "[1, null, [[0, 1]]]",
+                "[0, null, [[0, 1]]]",
+                "<<<<< end_of_chunk >>>>>",
+                "{}",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "[1]",
+            ]
+        )
+        assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
+
     def test_initialize_and_save_report_brand_new(self, dbsession, mock_storage):
         commit = CommitFactory.create()
         dbsession.add(commit)
