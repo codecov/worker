@@ -330,13 +330,7 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         mocked_2.assert_called_with(
-            mocker.ANY,
-            mock_redis,
-            commit,
-            mocker.ANY,
-            False,
-            url="url",
-            upload_pk=mocker.ANY,
+            mocker.ANY, commit, mocker.ANY, False, url="url", upload_pk=mocker.ANY,
         )
         mocked_3.assert_called_with(countdown=20, max_retries=5)
 
