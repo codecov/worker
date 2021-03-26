@@ -340,7 +340,9 @@ async def fetch_and_update_pull_request_information_from_commit(
     )
     pull = enriched_pull.database_pull
     if pull is not None:
-        pull.head = commit.commitid
+        head = pull.get_head_commit()
+        if head is None or head.timestamp <= commit.timestamp:
+            pull.head = commit.commitid
     return enriched_pull
 
 

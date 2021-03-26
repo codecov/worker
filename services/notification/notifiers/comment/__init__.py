@@ -93,6 +93,14 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 data_sent=None,
                 data_received=None,
             )
+        if comparison.pull.head != comparison.head.commit.commitid:
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="pull_head_does_not_match",
+                data_sent=None,
+                data_received=None,
+            )
         if self.notifier_yaml_settings.get("after_n_builds") is not None:
             n_builds_present = len(comparison.head.report.sessions)
             if n_builds_present < self.notifier_yaml_settings.get("after_n_builds"):
