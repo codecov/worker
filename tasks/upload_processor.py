@@ -81,7 +81,6 @@ class UploadProcessorTask(BaseCodecovTask):
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
                 return await self.process_async_within_lock(
                     db_session=db_session,
-                    redis_connection=redis_connection,
                     previous_results=previous_results,
                     repoid=repoid,
                     commitid=commitid,
@@ -105,7 +104,6 @@ class UploadProcessorTask(BaseCodecovTask):
         self,
         *,
         db_session,
-        redis_connection,
         previous_results,
         repoid,
         commitid,
@@ -179,7 +177,6 @@ class UploadProcessorTask(BaseCodecovTask):
                     ):
                         result = self.process_individual_report(
                             report_service,
-                            redis_connection,
                             commit,
                             report,
                             upload_obj,
@@ -240,20 +237,12 @@ class UploadProcessorTask(BaseCodecovTask):
             raise
 
     def process_individual_report(
-        self,
-        report_service,
-        redis_connection,
-        commit,
-        report,
-        upload_obj,
-        *args,
-        **arguments,
+        self, report_service, commit, report, upload_obj, *args, **arguments,
     ):
         db_session = upload_obj.get_db_session()
         try:
             result, session = self.do_process_individual_report(
                 report_service,
-                redis_connection,
                 commit,
                 report,
                 *args,
@@ -346,7 +335,6 @@ class UploadProcessorTask(BaseCodecovTask):
     def do_process_individual_report(
         self,
         report_service,
-        redis_connection,
         commit,
         current_report,
         should_delete_archive,
@@ -372,12 +360,7 @@ class UploadProcessorTask(BaseCodecovTask):
 
         archive_url = url
         raw_uploaded_report = self.fetch_raw_uploaded_report(
-            archive_service,
-            redis_connection,
-            archive_url,
-            commit.commitid,
-            reportid,
-            redis_key,
+            archive_service, archive_url
         )
         log.debug("Retrieved report for processing from url %s", archive_url)
 
@@ -423,31 +406,19 @@ class UploadProcessorTask(BaseCodecovTask):
         return (report, session)
 
     def fetch_raw_uploaded_report(
-        self,
-        archive_service,
-        redis_connection,
-        archive_url,
-        commit_sha,
-        reportid,
-        redis_key,
+        self, archive_service, archive_url: str,
     ):
         """
-            Downloads the raw report, wherever it is (it's either a path on minio or redis)
+        Downloads the raw report, given a path on storage
 
         Args:
-            archive_service: [description]
-            redis_connection: [description]
-            archive_url: [description]
-            commit_sha: [description]
-            reportid: [description]
-            redis_key: [description]
+            archive_service: Archive service where the file is going to be fetched from
+            archive_url (str): Teh filepath of the content inside
+
+        Returns:
+            ParsedRawReport
         """
-        log.debug("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
-        if archive_url:
-            content = archive_service.read_file(archive_url)
-        else:
-            log.warning("Still using redis when we shouldn't")
-            content = download_archive_from_redis(redis_connection, redis_key)
+        content = archive_service.read_file(archive_url)
         return RawReportParser.parse_raw_report_from_bytes(content)
 
     def should_delete_archive(self, commit_yaml):
