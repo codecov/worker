@@ -99,7 +99,7 @@ class TestUploadProcessorTask(object):
                     "a": url,
                     "c": None,
                     "e": None,
-                    "f": None,
+                    "f": [],
                     "j": None,
                     "n": None,
                     "p": None,
@@ -111,6 +111,10 @@ class TestUploadProcessorTask(object):
                 }
             },
         }
+        assert (
+            commit.report_json["sessions"]["0"]
+            == expected_generated_report["sessions"]["0"]
+        )
         assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid)
         # mocked_3.send_task.assert_called_with(
@@ -148,10 +152,12 @@ class TestUploadProcessorTask(object):
         report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
         dbsession.add(report_details)
         dbsession.flush()
-        upload = UploadFactory.create(report=current_report_row, state="started")
+        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        upload = UploadFactory.create(
+            report=current_report_row, state="started", storage_path=url
+        )
         dbsession.add(upload)
         dbsession.flush()
-        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_uploaded_report_1.txt") as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
@@ -202,7 +208,7 @@ class TestUploadProcessorTask(object):
                     "a": url,
                     "c": None,
                     "e": None,
-                    "f": None,
+                    "f": [],
                     "j": None,
                     "n": None,
                     "p": None,
@@ -219,6 +225,7 @@ class TestUploadProcessorTask(object):
             == expected_generated_report["files"]["awesome/__init__.py"]
         )
         assert commit.report_json["files"] == expected_generated_report["files"]
+        assert commit.report_json["sessions"] == expected_generated_report["sessions"]
         assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid)
 
@@ -330,7 +337,7 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         mocked_2.assert_called_with(
-            mocker.ANY, commit, mocker.ANY, False, url="url", upload_pk=mocker.ANY,
+            mocker.ANY, commit, mocker.ANY, False, url="url", upload=mocker.ANY,
         )
         mocked_3.assert_called_with(countdown=20, max_retries=5)
 
