@@ -1,29 +1,22 @@
-from time import time
 import logging
 import re
 import random
+from typing import Optional
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.config import get_config
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitClientError
-from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
-from database.models import (
-    Commit,
-    Upload,
-    CommitReport,
-    UploadLevelTotals,
-)
+from database.models import Commit, Upload
 from celery_config import upload_processor_task_name
-from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from helpers.metrics import metrics
 from services.bots import RepositoryWithoutValidBotError
-from services.redis import get_redis_connection, download_archive_from_redis
+from services.redis import get_redis_connection
 from services.report import ReportService, Report
 from services.report.parser import RawReportParser
 from services.repository import get_repo_provider_service
@@ -219,68 +212,14 @@ class UploadProcessorTask(BaseCodecovTask):
     def process_individual_report(
         self, report_service, commit, report, upload_obj, *args, **arguments,
     ):
-        db_session = upload_obj.get_db_session()
         try:
-            result, session = self.do_process_individual_report(
+            processing_result = self.do_process_individual_report(
                 report_service, commit, report, *args, upload=upload_obj, **arguments,
             )
-            upload_obj.state = "processed"
-            upload_obj.order_number = session.id
-            upload_totals = upload_obj.totals
-            if upload_totals is None:
-                upload_totals = UploadLevelTotals(
-                    upload_id=upload_obj.id,
-                    branches=0,
-                    coverage=0,
-                    hits=0,
-                    lines=0,
-                    methods=0,
-                    misses=0,
-                    partials=0,
-                    files=0,
-                )
-                db_session.add(upload_totals)
-            if session.totals is not None:
-                upload_totals.update_from_totals(session.totals)
-            return {"successful": True, "report": result}
-        except ReportExpiredException:
-            expired_report_result = {
-                "successful": False,
-                "report": None,
-                "error_type": "report_expired",
-                "should_retry": False,
-            }
-            log.info(
-                "Report %s is expired",
-                arguments.get("reportid"),
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    arguments=arguments,
-                    result=expired_report_result,
-                ),
+            report_service.update_upload_with_processing_result(
+                upload_obj, processing_result
             )
-            upload_obj.state = "error"
-            return expired_report_result
-        except ReportEmptyError:
-            empty_report_result = {
-                "successful": False,
-                "report": None,
-                "error_type": "report_empty",
-                "should_retry": False,
-            }
-            log.info(
-                "Report %s is empty",
-                arguments.get("reportid"),
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    arguments=arguments,
-                    result=empty_report_result,
-                ),
-            )
-            upload_obj.state = "error"
-            return empty_report_result
+            return processing_result.as_dict()
         except FileNotInStorageError:
             if self.request.retries == 0:
                 log.info(
@@ -309,29 +248,19 @@ class UploadProcessorTask(BaseCodecovTask):
 
     def do_process_individual_report(
         self,
-        report_service,
-        commit,
-        current_report,
-        should_delete_archive,
+        report_service: ReportService,
+        commit: Commit,
+        current_report: Optional[Report],
+        should_delete_archive: bool,
         *,
-        upload,
+        upload: Upload,
         **kwargs,
     ):
         """Takes a `current_report (Report)`, runs a raw_uploaded_report (str) against
             it and generates a new report with the result
         """
         archive_service = report_service.get_archive_service(commit.repository)
-        raw_uploaded_report = None
-        flags = upload.flag_names
-        service = upload.provider
-        build_url = upload.build_url
-        build = upload.build_code
-        job = upload.job_code
-        name = upload.name
-        url = upload.storage_path
-        reportid = upload.external_id
-
-        archive_url = url
+        archive_url = upload.storage_path
         raw_uploaded_report = self.fetch_raw_uploaded_report(
             archive_service, archive_url
         )
@@ -345,38 +274,9 @@ class UploadProcessorTask(BaseCodecovTask):
         # ---------------
         # Process Reports
         # ---------------
-        session = Session(
-            provider=service,
-            build=build,
-            job=job,
-            name=name,
-            time=int(time()),
-            flags=flags,
-            archive=archive_url or url,
-            url=build_url,
+        return report_service.build_report_from_raw_content(
+            master=current_report, reports=raw_uploaded_report, upload=upload,
         )
-        with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
-            report = report_service.build_report_from_raw_content(
-                master=current_report,
-                reports=raw_uploaded_report,
-                flags=flags,
-                session=session,
-            )
-
-        log.info(
-            "Successfully processed report",
-            extra=dict(
-                session=session.id,
-                ci=f"{session.provider}:{session.build}:{session.job}",
-                repoid=commit.repoid,
-                commit=commit.commitid,
-                reportid=reportid,
-                commit_yaml=report_service.current_yaml.to_dict(),
-                timing_ms=t.ms,
-                content_len=raw_uploaded_report.size,
-            ),
-        )
-        return (report, session)
 
     def fetch_raw_uploaded_report(
         self, archive_service, archive_url: str,

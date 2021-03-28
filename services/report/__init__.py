@@ -2,6 +2,8 @@ import logging
 import uuid
 from typing import Mapping, Any, Optional, Sequence
 from json import loads
+from time import time
+from dataclasses import dataclass
 
 from shared.metrics import metrics
 from shared.reports.resources import Report
@@ -9,6 +11,7 @@ from shared.reports.editable import EditableReport
 from shared.storage.exceptions import FileNotInStorageError
 from shared.reports.carryforward import generate_carryforward_report
 from shared.utils.sessions import SessionType
+from shared.utils.sessions import Session
 
 from database.models import Commit, Upload, Repository
 from database.models.reports import (
@@ -18,9 +21,32 @@ from database.models.reports import (
     ReportDetails,
     RepositoryFlag,
 )
+from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from services.archive import ArchiveService
 from services.report.raw_upload_processor import process_raw_upload
 from services.yaml.reader import read_yaml_field, get_paths_from_flags
+
+
+@dataclass
+class ProcessingResult(object):
+    report: Report
+    session: Session
+    error: Optional[Any]
+
+    def as_dict(self):
+        # Weird flow for now in order to keep things compatible with previous logging
+        if self.error is not None:
+            return {
+                "successful": False,
+                "error_type": self.error,
+                "report": self.report,
+                "should_retry": False,
+            }
+        return {
+            "successful": True,
+            "report": self.report,
+        }
+
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +56,8 @@ class NotReadyToBuildReportYetError(Exception):
 
 
 class ReportService(object):
+
+    metrics_prefix = "services.report"
 
     """This is the class that will handle anything report-handling related
 
@@ -359,9 +387,89 @@ class ReportService(object):
         )
 
     def build_report_from_raw_content(
-        self, master: Optional[Report], reports, flags, session
-    ) -> Any:
-        return process_raw_upload(self.current_yaml, master, reports, flags, session)
+        self, master: Optional[Report], reports, upload
+    ) -> ProcessingResult:
+        commit = upload.report.commit
+        flags = upload.flag_names
+        service = upload.provider
+        build_url = upload.build_url
+        build = upload.build_code
+        job = upload.job_code
+        name = upload.name
+        url = upload.storage_path
+        reportid = upload.external_id
+
+        archive_url = url
+        session = Session(
+            provider=service,
+            build=build,
+            job=job,
+            name=name,
+            time=int(time()),
+            flags=flags,
+            archive=archive_url or url,
+            url=build_url,
+        )
+        try:
+            with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
+                report = process_raw_upload(
+                    self.current_yaml, master, reports, flags, session
+                )
+            log.info(
+                "Successfully processed report",
+                extra=dict(
+                    session=session.id,
+                    ci=f"{session.provider}:{session.build}:{session.job}",
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    reportid=reportid,
+                    commit_yaml=self.current_yaml.to_dict(),
+                    timing_ms=t.ms,
+                    content_len=reports.size,
+                ),
+            )
+            return ProcessingResult(report=report, session=session, error=None)
+        except ReportExpiredException:
+            log.info(
+                "Report %s is expired",
+                reportid,
+                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+            )
+            return ProcessingResult(
+                report=None, session=session, error="report_expired"
+            )
+        except ReportEmptyError:
+            log.info(
+                "Report %s is empty",
+                reportid,
+                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+            )
+            return ProcessingResult(report=None, session=session, error="report_empty")
+
+    def update_upload_with_processing_result(self, upload_obj, processing_result):
+        db_session = upload_obj.get_db_session()
+        session = processing_result.session
+        if processing_result.error is None:
+            upload_obj.state = "processed"
+            upload_obj.order_number = session.id
+            upload_totals = upload_obj.totals
+            if upload_totals is None:
+                upload_totals = UploadLevelTotals(
+                    upload_id=upload_obj.id,
+                    branches=0,
+                    coverage=0,
+                    hits=0,
+                    lines=0,
+                    methods=0,
+                    misses=0,
+                    partials=0,
+                    files=0,
+                )
+                db_session.add(upload_totals)
+            if session.totals is not None:
+                upload_totals.update_from_totals(session.totals)
+        else:
+            upload_obj.state = "error"
 
     def save_report(self, commit: Commit, report: Report):
         if len(report._chunks) > 2 * len(report._files):
