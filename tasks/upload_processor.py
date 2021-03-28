@@ -131,17 +131,6 @@ class UploadProcessorTask(BaseCodecovTask):
             report = report_service.get_existing_report_for_commit(commit)
             if report is None:
                 report = Report()
-        commit_report = (
-            db_session.query(CommitReport).filter_by(commit_id=commit.id_).first()
-        )
-        if commit_report is None:
-            log.warning(
-                "Commit does not have report row yet",
-                extra=dict(commit=commit.commitid, repoid=commit.repoid),
-            )
-            commit_report = CommitReport(commit_id=commit.id_)
-            db_session.add(commit_report)
-            db_session.flush()
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")
@@ -160,19 +149,11 @@ class UploadProcessorTask(BaseCodecovTask):
                     arguments_commitid = arguments.pop("commit", None)
                     if arguments_commitid:
                         assert arguments_commitid == commit.commitid
-                    if arguments.get("upload_pk"):
-                        upload_obj = (
-                            db_session.query(Upload)
-                            .filter_by(id_=arguments.pop("upload_pk"))
-                            .first()
-                        )
-                    else:
-                        log.warning("Creating upload on the UploadProcessorTask step")
-                        upload_obj = report_service.create_report_upload(
-                            arguments, commit_report
-                        )
-                        db_session.add(upload_obj)
-                        db_session.flush()
+                    upload_obj = (
+                        db_session.query(Upload)
+                        .filter_by(id_=arguments.pop("upload_pk"))
+                        .first()
+                    )
                     with metrics.timer(
                         f"{self.metrics_prefix}.process_individual_report"
                     ):
@@ -185,9 +166,7 @@ class UploadProcessorTask(BaseCodecovTask):
                             **arguments,
                         )
                     individual_info.update(result)
-                except (CeleryError, SoftTimeLimitExceeded):
-                    raise
-                except SQLAlchemyError:
+                except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
                     raise
                 except Exception:
                     log.exception(
