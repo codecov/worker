@@ -407,15 +407,18 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(
-            UploadProcessorTask, "do_process_individual_report"
+        mocker.patch.object(
+            UploadProcessorTask,
+            "fetch_raw_uploaded_report",
+            return_value=mocker.MagicMock(size=10),
         )
+        mocked_2 = mocker.patch("services.report.process_raw_upload")
         false_report = Report()
         false_report_file = ReportFile("file.c")
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
         mocked_2.side_effect = [
-            (false_report, mocker.MagicMock(id=1, totals=ReportTotals())),
+            false_report,
             ReportExpiredException(),
         ]
         # Mocking retry to also raise the exception so we can see how it is called
@@ -599,15 +602,18 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(
-            UploadProcessorTask, "do_process_individual_report"
+        mocker.patch.object(
+            UploadProcessorTask,
+            "fetch_raw_uploaded_report",
+            return_value=mocker.MagicMock(size=10),
         )
+        mocked_2 = mocker.patch("services.report.process_raw_upload")
         false_report = Report()
         false_report_file = ReportFile("file.c")
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
         mocked_2.side_effect = [
-            (false_report, mocker.MagicMock(id=1, totals=ReportTotals())),
+            false_report,
             ReportEmptyError(),
         ]
         mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
@@ -688,8 +694,11 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(
-            UploadProcessorTask, "do_process_individual_report"
+        mocked_2 = mocker.patch("services.report.process_raw_upload")
+        mocker.patch.object(
+            UploadProcessorTask,
+            "fetch_raw_uploaded_report",
+            return_value=mocker.MagicMock(size=10),
         )
         mocked_2.side_effect = [ReportEmptyError(), ReportExpiredException()]
         # Mocking retry to also raise the exception so we can see how it is called
