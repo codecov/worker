@@ -2008,6 +2008,27 @@ class TestCommentNotifier(object):
         assert result.data_received is None
 
     @pytest.mark.asyncio
+    async def test_notify_pull_head_doesnt_match(self, dbsession, sample_comparison):
+        sample_comparison.pull.head = "aaaaaaaaaa"
+        dbsession.flush()
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "reach, diff, flags, files, footer",
+                "behavior": "default",
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.notify(sample_comparison)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "pull_head_does_not_match"
+        assert result.data_sent is None
+        assert result.data_received is None
+
+    @pytest.mark.asyncio
     async def test_notify_pull_request_not_in_provider(
         self, dbsession, sample_comparison_database_pull_without_provider
     ):
