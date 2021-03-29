@@ -1,6 +1,7 @@
 import uuid
 import datetime
 import logging
+from functools import cached_property
 
 from sqlalchemy import Column, types, ForeignKey, Table
 from sqlalchemy.orm import relationship, backref
@@ -97,6 +98,10 @@ class Upload(CodecovBaseModel, MixinBaseClass):
     )
     upload_extras = Column(postgresql.JSON, nullable=False)
     upload_type = Column(types.String(100), nullable=False)
+
+    @cached_property
+    def flag_names(self):
+        return [f.flag_name for f in self.flags]
 
 
 class UploadError(CodecovBaseModel, MixinBaseClass):

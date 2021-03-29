@@ -167,6 +167,7 @@ class UploadProcessorTask(BaseCodecovTask):
                             .first()
                         )
                     else:
+                        log.warning("Creating upload on the UploadProcessorTask step")
                         upload_obj = report_service.create_report_upload(
                             arguments, commit_report
                         )
@@ -242,12 +243,7 @@ class UploadProcessorTask(BaseCodecovTask):
         db_session = upload_obj.get_db_session()
         try:
             result, session = self.do_process_individual_report(
-                report_service,
-                commit,
-                report,
-                *args,
-                upload_pk=upload_obj.id,
-                **arguments,
+                report_service, commit, report, *args, upload=upload_obj, **arguments,
             )
             upload_obj.state = "processed"
             upload_obj.order_number = session.id
@@ -339,16 +335,7 @@ class UploadProcessorTask(BaseCodecovTask):
         current_report,
         should_delete_archive,
         *,
-        flags=None,
-        service=None,
-        build_url=None,
-        build=None,
-        job=None,
-        name=None,
-        url=None,
-        redis_key=None,
-        reportid=None,
-        upload_pk=None,
+        upload,
         **kwargs,
     ):
         """Takes a `current_report (Report)`, runs a raw_uploaded_report (str) against
@@ -356,7 +343,14 @@ class UploadProcessorTask(BaseCodecovTask):
         """
         archive_service = report_service.get_archive_service(commit.repository)
         raw_uploaded_report = None
-        flags = flags.split(",") if flags else None
+        flags = upload.flag_names
+        service = upload.provider
+        build_url = upload.build_url
+        build = upload.build_code
+        job = upload.job_code
+        name = upload.name
+        url = upload.storage_path
+        reportid = upload.external_id
 
         archive_url = url
         raw_uploaded_report = self.fetch_raw_uploaded_report(
