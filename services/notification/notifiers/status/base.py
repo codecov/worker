@@ -187,8 +187,6 @@ class StatusNotifier(AbstractBaseNotifier):
         try:
             with nullcontext():
                 with nullcontext():
-                    payload = await self.build_payload(filtered_comparison)
-
                     # If flag coverage wasn't uploaded, apply the appropriate behavior
                     flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
                         comparison, "flag_coverage_not_uploaded_behavior"
@@ -197,6 +195,7 @@ class StatusNotifier(AbstractBaseNotifier):
                         flag_coverage_not_uploaded_behavior != "include"
                         and not self.flag_coverage_was_uploaded(comparison)
                     ):
+                        # flag_coverage_not_uploaded_behavior can be either `pass` or `exclude`
                         log.info(
                             "Status check flag coverage was not uploaded, applying behavior based on YAML settings",
                             extra=dict(
@@ -208,6 +207,7 @@ class StatusNotifier(AbstractBaseNotifier):
                         )
 
                         if flag_coverage_not_uploaded_behavior == "pass":
+                            payload = await self.build_payload(filtered_comparison)
                             payload["state"] = "success"
                             payload["message"] = (
                                 payload["message"]
@@ -221,6 +221,8 @@ class StatusNotifier(AbstractBaseNotifier):
                                 data_sent=None,
                                 data_received=None,
                             )
+                    else:
+                        payload = await self.build_payload(filtered_comparison)
 
             if (
                 comparison.pull
