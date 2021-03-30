@@ -1,6 +1,51 @@
-from services.notification.changes import get_changes, Change
+import pytest
+
+from services.notification.changes import get_changes, Change, diff_totals
 from shared.reports.types import ReportTotals
 from shared.reports.resources import Report, ReportFile, ReportLine
+
+
+class TestDiffTotals(object):
+    @pytest.mark.parametrize(
+        "base, head, absolute, res",
+        [
+            (ReportTotals(lines=1), None, None, False),
+            (ReportTotals(lines=1), ReportTotals(lines=1), None, None),
+            (None, ReportTotals(lines=1), None, True),
+            (
+                ReportTotals(lines=1, coverage=1),
+                ReportTotals(lines=2, coverage=2),
+                None,
+                ReportTotals(lines=1, coverage=1),
+            ),
+            (
+                ReportTotals(lines=2, coverage=3),
+                ReportTotals(lines=1, coverage=4),
+                None,
+                ReportTotals(lines=-1, coverage=1),
+            ),
+            (
+                ReportTotals(lines=2, coverage=5),
+                ReportTotals(files=1, coverage=6),
+                None,
+                ReportTotals(files=1, lines=-2, coverage=1),
+            ),
+            (
+                ReportTotals(coverage=15),
+                ReportTotals(coverage=14),
+                None,
+                ReportTotals(coverage=-1),
+            ),
+            (
+                ReportTotals(coverage=15),
+                ReportTotals(coverage=14),
+                ReportTotals(coverage=None),
+                ReportTotals(coverage=-1),
+            ),
+        ],
+    )
+    def test_diff_totals(self, base, head, absolute, res):
+        assert diff_totals(base, head, absolute) == res
 
 
 class TestChanges(object):
