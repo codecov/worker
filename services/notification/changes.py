@@ -27,7 +27,7 @@ def diff_totals(base, head, absolute=None) -> Union[bool, None, ReportTotals]:
         for i in (0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11)
     ]
     diff = ReportTotals(*diff_tuple)
-    if absolute:
+    if absolute and absolute.coverage is not None:
         # ratio(before.hits + changed.hits, before.lines, changed.lines) - coverage before
         #   = actual coveage change
         hits = absolute.hits + diff.hits
