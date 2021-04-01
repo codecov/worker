@@ -7,6 +7,7 @@ from typing import Optional
 from shared.license import get_current_license
 from shared.config import get_config
 from sqlalchemy import func
+from sqlalchemy.sql import text
 
 from database.models import Owner, Repository
 from helpers.environment import is_enterprise
@@ -50,6 +51,19 @@ def cached_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReas
     return calculate_reason_for_not_being_valid(db_session)
 
 
+def get_installation_plan_activated_users(db_session) -> list:
+    query_string = text(
+        """
+                        WITH all_plan_activated_users AS (
+                            SELECT 
+                                UNNEST(o.plan_activated_users) AS activated_owner_id
+                            FROM owners o
+                        ) SELECT count(*) as count
+                        FROM all_plan_activated_users"""
+    )
+    return db_session.execute(query_string).fetchall()
+
+
 def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseReason]:
     current_license = get_current_license()
     if not current_license.is_valid:
@@ -57,22 +71,27 @@ def calculate_reason_for_not_being_valid(db_session) -> Optional[InvalidLicenseR
     if current_license.url:
         if get_config("setup", "codecov_url") != current_license.url:
             return InvalidLicenseReason.url_mismatch
+
     if current_license.number_allowed_users:
-        query = (
-            db_session.query(func.count(), Owner.service)
-            .filter(Owner.oauth_token.isnot(None))
-            .group_by(Owner.service)
-            .all()
-        )
+        if current_license.is_pr_billing:
+            # PR Billing must count _all_ plan_activated_users in db
+            query = get_installation_plan_activated_users(db_session)
+        else:
+            # non PR billing must count all owners with oauth_token != None.
+            query = (
+                db_session.query(func.count(), Owner.service)
+                .filter(Owner.oauth_token.isnot(None))
+                .group_by(Owner.service)
+                .all()
+            )
         for result in query:
             if result[0] > current_license.number_allowed_users:
                 return InvalidLicenseReason.users_exceeded
-            elif result[0] > (current_license.number_allowed_users - 10):
+            elif result[0] > (0.9 * current_license.number_allowed_users):
                 log.warning(
-                    "Number of users is approaching license limit of %d/%d for %s.",
+                    "Number of users is approaching license limit of %d/%d",
                     result[0],
                     current_license.number_allowed_users,
-                    result[1].upper(),
                 )
     if current_license.number_allowed_repos:
         repos = (

@@ -19,6 +19,8 @@ from services.urls import get_org_account_url
 
 from services.notification.notifiers.mixins.message import MessageMixin
 
+from services.license import requires_license
+
 log = logging.getLogger(__name__)
 
 
@@ -358,9 +360,17 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         author_username = comparison.enriched_pull.provider_pull["author"].get(
             "username"
         )
-        return [
-            f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
-            f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment.",
-            f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
-            f"Please don't hesitate to email us at success@codecov.io with any questions.",
-        ]
+        if not requires_license():
+            return [
+                f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
+                f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment.",
+                f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+                f"Please don't hesitate to email us at success@codecov.io with any questions.",
+            ]
+        else:
+            return [
+                f"The author of this PR, {author_username}, is not activated in your Codecov Self-Hosted installation.",
+                f"Please [activate this user]({links['org_account']}/users) to display this PR comment.",
+                f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
+                f"Please contact your Codecov On-Premises installation administrator with any questions.",
+            ]
