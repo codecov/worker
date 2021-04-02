@@ -708,7 +708,7 @@ def diff_to_string(current_yaml, base_title, base, head_title, head) -> List[str
             # TODO if coverage format to smallest string or precision
             if c1 is None or c2 is None:
                 change = ""
-            elif isinstance(c2, str):
+            elif isinstance(c2, str) or isinstance(c1, str):
                 change = F(str(float(c2) - float(c1)))
             else:
                 change = str(c2 - c1)

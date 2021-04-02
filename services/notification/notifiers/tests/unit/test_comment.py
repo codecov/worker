@@ -364,6 +364,27 @@ class TestCommentNotifierHelpers(object):
         diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
         assert diff == expected_result
 
+    def test_diff_to_string_case_different_types(self):
+        case_1 = (
+            "master",
+            ReportTotals(10, coverage="54.43"),
+            "stable",
+            ReportTotals(11, coverage=0),
+            [
+                "@@             Coverage Diff             @@",
+                "##           master   stable       +/-   ##",
+                "===========================================",
+                "- Coverage   54.43%        0   -54.43%     ",
+                "===========================================",
+                "  Files          10       11        +1     ",
+                "",
+            ],
+        )
+        case = case_1
+        base_title, base_totals, head_title, head_totals, expected_result = case
+        diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
+        assert diff == expected_result
+
 
 class TestCommentNotifier(object):
     @pytest.mark.asyncio
