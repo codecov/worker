@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from shared.metrics import metrics
 from shared.reports.resources import Report
 from shared.reports.editable import EditableReport
+from services.report.parser import ParsedRawReport
 from shared.storage.exceptions import FileNotInStorageError
 from shared.reports.carryforward import generate_carryforward_report
 from shared.utils.sessions import SessionType
@@ -24,7 +25,7 @@ from database.models.reports import (
 from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from services.archive import ArchiveService
 from services.report.raw_upload_processor import process_raw_upload
-from services.yaml.reader import read_yaml_field, get_paths_from_flags
+from services.yaml.reader import get_paths_from_flags
 
 
 @dataclass
@@ -387,8 +388,20 @@ class ReportService(object):
         )
 
     def build_report_from_raw_content(
-        self, master: Optional[Report], reports, upload
+        self, master: Optional[Report], reports: ParsedRawReport, upload: Upload
     ) -> ProcessingResult:
+        """
+            Processes an upload on top of an existing report `master` and returns
+                a result, which could be succesful or not
+
+            Note that this function does not modify the `upload` object, as this should
+                be done by a separate function
+
+        Args:
+            master (Optional[Report]): The current report we are building on top of
+            reports (ParsedRawReport): The uploaded report string fetched and parsed
+            upload (Upload): The upload made by the user that we are processing
+        """
         commit = upload.report.commit
         flags = upload.flag_names
         service = upload.provider
