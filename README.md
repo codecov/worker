@@ -93,6 +93,14 @@ Notice that, while the dates are really useful for understanding when code was d
 
 To create releases on Github, you can go to https://github.com/codecov/worker/releases or use Github CLI. to push tags you can follow instructions on https://git-scm.com/book/en/v2/Git-Basics-Tagging
 
+### After deploying
+
+If you are deploying or helping with a deploy, make sure to:
+
+1. Watch logs (on datadog and sentry)
+2. Monitor error rates and timing graphs on the dashboards we have set up
+
+As the deployer, it is your responsability to make sure the system is working as expected post-deploy. If not, you might need to do a rollback.
 
 ## Code Structure
 
