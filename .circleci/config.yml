@@ -214,9 +214,11 @@ workflows:
           requires:
             - build
           filters:
-            tags:
+            branches:
               only:
                 - master
+            tags:
+              only:
                 - /enterprise-.*/
       - test:
           requires:
