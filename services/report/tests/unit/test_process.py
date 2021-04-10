@@ -860,7 +860,6 @@ class TestProcessReport(BaseTestCase):
         )
         second_raw_report_result.append(second_another_file)
         third_raw_report_result = Report()
-        third_raw_report_result = Report()
         third_banana = ReportFile("banana.py")
         third_banana.append(
             3, ReportLine.create("1/2", sessions=[LineSession(1, "1/2")])

@@ -81,7 +81,9 @@ def process_raw_upload(
     joined = True
     for flag in flags or []:
         if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
-            log.info("Customer is using joined=False feature")
+            log.info(
+                "Customer is using joined=False feature", extra=dict(flag_used=flag)
+            )
             joined = False
     # ---------------
     # Process reports
