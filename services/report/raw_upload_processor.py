@@ -77,7 +77,14 @@ def process_raw_upload(
     for report_file in reports.uploaded_files:
         if report_file.filename == "coverage/coverage.json":
             skip_files.add("coverage/coverage.lcov")
-
+    temporary_report = Report()
+    joined = True
+    for flag in flags or []:
+        if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
+            log.info(
+                "Customer is using joined=False feature", extra=dict(flag_used=flag)
+            )
+            joined = False
     # ---------------
     # Process reports
     # ---------------
@@ -97,23 +104,12 @@ def process_raw_upload(
                 ignored_lines=ignored_file_lines or {},
                 path_fixer=path_fixer_to_use,
             )
-
             if report:
-                session.totals = report.totals
-
-                # skip joining if flags express this fact
-                joined = True
-                for flag in flags or []:
-                    # purposedly not ported because we don't see use cases for joined currently
-                    # will probably just delete
-                    if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
-                        joined = False
-                        break
-
-                # merge the new report into maaster
-                original_report.merge(report, joined=joined)
+                temporary_report.merge(report, joined=joined)
             path_fixer_to_use.log_abnormalities()
-
+    if temporary_report:
+        original_report.merge(temporary_report, joined=joined)
+        session.totals = temporary_report.totals
     if path_fixer.calculated_paths.get(None):
         ignored_files = sorted(path_fixer.calculated_paths.pop(None))
         log.info(
