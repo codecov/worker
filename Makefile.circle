@@ -40,7 +40,7 @@ build:
 build-enterprise:
 	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG}
 	docker build \
-		-f dockerscripts/Dockerfile.circle-enterprise . \
+		-f dockerscripts/Dockerfile.enterprise . \
 		-t ${ENTERPRISE_GCR_REPO}:latest \
 		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
 		--build-arg RELEASE_VERSION=${IMAGE_VERSION}
