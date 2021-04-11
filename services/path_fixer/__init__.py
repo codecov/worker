@@ -36,9 +36,9 @@ class PathFixer(object):
         cls, commit_yaml: dict, toc: Sequence[str], flags: Sequence
     ):
         """
-        @param commit_yaml: Codecov yaml file in effect for this commit.
-        @param toc: List of files prepended to the uploaded report. Not all report formats provide this.
-        @param flags: Coverage flags specified by the user, if any.
+        :param commit_yaml: Codecov yaml file in effect for this commit.
+        :param toc: List of files prepended to the uploaded report. Not all report formats provide this.
+        :param flags: Coverage flags specified by the user, if any.
         """
         path_patterns = list(
             map(invert_pattern, read_yaml_field(commit_yaml, ("ignore",)) or [])

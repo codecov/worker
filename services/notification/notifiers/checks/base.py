@@ -13,6 +13,7 @@ from services.urls import (
     get_compare_url,
     get_pull_url,
     get_org_account_url,
+    append_tracking_params_to_urls,
 )
 from services.repository import get_repo_provider_service
 from helpers.metrics import metrics
@@ -355,6 +356,24 @@ class ChecksNotifier(StatusNotifier):
         head_report = comparison.head.report
         state = payload["state"]
         state = "success" if self.notifier_yaml_settings.get("informational") else state
+
+        # Append tracking parameters to any codecov urls in the title or summary
+        output = payload.get("output", {})
+        if output.get("title"):
+            output["title"] = append_tracking_params_to_urls(
+                output["title"],
+                service=self.repository.service,
+                notification_type="checks",
+                org_name=self.repository.owner.name,
+            )
+        if output.get("summary"):
+            output["summary"] = append_tracking_params_to_urls(
+                output["summary"],
+                service=self.repository.service,
+                notification_type="checks",
+                org_name=self.repository.owner.name,
+            )
+
         # We need to first create the check run, get that id and update the status
         with metrics.timer(
             "worker.services.notifications.notifiers.checks.create_check_run"
@@ -363,7 +382,6 @@ class ChecksNotifier(StatusNotifier):
                 check_name=title, head_sha=head.commitid
             )
 
-        output = payload.get("output", [])
         if len(output.get("annotations", [])) > self.ANNOTATIONS_PER_REQUEST:
             annotation_pages = list(
                 self.paginate_annotations(output.get("annotations"))

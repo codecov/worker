@@ -15,7 +15,7 @@ from services.notification.notifiers.base import (
 from services.notification.types import Comparison
 from helpers.metrics import metrics
 from services.repository import get_repo_provider_service
-from services.urls import get_org_account_url
+from services.urls import get_org_account_url, append_tracking_params_to_urls
 
 from services.notification.notifiers.mixins.message import MessageMixin
 
@@ -187,6 +187,15 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
 
     async def send_actual_notification(self, data: Mapping[str, Any]):
         message = "\n".join(data["message"])
+
+        # Append tracking parameters to any codecov urls in the message
+        message = append_tracking_params_to_urls(
+            message,
+            service=self.repository.service,
+            notification_type="comment",
+            org_name=self.repository.owner.name,
+        )
+
         behavior = self.notifier_yaml_settings.get("behavior", "default")
         if behavior == "default":
             res = await self.send_comment_default_behavior(

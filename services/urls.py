@@ -1,8 +1,12 @@
+import os
+import re
+from urllib.parse import urlparse, parse_qs, urlunparse, quote_plus, urlencode
+
+
 from database.models import Commit, Repository, Pull
 from enum import Enum
-from urllib.parse import urlencode
 from shared.config import get_config
-import os
+
 
 services_short_dict = dict(
     github="gh",
@@ -131,3 +135,46 @@ def get_org_account_url(pull: Pull) -> str:
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
     )
+
+
+def append_tracking_params_to_urls(
+    input_string: str, service: str, notification_type: str, org_name: str
+) -> str:
+    """
+        Append tracking parameters to markdown links pointing to a codecov urls in a given string, using regex to
+        detect and modify the urls.
+        
+        Args:
+            input_string (str): a string that may contain a markdown link to a Codecov url, for example: PR comments, Checks annotation.
+        
+        Returns:
+            string: the string with tracking parameters appended to the Codecov url.
+
+        Example:
+            input: "This string has a [link](codecov.io/pulls) to a codecov url that will be changed (but we won't change this reference to codecov.io) since  it's not a Markdown link."
+            output: "This string has a [link](codecov.io/pulls?<tracking params go here>) to a codecov url that will be changed (but we won't change this reference to codecov.io) since  it's not a Markdown link."
+
+    """
+    # regex matches against the pattern: ](<text>codecov.io<text>)
+    # group 1 is "](", group 2 is the url, group 3 is ")"
+    cond = re.compile(r"(\]\()(\S*?codecov\.io[\S]*?)(\))")
+
+    # Function used during regex substitution to append params to the url
+    def add_params(match):
+        # Extract url from regex and parse the query string
+        url = match.group(2)
+        parsed_url = urlparse(url)
+        query_dict = parse_qs(parsed_url.query)
+        # Add tracking parameters
+        query_dict["utm_medium"] = "referral"
+        query_dict["utm_source"] = service
+        query_dict["utm_content"] = notification_type
+        query_dict["utm_campaign"] = "pr comments"
+        query_dict["utm_term"] = org_name
+        # Reconstruct the url with the new query string
+        parsed_url = parsed_url._replace(query=urlencode(query_dict, doseq=True))
+        url_with_tracking_params = urlunparse(parsed_url)
+
+        return "](" + url_with_tracking_params + ")"
+
+    return cond.sub(add_params, input_string)
