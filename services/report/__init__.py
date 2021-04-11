@@ -558,7 +558,7 @@ class ReportService(object):
                 provider=session.provider,
                 report_id=commit.report.id_,
                 state="complete",
-                storage_path=session.archive,
+                storage_path=session.archive if session.archive is not None else "",
                 upload_extras=session.session_extras or {},
                 upload_type=session.session_type.value
                 if session.session_type is not None

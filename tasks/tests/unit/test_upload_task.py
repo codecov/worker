@@ -184,14 +184,14 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
         redis_queue = [
-            {"build": "part1"},
-            {"build": "part2"},
-            {"build": "part3"},
-            {"build": "part4"},
-            {"build": "part5"},
-            {"build": "part6"},
-            {"build": "part7"},
-            {"build": "part8"},
+            {"build": "part1", "url": "someurl1"},
+            {"build": "part2", "url": "someurl2"},
+            {"build": "part3", "url": "someurl3"},
+            {"build": "part4", "url": "someurl4"},
+            {"build": "part5", "url": "someurl5"},
+            {"build": "part6", "url": "someurl6"},
+            {"build": "part7", "url": "someurl7"},
+            {"build": "part8", "url": "someurl8"},
         ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocked_3 = mocker.patch.object(UploadTask, "app")
@@ -223,9 +223,9 @@ class TestUploadTaskIntegration(object):
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
                 arguments_list=[
-                    {"build": "part1", "upload_pk": mocker.ANY},
-                    {"build": "part2", "upload_pk": mocker.ANY},
-                    {"build": "part3", "upload_pk": mocker.ANY},
+                    {"build": "part1", "url": "someurl1", "upload_pk": mocker.ANY},
+                    {"build": "part2", "url": "someurl2", "upload_pk": mocker.ANY},
+                    {"build": "part3", "url": "someurl3", "upload_pk": mocker.ANY},
                 ],
             ),
         )
@@ -236,9 +236,9 @@ class TestUploadTaskIntegration(object):
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
                 arguments_list=[
-                    {"build": "part4", "upload_pk": mocker.ANY},
-                    {"build": "part5", "upload_pk": mocker.ANY},
-                    {"build": "part6", "upload_pk": mocker.ANY},
+                    {"build": "part4", "url": "someurl4", "upload_pk": mocker.ANY},
+                    {"build": "part5", "url": "someurl5", "upload_pk": mocker.ANY},
+                    {"build": "part6", "url": "someurl6", "upload_pk": mocker.ANY},
                 ],
             ),
         )
@@ -249,8 +249,8 @@ class TestUploadTaskIntegration(object):
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
                 arguments_list=[
-                    {"build": "part7", "upload_pk": mocker.ANY},
-                    {"build": "part8", "upload_pk": mocker.ANY},
+                    {"build": "part7", "url": "someurl7", "upload_pk": mocker.ANY},
+                    {"build": "part8", "url": "someurl8", "upload_pk": mocker.ANY},
                 ],
             ),
         )
@@ -262,11 +262,6 @@ class TestUploadTaskIntegration(object):
             ),
         )
         mocked_1.assert_called_with(t1, t2, t3, t_final)
-        # mocked_3.send_task.assert_called_with(
-        #     'app.tasks.notify.Notify',
-        #     args=None,
-        #     kwargs={'repoid': commit.repository.repoid, 'commitid': commit.commitid}
-        # )
         mock_redis.lock.assert_any_call(
             f"upload_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,
@@ -345,7 +340,10 @@ class TestUploadTaskIntegration(object):
         mocked_fetch_yaml = mocker.patch.object(
             UploadTask, "fetch_commit_yaml_and_possibly_store"
         )
-        redis_queue = [{"build": "part1"}, {"build": "part2"}]
+        redis_queue = [
+            {"build": "part1", "url": "url1"},
+            {"build": "part2", "url": "url2"},
+        ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mock_get_repo_service = mocker.patch("tasks.upload.get_repo_provider_service")
         mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
@@ -372,8 +370,8 @@ class TestUploadTaskIntegration(object):
             commit,
             UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
-                {"build": "part1", "upload_pk": mocker.ANY},
-                {"build": "part2", "upload_pk": mocker.ANY},
+                {"build": "part1", "url": "url1", "upload_pk": mocker.ANY},
+                {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
         )
         assert not mocked_fetch_yaml.called
@@ -388,7 +386,10 @@ class TestUploadTaskIntegration(object):
         mocked_fetch_yaml = mocker.patch.object(
             UploadTask, "fetch_commit_yaml_and_possibly_store"
         )
-        redis_queue = [{"build": "part1"}, {"build": "part2"}]
+        redis_queue = [
+            {"build": "part1", "url": "url1"},
+            {"build": "part2", "url": "url2"},
+        ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mock_get_repo_service = mocker.patch("tasks.upload.get_repo_provider_service")
         mock_get_repo_service.side_effect = TorngitRepoNotFoundError(
@@ -416,8 +417,8 @@ class TestUploadTaskIntegration(object):
             commit,
             UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
-                {"build": "part1", "upload_pk": mocker.ANY},
-                {"build": "part2", "upload_pk": mocker.ANY},
+                {"build": "part1", "url": "url1", "upload_pk": mocker.ANY},
+                {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
         )
         assert not mocked_fetch_yaml.called
@@ -435,7 +436,10 @@ class TestUploadTaskIntegration(object):
         mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
         mock_app = mocker.patch.object(UploadTask, "app")
         mock_app.send_task.return_value = True
-        redis_queue = [{"build": "part1"}, {"build": "part2"}]
+        redis_queue = [
+            {"build": "part1", "url": "url1"},
+            {"build": "part2", "url": "url2"},
+        ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mock_repo_provider.get_commit.side_effect = TorngitClientError(
             401, "response", "message"
@@ -480,8 +484,8 @@ class TestUploadTaskIntegration(object):
             commit,
             UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
-                {"build": "part1", "upload_pk": first_session.id},
-                {"build": "part2", "upload_pk": second_session.id},
+                {"build": "part1", "url": "url1", "upload_pk": first_session.id},
+                {"build": "part2", "url": "url2", "upload_pk": second_session.id},
             ],
         )
 

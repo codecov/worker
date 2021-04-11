@@ -2647,6 +2647,7 @@ class TestReportService(BaseTestCase):
         report_details = ReportDetails(report_id=current_report_row.id_)
         dbsession.add(report_details)
         dbsession.flush()
+        sample_report.sessions[0].archive = "path/to/upload/location"
         report_service = ReportService({})
         res = report_service.save_full_report(commit, sample_report)
         storage_hash = report_service.get_archive_service(
@@ -2662,6 +2663,8 @@ class TestReportService(BaseTestCase):
         second_upload = dbsession.query(Upload).filter_by(
             report_id=current_report_row.id_, provider="travis"
         )[0]
+        dbsession.refresh(second_upload)
+        dbsession.refresh(first_upload)
         assert first_upload.build_code == "aycaramba"
         assert first_upload.build_url is None
         assert first_upload.env is None
@@ -2670,7 +2673,7 @@ class TestReportService(BaseTestCase):
         assert first_upload.provider == "circleci"
         assert first_upload.report_id == current_report_row.id_
         assert first_upload.state == "complete"
-        assert first_upload.storage_path is None
+        assert first_upload.storage_path == "path/to/upload/location"
         assert first_upload.order_number == 0
         assert len(first_upload.flags) == 1
         assert first_upload.flags[0].repository == commit.repository
@@ -2694,7 +2697,7 @@ class TestReportService(BaseTestCase):
         assert second_upload.provider == "travis"
         assert second_upload.report_id == current_report_row.id_
         assert second_upload.state == "complete"
-        assert second_upload.storage_path is None
+        assert second_upload.storage_path == ""
         assert second_upload.order_number == 1
         assert len(second_upload.flags) == 1
         assert second_upload.flags[0].repository == commit.repository
@@ -3295,7 +3298,7 @@ class TestReportService(BaseTestCase):
         assert first_upload.provider is None
         assert first_upload.report_id == r.id_
         assert first_upload.state == "complete"
-        assert first_upload.storage_path is None
+        assert first_upload.storage_path == ""
         assert first_upload.order_number == 2
         assert len(first_upload.flags) == 1
         assert first_upload.flags[0].repository == commit.repository
@@ -3313,7 +3316,7 @@ class TestReportService(BaseTestCase):
         assert second_upload.provider is None
         assert second_upload.report_id == r.id_
         assert second_upload.state == "complete"
-        assert second_upload.storage_path is None
+        assert second_upload.storage_path == ""
         assert second_upload.order_number == 3
         assert len(second_upload.flags) == 2
         assert sorted([f.flag_name for f in second_upload.flags]) == [
