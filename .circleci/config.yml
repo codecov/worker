@@ -98,41 +98,6 @@ jobs:
             ./codecov-alpine -R . -F integration -f integration.coverage.xml -Z
             ./codecov-alpine -R . -F unit -f unit.coverage.xml -Z
 
-      - run:
-          name: Install OpenJDK 11 (for SonarScanner)
-          command: |
-            apk --no-cache add openjdk11 --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
-
-      - run:
-          name: Install SonarScanner
-          command: |
-            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONARSCANNER_VERSION.zip
-            unzip sonar-scanner-cli-$SONARSCANNER_VERSION.zip
-
-      - run:
-          name: Run SonarScanner
-          command: |
-            # add token
-            echo "sonar.login="$SONAR_TOKEN >> ./sonar-project.properties
-
-            # optional: add pull request info
-            if [ -n "$CIRCLE_PULL_REQUEST" ] 
-            then
-              GITHUB_PR_NUM=$(echo $CIRCLE_PULL_REQUEST | tr -dc '0-9')
-              echo "sonar.pullrequest.key="$GITHUB_PR_NUM >> ./sonar-project.properties
-              echo "sonar.pullrequest.branch="$CIRCLE_BRANCH >> ./sonar-project.properties
-              echo "sonar.pullrequest.base=master" >> ./sonar-project.properties
-            fi
-
-            ./sonar-scanner-$SONARSCANNER_VERSION/bin/sonar-scanner -X
-
-      - run:
-          name: Delete OpenJDK11 and SonarScanner
-          command: |
-            apk del openjdk11
-            rm sonar-scanner-cli-$SONARSCANNER_VERSION.zip
-            rm -rf sonar-scanner-$SONARSCANNER_VERSION
-
   staging:
     executor: codecov-deploy
     steps:
