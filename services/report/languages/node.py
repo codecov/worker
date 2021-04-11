@@ -342,11 +342,11 @@ def from_json(report_dict, fix, ignored_lines, sessionid, config):
             continue
 
         # statements
-        for sid, statement in must_be_dict(data["statementMap"]).items():
+        for sid, statement in must_be_dict(data.get("statementMap")).items():
             if statement.get("skip") is not True:
                 _location_to_lines(_file, statement, data["s"][sid], None, sessionid)
 
-        for bid, branch in must_be_dict(data["branchMap"]).items():
+        for bid, branch in must_be_dict(data.get("branchMap")).items():
             if branch.get("skip") is not True:
                 # [FUTURE] we can record branch positions in the session
                 for lid, location in enumerate(branch["locations"]):
@@ -354,7 +354,7 @@ def from_json(report_dict, fix, ignored_lines, sessionid, config):
                         _file, location, data["b"][bid][lid], "b", sessionid
                     )
 
-        for fid, func in must_be_dict(data["fnMap"]).items():
+        for fid, func in must_be_dict(data.get("fnMap")).items():
             if func.get("skip") is not True:
                 _location_to_lines(_file, func["loc"], data["f"][fid], "m", sessionid)
 

@@ -106,3 +106,15 @@ class TestNodeProcessor(BaseTestCase):
         assert processor.matches_content(user_input_1, "first_line", "coverage.json")
         user_input_2 = {"filename_1": {"statementMap": 1}, "filename_2": {}}
         assert processor.matches_content(user_input_2, "first_line", "coverage.json")
+
+    def test_no_statement_map(self):
+        user_input = {
+            "filename.py": {
+                "branches": {"covered": 0, "pct": 100, "skipped": 0, "total": 0},
+                "functions": {"covered": 0, "pct": 0, "skipped": 0, "total": 1},
+                "lines": {"covered": 2, "pct": 66.67, "skipped": 0, "total": 3},
+                "statements": {"covered": 2, "pct": 66.67, "skipped": 0, "total": 3},
+            }
+        }
+        res = node.from_json(user_input, lambda x: x, {}, 0, {"enable_partials": False})
+        assert res.is_empty()
