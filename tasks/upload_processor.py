@@ -2,6 +2,7 @@ import logging
 import re
 import random
 from typing import Optional
+from copy import deepcopy
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
@@ -72,13 +73,14 @@ class UploadProcessorTask(BaseCodecovTask):
         redis_connection = get_redis_connection()
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+                actual_arguments_list = deepcopy(arguments_list)
                 return await self.process_async_within_lock(
                     db_session=db_session,
                     previous_results=previous_results,
                     repoid=repoid,
                     commitid=commitid,
                     commit_yaml=commit_yaml,
-                    arguments_list=arguments_list,
+                    arguments_list=actual_arguments_list,
                     **kwargs,
                 )
         except LockError:
@@ -144,7 +146,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         assert arguments_commitid == commit.commitid
                     upload_obj = (
                         db_session.query(Upload)
-                        .filter_by(id_=arguments.pop("upload_pk"))
+                        .filter_by(id_=arguments.get("upload_pk"))
                         .first()
                     )
                     with metrics.timer(
