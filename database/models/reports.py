@@ -86,7 +86,7 @@ class Upload(CodecovBaseModel, MixinBaseClass):
         "CommitReport", foreign_keys=[report_id], back_populates="uploads"
     )
     state = Column(types.String(100), nullable=False)
-    storage_path = Column(types.Text)
+    storage_path = Column(types.Text, nullable=False)
     order_number = Column(types.Integer)
     flags = relationship(RepositoryFlag, secondary=association_table)
     totals = relationship(
