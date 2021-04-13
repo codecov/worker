@@ -144,6 +144,20 @@ class StandardNotifier(AbstractBaseNotifier):
                 ),
             )
             return False
+        if (
+            base_full_commit.report.totals.coverage is None
+            or head_full_commit.report.totals.coverage is None
+        ):
+            log.info(
+                "Cannot compare commits because either base or head commit has no coverage information",
+                extra=dict(
+                    commit=head_full_commit.commit.commitid,
+                    base_commit=base_full_commit.commit.commitid
+                    if base_full_commit.commit
+                    else None,
+                ),
+            )
+            return False
         diff_coverage = Decimal(head_full_commit.report.totals.coverage) - Decimal(
             base_full_commit.report.totals.coverage
         )

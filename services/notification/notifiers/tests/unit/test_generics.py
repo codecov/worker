@@ -175,6 +175,24 @@ class TestStandardkNotifier(object):
         )
         assert notifier.should_notify_comparison(sample_comparison)
 
+    def test_should_notify_comparison_is_above_threshold_no_coverage(
+        self, sample_comparison
+    ):
+        actual_comparison = sample_comparison.get_filtered_comparison(
+            path_patterns=[".*txt"], flags=None
+        )
+        notifier = StandardNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "url": "https://example.com/myexample",
+                "threshold": 8.0,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        assert not notifier.should_notify_comparison(actual_comparison)
+
     @pytest.mark.asyncio
     async def test_notify(self, sample_comparison):
         notifier = SampleNotifierForTest(
