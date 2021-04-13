@@ -1053,3 +1053,36 @@ class TestUploadProcessorTask(object):
         )
         assert report.diff_totals == expected_diff_totals
         assert commit.state == "error"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "pr_value, expected_pr_result", [(1, 1), ("1", 1), ("true", None), ([], None)]
+    )
+    async def test_save_report_results_pr_values(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_repo_provider,
+        mock_storage,
+        pr_value,
+        expected_pr_result,
+    ):
+        commit = CommitFactory.create(pullid=None,)
+        dbsession.add(commit)
+        dbsession.flush()
+        report = mocker.Mock()
+        mock_repo_provider.get_commit_diff.return_value = {
+            "files": {"path/to/first.py": {}}
+        }
+        mock_report_service = mocker.Mock(save_report=mocker.Mock(return_value="aaaa"))
+        result = await UploadProcessorTask().save_report_results(
+            db_session=dbsession,
+            report_service=mock_report_service,
+            commit=commit,
+            repository=commit.repository,
+            report=report,
+            pr=pr_value,
+        )
+        assert "aaaa" == result
+        assert commit.pullid == expected_pr_result

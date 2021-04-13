@@ -335,7 +335,15 @@ class UploadProcessorTask(BaseCodecovTask):
                 exc_info=True,
             )
         if pr is not None:
-            commit.pullid = pr
+            try:
+                commit.pullid = int(pr)
+            except (ValueError, TypeError):
+                log.warning(
+                    "Cannot set PR value on commit",
+                    extra=dict(
+                        repoid=commit.repoid, commit=commit.commitid, pr_value=pr
+                    ),
+                )
         res = report_service.save_report(commit, report)
         db_session.commit()
         return res
