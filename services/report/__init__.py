@@ -485,7 +485,7 @@ class ReportService(object):
             upload_obj.state = "error"
 
     def save_report(self, commit: Commit, report: Report):
-        if len(report._chunks) > 2 * len(report._files):
+        if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:
             report.repack()
         archive_service = self.get_archive_service(commit.repository)
         db_session = commit.get_db_session()
