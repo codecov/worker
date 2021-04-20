@@ -203,7 +203,7 @@ class SyncReposTask(BaseCodecovTask):
     def upsert_repo(
         self, db_session, service, ownerid, repo_data, using_integration=None
     ):
-        log.info("Upserting repo", extra=dict(ownerid=ownerid, repo_data=repo_data))
+        log.debug("Upserting repo", extra=dict(ownerid=ownerid, repo_data=repo_data))
         repo = (
             db_session.query(Repository)
             .filter(
@@ -214,113 +214,105 @@ class SyncReposTask(BaseCodecovTask):
         )
 
         if repo:
+            # Found the exact repo. Let's just update
             repo.private = repo_data["private"]
             repo.language = repo_data["language"]
             repo.name = repo_data["name"]
             repo.deleted = False
             repo.updatestamp = datetime.now()
             repo_id = repo.repoid
-        else:
-            # repo was not found, could be a different owner
-            repo_id = (
-                db_session.query(Repository.repoid)
-                .join(Owner, Repository.ownerid == Owner.ownerid)
-                .filter(
-                    Repository.service_id == str(repo_data["service_id"]),
-                    Owner.service == service,
-                )
-                .first()
+            return repo_id
+        # repo was not found, could be a different owner
+        repo_correct_serviceid_wrong_owner = (
+            db_session.query(Repository)
+            .join(Owner, Repository.ownerid == Owner.ownerid)
+            .filter(
+                Repository.service_id == str(repo_data["service_id"]),
+                Owner.service == service,
             )
+            .first()
+        )
+        # repo was not found, could be a different service_id
+        repo_correct_owner_wrong_service_id = (
+            db_session.query(Repository)
+            .filter(
+                Repository.ownerid == ownerid, Repository.name == repo_data["name"],
+            )
+            .first()
+        )
+        if (
+            repo_correct_serviceid_wrong_owner is not None
+            and repo_correct_owner_wrong_service_id is not None
+        ):
+            # But it cannot be both different owner and different service_id
+            log.warning(
+                "There is a repo with the right service_id and a repo with the right slug, but they are not the same",
+                extra=dict(
+                    repo_data=repo_data,
+                    repo_correct_serviceid_wrong_owner=dict(
+                        repoid=repo_correct_serviceid_wrong_owner.repoid,
+                        slug=repo_correct_serviceid_wrong_owner.slug,
+                        service_id=repo_correct_serviceid_wrong_owner.service_id,
+                    ),
+                    repo_correct_owner_wrong_service_id=dict(
+                        repoid=repo_correct_owner_wrong_service_id.repoid,
+                        slug=repo_correct_owner_wrong_service_id.slug,
+                        service_id=repo_correct_owner_wrong_service_id.service_id,
+                    ),
+                ),
+            )
+            # We will have to assume the user has access to the service_id one, since
+            # the service_id is the Github identity value
+            return repo_correct_serviceid_wrong_owner.repoid
 
-            if repo_id:
-                # repo exists, but wrong owner
-                repo_wrong_owner = (
-                    db_session.query(Repository)
-                    .filter(Repository.repoid == repo_id)
-                    .first()
-                )
-
-                if repo_wrong_owner:
-                    log.info(
-                        "Upserting repo - wrong owner",
-                        extra=dict(ownerid=ownerid, repo_id=repo_wrong_owner.repoid),
-                    )
-                    repo_wrong_owner.ownerid = ownerid
-                    repo_wrong_owner.private = repo_data["private"]
-                    repo_wrong_owner.language = repo_data["language"]
-                    repo_wrong_owner.name = repo_data["name"]
-                    repo_wrong_owner.deleted = False
-                    repo_wrong_owner.updatestamp = datetime.now()
-                    repo_id = repo_wrong_owner.repoid
-                else:
-                    # the repository name exists, but wrong service_id
-                    repo_wrong_service_id = (
-                        db_session.query(Repository)
-                        .filter(
-                            Repository.ownerid == ownerid,
-                            Repository.name == repo_data["name"],
-                        )
-                        .first()
-                    )
-
-                    if repo_wrong_service_id:
-                        log.info(
-                            "Upserting repo - wrong service_id",
-                            extra=dict(
-                                ownerid=ownerid,
-                                repo_id=repo_wrong_service_id.service_id,
-                            ),
-                        )
-                        repo_wrong_service_id.service_id = repo_data["service_id"]
-                        repo_wrong_service_id.private = repo_data["private"]
-                        repo_id = repo_wrong_owner.repoid
-            else:
-                # could be correct owner but wrong service_id (repo deleted and recreated)
-                repo_correct_owner_wrong_service_id = (
-                    db_session.query(Repository)
-                    .filter(
-                        Repository.ownerid == ownerid,
-                        Repository.name == repo_data["name"],
-                    )
-                    .first()
-                )
-
-                if repo_correct_owner_wrong_service_id:
-                    log.info(
-                        "Upserting repo - correct owner, wrong service_id",
-                        extra=dict(
-                            ownerid=ownerid,
-                            repo_id=repo_correct_owner_wrong_service_id.service_id,
-                        ),
-                    )
-                    repo_correct_owner_wrong_service_id.service_id = str(
-                        repo_data["service_id"]
-                    )
-                    repo_correct_owner_wrong_service_id.name = repo_data["name"]
-                    repo_correct_owner_wrong_service_id.language = repo_data["language"]
-                    repo_correct_owner_wrong_service_id.private = repo_data["private"]
-                    repo_correct_owner_wrong_service_id.using_integration = (
-                        using_integration
-                    )
-                    repo_correct_owner_wrong_service_id.updatestamp = datetime.now()
-                    repo_id = repo_correct_owner_wrong_service_id.repoid
-                else:
-                    # repo does not exist, create it
-                    new_repo = Repository(
-                        ownerid=ownerid,
-                        service_id=str(repo_data["service_id"]),
-                        name=repo_data["name"],
-                        language=repo_data["language"],
-                        private=repo_data["private"],
-                        branch=repo_data["branch"],
-                        using_integration=using_integration,
-                    )
-                    db_session.add(new_repo)
-                    db_session.flush()
-
-                    repo_id = new_repo.repoid
-
-        return repo_id
+        if repo_correct_serviceid_wrong_owner:
+            repo_id = repo_correct_serviceid_wrong_owner.repoid
+            # repo exists, but wrong owner
+            repo_wrong_owner = repo_correct_serviceid_wrong_owner
+            log.info(
+                "Upserting repo - wrong owner",
+                extra=dict(ownerid=ownerid, repo_id=repo_wrong_owner.repoid),
+            )
+            repo_wrong_owner.ownerid = ownerid
+            repo_wrong_owner.private = repo_data["private"]
+            repo_wrong_owner.language = repo_data["language"]
+            repo_wrong_owner.name = repo_data["name"]
+            repo_wrong_owner.deleted = False
+            repo_wrong_owner.updatestamp = datetime.now()
+            db_session.flush()
+            return repo_wrong_owner.repoid
+        # could be correct owner but wrong service_id (repo deleted and recreated)
+        if repo_correct_owner_wrong_service_id:
+            log.info(
+                "Upserting repo - correct owner, wrong service_id",
+                extra=dict(
+                    ownerid=ownerid,
+                    repo_id=repo_correct_owner_wrong_service_id.service_id,
+                ),
+            )
+            repo_correct_owner_wrong_service_id.service_id = str(
+                repo_data["service_id"]
+            )
+            repo_correct_owner_wrong_service_id.name = repo_data["name"]
+            repo_correct_owner_wrong_service_id.language = repo_data["language"]
+            repo_correct_owner_wrong_service_id.private = repo_data["private"]
+            repo_correct_owner_wrong_service_id.using_integration = using_integration
+            repo_correct_owner_wrong_service_id.updatestamp = datetime.now()
+            db_session.flush()
+            return repo_correct_owner_wrong_service_id.repoid
+        # repo does not exist, create it
+        new_repo = Repository(
+            ownerid=ownerid,
+            service_id=str(repo_data["service_id"]),
+            name=repo_data["name"],
+            language=repo_data["language"],
+            private=repo_data["private"],
+            branch=repo_data["branch"],
+            using_integration=using_integration,
+        )
+        db_session.add(new_repo)
+        db_session.flush()
+        return new_repo.repoid
 
 
 RegisteredSyncReposTask = celery_app.register_task(SyncReposTask())
