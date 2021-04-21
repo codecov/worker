@@ -39,7 +39,7 @@ httpx==0.17.0             # via -r requirements.in, shared
 idna==2.10                # via requests, rfc3986, yarl
 jmespath==0.10.0          # via boto3, botocore
 kombu==4.6.11             # via celery
-lxml==4.6.2               # via -r requirements.in
+lxml==4.6.3               # via -r requirements.in
 minio==6.0.2              # via shared
 mock==4.0.3               # via -r requirements.in
 monotonic==1.5            # via analytics-python
@@ -85,7 +85,7 @@ text-unidecode==1.3       # via faker
 timestring==1.6.4         # via -r requirements.in
 tlslite-ng==0.7.6         # via shared
 tornado==6.1              # via shared
-urllib3==1.26.3           # via botocore, minio, requests, sentry-sdk
+urllib3==1.26.4           # via botocore, minio, requests, sentry-sdk
 vcrpy==4.1.1              # via -r requirements.in
 vine==1.3.0               # via amqp, celery
 voluptuous==0.12.1        # via shared
