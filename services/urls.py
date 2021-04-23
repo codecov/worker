@@ -1,6 +1,6 @@
 import os
 import re
-from urllib.parse import urlparse, parse_qs, urlunparse, quote_plus, urlencode
+from urllib.parse import urlparse, parse_qs, urlunparse, urlencode
 
 
 from database.models import Commit, Repository, Pull
