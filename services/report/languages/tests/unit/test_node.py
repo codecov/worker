@@ -73,6 +73,7 @@ class TestNodeProcessor(BaseTestCase):
         report_dict = loads(report_dict)
         archive = report.to_archive()
         expected_result = loads(self.readfile("node/node%s-result.json" % i))
+        assert expected_result["report"]["files"] == report_dict["files"]
         assert expected_result["report"] == report_dict
         assert expected_result["totals"] == totals_dict
         assert expected_result["archive"] == archive.split("<<<<< end_of_chunk >>>>>")
