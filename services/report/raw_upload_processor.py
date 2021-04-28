@@ -105,7 +105,7 @@ def process_raw_upload(
                 path_fixer=path_fixer_to_use,
             )
             if report:
-                temporary_report.merge(report, joined=joined)
+                temporary_report.merge(report, joined=True)
             path_fixer_to_use.log_abnormalities()
     if temporary_report:
         original_report.merge(temporary_report, joined=joined)
