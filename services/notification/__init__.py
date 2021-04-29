@@ -131,7 +131,7 @@ class NotificationService(object):
                 "Not sending notifications because the system is not properly licensed"
             )
             return []
-        log.info(
+        log.debug(
             f"Notifying with decoration type {self.decoration_type}",
             extra=dict(
                 head_commit=comparison.head.commit.commitid,

@@ -80,7 +80,7 @@ class StatusNotifier(AbstractBaseNotifier):
 
         location = "component" if component_behavior is not None else "default_rules"
 
-        log.info(
+        log.debug(
             "Determined status check behavior to apply",
             extra=dict(
                 location=location,
@@ -139,7 +139,7 @@ class StatusNotifier(AbstractBaseNotifier):
                         flag_coverage_was_uploaded = True
                         break
 
-        log.info(
+        log.debug(
             "Determined whether flag coverage on this status check was uploaded",
             extra=dict(
                 flag_coverage_was_uploaded=flag_coverage_was_uploaded,
@@ -196,7 +196,7 @@ class StatusNotifier(AbstractBaseNotifier):
                         and not self.flag_coverage_was_uploaded(comparison)
                     ):
                         # flag_coverage_not_uploaded_behavior can be either `pass` or `exclude`
-                        log.info(
+                        log.debug(
                             "Status check flag coverage was not uploaded, applying behavior based on YAML settings",
                             extra=dict(
                                 commit=comparison.head.commit.commitid,

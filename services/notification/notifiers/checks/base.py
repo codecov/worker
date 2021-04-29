@@ -79,7 +79,7 @@ class ChecksNotifier(StatusNotifier):
 
     async def notify(self, comparison: Comparison):
         if comparison.pull is None or ():
-            log.info(
+            log.debug(
                 "Faling back to commit_status: Not a pull request",
                 extra=dict(
                     notifier=self.name,
@@ -99,7 +99,7 @@ class ChecksNotifier(StatusNotifier):
             comparison.enriched_pull is None
             or comparison.enriched_pull.provider_pull is None
         ):
-            log.info(
+            log.debug(
                 "Faling back to commit_status: Pull request not in provider",
                 extra=dict(
                     notifier=self.name,
@@ -116,7 +116,7 @@ class ChecksNotifier(StatusNotifier):
                 data_received=None,
             )
         if comparison.pull.state != "open":
-            log.info(
+            log.debug(
                 "Faling back to commit_status: Pull request closed",
                 extra=dict(
                     notifier=self.name,

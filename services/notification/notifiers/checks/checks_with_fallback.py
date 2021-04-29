@@ -51,7 +51,7 @@ class ChecksWithFallback(AbstractBaseNotifier):
                 or res.explanation == "pull_request_not_in_provider"
                 or res.explanation == "pull_request_closed"
             ):
-                log.info(
+                log.debug(
                     "Couldn't use checks notifier, falling back to status notifiers",
                     extra=dict(
                         notifier=self._checks_notifier.name,
