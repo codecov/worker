@@ -204,7 +204,7 @@ workflows:
             - test
           filters:
             tags:
-              only: "/^production-[0-9]{4}-[0-9]{2}-[0-9]{4}/"
+              only: "/^prod(uction)?-[0-9]{4}-[0-9]{2}-[0-9]{3,4}/"
             branches:
               only: production
       - enterprise:
