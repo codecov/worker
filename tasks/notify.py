@@ -67,7 +67,7 @@ class NotifyTask(BaseCodecovTask):
         notify_lock_name = f"notify_lock_{repoid}_{commitid}"
         try:
             with redis_connection.lock(
-                notify_lock_name, timeout=60, blocking_timeout=10
+                notify_lock_name, timeout=80, blocking_timeout=10
             ):
                 return await self.run_async_within_lock(
                     db_session,
