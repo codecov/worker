@@ -174,7 +174,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         except TorngitServerFailureError:
             log.warning(
                 "Unable to send comments because the provider server was not reachable or errored",
-                extra=dict(service=self.repository.service,),
+                extra=dict(git_service=self.repository.service,),
                 exc_info=True,
             )
             return NotificationResult(

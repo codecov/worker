@@ -73,7 +73,7 @@ class SyncTeamsTask(BaseCodecovTask):
     def upsert_team(self, db_session, service, service_id, data):
         log.info(
             "Upserting team",
-            extra=dict(service=service, service_id=service_id, data=data),
+            extra=dict(git_service=service, service_id=service_id, data=data),
         )
         team = (
             db_session.query(Owner)
