@@ -180,7 +180,7 @@ class SyncReposTask(BaseCodecovTask):
     def upsert_owner(self, db_session, service, service_id, username):
         log.info(
             "Upserting owner",
-            extra=dict(service=service, service_id=service_id, username=username),
+            extra=dict(git_service=service, service_id=service_id, username=username),
         )
         owner = (
             db_session.query(Owner)
