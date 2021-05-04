@@ -178,7 +178,7 @@ def process_report(
     log.info(
         "File format could not be recognized",
         extra=dict(
-            report_filename=name, first_line=first_line, report_type=report_type
+            report_filename=name, first_line=first_line[:100], report_type=report_type
         ),
     )
     return None
