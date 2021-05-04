@@ -35,6 +35,22 @@ build:
 		--build-arg RELEASE_VERSION=${IMAGE_VERSION}
 
 # CIRCLECI
+# for portable builds to dockerhub, for use with local development and
+# acceptance testing.
+build.portable:
+	docker build -f dockerscripts/Dockerfile.circle . -t codecov/$(name)-portable \
+		--label "org.label-schema.build-date"="$(build_date)" \
+		--label "org.label-schema.name"="$(name)" \
+		--label "org.label-schema.vcs-ref"="$(sha)" \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}-${sha}" \
+		--label "org.vcs-branch"="$(branch)" \
+		--build-arg GH_ACCESS_TOKEN=${gh_access_token} \
+		--build-arg COMMIT_SHA="${sha}" \
+		--build-arg RELEASE_VERSION="${release_version}" \
+        --build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
+
+# CIRCLECI
 # job: enterprise
 # pulls intermediate dependencies image and adds app code.
 build-enterprise:

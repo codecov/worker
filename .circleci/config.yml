@@ -65,7 +65,7 @@ jobs:
     - run:
         name: Build Portable Container
         command: |
-          make build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+          make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           docker tag codecov/worker-portable codecov/worker:latest
           docker ps
   build-enterprise:
