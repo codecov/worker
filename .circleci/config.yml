@@ -75,7 +75,7 @@ jobs:
           -O \
           -L 'https://api.github.com/repos/codecov/autotest/contents/docker-compose-acceptance.yml'
           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-          docker-compose -f docker-compose-acceptance.yml up -d #run web stack
+          docker-compose -f docker-compose-acceptance.yml up -d
           sleep 15
           docker images
   build-enterprise:
