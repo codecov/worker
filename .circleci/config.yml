@@ -83,6 +83,7 @@ jobs:
           -L 'https://api.github.com/repos/codecov/autotest/contents/docker-compose-acceptance.yml'
           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
           cat docker-compose-acceptance.yml
+          echo "$GH_ACCESS_TOKEN"
           # docker-compose -f docker-compose-acceptance.yml up -d
           # sleep 15
           docker images
