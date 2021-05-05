@@ -191,6 +191,7 @@ workflows:
           filters:
             tags:
               only: /.*/
+          context: "Docker Push Context"
       - build-enterprise:
           requires:
             - build
