@@ -8,6 +8,7 @@ SEMANTIC_VERSION := `cat VERSION`
 IMAGE_VERSION := ${SEMANTIC_VERSION}-$(shell git rev-parse --short=7 HEAD)
 ssh_private_key = `cat ~/.ssh/id_rsa`
 VERSION := release-$(shell git rev-parse --short=7 HEAD)
+name ?= worker
 
 # CIRCLECI
 # job: build
@@ -48,7 +49,7 @@ build.portable:
 		--build-arg GH_ACCESS_TOKEN=${gh_access_token} \
 		--build-arg COMMIT_SHA="${sha}" \
 		--build-arg RELEASE_VERSION="${release_version}" \
-        --build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
+		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
 
 # CIRCLECI
 # job: enterprise
