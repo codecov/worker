@@ -82,8 +82,9 @@ jobs:
           -O \
           -L 'https://api.github.com/repos/codecov/autotest/contents/docker-compose-acceptance.yml'
           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-          docker-compose -f docker-compose-acceptance.yml up -d
-          sleep 15
+          cat docker-compose-acceptance.yml
+          # docker-compose -f docker-compose-acceptance.yml up -d
+          # sleep 15
           docker images
   build-enterprise:
     executor: codecov-deploy
@@ -193,6 +194,10 @@ workflows:
   build-test-deploy:
     jobs:
       - linter
+      - acceptance:
+          context: "DockerHub Push Context"
+          # requires:
+          #   - build
       - build:
           filters:
             tags:
@@ -213,10 +218,6 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - acceptance:
-          context: "DockerHub Push Context"
-          requires:
-            - build
       - staging:
           requires:
             - build
