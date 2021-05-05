@@ -63,8 +63,7 @@ jobs:
           make -f Makefile.circle build VERSION=$CIRCLE_TAG
           make -f Makefile.circle push
   acceptance:
-    machine: true 
-    # executor: codecov-deploy
+    executor: codecov-worker
     steps:
     - checkout
     - setup_remote_docker
