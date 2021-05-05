@@ -63,17 +63,16 @@ jobs:
           make -f Makefile.circle build VERSION=$CIRCLE_TAG
           make -f Makefile.circle push
   acceptance:
-    # executor: codecov-deploy
-    machine: true
+    executor: codecov-deploy
     steps:
     - checkout
-    # - setup_remote_docker
-    # - run:
-    #     <<: *gcloud_auth
-    # - run:
-    #     name: Build Portable Container
-    #     command: |
-    #       make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+    - setup_remote_docker
+    - run:
+        <<: *gcloud_auth
+    - run:
+        name: Build Portable Container
+        command: |
+          make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
     - run:
         name: Start acceptance testing containers
         command: |
@@ -194,10 +193,6 @@ workflows:
   build-test-deploy:
     jobs:
       - linter
-      - acceptance:
-          context: "DockerHub Push Context"
-          # requires:
-          #   - build
       - build:
           filters:
             tags:
@@ -218,6 +213,10 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - acceptance:
+          context: "DockerHub Push Context"
+          requires:
+            - build
       - staging:
           requires:
             - build
