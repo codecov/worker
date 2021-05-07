@@ -95,7 +95,6 @@ class UploadTask(BaseCodecovTask):
 
     def has_pending_jobs(self, redis_connection, repoid, commitid) -> bool:
         uploads_locations = [
-            f"testuploads/{repoid}/{commitid}",
             f"uploads/{repoid}/{commitid}",
         ]
         for uploads_list_key in uploads_locations:
@@ -119,7 +118,6 @@ class UploadTask(BaseCodecovTask):
             dict: A dict with the parameters to be passed
         """
         uploads_locations = [
-            f"testuploads/{repoid}/{commitid}",
             f"uploads/{repoid}/{commitid}",
         ]
         for uploads_list_key in uploads_locations:

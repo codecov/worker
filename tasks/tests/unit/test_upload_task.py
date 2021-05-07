@@ -97,7 +97,7 @@ class TestUploadTaskIntegration(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lists[
-            f"testuploads/{commit.repoid}/{commit.commitid}"
+            f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": True}
@@ -161,7 +161,7 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"testuploads/{commit.repoid}/{commit.commitid}"] = []
+        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = []
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {
             "was_setup": False,
@@ -209,7 +209,7 @@ class TestUploadTaskIntegration(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lists[
-            f"testuploads/{commit.repoid}/{commit.commitid}"
+            f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": True}
@@ -316,7 +316,7 @@ class TestUploadTaskIntegration(object):
         redis_queue = [{"build": "part1"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mock_redis.lists[
-            f"testuploads/{commit.repoid}/{commit.commitid}"
+            f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": True}
@@ -359,7 +359,7 @@ class TestUploadTaskIntegration(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lists[
-            f"testuploads/{commit.repoid}/{commit.commitid}"
+            f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": False}
@@ -406,7 +406,7 @@ class TestUploadTaskIntegration(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lists[
-            f"testuploads/{commit.repoid}/{commit.commitid}"
+            f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
         result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": False}
@@ -458,7 +458,7 @@ class TestUploadTaskIntegration(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lists[
-            f"testuploads/{commit.repoid}/{commit.commitid}"
+            f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
         result = await UploadTask().run_async_within_lock(
             dbsession, mock_redis, commit.repoid, commit.commitid
@@ -497,18 +497,13 @@ class TestUploadTaskUnit(object):
             {"url": "http://example.first.com"},
             {"and_another": "one"},
         ]
-        second_redis_queue = [{"args": "an_arg!"}]
-        mock_redis.lists["testuploads/542/commitid"] = [
-            json.dumps(x) for x in first_redis_queue
-        ]
         mock_redis.lists["uploads/542/commitid"] = [
-            json.dumps(x) for x in second_redis_queue
+            json.dumps(x) for x in first_redis_queue
         ]
         res = list(task.lists_of_arguments(mock_redis, 542, "commitid"))
         assert res == [
             {"url": "http://example.first.com"},
             {"and_another": "one"},
-            {"args": "an_arg!"},
         ]
 
     def test_normalize_upload_arguments_no_changes(
@@ -639,9 +634,7 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lock.side_effect = LockError()
-        mock_redis.keys[f"testuploads/{commit.repoid}/{commit.commitid}"] = [
-            "something"
-        ]
+        mock_redis.keys[f"uploads/{commit.repoid}/{commit.commitid}"] = ["something"]
         task = UploadTask()
         task.request.retries = 3
         result = await task.run_async(dbsession, commit.repoid, commit.commitid)
@@ -711,9 +704,7 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         mock_redis.lock.side_effect = LockError()
-        mock_redis.keys[f"testuploads/{commit.repoid}/{commit.commitid}"] = [
-            "something"
-        ]
+        mock_redis.keys[f"uploads/{commit.repoid}/{commit.commitid}"] = ["something"]
         task = UploadTask()
         task.request.retries = 0
         with pytest.raises(Retry):
