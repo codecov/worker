@@ -62,21 +62,17 @@ jobs:
           make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           make -f Makefile.circle build VERSION=$CIRCLE_TAG
           make -f Makefile.circle push
-  acceptance:
-    machine: true 
+  acceptance=build:
+    executor: codecov-deploy
     steps:
     - checkout
     - setup_remote_docker
-    # executor: codecov-deploy
-    # steps:
-    # - checkout
-    # - setup_remote_docker
-    # - run:
-    #     <<: *gcloud_auth
-    # - run:
-    #     name: Build Portable Container
-    #     command: |
-    #       make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+    - run:
+        <<: *gcloud_auth
+    - run:
+        name: Build Portable Container
+        command: |
+          make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
     - run:
         name: Get codecovio nginx configs
         command: |
@@ -84,6 +80,10 @@ jobs:
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
           https://api.github.com/repos/codecov/codecov.io/contents/nginx/dev.conf 
+  acceptance:
+    machine: true
+    steps:
+    - checkout
     - run:
         name: Start acceptance testing containers
         command: |
@@ -224,10 +224,12 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - acceptance=build:
+          context: "DockerHub Push Context"
       - acceptance:
           context: "DockerHub Push Context"
-          # requires:
-          #   - build
+          requires:
+            - acceptance-build
       - staging:
           requires:
             - build
