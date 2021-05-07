@@ -106,7 +106,7 @@ class NotificationService(object):
                     repository=self.repository,
                     title="comment",
                     notifier_yaml_settings=comment_yaml_field,
-                    notifier_site_settings=None,
+                    notifier_site_settings={},
                     current_yaml=self.current_yaml,
                     decoration_type=self.decoration_type,
                 )
