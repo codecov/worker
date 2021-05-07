@@ -77,16 +77,22 @@ jobs:
     #     command: |
     #       make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
     - run:
-        name: Start acceptance testing containers
+        name: Get codecovio nginx configs
         command: |
           ls
-          wget https://github.com/codecov/codecov.io/tree/master/nginx/dev.conf
+          wget --header "Authorization: token ghp_test5q3y3m6yyz93yguywd20mfp4t1rgbxhv" \
+          --header "Accept: application/vnd.github.v3.raw" \
+          -P ./nginx \
+          https://api.github.com/repos/codecov/codecov.io/contents/nginx/dev.conf
           ls
-          # set -x
-          # curl -H "Authorization: token $GH_ACCESS_TOKEN" \
-          # -H 'Accept: application/vnd.github.v3.raw' \
-          # -O \
-          # -L 'https://api.github.com/repos/codecov/autotest/contents/docker-compose-acceptance.yml'
+    - run:
+        name: Start acceptance testing containers
+        command: |
+          set -x
+          curl -H "Authorization: token $GH_ACCESS_TOKEN" \
+          -H 'Accept: application/vnd.github.v3.raw' \
+          -O \
+          -L 'https://api.github.com/repos/codecov/autotest/contents/docker-compose-acceptance.yml'
           # echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
           # docker-compose -f docker-compose-acceptance.yml up -d
           # sleep 15
