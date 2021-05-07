@@ -224,7 +224,7 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - acceptance=build:
+      - acceptance-build:
           context: "DockerHub Push Context"
       - acceptance:
           context: "DockerHub Push Context"
