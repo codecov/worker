@@ -16,7 +16,7 @@ class SalesforceProcessor(BaseLanguageProcessor):
 def from_json(json, fix, ignored_lines, sessionid):
     report = Report()
     for obj in json:
-        if obj.get("name") and obj.get("lines"):
+        if obj and obj.get("name") and obj.get("lines"):
             fn = fix(obj["name"] + (".cls" if "." not in obj["name"] else ""))
             if fn is None:
                 continue
