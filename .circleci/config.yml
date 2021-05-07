@@ -80,10 +80,10 @@ jobs:
         name: Get codecovio nginx configs
         command: |
           ls
-          wget --header "Authorization: $GH_ACCESS_TOKEN" \
+          wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
-          https://api.github.com/repos/codecov/codecov.io/contents/nginx/dev.conf
+          https://api.github.com/repos/codecov/codecov.io/contents/nginx/dev.conf 
           ls
           cat nginx/dev.conf
     - run:
