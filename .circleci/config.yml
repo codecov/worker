@@ -80,11 +80,12 @@ jobs:
         name: Get codecovio nginx configs
         command: |
           ls
-          wget --header "Authorization: token ghp_test5q3y3m6yyz93yguywd20mfp4t1rgbxhv" \
+          wget --header "Authorization: $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
           https://api.github.com/repos/codecov/codecov.io/contents/nginx/dev.conf
           ls
+          cat nginx/dev.conf
     - run:
         name: Start acceptance testing containers
         command: |
