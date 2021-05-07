@@ -66,6 +66,7 @@ jobs:
     machine: true 
     steps:
     - checkout
+    - setup_remote_docker
     # executor: codecov-deploy
     # steps:
     # - checkout
@@ -225,8 +226,8 @@ workflows:
               only: /.*/
       - acceptance:
           context: "DockerHub Push Context"
-          requires:
-            - build
+          # requires:
+          #   - build
       - staging:
           requires:
             - build
