@@ -62,7 +62,7 @@ jobs:
           make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           make -f Makefile.circle build VERSION=$CIRCLE_TAG
           make -f Makefile.circle push
-  acceptance-build:
+  acceptance-portable-image:
     executor: codecov-deploy
     steps:
     - checkout
@@ -83,14 +83,10 @@ jobs:
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
-          https://api.github.com/repos/codecov/codecov.io/contents/nginx/dev.conf 
-          ls
-          ls nginx
+          https://api.github.com/repos/codecov/codecov.io/contents/nginx/dev.conf
     - run:
         name: Start acceptance testing containers
         command: |
-          ls
-          ls nginx
           set -x
           curl -H "Authorization: token $GH_ACCESS_TOKEN" \
           -H 'Accept: application/vnd.github.v3.raw' \
@@ -100,6 +96,21 @@ jobs:
           docker-compose -f docker-compose-acceptance.yml up -d
           sleep 15
           docker images
+    - run:
+        name: Python standard coverage comparison
+        command: |
+          wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+          --header "Accept: application/vnd.github.v3.raw" \
+          -P ./python_standard \
+          https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/coverage.xml
+
+          wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+          --header "Accept: application/vnd.github.v3.raw" \
+          -P ./python_standard \
+          https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt
+          ls
+          ls python_standard
+
   build-enterprise:
     executor: codecov-deploy
     steps:
@@ -228,12 +239,12 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - acceptance-build:
+      - acceptance-portable-image:
           context: "DockerHub Push Context"
       - acceptance:
           context: "DockerHub Push Context"
           requires:
-            - acceptance-build
+            - acceptance-portable-image
       - staging:
           requires:
             - build
