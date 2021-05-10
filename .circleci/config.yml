@@ -111,6 +111,20 @@ jobs:
           ls
           ls python_standard
 
+          # bash <(curl -s http://localhost:80/bash) -C `cat python_standard/SHA.txt` -t some_token
+
+          # localCoverage=$(curl https://localhost:80/api/gh/codecov/python-standard/commit/`cat python_standard/SHA.txt` | \
+          # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+
+          # prodCoverage=$(curl https://codecov.io/api/gh/codecov/python-standard/commit/`cat python_standard/SHA.txt` | \
+          # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+
+          # if [[ $localCoverage != $prodCoverage ]]
+          # then
+          #     echo "Error :("
+          # fi
+
+
   build-enterprise:
     executor: codecov-deploy
     steps:
