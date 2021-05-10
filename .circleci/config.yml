@@ -113,6 +113,8 @@ jobs:
 
           # bash <(curl -s http://localhost:80/bash) -C `cat python_standard/SHA.txt` -t some_token
 
+          # sleep 15
+
           # localCoverage=$(curl https://localhost:80/api/gh/codecov/python-standard/commit/`cat python_standard/SHA.txt` | \
           # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
 
