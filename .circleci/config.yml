@@ -118,7 +118,7 @@ jobs:
           ls
           ls python_standard
 
-          bash <(curl -s http://localhost:80/bash) -C `cat python_standard/SHA.txt` -t codecov-ci-upload-token -r codecov/python-standard
+          bash <(curl -s http://localhost:80/bash) -C `cat python_standard/SHA.txt` -t gh -r codecov/python-standard
 
           # sleep 15
 
