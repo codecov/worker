@@ -98,7 +98,7 @@ jobs:
           docker-compose -f docker-compose-acceptance.yml up -d
           sleep 15
           docker images
-          docker logs -f codecov/worker:latest
+          # docker logs -f codecov/worker:latest
     - run:
         name: Python standard coverage comparison
         command: |
