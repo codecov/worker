@@ -115,19 +115,18 @@ jobs:
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./python_standard \
           https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt)
-          echo $PY_SHA
-          ls python_standard
 
           bash <(curl -s http://localhost:80/bash) -C $PY_SHA -t gh -r codecov/python-standard
 
           sleep 15
 
-          localCoverage=$(curl https://localhost:80/api/gh/codecov/python-standard/commit/#PY_SHA | \
-          python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-          echo $localCoverage
-
-          # prodCoverage=$(curl https://codecov.io/api/gh/codecov/python-standard/commit/#PY_SHA | \
+          # localCoverage=$(curl https://localhost:80/api/gh/codecov/python-standard/commit/#PY_SHA | \
           # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+          # echo $localCoverage
+
+          prodCoverage=$(curl https://codecov.io/api/gh/codecov/python-standard/commit/#PY_SHA | \
+          python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+          echo $prodCoverage
 
           # if [[ $localCoverage != $prodCoverage ]]
           # then
