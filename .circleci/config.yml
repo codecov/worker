@@ -78,7 +78,6 @@ jobs:
           docker tag codecov/worker codecov/worker:latest
           docker ps
           docker images
-          # docker logs -f codecov/worker:latest
   acceptance:
     machine: true
     steps:
@@ -90,11 +89,11 @@ jobs:
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
           https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
+          docker images
+          docker ps
     - run:
         name: Start acceptance testing containers
         command: |
-          docker images
-          docker ps
           set -x
           curl -H "Authorization: token $GH_ACCESS_TOKEN" \
           -H 'Accept: application/vnd.github.v3.raw' \
