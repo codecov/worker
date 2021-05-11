@@ -120,9 +120,9 @@ jobs:
 
           sleep 15
 
-          # localCoverage=$(curl https://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA | \
-          # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-          # echo $localCoverage
+          localCoverage=$(curl https://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA | \
+          python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+          echo $localCoverage
 
           prodCoverage=$(curl https://codecov.io/api/gh/codecov/python-standard/commit/$PY_SHA | \
           python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
