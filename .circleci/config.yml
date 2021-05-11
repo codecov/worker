@@ -74,7 +74,7 @@ jobs:
         command: |
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           docker images
-          docker logs -f codecov/worker:latest
+          # docker logs -f codecov/worker:latest
   acceptance:
     machine: true
     steps:
