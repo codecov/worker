@@ -99,6 +99,13 @@ jobs:
     - run:
         name: Python standard coverage comparison
         command: |
+          # Script to call shell file that kicks off
+          # wget -O - 'https://api.github.com/repos/autotest/contents/worker/python_standard.sh' \
+          # --header "Authorization: token $GH_ACCESS_TOKEN" \
+          # --header "Accept: application/vnd.github.v3.raw" \
+          # | bash
+
+          # This is what should go in the python_standard.sh
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./python_standard \
@@ -111,7 +118,7 @@ jobs:
           ls
           ls python_standard
 
-          # bash <(curl -s http://localhost:80/bash) -C `cat python_standard/SHA.txt` -t some_token
+          bash <(curl -s http://localhost:80/bash) -C `cat python_standard/SHA.txt` -t codecov-ci-upload-token -r codecov/python-standard
 
           # sleep 15
 
