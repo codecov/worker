@@ -83,7 +83,7 @@ jobs:
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
-          https://api.github.com/repos/codecov/codecov.io/contents/nginx/dev.conf
+          https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
     - run:
         name: Start acceptance testing containers
         command: |
