@@ -73,6 +73,8 @@ jobs:
         name: Build Portable Container
         command: |
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+          docker images
+          docker logs -f codecov/worker:latest
   acceptance:
     machine: true
     steps:
@@ -96,6 +98,7 @@ jobs:
           docker-compose -f docker-compose-acceptance.yml up -d
           sleep 15
           docker images
+          docker logs -f codecov/worker:latest
     - run:
         name: Python standard coverage comparison
         command: |
@@ -120,8 +123,9 @@ jobs:
 
           sleep 15
 
-          localCoverage=$(curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA | \
-          python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+          localCoverage=$(curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA
+          # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+          docker logs -f codecov/worker:latest
           echo $localCoverage
 
           prodCoverage=$(curl https://codecov.io/api/gh/codecov/python-standard/commit/$PY_SHA | \

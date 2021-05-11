@@ -39,7 +39,7 @@ build:
 # for portable builds to dockerhub, for use with local development and
 # acceptance testing.
 build.portable:
-	docker build -f dockerscripts/Dockerfile.circle . -t codecov/$(name) \
+	docker build -f dockerscripts/Dockerfile.circle . -t codecov/$(name):latest \
 		--label "org.label-schema.build-date"="$(build_date)" \
 		--label "org.label-schema.name"="$(name)" \
 		--label "org.label-schema.vcs-ref"="$(sha)" \
