@@ -79,9 +79,12 @@ jobs:
           docker ps
           docker images
   acceptance:
-    machine: true
+    executor: codecov-deploy
     steps:
     - checkout
+    - setup_remote_docker
+    - run:
+        <<: *gcloud_auth
     - run:
         name: Get codecovio nginx configs
         command: |
