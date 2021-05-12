@@ -67,7 +67,7 @@ jobs:
     machine: true
     steps:
     - checkout
-    # - setup_remote_docker
+    - setup_remote_docker
     # - run:
     #     <<: *gcloud_auth
     - run:
