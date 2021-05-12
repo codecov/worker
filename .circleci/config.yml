@@ -63,22 +63,18 @@ jobs:
           make -f Makefile.circle build VERSION=$CIRCLE_TAG
           make -f Makefile.circle push
   acceptance-portable-image:
-    # executor: codecov-deploy
-    machine: true
+    executor: codecov-deploy
     steps:
     - checkout
-    # - setup_remote_docker
+    - setup_remote_docker
     - run:
         <<: *gcloud_auth
     - run:
         name: Build Portable Container
         command: |
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
-          docker ps
-          docker images
           docker tag codecov/worker codecov/worker:latest
-          docker ps
-          docker images
+
   acceptance:
     machine: true
     steps:
@@ -105,31 +101,32 @@ jobs:
           docker images
           docker ps
           # docker logs -f codecov/worker:latest
-    # - run:
-    #     name: Python standard coverage comparison
-    #     command: |
-    #       # Script to call shell file that kicks off
-    #       # wget -O - 'https://api.github.com/repos/autotest/contents/worker/python_standard.sh' \
-    #       # --header "Authorization: token $GH_ACCESS_TOKEN" \
-    #       # --header "Accept: application/vnd.github.v3.raw" \
-    #       # | bash
+    - run:
+        name: Python standard coverage comparison
+        command: |
+          # Script to call shell file that kicks off
+          # wget -O - 'https://api.github.com/repos/autotest/contents/worker/python_standard.sh' \
+          # --header "Authorization: token $GH_ACCESS_TOKEN" \
+          # --header "Accept: application/vnd.github.v3.raw" \
+          # | bash
 
-    #       # This is what should go in the python_standard.sh
-    #       wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-    #       --header "Accept: application/vnd.github.v3.raw" \
-    #       -P ./python_standard \
-    #       https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/coverage.xml
+          # This is what should go in the python_standard.sh
+          wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+          --header "Accept: application/vnd.github.v3.raw" \
+          -P ./python_standard \
+          https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/coverage.xml
 
-    #       PY_SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
-    #       --header "Accept: application/vnd.github.v3.raw" \
-    #       -P ./python_standard \
-    #       https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt)
+          PY_SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
+          --header "Accept: application/vnd.github.v3.raw" \
+          -P ./python_standard \
+          https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt)
 
-    #       bash <(curl -s http://localhost:80/bash) -C $PY_SHA -t gh -r codecov/python-standard
+          bash <(curl -s http://localhost:80/bash) -C $PY_SHA -t gh -r codecov/python-standard
+          echo $PY_SHA
+          ls python-standard
+          sleep 15
 
-    #       sleep 15
-
-    #       localCoverage=$(curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA)
+          localCoverage=$(curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA)
     #       # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
     #       # docker logs -f codecov/worker:latest
     #       echo $localCoverage
