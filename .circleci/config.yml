@@ -79,10 +79,9 @@ jobs:
           # sleep 20
           # ls
           # ls workerImage
-          mkdir -p workspace
-          echo "Hello world!" > workspace/echo-output
+          echo "Hello world!" > echo-output
     - persist_to_workspace:
-        root: workspace
+        root: .
         paths:
           - echo-output
 
@@ -92,16 +91,16 @@ jobs:
     - checkout
     - attach_workspace:
           # Must be absolute path or relative path from working_directory
-          at: /work/workspace
+          at: .
     - run:
         name: Get codecovio nginx configs
         command: |
-          if [[ `cat /work/workspace/echo-output` == "Hello, world!" ]]; then
+          ls
+          if [[ `cat echo-output` == "Hello, world!" ]]; then
             echo "It worked!";
           else
             echo "Nope!"; exit 1
           fi
-          ls
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
