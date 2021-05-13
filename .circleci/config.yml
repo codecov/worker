@@ -74,16 +74,14 @@ jobs:
         command: |
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           docker tag codecov/worker codecov/worker:latest
-          # mkdir workerImage
-          # docker save codecov/worker:latest > workerImage/worker.tar
-          # sleep 20
-          # ls
-          # ls workerImage
-          echo "Hello, world!" > echo-output
+          docker save codecov/worker:latest > workerPortableImage.tar
+          sleep 20
+          ls
+          ls workerPortableImage
     - persist_to_workspace:
         root: .
         paths:
-          - echo-output
+          - workerPortableImage
 
   acceptance:
     machine: true
@@ -96,19 +94,18 @@ jobs:
         name: Get codecovio nginx configs
         command: |
           ls
-          if [[ `cat echo-output` == "Hello, world!" ]]; then
-            echo "It worked!";
-          else
-            echo "Nope!"; exit 1
-          fi
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
           https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
           docker images
+          docker load < workerPortableImage.tar
+          sleep 15
+          docker images
     - run:
         name: Start acceptance testing containers
         command: |
+
           set -x
           curl -H "Authorization: token $GH_ACCESS_TOKEN" \
           -H 'Accept: application/vnd.github.v3.raw' \
