@@ -75,7 +75,7 @@ jobs:
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           docker tag codecov/worker codecov/worker:latest
           docker save codecov/worker:latest > workerPortableImage.tar
-          sleep 20
+          sleep 10
           ls
     - persist_to_workspace:
         root: .
@@ -92,19 +92,19 @@ jobs:
     - run:
         name: Get codecovio nginx configs
         command: |
-          ls
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
           https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
-          docker images
+    - run:
+        name: Run Portable Image
+        command: |
           docker load < workerPortableImage.tar
           sleep 15
           docker images
     - run:
         name: Start acceptance testing containers
         command: |
-
           set -x
           curl -H "Authorization: token $GH_ACCESS_TOKEN" \
           -H 'Accept: application/vnd.github.v3.raw' \
@@ -139,7 +139,7 @@ jobs:
           bash <(curl -s http://localhost:80/bash) -C $PY_SHA -t gh -r codecov/python-standard
           echo $PY_SHA
           ls python_standard
-          sleep 60
+          sleep 15
 
           curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA
           docker logs project_worker_1
