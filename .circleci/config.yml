@@ -90,16 +90,16 @@ jobs:
     machine: true
     steps:
     - checkout
-    # - attach_workspace:
-    #   at: /work/workspace
+    - attach_workspace:
+      at: /work/workspace
     - run:
         name: Get codecovio nginx configs
         command: |
-          # if [[ `cat /work/workspace/echo-output` == "Hello, world!" ]]; then
-          #   echo "It worked!";
-          # else
-          #   echo "Nope!"; exit 1
-          # fi
+          if [[ `cat /work/workspace/echo-output` == "Hello, world!" ]]; then
+            echo "It worked!";
+          else
+            echo "Nope!"; exit 1
+          fi
           ls
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
