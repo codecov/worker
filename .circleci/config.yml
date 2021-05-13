@@ -289,12 +289,12 @@ workflows:
           filters:
             tags:
               only: /.*/
-      # - acceptance-portable-image:
-      #     context: "DockerHub Push Context"
+      - acceptance-portable-image:
+          context: "DockerHub Push Context"
       - acceptance:
           context: "DockerHub Push Context"
-          # requires:
-          #   - acceptance-portable-image
+          requires:
+            - acceptance-portable-image
       - staging:
           requires:
             - build
