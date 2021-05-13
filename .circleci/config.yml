@@ -75,6 +75,7 @@ jobs:
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           docker tag codecov/worker codecov/worker:latest
           docker save codecov/worker:latest > workerPortableImage.tar
+          # sleep 10
     - persist_to_workspace:
         root: .
         paths:
@@ -132,10 +133,11 @@ jobs:
           -P ./python_standard \
           https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt)
 
-          bash <(curl -s http://localhost:80/bash) -C $PY_SHA -t gh -r codecov/python-standard
+          bash <(curl -s http://localhost:80/bash) -f python_standard/coverage.xml -C $PY_SHA -t gh -r codecov/python-standard
           echo $PY_SHA
           ls python_standard
-          sleep 15
+          # wait for processing time
+          sleep 20
 
           curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA
           docker logs project_worker_1
