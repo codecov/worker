@@ -74,14 +74,33 @@ jobs:
         command: |
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           docker tag codecov/worker codecov/worker:latest
+          # mkdir workerImage
+          # docker save codecov/worker:latest > workerImage/worker.tar
+          # sleep 20
+          # ls
+          # ls workerImage
+          mkdir -p workspace
+          echo "Hello world!" > workspace/echo-output
+    - persist_to_workspace:
+      root: workspace
+      paths:
+        - echo-output
 
   acceptance:
     machine: true
     steps:
     - checkout
+    - attach_workspace:
+      at: /work/workspace
     - run:
         name: Get codecovio nginx configs
         command: |
+          if [[ `cat /work/workspace/echo-output` == "Hello, world!" ]]; then
+            echo "It worked!";
+          else
+            echo "Nope!"; exit 1
+          fi
+          ls
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
@@ -270,12 +289,12 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - acceptance-portable-image:
-          context: "DockerHub Push Context"
+      # - acceptance-portable-image:
+      #     context: "DockerHub Push Context"
       - acceptance:
           context: "DockerHub Push Context"
-          requires:
-            - acceptance-portable-image
+          # requires:
+          #   - acceptance-portable-image
       - staging:
           requires:
             - build
