@@ -80,7 +80,7 @@ jobs:
     - persist_to_workspace:
         root: .
         paths:
-          - workerPortableImage
+          - workerPortableImage.tar
 
   acceptance:
     machine: true
