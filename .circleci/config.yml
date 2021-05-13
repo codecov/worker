@@ -75,7 +75,7 @@ jobs:
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           docker tag codecov/worker codecov/worker:latest
           docker save codecov/worker:latest > workerPortableImage.tar
-          sleep 10
+          # sleep 10
           ls
     - persist_to_workspace:
         root: .
@@ -100,7 +100,7 @@ jobs:
         name: Run Portable Image
         command: |
           docker load < workerPortableImage.tar
-          sleep 15
+          # sleep 20
           docker images
     - run:
         name: Start acceptance testing containers
