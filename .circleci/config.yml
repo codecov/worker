@@ -91,7 +91,8 @@ jobs:
     steps:
     - checkout
     - attach_workspace:
-      at: /work/workspace
+          # Must be absolute path or relative path from working_directory
+          at: /work/workspace
     - run:
         name: Get codecovio nginx configs
         command: |
