@@ -79,7 +79,7 @@ jobs:
           # sleep 20
           # ls
           # ls workerImage
-          echo "Hello world!" > echo-output
+          echo "Hello, world!" > echo-output
     - persist_to_workspace:
         root: .
         paths:
