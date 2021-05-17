@@ -5,7 +5,7 @@ from io import BytesIO
 
 from services.yaml import read_yaml_field
 from shared.reports.resources import Report, ReportFile
-from shared.utils.merge import partials_to_line
+from shared.utils.merge import partials_to_line, LineType, line_type
 from shared.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
 
@@ -17,10 +17,16 @@ class GoProcessor(BaseLanguageProcessor):
     def process(
         self, name, content: bytes, path_fixer, ignored_lines, sessionid, repo_yaml
     ):
-        return from_txt(content, path_fixer, ignored_lines, sessionid, repo_yaml)
+        return from_txt(
+            content,
+            path_fixer,
+            ignored_lines,
+            sessionid,
+            read_yaml_field(repo_yaml, ("parsers", "go")) or {},
+        )
 
 
-def from_txt(string: bytes, fix, ignored_lines, sessionid, yaml):
+def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
     """
     mode: count
     github.com/codecov/sample_go/sample_go.go:7.14,9.2 1 1
@@ -111,16 +117,15 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, yaml):
             partials = combine_partials(partials)
             if partials:
                 cov = partials_to_line(partials)
-                if partials[0] == [0, None, cov] or partials[0] == [None, None, cov]:
-                    _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
-                else:
-                    # partials
-                    _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
+                cov_to_use = cov
             else:
-                _file[ln] = ReportLine.create(
-                    best_in_partials, None, [[sessionid, best_in_partials]]
-                )
-
+                cov_to_use = best_in_partials
+            if (
+                go_parser_settings.get("partials_as_hits", False)
+                and line_type(cov_to_use) == LineType.partial
+            ):
+                cov_to_use = 1
+            _file[ln] = ReportLine.create(cov_to_use, None, [[sessionid, cov_to_use]])
         report.append(_file)
 
     return report
