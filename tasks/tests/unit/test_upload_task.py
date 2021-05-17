@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from celery.exceptions import Retry
 from shared.yaml import UserYaml
 
@@ -171,6 +171,132 @@ class TestUploadTaskIntegration(object):
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
+
+    @pytest.mark.asyncio
+    async def test_upload_task_upload_processing_delay_not_enough_delay(
+        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
+    ):
+        mock_possibly_update_commit_from_provider_info = mocker.patch.object(
+            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        )
+        mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
+        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
+        mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
+        mocked_3 = mocker.patch.object(UploadTask, "app")
+        mocked_3.send_task.return_value = True
+        redis_queue = [
+            {"build": "part1", "url": "someurl1"},
+            {"build": "part2", "url": "someurl2"},
+        ]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+
+        commit = CommitFactory.create(
+            parent_commit_id=None,
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="ThiagoCodecov",
+            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+            repository__name="example-python",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
+        mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
+            datetime.utcnow() - timedelta(seconds=10)
+        ).timestamp()
+        with pytest.raises(Retry):
+            await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
+        assert commit.message == ""
+        assert commit.parent_commit_id is None
+        assert mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
+        assert not mock_possibly_update_commit_from_provider_info.called
+
+    @pytest.mark.asyncio
+    async def test_upload_task_upload_processing_delay_enough_delay(
+        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
+    ):
+        mocker.patch.object(
+            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        )
+        mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
+        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
+        commit = CommitFactory.create(
+            parent_commit_id=None,
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="ThiagoCodecov",
+            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+            repository__name="example-python",
+        )
+        mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
+            datetime.utcnow() - timedelta(seconds=1200)
+        ).timestamp()
+        mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
+        mocked_3 = mocker.patch.object(UploadTask, "app")
+        mocker.patch.object(
+            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        )
+        mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
+        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
+        mocked_chain = mocker.patch("tasks.upload.chain")
+        mocked_3.send_task.return_value = True
+        redis_queue = [
+            {"build": "part1", "url": "someurl1"},
+            {"build": "part2", "url": "someurl2"},
+        ]
+        dbsession.add(commit)
+        dbsession.flush()
+        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = [
+            json.dumps(x) for x in redis_queue
+        ]
+        result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
+        assert result == {"was_setup": True, "was_updated": True}
+        assert commit.message == ""
+        assert commit.parent_commit_id is None
+        assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
+        mocked_chain.assert_called_with(mocker.ANY, mocker.ANY)
+
+    @pytest.mark.asyncio
+    async def test_upload_task_upload_processing_delay_upload_is_none(
+        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
+    ):
+        mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
+        mocked_3 = mocker.patch.object(UploadTask, "app")
+        mocker.patch.object(
+            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        )
+        mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
+        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
+        mocked_chain = mocker.patch("tasks.upload.chain")
+        mocked_3.send_task.return_value = True
+        redis_queue = [
+            {"build": "part1", "url": "someurl1"},
+            {"build": "part2", "url": "someurl2"},
+        ]
+        commit = CommitFactory.create(
+            parent_commit_id=None,
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="ThiagoCodecov",
+            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+            repository__name="example-python",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = [
+            json.dumps(x) for x in redis_queue
+        ]
+        result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
+        assert result == {"was_setup": True, "was_updated": True}
+        assert commit.message == ""
+        assert commit.parent_commit_id is None
+        assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
+        mocked_chain.assert_called_with(mocker.ANY, mocker.ANY)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_multiple_processors(
