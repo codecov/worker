@@ -203,6 +203,7 @@ class UploadTask(BaseCodecovTask):
             }
         upload_processing_delay = get_config("setup", "upload_processing_delay")
         if upload_processing_delay is not None:
+            upload_processing_delay = int(upload_processing_delay)
             last_upload_timestamp = redis_connection.get(
                 f"latest_upload/{repoid}/{commitid}"
             )
@@ -216,7 +217,7 @@ class UploadTask(BaseCodecovTask):
                         "Retrying due to very recent uploads",
                         extra=dict(repoid=repoid, commit=commitid),
                     )
-                    self.retry()
+                    self.retry(countdown=max(30, upload_processing_delay))
         commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
