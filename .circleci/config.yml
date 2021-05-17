@@ -75,7 +75,7 @@ jobs:
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           docker tag codecov/worker codecov/worker:latest
           docker save codecov/worker:latest > workerPortableImage.tar
-          # sleep 10
+          # sleep 10 
     - persist_to_workspace:
         root: .
         paths:
