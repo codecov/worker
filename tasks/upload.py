@@ -2,10 +2,12 @@ import logging
 import re
 from json import loads
 from typing import Mapping, Any
+from datetime import datetime, timedelta
 
 from celery import chain
 from redis.exceptions import LockError
 from shared.yaml import UserYaml
+from shared.config import get_config
 from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitClientError,
@@ -199,6 +201,22 @@ class UploadTask(BaseCodecovTask):
                 "was_updated": False,
                 "tasks_were_scheduled": False,
             }
+        upload_processing_delay = get_config("setup", "upload_processing_delay")
+        if upload_processing_delay is not None:
+            last_upload_timestamp = redis_connection.get(
+                f"latest_upload/{repoid}/{commitid}"
+            )
+            if last_upload_timestamp is not None:
+                last_upload = datetime.fromtimestamp(last_upload_timestamp)
+                if (
+                    datetime.utcnow() - timedelta(seconds=upload_processing_delay)
+                    < last_upload
+                ):
+                    log.info(
+                        "Retrying due to very recent uploads",
+                        extra=dict(repoid=repoid, commit=commitid),
+                    )
+                    self.retry()
         commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
