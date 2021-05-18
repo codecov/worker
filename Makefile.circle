@@ -8,7 +8,7 @@ SEMANTIC_VERSION := `cat VERSION`
 IMAGE_VERSION := ${SEMANTIC_VERSION}-$(shell git rev-parse --short=7 HEAD)
 ssh_private_key = `cat ~/.ssh/id_rsa`
 VERSION := release-$(shell git rev-parse --short=7 HEAD)
-
+BUILD_DATE ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
 # CIRCLECI
 # job: build
 # builds an intermediate image with dependencies if there were changes to
@@ -44,6 +44,11 @@ build-enterprise:
 		-t ${ENTERPRISE_GCR_REPO}:latest \
 		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
 		--build-arg RELEASE_VERSION=${IMAGE_VERSION}
+		--label "org.label-schema.build-date"="$(BUILD_DATE)" \
+		--label "org.label-schema.name"="Self-Hosted Worker" \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${IMAGE_VERSION}" \
+		--squash
 
 # CIRCLECI
 # job: test
