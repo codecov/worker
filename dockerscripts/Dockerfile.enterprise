@@ -1,4 +1,6 @@
-FROM        codecov/baseworker as build
+ARG         REQUIREMENTS_IMAGE
+
+FROM        $REQUIREMENTS_IMAGE as build
 
 # Official Python base image is needed or some applications will segfault.
 # PyInstaller needs zlib-dev, gcc, libc-dev, and musl-dev
@@ -31,7 +33,7 @@ RUN         chmod a+x /pyinstaller/*
 
 RUN         ["/pyinstaller/package.sh"]
 
-FROM        alpine:3.12
+FROM        alpine:3.13
 
 RUN         addgroup -S application && adduser -S codecov -G application
 RUN         rm -rf /home/codecov
