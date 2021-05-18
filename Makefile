@@ -21,14 +21,25 @@ build.enterprise:
 	$(MAKE) build.base
 	docker build -f dockerscripts/Dockerfile.enterprise . -t codecov/enterprise-local-worker:${release_version} \
 		--build-arg REQUIREMENTS_IMAGE=codecov/baseworker \
-		--build-arg RELEASE_VERSION="${release_version}"
+		--build-arg RELEASE_VERSION="${release_version}" \
+		--label "org.label-schema.build-date"="$(build_date)" \
+		--label "org.label-schema.name"="Self-Hosted Worker" \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}" \
+		--squash
 
 # for building and pushing private images to dockerhub. This is useful if you 
 # need to push a test image for enterprise to test in sandbox deployments.
 build.enterprise-private: 
 	docker build -f dockerscripts/Dockerfile.enterprise . -t codecov/worker-private:${release_version}-${sha} \
 		--build-arg REQUIREMENTS_IMAGE=codecov/baseworker \
-		--build-arg RELEASE_VERSION="${release_version}"
+		--build-arg RELEASE_VERSION="${release_version}" \
+		--label "org.label-schema.build-date"="$(build_date)" \
+		--label "org.label-schema.name"="Self-Hosted Worker Private" \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}-${sha}" \
+		--label "org.vcs-branch"="$(branch)" \
+		--squash
 
 # for portable builds to dockerhub, for use with local development and
 # acceptance testing.

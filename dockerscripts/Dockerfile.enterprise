@@ -1,19 +1,17 @@
-ARG         REQUIREMENTS_IMAGE
-
-FROM        $REQUIREMENTS_IMAGE as build
+FROM        codecov/baseworker as build
 
 # Official Python base image is needed or some applications will segfault.
 # PyInstaller needs zlib-dev, gcc, libc-dev, and musl-dev
 RUN         apk --update --no-cache add \
-            zlib-dev \
-            musl-dev \
-            libc-dev \
-            libffi-dev \
-            gcc \
-            g++ \
-            git \
-            pwgen \
-            && pip install --upgrade pip
+    zlib-dev \
+    musl-dev \
+    libc-dev \
+    libffi-dev \
+    gcc \
+    g++ \
+    git \
+    pwgen \
+    && pip install --upgrade pip
 
 # Build bootloader for alpine
 RUN git clone --depth 1 --single-branch --branch v4.1 https://github.com/pyinstaller/pyinstaller.git /tmp/pyinstaller \
@@ -33,7 +31,7 @@ RUN         chmod a+x /pyinstaller/*
 
 RUN         ["/pyinstaller/package.sh"]
 
-FROM        alpine:3.13
+FROM        alpine:3.12
 
 RUN         addgroup -S application && adduser -S codecov -G application
 RUN         rm -rf /home/codecov
