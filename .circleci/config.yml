@@ -88,12 +88,18 @@ jobs:
     - attach_workspace:
         at: .
     - run:
-        name: Get codecovio nginx configs
+        name: Get autotest configs
         command: |
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
           https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
+
+          wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+          --header "Accept: application/vnd.github.v3.raw" \
+          -P ./config \
+          https://api.github.com/repos/codecov/autotest/contents/config/autotest.yml
+          ls
     - run:
         name: Run Portable Image
         command: |
