@@ -133,6 +133,7 @@ jobs:
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./python_standard \
           https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/coverage.xml
+          file python_standard/coverage.xml
 
           PY_SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
