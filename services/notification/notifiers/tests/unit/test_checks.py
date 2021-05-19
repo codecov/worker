@@ -1958,3 +1958,49 @@ class TestProjectChecksNotifier(object):
         assert expected_result.data_sent["output"] == result.data_sent["output"]
         assert expected_result.data_sent == result.data_sent
         assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_comments_true(
+        self, sample_comparison, mock_configuration
+    ):
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings={},
+            current_yaml={"comment": True},
+        )
+        res = await notifier.build_payload(sample_comparison)
+        assert res == {
+            "state": "success",
+            "output": {
+                "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+            },
+        }
+
+    @pytest.mark.asyncio
+    async def test_build_payload_comments_false(
+        self, sample_comparison, mock_configuration
+    ):
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings={},
+            current_yaml={"comment": False},
+        )
+        res = await notifier.build_payload(sample_comparison)
+        assert res == {
+            "state": "success",
+            "output": {
+                "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+            },
+        }

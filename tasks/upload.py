@@ -2,10 +2,12 @@ import logging
 import re
 from json import loads
 from typing import Mapping, Any
+from datetime import datetime, timedelta
 
 from celery import chain
 from redis.exceptions import LockError
 from shared.yaml import UserYaml
+from shared.config import get_config
 from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitClientError,
@@ -95,7 +97,6 @@ class UploadTask(BaseCodecovTask):
 
     def has_pending_jobs(self, redis_connection, repoid, commitid) -> bool:
         uploads_locations = [
-            f"testuploads/{repoid}/{commitid}",
             f"uploads/{repoid}/{commitid}",
         ]
         for uploads_list_key in uploads_locations:
@@ -119,7 +120,6 @@ class UploadTask(BaseCodecovTask):
             dict: A dict with the parameters to be passed
         """
         uploads_locations = [
-            f"testuploads/{repoid}/{commitid}",
             f"uploads/{repoid}/{commitid}",
         ]
         for uploads_list_key in uploads_locations:
@@ -201,6 +201,23 @@ class UploadTask(BaseCodecovTask):
                 "was_updated": False,
                 "tasks_were_scheduled": False,
             }
+        upload_processing_delay = get_config("setup", "upload_processing_delay")
+        if upload_processing_delay is not None:
+            upload_processing_delay = int(upload_processing_delay)
+            last_upload_timestamp = redis_connection.get(
+                f"latest_upload/{repoid}/{commitid}"
+            )
+            if last_upload_timestamp is not None:
+                last_upload = datetime.fromtimestamp(last_upload_timestamp)
+                if (
+                    datetime.utcnow() - timedelta(seconds=upload_processing_delay)
+                    < last_upload
+                ):
+                    log.info(
+                        "Retrying due to very recent uploads",
+                        extra=dict(repoid=repoid, commit=commitid),
+                    )
+                    self.retry(countdown=max(30, upload_processing_delay))
         commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid

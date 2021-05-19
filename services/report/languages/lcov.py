@@ -1,9 +1,12 @@
 from collections import defaultdict
 from io import BytesIO
+import logging
 
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 from services.report.languages.base import BaseLanguageProcessor
+
+log = logging.getLogger(__name__)
 
 
 class LcovProcessor(BaseLanguageProcessor):
@@ -31,6 +34,7 @@ def from_txt(reports, fix, ignored_lines, sessionid):
 
 
 def _process_file(doc: bytes, fix, ignored_lines, sessionid):
+    _already_informed_of_negative_execution_count = False
     lines = {}
     branches = defaultdict(dict)
     fln, fh = {}, {}
@@ -90,6 +94,17 @@ def _process_file(doc: bytes, fix, ignored_lines, sessionid):
                 continue
 
             cov = int(hit)
+            if cov < -1:
+                # https://github.com/linux-test-project/lcov/commit/dfec606f3b30e1ac0f4114cfb98b29f91e9edb21
+                if not _already_informed_of_negative_execution_count:
+                    log.warning(
+                        "At least one occurrence of negative execution counts on Lcov",
+                        extra=dict(
+                            execution_count=cov, lcov_report_filename=_file.name
+                        ),
+                    )
+                    _already_informed_of_negative_execution_count = True
+                cov = 0
             _file.append(int(line), ReportLine.create(cov, None, [[sessionid, cov]]))
 
         elif method == "FN" and not JS:
