@@ -139,7 +139,7 @@ jobs:
           # wait for processing time
           sleep 20
 
-          ls
+          ls 
           curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA
           docker logs project_worker_1
           docker logs project_minio_1
