@@ -94,11 +94,11 @@ jobs:
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./nginx \
           https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
-    # - run:
-    #     name: Run Portable Image
-    #     command: |
-    #       docker load < workerPortableImage.tar
-    #       # sleep 20
+    - run:
+        name: Run Portable Image
+        command: |
+          docker load < workerPortableImage.tar
+          # sleep 20
     - run:
         name: Start acceptance testing containers
         command: |
