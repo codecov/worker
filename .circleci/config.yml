@@ -138,7 +138,6 @@ jobs:
 
           # Clone Repo & cd onto it
           git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/python-standard.git
-          ls
           cd python-standard
           ls
 
@@ -157,16 +156,15 @@ jobs:
           # wait for processing time
           sleep 20
 
-          curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA
+          localCoverage=$(curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA | \
+          python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
           docker logs project_worker_1
+          echo $localCoverage
 
-          # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-          # docker logs -f codecov/worker:latest
-          # echo $localCoverage
 
-          # prodCoverage=$(curl https://codecov.io/api/gh/codecov/python-standard/commit/$PY_SHA | \
-          # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-          # echo $prodCoverage
+          prodCoverage=$(curl https://codecov.io/api/gh/codecov/python-standard/commit/$PY_SHA | \
+          python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+          echo $prodCoverage
 
           # if [[ $localCoverage != $prodCoverage ]]
           # then
