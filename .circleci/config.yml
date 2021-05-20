@@ -134,11 +134,13 @@ jobs:
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./python_standard \
           https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt)
+          ls python_standard
 
           # Clone Repo & cd onto it
           git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/python-standard.git
           ls
           cd python-standard
+          ls
 
           # Reset to desired commit
           git reset --hard $PY_SHA
@@ -151,16 +153,12 @@ jobs:
           ls
 
           # Bash uploader
-          # bash <(curl -s http://localhost:80/bash) -f ./python_standard/coverage.xml -C $PY_SHA -t gh -r codecov/python-standard
-          # echo $PY_SHA
-          # ls python_standard
-          # # wait for processing time
-          # sleep 20
+          bash <(curl -s http://localhost:80/bash) -f ./python_standard/coverage.xml -C $PY_SHA -t gh -r codecov/python-standard
+          # wait for processing time
+          sleep 20
 
-          # ls
-          # curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA
-          # docker logs project_worker_1
-
+          curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA
+          docker logs project_worker_1
 
           # python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
           # docker logs -f codecov/worker:latest
