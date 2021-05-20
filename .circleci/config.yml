@@ -134,7 +134,7 @@ jobs:
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./python_standard \
           https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt)
-          ls python_standard
+          echo $PY_SHA
 
           # Clone Repo & cd onto it
           git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/python-standard.git
