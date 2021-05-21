@@ -87,21 +87,11 @@ jobs:
     - attach_workspace:
         at: .
     - run:
-        name: Get Autotest & copy important configs
+        name: Get Autotest & Copy Important Configs
         command: |
           git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/autotest.git
           cp ./autotest/nginx/codecovio.conf ./nginx
           cp ./autotest/config/autotest.yml ./config
-
-          # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-          # --header "Accept: application/vnd.github.v3.raw" \
-          # -P ./nginx \
-          # https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
-
-          # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-          # --header "Accept: application/vnd.github.v3.raw" \
-          # -P ./config \
-          # https://api.github.com/repos/codecov/autotest/contents/config/autotest.yml
     - run:
         name: Run Portable Image
         command: |
@@ -111,7 +101,7 @@ jobs:
         command: |
           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
           docker-compose -f ./autotest/docker-compose-acceptance.yml up -d
-          sleep 15
+          sleep 10
     - run:
         name: Python standard coverage comparison
         command: |
@@ -122,47 +112,52 @@ jobs:
           # | bash
 
           # This is what should go in the python-standard.sh
-          # Fetch SHA
-          PY_SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
-          --header "Accept: application/vnd.github.v3.raw" \
-          https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt)
-          echo $PY_SHA
+          declare -a standards=("python-standard")
 
-          # Clone Repo & cd onto it
-          git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/python-standard.git
-          cd python-standard
-          ls
+          for standard in "${standards[@]}"
+          do
+            # Fetch SHA
+            PY_SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
+            --header "Accept: application/vnd.github.v3.raw" \
+            https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/SHA.txt)
+            echo $PY_SHA
 
-          # Reset to desired commit
-          git reset --hard $PY_SHA
+            # Clone Repo & cd onto it
+            git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/$standard.git
+            cd $standard
+            ls
 
-          # Curl coverage report
-          wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-          --header "Accept: application/vnd.github.v3.raw" \
-          -P ./python-standard \
-          https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/coverage.xml
-          ls
+            # Reset to desired commit
+            git reset --hard $PY_SHA
 
-          # Bash uploader
-          bash <(curl -s http://localhost:80/bash) -f ./python-standard/coverage.xml -C $PY_SHA -t gh -r codecov/python-standard
-          # wait for processing time
-          sleep 20
+            # Curl coverage report
+            wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+            --header "Accept: application/vnd.github.v3.raw" \
+            -P ./$standard \
+            https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/coverage.xml
+            ls
 
-          # Compute coverage numbers
-          localCoverage=$(curl http://localhost:80/api/gh/codecov/python-standard/commit/$PY_SHA | \
-          python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+            # Bash uploader
+            bash <(curl -s http://localhost:80/bash) -f ./$standard/coverage.xml -C $PY_SHA -t gh -r codecov/$standard
+            # wait for processing time
+            sleep 20
 
-          prodCoverage=$(curl https://codecov.io/api/gh/codecov/python-standard/commit/$PY_SHA | \
-          python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-          echo $localCoverage
-          echo $prodCoverage
+            # Compute coverage numbers
+            localCoverage=$(curl http://localhost:80/api/gh/codecov/$standard/commit/$PY_SHA | \
+            python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
 
-          if [[ $localCoverage != $prodCoverage ]]
-          then
-              echo "Error"
-          fi
+            prodCoverage=$(curl https://codecov.io/api/gh/codecov/$standard/commit/$PY_SHA | \
+            python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
+            echo $localCoverage
+            echo $prodCoverage
 
-          cd ..
+            if [[ $localCoverage != $prodCoverage ]]
+            then
+                echo "Error"
+            fi
+
+            cd ..
+          done
           ls
 
   build-enterprise:
