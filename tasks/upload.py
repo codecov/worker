@@ -208,7 +208,7 @@ class UploadTask(BaseCodecovTask):
                 f"latest_upload/{repoid}/{commitid}"
             )
             if last_upload_timestamp is not None:
-                last_upload = datetime.fromtimestamp(last_upload_timestamp)
+                last_upload = datetime.fromtimestamp(float(last_upload_timestamp))
                 if (
                     datetime.utcnow() - timedelta(seconds=upload_processing_delay)
                     < last_upload

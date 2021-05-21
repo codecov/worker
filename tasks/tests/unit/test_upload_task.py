@@ -43,10 +43,18 @@ class FakeRedis(object):
         return False
 
     def get(self, key):
+        res = None
         if self.keys.get(key) is not None:
-            return self.keys.get(key)
+            res = self.keys.get(key)
         if self.lists.get(key):
-            return self.lists.get(key)
+            res = self.lists.get(key)
+        if res is None:
+            return None
+        if not isinstance(res, (str, bytes)):
+            return str(res).encode()
+        if not isinstance(res, bytes):
+            return res.encode()
+        return res
 
     def lpop(self, key):
         res = self.lists.get(key).pop(0)
