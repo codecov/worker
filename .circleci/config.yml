@@ -87,17 +87,21 @@ jobs:
     - attach_workspace:
         at: .
     - run:
-        name: Get autotest configs
+        name: Get Autotest & copy important configs
         command: |
-          wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-          --header "Accept: application/vnd.github.v3.raw" \
-          -P ./nginx \
-          https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
+          git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/autotest.git
+          cp ./autotest/nginx/codecovio.conf ./nginx
+          cp ./autotest/config/autotest.yml ./config
 
-          wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-          --header "Accept: application/vnd.github.v3.raw" \
-          -P ./config \
-          https://api.github.com/repos/codecov/autotest/contents/config/autotest.yml
+          # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+          # --header "Accept: application/vnd.github.v3.raw" \
+          # -P ./nginx \
+          # https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
+
+          # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+          # --header "Accept: application/vnd.github.v3.raw" \
+          # -P ./config \
+          # https://api.github.com/repos/codecov/autotest/contents/config/autotest.yml
     - run:
         name: Run Portable Image
         command: |
@@ -105,12 +109,6 @@ jobs:
     - run:
         name: Start acceptance testing containers
         command: |
-          # set -x
-          # curl -H "Authorization: token $GH_ACCESS_TOKEN" \
-          # -H 'Accept: application/vnd.github.v3.raw' \
-          # -O \
-          # -L 'https://api.github.com/repos/codecov/autotest/contents/docker-compose-acceptance.yml'
-          git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/autotest.git
           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
           docker-compose -f ./autotest/docker-compose-acceptance.yml up -d
           sleep 15
