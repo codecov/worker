@@ -132,7 +132,6 @@ jobs:
           # Fetch SHA
           PY_SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
-          -P ./python_standard \
           https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt)
           echo $PY_SHA
 
@@ -163,7 +162,7 @@ jobs:
           prodCoverage=$(curl https://codecov.io/api/gh/codecov/python-standard/commit/$PY_SHA | \
           python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
 
-          if [[ $localCoverage == $prodCoverage ]]
+          if [[ $localCoverage != $prodCoverage ]]
           then
               echo "Made it"
           fi
