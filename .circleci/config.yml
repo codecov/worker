@@ -146,12 +146,12 @@ jobs:
           # Curl coverage report
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
-          -P . \
+          -P ./python_standard \
           https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/coverage.xml
           ls
 
           # Bash uploader
-          bash <(curl -s http://localhost:80/bash) -f coverage.xml -C $PY_SHA -t gh -r codecov/python-standard
+          bash <(curl -s http://localhost:80/bash) -f ./python_standard/coverage.xml -C $PY_SHA -t gh -r codecov/python-standard
           # wait for processing time
           sleep 20
 
@@ -166,10 +166,11 @@ jobs:
 
           if [[ $localCoverage != $prodCoverage ]]
           then
-              echo "Error :("
+              echo "Error"
           fi
 
           cd ..
+          ls
 
   build-enterprise:
     executor: codecov-deploy
