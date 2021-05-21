@@ -75,7 +75,6 @@ jobs:
           make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
           docker tag codecov/worker codecov/worker:latest
           docker save codecov/worker:latest > workerPortableImage.tar
-          # sleep 10 
     - persist_to_workspace:
         root: .
         paths:
@@ -99,12 +98,10 @@ jobs:
           --header "Accept: application/vnd.github.v3.raw" \
           -P ./config \
           https://api.github.com/repos/codecov/autotest/contents/config/autotest.yml
-          ls
     - run:
         name: Run Portable Image
         command: |
           docker load < workerPortableImage.tar
-          # sleep 20
     - run:
         name: Start acceptance testing containers
         command: |
@@ -116,24 +113,25 @@ jobs:
           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
           docker-compose -f docker-compose-acceptance.yml up -d
           sleep 15
-          docker images
-          docker ps
-          # docker logs -f codecov/worker:latest
     - run:
         name: Python standard coverage comparison
         command: |
           # Script to call shell file that kicks off
-          # wget -O - 'https://api.github.com/repos/autotest/contents/worker/python_standard.sh' \
+          # wget -O - 'https://api.github.com/repos/autotest/contents/worker/python-standard.sh' \
           # --header "Authorization: token $GH_ACCESS_TOKEN" \
           # --header "Accept: application/vnd.github.v3.raw" \
           # | bash
 
-          # This is what should go in the python_standard.sh
+          # This is what should go in the python-standard.sh
           # Fetch SHA
           PY_SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
           https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/SHA.txt)
           echo $PY_SHA
+
+          # Clone Repo & cd onto it
+          git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/autotest.git
+          ls
 
           # Clone Repo & cd onto it
           git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/python-standard.git
@@ -146,12 +144,12 @@ jobs:
           # Curl coverage report
           wget --header "Authorization: token $GH_ACCESS_TOKEN" \
           --header "Accept: application/vnd.github.v3.raw" \
-          -P ./python_standard \
+          -P ./python-standard \
           https://api.github.com/repos/codecov/standards/contents/coverage_data/python-standard/coverage.xml
           ls
 
           # Bash uploader
-          bash <(curl -s http://localhost:80/bash) -f ./python_standard/coverage.xml -C $PY_SHA -t gh -r codecov/python-standard
+          bash <(curl -s http://localhost:80/bash) -f ./python-standard/coverage.xml -C $PY_SHA -t gh -r codecov/python-standard
           # wait for processing time
           sleep 20
 
