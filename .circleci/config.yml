@@ -103,7 +103,7 @@ jobs:
           docker-compose -f ./autotest/docker-compose-acceptance.yml up -d
           sleep 10
     - run:
-        name: Python standard coverage comparison
+        name: Standards coverage comparison
         command: |
           # Script to call shell file that kicks off
           # wget -O - 'https://api.github.com/repos/autotest/contents/worker/python-standard.sh' \
@@ -111,8 +111,7 @@ jobs:
           # --header "Accept: application/vnd.github.v3.raw" \
           # | bash
 
-          # This is what should go in the python-standard.sh
-          declare -a standards=("python-standard")
+          declare -a standards=("go-standard")
 
           for standard in "${standards[@]}"
           do
