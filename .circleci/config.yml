@@ -116,17 +116,15 @@ jobs:
 
           for standard in "${standards[@]}"
           do
+            echo "Starting testing for ${go-standard}"
             # Fetch SHA
-            echo "Fetching SHA from ${standard}"
             SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
             --header "Accept: application/vnd.github.v3.raw" \
             https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/SHA.txt)
-            echo $SHA
 
             # Clone Repo & cd onto it
             git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/$standard.git
             cd $standard
-            ls
 
             # Reset to desired commit
             git reset --hard $SHA
@@ -135,11 +133,11 @@ jobs:
             wget --header "Authorization: token $GH_ACCESS_TOKEN" \
             --header "Accept: application/vnd.github.v3.raw" \
             -P ./$standard \
-            https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/coverage.xml
+            https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/coverage.txt
             ls
 
             # Bash uploader
-            bash <(curl -s http://localhost:80/bash) -f ./$standard/coverage.xml -C $SHA -t gh -r codecov/$standard
+            bash <(curl -s http://localhost:80/bash) -f ./$standard/coverage.txt -C $SHA -t gh -r codecov/$standard
             # wait for processing time
             sleep 20
 
