@@ -112,7 +112,7 @@ jobs:
           # | bash
 
           # This is what should go in the python-standard.sh
-          declare -a standards=("python-standard") 
+          declare -a standards=("python-standard")
 
           for standard in "${standards[@]}"
           do
