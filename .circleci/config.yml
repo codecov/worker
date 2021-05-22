@@ -117,6 +117,7 @@ jobs:
           for standard in "${standards[@]}"
           do
             # Fetch SHA
+            echo "Fetching SHA from ${standard}"
             SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
             --header "Accept: application/vnd.github.v3.raw" \
             https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/SHA.txt)
@@ -148,8 +149,8 @@ jobs:
 
             prodCoverage=$(curl https://codecov.io/api/gh/codecov/$standard/commit/$SHA | \
             python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-            echo $localCoverage
-            echo $prodCoverage
+            echo "Local coverage is ${localCoverage}"
+            echo "Production coverage is ${prodCoverage}"
 
             if [[ $localCoverage != $prodCoverage ]]
             then
