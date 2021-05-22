@@ -117,10 +117,10 @@ jobs:
           for standard in "${standards[@]}"
           do
             # Fetch SHA
-            PY_SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
+            SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
             --header "Accept: application/vnd.github.v3.raw" \
             https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/SHA.txt)
-            echo $PY_SHA
+            echo $SHA
 
             # Clone Repo & cd onto it
             git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/$standard.git
@@ -128,7 +128,7 @@ jobs:
             ls
 
             # Reset to desired commit
-            git reset --hard $PY_SHA
+            git reset --hard $SHA
 
             # Curl coverage report
             wget --header "Authorization: token $GH_ACCESS_TOKEN" \
@@ -138,15 +138,15 @@ jobs:
             ls
 
             # Bash uploader
-            bash <(curl -s http://localhost:80/bash) -f ./$standard/coverage.xml -C $PY_SHA -t gh -r codecov/$standard
+            bash <(curl -s http://localhost:80/bash) -f ./$standard/coverage.xml -C $SHA -t gh -r codecov/$standard
             # wait for processing time
             sleep 20
 
             # Compute coverage numbers
-            localCoverage=$(curl http://localhost:80/api/gh/codecov/$standard/commit/$PY_SHA | \
+            localCoverage=$(curl http://localhost:80/api/gh/codecov/$standard/commit/$SHA | \
             python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
 
-            prodCoverage=$(curl https://codecov.io/api/gh/codecov/$standard/commit/$PY_SHA | \
+            prodCoverage=$(curl https://codecov.io/api/gh/codecov/$standard/commit/$SHA | \
             python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
             echo $localCoverage
             echo $prodCoverage
