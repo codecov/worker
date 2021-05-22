@@ -111,7 +111,7 @@ jobs:
           # --header "Accept: application/vnd.github.v3.raw" \
           # | bash
 
-          declare -a standards=("ruby-standard")
+          declare -a standards=("ruby-standard-2")
 
           for standard in "${standards[@]}"
           do
