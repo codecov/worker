@@ -111,7 +111,7 @@ jobs:
           # --header "Accept: application/vnd.github.v3.raw" \
           # | bash
 
-          declare -a standards=("kotlin-standard")
+          declare -a standards=("ruby-standard")
 
           for standard in "${standards[@]}"
           do
@@ -121,7 +121,7 @@ jobs:
             --header "Accept: application/vnd.github.v3.raw" \
             https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/SHA.txt)
 
-            # Clone Repo & cd onto it
+            # Clone Standard Repo & cd onto it
             git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/$standard.git
             cd $standard
 
@@ -132,11 +132,11 @@ jobs:
             wget --header "Authorization: token $GH_ACCESS_TOKEN" \
             --header "Accept: application/vnd.github.v3.raw" \
             -P ./$standard \
-            https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/jacocoTestReport.xml
+            https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/coverage.xml
             ls
 
             # Bash uploader
-            bash <(curl -s http://localhost:80/bash) -f ./$standard/jacocoTestReport.xml -C $SHA -t gh -r codecov/$standard
+            bash <(curl -s http://localhost:80/bash) -f ./$standard/coverage.xml -C $SHA -t gh -r codecov/$standard
             # wait for processing time
             sleep 20
 
