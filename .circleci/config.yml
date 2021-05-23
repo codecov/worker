@@ -131,7 +131,7 @@ jobs:
             git reset --hard $SHA
 
             # Get Coverage Report
-            cp -R ../standards/coverage_data/${standard} ./{$standard}
+            cp -R ../standards/coverage_data/$standard ./$standard
             ls
             ls python-standard
 
