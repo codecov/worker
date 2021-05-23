@@ -92,6 +92,8 @@ jobs:
           git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/autotest.git
           cp ./autotest/nginx/codecovio.conf ./nginx
           cp ./autotest/config/autotest.yml ./config
+
+          git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/standards.git
     - run:
         name: Run Portable Image
         command: |
@@ -111,7 +113,7 @@ jobs:
           # --header "Accept: application/vnd.github.v3.raw" \
           # | bash
 
-          declare -a standards=("swift-standard")
+          declare -a standards=("python-standard")
 
           for standard in "${standards[@]}"
           do
@@ -128,15 +130,20 @@ jobs:
             # Reset to desired commit
             git reset --hard $SHA
 
-            # Curl coverage report
-            wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-            --header "Accept: application/vnd.github.v3.raw" \
-            -P ./$standard \
-            https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/info.lcov
+            # Get Coverage Report
+            cp -R ../standards/coverage_data/${standard} ./{$standard}
             ls
+            ls python-standard
+
+            # # Curl coverage report
+            # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+            # --header "Accept: application/vnd.github.v3.raw" \
+            # -P ./$standard \
+            # https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/coverage.xml
+            # ls
 
             # Bash uploader
-            bash <(curl -s http://localhost:80/bash) -f ./$standard/info.lcov -C $SHA -t gh -r codecov/$standard
+            bash <(curl -s http://localhost:80/bash) -C $SHA -t gh -r codecov/$standard
             # wait for processing time
             sleep 20
 
