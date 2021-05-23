@@ -133,7 +133,7 @@ jobs:
             # Get Coverage Report
             cp -R ../standards/coverage_data/$standard ./$standard
             ls
-            ls python-standard
+            ls $standard
 
             # # Curl coverage report
             # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
@@ -143,7 +143,7 @@ jobs:
             # ls
 
             # Bash uploader
-            bash <(curl -s http://localhost:80/bash) -s /$standard -C $SHA -t gh -r codecov/$standard
+            bash <(curl -s http://localhost:80/bash) -s ./$standard -C $SHA -t gh -r codecov/$standard
             # wait for processing time
             sleep 20
 
