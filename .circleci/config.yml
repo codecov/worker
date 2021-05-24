@@ -113,7 +113,7 @@ jobs:
           # --header "Accept: application/vnd.github.v3.raw" \
           # | bash
 
-          declare -a standards=("python-standard go-standard")
+          declare -a standards=("python-standard" "go-standard")
 
           for standard in "${standards[@]}"
           do
