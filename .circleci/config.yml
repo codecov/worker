@@ -120,46 +120,39 @@ jobs:
           # --header "Accept: application/vnd.github.v3.raw" \
           # | bash
 
-          exit 1
-
           git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/standards.git
 
           declare -a standards=("cpp-11-standard" "python-standard" "go-standard" "kotlin-standard" "swift-standard")
 
           for standard in "${standards[@]}"
           do
-            echo "Starting testing for $standard"
-            # Fetch SHA
+            echo "Integration test for $standard"
+            echo "Get $standard latest SHA"
             SHA=`cat ./standards/coverage_data/$standard/SHA.txt`
-
-            # Clone Standard Repo & cd onto it
+            echo "Cloning $standard repo in current directory"
             git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/$standard.git
             cd $standard
-
-            # Reset to desired commit
             git reset --hard $SHA
-
-            # Get Coverage Report
+            echo "Get latest coverage report"
             cp -R ../standards/coverage_data/$standard ./$standard
-
-            # Bash uploader
+            echo "Upload coverage reports using bash uploader"
             bash <(curl -s http://localhost:80/bash) -s ./$standard -C $SHA -t gh -r codecov/$standard
-            # wait for processing time
-            sleep 20
-
-            # Compute coverage numbers
-            localCoverage=$(curl http://localhost:80/api/gh/codecov/$standard/commit/$SHA | \
+            sleep 10
+            echo "Compute CI and Production coverage results"
+            CICoverage=$(curl http://localhost:80/api/gh/codecov/$standard/commit/$SHA | \
             python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
             prodCoverage=$(curl https://codecov.io/api/gh/codecov/$standard/commit/$SHA | \
             python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
             echo "Production coverage is ${prodCoverage}"
-            echo "CI coverage is ${localCoverage}"
-
-            if [[ $localCoverage != $prodCoverage ]]
+            echo "CI coverage is ${CICoverage}"
+            if [[ $CICoverage != $prodCoverage ]]
             then
-                echo "Error"
+                echo "CI and Production coverage mismatch"
+                echo "CI coverage is ${CICoverage}"
+                echo "Production coverage is ${prodCoverage}"
+                exit 1
             fi
-
+            echo "Return to parent directory"
             cd ..
           done
 
