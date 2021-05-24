@@ -122,7 +122,7 @@ jobs:
             # SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
             # --header "Accept: application/vnd.github.v3.raw" \
             # https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/SHA.txt)
-            SHA=`cat ../standards/coverage_data/$standard/SHA.txt`
+            SHA=`cat ./standards/coverage_data/$standard/SHA.txt`
 
             # Clone Standard Repo & cd onto it
             git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/$standard.git
