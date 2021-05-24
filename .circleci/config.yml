@@ -137,7 +137,7 @@ jobs:
             cp -R ../standards/coverage_data/$standard ./$standard
             echo "Upload coverage reports using bash uploader"
             bash <(curl -s http://localhost:80/bash) -s ./$standard -C $SHA -t gh -r codecov/$standard
-            sleep 1
+            sleep 3
             echo "Compute CI and Production coverage results"
             CICoverage=$(curl http://localhost:80/api/gh/codecov/$standard/commit/$SHA | \
             python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
