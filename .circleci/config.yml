@@ -127,17 +127,17 @@ jobs:
           for standard in "${standards[@]}"
           do
             echo "Integration test for $standard"
-            echo "Get $standard latest SHA"
+            echo "Getting $standard latest SHA"
             SHA=`cat ./standards/coverage_data/$standard/SHA.txt`
             echo "Cloning $standard repo in current directory"
             git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/$standard.git
             cd $standard
             git reset --hard $SHA
-            echo "Get latest coverage report"
+            echo "Getting latest coverage report"
             cp -R ../standards/coverage_data/$standard ./$standard
             echo "Upload coverage reports using bash uploader"
             bash <(curl -s http://localhost:80/bash) -s ./$standard -C $SHA -t gh -r codecov/$standard
-            sleep 10
+            sleep 5
             echo "Compute CI and Production coverage results"
             CICoverage=$(curl http://localhost:80/api/gh/codecov/$standard/commit/$SHA | \
             python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
