@@ -89,11 +89,18 @@ jobs:
     - run:
         name: Get Autotest & Copy Important Configs
         command: |
+          # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+          # --header "Accept: application/vnd.github.v3.raw" \
+          # -P ./nginx \
+          # https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
+
+          # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
+          # --header "Accept: application/vnd.github.v3.raw" \
+          # -P ./config \
+          # https://api.github.com/repos/codecov/autotest/contents/config/autotest.yml
           git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/autotest.git
           cp ./autotest/nginx/codecovio.conf ./nginx
           cp ./autotest/config/autotest.yml ./config
-
-          git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/standards.git
     - run:
         name: Run Portable Image
         command: |
@@ -113,15 +120,16 @@ jobs:
           # --header "Accept: application/vnd.github.v3.raw" \
           # | bash
 
+          exit 1
+
+          git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/standards.git
+
           declare -a standards=("cpp-11-standard" "python-standard" "go-standard" "kotlin-standard" "swift-standard")
 
           for standard in "${standards[@]}"
           do
             echo "Starting testing for $standard"
             # Fetch SHA
-            # SHA=$(wget -O - --header "Authorization: token $GH_ACCESS_TOKEN" \
-            # --header "Accept: application/vnd.github.v3.raw" \
-            # https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/SHA.txt)
             SHA=`cat ./standards/coverage_data/$standard/SHA.txt`
 
             # Clone Standard Repo & cd onto it
@@ -133,15 +141,6 @@ jobs:
 
             # Get Coverage Report
             cp -R ../standards/coverage_data/$standard ./$standard
-            ls
-            ls $standard
-
-            # # Curl coverage report
-            # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-            # --header "Accept: application/vnd.github.v3.raw" \
-            # -P ./$standard \
-            # https://api.github.com/repos/codecov/standards/contents/coverage_data/$standard/coverage.xml
-            # ls
 
             # Bash uploader
             bash <(curl -s http://localhost:80/bash) -s ./$standard -C $SHA -t gh -r codecov/$standard
@@ -151,11 +150,10 @@ jobs:
             # Compute coverage numbers
             localCoverage=$(curl http://localhost:80/api/gh/codecov/$standard/commit/$SHA | \
             python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-
             prodCoverage=$(curl https://codecov.io/api/gh/codecov/$standard/commit/$SHA | \
             python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-            echo "Local coverage is ${localCoverage}"
             echo "Production coverage is ${prodCoverage}"
+            echo "CI coverage is ${localCoverage}"
 
             if [[ $localCoverage != $prodCoverage ]]
             then
@@ -164,7 +162,6 @@ jobs:
 
             cd ..
           done
-          ls
 
   build-enterprise:
     executor: codecov-deploy
