@@ -119,28 +119,30 @@ class BasePathAwarePathFixer(PathFixer):
         # e.g.: "path/to/coverage.xml" --> "path/to/"
         self.base_path = PurePath(base_path).parent if base_path is not None else None
 
-    def __call__(self, path: str, *, bases_to_try: Sequence[str] = None) -> str:
+    def __call__(self, path: str) -> str:
         original_path_fixer_result = self.original_path_fixer(path)
-        if (
-            original_path_fixer_result is not None
-            or (not self.base_path and not bases_to_try)
-            or not self.original_path_fixer.toc
-        ):
+        if not self.base_path or not self.original_path_fixer.toc:
             return original_path_fixer_result
         if not os.path.isabs(path):
-            all_base_paths_to_try = [self.base_path] + (
-                bases_to_try if bases_to_try is not None else []
-            )
-            for base_path in all_base_paths_to_try:
-                adjusted_path = os.path.join(base_path, path)
-                base_path_aware_result = self.original_path_fixer(adjusted_path)
-                if base_path_aware_result is not None:
-                    self.unexpected_results.append(
-                        {
-                            "original_path": path,
-                            "original_path_fixer_result": original_path_fixer_result,
-                            "base_path_aware_result": base_path_aware_result,
-                        }
+            adjusted_path = os.path.join(self.base_path, path)
+            base_path_aware_result = self.original_path_fixer(adjusted_path)
+            if original_path_fixer_result != base_path_aware_result:
+                event_data = {
+                    "original_path": path,
+                    "original_path_fixer_result": original_path_fixer_result,
+                    "base_path_aware_result": base_path_aware_result,
+                }
+                self.unexpected_results.append(event_data)
+
+                if original_path_fixer_result is None:
+                    log.info(
+                        "Original path fixer couldn't resolve file path, returning base path aware result",
+                        extra=dict(
+                            base=self.base_path,
+                            path_patterns=self.original_path_fixer.path_patterns,
+                            yaml_fixes=self.original_path_fixer.yaml_fixes,
+                            event_data=event_data,
+                        ),
                     )
                     return base_path_aware_result
         return original_path_fixer_result
@@ -153,10 +155,10 @@ class BasePathAwarePathFixer(PathFixer):
         """
         if len(self.unexpected_results) > 0:
             log.info(
-                "Paths did not match due to the relative path calculation",
+                "Paths would not match due to the relative path calculation (no real effect yet)",
                 extra=dict(
                     base=self.base_path,
-                    path_patterns=sorted(self.original_path_fixer.path_patterns),
+                    path_patterns=self.original_path_fixer.path_patterns,
                     yaml_fixes=self.original_path_fixer.yaml_fixes,
                     some_cases=random.sample(
                         self.unexpected_results, min(50, len(self.unexpected_results))
