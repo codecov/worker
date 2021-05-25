@@ -85,13 +85,13 @@ class TestUploadTaskIntegration(object):
         codecov_vcr,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": url, "build": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        mocked_3 = mocker.patch.object(UploadTask, "app")
-        mocked_3.send_task.return_value = True
+        mocker.patch.object(UploadTask, "app", celery_app)
 
         commit = CommitFactory.create(
             message="",
@@ -154,9 +154,9 @@ class TestUploadTaskIntegration(object):
         codecov_vcr,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
-        mocked_3 = mocker.patch.object(UploadTask, "app")
-        mocked_3.send_task.return_value = True
+        mocker.patch.object(UploadTask, "app", celery_app)
 
         commit = CommitFactory.create(
             parent_commit_id=None,
@@ -182,7 +182,13 @@ class TestUploadTaskIntegration(object):
 
     @pytest.mark.asyncio
     async def test_upload_task_upload_processing_delay_not_enough_delay(
-        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_storage,
+        mock_redis,
+        celery_app,
     ):
         mock_possibly_update_commit_from_provider_info = mocker.patch.object(
             UploadTask, "possibly_update_commit_from_provider_info", return_value=True
@@ -190,8 +196,7 @@ class TestUploadTaskIntegration(object):
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
-        mocked_3 = mocker.patch.object(UploadTask, "app")
-        mocked_3.send_task.return_value = True
+        mocker.patch.object(UploadTask, "app", celery_app)
         redis_queue = [
             {"build": "part1", "url": "someurl1"},
             {"build": "part2", "url": "someurl2"},
@@ -224,7 +229,13 @@ class TestUploadTaskIntegration(object):
 
     @pytest.mark.asyncio
     async def test_upload_task_upload_processing_delay_enough_delay(
-        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_storage,
+        mock_redis,
+        celery_app,
     ):
         mocker.patch.object(
             UploadTask, "possibly_update_commit_from_provider_info", return_value=True
@@ -244,14 +255,13 @@ class TestUploadTaskIntegration(object):
             datetime.utcnow() - timedelta(seconds=1200)
         ).timestamp()
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
-        mocked_3 = mocker.patch.object(UploadTask, "app")
+        mocker.patch.object(UploadTask, "app", celery_app)
         mocker.patch.object(
             UploadTask, "possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mocked_chain = mocker.patch("tasks.upload.chain")
-        mocked_3.send_task.return_value = True
         redis_queue = [
             {"build": "part1", "url": "someurl1"},
             {"build": "part2", "url": "someurl2"},
@@ -270,17 +280,22 @@ class TestUploadTaskIntegration(object):
 
     @pytest.mark.asyncio
     async def test_upload_task_upload_processing_delay_upload_is_none(
-        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_storage,
+        mock_redis,
+        celery_app,
     ):
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
-        mocked_3 = mocker.patch.object(UploadTask, "app")
+        mocker.patch.object(UploadTask, "app", celery_app)
         mocker.patch.object(
             UploadTask, "possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mocked_chain = mocker.patch("tasks.upload.chain")
-        mocked_3.send_task.return_value = True
         redis_queue = [
             {"build": "part1", "url": "someurl1"},
             {"build": "part2", "url": "someurl2"},
@@ -315,6 +330,7 @@ class TestUploadTaskIntegration(object):
         codecov_vcr,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
         redis_queue = [
@@ -328,8 +344,7 @@ class TestUploadTaskIntegration(object):
             {"build": "part8", "url": "someurl8"},
         ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        mocked_3 = mocker.patch.object(UploadTask, "app")
-        mocked_3.send_task.return_value = True
+        mocker.patch.object(UploadTask, "app", celery_app)
 
         commit = CommitFactory.create(
             message="",
@@ -411,13 +426,13 @@ class TestUploadTaskIntegration(object):
         codecov_vcr,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
-        mocked_3 = mocker.patch.object(UploadTask, "app")
+        mocker.patch.object(UploadTask, "app", celery_app)
         mocked_3 = mocker.patch.object(
             UploadTask, "lists_of_arguments", return_value=[]
         )
-        mocked_3.send_task.return_value = True
 
         owner = OwnerFactory.create(
             service="github",
@@ -466,11 +481,16 @@ class TestUploadTaskIntegration(object):
 
     @pytest.mark.asyncio
     async def test_upload_task_no_bot(
-        self, mocker, mock_configuration, dbsession, mock_redis, mock_storage
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_redis,
+        mock_storage,
+        celery_app,
     ):
         mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
-        mocked_3 = mocker.patch.object(UploadTask, "app")
-        mocked_3.send_task.return_value = True
+        mocker.patch.object(UploadTask, "app", celery_app)
         mocked_fetch_yaml = mocker.patch.object(
             UploadTask, "fetch_commit_yaml_and_possibly_store"
         )
@@ -512,11 +532,16 @@ class TestUploadTaskIntegration(object):
 
     @pytest.mark.asyncio
     async def test_upload_task_bot_no_permissions(
-        self, mocker, mock_configuration, dbsession, mock_redis, mock_storage
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_redis,
+        mock_storage,
+        celery_app,
     ):
         mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
-        mocked_3 = mocker.patch.object(UploadTask, "app")
-        mocked_3.send_task.return_value = True
+        mocker.patch.object(UploadTask, "app", celery_app)
         mocked_fetch_yaml = mocker.patch.object(
             UploadTask, "fetch_commit_yaml_and_possibly_store"
         )

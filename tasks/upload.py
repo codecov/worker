@@ -156,7 +156,11 @@ class UploadTask(BaseCodecovTask):
             )
             self.retry(countdown=60)
         try:
-            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+            with redis_connection.lock(
+                lock_name,
+                timeout=max(300, self.hard_time_limit_task),
+                blocking_timeout=5,
+            ):
                 return await self.run_async_within_lock(
                     db_session, redis_connection, repoid, commitid, *args, **kwargs
                 )
