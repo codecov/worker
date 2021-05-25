@@ -74,6 +74,16 @@ class RetrySampleTask(BaseCodecovTask):
 
 
 class TestBaseCodecovTask(object):
+    def test_hard_time_limit_task_with_request_data(self, mocker):
+        mocker.patch.object(SampleTask, "request", timelimit=[200, 123])
+        r = SampleTask()
+        assert r.hard_time_limit_task == 200
+
+    def test_hard_time_limit_task_from_default_app(self, mocker):
+        mocker.patch.object(SampleTask, "request", timelimit=None)
+        r = SampleTask()
+        assert r.hard_time_limit_task == 480
+
     def test_sample_run(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_get_db_session.return_value = dbsession

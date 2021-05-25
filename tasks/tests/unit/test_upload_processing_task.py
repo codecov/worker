@@ -32,6 +32,7 @@ class TestUploadProcessorTask(object):
         codecov_vcr,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
@@ -43,8 +44,7 @@ class TestUploadProcessorTask(object):
         dbsession.add(upload)
         dbsession.flush()
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
-        mocked_3 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_3.send_task.return_value = True
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -244,6 +244,7 @@ class TestUploadProcessorTask(object):
         codecov_vcr,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         with open(here.parent.parent / "samples" / "sample_chunks_1.txt") as f:
@@ -253,8 +254,7 @@ class TestUploadProcessorTask(object):
         with open(here.parent.parent / "samples" / "sample_uploaded_report_1.txt") as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
-        mocked_3 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_3.send_task.return_value = True
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -315,6 +315,7 @@ class TestUploadProcessorTask(object):
         codecov_vcr,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
@@ -325,8 +326,7 @@ class TestUploadProcessorTask(object):
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_3 = mocker.patch.object(UploadProcessorTask, "retry")
         mocked_3.side_effect = celery.exceptions.Retry()
-        mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_4.send_task.return_value = True
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
             message="",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -364,13 +364,12 @@ class TestUploadProcessorTask(object):
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_redis_lock_unobtainable(
-        self, mocker, mock_configuration, dbsession, mock_redis
+        self, mocker, mock_configuration, dbsession, mock_redis, celery_app
     ):
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_3 = mocker.patch.object(UploadProcessorTask, "retry")
         mocked_3.side_effect = celery.exceptions.Retry()
-        mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_4.send_task.return_value = True
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
         mock_redis.lock.return_value.__enter__.side_effect = LockError()
         commit = CommitFactory.create(
             message="",
@@ -410,6 +409,7 @@ class TestUploadProcessorTask(object):
         mock_repo_provider,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
@@ -428,8 +428,7 @@ class TestUploadProcessorTask(object):
             ReportExpiredException(),
         ]
         # Mocking retry to also raise the exception so we can see how it is called
-        mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_4.send_task.return_value = True
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
             message="",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -605,6 +604,7 @@ class TestUploadProcessorTask(object):
         mock_repo_provider,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
@@ -622,8 +622,7 @@ class TestUploadProcessorTask(object):
             false_report,
             ReportEmptyError(),
         ]
-        mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_4.send_task.return_value = True
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
             message="",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -697,6 +696,7 @@ class TestUploadProcessorTask(object):
         mock_repo_provider,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
@@ -708,8 +708,7 @@ class TestUploadProcessorTask(object):
         )
         mocked_2.side_effect = [ReportEmptyError(), ReportExpiredException()]
         # Mocking retry to also raise the exception so we can see how it is called
-        mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_4.send_task.return_value = True
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
             message="",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -786,14 +785,14 @@ class TestUploadProcessorTask(object):
         mock_repo_provider,
         mock_storage,
         mock_redis,
+        celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
         mocked_2 = mocker.patch.object(UploadProcessorTask, "process_individual_report")
         mocked_2.side_effect = celery.exceptions.SoftTimeLimitExceeded("banana")
         # Mocking retry to also raise the exception so we can see how it is called
-        mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_4.send_task.return_value = True
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
