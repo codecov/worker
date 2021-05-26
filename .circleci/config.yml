@@ -122,7 +122,7 @@ jobs:
 
           git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/standards.git
 
-          declare -a standards=("cpp-11-standard" "python-standard" "go-standard" "kotlin-standard" "swift-standard")
+          declare -a standards=("cpp-11-standard" "python-standard" "go-standard" "kotlin-standard" "swift-standard" "typescript-standard")
 
           for standard in "${standards[@]}"
           do
