@@ -36,26 +36,11 @@ build:
 		--build-arg RELEASE_VERSION=${IMAGE_VERSION}
 
 # CIRCLECI
-# for portable builds to dockerhub, for use with local development and
-# acceptance testing.
-build.portable:
-	docker build -f dockerscripts/Dockerfile.circle . -t codecov/$(name) \
-		--label "org.label-schema.build-date"="$(build_date)" \
-		--label "org.label-schema.name"="$(name)" \
-		--label "org.label-schema.vcs-ref"="$(sha)" \
-		--label "org.label-schema.vendor"="Codecov" \
-		--label "org.label-schema.version"="${release_version}-${sha}" \
-		--label "org.vcs-branch"="$(branch)" \
-		--build-arg GH_ACCESS_TOKEN=${gh_access_token} \
-		--build-arg COMMIT_SHA="${sha}" \
-		--build-arg RELEASE_VERSION="${release_version}" \
-		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
-
-# CIRCLECI
 # job: enterprise
 # pulls intermediate dependencies image and adds app code.
 build-enterprise:
 	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG}
+	docker pull ${ENTERPRISE_GCR_REPO}:latest
 	docker build \
 		-f dockerscripts/Dockerfile.enterprise . \
 		-t ${ENTERPRISE_GCR_REPO}:latest \
@@ -81,6 +66,19 @@ tag:
 	docker pull ${GCR_REPO}:latest
 	docker tag ${GCR_REPO}:latest ${GCR_REPO}:${VERSION}
 	docker push ${GCR_REPO}:${VERSION}
+	
+# CIRCLECI
+# Pulls Standards image for coverage comparison from autotest
+run-standards-comparison:
+	docker pull codecov/autotest:standards-latest
+	docker run --network autotest_codecov -e HOST_URL='http://web:5000' codecov/autotest:standards-latest
+
+# CIRCLECI
+# job: standards-coverage-comparison
+# used to pull latest image tag after a build.portablesuccessful build
+pull-latest:
+	docker pull ${GCR_REPO}:latest
+	docker tag ${GCR_REPO}:latest codecov/$(name):latest
 
 # build and tag with staging tag
 # - when the docker image is uploaded to GCR with the "staging" tag, spinnaker will automatically detect the new image and deploy to the staging k8s cluster

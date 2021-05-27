@@ -13,17 +13,17 @@ boto3==1.17.26            # via -r requirements.in, shared
 botocore==1.20.26         # via boto3, s3transfer
 cachetools==4.2.1         # via google-auth
 celery==4.4.7             # via -r requirements.in
+cerberus==1.3.4           # via shared
 certifi==2020.12.5        # via httpx, minio, requests, sentry-sdk
 cffi==1.14.5              # via cryptography, google-crc32c
 chardet==4.0.0            # via requests
 colour==0.1.5             # via shared
 configparser==5.0.2       # via minio
-contextlib2==0.6.0.post1  # via schema
 coverage==5.5             # via -r requirements.in, pytest-cov
 cryptography==3.4.6       # via shared
 ecdsa==0.16.1             # via tlslite-ng
-factory-boy==2.12.0       # via -r requirements.in
-faker==6.6.0              # via factory-boy
+factory-boy==3.2.0        # via -r requirements.in
+faker==8.8.2              # via factory-boy
 google-api-core==1.26.1   # via google-cloud-core
 google-auth==1.27.1       # via google-api-core, google-cloud-core, google-cloud-storage
 google-cloud-core==1.6.0  # via google-cloud-storage
@@ -72,9 +72,8 @@ rfc3986[idna2008]==1.4.0  # via httpx
 git+ssh://git@github.com/codecov/ribs@v0.1.14#egg=ribs  # via shared
 rsa==4.7.2                # via google-auth
 s3transfer==0.3.4         # via boto3
-schema==0.7.4             # via shared
 sentry-sdk==0.20.3        # via -r requirements.in
-git+ssh://git@github.com/codecov/shared.git@v0.5.16#egg=shared  # via -r requirements.in
+git+ssh://git@github.com/codecov/shared.git@v0.6.0#egg=shared  # via -r requirements.in
 six==1.15.0               # via analytics-python, ecdsa, google-api-core, google-auth, google-cloud-core, google-resumable-media, python-dateutil, shared, sqlalchemy-utils, vcrpy
 sniffio==1.2.0            # via httpcore, httpx
 sqlalchemy-utils==0.36.8  # via -r requirements.in, pytest-sqlalchemy
@@ -85,7 +84,7 @@ text-unidecode==1.3       # via faker
 timestring==1.6.4         # via -r requirements.in
 tlslite-ng==0.7.6         # via shared
 tornado==6.1              # via shared
-urllib3==1.26.4           # via botocore, minio, requests, sentry-sdk
+urllib3==1.26.5           # via botocore, minio, requests, sentry-sdk
 vcrpy==4.1.1              # via -r requirements.in
 vine==1.3.0               # via amqp, celery
 voluptuous==0.12.1        # via shared

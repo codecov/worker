@@ -1,7 +1,0 @@
-CHANGELOG.md	 celery_config.py    helpers	       services
-Makefile	 *******.yml	     json	       tasks
-Makefile.circle  conftest.py	     nginx	       tests
-README.md	 database	     pytest.ini        worker.sh
-VERSION		 docker-compose.yml  requirements.in
-__init__.py	 dockerscripts	     requirements.txt
-app.py		 enterprise	     service.json

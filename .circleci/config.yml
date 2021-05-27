@@ -2,21 +2,21 @@ version: 2.1
 executors:
   codecov-deploy:
     docker:
-    - image: gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
-      user: root
-      auth:
-        username: _json_key
-        password: $GCLOUD_SERVICE_KEY
+      - image: gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
+        user: root
+        auth:
+          username: _json_key
+          password: $GCLOUD_SERVICE_KEY
     working_directory: /work
   codecov-worker:
     docker:
-    - image: gcr.io/test6u3411ty6xqh462sri/codecov-worker:latest
-      user: root
-      auth:
-        username: _json_key
-        password: $GCLOUD_SERVICE_KEY
-    - image: circleci/postgres:9.6.2
-      name: postgres
+      - image: gcr.io/test6u3411ty6xqh462sri/codecov-worker:latest
+        user: root
+        auth:
+          username: _json_key
+          password: $GCLOUD_SERVICE_KEY
+      - image: circleci/postgres:9.6.2
+        name: postgres
     working_directory: /worker
 
 gcloud_auth: &gcloud_auth
@@ -52,110 +52,37 @@ jobs:
   build:
     executor: codecov-deploy
     steps:
-    - checkout
-    - setup_remote_docker
-    - run:
-        <<: *gcloud_auth
-    - run:
-        name: build container
-        command: |-
-          make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
-          make -f Makefile.circle build VERSION=$CIRCLE_TAG
-          make -f Makefile.circle push
-  acceptance-portable-image:
-    executor: codecov-deploy
-    steps:
-    - checkout
-    - setup_remote_docker
-    - run:
-        <<: *gcloud_auth
-    - run:
-        name: Build Portable Container
-        command: |
-          make -f Makefile.circle build.portable GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
-          docker tag codecov/worker codecov/worker:latest
-          docker save codecov/worker:latest > workerPortableImage.tar
-    - persist_to_workspace:
-        root: .
-        paths:
-          - workerPortableImage.tar
-
-  acceptance:
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *gcloud_auth
+      - run:
+          name: build container
+          command: |-
+            make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+            make -f Makefile.circle build VERSION=$CIRCLE_TAG
+            make -f Makefile.circle push
+  standards-coverage-comparison:
     machine: true
     steps:
-    - checkout
-    - attach_workspace:
-        at: .
-    - run:
-        name: Get Autotest & Copy Important Configs
-        command: |
-          # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-          # --header "Accept: application/vnd.github.v3.raw" \
-          # -P ./nginx \
-          # https://api.github.com/repos/codecov/autotest/contents/nginx/codecovio.conf
-
-          # wget --header "Authorization: token $GH_ACCESS_TOKEN" \
-          # --header "Accept: application/vnd.github.v3.raw" \
-          # -P ./config \
-          # https://api.github.com/repos/codecov/autotest/contents/config/autotest.yml
-          git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/autotest.git
-          cp ./autotest/nginx/codecovio.conf ./nginx
-          cp ./autotest/config/autotest.yml ./config
-    - run:
-        name: Run Portable Image
-        command: |
-          docker load < workerPortableImage.tar
-    - run:
-        name: Start acceptance testing containers
-        command: |
-          echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-          docker-compose -f ./autotest/docker-compose-acceptance.yml up -d
-          sleep 10
-    - run:
-        name: Standards coverage comparison
-        command: |
-          # Script to call shell file that kicks off
-          # wget -O - 'https://api.github.com/repos/autotest/contents/worker/python-standard.sh' \
-          # --header "Authorization: token $GH_ACCESS_TOKEN" \
-          # --header "Accept: application/vnd.github.v3.raw" \
-          # | bash
-
-          git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/standards.git
-
-          declare -a standards=("cpp-11-standard" "python-standard" "go-standard" "kotlin-standard" "swift-standard" "typescript-standard")
-
-          for standard in "${standards[@]}"
-          do
-            echo "Integration test for $standard"
-            echo "Getting $standard latest SHA"
-            SHA=`cat ./standards/coverage_data/$standard/SHA.txt`
-            echo "Cloning $standard repo in current directory"
-            git clone https://codecov:${GH_ACCESS_TOKEN}@github.com/codecov/$standard.git
-            cd $standard
-            git reset --hard $SHA
-            echo "Getting latest coverage report"
-            cp -R ../standards/coverage_data/$standard ./$standard
-            echo "Upload coverage reports using bash uploader"
-            bash <(curl -s http://localhost:80/bash) -s ./$standard -C $SHA -t gh -r codecov/$standard
-            sleep 3
-            echo "Compute CI and Production coverage results"
-            CICoverage=$(curl http://localhost:80/api/gh/codecov/$standard/commit/$SHA | \
-            python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-            prodCoverage=$(curl https://codecov.io/api/gh/codecov/$standard/commit/$SHA | \
-            python2 -c 'import json,sys;obj=json.load(sys.stdin);print obj["commit"]["totals"]["c"]')
-            echo "Production coverage is ${prodCoverage}"
-            echo "CI coverage is ${CICoverage}"
-            if [[ $CICoverage != $prodCoverage ]]
-            then
-                echo "CI and Production coverage mismatch"
-                echo "CI coverage is ${CICoverage}"
-                echo "Production coverage is ${prodCoverage}"
-                exit 1
-            fi
-            echo "Return to parent directory"
+      - checkout
+      - run:
+          name: Pull Latest Worker Image
+          command: |
+            docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
+            make -f Makefile.circle pull-latest
+      - run:
+          name: Clone Autotest and Start Acceptance Testing Containers
+          command: |
             cd ..
-          done
-
+            git clone --depth 5 ssh://git@github.com/codecov/autotest.git
+            cd autotest/
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+            docker-compose -f docker-compose-acceptance.yml up -d
+            sleep 10
+      - run:
+          name: Standards Coverage Comparison
+          command: make -f Makefile.circle run-standards-comparison
   build-enterprise:
     executor: codecov-deploy
     steps:
@@ -195,26 +122,26 @@ jobs:
   staging:
     executor: codecov-deploy
     steps:
-    - checkout
-    - setup_remote_docker
-    - run:
-        <<: *gcloud_auth
-    - run:
-        name: docker build, tag, and upload to staging
-        command: |
-          make -f Makefile.circle staging
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *gcloud_auth
+      - run:
+          name: docker build, tag, and upload to staging
+          command: |
+            make -f Makefile.circle staging
 
   production:
     executor: codecov-deploy
     steps:
-    - checkout
-    - setup_remote_docker
-    - run:
-        <<: *gcloud_auth
-    - run:
-        name: docker build, tag, and upload to production
-        command: |
-          make -f Makefile.circle production
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *gcloud_auth
+      - run:
+          name: docker build, tag, and upload to production
+          command: |
+            make -f Makefile.circle production
   enterprise:
     executor: codecov-deploy
     steps:
@@ -236,21 +163,20 @@ jobs:
           <<: *gcloud_auth_enterprise
       - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
       - run:
-          name: docker build, tag, and upload to enterprise qa
+          name: Release Enterprise to Dockerhub
           command: |
-            make -B -f Makefile.circle enterprise
             make -B -f Makefile.circle release-enterprise
   deploy:
     executor: codecov-deploy
     steps:
-    - checkout
-    - setup_remote_docker
-    - run:
-        <<: *gcloud_auth
-    - run:
-        name: tag for k8s
-        command: |-
-          make -f Makefile.circle tag
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *gcloud_auth
+      - run:
+          name: tag for k8s
+          command: |-
+            make -f Makefile.circle tag
   dockerhub:
     executor: codecov-deploy
     steps:
@@ -278,18 +204,17 @@ workflows:
             tags:
               only:
                 - /enterprise-.*/
+                - /qa-.*/
       - test:
           requires:
             - build
           filters:
             tags:
               only: /.*/
-      - acceptance-portable-image:
-          context: "DockerHub Push Context"
-      - acceptance:
+      - standards-coverage-comparison:
           context: "DockerHub Push Context"
           requires:
-            - acceptance-portable-image
+            - build
       - staging:
           requires:
             - build
@@ -312,14 +237,27 @@ workflows:
             - build-enterprise
             - test
           filters:
+            tags:
+              only:
+                - /^qa-.*/
+                - /^enterprise-.*/
             branches:
               only: master
+      - hold:
+          type: approval
+          requires:
+            - enterprise
+          filters:
+            tags:
+              only:
+                - /^enterprise-.*/
+            branches:
+              ignore: /.*/
       - enterprise-release:
           context: "DockerHub Push Context"
           requires:
-            - build-enterprise
-            - test
             - enterprise
+            - hold
           filters:
             tags:
               only: /^enterprise-.*/

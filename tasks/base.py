@@ -39,6 +39,14 @@ class BaseCodecovTask(celery_app.Task):
     def metrics_prefix(self):
         return f"worker.task.{self.name}"
 
+    @property
+    def hard_time_limit_task(self):
+        if self.request.timelimit is not None and self.request.timelimit[0] is not None:
+            return self.request.timelimit[0]
+        if self.time_limit is not None:
+            return self.time_limit
+        return self.app.conf.task_time_limit or 0
+
     def run(self, *args, **kwargs):
         with metrics.timer(f"{self.metrics_prefix}.full"):
             db_session = get_db_session()

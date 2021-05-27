@@ -141,16 +141,18 @@ class NotificationService(object):
                 repoid=comparison.head.commit.repoid,
             ),
         )
-        notification_tasks = []
+        notification_instances = []
         for notifier in self.get_notifiers_instances():
             if notifier.is_enabled():
-                notification_tasks.append(
-                    self.notify_individual_notifier(notifier, comparison)
-                )
+                notification_instances.append(notifier)
         results = []
         chunk_size = 3
-        for i in range(0, len(notification_tasks), chunk_size):
-            task_chunk = notification_tasks[i : i + chunk_size]
+        for i in range(0, len(notification_instances), chunk_size):
+            notification_instances_chunk = notification_instances[i : i + chunk_size]
+            task_chunk = [
+                self.notify_individual_notifier(notifier, comparison)
+                for notifier in notification_instances_chunk
+            ]
             results.extend(await asyncio.gather(*task_chunk))
         return results
 

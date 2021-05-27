@@ -1,1 +1,1 @@
-celery -A tasks worker -Q new_tasks,upload,celery -l info
+python main.py worker --queue new_tasks,upload,celery

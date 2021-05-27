@@ -218,6 +218,7 @@ class Pull(CodecovBaseModel):
     state = Column(types.Text, nullable=False, default="open")
     title = Column(types.Text)
     base = Column(types.Text)
+    user_provided_base_sha = Column(types.Text)
     compared_to = Column(types.Text)
     head = Column(types.Text)
     commentid = Column(types.Text)

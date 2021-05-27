@@ -14,6 +14,7 @@ from services.notification.notifiers.base import (
     NotificationResult,
 )
 from services.repository import get_repo_provider_service
+from services.notification.comparison import ComparisonProxy
 from services.urls import get_commit_url, get_compare_url
 from services.yaml.reader import get_paths_from_flags
 from services.yaml import read_yaml_field
@@ -269,11 +270,9 @@ class StatusNotifier(AbstractBaseNotifier):
             )
 
     async def status_already_exists(
-        self, comparison, title, state, description
+        self, comparison: ComparisonProxy, title, state, description
     ) -> bool:
-        head = comparison.head.commit
-        repository_service = self.repository_service
-        statuses = await repository_service.get_commit_statuses(head.commitid)
+        statuses = await comparison.get_existing_statuses()
         if statuses:
             exists = statuses.get(title)
             return (
