@@ -82,8 +82,13 @@ class TestBasePathAwarePathFixer(object):
         assert base_aware_pf("sample/path.c") == "path.c"
         assert base_aware_pf("another/path.py") == "another/path.py"
         assert base_aware_pf("/another/path.py") == "another/path.py"
-        assert len(base_aware_pf.unexpected_results) == 0
-        assert base_aware_pf.log_abnormalities() is False
+        assert len(base_aware_pf.unexpected_results) == 1
+        assert base_aware_pf.log_abnormalities()
+        assert base_aware_pf.unexpected_results.pop() == {
+            "original_path": "another/path.py",
+            "original_path_fixer_result": "another/path.py",
+            "base_path_aware_result": "root/another/path.py",
+        }
         assert not base_aware_pf.log_abnormalities()
 
     def test_basepath_uses_own_result_if_main_is_none(self):
@@ -91,27 +96,9 @@ class TestBasePathAwarePathFixer(object):
         pf = PathFixer.init_from_user_yaml({}, toc, [])
         base_path = "/home/travis/build/project/coverage.xml"
         base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)
+        base_aware_pf("__init__.py")
         assert pf("__init__.py") is None
         assert base_aware_pf("__init__.py") == "project/__init__.py"
-        assert base_aware_pf.log_abnormalities()
-        assert len(base_aware_pf.unexpected_results) == 1
-        assert base_aware_pf.unexpected_results.pop() == {
-            "original_path": "__init__.py",
-            "original_path_fixer_result": None,
-            "base_path_aware_result": "project/__init__.py",
-        }
-
-    def test_basepath_uses_own_result_if_main_is_none_multuple_base_paths(self):
-        toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
-        pf = PathFixer.init_from_user_yaml({}, toc, [])
-        base_path = "/home/something/coverage.xml"
-        base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)
-        assert pf("__init__.py") is None
-        assert base_aware_pf("__init__.py") is None
-        assert (
-            base_aware_pf("__init__.py", bases_to_try=["/home/travis/build/project"])
-            == "project/__init__.py"
-        )
         assert base_aware_pf.log_abnormalities()
         assert base_aware_pf.unexpected_results.pop() == {
             "original_path": "__init__.py",
