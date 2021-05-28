@@ -13,7 +13,7 @@ from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
 from shared.reports.readonly import ReadOnlyReport
-from shared.torngit.exceptions import TorngitClientError, TorngitError
+from shared.torngit.exceptions import TorngitClientGeneralError, TorngitError
 from services.notification.notifiers.checks.base import ChecksNotifier
 from shared.reports.resources import ReportLine, ReportFile, Report
 from services.decoration import Decoration
@@ -264,8 +264,8 @@ class TestChecksWithFallback(object):
         self, sample_comparison, mocker, mock_repo_provider
     ):
         mock_repo_provider.create_check_run = Mock(
-            side_effect=TorngitClientError(
-                code=403, response="No Access", message="No Access"
+            side_effect=TorngitClientGeneralError(
+                403, response="No Access", message="No Access"
             )
         )
 
@@ -308,8 +308,8 @@ class TestChecksWithFallback(object):
     @pytest.mark.asyncio
     async def test_checks_failure(self, sample_comparison, mocker, mock_repo_provider):
         mock_repo_provider.create_check_run = Mock(
-            side_effect=TorngitClientError(
-                code=409, response="No Access", message="No Access"
+            side_effect=TorngitClientGeneralError(
+                409, response="No Access", message="No Access"
             )
         )
 
@@ -1080,7 +1080,9 @@ class TestPatchChecksNotifier(object):
 
         # Test exception handling when there's a TorngitClientError
         mock_repo_provider.get_compare = Mock(
-            side_effect=TorngitClientError(code=400, response="Error", message="Error")
+            side_effect=TorngitClientGeneralError(
+                400, response="Error", message="Error"
+            )
         )
         result = await notifier.notify(sample_comparison)
         assert result.notification_successful == False

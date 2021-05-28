@@ -13,12 +13,12 @@ boto3==1.17.26            # via -r requirements.in, shared
 botocore==1.20.26         # via boto3, s3transfer
 cachetools==4.2.1         # via google-auth
 celery==4.4.7             # via -r requirements.in
+cerberus==1.3.4           # via shared
 certifi==2020.12.5        # via httpx, minio, requests, sentry-sdk
 cffi==1.14.5              # via cryptography, google-crc32c
 chardet==4.0.0            # via requests
 colour==0.1.5             # via shared
 configparser==5.0.2       # via minio
-contextlib2==0.6.0.post1  # via schema
 coverage==5.5             # via -r requirements.in, pytest-cov
 cryptography==3.4.6       # via shared
 ecdsa==0.16.1             # via tlslite-ng
@@ -72,9 +72,8 @@ rfc3986[idna2008]==1.4.0  # via httpx
 git+ssh://git@github.com/codecov/ribs@v0.1.14#egg=ribs  # via shared
 rsa==4.7.2                # via google-auth
 s3transfer==0.3.4         # via boto3
-schema==0.7.4             # via shared
 sentry-sdk==0.20.3        # via -r requirements.in
-git+ssh://git@github.com/codecov/shared.git@v0.5.16#egg=shared  # via -r requirements.in
+git+ssh://git@github.com/codecov/shared.git@v0.5.18#egg=shared  # via -r requirements.in
 six==1.15.0               # via analytics-python, ecdsa, google-api-core, google-auth, google-cloud-core, google-resumable-media, python-dateutil, shared, sqlalchemy-utils, vcrpy
 sniffio==1.2.0            # via httpcore, httpx
 sqlalchemy-utils==0.36.8  # via -r requirements.in, pytest-sqlalchemy
