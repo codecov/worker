@@ -3,7 +3,10 @@ import pytest
 from shared.reports.resources import Report
 from celery_config import new_user_activated_task_name
 from celery.exceptions import Retry, MaxRetriesExceededError
-from shared.torngit.exceptions import TorngitClientError, TorngitServer5xxCodeError
+from shared.torngit.exceptions import (
+    TorngitClientGeneralError,
+    TorngitServer5xxCodeError,
+)
 from redis.exceptions import LockError
 from shared.yaml import UserYaml
 
@@ -486,7 +489,7 @@ class TestNotifyTask(object):
         mocker.patch.object(
             NotifyTask,
             "fetch_and_update_whether_ci_passed",
-            side_effect=TorngitClientError(401, "response", "message"),
+            side_effect=TorngitClientGeneralError(401, "response", "message"),
         )
         commit = CommitFactory.create(
             message="",
