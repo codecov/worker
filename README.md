@@ -71,7 +71,7 @@ If you are unsure whether you need to change that version at a given moment, the
 This repository uses `pip-tools` to manage dependencies, so make sure you've installed it with `pip install pip-tools`. To add or update dependencies, change `requirements.in`,  Then run
 
 ```
-pip-compile requirements.in
+make update-requirements
 ```
 
 Do not change `requirements.txt` directly
