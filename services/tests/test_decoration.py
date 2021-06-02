@@ -6,7 +6,11 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
-from services.decoration import Decoration, determine_decoration_details, BOT_USER_EMAILS
+from services.decoration import (
+    Decoration,
+    determine_decoration_details,
+    BOT_USER_EMAILS,
+)
 from services.repository import EnrichedPull
 
 
@@ -230,9 +234,7 @@ class TestDecorationServiceTestCase(object):
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
         )
 
-    def test_get_decoration_type_bot(
-        self, dbsession, mocker, enriched_pull
-    ):
+    def test_get_decoration_type_bot(self, dbsession, mocker, enriched_pull):
         pr_author = OwnerFactory.create(
             service="github",
             username=enriched_pull.provider_pull["author"]["username"],
@@ -246,7 +248,10 @@ class TestDecorationServiceTestCase(object):
         dbsession.commit()
 
         assert decoration_details.decoration_type == Decoration.standard
-        assert decoration_details.reason == "Bot user detected (does not need to be activated)"
+        assert (
+            decoration_details.reason
+            == "Bot user detected (does not need to be activated)"
+        )
         assert decoration_details.should_attempt_author_auto_activation is False
 
     def test_get_decoration_type_pr_author_already_active(
