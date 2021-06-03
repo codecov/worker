@@ -28,7 +28,7 @@ WORKDIR     /worker
 
 COPY        enterprise/ldd /pyinstaller/ldd
 COPY        enterprise/package.sh /pyinstaller/package.sh
-COPY        enterprise/enterprise.py /worker/enterprise.py
+COPY        main.py /worker/enterprise.py
 RUN         chmod a+x /pyinstaller/*
 
 RUN         ["/pyinstaller/package.sh"]
