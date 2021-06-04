@@ -13,6 +13,9 @@ log = logging.getLogger(__name__)
 # https://codecovio.atlassian.net/wiki/spaces/ENG/pages/34603058/PR+based+Billing+Refactor
 
 
+BOT_USER_EMAILS = ["dependabot[bot]@users.noreply.github.com"]
+
+
 @dataclass
 class DecorationDetails(object):
     decoration_type: Decoration
@@ -96,6 +99,12 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
             return DecorationDetails(
                 decoration_type=Decoration.standard,
                 reason="User is currently activated",
+            )
+
+        if pr_author.email in BOT_USER_EMAILS:
+            return DecorationDetails(
+                decoration_type=Decoration.standard,
+                reason="Bot user detected (does not need to be activated)",
             )
 
         if not org.plan_auto_activate:
