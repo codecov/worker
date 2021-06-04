@@ -1,4 +1,4 @@
-git+ssh://git@github.com/codecov/shared.git@v0.5.19#egg=shared
+git+ssh://git@github.com/codecov/shared.git@v0.5.20#egg=shared
 boto3
 celery
 coverage
