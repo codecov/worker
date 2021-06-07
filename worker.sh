@@ -1,1 +1,1 @@
-python run.py worker --queue new_tasks,upload,celery
+python main.py worker --queue new_tasks,upload,celery
