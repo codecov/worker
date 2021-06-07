@@ -1,6 +1,7 @@
 import logging
 import re
 from os import path
+from typing import List
 
 from timestring import Date, TimestringInvalid
 
@@ -32,29 +33,9 @@ def Int(value):
         return int(float(value))
 
 
-def get_source_path(xml):
+def get_sources_to_attempt(xml) -> List[str]:
     sources = [source.text for source in xml.iter("source")]
-    if len(sources) == 1:
-        source = sources[0]
-        if isinstance(source, str) and source.startswith("/"):
-            return source
-        else:
-            log.info(
-                f"Cobertura report - unsupported source",
-                extra=dict(unsupported_value=source),
-            )
-    if len(sources) > 1:
-        log.info(
-            f"Cobertura report - too many sources",
-            extra=dict(unsupported_value=sources),
-        )
-    return None
-
-
-def prepend_source_path_to_filename(source_path, filename):
-    if source_path:
-        return path.join(source_path, filename)
-    return filename
+    return [s for s in sources if isinstance(s, str) and s.startswith("/")]
 
 
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):
@@ -180,10 +161,10 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
     # path rename
     path_name_fixing = []
-    source_path = get_source_path(xml)
+    source_path_list = get_sources_to_attempt(xml)
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
-        fixed_name = fix(prepend_source_path_to_filename(source_path, filename))
+        fixed_name = fix(filename, bases_to_try=source_path_list)
         path_name_fixing.append((filename, fixed_name))
 
     _set = set(("dist-packages", "site-packages"))

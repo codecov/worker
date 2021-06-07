@@ -1,10 +1,12 @@
 from time import time
+import os
 import xml.etree.cElementTree as etree
 import pytest
 
 from tests.base import BaseTestCase
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import cobertura
+from services.path_fixer import PathFixer
 
 
 xml = """<?xml version="1.0" ?>
@@ -67,7 +69,7 @@ xml = """<?xml version="1.0" ?>
 
 class TestCobertura(BaseTestCase):
     def test_report(self):
-        def fixes(path):
+        def fixes(path, *, bases_to_try):
             if path == "ignore":
                 return None
             assert path in ("source", "empty", "file", "nolines")
@@ -166,7 +168,7 @@ class TestCobertura(BaseTestCase):
         timestring = "0"
         report = cobertura.from_xml(
             etree.fromstring(xml % ("", timestring, "", "")),
-            lambda path: path,
+            lambda path, bases_to_try: path,
             {},
             0,
             {"codecov": {"max_report_age": "12h"}},
@@ -223,7 +225,7 @@ class TestCobertura(BaseTestCase):
         processor = cobertura.CoberturaProcessor()
         report = cobertura.from_xml(
             etree.fromstring(xml % ("", int(time()), sources, "")),
-            lambda path: path,
+            lambda path, bases_to_try: [os.path.join(b, path) for b in bases_to_try][0],
             {},
             0,
             {"codecov": {"max_report_age": None}},
@@ -242,7 +244,7 @@ class TestCobertura(BaseTestCase):
         processor = cobertura.CoberturaProcessor()
         report = cobertura.from_xml(
             etree.fromstring(xml % ("", int(time()), sources, "")),
-            lambda path: path,
+            lambda path, bases_to_try: path,
             {},
             0,
             {"codecov": {"max_report_age": None}},
@@ -252,17 +254,37 @@ class TestCobertura(BaseTestCase):
         assert "source" in processed_report["report"]["files"]
         assert "file" in processed_report["report"]["files"]
 
-    def test_use_source_for_filename_if_multiple_sources(self):
+    def test_use_source_for_filename_if_multiple_sources_only_second_works(self):
         sources = """
         <sources>
             <source>/here</source>
             <source>/there</source>
         </sources>
         """
-        processor = cobertura.CoberturaProcessor()
+        path_fixer = PathFixer([], [], ["/there/source", "/there/file"])
         report = cobertura.from_xml(
             etree.fromstring(xml % ("", int(time()), sources, "")),
-            lambda path: path,
+            path_fixer.get_relative_path_aware_pathfixer("/somewhere"),
+            {},
+            0,
+            {"codecov": {"max_report_age": None}},
+        )
+        processed_report = self.convert_report_to_better_readable(report)
+        # doesnt use the source as we dont know which one
+        assert "/there/source" in processed_report["report"]["files"]
+        assert "/there/file" in processed_report["report"]["files"]
+
+    def test_use_source_for_filename_if_multiple_sources_works_without_base(self):
+        sources = """
+        <sources>
+            <source>/here</source>
+            <source>/there</source>
+        </sources>
+        """
+        path_fixer = PathFixer([], [], ["source", "file", "/here/source"])
+        report = cobertura.from_xml(
+            etree.fromstring(xml % ("", int(time()), sources, "")),
+            path_fixer.get_relative_path_aware_pathfixer("/somewhere"),
             {},
             0,
             {"codecov": {"max_report_age": None}},
@@ -271,3 +293,25 @@ class TestCobertura(BaseTestCase):
         # doesnt use the source as we dont know which one
         assert "source" in processed_report["report"]["files"]
         assert "file" in processed_report["report"]["files"]
+
+    def test_use_source_for_filename_if_multiple_sources_first_and_second_works(self):
+        sources = """
+        <sources>
+            <source>/here</source>
+            <source>/there</source>
+        </sources>
+        """
+        path_fixer = PathFixer(
+            [], [], ["/here/source", "/there/source", "/here/file", "/there/file"]
+        )
+        report = cobertura.from_xml(
+            etree.fromstring(xml % ("", int(time()), sources, "")),
+            path_fixer.get_relative_path_aware_pathfixer("/somewhere"),
+            {},
+            0,
+            {"codecov": {"max_report_age": None}},
+        )
+        processed_report = self.convert_report_to_better_readable(report)
+        # doesnt use the source as we dont know which one
+        assert "/here/source" in processed_report["report"]["files"]
+        assert "/here/file" in processed_report["report"]["files"]
