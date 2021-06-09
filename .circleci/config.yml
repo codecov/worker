@@ -96,8 +96,8 @@ jobs:
             ls
             ls /usr/bin
             # apt list --installed
-            sudo apt-get install gnupg
-            sudo apt-get install curl
+            apt-get install gnupg
+            apt-get install curl
             # apt list --installed
             curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --import # One time step
             curl -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine
