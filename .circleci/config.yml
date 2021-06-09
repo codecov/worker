@@ -93,16 +93,16 @@ jobs:
       - run:
           name: codecov
           command: |
-            ls
-            ls /usr/bin
+            # ls
+            # ls /usr/bin
             # apt list --installed
-            apt-get install gnupg
-            apt-get install curl
+            # apt-get install gnupg
+            # apt-get install curl
             # apt list --installed
-            curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --import # One time step
-            curl -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine
-            curl -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine.SHA256SUM
-            curl -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine.SHA256SUM.sig
+            wget https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --import # One time step
+            wget -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine
+            wget -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine.SHA256SUM
+            wget -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine.SHA256SUM.sig
             gpg --verify codecov-alpine.SHA256SUM.sig codecov-alpine.SHA256SUM
             shasum -a 256 -c codecov-alpine.SHA256SUM
             chmod +x ./codecov-alpine
