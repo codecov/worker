@@ -93,7 +93,12 @@ jobs:
       - run:
           name: codecov
           command: |
-            wget https://github.com/codecov/uploader/releases/download/v0.1.0_1681/codecov-alpine
+            curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --import # One time step
+            curl -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine
+            curl -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine.SHA256SUM
+            curl -Os https://uploader.codecov.io/v0.1.0_3844/codecov-alpine.SHA256SUM.sig
+            gpg --verify codecov-alpine.SHA256SUM.sig codecov-alpine.SHA256SUM
+            shasum -a 256 -c codecov-alpine.SHA256SUM
             chmod +x ./codecov-alpine
             ./codecov-alpine -R . -F integration -f integration.coverage.xml -Z
             ./codecov-alpine -R . -F unit -f unit.coverage.xml -Z
