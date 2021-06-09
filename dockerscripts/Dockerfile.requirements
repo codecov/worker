@@ -56,6 +56,3 @@ RUN             pip install --no-deps --no-index --find-links=/pip-packages/ /pi
 
 RUN             addgroup -S application \
                 && adduser -S codecov -G application
-
-RUN             apt-get install gnupg
-RUN             apt-get install curl
