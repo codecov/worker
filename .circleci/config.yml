@@ -95,8 +95,6 @@ jobs:
           command: |
             ls
             ls /usr/bin
-            locate apt-get
-            locate apt
             # apt list --installed
             sudo apt-get install gnupg
             sudo apt-get install curl
