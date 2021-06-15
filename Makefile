@@ -88,7 +88,7 @@ dockerhub.deploy-master: build.portable
 	docker push codecov/$(name):${release_version}-${sha}
 
 update-requirements:
-	pip install pip-tools==5.4.0
+	pip install pip-tools==6.1.0
 	pip-compile requirements.in
 
 tag.qa-release:

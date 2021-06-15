@@ -7,6 +7,7 @@ from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
 )
+from shared.torngit.base import TorngitBaseAdapter
 
 from services.repository import (
     get_repo_provider_service,
@@ -16,6 +17,7 @@ from services.repository import (
     get_repo_provider_service_by_id,
     fetch_and_update_pull_request_information_from_commit,
     fetch_and_update_pull_request_information,
+    _pick_best_base_comparedto_pair,
 )
 from database.models import Owner
 from database.tests.factories import (
@@ -1161,3 +1163,271 @@ class TestPullRequestFetcher(object):
             repository_service, commit, current_yaml
         )
         assert res.database_pull == pull
+
+    @pytest.mark.asyncio
+    async def test_pick_best_base_comparedto_pair_no_user_given_base_no_candidate(
+        self, mocker, dbsession
+    ):
+        async def get_commit_mocked(commit_sha):
+            return {"timestamp": datetime(2021, 3, 10).isoformat()}
+
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(repository=repository)
+        dbsession.add(pull)
+        dbsession.flush()
+        repository_service = mocker.Mock(
+            TorngitBaseAdapter, get_commit=get_commit_mocked,
+        )
+        current_yaml = mocker.MagicMock()
+        pull_information = {
+            "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
+        }
+        res = await _pick_best_base_comparedto_pair(
+            repository_service, pull, current_yaml, pull_information,
+        )
+        assert res == ("abcqwertabcqwertabcqwertabcqwertabcqwert", None)
+
+    @pytest.mark.asyncio
+    async def test_pick_best_base_comparedto_pair_yes_user_given_base_no_candidate(
+        self, mocker, dbsession
+    ):
+        async def get_commit_mocked(commit_sha):
+            return {"timestamp": datetime(2021, 3, 10).isoformat()}
+
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(
+            repository=repository,
+            user_given_base_sha="lkjhgfdslkjhgfdslkjhgfdslkjhgfdslkjhgfds",
+        )
+        dbsession.add(pull)
+        dbsession.flush()
+        repository_service = mocker.Mock(
+            TorngitBaseAdapter, get_commit=get_commit_mocked,
+        )
+        current_yaml = mocker.MagicMock()
+        pull_information = {
+            "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
+        }
+        res = await _pick_best_base_comparedto_pair(
+            repository_service, pull, current_yaml, pull_information,
+        )
+        assert res == ("lkjhgfdslkjhgfdslkjhgfdslkjhgfdslkjhgfds", None)
+
+    @pytest.mark.asyncio
+    async def test_pick_best_base_comparedto_pair_yes_user_given_base_exact_match(
+        self, mocker, dbsession
+    ):
+        async def get_commit_mocked(commit_sha):
+            return {"timestamp": datetime(2021, 3, 10).isoformat()}
+
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(
+            repository=repository,
+            user_given_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+        )
+        dbsession.add(pull)
+        dbsession.flush()
+        commit = CommitFactory.create(
+            repository=repository, commitid="1007cbfb857592b9e7cbe3ecb25748870e2c07fc"
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        repository_service = mocker.Mock(
+            TorngitBaseAdapter, get_commit=get_commit_mocked,
+        )
+        current_yaml = mocker.MagicMock()
+        pull_information = {
+            "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
+        }
+        res = await _pick_best_base_comparedto_pair(
+            repository_service, pull, current_yaml, pull_information,
+        )
+        assert res == (
+            "1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+            "1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+        )
+
+    @pytest.mark.asyncio
+    async def test_pick_best_base_comparedto_pair_yes_user_given_no_base_exact_match(
+        self, mocker, dbsession
+    ):
+        async def get_commit_mocked(commit_sha):
+            return {"timestamp": datetime(2021, 3, 10).isoformat()}
+
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(
+            repository=repository,
+            user_given_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+        )
+        dbsession.add(pull)
+        dbsession.flush()
+        commit = CommitFactory.create(
+            repository=repository, commitid="1007cbfb857592b9e7cbe3ecb25748870e2c07fc"
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        repository_service = mocker.Mock(
+            TorngitBaseAdapter, get_commit=get_commit_mocked,
+        )
+        current_yaml = mocker.MagicMock()
+        pull_information = {
+            "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
+        }
+        res = await _pick_best_base_comparedto_pair(
+            repository_service, pull, current_yaml, pull_information,
+        )
+        assert res == (
+            "1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+            "1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+        )
+
+    @pytest.mark.asyncio
+    async def test_pick_best_base_comparedto_pair_yes_user_given_no_base_no_match(
+        self, mocker, dbsession
+    ):
+        async def get_commit_mocked(commit_sha):
+            return {"timestamp": datetime(2021, 3, 10).isoformat()}
+
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(
+            repository=repository,
+            user_given_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+        )
+        dbsession.add(pull)
+        dbsession.flush()
+        commit = CommitFactory.create(
+            repository=repository,
+            commitid="e9868516aafd365aeab2957d3745353b532d3a37",
+            branch="basebranch",
+            timestamp=datetime(2021, 3, 9),
+            pullid=None,
+        )
+        other_commit = CommitFactory.create(
+            repository=repository,
+            commitid="2c07d7804dd9ff61ca5a1d6ee01de108af8cc7e0",
+            branch="basebranch",
+            timestamp=datetime(2021, 3, 11),
+            pullid=None,
+        )
+        dbsession.add(commit)
+        dbsession.add(other_commit)
+        dbsession.flush()
+        repository_service = mocker.Mock(
+            TorngitBaseAdapter, get_commit=get_commit_mocked,
+        )
+        current_yaml = mocker.MagicMock()
+        pull_information = {
+            "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
+        }
+        res = await _pick_best_base_comparedto_pair(
+            repository_service, pull, current_yaml, pull_information,
+        )
+        assert res == (
+            "1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+            "e9868516aafd365aeab2957d3745353b532d3a37",
+        )
+
+    @pytest.mark.asyncio
+    async def test_pick_best_base_comparedto_pair_yes_user_given_not_found(
+        self, mocker, dbsession
+    ):
+        async def get_commit_mocked(commit_sha):
+            if commit_sha == "1007cbfb857592b9e7cbe3ecb25748870e2c07fc":
+                raise TorngitObjectNotFoundError("response", "message")
+            return {"timestamp": datetime(2021, 3, 10).isoformat()}
+
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(
+            repository=repository,
+            user_given_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+        )
+        dbsession.add(pull)
+        dbsession.flush()
+        commit = CommitFactory.create(
+            repository=repository,
+            commitid="e9868516aafd365aeab2957d3745353b532d3a37",
+            branch="basebranch",
+            timestamp=datetime(2021, 3, 9),
+            pullid=None,
+        )
+        other_commit = CommitFactory.create(
+            repository=repository,
+            commitid="2c07d7804dd9ff61ca5a1d6ee01de108af8cc7e0",
+            branch="basebranch",
+            timestamp=datetime(2021, 3, 11),
+            pullid=None,
+        )
+        dbsession.add(commit)
+        dbsession.add(other_commit)
+        dbsession.flush()
+        repository_service = mocker.Mock(
+            TorngitBaseAdapter, get_commit=get_commit_mocked,
+        )
+        current_yaml = mocker.MagicMock()
+        pull_information = {
+            "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
+        }
+        res = await _pick_best_base_comparedto_pair(
+            repository_service, pull, current_yaml, pull_information,
+        )
+        assert res == (
+            "abcqwertabcqwertabcqwertabcqwertabcqwert",
+            "e9868516aafd365aeab2957d3745353b532d3a37",
+        )
+
+    @pytest.mark.asyncio
+    async def test_pick_best_base_comparedto_pair_no_user_given(
+        self, mocker, dbsession
+    ):
+        async def get_commit_mocked(commit_sha):
+            return {"timestamp": datetime(2021, 3, 10).isoformat()}
+
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        pull = PullFactory.create(repository=repository, user_given_base_sha=None,)
+        dbsession.add(pull)
+        dbsession.flush()
+        commit = CommitFactory.create(
+            repository=repository,
+            commitid="e9868516aafd365aeab2957d3745353b532d3a37",
+            branch="basebranch",
+            timestamp=datetime(2021, 3, 9),
+            pullid=None,
+        )
+        other_commit = CommitFactory.create(
+            repository=repository,
+            commitid="2c07d7804dd9ff61ca5a1d6ee01de108af8cc7e0",
+            branch="basebranch",
+            timestamp=datetime(2021, 3, 11),
+            pullid=None,
+        )
+        dbsession.add(commit)
+        dbsession.add(other_commit)
+        dbsession.flush()
+        repository_service = mocker.Mock(
+            TorngitBaseAdapter, get_commit=get_commit_mocked,
+        )
+        current_yaml = mocker.MagicMock()
+        pull_information = {
+            "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
+        }
+        res = await _pick_best_base_comparedto_pair(
+            repository_service, pull, current_yaml, pull_information,
+        )
+        assert res == (
+            "abcqwertabcqwertabcqwertabcqwertabcqwert",
+            "e9868516aafd365aeab2957d3745353b532d3a37",
+        )
