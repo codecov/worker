@@ -1,7 +1,9 @@
 import logging
 from typing import Sequence, Mapping, Any
 import shared.torngit as torngit
-from shared.yaml import fetch_current_yaml_from_provider_via_reference as shared_fetch_current_yaml_from_provider_via_reference
+from shared.yaml import (
+    fetch_current_yaml_from_provider_via_reference as shared_fetch_current_yaml_from_provider_via_reference,
+)
 
 from helpers.cache import cache
 from database.models import Commit
