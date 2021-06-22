@@ -19,4 +19,5 @@ async def fetch_commit_yaml_from_provider(
     yaml_content = await shared_fetch_current_yaml_from_provider_via_reference(
         commit.commitid, repository_service
     )
-    return parse_yaml_file(yaml_content)
+    if yaml_content:
+        return parse_yaml_file(yaml_content)
