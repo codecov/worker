@@ -43,8 +43,8 @@ build-enterprise:
 	docker build \
 		-f dockerscripts/Dockerfile.enterprise . \
 		-t ${ENTERPRISE_GCR_REPO}:latest \
-		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG}
-		--build-arg RELEASE_VERSION=${IMAGE_VERSION}
+		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG} \
+		--build-arg RELEASE_VERSION=${IMAGE_VERSION} \
 		--label "org.label-schema.build-date"="$(BUILD_DATE)" \
 		--label "org.label-schema.name"="Self-Hosted Worker" \
 		--label "org.label-schema.vendor"="Codecov" \
