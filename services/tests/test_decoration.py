@@ -15,7 +15,7 @@ from services.repository import EnrichedPull
 
 
 @pytest.fixture
-def enriched_pull(dbsession):
+def enriched_pull(dbsession, request):
     repository = RepositoryFactory.create(
         owner__username="codecov",
         owner__service="github",
@@ -27,8 +27,16 @@ def enriched_pull(dbsession):
     )
     dbsession.add(repository)
     dbsession.flush()
-    base_commit = CommitFactory.create(repository=repository, author__service="github")
-    head_commit = CommitFactory.create(repository=repository, author__service="github")
+    base_commit = CommitFactory.create(
+        repository=repository,
+        author__username=f"base{request.node.name[-20:]}",
+        author__service="github",
+    )
+    head_commit = CommitFactory.create(
+        repository=repository,
+        author__username=f"head{request.node.name[-20:]}",
+        author__service="github",
+    )
     pull = PullFactory.create(
         author__service="github",
         repository=repository,
