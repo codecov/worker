@@ -39,6 +39,7 @@ build:
 # pulls intermediate dependencies image and adds app code.
 build-enterprise:
 	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG}
+	docker pull ${ENTERPRISE_GCR_REPO}:latest
 	docker build \
 		-f dockerscripts/Dockerfile.enterprise . \
 		-t ${ENTERPRISE_GCR_REPO}:latest \
