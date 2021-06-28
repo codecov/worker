@@ -56,6 +56,9 @@ def test_deal_worker_command(mocker, mock_storage):
             "info",
             "-Q",
             codecov.queue,
+            "-B",
+            "-s",
+            "/home/codecov/celerybeat-schedule",
         ]
     )
 
