@@ -194,7 +194,7 @@ class ArchiveService(object):
     def delete_repo_files(self) -> int:
         path = "v4/repos/{}".format(self.storage_hash)
         objects = self.storage.list_folder_contents(self.root, path)
-        self.storage.delete_files(self.root, [obj["name"] for obj in objects])
+        self.storage.delete_files(self.root, urls=[obj["name"] for obj in objects])
         return len(objects)
 
     """
