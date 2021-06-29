@@ -22,8 +22,8 @@ configparser==5.0.2       # via minio
 coverage==5.5             # via -r requirements.in, pytest-cov
 cryptography==3.4.6       # via shared
 ecdsa==0.16.1             # via tlslite-ng
-factory-boy==2.12.0       # via -r requirements.in
-faker==6.6.0              # via factory-boy
+factory-boy==3.2.0        # via -r requirements.in
+faker==8.8.2              # via factory-boy
 google-api-core==1.26.1   # via google-cloud-core
 google-auth==1.27.1       # via google-api-core, google-cloud-core, google-cloud-storage
 google-cloud-core==1.6.0  # via google-cloud-storage
@@ -73,7 +73,7 @@ git+ssh://git@github.com/codecov/ribs@v0.1.14#egg=ribs  # via shared
 rsa==4.7.2                # via google-auth
 s3transfer==0.3.4         # via boto3
 sentry-sdk==0.20.3        # via -r requirements.in
-git+ssh://git@github.com/codecov/shared.git@v0.5.25#egg=shared  # via -r requirements.in
+git+ssh://git@github.com/codecov/shared.git@v0.6.0#egg=shared  # via -r requirements.in
 six==1.15.0               # via analytics-python, ecdsa, google-api-core, google-auth, google-cloud-core, google-resumable-media, python-dateutil, shared, sqlalchemy-utils, vcrpy
 sniffio==1.2.0            # via httpcore, httpx
 sqlalchemy-utils==0.36.8  # via -r requirements.in, pytest-sqlalchemy
