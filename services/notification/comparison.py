@@ -32,8 +32,10 @@ class ComparisonProxy(object):
         self._repository_service = None
         self._diff = None
         self._changes = None
+        self._existing_statuses = None
         self._diff_lock = asyncio.Lock()
         self._changes_lock = asyncio.Lock()
+        self._existing_statuses_lock = asyncio.Lock()
 
     def get_filtered_comparison(self, flags, path_patterns):
         if not flags and not path_patterns:
@@ -90,6 +92,14 @@ class ComparisonProxy(object):
                 )
             return self._changes
 
+    async def get_existing_statuses(self):
+        async with self._existing_statuses_lock:
+            if self._existing_statuses is None:
+                self._existing_statuses = await self.repository_service.get_commit_statuses(
+                    self.head.commit.commitid
+                )
+            return self._existing_statuses
+
 
 class FilteredComparison(object):
     def __init__(self, real_comparison: ComparisonProxy, *, flags, path_patterns):
@@ -111,6 +121,9 @@ class FilteredComparison(object):
 
     async def get_diff(self):
         return await self.real_comparison.get_diff()
+
+    async def get_existing_statuses(self):
+        return await self.real_comparison.get_existing_statuses()
 
     def has_base_report(self):
         return self.real_comparison.has_base_report()

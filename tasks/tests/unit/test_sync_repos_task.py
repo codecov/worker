@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import pytest
+from datetime import datetime
 
 from shared.torngit.exceptions import TorngitClientError
 from celery.exceptions import SoftTimeLimitExceeded
@@ -48,6 +49,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert new_entry is not None
         assert new_entry.username == username
+        assert new_entry.createstamp is None
 
     @pytest.mark.asyncio
     async def test_upsert_owner_update_existing(
@@ -58,15 +60,18 @@ class TestSyncReposTaskUnit(object):
         service_id = "123456"
         old_username = "codecov_org"
         new_username = "Codecov"
+        now = datetime.utcnow()
         existing_owner = OwnerFactory.create(
             ownerid=ownerid,
             organizations=[],
             service=service,
             username=old_username,
             permission=[],
+            createstamp=now,
             service_id=service_id,
         )
         dbsession.add(existing_owner)
+        dbsession.flush()
 
         upserted_ownerid = SyncReposTask().upsert_owner(
             dbsession, service, service_id, new_username
@@ -80,6 +85,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert updated_owner is not None
         assert updated_owner.username == new_username
+        assert updated_owner.createstamp == now
 
     @pytest.mark.asyncio
     async def test_upsert_repo_update_existing(
@@ -192,6 +198,77 @@ class TestSyncReposTaskUnit(object):
         assert updated_repo is not None
         assert updated_repo.deleted is False
         assert updated_repo.updatestamp is not None
+
+    @pytest.mark.asyncio
+    async def test_upsert_repo_exists_both_wrong_owner_and_service_id(
+        self, mocker, mock_configuration, dbsession
+    ):
+        # It is unclear what situation leads to this
+        # The most likely sitaution is that there was a repo abc on both owners kay and jay
+        # Then kay deleted its own repo, and jay moved its own repo to kay ownership
+        # Now the system sees that there is already a repo under kay with the right username
+        # (kay) but the wrong service_id (since that's an old repo), and another repo
+        # with the right service_id (because moved repos keep their service_ids) but wrong owner (jay)
+        service = "gitlab"
+        repository_name = "repository_name_hahahaha"
+        repo_service_id = "12071992"
+        wrong_service_id = "123498765482"
+        repo_data = {
+            "service_id": repo_service_id,
+            "name": repository_name,
+            "fork": None,
+            "private": True,
+            "language": None,
+            "branch": b"master",
+        }
+        correct_owner = OwnerFactory.create(
+            organizations=[], service=service, username="1nf1n1t3l00p", permission=[],
+        )
+        dbsession.add(correct_owner)
+        dbsession.flush()
+        repo_same_name = RepositoryFactory.create(
+            private=True,
+            name=repository_name,
+            using_integration=False,
+            service_id=wrong_service_id,
+            owner=correct_owner,
+        )
+        dbsession.add(repo_same_name)
+        wrong_owner = OwnerFactory.create(
+            organizations=[], service=service, username="cc", permission=[],
+        )
+        dbsession.add(wrong_owner)
+        right_service_id_repo = RepositoryFactory.create(
+            private=True,
+            name=repository_name,
+            using_integration=False,
+            service_id=repo_service_id,
+            owner=wrong_owner,
+        )
+        dbsession.add(right_service_id_repo)
+        dbsession.flush()
+
+        upserted_repoid = SyncReposTask().upsert_repo(
+            dbsession, service, correct_owner.ownerid, repo_data
+        )
+
+        assert upserted_repoid == right_service_id_repo.repoid
+        assert (
+            dbsession.query(Repository)
+            .filter(
+                Repository.ownerid == correct_owner.ownerid,
+                Repository.service_id == str(repo_service_id),
+            )
+            .count()
+        ) == 0  # We didn't move any repos or anything
+        dbsession.refresh(right_service_id_repo)
+        assert right_service_id_repo.name == repository_name
+        assert right_service_id_repo.service_id == repo_service_id
+        assert right_service_id_repo.ownerid == wrong_owner.ownerid
+        dbsession.refresh(repo_same_name)
+        assert repo_same_name.name == repository_name
+        assert repo_same_name.service_id == wrong_service_id
+        assert repo_same_name.ownerid == correct_owner.ownerid
 
     @pytest.mark.asyncio
     async def test_upsert_repo_exists_but_wrong_service_id(

@@ -1,9 +1,10 @@
 import uuid
 import datetime
 import logging
+from functools import cached_property
 
 from sqlalchemy import Column, types, ForeignKey, Table
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects import postgresql
 
@@ -32,7 +33,7 @@ class MixinBaseClass(object):
 class RepositoryFlag(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_repositoryflag"
     repository_id = Column(types.Integer, ForeignKey("repos.repoid"))
-    repository = relationship(Repository,)
+    repository = relationship(Repository, backref=backref("flags"))
     flag_name = Column(types.String(256), nullable=False)
 
 
@@ -85,7 +86,7 @@ class Upload(CodecovBaseModel, MixinBaseClass):
         "CommitReport", foreign_keys=[report_id], back_populates="uploads"
     )
     state = Column(types.String(100), nullable=False)
-    storage_path = Column(types.Text)
+    storage_path = Column(types.Text, nullable=False)
     order_number = Column(types.Integer)
     flags = relationship(RepositoryFlag, secondary=association_table)
     totals = relationship(
@@ -97,6 +98,10 @@ class Upload(CodecovBaseModel, MixinBaseClass):
     )
     upload_extras = Column(postgresql.JSON, nullable=False)
     upload_type = Column(types.String(100), nullable=False)
+
+    @cached_property
+    def flag_names(self):
+        return [f.flag_name for f in self.flags]
 
 
 class UploadError(CodecovBaseModel, MixinBaseClass):
@@ -128,7 +133,8 @@ class AbstractTotals(MixinBaseClass):
 
     def update_from_totals(self, totals):
         self.branches = totals.branches
-        self.coverage = totals.coverage
+        # Temporary until the table starts accepting NULLs
+        self.coverage = totals.coverage if totals.coverage is not None else 0
         self.hits = totals.hits
         self.lines = totals.lines
         self.methods = totals.methods

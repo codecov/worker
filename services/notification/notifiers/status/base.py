@@ -14,6 +14,7 @@ from services.notification.notifiers.base import (
     NotificationResult,
 )
 from services.repository import get_repo_provider_service
+from services.notification.comparison import ComparisonProxy
 from services.urls import get_commit_url, get_compare_url
 from services.yaml.reader import get_paths_from_flags
 from services.yaml import read_yaml_field
@@ -80,7 +81,7 @@ class StatusNotifier(AbstractBaseNotifier):
 
         location = "component" if component_behavior is not None else "default_rules"
 
-        log.info(
+        log.debug(
             "Determined status check behavior to apply",
             extra=dict(
                 location=location,
@@ -139,7 +140,7 @@ class StatusNotifier(AbstractBaseNotifier):
                         flag_coverage_was_uploaded = True
                         break
 
-        log.info(
+        log.debug(
             "Determined whether flag coverage on this status check was uploaded",
             extra=dict(
                 flag_coverage_was_uploaded=flag_coverage_was_uploaded,
@@ -187,8 +188,6 @@ class StatusNotifier(AbstractBaseNotifier):
         try:
             with nullcontext():
                 with nullcontext():
-                    payload = await self.build_payload(filtered_comparison)
-
                     # If flag coverage wasn't uploaded, apply the appropriate behavior
                     flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
                         comparison, "flag_coverage_not_uploaded_behavior"
@@ -197,7 +196,8 @@ class StatusNotifier(AbstractBaseNotifier):
                         flag_coverage_not_uploaded_behavior != "include"
                         and not self.flag_coverage_was_uploaded(comparison)
                     ):
-                        log.info(
+                        # flag_coverage_not_uploaded_behavior can be either `pass` or `exclude`
+                        log.debug(
                             "Status check flag coverage was not uploaded, applying behavior based on YAML settings",
                             extra=dict(
                                 commit=comparison.head.commit.commitid,
@@ -208,6 +208,7 @@ class StatusNotifier(AbstractBaseNotifier):
                         )
 
                         if flag_coverage_not_uploaded_behavior == "pass":
+                            payload = await self.build_payload(filtered_comparison)
                             payload["state"] = "success"
                             payload["message"] = (
                                 payload["message"]
@@ -221,6 +222,8 @@ class StatusNotifier(AbstractBaseNotifier):
                                 data_sent=None,
                                 data_received=None,
                             )
+                    else:
+                        payload = await self.build_payload(filtered_comparison)
 
             if (
                 comparison.pull
@@ -267,11 +270,9 @@ class StatusNotifier(AbstractBaseNotifier):
             )
 
     async def status_already_exists(
-        self, comparison, title, state, description
+        self, comparison: ComparisonProxy, title, state, description
     ) -> bool:
-        head = comparison.head.commit
-        repository_service = self.repository_service
-        statuses = await repository_service.get_commit_statuses(head.commitid)
+        statuses = await comparison.get_existing_statuses()
         if statuses:
             exists = statuses.get(title)
             return (

@@ -15,9 +15,11 @@ from services.notification.notifiers.base import (
 from services.notification.types import Comparison
 from helpers.metrics import metrics
 from services.repository import get_repo_provider_service
-from services.urls import get_org_account_url
+from services.urls import get_org_account_url, append_tracking_params_to_urls
 
 from services.notification.notifiers.mixins.message import MessageMixin
+
+from services.license import requires_license
 
 log = logging.getLogger(__name__)
 
@@ -93,6 +95,14 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 data_sent=None,
                 data_received=None,
             )
+        if comparison.pull.head != comparison.head.commit.commitid:
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="pull_head_does_not_match",
+                data_sent=None,
+                data_received=None,
+            )
         if self.notifier_yaml_settings.get("after_n_builds") is not None:
             n_builds_present = len(comparison.head.report.sessions)
             if n_builds_present < self.notifier_yaml_settings.get("after_n_builds"):
@@ -164,7 +174,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         except TorngitServerFailureError:
             log.warning(
                 "Unable to send comments because the provider server was not reachable or errored",
-                extra=dict(service=self.repository.service,),
+                extra=dict(git_service=self.repository.service,),
                 exc_info=True,
             )
             return NotificationResult(
@@ -177,6 +187,15 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
 
     async def send_actual_notification(self, data: Mapping[str, Any]):
         message = "\n".join(data["message"])
+
+        # Append tracking parameters to any codecov urls in the message
+        message = append_tracking_params_to_urls(
+            message,
+            service=self.repository.service,
+            notification_type="comment",
+            org_name=self.repository.owner.name,
+        )
+
         behavior = self.notifier_yaml_settings.get("behavior", "default")
         if behavior == "default":
             res = await self.send_comment_default_behavior(
@@ -350,9 +369,17 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         author_username = comparison.enriched_pull.provider_pull["author"].get(
             "username"
         )
-        return [
-            f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
-            f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment.",
-            f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
-            f"Please don't hesitate to email us at success@codecov.io with any questions.",
-        ]
+        if not requires_license():
+            return [
+                f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
+                f"Please [activate this user on Codecov]({links['org_account']}/users) to display this PR comment.",
+                f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+                f"Please don't hesitate to email us at success@codecov.io with any questions.",
+            ]
+        else:
+            return [
+                f"The author of this PR, {author_username}, is not activated in your Codecov Self-Hosted installation.",
+                f"Please [activate this user]({links['org_account']}/users) to display this PR comment.",
+                f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
+                f"Please contact your Codecov On-Premises installation administrator with any questions.",
+            ]

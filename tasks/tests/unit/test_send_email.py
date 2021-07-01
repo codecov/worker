@@ -27,6 +27,7 @@ class TestSendEmailTask(object):
         )
         assert result["job_id"] == "9791f6a7-3d3b-4ae9-8f71-67bd98f33008"
 
+    @pytest.mark.asyncio
     async def test_end_of_trial_email_with_email_type(
         self,
         mocker,

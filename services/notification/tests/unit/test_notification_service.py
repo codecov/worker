@@ -2,11 +2,13 @@ import pytest
 from asyncio import TimeoutError as AsyncioTimeoutError, CancelledError
 import os
 import mock
+
 from celery.exceptions import SoftTimeLimitExceeded
+from shared.yaml import UserYaml
+from shared.reports.resources import ReportLine, ReportFile, Report
 
 from database.enums import Notification, NotificationState, Decoration
 from database.tests.factories import RepositoryFactory
-from services.decoration import Decoration
 from services.notification import NotificationService
 from services.notification.notifiers.base import NotificationResult
 from services.notification.types import Comparison, FullCommit, EnrichedPull
@@ -16,7 +18,6 @@ from database.tests.factories import (
     PullFactory,
 )
 from services.notification.notifiers.checks import ProjectChecksNotifier
-from shared.reports.resources import ReportLine, ReportFile, Report
 
 
 @pytest.fixture
@@ -217,10 +218,10 @@ class TestNotificationService(object):
         commit = sample_comparison.head.commit
         report = Report()
         first_deleted_file = ReportFile("file_1.go")
-        first_deleted_file.append(1, ReportLine.create(coverage=0))
-        first_deleted_file.append(2, ReportLine.create(coverage=0))
-        first_deleted_file.append(3, ReportLine.create(coverage=0))
-        first_deleted_file.append(5, ReportLine.create(coverage=0))
+        first_deleted_file.append(1, ReportLine.create(coverage=0, sessions=[]))
+        first_deleted_file.append(2, ReportLine.create(coverage=0, sessions=[]))
+        first_deleted_file.append(3, ReportLine.create(coverage=0, sessions=[]))
+        first_deleted_file.append(5, ReportLine.create(coverage=0, sessions=[]))
         report.append(first_deleted_file)
         sample_comparison.head.report = report
         mock_repo_provider.create_check_run.return_value = 2234563
@@ -246,14 +247,16 @@ class TestNotificationService(object):
                 "data_sent": {
                     "state": "success",
                     "output": {
-                        "title": "No report found to compare against",
-                        "summary": f"[View this Pull Request on Codecov](None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo report found to compare against",
+                        "title": "No coverage information found on head",
+                        "summary": f"[View this Pull Request on Codecov](None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo coverage information found on head",
                     },
                     "url": f"None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/compare/{sample_comparison.base.commit.commitid}...{sample_comparison.head.commit.commitid}",
                 },
                 "data_received": None,
             },
         }
+        assert res["result"]["data_sent"] == expected_result["result"]["data_sent"]
+        assert res["result"] == expected_result["result"]
         assert res == expected_result
 
     @pytest.mark.asyncio
@@ -426,3 +429,36 @@ class TestNotificationService(object):
         res = await notifications_service.notify(sample_comparison)
         assert expected_result == res
         assert not mock_notify_individual_notifier.called
+
+    @pytest.mark.asyncio
+    async def test_get_statuses(self, mocker, dbsession, sample_comparison):
+        current_yaml = {
+            "coverage": {"status": {"project": True, "patch": True, "changes": True}},
+            "flags": {"banana": {"carryforward": False}},
+            "flag_management": {
+                "default_rules": {"carryforward": False},
+                "individual_flags": [
+                    {
+                        "name": "strawberry",
+                        "carryforward": True,
+                        "statuses": [{"name_prefix": "haha", "type": "patch",}],
+                    }
+                ],
+            },
+        }
+        commit = sample_comparison.head.commit
+        notifications_service = NotificationService(
+            commit.repository, UserYaml(current_yaml)
+        )
+        expected_result = [
+            ("project", "default", {}),
+            ("patch", "default", {}),
+            ("changes", "default", {}),
+            (
+                "patch",
+                "hahastrawberry",
+                {"flags": ["strawberry"], "name_prefix": "haha", "type": "patch"},
+            ),
+        ]
+        res = list(notifications_service.get_statuses(["unit", "banana", "strawberry"]))
+        assert expected_result == res

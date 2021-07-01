@@ -38,6 +38,8 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         flags = self.notifier_yaml_settings.get("flags")
         paths = self.notifier_yaml_settings.get("paths")
         yaml_comment_settings = read_yaml_field(self.current_yaml, ("comment",)) or {}
+        if yaml_comment_settings is True:
+            yaml_comment_settings = self.site_settings.get("comment", {})
         # copying to a new variable because we will be modifying that
         settings_to_be_used = dict(yaml_comment_settings)
         if "flag" in settings_to_be_used.get("layout", ""):

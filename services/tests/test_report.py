@@ -10,6 +10,7 @@ from database.models import CommitReport, ReportDetails, Upload, RepositoryFlag
 from services.archive import ArchiveService
 from shared.reports.types import ReportTotals, ReportLine
 from shared.reports.resources import ReportFile, Report, Session, SessionType
+from shared.yaml import UserYaml
 
 
 def powerset(iterable):
@@ -395,7 +396,7 @@ class TestReportService(BaseTestCase):
         res = ReportService({}).build_report_from_commit(commit)
         assert res is not None
         assert res.files == []
-        assert tuple(res.totals) == (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        assert tuple(res.totals) == (0, 0, 0, 0, 0, None, 0, 0, 0, 0, 0, 0, 0)
 
     def test_build_report_from_commit(self, mocker, mock_storage):
         commit = CommitFactory.create()
@@ -455,7 +456,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             [
@@ -1469,7 +1470,7 @@ class TestReportService(BaseTestCase):
             ReportService, "create_new_report_for_commit"
         )
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report_service = ReportService(yaml_dict)
+        report_service = ReportService(UserYaml(yaml_dict))
         report = report_service.build_report_from_commit(commit)
         assert report == mocked_create_new_report_for_commit.return_value
 
@@ -1487,7 +1488,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert len(report.files) == 15
         report.add_session(Session(flags=["enterprise"]))
@@ -1519,7 +1520,7 @@ class TestReportService(BaseTestCase):
                 "M": 0,
                 "N": 0,
                 "b": 0,
-                "c": 0,
+                "c": None,
                 "d": 0,
                 "diff": None,
                 "f": 0,
@@ -1549,7 +1550,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).build_report_from_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).build_report_from_commit(commit)
         assert report is not None
         assert len(report.files) == 15
         report.add_session(Session(flags=["enterprise"]))
@@ -1648,7 +1649,7 @@ class TestReportService(BaseTestCase):
                 "special_flag": {"paths": ["file_0.*"]},
             }
         }
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             ["file_10.py", "file_11.py", "file_12.py", "file_13.py", "file_14.py",]
@@ -2139,7 +2140,7 @@ class TestReportService(BaseTestCase):
                 "special_flag": {"paths": ["file_0.*"]},
             }
         }
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         assert report.totals == ReportTotals(
@@ -2148,7 +2149,7 @@ class TestReportService(BaseTestCase):
             hits=0,
             misses=0,
             partials=0,
-            coverage=0,
+            coverage=None,
             branches=0,
             methods=0,
             messages=0,
@@ -2160,13 +2161,13 @@ class TestReportService(BaseTestCase):
         readable_report = self.convert_report_to_better_readable(report)
         expected_results = {
             "archive": {},
-            "report": {"files": {}, "sessions": {},},
+            "report": {"files": {}, "sessions": {}},
             "totals": {
                 "C": 0,
                 "M": 0,
                 "N": 0,
                 "b": 0,
-                "c": 0,
+                "c": None,
                 "d": 0,
                 "diff": None,
                 "f": 0,
@@ -2198,7 +2199,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         assert report.totals == ReportTotals(
@@ -2207,7 +2208,7 @@ class TestReportService(BaseTestCase):
             hits=0,
             misses=0,
             partials=0,
-            coverage=0,
+            coverage=None,
             branches=0,
             methods=0,
             messages=0,
@@ -2225,7 +2226,7 @@ class TestReportService(BaseTestCase):
                 "M": 0,
                 "N": 0,
                 "b": 0,
-                "c": 0,
+                "c": None,
                 "d": 0,
                 "diff": None,
                 "f": 0,
@@ -2266,7 +2267,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             [
@@ -2459,7 +2460,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             [
@@ -2563,7 +2564,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(yaml_dict).create_new_report_for_commit(commit)
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         readable_report = self.convert_report_to_better_readable(report)
@@ -2593,7 +2594,31 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         with pytest.raises(NotReadyToBuildReportYetError):
-            ReportService(yaml_dict).create_new_report_for_commit(commit)
+            ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
+
+    def test_create_new_report_for_commit_potential_cf_but_not_real_cf(
+        self, dbsession, sample_commit_with_report_big
+    ):
+        parent_commit = sample_commit_with_report_big
+        dbsession.flush()
+        commit = CommitFactory.create(
+            repository=parent_commit.repository,
+            parent_commit_id=parent_commit.commitid,
+            report_json=None,
+        )
+        dbsession.add(parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.add(CommitReport(commit_id=commit.id_))
+        dbsession.flush()
+        yaml_dict = {
+            "flag_management": {
+                "default_rules": {"carryforward": False},
+                "individual_flags": [{"name": "banana", "carryforward": True}],
+            }
+        }
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
+        assert report.is_empty()
 
     def test_create_new_report_for_commit_parent_has_no_report(
         self, mock_storage, dbsession
@@ -2607,7 +2632,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         report_service = ReportService(
-            {"flags": {"enterprise": {"carryforward": True}}}
+            UserYaml({"flags": {"enterprise": {"carryforward": True}}})
         )
         r = report_service.create_new_report_for_commit(commit)
         assert r.files == []
@@ -2622,6 +2647,7 @@ class TestReportService(BaseTestCase):
         report_details = ReportDetails(report_id=current_report_row.id_)
         dbsession.add(report_details)
         dbsession.flush()
+        sample_report.sessions[0].archive = "path/to/upload/location"
         report_service = ReportService({})
         res = report_service.save_full_report(commit, sample_report)
         storage_hash = report_service.get_archive_service(
@@ -2637,6 +2663,8 @@ class TestReportService(BaseTestCase):
         second_upload = dbsession.query(Upload).filter_by(
             report_id=current_report_row.id_, provider="travis"
         )[0]
+        dbsession.refresh(second_upload)
+        dbsession.refresh(first_upload)
         assert first_upload.build_code == "aycaramba"
         assert first_upload.build_url is None
         assert first_upload.env is None
@@ -2645,7 +2673,7 @@ class TestReportService(BaseTestCase):
         assert first_upload.provider == "circleci"
         assert first_upload.report_id == current_report_row.id_
         assert first_upload.state == "complete"
-        assert first_upload.storage_path is None
+        assert first_upload.storage_path == "path/to/upload/location"
         assert first_upload.order_number == 0
         assert len(first_upload.flags) == 1
         assert first_upload.flags[0].repository == commit.repository
@@ -2669,7 +2697,7 @@ class TestReportService(BaseTestCase):
         assert second_upload.provider == "travis"
         assert second_upload.report_id == current_report_row.id_
         assert second_upload.state == "complete"
-        assert second_upload.storage_path is None
+        assert second_upload.storage_path == ""
         assert second_upload.order_number == 1
         assert len(second_upload.flags) == 1
         assert second_upload.flags[0].repository == commit.repository
@@ -2753,6 +2781,44 @@ class TestReportService(BaseTestCase):
                 "diff_totals": None,
             },
         ]
+
+    def test_save_report_empty_report(self, dbsession, mock_storage):
+        report = Report()
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_)
+        dbsession.add(report_details)
+        dbsession.flush()
+        report_service = ReportService({})
+        res = report_service.save_report(commit, report)
+        storage_hash = report_service.get_archive_service(
+            commit.repository
+        ).storage_hash
+        assert res == {
+            "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
+        }
+        assert commit.totals == {
+            "f": 0,
+            "n": 0,
+            "h": 0,
+            "m": 0,
+            "p": 0,
+            "c": 0,
+            "b": 0,
+            "d": 0,
+            "M": 0,
+            "s": 0,
+            "C": 0,
+            "N": 0,
+            "diff": None,
+        }
+        assert commit.report_json == {"files": {}, "sessions": {}}
+        assert res["url"] in mock_storage.storage["archive"]
+        assert mock_storage.storage["archive"][res["url"]].decode() == ""
 
     def test_save_report(self, dbsession, mock_storage, sample_report):
         commit = CommitFactory.create()
@@ -2908,16 +2974,16 @@ class TestReportService(BaseTestCase):
         expected_content = "\n".join(
             [
                 "{}",
-                "[1, null, [[0, 1, null, null, null]], null, [10, 2]]",
-                "[0, null, [[0, 1, null, null, null]]]",
-                "[1, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1]], null, [10, 2]]",
+                "[0, null, [[0, 1]]]",
+                "[1, null, [[0, 1]]]",
                 "",
-                "[1, null, [[0, 1, null, null, null], [1, 1, null, null, null]]]",
-                "[0, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1], [1, 1]]]",
+                "[0, null, [[0, 1]]]",
                 "",
-                "[1, null, [[0, 1, null, null, null], [1, 0, null, null, null]]]",
-                "[1, null, [[0, 1, null, null, null]]]",
-                "[0, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1], [1, 0]]]",
+                "[1, null, [[0, 1]]]",
+                "[0, null, [[0, 1]]]",
                 "<<<<< end_of_chunk >>>>>",
                 "{}",
                 "",
@@ -2931,7 +2997,7 @@ class TestReportService(BaseTestCase):
                 "",
                 "",
                 "",
-                "[1, null, [[0, 1, null, null, null]]]",
+                "[1, null, [[0, 1]]]",
                 "",
                 "",
                 "",
@@ -2970,7 +3036,207 @@ class TestReportService(BaseTestCase):
                 "",
                 "",
                 "",
-                '["1/2", "b", [[0, 1, null, null, null]]]',
+                '["1/2", "b", [[0, 1]]]',
+            ]
+        )
+        assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
+
+    def test_save_report_file_needing_repack(
+        self, dbsession, mock_storage, sample_report
+    ):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_)
+        dbsession.add(report_details)
+        dbsession.flush()
+        report_service = ReportService({})
+        f = ReportFile("hahafile.txt")
+        f.append(1, ReportLine.create(1))
+        sample_report.append(f)
+        f2 = ReportFile("poultry.c")
+        f2.append(12, ReportLine.create(1))
+        sample_report.append(f2)
+        f3 = ReportFile("pulse.py")
+        f3.append(2, ReportLine.create(1))
+        sample_report.append(f3)
+        print(sample_report.files)
+        del sample_report["file_2.py"]
+        del sample_report["hahafile.txt"]
+        del sample_report["pulse.py"]
+        assert len(sample_report._chunks) > 2 * len(sample_report._files)
+        res = report_service.save_report(commit, sample_report)
+        storage_hash = report_service.get_archive_service(
+            commit.repository
+        ).storage_hash
+        assert res == {
+            "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
+        }
+        assert len(current_report_row.uploads) == 0
+        assert report_details.files_array == [
+            {
+                "filename": "file_1.go",
+                "file_index": 0,
+                "file_totals": ReportTotals(
+                    files=0,
+                    lines=8,
+                    hits=5,
+                    misses=3,
+                    partials=0,
+                    coverage="62.50000",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=10,
+                    complexity_total=2,
+                    diff=0,
+                ),
+                "session_totals": [
+                    ReportTotals(
+                        files=0,
+                        lines=8,
+                        hits=5,
+                        misses=3,
+                        partials=0,
+                        coverage="62.50000",
+                        branches=0,
+                        methods=0,
+                        messages=0,
+                        sessions=0,
+                        complexity=10,
+                        complexity_total=2,
+                        diff=0,
+                    )
+                ],
+                "diff_totals": None,
+            },
+            {
+                "filename": "poultry.c",
+                "file_index": 1,
+                "file_totals": ReportTotals(
+                    files=0,
+                    lines=1,
+                    hits=1,
+                    misses=0,
+                    partials=0,
+                    coverage="100",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+                "session_totals": [
+                    None,
+                    ReportTotals(
+                        files=0,
+                        lines=1,
+                        hits=1,
+                        misses=0,
+                        partials=0,
+                        coverage="100",
+                        branches=0,
+                        methods=0,
+                        messages=0,
+                        sessions=0,
+                        complexity=0,
+                        complexity_total=0,
+                        diff=0,
+                    ),
+                ],
+                "diff_totals": None,
+            },
+        ]
+        expected = {
+            "files": {
+                "file_1.go": [
+                    0,
+                    [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
+                    [[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]],
+                    None,
+                ],
+                "poultry.c": [
+                    1,
+                    [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
+                    [None, [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+            },
+            "sessions": {
+                "0": {
+                    "t": [2, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "d": None,
+                    "a": None,
+                    "f": ["unit"],
+                    "c": "circleci",
+                    "n": "aycaramba",
+                    "N": None,
+                    "j": None,
+                    "u": None,
+                    "p": None,
+                    "e": None,
+                    "st": "uploaded",
+                    "se": {},
+                },
+                "1": {
+                    "t": None,
+                    "d": None,
+                    "a": None,
+                    "f": ["integration"],
+                    "c": "travis",
+                    "n": "poli",
+                    "N": None,
+                    "j": None,
+                    "u": None,
+                    "p": None,
+                    "e": None,
+                    "st": "carriedforward",
+                    "se": {},
+                },
+            },
+        }
+        assert (
+            commit.report_json["sessions"]["0"]["t"] == expected["sessions"]["0"]["t"]
+        )
+        assert commit.report_json["sessions"]["0"] == expected["sessions"]["0"]
+        assert commit.report_json["sessions"] == expected["sessions"]
+        assert commit.report_json["files"] == expected["files"]
+        assert commit.report_json == expected
+        assert res["url"] in mock_storage.storage["archive"]
+        print(mock_storage.storage["archive"][res["url"]])
+        expected_content = "\n".join(
+            [
+                "{}",
+                "[1, null, [[0, 1]], null, [10, 2]]",
+                "[0, null, [[0, 1]]]",
+                "[1, null, [[0, 1]]]",
+                "",
+                "[1, null, [[0, 1], [1, 1]]]",
+                "[0, null, [[0, 1]]]",
+                "",
+                "[1, null, [[0, 1], [1, 0]]]",
+                "[1, null, [[0, 1]]]",
+                "[0, null, [[0, 1]]]",
+                "<<<<< end_of_chunk >>>>>",
+                "{}",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "[1]",
             ]
         )
         assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
@@ -3015,7 +3281,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report_service = ReportService(yaml_dict)
+        report_service = ReportService(UserYaml(yaml_dict))
         r = report_service.initialize_and_save_report(commit)
         assert len(r.uploads) == 2
         first_upload = dbsession.query(Upload).filter_by(
@@ -3032,7 +3298,7 @@ class TestReportService(BaseTestCase):
         assert first_upload.provider is None
         assert first_upload.report_id == r.id_
         assert first_upload.state == "complete"
-        assert first_upload.storage_path is None
+        assert first_upload.storage_path == ""
         assert first_upload.order_number == 2
         assert len(first_upload.flags) == 1
         assert first_upload.flags[0].repository == commit.repository
@@ -3050,7 +3316,7 @@ class TestReportService(BaseTestCase):
         assert second_upload.provider is None
         assert second_upload.report_id == r.id_
         assert second_upload.state == "complete"
-        assert second_upload.storage_path is None
+        assert second_upload.storage_path == ""
         assert second_upload.order_number == 3
         assert len(second_upload.flags) == 2
         assert sorted([f.flag_name for f in second_upload.flags]) == [
@@ -3310,3 +3576,58 @@ class TestReportService(BaseTestCase):
         res = report_service.initialize_and_save_report(commit)
         assert res == current_report_row
         assert not mocker_save_full_report.called
+
+    def test_create_report_upload(self, dbsession):
+        arguments = {
+            "branch": "master",
+            "build": "646048900",
+            "build_url": "http://github.com/greenlantern/reponame/actions/runs/646048900",
+            "cmd_args": "n,F,Q,C",
+            "commit": "1280bf4b8d596f41b101ac425758226c021876da",
+            "job": "thisjob",
+            "flags": "unittest",
+            "name": "L MinGW 64-bit",
+            "owner": "greenlantern",
+            "package": "github-action-20210309-2b87ace",
+            "pr": "33",
+            "repo": "reponame",
+            "reportid": "6e2b6449-4e60-43f8-80ae-2c03a5c03d92",
+            "service": "github-actions",
+            "slug": "greenlantern/reponame",
+            "upload_pk": "42593902",
+            "url": "v4/raw/2021-03-12/C00AE6C87E34AF41A6D38D154C609782/1280bf4b8d596f41b101ac425758226c021876da/6e2b6449-4e60-43f8-80ae-2c03a5c03d92.txt",
+            "using_global_token": "false",
+            "version": "v4",
+        }
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_service = ReportService({})
+        res = report_service.create_report_upload(arguments, current_report_row)
+        dbsession.flush()
+        assert res.build_code == "646048900"
+        assert (
+            res.build_url
+            == "http://github.com/greenlantern/reponame/actions/runs/646048900"
+        )
+        assert res.env is None
+        assert res.job_code == "thisjob"
+        assert res.name == "L MinGW 64-bit"
+        assert res.provider == "github-actions"
+        assert res.report_id == current_report_row.id_
+        assert res.state == "started"
+        assert (
+            res.storage_path
+            == "v4/raw/2021-03-12/C00AE6C87E34AF41A6D38D154C609782/1280bf4b8d596f41b101ac425758226c021876da/6e2b6449-4e60-43f8-80ae-2c03a5c03d92.txt"
+        )
+        assert res.order_number is None
+        assert res.totals is None
+        assert res.upload_extras == {}
+        assert res.upload_type == "uploaded"
+        assert len(res.flags) == 1
+        first_flag = res.flags[0]
+        assert first_flag.flag_name == "unittest"
+        assert first_flag.repository_id == commit.repoid

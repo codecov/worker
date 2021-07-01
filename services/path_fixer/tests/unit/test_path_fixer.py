@@ -1,6 +1,7 @@
 from tests.base import BaseTestCase
 
 from services.path_fixer import PathFixer, invert_pattern
+from shared.yaml import UserYaml
 
 
 class TestPathFixerHelpers(BaseTestCase):
@@ -17,7 +18,7 @@ class TestPathFixer(BaseTestCase):
         assert pf("bower_components/sample.js") == ""
 
     def test_path_fixer_with_toc(self):
-        pf = PathFixer([], [], ",".join(["file_1.py", "folder/file_2.py"]))
+        pf = PathFixer([], [], ["file_1.py", "folder/file_2.py"])
         assert pf("fafafa/file_2.py") is None
         assert pf("folder/file_2.py") == "folder/file_2.py"
         assert pf("file_1.py") == "file_1.py"
@@ -55,7 +56,7 @@ class TestPathFixer(BaseTestCase):
         }
         toc = []
         flags = ["flagone"]
-        pf = PathFixer.init_from_user_yaml(commit_yaml, toc, flags)
+        pf = PathFixer.init_from_user_yaml(UserYaml(commit_yaml), toc, flags)
         assert pf("notsimple/path/to/something.py") == "notsimple/path/to/something.py"
         assert pf("complex/path/to/something.py") is None
         assert pf("before/tests-apples/test.js") == "after/test.js"
@@ -73,7 +74,7 @@ class TestBasePathAwarePathFixer(object):
             "fixes": [r"(?s:home/thiago)::root/"],
             "ignore": ["complex/path"],
         }
-        toc = "path.c,another/path.py,root/another/path.py"
+        toc = ["path.c", "another/path.py", "root/another/path.py"]
         flags = []
         pf = PathFixer.init_from_user_yaml(commit_yaml, toc, flags)
         base_path = "/home/thiago/testing"
@@ -81,23 +82,36 @@ class TestBasePathAwarePathFixer(object):
         assert base_aware_pf("sample/path.c") == "path.c"
         assert base_aware_pf("another/path.py") == "another/path.py"
         assert base_aware_pf("/another/path.py") == "another/path.py"
-        assert len(base_aware_pf.unexpected_results) == 1
-        assert base_aware_pf.log_abnormalities()
-        assert base_aware_pf.unexpected_results.pop() == {
-            "original_path": "another/path.py",
-            "original_path_fixer_result": "another/path.py",
-            "base_path_aware_result": "root/another/path.py",
-        }
+        assert len(base_aware_pf.unexpected_results) == 0
+        assert base_aware_pf.log_abnormalities() is False
         assert not base_aware_pf.log_abnormalities()
 
     def test_basepath_uses_own_result_if_main_is_none(self):
-        toc = "project/__init__.py,tests/__init__.py,tests/test_project.py"
+        toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
         pf = PathFixer.init_from_user_yaml({}, toc, [])
         base_path = "/home/travis/build/project/coverage.xml"
         base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)
-        base_aware_pf("__init__.py")
         assert pf("__init__.py") is None
         assert base_aware_pf("__init__.py") == "project/__init__.py"
+        assert base_aware_pf.log_abnormalities()
+        assert len(base_aware_pf.unexpected_results) == 1
+        assert base_aware_pf.unexpected_results.pop() == {
+            "original_path": "__init__.py",
+            "original_path_fixer_result": None,
+            "base_path_aware_result": "project/__init__.py",
+        }
+
+    def test_basepath_uses_own_result_if_main_is_none_multuple_base_paths(self):
+        toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
+        pf = PathFixer.init_from_user_yaml({}, toc, [])
+        base_path = "/home/something/coverage.xml"
+        base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)
+        assert pf("__init__.py") is None
+        assert base_aware_pf("__init__.py") is None
+        assert (
+            base_aware_pf("__init__.py", bases_to_try=["/home/travis/build/project"])
+            == "project/__init__.py"
+        )
         assert base_aware_pf.log_abnormalities()
         assert base_aware_pf.unexpected_results.pop() == {
             "original_path": "__init__.py",

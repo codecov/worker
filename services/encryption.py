@@ -1,13 +1,3 @@
-import os
+from shared.encryption.oauth import get_encryptor_from_configuration
 
-from shared.config import get_config
-
-from shared.encryption import StandardEncryptor
-
-
-first_part = get_config("setup", "encryption_secret", default="")
-second_part = os.getenv("ENCRYPTION_SECRET", "")
-third_part = "fYaA^Bj&h89,hs49iXyq]xARuCg"
-
-
-encryptor = StandardEncryptor(first_part, second_part, third_part)
+encryptor = get_encryptor_from_configuration()

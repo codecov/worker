@@ -146,3 +146,30 @@ class TestLcov(BaseTestCase):
         assert lcov.detect(txt) is True
         assert lcov.detect(b"hello_end_of_record") is False
         assert lcov.detect(b"") is False
+
+    def test_negative_execution_count(self):
+        text = "\n".join(
+            [
+                "TN:",
+                "SF:file.js",
+                "DA:1,1",
+                "DA:2,2",
+                "DA:3,0",
+                "DA:4,-1",
+                "DA:5,-5",
+                "DA:6,-20",
+                "end_of_record",
+            ]
+        ).encode()
+        report = lcov.from_txt(text, lambda x: x, {}, 0)
+        processed_report = self.convert_report_to_better_readable(report)
+        assert processed_report["archive"] == {
+            "file.js": [
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (2, 2, None, [[0, 2, None, None, None]], None, None),
+                (3, 0, None, [[0, 0, None, None, None]], None, None),
+                (4, -1, None, [[0, -1, None, None, None]], None, None),
+                (5, 0, None, [[0, 0, None, None, None]], None, None),
+                (6, 0, None, [[0, 0, None, None, None]], None, None),
+            ]
+        }

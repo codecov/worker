@@ -4,95 +4,93 @@
 #
 #    pip-compile requirements.in
 #
-amqp==2.5.2               # via kombu
-analytics-python==1.3.0b1  # via shared
-asn1crypto==1.3.0         # via cryptography
-attrs==17.4.0             # via pytest, shared
+amqp==2.6.1               # via kombu
+analytics-python==1.3.0b1  # via -r requirements.in, shared
+attrs==20.3.0             # via pytest, shared
 backoff==1.6.0            # via analytics-python
 billiard==3.6.3.0         # via celery
-boto3==1.9.218            # via -r requirements.in, shared
-botocore==1.12.253        # via boto3, s3transfer
-cachetools==4.1.0         # via google-auth
-celery==4.4.2             # via -r requirements.in
-certifi==2020.4.5.1       # via httpx, minio, requests, sentry-sdk
-cffi==1.14.0              # via cryptography
-chardet==3.0.4            # via requests
+boto3==1.17.26            # via -r requirements.in, shared
+botocore==1.20.26         # via boto3, s3transfer
+cachetools==4.2.1         # via google-auth
+celery==4.4.7             # via -r requirements.in
+cerberus==1.3.4           # via shared
+certifi==2020.12.5        # via httpx, minio, requests, sentry-sdk
+cffi==1.14.5              # via cryptography, google-crc32c
+chardet==4.0.0            # via requests
 colour==0.1.5             # via shared
-configparser==5.0.0       # via minio
-contextlib2==0.5.5        # via schema
-coverage==5.1             # via -r requirements.in, pytest-cov
-cryptography==2.7         # via -r requirements.in, shared
-docutils==0.15.2          # via botocore
-ecdsa==0.15               # via tlslite-ng
-factory-boy==2.11.1       # via -r requirements.in
-faker==4.1.0              # via factory-boy
-google-api-core==1.17.0   # via google-cloud-core
-google-auth==1.15.0       # via google-api-core, google-cloud-storage
-google-cloud-core==1.3.0  # via google-cloud-storage
-google-cloud-storage==1.18.0  # via -r requirements.in, shared
-google-resumable-media==0.5.0  # via google-cloud-storage
-googleapis-common-protos==1.51.0  # via google-api-core
-h11==0.9.0                # via httpcore
+configparser==5.0.2       # via minio
+coverage==5.5             # via -r requirements.in, pytest-cov
+cryptography==3.4.6       # via shared
+ecdsa==0.16.1             # via tlslite-ng
+factory-boy==3.2.0        # via -r requirements.in
+faker==8.8.2              # via factory-boy
+google-api-core==1.26.1   # via google-cloud-core
+google-auth==1.27.1       # via google-api-core, google-cloud-core, google-cloud-storage
+google-cloud-core==1.6.0  # via google-cloud-storage
+google-cloud-storage==1.36.2  # via -r requirements.in, shared
+google-crc32c==1.1.2      # via google-resumable-media
+google-resumable-media==1.2.0  # via google-cloud-storage
+googleapis-common-protos==1.53.0  # via google-api-core
+h11==0.12.0               # via httpcore
 htmldom==2.0              # via shared
-httpcore==0.12.0          # via httpx
-httplib2==0.18.1          # via oauth2
-httpx==0.16.1             # via -r requirements.in, shared
-idna==2.8                 # via requests, rfc3986, yarl
+httpcore==0.12.3          # via httpx
+httplib2==0.19.0          # via oauth2
+httpx==0.17.0             # via -r requirements.in, shared
+idna==2.10                # via requests, rfc3986, yarl
 jmespath==0.10.0          # via boto3, botocore
-kombu==4.6.8              # via celery
-lxml==4.3.5               # via -r requirements.in
-minio==6.0.0              # via shared
-mock==4.0.2               # via -r requirements.in
+kombu==4.6.11             # via celery
+lxml==4.6.3               # via -r requirements.in
+minio==6.0.2              # via shared
+mock==4.0.3               # via -r requirements.in
 monotonic==1.5            # via analytics-python
-more-itertools==8.3.0     # via pytest
-multidict==4.7.6          # via yarl
+more-itertools==8.7.0     # via pytest
+multidict==5.1.0          # via yarl
 oauth2==1.9.0.post1       # via shared
-packaging==20.4           # via pytest
+oauthlib==3.1.0           # via shared
+packaging==20.9           # via google-api-core, pytest
 pluggy==0.13.1            # via pytest
-protobuf==3.11.3          # via -r requirements.in, google-api-core, googleapis-common-protos
-psycopg2==2.8.5           # via -r requirements.in
-py==1.8.1                 # via pytest
+protobuf==3.15.6          # via google-api-core
+psycopg2==2.8.6           # via -r requirements.in
+py==1.10.0                # via pytest
 pyasn1-modules==0.2.8     # via google-auth
 pyasn1==0.4.8             # via pyasn1-modules, rsa
 pycparser==2.20           # via cffi
-pycurl==7.43.0.5          # via shared
 pyjwt==1.7.1              # via -r requirements.in
-pyparsing==2.4.7          # via packaging
-pytest-asyncio==0.10.0    # via -r requirements.in
-pytest-cov==2.9.0         # via -r requirements.in
-pytest-mock==1.10.4       # via -r requirements.in
+pyparsing==2.4.7          # via httplib2, packaging
+pytest-asyncio==0.14.0    # via -r requirements.in
+pytest-cov==2.11.1        # via -r requirements.in
+pytest-mock==1.13.0       # via -r requirements.in
 pytest-sqlalchemy==0.2.1  # via -r requirements.in
-pytest==5.4.2             # via -r requirements.in, pytest-asyncio, pytest-cov, pytest-mock, pytest-sqlalchemy
+pytest==5.4.3             # via -r requirements.in, pytest-asyncio, pytest-cov, pytest-mock, pytest-sqlalchemy
 python-dateutil==2.8.1    # via -r requirements.in, analytics-python, botocore, faker, minio
 python-json-logger==0.1.11  # via -r requirements.in
-pytz==2020.1              # via celery, google-api-core, minio, timestring
-pyyaml==3.13              # via -r requirements.in, vcrpy
-redis==3.2.1              # via -r requirements.in
-requests==2.22.0          # via -r requirements.in, analytics-python, google-api-core, stripe
+pytz==2021.1              # via celery, google-api-core, minio, timestring
+pyyaml==5.4.1             # via -r requirements.in, vcrpy
+redis==3.5.3              # via -r requirements.in
+requests==2.25.1          # via -r requirements.in, analytics-python, google-api-core, google-cloud-storage, stripe
 rfc3986[idna2008]==1.4.0  # via httpx
-git+ssh://git@github.com/codecov/ribs@v0.1.5#egg=ribs  # via shared
-rsa==4.0                  # via google-auth
-s3transfer==0.2.1         # via boto3
-schema==0.7.0             # via shared
-sentry-sdk==0.14.4        # via -r requirements.in
-git+ssh://git@github.com/codecov/shared.git@v0.4.8#egg=shared  # via -r requirements.in
-six==1.11.0               # via analytics-python, cryptography, ecdsa, google-api-core, google-auth, google-resumable-media, packaging, protobuf, python-dateutil, shared, sqlalchemy-utils, vcrpy
-sniffio==1.1.0            # via httpcore, httpx
-sqlalchemy-utils==0.33.11  # via -r requirements.in, pytest-sqlalchemy
-sqlalchemy==1.3.17        # via -r requirements.in, pytest-sqlalchemy, sqlalchemy-utils
+git+ssh://git@github.com/codecov/ribs@v0.1.14#egg=ribs  # via shared
+rsa==4.7.2                # via google-auth
+s3transfer==0.3.4         # via boto3
+sentry-sdk==0.20.3        # via -r requirements.in
+git+ssh://git@github.com/codecov/shared.git@v0.6.0#egg=shared  # via -r requirements.in
+six==1.15.0               # via analytics-python, ecdsa, google-api-core, google-auth, google-cloud-core, google-resumable-media, python-dateutil, shared, sqlalchemy-utils, vcrpy
+sniffio==1.2.0            # via httpcore, httpx
+sqlalchemy-utils==0.36.8  # via -r requirements.in, pytest-sqlalchemy
+sqlalchemy==1.3.23        # via -r requirements.in, pytest-sqlalchemy, sqlalchemy-utils
 statsd==3.3.0             # via -r requirements.in, shared
-stripe==2.42.0            # via -r requirements.in
+stripe==2.56.0            # via -r requirements.in
 text-unidecode==1.3       # via faker
 timestring==1.6.4         # via -r requirements.in
-tlslite-ng==0.7.5         # via shared
-tornado==6.0.4            # via shared
-urllib3==1.25.9           # via botocore, minio, requests, sentry-sdk
+tlslite-ng==0.7.6         # via shared
+tornado==6.1              # via shared
+urllib3==1.26.5           # via botocore, minio, requests, sentry-sdk
 vcrpy==4.1.1              # via -r requirements.in
 vine==1.3.0               # via amqp, celery
-voluptuous==0.11.7        # via shared
-wcwidth==0.1.9            # via pytest
+voluptuous==0.12.1        # via shared
+wcwidth==0.2.5            # via pytest
 wrapt==1.12.1             # via vcrpy
-yarl==1.4.2               # via vcrpy
+yarl==1.6.3               # via vcrpy
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

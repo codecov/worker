@@ -5,13 +5,20 @@ import pytest
 from json import loads
 from pathlib import Path
 
+from shared.yaml import UserYaml
+from shared.reports.types import ReportTotals
+from shared.utils.sessions import Session
+from shared.reports.resources import Report, ReportFile, ReportLine, LineSession
+
 from helpers.exceptions import ReportEmptyError, CorruptRawReportError
 from tests.base import BaseTestCase
 from services.report import raw_upload_processor as process
-from services.report.parser import RawReportParser, ParsedUploadedReportFile
-from shared.reports.types import ReportTotals
-from shared.utils.sessions import Session
-from shared.reports.resources import Report
+from services.report.parser import (
+    RawReportParser,
+    ParsedUploadedReportFile,
+    ParsedRawReport,
+)
+
 
 here = Path(__file__)
 folder = here.parent
@@ -150,6 +157,143 @@ class TestProcessRawUpload(BaseTestCase):
         )
         assert master.files == ["source", "file"]
 
+    def test_process_raw_upload_empty_report(self):
+        report_data = []
+        report_data.append("# path=coverage/coverage.txt")
+        report_data.extend(["5"])
+        report_data.append("<<<<<< EOF")
+        report_data.append("# path=coverage/other.txt")
+        report_data.append("json_section")
+
+        original_report = Report()
+        first_file = ReportFile("file_1.go")
+        first_file.append(
+            1, ReportLine.create(coverage=1, sessions=[[0, 1]], complexity=(10, 2))
+        )
+        first_file.append(2, ReportLine.create(coverage=0, sessions=[[0, 1]]))
+        first_file.append(3, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        first_file.append(5, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        first_file.append(6, ReportLine.create(coverage=0, sessions=[[0, 1]]))
+        first_file.append(8, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        first_file.append(9, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        first_file.append(10, ReportLine.create(coverage=0, sessions=[[0, 1]]))
+        second_file = ReportFile("file_2.py")
+        second_file.append(12, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        second_file.append(
+            51, ReportLine.create(coverage="1/2", type="b", sessions=[[0, 1]])
+        )
+        original_report.append(first_file)
+        original_report.append(second_file)
+        original_report.add_session(Session(flags=["unit"]))
+        assert len(original_report.sessions) == 1
+
+        result = process.process_raw_upload(
+            commit_yaml=None,
+            original_report=original_report,
+            reports=RawReportParser.parse_raw_report_from_io(
+                BytesIO("\n".join(report_data).encode())
+            ),
+            session=Session(flags=["fruits"]),
+            flags=[],
+        )
+        assert len(result.sessions) == 2
+        assert sorted(result.flags.keys()) == ["fruits", "unit"]
+        assert result.files == ["file_1.go", "file_2.py"]
+        assert result.flags["unit"].totals == ReportTotals(
+            files=2,
+            lines=10,
+            hits=10,
+            misses=0,
+            partials=0,
+            coverage="100",
+            branches=1,
+            methods=0,
+            messages=0,
+            sessions=1,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert result.flags["fruits"].totals == ReportTotals(
+            files=0,
+            lines=0,
+            hits=0,
+            misses=0,
+            partials=0,
+            coverage=None,
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=1,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        general_totals, json_data = result.to_database()
+        assert general_totals == {
+            "f": 2,
+            "n": 10,
+            "h": 6,
+            "m": 3,
+            "p": 1,
+            "c": "60.00000",
+            "b": 1,
+            "d": 0,
+            "M": 0,
+            "s": 2,
+            "C": 10,
+            "N": 2,
+            "diff": None,
+        }
+        assert loads(json_data) == {
+            "files": {
+                "file_1.go": [
+                    0,
+                    [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
+                    [[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]],
+                    None,
+                ],
+                "file_2.py": [
+                    1,
+                    [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
+                    [[0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0]],
+                    None,
+                ],
+            },
+            "sessions": {
+                "0": {
+                    "t": None,
+                    "d": None,
+                    "a": None,
+                    "f": ["unit"],
+                    "c": None,
+                    "n": None,
+                    "N": None,
+                    "j": None,
+                    "u": None,
+                    "p": None,
+                    "e": None,
+                    "st": "uploaded",
+                    "se": {},
+                },
+                "1": {
+                    "t": None,
+                    "d": None,
+                    "a": None,
+                    "f": ["fruits"],
+                    "c": None,
+                    "n": None,
+                    "N": None,
+                    "j": None,
+                    "u": None,
+                    "p": None,
+                    "e": None,
+                    "st": "uploaded",
+                    "se": {},
+                },
+            },
+        }
+
     def test_none(self):
         with pytest.raises(ReportEmptyError, match="No files found in report."):
             process.process_raw_upload(
@@ -189,7 +333,7 @@ class TestProcessRawUploadNotJoined(BaseTestCase):
         "flag, joined",
         [("nightly", False), ("unittests", True), ("ui", True), ("other", True)],
     )
-    def test_not_joined(self, flag, joined):
+    def test_not_joined(self, mocker, flag, joined):
         yaml = {
             "flags": {
                 "nightly": {"joined": False},
@@ -198,13 +342,16 @@ class TestProcessRawUploadNotJoined(BaseTestCase):
             }
         }
         merge = Mock(side_effect=NotImplementedError)
-        report = Mock(totals=Mock())
+        report = Report()
+        rf = ReportFile("fr.py")
+        rf.append(1, ReportLine.create(1))
+        report.append(rf)
         with patch(
             "services.report.raw_upload_processor.process_report", return_value=report
         ):
             with pytest.raises(NotImplementedError):
                 report = process.process_raw_upload(
-                    commit_yaml=yaml,
+                    commit_yaml=UserYaml(yaml),
                     original_report=Mock(
                         merge=merge, add_session=Mock(return_value=(1, Session()))
                     ),
@@ -214,7 +361,9 @@ class TestProcessRawUploadNotJoined(BaseTestCase):
                     flags=[flag],
                     session=Session(),
                 )
-            merge.assert_called_with(report, joined=joined)
+            merge.assert_called_with(mocker.ANY, joined=joined)
+            call_args, call_kwargs = merge.call_args
+            assert isinstance(call_args[0], Report)
 
 
 class TestProcessRawUploadFlags(BaseTestCase):
@@ -224,7 +373,7 @@ class TestProcessRawUploadFlags(BaseTestCase):
     )
     def test_flags(self, flag):
         master = process.process_raw_upload(
-            commit_yaml={"flags": {"docker": flag}},
+            commit_yaml=UserYaml({"flags": {"docker": flag}}),
             original_report={},
             session={},
             reports=RawReportParser.parse_raw_report_from_io(
@@ -673,3 +822,146 @@ class TestProcessReport(BaseTestCase):
             path_fixer=str,
         )
         assert res is None
+
+    def test_process_raw_upload_multiple_raw_reports(self, mocker):
+        original_report = Report()
+        original_banana = ReportFile("banana.py")
+        original_banana.append(100, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        original_banana.append(200, ReportLine.create(0, sessions=[LineSession(0, 0)]))
+        original_banana.append(300, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        original_banana.append(400, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        original_banana.append(
+            401, ReportLine.create("1/2", sessions=[LineSession(0, "1/2")])
+        )
+        original_report.append(original_banana)
+        another_file = ReportFile("another.c")
+        another_file.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        third_file = ReportFile("third.c")
+        third_file.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        original_report.append(another_file)
+        original_report.append(third_file)
+        original_report.add_session(Session(flags=["super"]))  # session with id 0
+        first_raw_report_result = Report()
+        first_banana = ReportFile("banana.py")
+        first_banana.append(1, ReportLine.create(1, sessions=[LineSession(1, 1)]))
+        first_banana.append(2, ReportLine.create(0, sessions=[LineSession(1, 0)]))
+        first_raw_report_result.append(first_banana)
+        second_raw_report_result = Report()
+        second_banana = ReportFile("banana.py")
+        second_banana.append(2, ReportLine.create(1, sessions=[LineSession(1, 1)]))
+        second_banana.append(3, ReportLine.create(0, sessions=[LineSession(1, 0)]))
+        second_raw_report_result.append(second_banana)
+        second_another_file = ReportFile("another.c")
+        second_another_file.append(
+            2, ReportLine.create(0, sessions=[LineSession(0, 0)])
+        )
+        second_another_file.append(
+            3, ReportLine.create(1, sessions=[LineSession(0, 1)])
+        )
+        second_raw_report_result.append(second_another_file)
+        third_raw_report_result = Report()
+        third_banana = ReportFile("banana.py")
+        third_banana.append(
+            3, ReportLine.create("1/2", sessions=[LineSession(1, "1/2")])
+        )
+        third_banana.append(5, ReportLine.create(0, sessions=[LineSession(1, 0)]))
+        third_raw_report_result.append(third_banana)
+        uploaded_reports = ParsedRawReport(
+            toc=None,
+            env=None,
+            path_fixes=None,
+            uploaded_files=[
+                ParsedUploadedReportFile(
+                    filename="/Users/path/to/app.coverage.txt",
+                    file_contents=BytesIO("<data>".encode()),
+                ),
+                ParsedUploadedReportFile(
+                    filename="/Users/path/to/app.coverage.txt",
+                    file_contents=BytesIO("<data>".encode()),
+                ),
+                ParsedUploadedReportFile(
+                    filename="/Users/path/to/app.coverage.txt",
+                    file_contents=BytesIO("<data>".encode()),
+                ),
+            ],
+        )
+        mocker.patch.object(
+            process,
+            "process_report",
+            side_effect=[
+                first_raw_report_result,
+                second_raw_report_result,
+                third_raw_report_result,
+            ],
+        )
+        session = Session()
+        res = process.process_raw_upload(
+            UserYaml({}),
+            original_report,
+            uploaded_reports,
+            ["flag_one", "flag_two"],
+            session=session,
+        )
+        assert session.totals == ReportTotals(
+            files=2,
+            lines=6,
+            hits=3,
+            misses=2,
+            partials=1,
+            coverage="50.00000",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert sorted(res.files) == ["another.c", "banana.py", "third.c"]
+        assert res.get("banana.py").totals == ReportTotals(
+            files=0,
+            lines=9,
+            hits=5,
+            misses=2,
+            partials=2,
+            coverage="55.55556",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert res.get("another.c").totals == ReportTotals(
+            files=0,
+            lines=2,
+            hits=2,
+            misses=0,
+            partials=0,
+            coverage="100",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert res.get("third.c").totals == ReportTotals(
+            files=0,
+            lines=1,
+            hits=1,
+            misses=0,
+            partials=0,
+            coverage="100",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert sorted(res.sessions.keys()) == [0, 1]
+        assert res.sessions[1] == session

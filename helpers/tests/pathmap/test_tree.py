@@ -1,5 +1,3 @@
-import pytest
-
 from helpers.pathmap.tree import Tree
 
 
@@ -33,12 +31,12 @@ class TestTree(object):
         """
         Test drilling a branch of tree
         """
-        results = []
+
         nested = self.tree._list_to_nested_dict(["a", "b", "c"])
         assert self.tree._drill(nested, []) == ["a/b/c"]
 
     def test_drill_multiple_possible_paths(self):
-        toc = ",src/list.rs,benches/list.rs,"
+        toc = ["src/list.rs", "benches/list.rs"]
         self.tree.construct_tree(toc)
 
         branch = self.tree.instance.get("list.rs")
@@ -46,10 +44,9 @@ class TestTree(object):
         assert self.tree._drill(branch, results) == None
 
     def test_recursive_lookup(self):
-        toc = ",one/two/three.py,"
         path = "one/two/three.py"
 
-        self.tree.construct_tree(toc)
+        self.tree.construct_tree([path])
 
         path_split = list(reversed(path.split("/")))
         match = self.tree._recursive_lookup(self.tree.instance, path_split, [])
@@ -63,7 +60,7 @@ class TestTree(object):
         assert match == ["one/two/three.py"]
 
     def test_lookup(self):
-        toc = ",one/two/three.py,"
+        toc = ["one/two/three.py"]
         path = "two/one/three.py"
         self.tree.construct_tree(toc)
 
@@ -85,7 +82,7 @@ class TestTree(object):
         assert self.tree.instance.get("c.py").get("b").get("a")
 
     def test_construct_tree(self):
-        toc = ",a/b/c,"
+        toc = ["a/b/c"]
 
         self.tree.construct_tree(toc)
         assert self.tree.instance.get("c").get("b").get("a")

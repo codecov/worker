@@ -48,12 +48,20 @@ def make_metrics(before, after, relative, show_complexity, yaml):
 
         layout = " `{absolute} <{relative}> ({impact})` |"
 
-        coverage_change = (
-            (float(after.coverage) - float(before.coverage)) if before else None
-        )
-        coverage_good = (coverage_change > 0) if before else None
+        if (
+            before
+            and before.coverage is not None
+            and after
+            and after.coverage is not None
+        ):
+            coverage_change = float(after.coverage) - float(before.coverage)
+        else:
+            coverage_change = None
+        coverage_good = (coverage_change > 0) if coverage_change is not None else None
         coverage = layout.format(
-            absolute=format_number_to_str(yaml, after.coverage, style="{0}%"),
+            absolute=format_number_to_str(
+                yaml, after.coverage, style="{0}%", if_null="\u2205",
+            ),
             relative=format_number_to_str(
                 yaml,
                 relative.coverage if relative else 0,
@@ -65,7 +73,7 @@ def make_metrics(before, after, relative, show_complexity, yaml):
                 coverage_change,
                 style="{0}%",
                 if_zero="\xF8",
-                if_null="\xF8",
+                if_null="\u2205",
                 plus=True,
             )
             if before
@@ -218,6 +226,36 @@ class MessageMixin(object):
         if base_report is None:
             base_report = Report()
 
+        is_compact_message = should_message_be_compact(comparison, settings)
+
+        if (
+            comparison.enriched_pull.provider_pull is not None
+            and comparison.head.commit.commitid
+            != comparison.enriched_pull.provider_pull["head"]["commitid"]
+        ):
+            # Temporary log so we understand when this happens
+            log.info(
+                "Notifying user that current head and pull head differ",
+                extra=dict(
+                    repoid=comparison.head.commit.repoid,
+                    commit=comparison.head.commit.commitid,
+                    pull_head=comparison.enriched_pull.provider_pull["head"][
+                        "commitid"
+                    ],
+                ),
+            )
+            write(
+                "> :exclamation: Current head {current_head} differs from pull request most recent head {pull_head}. Consider uploading reports for the commit {pull_head} to get more accurate results".format(
+                    pull_head=comparison.enriched_pull.provider_pull["head"][
+                        "commitid"
+                    ][:7],
+                    current_head=comparison.head.commit.commitid[:7],
+                )
+            )
+
+        if is_compact_message:
+            write("<details><summary>Details</summary>\n")
+
         if head_report:
             # loop through layouts
             for layout in map(
@@ -264,6 +302,9 @@ class MessageMixin(object):
                     ):
                         write(line)
                 write("")  # nl at end of each layout
+
+        if is_compact_message:
+            write("</details>")
 
         return [m for m in message if m is not None]
 
@@ -667,7 +708,7 @@ def diff_to_string(current_yaml, base_title, base, head_title, head) -> List[str
             # TODO if coverage format to smallest string or precision
             if c1 is None or c2 is None:
                 change = ""
-            elif isinstance(c2, str):
+            elif isinstance(c2, str) or isinstance(c1, str):
                 change = F(str(float(c2) - float(c1)))
             else:
                 change = str(c2 - c1)
@@ -752,3 +793,11 @@ def ellipsis(text, length, cut_from="left") -> str:
 
 def escape_markdown(value: str) -> str:
     return value.replace("`", "\\`").replace("*", "\\*").replace("_", "\\_")
+
+
+def should_message_be_compact(comparison, settings):
+    # bitbucket doesnt support <details/>
+    supported_services = ("github", "gitlab")
+    if comparison.repository_service.service not in supported_services:
+        return False
+    return settings.get("hide_comment_details", False)

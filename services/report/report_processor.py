@@ -2,6 +2,7 @@
 
 from json import load
 from lxml import etree
+import numbers
 import logging
 
 from shared.reports.resources import Report
@@ -75,7 +76,7 @@ def report_type_matching(report: ParsedUploadedReportFile) -> Tuple[Any, Optiona
     if raw_report:
         try:
             processed = load(report.file_contents)
-            if processed != dict():
+            if processed != dict() and not isinstance(processed, numbers.Number):
                 return processed, "json"
         except ValueError:
             pass
@@ -177,7 +178,7 @@ def process_report(
     log.info(
         "File format could not be recognized",
         extra=dict(
-            report_filename=name, first_line=first_line, report_type=report_type
+            report_filename=name, first_line=first_line[:100], report_type=report_type
         ),
     )
     return None

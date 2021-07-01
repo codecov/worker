@@ -1,9 +1,11 @@
 import logging
 
+from celery.exceptions import SoftTimeLimitExceeded
+
 from app import celery_app
 from celery_config import delete_owner_task_name
 from tasks.base import BaseCodecovTask
-from database.models import Owner, Repository, Branch, Pull, Commit
+from database.models import Owner, Repository, Branch, Pull, Commit, LoginSession
 from services.archive import ArchiveService
 
 log = logging.getLogger(__name__)
@@ -24,12 +26,16 @@ class DeleteOwnerTask(BaseCodecovTask):
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
 
         assert owner, "Owner not found"
+        try:
+            self.delete_repo_archives(db_session, ownerid)
+            self.delete_owner_from_orgs(db_session, ownerid)
+            self.delete_from_database(db_session, owner)
+        except SoftTimeLimitExceeded:
+            self.retry(max_retries=3)
 
-        self.delete_repo_archives(db_session, ownerid)
-
-        self.delete_owner_from_orgs(db_session, ownerid)
-
+    def delete_from_database(self, db_session, owner):
         # finally delete the actual owner entry and depending data from other tables
+        ownerid = owner.ownerid
         involved_repos = db_session.query(Repository.repoid).filter(
             Repository.ownerid == ownerid
         )
@@ -51,10 +57,20 @@ class DeleteOwnerTask(BaseCodecovTask):
         log.info("Deleting repos from DB", extra=dict(ownerid=ownerid))
         involved_repos.delete()
         db_session.commit()
-        log.info("Setting other bots to NULL", extra=dict(ownerid=ownerid))
+        log.info("Setting other owner bots to NULL", extra=dict(ownerid=ownerid))
         db_session.query(Owner).filter(Owner.bot_id == ownerid).update(
             {Owner.bot_id: None}, synchronize_session=False
         )
+        db_session.commit()
+        log.info(
+            "Cleaning repos that have this owner as bot", extra=dict(ownerid=ownerid)
+        )
+        db_session.query(Repository.repoid).filter(Repository.bot_id == ownerid).update(
+            {Repository.bot_id: None}, synchronize_session=False
+        )
+        db_session.commit()
+        log.info("Deleting sessions from user", extra=dict(ownerid=ownerid))
+        db_session.query(LoginSession).filter(LoginSession.ownerid == ownerid).delete()
         db_session.commit()
         log.info("Deleting owner from DB", extra=dict(ownerid=ownerid))
         db_session.delete(owner)

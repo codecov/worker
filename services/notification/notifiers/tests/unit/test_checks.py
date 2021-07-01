@@ -1,4 +1,5 @@
 import pytest
+from urllib.parse import quote_plus
 from unittest.mock import Mock
 from asyncio import Future
 from copy import deepcopy
@@ -12,7 +13,7 @@ from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
 from shared.reports.readonly import ReadOnlyReport
-from shared.torngit.exceptions import TorngitClientError, TorngitError
+from shared.torngit.exceptions import TorngitClientGeneralError, TorngitError
 from services.notification.notifiers.checks.base import ChecksNotifier
 from shared.reports.resources import ReportLine, ReportFile, Report
 from services.decoration import Decoration
@@ -263,8 +264,8 @@ class TestChecksWithFallback(object):
         self, sample_comparison, mocker, mock_repo_provider
     ):
         mock_repo_provider.create_check_run = Mock(
-            side_effect=TorngitClientError(
-                code=403, response="No Access", message="No Access"
+            side_effect=TorngitClientGeneralError(
+                403, response="No Access", message="No Access"
             )
         )
 
@@ -307,8 +308,8 @@ class TestChecksWithFallback(object):
     @pytest.mark.asyncio
     async def test_checks_failure(self, sample_comparison, mocker, mock_repo_provider):
         mock_repo_provider.create_check_run = Mock(
-            side_effect=TorngitClientError(
-                code=409, response="No Access", message="No Access"
+            side_effect=TorngitClientGeneralError(
+                409, response="No Access", message="No Access"
             )
         )
 
@@ -1064,6 +1065,37 @@ class TestPatchChecksNotifier(object):
             "url": f"test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
         }
 
+    @pytest.mark.asyncio
+    async def test_notification_exception(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = PatchChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+
+        # Test exception handling when there's a TorngitClientError
+        mock_repo_provider.get_compare = Mock(
+            side_effect=TorngitClientGeneralError(
+                400, response="Error", message="Error"
+            )
+        )
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == False
+        assert result.explanation == "client_side_error_provider"
+        assert result.data_sent is None
+
+        # Test exception handling when there's a TorngitError
+        mock_repo_provider.get_compare = Mock(side_effect=TorngitError())
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == False
+        assert result.explanation == "server_side_error_provider"
+        assert result.data_sent is None
+
 
 class TestChangesChecksNotifier(object):
     @pytest.mark.asyncio
@@ -1169,6 +1201,67 @@ class TestChangesChecksNotifier(object):
 
 
 class TestProjectChecksNotifier(object):
+    @pytest.mark.asyncio
+    async def test_analytics_url(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "codecov.io"
+        repo = sample_comparison.head.commit.repository
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        payload = {
+            "state": "success",
+            "output": {
+                "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "summary": f"[View this Pull Request on Codecov](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "text": "\n".join(
+                    [
+                        f"# [Codecov](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
+                        f"> Merging [#{sample_comparison.pull.pullid}](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](codecov.io/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+                        f"> The diff coverage is `66.67%`.",
+                        f"",
+                        f"| [Impacted Files](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+                        f"|---|---|---|---|",
+                        f"| [file\\_1.go](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+                        f"| [file\\_2.py](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+                        f"",
+                    ]
+                ),
+            },
+        }
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="default",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={"comment": {"layout": "files"}},
+        )
+        result = await notifier.send_notification(sample_comparison, payload)
+        expected_result = {
+            "state": "success",
+            "output": {
+                "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "summary": f"[View this Pull Request on Codecov](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)})\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "text": "\n".join(
+                    [
+                        f"# [Codecov](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) Report",
+                        f"> Merging [#{sample_comparison.pull.pullid}](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) ({head_commit.commitid[:7]}) into [master](codecov.io/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+                        f"> The diff coverage is `66.67%`.",
+                        f"",
+                        f"| [Impacted Files](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) | Coverage Δ | Complexity Δ | |",
+                        f"|---|---|---|---|",
+                        f"| [file\\_1.go](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+                        f"| [file\\_2.py](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/diff?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+                        f"",
+                    ]
+                ),
+            },
+        }
+        assert expected_result["output"]["text"].split("\n") == result.data_sent[
+            "output"
+        ]["text"].split("\n")
+        assert expected_result == result.data_sent
+
     @pytest.mark.asyncio
     async def test_build_flag_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
@@ -1473,8 +1566,8 @@ class TestProjectChecksNotifier(object):
         assert result.data_sent == {
             "state": "success",
             "output": {
-                "title": f"0.00% (+0.00%) compared to {base_commit.commitid[0:7]}",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n0.00% (+0.00%) compared to {base_commit.commitid[0:7]}",
+                "title": "No coverage information found on head",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo coverage information found on head",
             },
             "url": f"test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
         }
@@ -1867,3 +1960,49 @@ class TestProjectChecksNotifier(object):
         assert expected_result.data_sent["output"] == result.data_sent["output"]
         assert expected_result.data_sent == result.data_sent
         assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_comments_true(
+        self, sample_comparison, mock_configuration
+    ):
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings={},
+            current_yaml={"comment": True},
+        )
+        res = await notifier.build_payload(sample_comparison)
+        assert res == {
+            "state": "success",
+            "output": {
+                "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+            },
+        }
+
+    @pytest.mark.asyncio
+    async def test_build_payload_comments_false(
+        self, sample_comparison, mock_configuration
+    ):
+        base_commit = sample_comparison.base.commit
+        head_commit = sample_comparison.head.commit
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings={},
+            current_yaml={"comment": False},
+        )
+        res = await notifier.build_payload(sample_comparison)
+        assert res == {
+            "state": "success",
+            "output": {
+                "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+            },
+        }

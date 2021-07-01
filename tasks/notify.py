@@ -1,12 +1,12 @@
 import logging
 
-from sqlalchemy import func
-from sqlalchemy.orm.session import Session
-from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from celery.exceptions import MaxRetriesExceededError
-from redis.exceptions import LockError
 from celery.exceptions import SoftTimeLimitExceeded
+from redis.exceptions import LockError
 from shared.reports.readonly import ReadOnlyReport
+from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
+from shared.yaml import UserYaml
+from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from celery_config import (
@@ -67,7 +67,9 @@ class NotifyTask(BaseCodecovTask):
         notify_lock_name = f"notify_lock_{repoid}_{commitid}"
         try:
             with redis_connection.lock(
-                notify_lock_name, timeout=60, blocking_timeout=10
+                notify_lock_name,
+                timeout=max(80, self.hard_time_limit_task),
+                blocking_timeout=10,
             ):
                 return await self.run_async_within_lock(
                     db_session,
@@ -111,6 +113,8 @@ class NotifyTask(BaseCodecovTask):
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         if current_yaml is None:
             current_yaml = await get_current_yaml(commit, repository_service)
+        else:
+            current_yaml = UserYaml.from_dict(current_yaml)
         assert commit, "Commit not found in database."
         try:
             ci_results = await self.fetch_and_update_whether_ci_passed(
@@ -158,7 +162,7 @@ class NotifyTask(BaseCodecovTask):
                         commit=commit.commitid,
                         max_retries=max_retries,
                         next_countdown_would_be=countdown,
-                        current_yaml=current_yaml,
+                        current_yaml=current_yaml.to_dict(),
                     ),
                 )
                 return {
@@ -172,7 +176,7 @@ class NotifyTask(BaseCodecovTask):
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
-                    current_yaml=current_yaml,
+                    current_yaml=current_yaml.to_dict(),
                 ),
             )
             enriched_pull = await fetch_and_update_pull_request_information_from_commit(

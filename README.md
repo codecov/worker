@@ -19,14 +19,17 @@ If you already know how to do it (and how you like it), just do what you already
 
 Then you should clone this project when inside `workerenv` folder.
 
-### Cloning and installing dependencies
+### Installing dependencies
 
-After cloning this, run
+Make sure to:
+- Install rust. See https://www.rust-lang.org/tools/install
+- Have access to any private codecov repos listed in the requirements.txt file. See [here](https://codecovio.atlassian.net/wiki/spaces/ENG/pages/1270743045/Setup) for help on getting that set up.
+
+To install the dependencies, run
 
 ```
 pip install -r requirements.txt
 ```
-(Make sure you have access to the repos listed there. A couple of them are private and are under the codecov organization)
 
 ### Running Tests
 
@@ -68,28 +71,37 @@ If you are unsure whether you need to change that version at a given moment, the
 This repository uses `pip-tools` to manage dependencies, so make sure you've installed it with `pip install pip-tools`. To add or update dependencies, change `requirements.in`,  Then run
 
 ```
-pip-compile requirements.in
+make update-requirements
 ```
 
 Do not change `requirements.txt` directly
 
 ## Deploying
 
-To deploy, all you have to do is create a release (preferred option) or push a tag with the pattern production-date-number. More specifically, it needs to follow the regex:
+To deploy, all you have to do is create a release (preferred option) or push a tag with the pattern production-year-month-number. More specifically, it needs to follow the regex:
 
 ```
-^production-[0-9]{4}-[0-9]{2}-[0-9]{4}
+/^prod(uction)?-[0-9]{4}-[0-9]{2}-[0-9]{3,4}/
 ```
 
 Which means, for example:
 
 - `production-2020-11-0001` - First deploy of 2020-11
 - `production-2020-12-0015` - Fifteenth deploy of 2020-12
+- `prod-2020-12-015` - Fifteenth deploy of 2020-12
 
 Notice that, while the dates are really useful for understanding when code was deployed, it doesn't affect whether or not your release will go to production. If your regex matches the pattern, regardless of what date is tagged, that version will go to production.
 
 To create releases on Github, you can go to https://github.com/codecov/worker/releases or use Github CLI. to push tags you can follow instructions on https://git-scm.com/book/en/v2/Git-Basics-Tagging
 
+### After deploying
+
+If you are deploying or helping with a deploy, make sure to:
+
+1. Watch logs (on datadog and sentry)
+2. Monitor error rates and timing graphs on the dashboards we have set up
+
+As the deployer, it is your responsability to make sure the system is working as expected post-deploy. If not, you might need to do a rollback.
 
 ## Code Structure
 

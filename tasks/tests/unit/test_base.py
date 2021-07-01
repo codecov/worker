@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from sqlalchemy.exc import DBAPIError, InvalidRequestError
+from sqlalchemy.exc import DBAPIError, InvalidRequestError, IntegrityError
 import pytest
+import psycopg2
 from celery.exceptions import Retry, SoftTimeLimitExceeded
 from celery.contrib.testing.mocks import TaskMessage
 
@@ -21,9 +22,27 @@ class SampleTask(BaseCodecovTask):
         return False
 
 
-class SampleTaskWithError(BaseCodecovTask):
+class SampleTaskWithArbitraryError(BaseCodecovTask):
+    def __init__(self, error):
+        self.error = error
+
     async def run_async(self, dbsession):
-        raise DBAPIError("statement", "params", "orig")
+        raise self.error
+
+    def write_to_db(self):
+        return False
+
+    def retry(self):
+        # Fake retry method
+        raise Retry()
+
+
+class SampleTaskWithArbitraryPostgresError(BaseCodecovTask):
+    def __init__(self, error):
+        self.error = error
+
+    async def run_async(self, dbsession):
+        raise DBAPIError("statement", "params", self.error)
 
     def write_to_db(self):
         return False
@@ -54,7 +73,17 @@ class RetrySampleTask(BaseCodecovTask):
         self.retry()
 
 
-class TestBaseTask(object):
+class TestBaseCodecovTask(object):
+    def test_hard_time_limit_task_with_request_data(self, mocker):
+        mocker.patch.object(SampleTask, "request", timelimit=[200, 123])
+        r = SampleTask()
+        assert r.hard_time_limit_task == 200
+
+    def test_hard_time_limit_task_from_default_app(self, mocker):
+        mocker.patch.object(SampleTask, "request", timelimit=None)
+        r = SampleTask()
+        assert r.hard_time_limit_task == 480
+
     def test_sample_run(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_get_db_session.return_value = dbsession
@@ -65,7 +94,31 @@ class TestBaseTask(object):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_get_db_session.return_value = dbsession
         with pytest.raises(Retry):
-            SampleTaskWithError().run()
+            SampleTaskWithArbitraryError(
+                DBAPIError("statement", "params", "orig")
+            ).run()
+
+    def test_sample_run_integrity_error(self, mocker, dbsession):
+        mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
+        mocked_get_db_session.return_value = dbsession
+        with pytest.raises(Retry):
+            SampleTaskWithArbitraryError(
+                IntegrityError("statement", "params", "orig")
+            ).run()
+
+    def test_sample_run_deadlock_exception(self, mocker, dbsession):
+        mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
+        mocked_get_db_session.return_value = dbsession
+        with pytest.raises(Retry):
+            SampleTaskWithArbitraryPostgresError(
+                psycopg2.errors.DeadlockDetected()
+            ).run()
+
+    def test_sample_run_operationalerror_exception(self, mocker, dbsession):
+        mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
+        mocked_get_db_session.return_value = dbsession
+        with pytest.raises(Retry):
+            SampleTaskWithArbitraryPostgresError(psycopg2.OperationalError()).run()
 
     def test_sample_run_softimeout(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")

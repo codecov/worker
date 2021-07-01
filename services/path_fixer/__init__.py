@@ -4,7 +4,7 @@ import logging
 import random
 from pathlib import PurePath
 from collections import defaultdict
-from typing import Optional
+from typing import Optional, Sequence
 
 from helpers.pathmap import _resolve_path
 from helpers.pathmap.tree import Tree
@@ -32,29 +32,24 @@ class PathFixer(object):
     """
 
     @classmethod
-    def init_from_user_yaml(cls, commit_yaml: dict, toc: str, flags: typing.Sequence):
+    def init_from_user_yaml(
+        cls, commit_yaml: dict, toc: Sequence[str], flags: Sequence
+    ):
         """
-        @param commit_yaml: Codecov yaml file in effect for this commit.
-        @param toc: List of files prepended to the uploaded report. Not all report formats provide this.
-        @param flags: Coverage flags specified by the user, if any.
+        :param commit_yaml: Codecov yaml file in effect for this commit.
+        :param toc: List of files prepended to the uploaded report. Not all report formats provide this.
+        :param flags: Coverage flags specified by the user, if any.
         """
         path_patterns = list(
             map(invert_pattern, read_yaml_field(commit_yaml, ("ignore",)) or [])
         )
         if flags:
             for flag in flags:
+                flag_configuration = commit_yaml.get_flag_configuration(flag) or {}
                 path_patterns.extend(
-                    list(
-                        map(
-                            invert_pattern,
-                            read_yaml_field(commit_yaml, ("flags", flag, "ignore"))
-                            or [],
-                        )
-                    )
+                    list(map(invert_pattern, flag_configuration.get("ignore") or []))
                 )
-                path_patterns.extend(
-                    read_yaml_field(commit_yaml, ("flags", flag, "paths")) or []
-                )
+                path_patterns.extend(flag_configuration.get("paths") or [])
         disable_default_path_fixes = read_yaml_field(
             commit_yaml, ("codecov", "disable_default_path_fixes")
         )
@@ -124,30 +119,28 @@ class BasePathAwarePathFixer(PathFixer):
         # e.g.: "path/to/coverage.xml" --> "path/to/"
         self.base_path = PurePath(base_path).parent if base_path is not None else None
 
-    def __call__(self, path: str) -> str:
+    def __call__(self, path: str, *, bases_to_try: Sequence[str] = None) -> str:
         original_path_fixer_result = self.original_path_fixer(path)
-        if not self.base_path or not self.original_path_fixer.toc:
+        if (
+            original_path_fixer_result is not None
+            or (not self.base_path and not bases_to_try)
+            or not self.original_path_fixer.toc
+        ):
             return original_path_fixer_result
         if not os.path.isabs(path):
-            adjusted_path = os.path.join(self.base_path, path)
-            base_path_aware_result = self.original_path_fixer(adjusted_path)
-            if original_path_fixer_result != base_path_aware_result:
-                event_data = {
-                    "original_path": path,
-                    "original_path_fixer_result": original_path_fixer_result,
-                    "base_path_aware_result": base_path_aware_result,
-                }
-                self.unexpected_results.append(event_data)
-
-                if original_path_fixer_result is None:
-                    log.info(
-                        "Original path fixer couldn't resolve file path, returning base path aware result",
-                        extra=dict(
-                            base=self.base_path,
-                            path_patterns=self.original_path_fixer.path_patterns,
-                            yaml_fixes=self.original_path_fixer.yaml_fixes,
-                            event_data=event_data,
-                        ),
+            all_base_paths_to_try = [self.base_path] + (
+                bases_to_try if bases_to_try is not None else []
+            )
+            for base_path in all_base_paths_to_try:
+                adjusted_path = os.path.join(base_path, path)
+                base_path_aware_result = self.original_path_fixer(adjusted_path)
+                if base_path_aware_result is not None:
+                    self.unexpected_results.append(
+                        {
+                            "original_path": path,
+                            "original_path_fixer_result": original_path_fixer_result,
+                            "base_path_aware_result": base_path_aware_result,
+                        }
                     )
                     return base_path_aware_result
         return original_path_fixer_result
@@ -160,10 +153,10 @@ class BasePathAwarePathFixer(PathFixer):
         """
         if len(self.unexpected_results) > 0:
             log.info(
-                "Paths would not match due to the relative path calculation (no real effect yet)",
+                "Paths did not match due to the relative path calculation",
                 extra=dict(
                     base=self.base_path,
-                    path_patterns=self.original_path_fixer.path_patterns,
+                    path_patterns=sorted(self.original_path_fixer.path_patterns),
                     yaml_fixes=self.original_path_fixer.yaml_fixes,
                     some_cases=random.sample(
                         self.unexpected_results, min(50, len(self.unexpected_results))

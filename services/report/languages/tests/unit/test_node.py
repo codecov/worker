@@ -30,7 +30,7 @@ class OwnEncoder(JSONEncoder):
         return super().default(o)
 
 
-class Test(BaseTestCase):
+class TestNodeProcessor(BaseTestCase):
     def readjson(self, filename):
         with open(folder / filename, "r") as d:
             contents = loads(d.read())
@@ -73,6 +73,7 @@ class Test(BaseTestCase):
         report_dict = loads(report_dict)
         archive = report.to_archive()
         expected_result = loads(self.readfile("node/node%s-result.json" % i))
+        assert expected_result["report"]["files"] == report_dict["files"]
         assert expected_result["report"] == report_dict
         assert expected_result["totals"] == totals_dict
         assert expected_result["archive"] == archive.split("<<<<< end_of_chunk >>>>>")
@@ -106,3 +107,15 @@ class Test(BaseTestCase):
         assert processor.matches_content(user_input_1, "first_line", "coverage.json")
         user_input_2 = {"filename_1": {"statementMap": 1}, "filename_2": {}}
         assert processor.matches_content(user_input_2, "first_line", "coverage.json")
+
+    def test_no_statement_map(self):
+        user_input = {
+            "filename.py": {
+                "branches": {"covered": 0, "pct": 100, "skipped": 0, "total": 0},
+                "functions": {"covered": 0, "pct": 0, "skipped": 0, "total": 1},
+                "lines": {"covered": 2, "pct": 66.67, "skipped": 0, "total": 3},
+                "statements": {"covered": 2, "pct": 66.67, "skipped": 0, "total": 3},
+            }
+        }
+        res = node.from_json(user_input, lambda x: x, {}, 0, {"enable_partials": False})
+        assert res.is_empty()

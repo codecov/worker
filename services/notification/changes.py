@@ -1,12 +1,12 @@
 import dataclasses
+from typing import Dict, Iterator, Tuple, Union, Mapping, Any, List, Optional
 from collections import defaultdict
-from typing import Mapping, Any, List, Optional
 
 from shared.utils.merge import line_type
 from shared.reports.types import ReportTotals, Change
 from shared.reports.resources import Report
 from shared.helpers.numeric import ratio
-from typing import Dict, Iterator, Tuple, Union
+from helpers.metrics import metrics
 
 
 def diff_totals(base, head, absolute=None) -> Union[bool, None, ReportTotals]:
@@ -27,7 +27,7 @@ def diff_totals(base, head, absolute=None) -> Union[bool, None, ReportTotals]:
         for i in (0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11)
     ]
     diff = ReportTotals(*diff_tuple)
-    if absolute:
+    if absolute and absolute.coverage is not None:
         # ratio(before.hits + changed.hits, before.lines, changed.lines) - coverage before
         #   = actual coveage change
         hits = absolute.hits + diff.hits
@@ -76,6 +76,7 @@ def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
     return dict([(k, v) for k, v in offsets.items() if v != 0]), additions
 
 
+@metrics.timer("worker.services.notification.changes.get_changes")
 def get_changes(
     base_report: Report, head_report: Report, diff_json: Mapping[str, Any]
 ) -> Optional[List[Change]]:

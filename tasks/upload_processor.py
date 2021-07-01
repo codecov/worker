@@ -1,33 +1,26 @@
-from json import loads
-from time import time
 import logging
 import re
 import random
+from typing import Optional
+from copy import deepcopy
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
-from shared.utils.sessions import Session
 from redis.exceptions import LockError
-from sqlalchemy.exc import SQLAlchemyError
+from shared.config import get_config
+from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitClientError
+from shared.yaml import UserYaml
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
-from database.models import (
-    Commit,
-    Upload,
-    CommitReport,
-    UploadLevelTotals,
-)
+from database.models import Commit, Upload
 from celery_config import upload_processor_task_name
-
-from shared.config import get_config
-from helpers.exceptions import ReportExpiredException, ReportEmptyError
 from helpers.metrics import metrics
 from services.bots import RepositoryWithoutValidBotError
-from services.redis import get_redis_connection, download_archive_from_redis
+from services.redis import get_redis_connection
 from services.report import ReportService, Report
 from services.report.parser import RawReportParser
 from services.repository import get_repo_provider_service
-from shared.storage.exceptions import FileNotInStorageError
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -79,15 +72,19 @@ class UploadProcessorTask(BaseCodecovTask):
         lock_name = f"upload_processing_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
         try:
-            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+            with redis_connection.lock(
+                lock_name,
+                timeout=max(60 * 5, self.hard_time_limit_task),
+                blocking_timeout=5,
+            ):
+                actual_arguments_list = deepcopy(arguments_list)
                 return await self.process_async_within_lock(
                     db_session=db_session,
-                    redis_connection=redis_connection,
                     previous_results=previous_results,
                     repoid=repoid,
                     commitid=commitid,
                     commit_yaml=commit_yaml,
-                    arguments_list=arguments_list,
+                    arguments_list=actual_arguments_list,
                     **kwargs,
                 )
         except LockError:
@@ -106,7 +103,6 @@ class UploadProcessorTask(BaseCodecovTask):
         self,
         *,
         db_session,
-        redis_connection,
         previous_results,
         repoid,
         commitid,
@@ -114,6 +110,7 @@ class UploadProcessorTask(BaseCodecovTask):
         arguments_list,
         **kwargs,
     ):
+        commit_yaml = UserYaml(commit_yaml)
         log.debug("Obtained lock for repoid %d and commit %s", repoid, commitid)
         processings_so_far = previous_results.get("processings_so_far", [])
         commit = None
@@ -128,21 +125,11 @@ class UploadProcessorTask(BaseCodecovTask):
         should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         report_service = ReportService(commit_yaml)
-        with metrics.timer(f"worker.tasks.{self.name}.build_original_report"):
+
+        with metrics.timer(f"{self.metrics_prefix}.build_original_report"):
             report = report_service.get_existing_report_for_commit(commit)
             if report is None:
                 report = Report()
-        commit_report = (
-            db_session.query(CommitReport).filter_by(commit_id=commit.id_).first()
-        )
-        if commit_report is None:
-            log.warning(
-                "Commit does not have report row yet",
-                extra=dict(commit=commit.commitid, repoid=commit.repoid),
-            )
-            commit_report = CommitReport(commit_id=commit.id_)
-            db_session.add(commit_report)
-            db_session.flush()
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")
@@ -153,7 +140,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         repoid=repoid,
                         commit=commitid,
                         arguments=arguments,
-                        commit_yaml=commit_yaml,
+                        commit_yaml=commit_yaml.to_dict(),
                     ),
                 )
                 individual_info = {"arguments": arguments.copy()}
@@ -161,24 +148,16 @@ class UploadProcessorTask(BaseCodecovTask):
                     arguments_commitid = arguments.pop("commit", None)
                     if arguments_commitid:
                         assert arguments_commitid == commit.commitid
-                    if arguments.get("upload_pk"):
-                        upload_obj = (
-                            db_session.query(Upload)
-                            .filter_by(id_=arguments.pop("upload_pk"))
-                            .first()
-                        )
-                    else:
-                        upload_obj = report_service.create_report_upload(
-                            arguments, commit_report
-                        )
-                        db_session.add(upload_obj)
-                        db_session.flush()
+                    upload_obj = (
+                        db_session.query(Upload)
+                        .filter_by(id_=arguments.get("upload_pk"))
+                        .first()
+                    )
                     with metrics.timer(
-                        f"worker.tasks.{self.name}.process_individual_report"
+                        f"{self.metrics_prefix}.process_individual_report"
                     ):
                         result = self.process_individual_report(
                             report_service,
-                            redis_connection,
                             commit,
                             report,
                             upload_obj,
@@ -186,16 +165,14 @@ class UploadProcessorTask(BaseCodecovTask):
                             **arguments,
                         )
                     individual_info.update(result)
-                except (CeleryError, SoftTimeLimitExceeded):
-                    raise
-                except SQLAlchemyError:
+                except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
                     raise
                 except Exception:
                     log.exception(
                         "Unable to process report %s",
                         arguments.get("reportid"),
                         extra=dict(
-                            commit_yaml=commit_yaml,
+                            commit_yaml=commit_yaml.to_dict(),
                             repoid=repoid,
                             commit=commitid,
                             arguments=arguments,
@@ -211,7 +188,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 n_processed,
                 extra=dict(repoid=repoid, commit=commitid),
             )
-            with metrics.timer(f"worker.tasks.{self.name}.save_report_results"):
+            with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
                 results_dict = await self.save_report_results(
                     db_session, report_service, repository, commit, report, pr
                 )
@@ -221,7 +198,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
-                    commit_yaml=commit_yaml,
+                    commit_yaml=commit_yaml.to_dict(),
                     url=results_dict.get("url"),
                 ),
             )
@@ -239,83 +216,16 @@ class UploadProcessorTask(BaseCodecovTask):
             raise
 
     def process_individual_report(
-        self,
-        report_service,
-        redis_connection,
-        commit,
-        report,
-        upload_obj,
-        *args,
-        **arguments,
+        self, report_service, commit, report, upload_obj, *args, **arguments,
     ):
-        db_session = upload_obj.get_db_session()
         try:
-            result, session = self.do_process_individual_report(
-                report_service,
-                redis_connection,
-                commit,
-                report,
-                *args,
-                upload_pk=upload_obj.id,
-                **arguments,
+            processing_result = self.do_process_individual_report(
+                report_service, commit, report, *args, upload=upload_obj, **arguments,
             )
-            upload_obj.state = "processed"
-            upload_obj.order_number = session.id
-            upload_totals = upload_obj.totals
-            if upload_totals is None:
-                upload_totals = UploadLevelTotals(
-                    upload_id=upload_obj.id,
-                    branches=0,
-                    coverage=0,
-                    hits=0,
-                    lines=0,
-                    methods=0,
-                    misses=0,
-                    partials=0,
-                    files=0,
-                )
-                db_session.add(upload_totals)
-            if session.totals is not None:
-                upload_totals.update_from_totals(session.totals)
-            return {"successful": True, "report": result}
-        except ReportExpiredException:
-            expired_report_result = {
-                "successful": False,
-                "report": None,
-                "error_type": "report_expired",
-                "should_retry": False,
-            }
-            log.info(
-                "Report %s is expired",
-                arguments.get("reportid"),
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    arguments=arguments,
-                    result=expired_report_result,
-                ),
+            report_service.update_upload_with_processing_result(
+                upload_obj, processing_result
             )
-            upload_obj.state = "error"
-            return expired_report_result
-        except ReportEmptyError:
-            empty_report_result = {
-                "successful": False,
-                "report": None,
-                "error_type": "report_empty",
-                "should_retry": False,
-            }
-            log.info(
-                "Report %s is empty",
-                arguments.get("reportid"),
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    arguments=arguments,
-                    result=empty_report_result,
-                ),
-            )
-            upload_obj.state = "error"
-            return empty_report_result
+            return processing_result.as_dict()
         except FileNotInStorageError:
             if self.request.retries == 0:
                 log.info(
@@ -344,39 +254,21 @@ class UploadProcessorTask(BaseCodecovTask):
 
     def do_process_individual_report(
         self,
-        report_service,
-        redis_connection,
-        commit,
-        current_report,
-        should_delete_archive,
+        report_service: ReportService,
+        commit: Commit,
+        current_report: Optional[Report],
+        should_delete_archive: bool,
         *,
-        flags=None,
-        service=None,
-        build_url=None,
-        build=None,
-        job=None,
-        name=None,
-        url=None,
-        redis_key=None,
-        reportid=None,
-        upload_pk=None,
+        upload: Upload,
         **kwargs,
     ):
         """Takes a `current_report (Report)`, runs a raw_uploaded_report (str) against
             it and generates a new report with the result
         """
         archive_service = report_service.get_archive_service(commit.repository)
-        raw_uploaded_report = None
-        flags = flags.split(",") if flags else None
-
-        archive_url = url
+        archive_url = upload.storage_path
         raw_uploaded_report = self.fetch_raw_uploaded_report(
-            archive_service,
-            redis_connection,
-            archive_url,
-            commit.commitid,
-            reportid,
-            redis_key,
+            archive_service, archive_url
         )
         log.debug("Retrieved report for processing from url %s", archive_url)
 
@@ -388,65 +280,24 @@ class UploadProcessorTask(BaseCodecovTask):
         # ---------------
         # Process Reports
         # ---------------
-        session = Session(
-            provider=service,
-            build=build,
-            job=job,
-            name=name,
-            time=int(time()),
-            flags=flags,
-            archive=archive_url or url,
-            url=build_url,
+        return report_service.build_report_from_raw_content(
+            master=current_report, reports=raw_uploaded_report, upload=upload,
         )
-        with metrics.timer(f"worker.tasks.{self.name}.process_report") as t:
-            report = report_service.build_report_from_raw_content(
-                master=current_report,
-                reports=raw_uploaded_report,
-                flags=flags,
-                session=session,
-            )
-
-        log.info(
-            "Successfully processed report",
-            extra=dict(
-                session=session.id,
-                ci=f"{session.provider}:{session.build}:{session.job}",
-                repoid=commit.repoid,
-                commit=commit.commitid,
-                reportid=reportid,
-                commit_yaml=report_service.current_yaml,
-                timing_ms=t.ms,
-                content_len=raw_uploaded_report.size,
-            ),
-        )
-        return (report, session)
 
     def fetch_raw_uploaded_report(
-        self,
-        archive_service,
-        redis_connection,
-        archive_url,
-        commit_sha,
-        reportid,
-        redis_key,
+        self, archive_service, archive_url: str,
     ):
         """
-            Downloads the raw report, wherever it is (it's either a path on minio or redis)
+        Downloads the raw report, given a path on storage
 
         Args:
-            archive_service: [description]
-            redis_connection: [description]
-            archive_url: [description]
-            commit_sha: [description]
-            reportid: [description]
-            redis_key: [description]
+            archive_service: Archive service where the file is going to be fetched from
+            archive_url (str): Teh filepath of the content inside
+
+        Returns:
+            ParsedRawReport
         """
-        log.debug("In fetch_raw_uploaded_report for commit: %s" % commit_sha)
-        if archive_url:
-            content = archive_service.read_file(archive_url)
-        else:
-            log.warning("Still using redis when we shouldn't")
-            content = download_archive_from_redis(redis_connection, redis_key)
+        content = archive_service.read_file(archive_url)
         return RawReportParser.parse_raw_report_from_bytes(content)
 
     def should_delete_archive(self, commit_yaml):
@@ -488,7 +339,15 @@ class UploadProcessorTask(BaseCodecovTask):
                 exc_info=True,
             )
         if pr is not None:
-            commit.pullid = pr
+            try:
+                commit.pullid = int(pr)
+            except (ValueError, TypeError):
+                log.warning(
+                    "Cannot set PR value on commit",
+                    extra=dict(
+                        repoid=commit.repoid, commit=commit.commitid, pr_value=pr
+                    ),
+                )
         res = report_service.save_report(commit, report)
         db_session.commit()
         return res

@@ -1,4 +1,7 @@
+import logging
 import re
+from os import path
+from typing import List
 
 from timestring import Date, TimestringInvalid
 
@@ -9,6 +12,8 @@ from shared.reports.types import ReportLine
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
+
+log = logging.getLogger(__name__)
 
 
 class CoberturaProcessor(BaseLanguageProcessor):
@@ -26,6 +31,11 @@ def Int(value):
         return int(value)
     except ValueError:
         return int(float(value))
+
+
+def get_sources_to_attempt(xml) -> List[str]:
+    sources = [source.text for source in xml.iter("source")]
+    return [s for s in sources if isinstance(s, str) and s.startswith("/")]
 
 
 def from_xml(xml, fix, ignored_lines, sessionid, yaml):
@@ -151,9 +161,11 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
 
     # path rename
     path_name_fixing = []
+    source_path_list = get_sources_to_attempt(xml)
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
-        path_name_fixing.append((filename, fix(filename)))
+        fixed_name = fix(filename, bases_to_try=source_path_list)
+        path_name_fixing.append((filename, fixed_name))
 
     _set = set(("dist-packages", "site-packages"))
     report.resolve_paths(
