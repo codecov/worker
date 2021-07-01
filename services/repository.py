@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 import re
-from typing import Mapping, Any, Optional
+from typing import Mapping, Any, Optional, Sequence, Tuple
 from dataclasses import dataclass
 
 import shared.torngit as torngit
@@ -346,10 +346,49 @@ async def fetch_and_update_pull_request_information_from_commit(
     return enriched_pull
 
 
+async def _pick_best_base_comparedto_pair(
+    repository_service, pull, current_yaml, pull_information,
+) -> Tuple[str, Optional[str]]:
+    db_session = pull.get_db_session()
+    repoid = pull.repoid
+    candidates_to_base = (
+        [pull.user_provided_base_sha, pull_information["base"]["commitid"]]
+        if pull is not None and pull.user_provided_base_sha is not None
+        else [pull_information["base"]["commitid"]]
+    )
+    for pull_base_sha in candidates_to_base:
+        base_commit = (
+            db_session.query(Commit)
+            .filter_by(commitid=pull_base_sha, repoid=repoid)
+            .first()
+        )
+        if base_commit:
+            return (pull_base_sha, pull_base_sha)
+        try:
+            commit_dict = await repository_service.get_commit(pull_base_sha)
+            new_base_query = db_session.query(Commit).filter(
+                Commit.repoid == repoid,
+                Commit.branch == pull_information["base"]["branch"],
+                (Commit.pullid.is_(None) | Commit.merged),
+                Commit.timestamp < commit_dict["timestamp"],
+            )
+            if read_yaml_field(current_yaml, ("codecov", "require_ci_to_pass"), True):
+                new_base_query = new_base_query.filter(Commit.ci_passed)
+            new_base_query.order_by(Commit.timestamp.desc())
+            new_base = new_base_query.first()
+            if new_base:
+                return (pull_base_sha, new_base.commitid)
+        except TorngitObjectNotFoundError:
+            log.warning(
+                "Cannot find (in the provider) commit that is supposed to be the PR base",
+                extra=dict(repoid=repoid, supposed_base=pull_base_sha),
+            )
+    return (candidates_to_base[0], None)
+
+
 async def fetch_and_update_pull_request_information(
     repository_service, db_session, repoid, pullid, current_yaml
 ) -> EnrichedPull:
-    compared_to = None
     try:
         pull_information = await repository_service.get_pull_request(pullid=pullid)
     except TorngitClientError:
@@ -366,40 +405,6 @@ async def fetch_and_update_pull_request_information(
         )
         pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
         return EnrichedPull(database_pull=pull, provider_pull=None)
-    pull_base_sha = pull_information["base"]["commitid"]
-    base_commit = (
-        db_session.query(Commit)
-        .filter_by(commitid=pull_base_sha, repoid=repoid)
-        .first()
-    )
-    if base_commit:
-        compared_to = base_commit.commitid
-    else:
-        try:
-            commit_dict = await repository_service.get_commit(
-                pull_information["base"]["commitid"]
-            )
-            new_base_query = db_session.query(Commit).filter(
-                Commit.repoid == repoid,
-                Commit.branch == pull_information["base"]["branch"],
-                (Commit.pullid.is_(None) | Commit.merged),
-                Commit.timestamp < commit_dict["timestamp"],
-            )
-            if read_yaml_field(current_yaml, ("codecov", "require_ci_to_pass"), True):
-                new_base_query = new_base_query.filter(Commit.ci_passed)
-            new_base_query.order_by(Commit.timestamp.desc())
-            new_base = new_base_query.first()
-            if new_base:
-                compared_to = new_base.commitid
-        except TorngitObjectNotFoundError:
-            log.warning(
-                "Cannot find (in the provider) commit that is supposed to be the PR base",
-                extra=dict(
-                    repoid=repoid,
-                    pullid=pullid,
-                    supposed_base=pull_information["base"]["commitid"],
-                ),
-            )
     db_session.flush()
     command = (
         insert(Pull.__table__)
@@ -409,8 +414,6 @@ async def fetch_and_update_pull_request_information(
             issueid=pull_information["id"],
             state=pull_information["state"],
             title=pull_information["title"],
-            base=pull_information["base"]["commitid"],
-            compared_to=compared_to,
         )
         .on_conflict_do_update(
             index_elements=[Pull.repoid, Pull.pullid],
@@ -418,8 +421,6 @@ async def fetch_and_update_pull_request_information(
                 issueid=pull_information["id"],
                 state=pull_information["state"],
                 title=pull_information["title"],
-                base=pull_information["base"]["commitid"],
-                compared_to=compared_to,
             ),
         )
     )
@@ -427,6 +428,11 @@ async def fetch_and_update_pull_request_information(
     db_session.flush()
     pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
     db_session.refresh(pull)
+    base_commit_sha, compared_to = await _pick_best_base_comparedto_pair(
+        repository_service, pull, current_yaml, pull_information,
+    )
+    pull.base = base_commit_sha
+    pull.compared_to = compared_to
 
     if pull is not None and not pull.author:
         pr_author = get_or_create_author(
