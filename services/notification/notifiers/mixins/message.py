@@ -6,6 +6,7 @@ from itertools import starmap
 from base64 import b64encode
 from collections import namedtuple
 
+from services.comparison.overlays import OverlayType
 from services.urls import (
     get_pull_url,
     get_commit_url,
@@ -424,7 +425,6 @@ class FileSectionWriter(BaseSectionWriter):
             for path, _diff in (diff["files"] if diff else {}).items()
             if _diff.get("totals")
         ]
-
         if files_in_diff or changes:
             table_header = (
                 "| Coverage \u0394 |"
@@ -443,17 +443,27 @@ class FileSectionWriter(BaseSectionWriter):
             # get limit of results to show
             limit = int(self.layout.split(":")[1] if ":" in self.layout else 10)
             mentioned = []
+            files_in_critical = set()
+            if self.settings.get("show_critical_paths", False):
+                all_files = set(f[1] for f in files_in_diff or []) | set(
+                    c.path for c in changes or []
+                )
+                overlay = comparison.get_overlay(OverlayType.line_execution_count)
+                files_in_critical = set(
+                    overlay.search_files_for_critical_changes(all_files)
+                )
 
             def tree_cell(typ, path, metrics, _=None):
                 if path not in mentioned:
                     # mentioned: for files that are in diff and changes
                     mentioned.append(path)
-                    return "| {rm}[{path}]({compare}/diff?src=pr&el=tree#diff-{hash}){rm} {metrics}".format(
+                    return "| {rm}[{path}]({compare}/diff?src=pr&el=tree#diff-{hash}){rm}{file_tags} {metrics}".format(
                         rm="~~" if typ == "deleted" else "",
                         path=escape_markdown(ellipsis(path, 50, False)),
                         compare=links["pull"],
                         hash=b64encode(path.encode()).decode(),
                         metrics=metrics,
+                        file_tags=" **Critical**" if path in files_in_critical else "",
                     )
 
             # add to comment
