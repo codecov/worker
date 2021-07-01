@@ -2,21 +2,21 @@ version: 2.1
 executors:
   codecov-deploy:
     docker:
-    - image: gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
-      user: root
-      auth:
-        username: _json_key
-        password: $GCLOUD_SERVICE_KEY
+      - image: gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
+        user: root
+        auth:
+          username: _json_key
+          password: $GCLOUD_SERVICE_KEY
     working_directory: /work
   codecov-worker:
     docker:
-    - image: gcr.io/test6u3411ty6xqh462sri/codecov-worker:latest
-      user: root
-      auth:
-        username: _json_key
-        password: $GCLOUD_SERVICE_KEY
-    - image: circleci/postgres:9.6.2
-      name: postgres
+      - image: gcr.io/test6u3411ty6xqh462sri/codecov-worker:latest
+        user: root
+        auth:
+          username: _json_key
+          password: $GCLOUD_SERVICE_KEY
+      - image: circleci/postgres:9.6.2
+        name: postgres
     working_directory: /worker
 
 gcloud_auth: &gcloud_auth
@@ -52,16 +52,37 @@ jobs:
   build:
     executor: codecov-deploy
     steps:
-    - checkout
-    - setup_remote_docker
-    - run:
-        <<: *gcloud_auth
-    - run:
-        name: build container
-        command: |-
-          make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
-          make -f Makefile.circle build VERSION=$CIRCLE_TAG
-          make -f Makefile.circle push
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *gcloud_auth
+      - run:
+          name: build container
+          command: |-
+            make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+            make -f Makefile.circle build VERSION=$CIRCLE_TAG
+            make -f Makefile.circle push
+  standards-coverage-comparison:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: Pull Latest Worker Image
+          command: |
+            docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
+            make -f Makefile.circle pull-latest
+      - run:
+          name: Clone Autotest and Start Acceptance Testing Containers
+          command: |
+            cd ..
+            git clone --depth 5 ssh://git@github.com/codecov/autotest.git
+            cd autotest/
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+            docker-compose -f docker-compose-acceptance.yml up -d
+            sleep 10
+      - run:
+          name: Standards Coverage Comparison
+          command: make -f Makefile.circle run-standards-comparison
   build-enterprise:
     executor: codecov-deploy
     steps:
@@ -107,26 +128,26 @@ jobs:
   staging:
     executor: codecov-deploy
     steps:
-    - checkout
-    - setup_remote_docker
-    - run:
-        <<: *gcloud_auth
-    - run:
-        name: docker build, tag, and upload to staging
-        command: |
-          make -f Makefile.circle staging
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *gcloud_auth
+      - run:
+          name: docker build, tag, and upload to staging
+          command: |
+            make -f Makefile.circle staging
 
   production:
     executor: codecov-deploy
     steps:
-    - checkout
-    - setup_remote_docker
-    - run:
-        <<: *gcloud_auth
-    - run:
-        name: docker build, tag, and upload to production
-        command: |
-          make -f Makefile.circle production
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *gcloud_auth
+      - run:
+          name: docker build, tag, and upload to production
+          command: |
+            make -f Makefile.circle production
   enterprise:
     executor: codecov-deploy
     steps:
@@ -154,15 +175,14 @@ jobs:
   deploy:
     executor: codecov-deploy
     steps:
-    - checkout
-    - setup_remote_docker
-    - run:
-        <<: *gcloud_auth
-    - run:
-        name: tag for k8s
-        command: |-
-          make -f Makefile.circle tag
-  
+      - checkout
+      - setup_remote_docker
+      - run:
+          <<: *gcloud_auth
+      - run:
+          name: tag for k8s
+          command: |-
+            make -f Makefile.circle tag
   dockerhub:
     executor: codecov-deploy
     steps:
@@ -197,6 +217,10 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - standards-coverage-comparison:
+          context: "DockerHub Push Context"
+          requires:
+            - build
       - staging:
           requires:
             - build

@@ -8,7 +8,8 @@ SEMANTIC_VERSION := `cat VERSION`
 IMAGE_VERSION := ${SEMANTIC_VERSION}-$(shell git rev-parse --short=7 HEAD)
 ssh_private_key = `cat ~/.ssh/id_rsa`
 VERSION := release-$(shell git rev-parse --short=7 HEAD)
-BUILD_DATE ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
+name ?= worker
+
 # CIRCLECI
 # job: build
 # builds an intermediate image with dependencies if there were changes to
@@ -70,6 +71,19 @@ tag:
 	docker pull ${GCR_REPO}:latest
 	docker tag ${GCR_REPO}:latest ${GCR_REPO}:${VERSION}
 	docker push ${GCR_REPO}:${VERSION}
+	
+# CIRCLECI
+# Pulls Standards image for coverage comparison from autotest
+run-standards-comparison:
+	docker pull codecov/autotest:standards-latest
+	docker run --network autotest_codecov -e HOST_URL='http://web:5000' codecov/autotest:standards-latest
+
+# CIRCLECI
+# job: standards-coverage-comparison
+# used to pull latest image tag after a build.portablesuccessful build
+pull-latest:
+	docker pull ${GCR_REPO}:latest
+	docker tag ${GCR_REPO}:latest codecov/$(name):latest
 
 # build and tag with staging tag
 # - when the docker image is uploaded to GCR with the "staging" tag, spinnaker will automatically detect the new image and deploy to the staging k8s cluster
