@@ -1165,7 +1165,7 @@ class TestPullRequestFetcher(object):
         assert res.database_pull == pull
 
     @pytest.mark.asyncio
-    async def test_pick_best_base_comparedto_pair_no_user_given_base_no_candidate(
+    async def test_pick_best_base_comparedto_pair_no_user_provided_base_no_candidate(
         self, mocker, dbsession
     ):
         async def get_commit_mocked(commit_sha):
@@ -1190,7 +1190,7 @@ class TestPullRequestFetcher(object):
         assert res == ("abcqwertabcqwertabcqwertabcqwertabcqwert", None)
 
     @pytest.mark.asyncio
-    async def test_pick_best_base_comparedto_pair_yes_user_given_base_no_candidate(
+    async def test_pick_best_base_comparedto_pair_yes_user_provided_base_no_candidate(
         self, mocker, dbsession
     ):
         async def get_commit_mocked(commit_sha):
@@ -1218,7 +1218,7 @@ class TestPullRequestFetcher(object):
         assert res == ("lkjhgfdslkjhgfdslkjhgfdslkjhgfdslkjhgfds", None)
 
     @pytest.mark.asyncio
-    async def test_pick_best_base_comparedto_pair_yes_user_given_base_exact_match(
+    async def test_pick_best_base_comparedto_pair_yes_user_provided_base_exact_match(
         self, mocker, dbsession
     ):
         async def get_commit_mocked(commit_sha):
