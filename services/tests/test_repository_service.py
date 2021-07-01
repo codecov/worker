@@ -1201,7 +1201,7 @@ class TestPullRequestFetcher(object):
         dbsession.flush()
         pull = PullFactory.create(
             repository=repository,
-            user_given_base_sha="lkjhgfdslkjhgfdslkjhgfdslkjhgfdslkjhgfds",
+            user_provided_base_sha="lkjhgfdslkjhgfdslkjhgfdslkjhgfdslkjhgfds",
         )
         dbsession.add(pull)
         dbsession.flush()
@@ -1229,7 +1229,7 @@ class TestPullRequestFetcher(object):
         dbsession.flush()
         pull = PullFactory.create(
             repository=repository,
-            user_given_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+            user_provided_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
         )
         dbsession.add(pull)
         dbsession.flush()
@@ -1265,7 +1265,7 @@ class TestPullRequestFetcher(object):
         dbsession.flush()
         pull = PullFactory.create(
             repository=repository,
-            user_given_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+            user_provided_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
         )
         dbsession.add(pull)
         dbsession.flush()
@@ -1301,7 +1301,7 @@ class TestPullRequestFetcher(object):
         dbsession.flush()
         pull = PullFactory.create(
             repository=repository,
-            user_given_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+            user_provided_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
         )
         dbsession.add(pull)
         dbsession.flush()
@@ -1351,7 +1351,7 @@ class TestPullRequestFetcher(object):
         dbsession.flush()
         pull = PullFactory.create(
             repository=repository,
-            user_given_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
+            user_provided_base_sha="1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
         )
         dbsession.add(pull)
         dbsession.flush()
@@ -1397,7 +1397,7 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository, user_given_base_sha=None,)
+        pull = PullFactory.create(repository=repository, user_provided_base_sha=None,)
         dbsession.add(pull)
         dbsession.flush()
         commit = CommitFactory.create(

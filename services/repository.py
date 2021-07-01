@@ -352,8 +352,8 @@ async def _pick_best_base_comparedto_pair(
     db_session = pull.get_db_session()
     repoid = pull.repoid
     candidates_to_base = (
-        [pull.user_given_base_sha, pull_information["base"]["commitid"]]
-        if pull is not None and pull.user_given_base_sha is not None
+        [pull.user_provided_base_sha, pull_information["base"]["commitid"]]
+        if pull is not None and pull.user_provided_base_sha is not None
         else [pull_information["base"]["commitid"]]
     )
     for pull_base_sha in candidates_to_base:
