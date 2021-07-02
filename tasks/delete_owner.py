@@ -3,7 +3,7 @@ import logging
 from celery.exceptions import SoftTimeLimitExceeded
 
 from app import celery_app
-from celery_config import delete_owner_task_name
+from shared.celery_config import delete_owner_task_name
 from tasks.base import BaseCodecovTask
 from database.models import Owner, Repository, Branch, Pull, Commit, LoginSession
 from services.archive import ArchiveService

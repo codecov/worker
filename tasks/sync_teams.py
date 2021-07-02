@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 
 from app import celery_app
-from celery_config import sync_teams_task_name
+from shared.celery_config import sync_teams_task_name
 from tasks.base import BaseCodecovTask
 from database.models import Owner
 from services.owner import get_owner_provider_service

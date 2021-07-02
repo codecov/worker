@@ -15,7 +15,7 @@ from shared.torngit.exceptions import (
 )
 
 from app import celery_app
-from celery_config import upload_task_name
+from shared.celery_config import upload_task_name
 from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService

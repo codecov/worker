@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from celery.exceptions import SoftTimeLimitExceeded
 
 from app import celery_app
-from celery_config import sync_repos_task_name
+from shared.celery_config import sync_repos_task_name
 from shared.torngit.exceptions import TorngitClientError
 
 from helpers.environment import is_enterprise

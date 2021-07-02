@@ -1,7 +1,7 @@
 import logging
 
 from app import celery_app
-from celery_config import status_set_pending_task_name
+from shared.celery_config import status_set_pending_task_name
 from shared.helpers.yaml import default_if_true
 from shared.utils.match import match
 from shared.utils.urls import make_url
