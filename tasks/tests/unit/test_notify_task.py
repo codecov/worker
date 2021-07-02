@@ -1,7 +1,7 @@
 import pytest
 
 from shared.reports.resources import Report
-from celery_config import new_user_activated_task_name
+from shared.celery_config import new_user_activated_task_name
 from celery.exceptions import Retry, MaxRetriesExceededError
 from shared.torngit.exceptions import (
     TorngitClientGeneralError,

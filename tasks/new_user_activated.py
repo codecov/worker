@@ -1,7 +1,7 @@
 import logging
 
 from app import celery_app
-from celery_config import new_user_activated_task_name, notify_task_name
+from shared.celery_config import new_user_activated_task_name, notify_task_name
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import contains_eager

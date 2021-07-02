@@ -9,7 +9,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
-from celery_config import (
+from shared.celery_config import (
     notify_task_name,
     status_set_error_task_name,
     new_user_activated_task_name,

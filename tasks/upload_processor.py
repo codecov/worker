@@ -14,7 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
 from database.models import Commit, Upload
-from celery_config import upload_processor_task_name
+from shared.celery_config import upload_processor_task_name
 from helpers.metrics import metrics
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
