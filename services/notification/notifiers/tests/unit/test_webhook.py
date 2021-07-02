@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from services.notification.notifiers.webhook import WebhookNotifier
 from database.tests.factories import RepositoryFactory, CommitFactory
-from services.notification.types import FullCommit
+from services.comparison.types import FullCommit
 
 
 class TestWebhookNotifier(object):

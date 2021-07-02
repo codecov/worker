@@ -20,8 +20,8 @@ from helpers.exceptions import RepositoryWithoutValidBotError
 from services.activation import activate_user
 from services.commit_status import RepositoryCIFilter
 from services.decoration import determine_decoration_details
-from services.notification.types import Comparison, FullCommit
-from services.notification.comparison import ComparisonProxy
+from services.comparison.types import Comparison, FullCommit
+from services.comparison import ComparisonProxy
 from services.notification import NotificationService
 from services.report import ReportService
 from services.redis import get_redis_connection, Redis

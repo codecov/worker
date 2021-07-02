@@ -19,7 +19,7 @@ from services.repository import (
     EnrichedPull,
 )
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.notification.changes import get_changes
+from services.comparison.changes import get_changes
 from services.yaml.reader import read_yaml_field
 from shared.yaml import UserYaml
 from services.report import ReportService, Report

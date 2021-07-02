@@ -76,7 +76,7 @@ def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
     return dict([(k, v) for k, v in offsets.items() if v != 0]), additions
 
 
-@metrics.timer("worker.services.notification.changes.get_changes")
+@metrics.timer("worker.services.comparison.changes.get_changes")
 def get_changes(
     base_report: Report, head_report: Report, diff_json: Mapping[str, Any]
 ) -> Optional[List[Change]]:

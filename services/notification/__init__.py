@@ -15,7 +15,7 @@ from services.notification.notifiers import (
     get_status_notifier_class,
     get_pull_request_notifiers,
 )
-from services.notification.types import Comparison
+from services.comparison.types import Comparison
 from services.notification.notifiers.base import (
     NotificationResult,
     AbstractBaseNotifier,

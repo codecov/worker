@@ -14,7 +14,7 @@ from services.notification.notifiers.base import (
     NotificationResult,
 )
 from services.repository import get_repo_provider_service
-from services.notification.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy
 from services.urls import get_commit_url, get_compare_url
 from services.yaml.reader import get_paths_from_flags
 from services.yaml import read_yaml_field

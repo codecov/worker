@@ -3,8 +3,8 @@ import pytest
 from services.notification.notifiers.comment import CommentNotifier
 from shared.reports.readonly import ReadOnlyReport
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.notification.types import FullCommit, Comparison, EnrichedPull
-from services.notification.comparison import ComparisonProxy
+from services.comparison.types import FullCommit, Comparison, EnrichedPull
+from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 
 

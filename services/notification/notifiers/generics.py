@@ -15,7 +15,7 @@ from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
-from services.notification.types import Comparison
+from services.comparison.types import Comparison
 from services.repository import get_repo_provider_service
 from services.urls import get_compare_url, get_commit_url
 from services.yaml.reader import round_number, get_paths_from_flags

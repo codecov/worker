@@ -6,7 +6,6 @@ from itertools import starmap
 from base64 import b64encode
 from collections import namedtuple
 
-from services.notification.changes import get_changes
 from services.urls import (
     get_pull_url,
     get_commit_url,
@@ -17,9 +16,9 @@ from services.yaml.reader import read_yaml_field, round_number, get_minimum_prec
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
-from services.notification.changes import Change
+from services.comparison.changes import Change
 from helpers.metrics import metrics
-from services.notification.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy
 
 log = logging.getLogger(__name__)
 

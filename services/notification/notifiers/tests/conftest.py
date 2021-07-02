@@ -4,8 +4,8 @@ from shared.reports.readonly import ReadOnlyReport
 from shared.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.notification.types import FullCommit, Comparison
-from services.notification.comparison import ComparisonProxy
+from services.comparison.types import FullCommit, Comparison
+from services.comparison import ComparisonProxy
 from services.repository import EnrichedPull
 from services.archive import ArchiveService
 from services.report import ReportService
