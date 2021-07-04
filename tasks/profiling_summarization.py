@@ -1,15 +1,15 @@
 import logging
-
-from sqlalchemy import null
-
-from app import celery_app
-
-# from database.models import ProfilingCommit
-from tasks.base import BaseCodecovTask
-from services.archive import ArchiveService
-from sqlalchemy.orm.session import Session
+from datetime import timedelta, datetime
+from typing import Tuple, Sequence, Dict
 import statistics
+import json
 
+from database.models.profiling import ProfilingCommit, ProfilingUpload
+from shared.storage.exceptions import FileNotInStorageError
+from tasks.base import BaseCodecovTask
+from sqlalchemy.orm.session import Session
+from services.archive import ArchiveService
+from app import celery_app
 
 log = logging.getLogger(__name__)
 
@@ -22,17 +22,17 @@ class ProfilingSummarizationTask(BaseCodecovTask):
         self, db_session: Session, *, profiling_id: int, **kwargs,
     ):
         profiling = db_session.query(ProfilingCommit).filter_by(id=profiling_id).first()
-        totalized_execution_counts: dict = self.get_totalized_execution_counts(
-            profiling
-        )  # fetch the data from storage
-        summarized_results = self.summarize(
-            totalized_execution_counts
-        )  # take the data and turn into a result
-        self.store_summarized_results(summarized_results)
-        return {}
-
-    def get_totalized_execution_counts(self, profiling: "ProfilingCommit"):
-        pass
+        try:
+            joined_execution_counts = json.loads(
+                ArchiveService(profiling.repository).read_file(
+                    profiling.joined_location
+                )
+            )
+        except FileNotInStorageError:
+            return {"successful": False}
+        summarized_results = self.summarize(joined_execution_counts)
+        location = self.store_results(profiling, summarized_results)
+        return {"successful": True, "location": location}
 
     def summarize(self, totalized_execution_counts: dict) -> dict:
         """
@@ -52,29 +52,57 @@ class ProfilingSummarizationTask(BaseCodecovTask):
 
         """
         line_executions_map = {}
+        max_executions_map = {}
+        avg_executions_map = {}
         for file_dict in totalized_execution_counts["files"]:
             filename = file_dict["filename"]
             file_count_so_far = 0
+            max_lines_so_far = 0
+            present_lines = 0
             for l_number, ex_count in file_dict["ln_ex_ct"]:
+                present_lines += 1
                 file_count_so_far += ex_count
+                max_lines_so_far = max(max_lines_so_far, ex_count)
             line_executions_map[filename] = file_count_so_far
-        k = statistics.quantiles(line_executions_map.values(), n=100)
-        print(line_executions_map)
-        stdev = statistics.stdev(line_executions_map.values())
-        mean = statistics.mean(line_executions_map.values())
-        print(f"{mean=} {stdev=} {mean + stdev=}")
+            max_executions_map[filename] = max_lines_so_far
+            avg_executions_map[filename] = file_count_so_far / present_lines
         return {
+            "version": "v1",
+            "general": {"total_profiled_files": len(line_executions_map.keys())},
             "file_groups": {
-                "sum_of_executions": {
-                    "top_10_percent": [
-                        f for (f, v) in line_executions_map.items() if v >= k[89]
-                    ],
-                    "above_1_stdev": [
-                        f for (f, v) in line_executions_map.items() if v >= mean + stdev
-                    ],
-                }
-            }
+                "sum_of_executions": self._generate_stats_from_mapping(
+                    line_executions_map
+                ),
+                "max_number_of_executions": self._generate_stats_from_mapping(
+                    max_executions_map
+                ),
+                "avg_number_of_executions": self._generate_stats_from_mapping(
+                    avg_executions_map
+                ),
+            },
         }
 
-    def store_summarized_results(self, summarized_results):
-        pass
+    def _generate_stats_from_mapping(self, data):
+        k = statistics.quantiles(data.values(), n=100)
+        stdev = statistics.stdev(data.values())
+        mean = statistics.mean(data.values())
+        return {
+            "top_10_percent": [f for (f, v) in data.items() if v >= k[89]],
+            "above_1_stdev": [f for (f, v) in data.items() if v >= mean + stdev],
+        }
+
+    def store_results(self, profiling: ProfilingCommit, summarized_results):
+        archive_service = ArchiveService(profiling.repository)
+        location = archive_service.write_profiling_summary_result(
+            profiling.version_identifier, json.dumps(summarized_results)
+        )
+        profiling.joined_location = location
+        return location
+
+
+RegisteredProfilingSummarizationTask = celery_app.register_task(
+    ProfilingSummarizationTask()
+)
+profiling_summarization_task = celery_app.tasks[
+    RegisteredProfilingSummarizationTask.name
+]
