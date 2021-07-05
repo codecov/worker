@@ -1,33 +1,15 @@
-import uuid
-import datetime
 import logging
 from functools import cached_property
 
 from sqlalchemy import Column, types, ForeignKey, Table
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects import postgresql
 
-from database.base import CodecovBaseModel
+from database.base import CodecovBaseModel, MixinBaseClass
 from database.models.core import Repository
 
 
 log = logging.getLogger(__name__)
-
-
-class MixinBaseClass(object):
-    id_ = Column("id", types.BigInteger, primary_key=True)
-    external_id = Column(
-        UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False
-    )
-    created_at = Column(types.DateTime, default=datetime.datetime.now)
-    updated_at = Column(
-        types.DateTime, onupdate=datetime.datetime.now, default=datetime.datetime.now
-    )
-
-    @property
-    def id(self):
-        return self.id_
 
 
 class RepositoryFlag(CodecovBaseModel, MixinBaseClass):
