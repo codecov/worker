@@ -8,8 +8,13 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy import UniqueConstraint, Index
 from sqlalchemy.schema import FetchedValue
 
-from database.base import CodecovBaseModel
-from database.enums import Notification, NotificationState, Decoration
+from database.base import CodecovBaseModel, MixinBaseClass
+from database.enums import (
+    Notification,
+    NotificationState,
+    Decoration,
+    CompareCommitState,
+)
 
 
 class Owner(CodecovBaseModel):
@@ -296,3 +301,31 @@ class CommitNotification(CodecovBaseModel):
 
     def __repr__(self):
         return f"Notification<{self.notification_type}@commit<{self.commit_id}>>"
+
+
+class CompareCommit(MixinBaseClass, CodecovBaseModel):
+    __tablename__ = "compare_commitcomparison"
+
+    base_commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
+    compare_commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
+    report_storage_path = Column(types.String(150))
+    state = Column(
+        postgresql.ENUM(
+            CompareCommitState, values_callable=lambda x: [e.value for e in x]
+        )
+    )
+
+    __table_args__ = (
+        Index("compare_commitcomparison_base_commit_id_cf53c1d9", "base_commit_id",),
+        Index(
+            "compare_commitcomparison_compare_commit_id_3ea19610", "compare_commit_id",
+        ),
+        UniqueConstraint(
+            "base_commit_id",
+            "compare_commit_id",
+            name="unique_comparison_between_commit",
+        ),
+    )
+
+    def __repr__(self):
+        return f"CompareCommit<{self.base_commit_id}...{self.compare_commit_id}>"
