@@ -307,7 +307,9 @@ class CompareCommit(MixinBaseClass, CodecovBaseModel):
     __tablename__ = "compare_commitcomparison"
 
     base_commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
+    base_commit = relationship(Commit, foreign_keys=[base_commit_id])
     compare_commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
+    compare_commit = relationship(Commit, foreign_keys=[compare_commit_id])
     report_storage_path = Column(types.String(150))
     state = Column(
         postgresql.ENUM(
