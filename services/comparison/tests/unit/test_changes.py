@@ -1,6 +1,6 @@
 import pytest
 
-from services.notification.changes import get_changes, Change, diff_totals
+from services.comparison.changes import get_changes, Change, diff_totals
 from shared.reports.types import ReportTotals
 from shared.reports.resources import Report, ReportFile, ReportLine
 

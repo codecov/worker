@@ -11,8 +11,8 @@ from database.enums import Notification, NotificationState, Decoration
 from database.tests.factories import RepositoryFactory
 from services.notification import NotificationService
 from services.notification.notifiers.base import NotificationResult
-from services.notification.types import Comparison, FullCommit, EnrichedPull
-from services.notification.comparison import ComparisonProxy
+from services.comparison.types import Comparison, FullCommit, EnrichedPull
+from services.comparison import ComparisonProxy
 from database.tests.factories import (
     CommitFactory,
     PullFactory,

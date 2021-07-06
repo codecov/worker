@@ -4,8 +4,8 @@ import asyncio
 from shared.reports.types import Change
 
 from services.repository import get_repo_provider_service
-from services.notification.changes import get_changes
-from services.notification.types import Comparison, FullCommit
+from services.comparison.changes import get_changes
+from services.comparison.types import Comparison, FullCommit
 
 
 class ComparisonProxy(object):

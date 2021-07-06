@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass
 from database.models import Repository
 from services.decoration import Decoration
-from services.notification.types import Comparison
+from services.comparison.types import Comparison
 
 log = logging.getLogger(__name__)
 

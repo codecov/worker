@@ -12,7 +12,7 @@ from services.notification.notifiers.base import (
     NotificationResult,
     AbstractBaseNotifier,
 )
-from services.notification.types import Comparison
+from services.comparison.types import Comparison
 from helpers.metrics import metrics
 from services.repository import get_repo_provider_service
 from services.urls import get_org_account_url, append_tracking_params_to_urls
