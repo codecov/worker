@@ -195,7 +195,7 @@ class ArchiveService(object):
         path = "v4/repos/{}".format(self.storage_hash)
         objects = self.storage.list_folder_contents(self.root, path)
         self.storage.delete_files(self.root, [obj["name"] for obj in objects])
-        return len(objects)
+        return len(list(objects))
 
     """
     Convenience method to read a chunks file from the archive.
