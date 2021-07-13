@@ -25,3 +25,9 @@ class NotificationState(Enum):
     pending = "pending"
     success = "success"
     error = "error"
+
+
+class CompareCommitState(Enum):
+    pending = "pending"
+    processed = "processed"
+    error = "error"

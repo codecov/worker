@@ -183,3 +183,12 @@ class CommitNotificationFactory(Factory):
     state = enums.NotificationState.pending
 
     commit = factory.SubFactory(CommitFactory)
+
+
+class CompareCommitFactory(Factory):
+    class Meta:
+        model = models.CompareCommit
+
+    state = enums.CompareCommitState.pending
+    base_commit = factory.SubFactory(CommitFactory)
+    compare_commit = factory.SubFactory(CommitFactory)
