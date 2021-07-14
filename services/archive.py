@@ -54,21 +54,9 @@ class ArchiveService(object):
             self.root = get_config("services", "minio", "bucket", default="archive")
         else:
             self.root = bucket
-        self.region = get_config("services", "minio", "region", default="us-east-1")
-        self.enterprise = bool(get_config("setup", "enterprise_license"))
-
         self.storage = get_storage_client()
         log.debug("Getting archive hash")
         self.storage_hash = self.get_archive_hash(repository)
-
-        # create storage based on the root, this will throw acceptable
-        # exceptions if the bucket exists. ResponseError if it doesn't.
-        # log.debug("Creating root storage")
-        # try:
-        #     self.storage.create_root_storage(self.root, self.region)
-        # except BucketAlreadyExistsError:
-        #     pass
-        # log.debug("Created root storage")
 
     def get_now(self) -> datetime:
         return datetime.now()
@@ -80,13 +68,6 @@ class ArchiveService(object):
 
     def storage_client(self) -> BaseStorageService:
         return self.storage
-
-    """
-    Getter. Returns true if the current configuration is enterprise.
-    """
-
-    def is_enterprise(self) -> bool:
-        return self.enterprise
 
     """
     Generates a hash key from repo specific information.
