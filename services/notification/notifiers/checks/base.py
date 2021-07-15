@@ -380,6 +380,13 @@ class ChecksNotifier(StatusNotifier):
                 notification_type="checks",
                 org_name=self.repository.owner.name,
             )
+        if payload.get("url"):
+            payload["url"] = append_tracking_params_to_urls(
+                payload["url"],
+                service=self.repository.service,
+                notification_type="checks",
+                org_name=self.repository.owner.name,
+            )
 
         # We need to first create the check run, get that id and update the status
         with metrics.timer(
@@ -412,6 +419,7 @@ class ChecksNotifier(StatusNotifier):
                             "summary": output.get("summary"),
                             "annotations": annotation_page,
                         },
+                        url=payload.get("url"),
                     )
 
         else:
@@ -419,7 +427,7 @@ class ChecksNotifier(StatusNotifier):
                 "worker.services.notifications.notifiers.checks.update_check_run"
             ):
                 await repository_service.update_check_run(
-                    check_id, state, output=output
+                    check_id, state, output=output, url=payload.get("url")
                 )
 
         return NotificationResult(

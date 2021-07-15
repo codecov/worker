@@ -961,6 +961,7 @@ class TestPatchChecksNotifier(object):
         payload = {
             "state": "success",
             "output": {"title": "Codecov Report", "summary": f"Summary",},
+            "url": "https://app.codecov.io/gh/codecov/worker/compare/100?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term=codecov",
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -977,6 +978,7 @@ class TestPatchChecksNotifier(object):
         assert result.data_sent == {
             "state": "success",
             "output": {"title": "Codecov Report", "summary": "Summary"},
+            "url": "https://app.codecov.io/gh/codecov/worker/compare/100?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term=codecov",
         }
 
     @pytest.mark.asyncio
@@ -1007,14 +1009,16 @@ class TestPatchChecksNotifier(object):
                     "title": "Codecov Report",
                     "summary": "Summary",
                     "annotations": list(range(1, 51, 1)),
-                }
+                },
+                "url": None,
             },
             {
                 "output": {
                     "title": "Codecov Report",
                     "summary": "Summary",
                     "annotations": list(range(51, 61, 1)),
-                }
+                },
+                "url": None,
             },
         ]
         result = await notifier.send_notification(sample_comparison, payload)
