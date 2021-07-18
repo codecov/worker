@@ -18,17 +18,17 @@ async def test_run_async_simple_run_no_existing_data(
 ):
     mock_delay = mocker.patch("tasks.profiling_collection.profiling_summarization_task")
     mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
-    pfc = ProfilingCommitFactory.create(joined_location=None)
-    dbsession.add(pfc)
+    pcf = ProfilingCommitFactory.create(joined_location=None)
+    dbsession.add(pcf)
     dbsession.flush()
     task = ProfilingCollectionTask()
-    res = await task.run_async(dbsession, profiling_id=pfc.id)
+    res = await task.run_async(dbsession, profiling_id=pcf.id)
     assert res["successful"]
     assert json.loads(mock_storage.read_file("bucket", res["location"]).decode()) == {
         "files": [],
         "metadata": {"version": "v1"},
     }
-    mock_delay.delay.assert_called_with(profiling_id=pfc.id)
+    mock_delay.delay.assert_called_with(profiling_id=pcf.id)
 
 
 @pytest.mark.asyncio
@@ -42,24 +42,24 @@ async def test_run_async_simple_run_no_existing_data_new_uploads(
         "raw_upload_location",
         json.dumps({"files": {"banana.py": {"5": 10, "68": 87}}}),
     )
-    pfc = ProfilingCommitFactory.create(joined_location=None)
-    dbsession.add(pfc)
+    pcf = ProfilingCommitFactory.create(joined_location=None)
+    dbsession.add(pcf)
     dbsession.flush()
     pu = ProfilingUploadFactory.create(
-        profiling_commit=pfc,
+        profiling_commit=pcf,
         created_at=get_utc_now() - timedelta(seconds=120),
         raw_upload_location="raw_upload_location",
     )
     dbsession.add(pu)
     dbsession.flush()
     task = ProfilingCollectionTask()
-    res = await task.run_async(dbsession, profiling_id=pfc.id)
+    res = await task.run_async(dbsession, profiling_id=pcf.id)
     assert res["successful"]
     assert json.loads(mock_storage.read_file("bucket", res["location"]).decode()) == {
         "files": [{"filename": "banana.py", "ln_ex_ct": [[5, 10], [68, 87]]}],
         "metadata": {"version": "v1"},
     }
-    mock_delay.delay.assert_called_with(profiling_id=pfc.id)
+    mock_delay.delay.assert_called_with(profiling_id=pcf.id)
 
 
 class TestProfilingCollectionTask(object):
@@ -67,18 +67,18 @@ class TestProfilingCollectionTask(object):
         self, dbsession, mock_storage
     ):
         task = ProfilingCollectionTask()
-        pfc = ProfilingCommitFactory.create(joined_location=None)
-        dbsession.add(pfc)
+        pcf = ProfilingCommitFactory.create(joined_location=None)
+        dbsession.add(pcf)
         dbsession.flush()
-        res = task.join_profiling_uploads(pfc, [])
+        res = task.join_profiling_uploads(pcf, [])
         assert res == {"files": [], "metadata": {"version": "v1"}}
 
     def test_join_profiling_uploads_with_existing_data_no_new_uploads(
         self, dbsession, mock_storage, mock_configuration
     ):
         task = ProfilingCollectionTask()
-        pfc = ProfilingCommitFactory.create(joined_location="location")
-        dbsession.add(pfc)
+        pcf = ProfilingCommitFactory.create(joined_location="location")
+        dbsession.add(pcf)
         dbsession.flush()
         mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
         mock_storage.write_file(
@@ -93,7 +93,7 @@ class TestProfilingCollectionTask(object):
                 }
             ),
         )
-        res = task.join_profiling_uploads(pfc, [])
+        res = task.join_profiling_uploads(pcf, [])
         assert res == {
             "files": [{"filename": "banana.py", "ln_ex_ct": [[5, 10], [68, 87]]}],
             "metadata": {"version": "v1"},
@@ -103,8 +103,8 @@ class TestProfilingCollectionTask(object):
         self, dbsession, mock_storage, mock_configuration
     ):
         task = ProfilingCollectionTask()
-        pfc = ProfilingCommitFactory.create(joined_location="location")
-        dbsession.add(pfc)
+        pcf = ProfilingCommitFactory.create(joined_location="location")
+        dbsession.add(pcf)
         dbsession.flush()
         mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
         mock_storage.write_file(
@@ -132,13 +132,13 @@ class TestProfilingCollectionTask(object):
             ),
         )
         pu = ProfilingUploadFactory.create(
-            profiling_commit=pfc,
+            profiling_commit=pcf,
             created_at=get_utc_now() - timedelta(seconds=120),
             raw_upload_location="raw_upload_location",
         )
         dbsession.add(pu)
         dbsession.flush()
-        res = task.join_profiling_uploads(pfc, [pu])
+        res = task.join_profiling_uploads(pcf, [pu])
         assert res == {
             "files": [
                 {"filename": "banana.py", "ln_ex_ct": [(5, 11), (68, 87), (6, 2)]},
@@ -151,11 +151,11 @@ class TestProfilingCollectionTask(object):
         self, dbsession, mock_storage, mocker
     ):
         task = ProfilingCollectionTask()
-        pfc = ProfilingCommitFactory.create(joined_location="location")
-        dbsession.add(pfc)
+        pcf = ProfilingCommitFactory.create(joined_location="location")
+        dbsession.add(pcf)
         dbsession.flush()
         pu = ProfilingUploadFactory.create(
-            profiling_commit=pfc,
+            profiling_commit=pcf,
             created_at=get_utc_now() - timedelta(seconds=120),
             raw_upload_location="raw_upload_location",
         )
@@ -172,20 +172,20 @@ class TestProfilingCollectionTask(object):
     def test_find_uploads_to_join_first_joining(self, dbsession):
         before = datetime(2021, 5, 2, 0, 3, 4)
         task = ProfilingCollectionTask()
-        pfc = ProfilingCommitFactory.create()
+        pcf = ProfilingCommitFactory.create()
         another_pfc = ProfilingCommitFactory.create()
-        dbsession.add(pfc)
+        dbsession.add(pcf)
         dbsession.add(another_pfc)
         dbsession.flush()
         first_pu = ProfilingUploadFactory.create(
-            profiling_commit=pfc, created_at=datetime(2021, 5, 1, 0, 12, 14)
+            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 0, 12, 14)
         )
         second_pu = ProfilingUploadFactory.create(
-            profiling_commit=pfc, created_at=datetime(2021, 6, 10, 0, 12, 14)
+            profiling_commit=pcf, created_at=datetime(2021, 6, 10, 0, 12, 14)
         )
         dbsession.add(first_pu)
         dbsession.add(second_pu)
-        res, when = task.find_uploads_to_join(pfc, before)
+        res, when = task.find_uploads_to_join(pcf, before)
         assert list(res) == [first_pu]
         assert when == before
         # ensuring we don't get data from different pfcs
@@ -196,27 +196,27 @@ class TestProfilingCollectionTask(object):
     def test_find_uploads_to_join_already_joined(self, dbsession):
         before = datetime(2021, 5, 1, 4, 0, 0)
         task = ProfilingCollectionTask()
-        pfc = ProfilingCommitFactory.create(
+        pcf = ProfilingCommitFactory.create(
             last_joined_uploads_at=datetime(2021, 5, 1, 1, 2, 3)
         )
-        dbsession.add(pfc)
+        dbsession.add(pcf)
         dbsession.flush()
         first_pu = ProfilingUploadFactory.create(
-            profiling_commit=pfc, created_at=datetime(2021, 5, 1, 1, 1, 1)
+            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 1, 1, 1)
         )
         second_pu = ProfilingUploadFactory.create(
-            profiling_commit=pfc, created_at=datetime(2021, 5, 1, 1, 30, 0)
+            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 1, 30, 0)
         )
         third_pu = ProfilingUploadFactory.create(
-            profiling_commit=pfc, created_at=datetime(2021, 5, 1, 2, 1, 0)
+            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 2, 1, 0)
         )
         fourth_pu = ProfilingUploadFactory.create(
-            profiling_commit=pfc, created_at=datetime(2021, 5, 1, 4, 12, 14)
+            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 4, 12, 14)
         )
         dbsession.add(first_pu)
         dbsession.add(second_pu)
         dbsession.add(third_pu)
         dbsession.add(fourth_pu)
-        res, when = task.find_uploads_to_join(pfc, before)
+        res, when = task.find_uploads_to_join(pcf, before)
         assert list(res) == [second_pu, third_pu]
         assert when == before
