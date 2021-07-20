@@ -914,11 +914,21 @@ class TestPullRequestFetcher(object):
             report_json=None,
             repository=repository,
         )
+        second_comparedto_commit = CommitFactory.create(
+            repository=repository,
+            branch="master",
+            merged=True,
+            timestamp=datetime(2019, 5, 6),
+        )
         compared_to_commit = CommitFactory.create(
-            repository=repository, branch="master", merged=True
+            repository=repository,
+            branch="master",
+            merged=True,
+            timestamp=datetime(2019, 7, 15),
         )
         dbsession.add(pull)
         dbsession.add(commit)
+        dbsession.add(second_comparedto_commit)
         dbsession.add(compared_to_commit)
         dbsession.flush()
         current_yaml = {}
