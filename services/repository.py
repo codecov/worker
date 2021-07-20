@@ -374,7 +374,7 @@ async def _pick_best_base_comparedto_pair(
             )
             if read_yaml_field(current_yaml, ("codecov", "require_ci_to_pass"), True):
                 new_base_query = new_base_query.filter(Commit.ci_passed)
-            new_base_query.order_by(Commit.timestamp.desc())
+            new_base_query = new_base_query.order_by(Commit.timestamp.desc())
             new_base = new_base_query.first()
             if new_base:
                 return (pull_base_sha, new_base.commitid)
