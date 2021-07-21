@@ -1,5 +1,5 @@
 import logging
-
+from uuid import uuid4
 from datetime import datetime
 from hashlib import md5
 from base64 import b16encode
@@ -18,6 +18,7 @@ class MinioEndpoints(Enum):
     chunks = "{version}/repos/{repo_hash}/commits/{commitid}/chunks.txt"
     reports_json = "{version}/repos/{repo_hash}/commits/{commitid}/report.json"
     raw = "v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt"
+    profiling_collection = "{version}/repos/{repo_hash}/profilingcollections/{profiling_commit_id}/{location}"
 
     def get_path(self, **kwaargs) -> str:
         return self.value.format(**kwaargs)
@@ -135,6 +136,18 @@ class ArchiveService(object):
 
         self.write_file(path, data, gzipped=gzipped)
 
+        return path
+
+    def write_profiling_collection_result(self, version_identifier, data):
+        location = uuid4().hex
+        path = MinioEndpoints.profiling_collection.get_path(
+            version="v4",
+            repo_hash=self.storage_hash,
+            profiling_commit_id=version_identifier,
+            location=location,
+        )
+
+        self.write_file(path, data)
         return path
 
     """
