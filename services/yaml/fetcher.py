@@ -20,4 +20,11 @@ async def fetch_commit_yaml_from_provider(
         commit.commitid, repository_service
     )
     if yaml_content:
-        return parse_yaml_file(yaml_content)
+        return parse_yaml_file(
+            yaml_content,
+            show_secrets_for=(
+                commit.repository.service,
+                commit.repository.owner.service_id,
+                commit.repository.service_id,
+            ),
+        )
