@@ -6,6 +6,8 @@ from shared.reports.types import Change
 from services.repository import get_repo_provider_service
 from services.comparison.changes import get_changes
 from services.comparison.types import Comparison, FullCommit
+from services.comparison.overlays import get_overlay
+from services.archive import ArchiveService
 
 
 class ComparisonProxy(object):
@@ -36,6 +38,14 @@ class ComparisonProxy(object):
         self._diff_lock = asyncio.Lock()
         self._changes_lock = asyncio.Lock()
         self._existing_statuses_lock = asyncio.Lock()
+        self._archive_service = None
+
+    def get_archive_service(self):
+        if self._archive_service is None:
+            self._archive_service = ArchiveService(
+                self.comparison.base.commit.repository
+            )
+        return self._archive_service
 
     def get_filtered_comparison(self, flags, path_patterns):
         if not flags and not path_patterns:
@@ -99,6 +109,9 @@ class ComparisonProxy(object):
                     self.head.commit.commitid
                 )
             return self._existing_statuses
+
+    def get_overlay(self, overlay_type, **kwargs):
+        return get_overlay(overlay_type, self, **kwargs)
 
 
 class FilteredComparison(object):

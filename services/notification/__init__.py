@@ -1,3 +1,9 @@
+"""Notification system
+
+This packages uses the following services:
+  - comparison
+
+"""
 import logging
 import dataclasses
 from typing import List, Iterator
@@ -28,6 +34,7 @@ from services.license import is_properly_licensed
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
+
 
 log = logging.getLogger(__name__)
 
