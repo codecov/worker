@@ -12,6 +12,7 @@ from services.redis import get_redis_connection
 from sqlalchemy.orm.session import Session
 from services.archive import ArchiveService
 from tasks.profiling_summarization import profiling_summarization_task
+from app import celery_app
 
 
 log = logging.getLogger(__name__)
@@ -112,3 +113,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
         )
         profiling.summarized_location = location
         return location
+
+
+RegisteredProfilingCollectionTask = celery_app.register_task(ProfilingCollectionTask())
+profiling_collection_task = celery_app.tasks[RegisteredProfilingCollectionTask.name]
