@@ -16,7 +16,7 @@ class ComputeComparisonTask(BaseCodecovTask):
         log.info(f"Computing comparison", extra=dict(comparison_id=comparison_id))
         comparison = db_session.query(CompareCommit).get(comparison_id)
         comparison.state = CompareCommitState.processed
-        return None
+        return {"successful": True}
 
 
 RegisteredComputeComparisonTask = celery_app.register_task(ComputeComparisonTask())
