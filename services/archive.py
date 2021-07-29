@@ -1,4 +1,5 @@
 import logging
+import json
 from uuid import uuid4
 from datetime import datetime
 from hashlib import md5
@@ -19,6 +20,7 @@ class MinioEndpoints(Enum):
     profiling_summary = "{version}/repos/{repo_hash}/profilingsummaries/{profiling_commit_id}/{location}"
     raw = "v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt"
     profiling_collection = "{version}/repos/{repo_hash}/profilingcollections/{profiling_commit_id}/{location}"
+    computed_comparison = "{version}/repos/{repo_hash}/comparisons/{comparison_id}.json"
 
     def get_path(self, **kwaargs) -> str:
         return self.value.format(**kwaargs)
@@ -136,6 +138,15 @@ class ArchiveService(object):
 
         self.write_file(path, data, gzipped=gzipped)
 
+        return path
+
+    def write_computed_comparison(self, comparison, data) -> str:
+        path = MinioEndpoints.computed_comparison.get_path(
+            version="v4",
+            repo_hash=self.storage_hash,
+            comparison_id=comparison.id,
+        )
+        self.write_file(path, json.dumps(data))
         return path
 
     def write_profiling_collection_result(self, version_identifier, data):
