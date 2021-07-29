@@ -29,9 +29,7 @@ class ComputeComparisonTask(BaseCodecovTask):
         comparison = db_session.query(CompareCommit).get(comparison_id)
         current_yaml = await self.get_yaml_commit(comparison.compare_commit)
         comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
-        unexpected_changes = await comparison_proxy.get_changes()
-        changes_in_diff = await self.get_diff_as_changes(comparison_proxy, current_yaml)
-        impacted_files = unexpected_changes + changes_in_diff
+        impacted_files = await comparison_proxy.get_impacted_files()
         dict_impacted_files = self.serialize_impacted_files(impacted_files, comparison_proxy)
         path = self.store_results(comparison, dict_impacted_files)
         comparison.report_storage_path = path
@@ -60,22 +58,6 @@ class ComputeComparisonTask(BaseCodecovTask):
                 base=FullCommit(commit=base_commit, report=base_report),
             )
         )
-
-    async def get_diff_as_changes(self, comparison_proxy, current_yaml):
-        diff = await comparison_proxy.get_diff()
-        comparison_proxy.head.report.apply_diff(diff)
-        return [
-            Change(
-                path=path,
-                new=file_data.get('type') == 'added',
-                deleted=file_data.get('type') == 'deleted',
-                in_diff=True,
-                old_path=file_data.get("before"),
-                totals=file_data.get("totals")
-            )
-            for path, file_data in diff.get("files", []).items()
-            if file_data.get("totals")
-        ]
 
     def serialize_impacted_files(self, impacted_files, comparison_proxy):
         base_report = comparison_proxy.base.report
