@@ -1,4 +1,3 @@
-from collections import namedtuple
 import logging
 
 from shared.celery_config import compute_comparison_task_name
@@ -9,16 +8,15 @@ from app import celery_app
 from tasks.base import BaseCodecovTask
 from database.models import CompareCommit
 from database.enums import CompareCommitState
+from helpers.reports import get_totals_from_file_in_reports
 from services.archive import ArchiveService
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.report import ReportService
 from services.repository import get_repo_provider_service
 from services.yaml import get_current_yaml
-from services.notification.notifiers.mixins.message import make_metrics
 
 log = logging.getLogger(__name__)
-null = namedtuple("_", ["totals"])(None)
 
 
 class ComputeComparisonTask(BaseCodecovTask):
@@ -65,8 +63,8 @@ class ComputeComparisonTask(BaseCodecovTask):
         files_in_dict = []
         for file in impacted_files:
             path = file.path
-            before = base_report.get(path, null).totals
-            after = head_report.get(path, null).totals
+            before = get_totals_from_file_in_reports(base_report, path)
+            after = get_totals_from_file_in_reports(head_report, path)
             files_in_dict.append({
                 "path": file.path,
                 "base_totals": before.astuple() if before else None,
