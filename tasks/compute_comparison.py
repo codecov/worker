@@ -27,11 +27,8 @@ class ComputeComparisonTask(BaseCodecovTask):
         comparison = db_session.query(CompareCommit).get(comparison_id)
         current_yaml = await self.get_yaml_commit(comparison.compare_commit)
         comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
-        impacted_files = await comparison_proxy.get_impacted_files()
-        dict_impacted_files = self.serialize_impacted_files(
-            impacted_files, comparison_proxy
-        )
-        path = self.store_results(comparison, dict_impacted_files)
+        impacted_files = await self.serialize_impacted_files(comparison_proxy)
+        path = self.store_results(comparison, impacted_files)
         comparison.report_storage_path = path
         comparison.state = CompareCommitState.processed
         log.info(
@@ -61,7 +58,8 @@ class ComputeComparisonTask(BaseCodecovTask):
             )
         )
 
-    def serialize_impacted_files(self, impacted_files, comparison_proxy):
+    async def serialize_impacted_files(self, comparison_proxy):
+        impacted_files = await comparison_proxy.get_impacted_files()
         base_report = comparison_proxy.base.report
         head_report = comparison_proxy.head.report
         files_in_dict = []
