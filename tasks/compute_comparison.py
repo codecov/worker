@@ -28,11 +28,15 @@ class ComputeComparisonTask(BaseCodecovTask):
         current_yaml = await self.get_yaml_commit(comparison.compare_commit)
         comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
         impacted_files = await comparison_proxy.get_impacted_files()
-        dict_impacted_files = self.serialize_impacted_files(impacted_files, comparison_proxy)
+        dict_impacted_files = self.serialize_impacted_files(
+            impacted_files, comparison_proxy
+        )
         path = self.store_results(comparison, dict_impacted_files)
         comparison.report_storage_path = path
         comparison.state = CompareCommitState.processed
-        log.info(f"Computing comparison successful", extra=dict(comparison_id=comparison_id))
+        log.info(
+            f"Computing comparison successful", extra=dict(comparison_id=comparison_id)
+        )
         return {"successful": True}
 
     async def get_yaml_commit(self, commit):
@@ -65,16 +69,18 @@ class ComputeComparisonTask(BaseCodecovTask):
             path = file.path
             before = get_totals_from_file_in_reports(base_report, path)
             after = get_totals_from_file_in_reports(head_report, path)
-            files_in_dict.append({
-                "path": file.path,
-                "base_totals": before.astuple() if before else None,
-                "compare_totals": after.astuple() if after else None,
-                "patch": file.totals.astuple(),
-                "new": file.new,
-                "deleted": file.deleted,
-                "in_diff": file.in_diff,
-                "old_path": file.old_path,
-            })
+            files_in_dict.append(
+                {
+                    "path": file.path,
+                    "base_totals": before.astuple() if before else None,
+                    "compare_totals": after.astuple() if after else None,
+                    "patch": file.totals.astuple(),
+                    "new": file.new,
+                    "deleted": file.deleted,
+                    "in_diff": file.in_diff,
+                    "old_path": file.old_path,
+                }
+            )
         return files_in_dict
 
     def store_results(self, comparison, impacted_files):

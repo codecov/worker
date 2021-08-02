@@ -483,8 +483,10 @@ class FileSectionWriter(BaseSectionWriter):
                         "changed",
                         change.path,
                         make_metrics(
-                            get_totals_from_file_in_reports(base_report, change.path) or False,
-                            get_totals_from_file_in_reports(head_report, change.path) or False,
+                            get_totals_from_file_in_reports(base_report, change.path)
+                            or False,
+                            get_totals_from_file_in_reports(head_report, change.path)
+                            or False,
                             None,
                             self.show_complexity,
                             self.current_yaml,

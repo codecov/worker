@@ -120,11 +120,11 @@ class ComparisonProxy(object):
         files_in_diff_as_changes = [
             Change(
                 path=path,
-                new=file_data.get('type') == 'added',
-                deleted=file_data.get('type') == 'deleted',
+                new=file_data.get("type") == "added",
+                deleted=file_data.get("type") == "deleted",
                 in_diff=True,
                 old_path=file_data.get("before"),
-                totals=file_data.get("totals")
+                totals=file_data.get("totals"),
             )
             for path, file_data in files_in_diff.get("files", []).items()
             if file_data.get("totals")
