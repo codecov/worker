@@ -23,17 +23,17 @@ class ComputeComparisonTask(BaseCodecovTask):
     name = compute_comparison_task_name
 
     async def run_async(self, db_session, comparison_id, *args, **kwargs):
-        log.info(f"Computing comparison", extra=dict(comparison_id=comparison_id))
         comparison = db_session.query(CompareCommit).get(comparison_id)
+        repo = comparison.compare_commit.repository
+        log_extra = dict(comparison_id=comparison_id, repoid=repo.repoid)
+        log.info(f"Computing comparison", extra=log_extra)
         current_yaml = await self.get_yaml_commit(comparison.compare_commit)
         comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
         impacted_files = await self.serialize_impacted_files(comparison_proxy)
         path = self.store_results(comparison, impacted_files)
         comparison.report_storage_path = path
         comparison.state = CompareCommitState.processed
-        log.info(
-            f"Computing comparison successful", extra=dict(comparison_id=comparison_id)
-        )
+        log.info(f"Computing comparison successful", extra=log_extra)
         return {"successful": True}
 
     async def get_yaml_commit(self, commit):
