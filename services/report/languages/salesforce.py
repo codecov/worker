@@ -5,7 +5,7 @@ from services.report.languages.base import BaseLanguageProcessor
 
 class SalesforceProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
-        return bool(type(content) is list)
+        return bool(type(content) is list) and name == "test-result-codecoverage.json"
 
     def process(
         self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
