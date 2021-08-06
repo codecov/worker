@@ -18,6 +18,10 @@ class TestArchiveService(BaseTestCase):
     def test_delete_repo_files(self, mocker):
         mock_delete_files = mocker.patch.object(MinioStorageService, "delete_files")
         mock_delete_files.return_value = [True, True]
+        
+        mock_list_folder_contents = mocker.patch.object(MinioStorageService, "list_folder_contents")
+        mock_list_folder_contents.return_value = ["file1", "file2"]
+
         repo = RepositoryFactory.create()
         service = ArchiveService(repo)
         result = service.delete_repo_files()
