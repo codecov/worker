@@ -14,3 +14,11 @@ class TestArchiveService(BaseTestCase):
         path = "path/to/file"
         result = service.read_file(path)
         assert expected_result == result
+
+    def test_delete_repo_files(self, mocker):
+        mock_delete_files = mocker.patch.object(MinioStorageService, "delete_files")
+        mock_delete_files.return_value = [True, True]
+        repo = RepositoryFactory.create()
+        service = ArchiveService(repo)
+        result = service.delete_repo_files()
+        assert result == 2
