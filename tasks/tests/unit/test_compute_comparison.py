@@ -30,4 +30,4 @@ class TestComputeComparisonTask(object):
         data_in_storage = mock_storage.read_file(
             "archive", comparison.report_storage_path
         )
-        assert json.loads(data_in_storage) == []
+        assert json.loads(data_in_storage) == {"changes": [], "diff": []}

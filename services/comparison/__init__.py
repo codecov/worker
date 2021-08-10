@@ -114,22 +114,12 @@ class ComparisonProxy(object):
         return get_overlay(overlay_type, self, **kwargs)
 
     async def get_impacted_files(self):
-        unexpected_changes = await self.get_changes()
         files_in_diff = await self.get_diff()
         self.head.report.apply_diff(files_in_diff)
-        files_in_diff_as_changes = [
-            Change(
-                path=path,
-                new=file_data.get("type") == "added",
-                deleted=file_data.get("type") == "deleted",
-                in_diff=True,
-                old_path=file_data.get("before"),
-                totals=file_data.get("totals"),
-            )
-            for path, file_data in files_in_diff.get("files", []).items()
-            if file_data.get("totals")
-        ]
-        return unexpected_changes + files_in_diff_as_changes
+        return {
+            "changes": await self.get_changes(),
+            "diff": files_in_diff.get("files"),
+        }
 
 
 class FilteredComparison(object):

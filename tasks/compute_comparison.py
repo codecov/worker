@@ -62,12 +62,12 @@ class ComputeComparisonTask(BaseCodecovTask):
         impacted_files = await comparison_proxy.get_impacted_files()
         base_report = comparison_proxy.base.report
         head_report = comparison_proxy.head.report
-        files_in_dict = []
-        for file in impacted_files:
+        data = {"changes": [], "diff": []}
+        for file in impacted_files["changes"]:
             path = file.path
             before = get_totals_from_file_in_reports(base_report, path)
             after = get_totals_from_file_in_reports(head_report, path)
-            files_in_dict.append(
+            data["changes_files"].append(
                 {
                     "path": file.path,
                     "base_totals": before.astuple() if before else None,
@@ -79,7 +79,25 @@ class ComputeComparisonTask(BaseCodecovTask):
                     "old_path": file.old_path,
                 }
             )
-        return files_in_dict
+        for path, file in impacted_files["diff"].items():
+            if not file.get("totals"):
+                continue
+            before = get_totals_from_file_in_reports(base_report, path)
+            after = get_totals_from_file_in_reports(head_report, path)
+            data["changes"].append(
+                {
+                    "path": path,
+                    "base_totals": before.astuple() if before else None,
+                    "compare_totals": after.astuple() if after else None,
+                    "patch": file["totals"].astuple(),
+                    "new": file.get("type") == "added",
+                    "deleted": file.get("type") == "deleted",
+                    "in_diff": True,
+                    "old_path": file.get("before"),
+                }
+            )
+        print(data)
+        return data
 
     def store_results(self, comparison, impacted_files):
         repository = comparison.compare_commit.repository
