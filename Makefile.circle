@@ -76,8 +76,7 @@ tag:
 # Pulls Standards image for coverage comparison from autotest
 run-standards-comparison:
 	docker pull codecov/autotest:standards-latest
-	docker ps
-	WEB_IP := `docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' autotest_web_1`
+	$(eval WEB_IP := $(shell docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' autotest_web_1))
 	docker run --network autotest_codecov -e HOST_URL=${WEB_IP} codecov/autotest:standards-latest
 
 # CIRCLECI
