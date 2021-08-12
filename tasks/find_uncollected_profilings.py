@@ -47,7 +47,7 @@ class FindUncollectedProfilingsTask(CodecovCronTask):
         )
         delayed_pids = []
         for pid, count in query:
-            res = profiling_collection_task.delay(pid)
+            res = profiling_collection_task.delay(profiling_id=pid)
             delayed_pids.append((pid, count, res.as_tuple()))
         return {
             "delayed_profiling_ids": delayed_pids[:100],
