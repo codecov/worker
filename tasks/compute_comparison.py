@@ -67,7 +67,7 @@ class ComputeComparisonTask(BaseCodecovTask):
             path = file.path
             before = get_totals_from_file_in_reports(base_report, path)
             after = get_totals_from_file_in_reports(head_report, path)
-            data["changes_files"].append(
+            data["changes"].append(
                 {
                     "path": file.path,
                     "base_totals": before.astuple() if before else None,
@@ -96,7 +96,6 @@ class ComputeComparisonTask(BaseCodecovTask):
                     "old_path": file.get("before"),
                 }
             )
-        print(data)
         return data
 
     def store_results(self, comparison, impacted_files):
