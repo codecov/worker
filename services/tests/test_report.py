@@ -1,16 +1,17 @@
-import pytest
 import pprint
-from itertools import chain, combinations
 from decimal import Decimal
+from itertools import chain, combinations
 
-from tests.base import BaseTestCase
-from services.report import ReportService, NotReadyToBuildReportYetError
-from database.tests.factories import CommitFactory, RepositoryFactory
-from database.models import CommitReport, ReportDetails, Upload, RepositoryFlag
-from services.archive import ArchiveService
-from shared.reports.types import ReportTotals, ReportLine
-from shared.reports.resources import ReportFile, Report, Session, SessionType
+import pytest
+from shared.reports.resources import Report, ReportFile, Session, SessionType
+from shared.reports.types import ReportLine, ReportTotals
 from shared.yaml import UserYaml
+
+from database.models import CommitReport, ReportDetails, RepositoryFlag, Upload
+from database.tests.factories import CommitFactory, RepositoryFactory
+from services.archive import ArchiveService
+from services.report import NotReadyToBuildReportYetError, ReportService
+from tests.base import BaseTestCase
 
 
 def powerset(iterable):

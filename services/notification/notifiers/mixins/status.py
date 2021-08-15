@@ -1,6 +1,7 @@
 from decimal import Decimal
-from services.yaml.reader import round_number
 from typing import Tuple
+
+from services.yaml.reader import round_number
 
 
 class StatusPatchMixin(object):

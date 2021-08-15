@@ -1,4 +1,5 @@
 import pytest
+
 from services.comparison import ComparisonProxy, FilteredComparison
 
 

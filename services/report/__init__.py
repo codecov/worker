@@ -1,29 +1,28 @@
 import logging
 import uuid
-from typing import Mapping, Any, Optional, Sequence
+from dataclasses import dataclass
 from json import loads
 from time import time
-from dataclasses import dataclass
+from typing import Any, Mapping, Optional, Sequence
 
 from shared.metrics import metrics
-from shared.reports.resources import Report
-from shared.reports.editable import EditableReport
-from services.report.parser import RawReportParser
-from shared.storage.exceptions import FileNotInStorageError
 from shared.reports.carryforward import generate_carryforward_report
-from shared.utils.sessions import SessionType
-from shared.utils.sessions import Session
+from shared.reports.editable import EditableReport
+from shared.reports.resources import Report
+from shared.storage.exceptions import FileNotInStorageError
+from shared.utils.sessions import Session, SessionType
 
-from database.models import Commit, Upload, Repository
+from database.models import Commit, Repository, Upload
 from database.models.reports import (
-    ReportLevelTotals,
-    UploadLevelTotals,
     CommitReport,
     ReportDetails,
+    ReportLevelTotals,
     RepositoryFlag,
+    UploadLevelTotals,
 )
-from helpers.exceptions import ReportExpiredException, ReportEmptyError
+from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from services.archive import ArchiveService
+from services.report.parser import RawReportParser
 from services.report.raw_upload_processor import process_raw_upload
 from services.yaml.reader import get_paths_from_flags
 

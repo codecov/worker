@@ -1,10 +1,10 @@
-import os
 import json
-import requests
 import logging
-
+import os
 from pathlib import Path
-from yaml import safe_load, YAMLError
+
+import requests
+from yaml import YAMLError, safe_load
 
 here = Path(__file__)
 folder = here.parent

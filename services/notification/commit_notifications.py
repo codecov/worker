@@ -1,10 +1,10 @@
 import logging
 
 from database.enums import Notification, NotificationState
-from database.models import Pull, CommitNotification
+from database.models import CommitNotification, Pull
 from services.notification.notifiers.base import (
-    NotificationResult,
     AbstractBaseNotifier,
+    NotificationResult,
 )
 
 log = logging.getLogger(__name__)

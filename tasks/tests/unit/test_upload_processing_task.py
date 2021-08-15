@@ -1,22 +1,22 @@
 from pathlib import Path
 
-import pytest
 import celery
+import pytest
 from redis.exceptions import LockError
-from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
+from shared.torngit.exceptions import TorngitObjectNotFoundError
 
-from tasks.upload_processor import UploadProcessorTask
 from database.models import CommitReport, ReportDetails
 from database.tests.factories import CommitFactory, UploadFactory
 from helpers.exceptions import (
-    ReportExpiredException,
     ReportEmptyError,
+    ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
 from services.archive import ArchiveService
-from services.report import ReportService, NotReadyToBuildReportYetError
+from services.report import NotReadyToBuildReportYetError, ReportService
+from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
 

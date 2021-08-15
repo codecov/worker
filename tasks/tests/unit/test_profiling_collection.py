@@ -1,15 +1,15 @@
 import json
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 import pytest
+from shared.storage.exceptions import FileNotInStorageError
 
-from tasks.profiling_collection import ProfilingCollectionTask
 from database.tests.factories.profiling import (
     ProfilingCommitFactory,
     ProfilingUploadFactory,
 )
 from helpers.clock import get_utc_now
-from shared.storage.exceptions import FileNotInStorageError
+from tasks.profiling_collection import ProfilingCollectionTask
 
 
 @pytest.mark.asyncio

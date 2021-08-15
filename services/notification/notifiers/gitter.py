@@ -2,8 +2,8 @@ from shared.torngit.enums import Endpoints
 
 from database.enums import Notification
 from services.notification.notifiers.generics import (
-    RequestsYamlBasedNotifier,
     Comparison,
+    RequestsYamlBasedNotifier,
 )
 from services.urls import get_commit_url
 

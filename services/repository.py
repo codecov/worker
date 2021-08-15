@@ -1,21 +1,21 @@
 import logging
-from datetime import datetime
 import re
-from typing import Mapping, Any, Optional, Sequence, Tuple
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Mapping, Optional, Sequence, Tuple
 
 import shared.torngit as torngit
+from shared.config import get_config, get_verify_ssl
 from shared.torngit.exceptions import (
     TorngitClientError,
-    TorngitObjectNotFoundError,
     TorngitError,
+    TorngitObjectNotFoundError,
 )
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
-from shared.config import get_config, get_verify_ssl
+from database.models import Commit, Owner, Pull, Repository
 from services.bots import get_repo_appropriate_bot_token, get_token_type_mapping
-from database.models import Owner, Commit, Pull, Repository
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)

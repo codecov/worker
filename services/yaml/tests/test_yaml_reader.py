@@ -1,5 +1,6 @@
 from decimal import Decimal
-from services.yaml.reader import round_number, get_paths_from_flags
+
+from services.yaml.reader import get_paths_from_flags, round_number
 
 
 class TestYamlReader(object):

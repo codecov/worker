@@ -1,8 +1,7 @@
 from json import dumps, loads
 
-from tests.base import BaseTestCase
 from services.report.languages import xcode
-
+from tests.base import BaseTestCase
 
 txt = b"""/source:
        |   1|line

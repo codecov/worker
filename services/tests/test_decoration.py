@@ -7,9 +7,9 @@ from database.tests.factories import (
     RepositoryFactory,
 )
 from services.decoration import (
+    BOT_USER_EMAILS,
     Decoration,
     determine_decoration_details,
-    BOT_USER_EMAILS,
 )
 from services.repository import EnrichedPull
 

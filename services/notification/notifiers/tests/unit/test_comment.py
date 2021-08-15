@@ -1,24 +1,26 @@
-import pytest
 from decimal import Decimal
+
+import pytest
+from shared.reports.readonly import ReadOnlyReport
+from shared.reports.resources import Report, ReportFile
+from shared.reports.types import LineSession, ReportLine, ReportTotals
+from shared.torngit.exceptions import (
+    TorngitClientError,
+    TorngitObjectNotFoundError,
+    TorngitServerUnreachableError,
+)
+from shared.utils.sessions import Session
+
+from database.tests.factories import RepositoryFactory
+from services.decoration import Decoration
+from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message import (
+    Change,
+    FileSectionWriter,
     diff_to_string,
     format_number_to_str,
     sort_by_importance,
-    Change,
-    FileSectionWriter,
-)
-from services.decoration import Decoration
-from database.tests.factories import RepositoryFactory
-from services.notification.notifiers.base import NotificationResult
-from shared.reports.types import ReportTotals, ReportLine, LineSession
-from shared.reports.readonly import ReadOnlyReport
-from shared.reports.resources import Report, ReportFile
-from shared.utils.sessions import Session
-from shared.torngit.exceptions import (
-    TorngitObjectNotFoundError,
-    TorngitServerUnreachableError,
-    TorngitClientError,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 

@@ -1,16 +1,16 @@
-from pathlib import Path
-import pytest
-import os
 import json
+import os
+from pathlib import Path
 
+import pytest
 from redis.exceptions import LockError
+from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
 
-from tasks.sync_pull import PullSyncTask
-from database.tests.factories import RepositoryFactory, CommitFactory, PullFactory
-from services.repository import EnrichedPull
+from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
-from shared.reports.types import Change
+from services.repository import EnrichedPull
+from tasks.sync_pull import PullSyncTask
 
 here = Path(__file__)
 

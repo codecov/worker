@@ -1,14 +1,15 @@
-import pytest
 from asyncio import Future
 from datetime import datetime
 
+import pytest
+
 from database.enums import Decoration, Notification, NotificationState
 from database.tests.factories import (
-    OwnerFactory,
     CommitFactory,
-    RepositoryFactory,
-    PullFactory,
     CommitNotificationFactory,
+    OwnerFactory,
+    PullFactory,
+    RepositoryFactory,
 )
 from tasks.new_user_activated import NewUserActivatedTask
 

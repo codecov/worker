@@ -1,15 +1,15 @@
 import pytest
 
-from tests.base import BaseTestCase
+from database.tests.factories import OwnerFactory, RepositoryFactory
 from services.bots import (
-    get_repo_appropriate_bot_token,
-    RepositoryWithoutValidBotError,
-    get_owner_appropriate_bot_token,
     OwnerWithoutValidBotError,
-    get_token_type_mapping,
+    RepositoryWithoutValidBotError,
     TokenType,
+    get_owner_appropriate_bot_token,
+    get_repo_appropriate_bot_token,
+    get_token_type_mapping,
 )
-from database.tests.factories import RepositoryFactory, OwnerFactory
+from tests.base import BaseTestCase
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
 # one on which the code ran

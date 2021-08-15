@@ -1,5 +1,5 @@
-from tests.base import BaseTestCase
 from services.report.languages import CloverProcessor
+from tests.base import BaseTestCase
 
 
 class TestBaseProcessor(BaseTestCase):

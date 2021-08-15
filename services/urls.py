@@ -1,12 +1,11 @@
 import os
 import re
-from urllib.parse import urlparse, parse_qs, urlunparse, urlencode
-
-
-from database.models import Commit, Repository, Pull
 from enum import Enum
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
 from shared.config import get_config
 
+from database.models import Commit, Pull, Repository
 
 services_short_dict = dict(
     github="gh",

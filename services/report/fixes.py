@@ -1,4 +1,4 @@
-from typing import Any, Dict, Callable
+from typing import Any, Callable, Dict
 
 
 def get_fixes_from_raw(content, fix: Callable) -> Dict[str, Dict[str, Any]]:

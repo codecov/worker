@@ -1,9 +1,8 @@
-from json import dumps
 import xml.etree.cElementTree as etree
+from json import dumps
 
-from tests.base import BaseTestCase
 from services.report.languages import vb
-
+from tests.base import BaseTestCase
 
 txt = """<?xml version="1.0" encoding="UTF-8" ?>
 <results>

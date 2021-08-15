@@ -1,6 +1,6 @@
 import os
 
-from helpers.sentry import initialize_sentry, before_send
+from helpers.sentry import before_send, initialize_sentry
 
 
 class TestSentry(object):

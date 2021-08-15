@@ -1,9 +1,9 @@
 from helpers.pathmap import (
-    clean_path,
+    Tree,
+    _check_ancestors,
     _extract_match,
     _resolve_path,
-    _check_ancestors,
-    Tree,
+    clean_path,
 )
 
 # ========== Mock data ===========

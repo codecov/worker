@@ -1,8 +1,9 @@
 import logging
+from typing import Any, Dict, Tuple
+
 from database.enums import Notification
 from services.notification.notifiers.mixins.status import StatusChangesMixin
 from services.notification.notifiers.status.base import StatusNotifier
-from typing import Any, Dict, Tuple
 
 log = logging.getLogger(__name__)
 

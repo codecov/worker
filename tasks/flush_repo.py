@@ -3,9 +3,9 @@ import logging
 from sqlalchemy import null
 
 from app import celery_app
-from database.models import Repository, Commit, Branch, Pull
-from tasks.base import BaseCodecovTask
+from database.models import Branch, Commit, Pull, Repository
 from services.archive import ArchiveService
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 

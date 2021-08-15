@@ -1,11 +1,12 @@
 import logging
-import re
 import random
-from typing import Optional
+import re
 from copy import deepcopy
+from typing import Optional
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
+from shared.celery_config import upload_processor_task_name
 from shared.config import get_config
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitClientError
@@ -14,11 +15,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
 from database.models import Commit, Upload
-from shared.celery_config import upload_processor_task_name
 from helpers.metrics import metrics
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
-from services.report import ReportService, Report
+from services.report import Report, ReportService
 from services.repository import get_repo_provider_service
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask

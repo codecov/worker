@@ -1,15 +1,16 @@
-import logging
-from datetime import timedelta, datetime
-from typing import Tuple, Sequence, Dict
-import statistics
 import json
+import logging
+import statistics
+from datetime import datetime, timedelta
+from typing import Dict, Sequence, Tuple
 
-from database.models.profiling import ProfilingCommit, ProfilingUpload
 from shared.storage.exceptions import FileNotInStorageError
-from tasks.base import BaseCodecovTask
 from sqlalchemy.orm.session import Session
-from services.archive import ArchiveService
+
 from app import celery_app
+from database.models.profiling import ProfilingCommit, ProfilingUpload
+from services.archive import ArchiveService
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
