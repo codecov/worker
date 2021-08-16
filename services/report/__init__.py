@@ -3,7 +3,7 @@ import uuid
 from dataclasses import dataclass
 from json import loads
 from time import time
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 from shared.metrics import metrics
 from shared.reports.carryforward import generate_carryforward_report
@@ -28,17 +28,27 @@ from services.yaml.reader import get_paths_from_flags
 
 
 @dataclass
+class ProcessingError(object):
+    code: str
+    params: Dict[str, Any]
+    is_retryable: bool = False
+
+    def as_dict(self):
+        return {"code": self.code, "params": self.params}
+
+
+@dataclass
 class ProcessingResult(object):
-    report: Report
+    report: Optional[Report]
     session: Session
-    error: Optional[Any]
+    error: Optional[ProcessingError]
 
     def as_dict(self):
         # Weird flow for now in order to keep things compatible with previous logging
         if self.error is not None:
             return {
                 "successful": False,
-                "error_type": self.error,
+                "error": self.error.as_dict(),
                 "report": self.report,
                 "should_retry": False,
             }
@@ -454,7 +464,9 @@ class ReportService(object):
                 extra=dict(repoid=commit.repoid, commit=commit.commitid,),
             )
             return ProcessingResult(
-                report=None, session=session, error="report_expired"
+                report=None,
+                session=session,
+                error=ProcessingError(code="report_expired", params={}),
             )
         except ReportEmptyError:
             log.info(
@@ -462,7 +474,11 @@ class ReportService(object):
                 reportid,
                 extra=dict(repoid=commit.repoid, commit=commit.commitid,),
             )
-            return ProcessingResult(report=None, session=session, error="report_empty")
+            return ProcessingResult(
+                report=None,
+                session=session,
+                error=ProcessingError(code="report_empty", params={}),
+            )
 
     def update_upload_with_processing_result(self, upload_obj, processing_result):
         db_session = upload_obj.get_db_session()
