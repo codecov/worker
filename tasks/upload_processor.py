@@ -217,39 +217,26 @@ class UploadProcessorTask(BaseCodecovTask):
     def process_individual_report(
         self, report_service, commit, report, upload_obj, *args, **arguments,
     ):
-        try:
-            processing_result = self.do_process_individual_report(
-                report_service, commit, report, *args, upload=upload_obj, **arguments,
-            )
-            report_service.update_upload_with_processing_result(
-                upload_obj, processing_result
-            )
-            return processing_result.as_dict()
-        except FileNotInStorageError:
-            if self.request.retries == 0:
-                log.info(
-                    "Scheduling a retry so the file has an extra %d to arrive",
-                    FIRST_RETRY_DELAY,
-                    extra=dict(
-                        repoid=commit.repoid,
-                        commit=commit.commitid,
-                        arguments=arguments,
-                    ),
-                )
-                self.schedule_for_later_try()
+        processing_result = self.do_process_individual_report(
+            report_service, commit, report, *args, upload=upload_obj, **arguments,
+        )
+        if (
+            processing_result.error is not None
+            and processing_result.error.is_retryable
+            and self.request.retries == 0
+        ):
             log.info(
-                "File did not arrive within the expected time, skipping it",
+                "Scheduling a retry in %d due to retryable error",
+                FIRST_RETRY_DELAY,
                 extra=dict(
-                    repoid=commit.repoid, commit=commit.commitid, arguments=arguments
+                    repoid=commit.repoid, commit=commit.commitid, arguments=arguments,
                 ),
             )
-            upload_obj.state = "error"
-            return {
-                "successful": False,
-                "report": None,
-                "error_type": "file_not_in_storage",
-                "should_retry": False,
-            }
+            self.schedule_for_later_try()
+        report_service.update_upload_with_processing_result(
+            upload_obj, processing_result
+        )
+        return processing_result.as_dict()
 
     def do_process_individual_report(
         self,
