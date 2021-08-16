@@ -19,7 +19,6 @@ from helpers.metrics import metrics
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
 from services.report import ReportService, Report
-from services.report.parser import RawReportParser
 from services.repository import get_repo_provider_service
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -262,43 +261,17 @@ class UploadProcessorTask(BaseCodecovTask):
         upload: Upload,
         **kwargs,
     ):
-        """Takes a `current_report (Report)`, runs a raw_uploaded_report (str) against
-            it and generates a new report with the result
-        """
-        archive_service = report_service.get_archive_service(commit.repository)
+        res = report_service.build_report_from_raw_content(current_report, upload)
         archive_url = upload.storage_path
-        raw_uploaded_report = self.fetch_raw_uploaded_report(
-            archive_service, archive_url
-        )
-        log.debug("Retrieved report for processing from url %s", archive_url)
-
-        # delete from archive is desired
         if should_delete_archive and archive_url and not archive_url.startswith("http"):
+            log.info(
+                "Deleting uploaded file as requested",
+                extra=dict(archive_url=archive_url),
+            )
+            archive_service = report_service.get_archive_service(commit.repository)
             archive_service.delete_file(archive_url)
             archive_url = None
-
-        # ---------------
-        # Process Reports
-        # ---------------
-        return report_service.build_report_from_raw_content(
-            master=current_report, reports=raw_uploaded_report, upload=upload,
-        )
-
-    def fetch_raw_uploaded_report(
-        self, archive_service, archive_url: str,
-    ):
-        """
-        Downloads the raw report, given a path on storage
-
-        Args:
-            archive_service: Archive service where the file is going to be fetched from
-            archive_url (str): Teh filepath of the content inside
-
-        Returns:
-            ParsedRawReport
-        """
-        content = archive_service.read_file(archive_url)
-        return RawReportParser.parse_raw_report_from_bytes(content)
+        return res
 
     def should_delete_archive(self, commit_yaml):
         if get_config("services", "minio", "expire_raw_after_n_days"):

@@ -414,9 +414,7 @@ class TestUploadProcessorTask(object):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
         mocker.patch.object(
-            UploadProcessorTask,
-            "fetch_raw_uploaded_report",
-            return_value=mocker.MagicMock(size=10),
+            ArchiveService, "read_file", return_value=b"",
         )
         mocked_2 = mocker.patch("services.report.process_raw_upload")
         false_report = Report()
@@ -609,9 +607,7 @@ class TestUploadProcessorTask(object):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
         mocker.patch.object(
-            UploadProcessorTask,
-            "fetch_raw_uploaded_report",
-            return_value=mocker.MagicMock(size=10),
+            ArchiveService, "read_file", return_value=b"",
         )
         mocked_2 = mocker.patch("services.report.process_raw_upload")
         false_report = Report()
@@ -688,7 +684,7 @@ class TestUploadProcessorTask(object):
         assert commit.state == "complete"
 
     @pytest.mark.asyncio
-    async def test_upload_task_call_no_succesful_report(
+    async def test_upload_task_call_no_successful_report(
         self,
         mocker,
         mock_configuration,
@@ -702,9 +698,7 @@ class TestUploadProcessorTask(object):
         mocked_1.return_value = None
         mocked_2 = mocker.patch("services.report.process_raw_upload")
         mocker.patch.object(
-            UploadProcessorTask,
-            "fetch_raw_uploaded_report",
-            return_value=mocker.MagicMock(size=10),
+            ArchiveService, "read_file", return_value=b"",
         )
         mocked_2.side_effect = [ReportEmptyError(), ReportExpiredException()]
         # Mocking retry to also raise the exception so we can see how it is called

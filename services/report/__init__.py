@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from shared.metrics import metrics
 from shared.reports.resources import Report
 from shared.reports.editable import EditableReport
-from services.report.parser import ParsedRawReport
+from services.report.parser import RawReportParser
 from shared.storage.exceptions import FileNotInStorageError
 from shared.reports.carryforward import generate_carryforward_report
 from shared.utils.sessions import SessionType
@@ -388,7 +388,7 @@ class ReportService(object):
         )
 
     def build_report_from_raw_content(
-        self, master: Optional[Report], reports: ParsedRawReport, upload: Upload
+        self, master: Optional[Report], upload: Upload
     ) -> ProcessingResult:
         """
             Processes an upload on top of an existing report `master` and returns
@@ -423,10 +423,16 @@ class ReportService(object):
             archive=archive_url or url,
             url=build_url,
         )
+        archive_service = self.get_archive_service(commit.repository)
+        archive_url = upload.storage_path
+        raw_uploaded_report = RawReportParser.parse_raw_report_from_bytes(
+            archive_service.read_file(archive_url)
+        )
+        log.debug("Retrieved report for processing from url %s", archive_url)
         try:
             with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
                 report = process_raw_upload(
-                    self.current_yaml, master, reports, flags, session
+                    self.current_yaml, master, raw_uploaded_report, flags, session
                 )
             log.info(
                 "Successfully processed report",
@@ -438,7 +444,7 @@ class ReportService(object):
                     reportid=reportid,
                     commit_yaml=self.current_yaml.to_dict(),
                     timing_ms=t.ms,
-                    content_len=reports.size,
+                    content_len=raw_uploaded_report.size,
                 ),
             )
             return ProcessingResult(report=report, session=session, error=None)
