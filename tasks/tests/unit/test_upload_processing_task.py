@@ -681,6 +681,11 @@ class TestUploadProcessorTask(object):
         }
         assert expected_result == result
         assert commit.state == "complete"
+        assert len(upload_2.errors) == 1
+        assert upload_2.errors[0].error_code == "report_empty"
+        assert upload_2.errors[0].error_params == {}
+        assert upload_2.errors[0].report_upload == upload_2
+        assert len(upload_1.errors) == 0
 
     @pytest.mark.asyncio
     async def test_upload_task_call_no_successful_report(
@@ -768,6 +773,14 @@ class TestUploadProcessorTask(object):
         }
         assert expected_result == result
         assert commit.state == "error"
+        assert len(upload_2.errors) == 1
+        assert upload_2.errors[0].error_code == "report_expired"
+        assert upload_2.errors[0].error_params == {}
+        assert upload_2.errors[0].report_upload == upload_2
+        assert len(upload_1.errors) == 1
+        assert upload_1.errors[0].error_code == "report_empty"
+        assert upload_1.errors[0].error_params == {}
+        assert upload_1.errors[0].report_upload == upload_1
 
     @pytest.mark.asyncio
     async def test_upload_task_call_celeryerror(
