@@ -26,7 +26,7 @@ from services.notification.notifiers.base import (
     NotificationResult,
     AbstractBaseNotifier,
 )
-from services.commit_notifications import (
+from services.notification.commit_notifications import (
     create_or_update_commit_notification_from_notification_result,
 )
 from services.yaml import read_yaml_field
