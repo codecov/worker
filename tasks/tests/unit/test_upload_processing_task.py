@@ -15,7 +15,7 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from services.archive import ArchiveService
-from services.report import NotReadyToBuildReportYetError, ReportService
+from services.report import ProcessingError, ProcessingResult, ReportService
 from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
@@ -503,13 +503,9 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(
-            UploadProcessorTask, "do_process_individual_report"
-        )
         false_report = mocker.MagicMock(
             to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
         )
-        mocked_2.side_effect = FileNotInStorageError()
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
         mocked_4.send_task.return_value = True
@@ -522,7 +518,9 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        upload = UploadFactory.create(report__commit=commit)
+        upload = UploadFactory.create(
+            report__commit=commit, storage_path="locationlocation"
+        )
         dbsession.add(upload)
         arguments = {"url": "url2", "extra_param": 45}
         task = UploadProcessorTask()
@@ -533,10 +531,14 @@ class TestUploadProcessorTask(object):
             commit=commit,
             report=false_report,
             upload_obj=upload,
+            should_delete_archive=False,
             **arguments,
         )
         expected_result = {
-            "error_type": "file_not_in_storage",
+            "error": {
+                "code": "file_not_in_storage",
+                "params": {"location": "locationlocation"},
+            },
             "report": None,
             "should_retry": False,
             "successful": False,
@@ -557,9 +559,6 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(
-            UploadProcessorTask, "do_process_individual_report"
-        )
         mock_schedule_for_later_try = mocker.patch.object(
             UploadProcessorTask,
             "schedule_for_later_try",
@@ -568,7 +567,6 @@ class TestUploadProcessorTask(object):
         false_report = mocker.MagicMock(
             to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
         )
-        mocked_2.side_effect = FileNotInStorageError()
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
         mocked_4.send_task.return_value = True
@@ -589,6 +587,7 @@ class TestUploadProcessorTask(object):
                 commit=commit,
                 report=false_report,
                 upload_obj=upload,
+                should_delete_archive=False,
                 **arguments,
             )
         mock_schedule_for_later_try.assert_called_with()

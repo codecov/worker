@@ -434,9 +434,20 @@ class ReportService(object):
         )
         archive_service = self.get_archive_service(commit.repository)
         archive_url = upload.storage_path
-        raw_uploaded_report = RawReportParser.parse_raw_report_from_bytes(
-            archive_service.read_file(archive_url)
-        )
+        try:
+            raw_uploaded_report = RawReportParser.parse_raw_report_from_bytes(
+                archive_service.read_file(archive_url)
+            )
+        except FileNotInStorageError:
+            return ProcessingResult(
+                report=None,
+                session=session,
+                error=ProcessingError(
+                    code="file_not_in_storage",
+                    params={"location": archive_url},
+                    is_retryable=True,
+                ),
+            )
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
             with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
