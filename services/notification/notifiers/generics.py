@@ -1,25 +1,24 @@
-from contextlib import nullcontext
-from decimal import Decimal
-from typing import Mapping, Any
-from urllib.parse import urlparse
 import json
 import logging
+from contextlib import nullcontext
+from decimal import Decimal
+from typing import Any, Mapping
+from urllib.parse import urlparse
 
 import httpx
 from requests.exceptions import RequestException
 from shared.config import get_config
 
-from helpers.metrics import metrics
 from helpers.match import match
+from helpers.metrics import metrics
+from services.comparison.types import Comparison
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
-from services.comparison.types import Comparison
 from services.repository import get_repo_provider_service
-from services.urls import get_compare_url, get_commit_url
-from services.yaml.reader import round_number, get_paths_from_flags
-
+from services.urls import get_commit_url, get_compare_url
+from services.yaml.reader import get_paths_from_flags, round_number
 
 log = logging.getLogger(__name__)
 

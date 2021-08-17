@@ -1,19 +1,17 @@
-import os.path
-import typing
 import logging
+import os.path
 import random
-from pathlib import PurePath
+import typing
 from collections import defaultdict
+from pathlib import PurePath
 from typing import Optional, Sequence
 
 from helpers.pathmap import _resolve_path
 from helpers.pathmap.tree import Tree
-
 from services.path_fixer.fixpaths import _remove_known_bad_paths
 from services.path_fixer.user_path_fixes import UserPathFixes
 from services.path_fixer.user_path_includes import UserPathIncludes
 from services.yaml import read_yaml_field
-
 
 log = logging.getLogger(__name__)
 

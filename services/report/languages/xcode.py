@@ -1,10 +1,11 @@
 from io import BytesIO
 
-from services.report.languages.helpers import remove_non_ascii
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine, LineSession
 from shared.helpers.numeric import maxint
+from shared.reports.resources import Report, ReportFile
+from shared.reports.types import LineSession, ReportLine
+
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.languages.helpers import remove_non_ascii
 
 START_PARTIAL = "\033[0;41m"
 END_PARTIAL = "\033[0m"

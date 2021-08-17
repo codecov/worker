@@ -1,12 +1,12 @@
-from timestring import Date
 from collections import defaultdict
 
-from services.yaml import read_yaml_field
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
+from services.yaml import read_yaml_field
 
 
 class JacocoProcessor(BaseLanguageProcessor):

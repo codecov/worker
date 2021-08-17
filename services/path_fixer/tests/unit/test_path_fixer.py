@@ -1,7 +1,7 @@
-from tests.base import BaseTestCase
+from shared.yaml import UserYaml
 
 from services.path_fixer import PathFixer, invert_pattern
-from shared.yaml import UserYaml
+from tests.base import BaseTestCase
 
 
 class TestPathFixerHelpers(BaseTestCase):

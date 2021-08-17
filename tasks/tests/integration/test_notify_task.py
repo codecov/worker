@@ -1,10 +1,12 @@
-import pytest
 from decimal import Decimal
-from tasks.notify import NotifyTask
+
+import pytest
+
 from database.models import Pull
 from database.tests.factories import CommitFactory, RepositoryFactory
-from services.notification.notifiers.base import NotificationResult
 from services.archive import ArchiveService
+from services.notification.notifiers.base import NotificationResult
+from tasks.notify import NotifyTask
 
 
 @pytest.mark.integration

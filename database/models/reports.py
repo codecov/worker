@@ -1,13 +1,12 @@
 import logging
 from functools import cached_property
 
-from sqlalchemy import Column, types, ForeignKey, Table
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy import Column, ForeignKey, Table, types
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import backref, relationship
 
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.models.core import Repository
-
 
 log = logging.getLogger(__name__)
 

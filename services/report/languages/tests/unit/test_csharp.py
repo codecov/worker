@@ -1,9 +1,8 @@
-from json import dumps, loads
 import xml.etree.cElementTree as etree
+from json import dumps, loads
 
-from tests.base import BaseTestCase
 from services.report.languages import csharp
-
+from tests.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="utf-8"?>
 <CoverageSession xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">

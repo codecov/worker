@@ -1,13 +1,12 @@
 import pickle
 
 import pytest
-
 from redis.exceptions import TimeoutError
 
 from helpers.cache import (
-    OurOwnCache,
-    BaseBackend,
     NO_VALUE,
+    BaseBackend,
+    OurOwnCache,
     RedisBackend,
     make_hash_sha256,
 )

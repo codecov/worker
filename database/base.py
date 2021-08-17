@@ -1,10 +1,10 @@
 import datetime
 import uuid
 
+from sqlalchemy import Column, types
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
-from sqlalchemy import Column, types
 
 Base = declarative_base()
 

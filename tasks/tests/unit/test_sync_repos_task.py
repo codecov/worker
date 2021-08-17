@@ -1,14 +1,14 @@
 import json
-from pathlib import Path
-import pytest
 from datetime import datetime
+from pathlib import Path
 
-from shared.torngit.exceptions import TorngitClientError
+import pytest
 from celery.exceptions import SoftTimeLimitExceeded
+from shared.torngit.exceptions import TorngitClientError
 
-from tasks.sync_repos import SyncReposTask
-from database.tests.factories import OwnerFactory, RepositoryFactory
 from database.models import Owner, Repository
+from database.tests.factories import OwnerFactory, RepositoryFactory
+from tasks.sync_repos import SyncReposTask
 
 here = Path(__file__)
 

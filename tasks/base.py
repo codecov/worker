@@ -1,20 +1,19 @@
 import asyncio
 import logging
 
-from celery.worker.request import Request
+import psycopg2
 from celery.exceptions import SoftTimeLimitExceeded
+from celery.worker.request import Request
 from sqlalchemy.exc import (
-    SQLAlchemyError,
-    InvalidRequestError,
     DataError,
     IntegrityError,
+    InvalidRequestError,
+    SQLAlchemyError,
 )
-import psycopg2
 
 from app import celery_app
 from database.engine import get_db_session
 from helpers.metrics import metrics
-
 
 log = logging.getLogger("worker")
 

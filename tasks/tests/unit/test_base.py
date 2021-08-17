@@ -1,13 +1,12 @@
 from pathlib import Path
 
-from sqlalchemy.exc import DBAPIError, InvalidRequestError, IntegrityError
-import pytest
 import psycopg2
-from celery.exceptions import Retry, SoftTimeLimitExceeded
+import pytest
 from celery.contrib.testing.mocks import TaskMessage
+from celery.exceptions import Retry, SoftTimeLimitExceeded
+from sqlalchemy.exc import DBAPIError, IntegrityError, InvalidRequestError
 
-from tasks.base import BaseCodecovTask, BaseCodecovRequest
-
+from tasks.base import BaseCodecovRequest, BaseCodecovTask
 
 here = Path(__file__)
 

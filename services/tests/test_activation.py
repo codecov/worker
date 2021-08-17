@@ -1,11 +1,10 @@
-import pytest
 from datetime import datetime
 
+import pytest
+
 from database.tests.factories import OwnerFactory
-
 from services.activation import activate_user
-
-from services.license import is_enterprise, _get_now
+from services.license import _get_now, is_enterprise
 
 
 class TestActivationServiceTestCase(object):

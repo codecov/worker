@@ -1,4 +1,5 @@
 import factory
+
 from database.models.profiling import ProfilingCommit, ProfilingUpload
 from database.tests.factories.core import RepositoryFactory
 

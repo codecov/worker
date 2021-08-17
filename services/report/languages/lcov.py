@@ -1,9 +1,10 @@
+import logging
 from collections import defaultdict
 from io import BytesIO
-import logging
 
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+
 from services.report.languages.base import BaseLanguageProcessor
 
 log = logging.getLogger(__name__)

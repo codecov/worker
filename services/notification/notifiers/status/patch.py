@@ -1,7 +1,7 @@
 from database.enums import Notification
 from services.notification.notifiers.base import Comparison
-from services.notification.notifiers.status.base import StatusNotifier
 from services.notification.notifiers.mixins.status import StatusPatchMixin
+from services.notification.notifiers.status.base import StatusNotifier
 
 
 class PatchStatusNotifier(StatusPatchMixin, StatusNotifier):

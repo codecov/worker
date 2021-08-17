@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from tasks.profiling_summarization import ProfilingSummarizationTask
 from database.tests.factories.profiling import ProfilingCommitFactory
+from tasks.profiling_summarization import ProfilingSummarizationTask
 
 
 @pytest.mark.asyncio

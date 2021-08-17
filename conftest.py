@@ -1,20 +1,19 @@
-from sqlalchemy.orm import Session
-
 from pathlib import Path
 
+import mock
 import pytest
 import vcr
-import mock
-from sqlalchemy.exc import OperationalError
+from shared.config import ConfigHelper
+from shared.storage.memory import MemoryStorageService
+from shared.torngit import Github as GithubHandler
 from sqlalchemy import event
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session
+from sqlalchemy_utils import create_database, database_exists
 
+from celery_config import initialize_logging
 from database.base import Base
 from database.engine import json_dumps
-from sqlalchemy_utils import create_database, database_exists
-from shared.config import ConfigHelper
-from shared.torngit import Github as GithubHandler
-from shared.storage.memory import MemoryStorageService
-from celery_config import initialize_logging
 
 
 def pytest_configure(config):

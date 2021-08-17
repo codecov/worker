@@ -1,11 +1,11 @@
-import pytest
 import httpx
+import pytest
 
-from services.notification.notifiers.generics import (
-    StandardNotifier,
-    RequestsYamlBasedNotifier,
-)
 from database.tests.factories import RepositoryFactory
+from services.notification.notifiers.generics import (
+    RequestsYamlBasedNotifier,
+    StandardNotifier,
+)
 
 
 class SampleNotifierForTest(StandardNotifier):

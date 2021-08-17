@@ -1,10 +1,10 @@
 import logging
+from typing import Any, Tuple
 
 from database.enums import Notification
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.mixins.status import StatusProjectMixin
 from services.notification.notifiers.status.base import StatusNotifier
-from typing import Any, Tuple
 
 log = logging.getLogger(__name__)
 

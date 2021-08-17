@@ -4,37 +4,36 @@ This packages uses the following services:
   - comparison
 
 """
-import logging
-import dataclasses
-from typing import List, Iterator
 import asyncio
-from celery.exceptions import CeleryError, SoftTimeLimitExceeded
+import dataclasses
+import logging
+from typing import Iterator, List
 
+from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.config import get_config
-from shared.yaml import UserYaml
 from shared.helpers.yaml import default_if_true
+from shared.yaml import UserYaml
 
 from helpers.metrics import metrics
-from services.decoration import Decoration
-from services.notification.notifiers import (
-    get_all_notifier_classes_mapping,
-    get_status_notifier_class,
-    get_pull_request_notifiers,
-)
 from services.comparison.types import Comparison
-from services.notification.notifiers.base import (
-    NotificationResult,
-    AbstractBaseNotifier,
-)
-from services.commit_notifications import (
+from services.decoration import Decoration
+from services.license import is_properly_licensed
+from services.notification.commit_notifications import (
     create_or_update_commit_notification_from_notification_result,
 )
-from services.yaml import read_yaml_field
-from services.license import is_properly_licensed
+from services.notification.notifiers import (
+    get_all_notifier_classes_mapping,
+    get_pull_request_notifiers,
+    get_status_notifier_class,
+)
+from services.notification.notifiers.base import (
+    AbstractBaseNotifier,
+    NotificationResult,
+)
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
-
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 

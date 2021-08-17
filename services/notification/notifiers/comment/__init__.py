@@ -1,25 +1,23 @@
 import logging
-from typing import Any, Mapping, List
+from typing import Any, List, Mapping
 
 from shared.torngit.exceptions import (
-    TorngitObjectNotFoundError,
     TorngitClientError,
+    TorngitObjectNotFoundError,
     TorngitServerFailureError,
 )
 
 from database.enums import Notification
-from services.notification.notifiers.base import (
-    NotificationResult,
-    AbstractBaseNotifier,
-)
-from services.comparison.types import Comparison
 from helpers.metrics import metrics
-from services.repository import get_repo_provider_service
-from services.urls import get_org_account_url, append_tracking_params_to_urls
-
-from services.notification.notifiers.mixins.message import MessageMixin
-
+from services.comparison.types import Comparison
 from services.license import requires_license
+from services.notification.notifiers.base import (
+    AbstractBaseNotifier,
+    NotificationResult,
+)
+from services.notification.notifiers.mixins.message import MessageMixin
+from services.repository import get_repo_provider_service
+from services.urls import append_tracking_params_to_urls, get_org_account_url
 
 log = logging.getLogger(__name__)
 

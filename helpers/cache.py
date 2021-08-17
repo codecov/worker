@@ -1,13 +1,13 @@
 import asyncio
-import hashlib
 import base64
+import hashlib
 import logging
 import pickle
+from functools import wraps
 from typing import Any, Callable, Hashable
 
-from redis import RedisError, Redis
+from redis import Redis, RedisError
 
-from functools import wraps
 from helpers.metrics import metrics
 
 log = logging.getLogger(__name__)

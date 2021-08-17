@@ -1,23 +1,22 @@
+from typing import Dict, List, Type
+
+from services.notification.notifiers.base import AbstractBaseNotifier
+from services.notification.notifiers.checks import (
+    ChangesChecksNotifier,
+    PatchChecksNotifier,
+    ProjectChecksNotifier,
+)
+from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.gitter import GitterNotifier
 from services.notification.notifiers.hipchat import HipchatNotifier
 from services.notification.notifiers.irc import IRCNotifier
 from services.notification.notifiers.slack import SlackNotifier
-from services.notification.notifiers.webhook import WebhookNotifier
-from services.notification.notifiers.comment import CommentNotifier
-from services.notification.notifiers.base import AbstractBaseNotifier
 from services.notification.notifiers.status import (
-    ProjectStatusNotifier,
-    PatchStatusNotifier,
     ChangesStatusNotifier,
+    PatchStatusNotifier,
+    ProjectStatusNotifier,
 )
-
-from services.notification.notifiers.checks import (
-    ProjectChecksNotifier,
-    PatchChecksNotifier,
-    ChangesChecksNotifier,
-)
-
-from typing import Type, Dict, List
+from services.notification.notifiers.webhook import WebhookNotifier
 
 
 def get_all_notifier_classes_mapping() -> Dict[str, Type[AbstractBaseNotifier]]:

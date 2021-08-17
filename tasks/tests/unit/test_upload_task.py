@@ -1,22 +1,22 @@
 import json
-from pathlib import Path
 from datetime import datetime, timedelta
-from celery.exceptions import Retry
-from shared.yaml import UserYaml
+from pathlib import Path
 
-import pytest
 import mock
+import pytest
+from celery.exceptions import Retry
 from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
+from shared.yaml import UserYaml
 
-from tasks.upload import UploadTask
-from tasks.upload_processor import upload_processor_task
-from tasks.upload_finisher import upload_finisher_task
-from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from database.models import Upload
+from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
-from services.report import ReportService, NotReadyToBuildReportYetError
+from services.report import NotReadyToBuildReportYetError, ReportService
+from tasks.upload import UploadTask
+from tasks.upload_finisher import upload_finisher_task
+from tasks.upload_processor import upload_processor_task
 
 here = Path(__file__)
 
