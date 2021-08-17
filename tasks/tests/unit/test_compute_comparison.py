@@ -33,7 +33,7 @@ class TestComputeComparisonTask(object):
         assert json.loads(data_in_storage) == {"changes": [], "diff": []}
 
 
-    async def test_set_state_to_processed_non_empty report(
+    async def test_set_state_to_processed_non_empty_report(
         self, dbsession, mocker, mock_repo_provider, mock_storage, sample_comparison
     ):
         comparison = CompareCommitFactory.create()
