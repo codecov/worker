@@ -1,9 +1,10 @@
+from typing import Any, Tuple
+
+from database.enums import Notification
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.checks.base import ChecksNotifier
-from typing import Any, Tuple
 from services.notification.notifiers.mixins.message import MessageMixin
 from services.notification.notifiers.mixins.status import StatusProjectMixin
-from database.enums import Notification
 from services.yaml.reader import read_yaml_field
 
 

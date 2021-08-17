@@ -1,24 +1,23 @@
-from unittest.mock import patch, Mock
 from io import BytesIO
-from lxml import etree
-import pytest
 from json import loads
 from pathlib import Path
+from unittest.mock import Mock, patch
 
-from shared.yaml import UserYaml
+import pytest
+from lxml import etree
+from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import ReportTotals
 from shared.utils.sessions import Session
-from shared.reports.resources import Report, ReportFile, ReportLine, LineSession
+from shared.yaml import UserYaml
 
-from helpers.exceptions import ReportEmptyError, CorruptRawReportError
-from tests.base import BaseTestCase
+from helpers.exceptions import CorruptRawReportError, ReportEmptyError
 from services.report import raw_upload_processor as process
 from services.report.parser import (
-    RawReportParser,
-    ParsedUploadedReportFile,
     ParsedRawReport,
+    ParsedUploadedReportFile,
+    RawReportParser,
 )
-
+from tests.base import BaseTestCase
 
 here = Path(__file__)
 folder = here.parent

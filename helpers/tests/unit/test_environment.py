@@ -1,6 +1,7 @@
 import os
 from pathlib import PosixPath
-from helpers.environment import _calculate_current_env, Environment
+
+from helpers.environment import Environment, _calculate_current_env
 
 
 class TestEnvironment(object):

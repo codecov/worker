@@ -1,8 +1,8 @@
+from database.enums import Notification
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.checks.base import ChecksNotifier
 from services.notification.notifiers.mixins.status import StatusPatchMixin
 from services.yaml import read_yaml_field
-from database.enums import Notification
 
 
 class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):

@@ -4,9 +4,9 @@ from fractions import Fraction
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 from shared.utils.merge import partials_to_line
-from services.yaml import read_yaml_field
 
 from services.report.languages.base import BaseLanguageProcessor
+from services.yaml import read_yaml_field
 
 
 class NodeProcessor(BaseLanguageProcessor):

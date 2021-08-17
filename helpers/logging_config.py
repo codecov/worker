@@ -1,9 +1,9 @@
 from copy import deepcopy
-from celery._state import get_current_task
 
+from celery._state import get_current_task
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
-from helpers.environment import get_current_env, Environment
+from helpers.environment import Environment, get_current_env
 
 
 class BaseLogger(JsonFormatter):

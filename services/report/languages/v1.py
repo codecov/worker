@@ -1,10 +1,10 @@
-from services.report.languages.helpers import list_to_dict
-
 from shared.reports.resources import Report, ReportFile
-from services.yaml import read_yaml_field
 from shared.reports.types import ReportLine
-from services.report.languages.base import BaseLanguageProcessor
+
 from helpers.exceptions import CorruptRawReportError
+from services.report.languages.base import BaseLanguageProcessor
+from services.report.languages.helpers import list_to_dict
+from services.yaml import read_yaml_field
 
 
 class VOneProcessor(BaseLanguageProcessor):

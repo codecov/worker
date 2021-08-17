@@ -1,6 +1,8 @@
 import logging
 from enum import Enum
+
 from shared.license import get_current_license
+
 from services.license import requires_license
 
 log = logging.getLogger(__name__)

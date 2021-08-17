@@ -1,8 +1,8 @@
 import pytest
 
-from tasks.compute_comparison import ComputeComparisonTask
-from database.tests.factories import CompareCommitFactory
 from database.enums import CompareCommitState
+from database.tests.factories import CompareCommitFactory
+from tasks.compute_comparison import ComputeComparisonTask
 
 
 class TestComputeComparisonTask(object):

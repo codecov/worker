@@ -1,9 +1,10 @@
 import logging
 import logging.config
 
-from helpers.sentry import is_sentry_enabled, initialize_sentry
-from helpers.logging_config import get_logging_config_dict
 from celery import Celery
+
+from helpers.logging_config import get_logging_config_dict
+from helpers.sentry import initialize_sentry, is_sentry_enabled
 
 log = logging.getLogger(__name__)
 

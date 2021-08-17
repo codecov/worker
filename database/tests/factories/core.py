@@ -1,11 +1,11 @@
-from uuid import uuid4
 from datetime import datetime
+from hashlib import sha1
+from uuid import uuid4
 
 import factory
-from database import models, enums
-from hashlib import sha1
 from factory import Factory, fuzzy
 
+from database import enums, models
 from services.encryption import encryptor
 
 

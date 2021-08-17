@@ -1,7 +1,8 @@
+from typing import Any, Dict, Tuple
+
+from database.enums import Notification
 from services.notification.notifiers.checks.base import ChecksNotifier
 from services.notification.notifiers.mixins.status import StatusChangesMixin
-from typing import Any, Dict, Tuple
-from database.enums import Notification
 
 
 class ChangesChecksNotifier(StatusChangesMixin, ChecksNotifier):

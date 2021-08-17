@@ -1,6 +1,6 @@
-import mock
 from pathlib import Path
 
+import mock
 import pytest
 from shared.torngit.status import Status
 from shared.yaml import UserYaml

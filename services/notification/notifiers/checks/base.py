@@ -1,23 +1,21 @@
 import logging
 from contextlib import nullcontext
-from services.yaml.reader import get_paths_from_flags
-from shared.torngit.exceptions import TorngitClientError, TorngitError
-from services.notification.notifiers.base import (
-    Comparison,
-    NotificationResult,
-)
-from services.notification.notifiers.status.base import StatusNotifier
 from typing import Dict
+
+from shared.torngit.exceptions import TorngitClientError, TorngitError
+
+from helpers.metrics import metrics
+from services.notification.notifiers.base import Comparison, NotificationResult
+from services.notification.notifiers.status.base import StatusNotifier
+from services.repository import get_repo_provider_service
 from services.urls import (
+    append_tracking_params_to_urls,
     get_commit_url,
     get_compare_url,
-    get_pull_url,
     get_org_account_url,
-    append_tracking_params_to_urls,
+    get_pull_url,
 )
-from services.repository import get_repo_provider_service
-from helpers.metrics import metrics
-
+from services.yaml.reader import get_paths_from_flags
 
 log = logging.getLogger(__name__)
 

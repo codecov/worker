@@ -1,11 +1,11 @@
-from time import time
 import xml.etree.cElementTree as etree
+from time import time
+
 import pytest
 
-from tests.base import BaseTestCase
-from services.report.languages import jacoco
 from helpers.exceptions import ReportExpiredException
-
+from services.report.languages import jacoco
+from tests.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <!DOCTYPE report PUBLIC "-//JACOCO//DTD Report 1.0//EN" "report.dtd">

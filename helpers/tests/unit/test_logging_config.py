@@ -1,7 +1,7 @@
 from helpers.logging_config import (
     CustomLocalJsonFormatter,
-    get_logging_config_dict,
     config_dict,
+    get_logging_config_dict,
 )
 
 

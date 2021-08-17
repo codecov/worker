@@ -1,10 +1,11 @@
 import logging
 
-from app import celery_app
-from tasks.base import BaseCodecovTask
-from database.models import CompareCommit
-from database.enums import CompareCommitState
 from shared.celery_config import compute_comparison_task_name
+
+from app import celery_app
+from database.enums import CompareCommitState
+from database.models import CompareCommit
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 

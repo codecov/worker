@@ -1,11 +1,10 @@
-import socket
-from typing import Mapping, Any
 import logging
+import socket
 from io import BytesIO
+from typing import Any, List, Mapping
 
 from database.enums import Notification
-from services.notification.notifiers.generics import StandardNotifier, Comparison
-from typing import List
+from services.notification.notifiers.generics import Comparison, StandardNotifier
 
 log = logging.getLogger(__name__)
 

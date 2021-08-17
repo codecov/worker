@@ -1,12 +1,12 @@
-from json import loads, dumps, JSONEncoder
-from fractions import Fraction
 import dataclasses
+from fractions import Fraction
+from json import JSONEncoder, dumps, loads
+from pathlib import Path
 
 import pytest
-from pathlib import Path
-from tests.base import BaseTestCase
-from services.report.languages import node
 
+from services.report.languages import node
+from tests.base import BaseTestCase
 
 here = Path(__file__)
 folder = here.parent

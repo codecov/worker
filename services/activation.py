@@ -1,11 +1,13 @@
 import logging
+
 from sqlalchemy import func
 from sqlalchemy.sql import text
+
 from services.license import (
-    get_current_license,
     calculate_reason_for_not_being_valid,
-    requires_license,
+    get_current_license,
     get_installation_plan_activated_users,
+    requires_license,
 )
 
 log = logging.getLogger(__name__)

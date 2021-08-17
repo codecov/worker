@@ -1,10 +1,12 @@
 import re
 from collections import defaultdict
 from io import BytesIO
-from services.yaml import read_yaml_field
+
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+
 from services.report.languages.base import BaseLanguageProcessor
+from services.yaml import read_yaml_field
 
 
 class GcovProcessor(BaseLanguageProcessor):

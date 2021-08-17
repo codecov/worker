@@ -1,11 +1,12 @@
 import dataclasses
-from typing import Dict, Iterator, Tuple, Union, Mapping, Any, List, Optional
 from collections import defaultdict
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple, Union
 
-from shared.utils.merge import line_type
-from shared.reports.types import ReportTotals, Change
-from shared.reports.resources import Report
 from shared.helpers.numeric import ratio
+from shared.reports.resources import Report
+from shared.reports.types import Change, ReportTotals
+from shared.utils.merge import line_type
+
 from helpers.metrics import metrics
 
 

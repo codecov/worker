@@ -1,4 +1,4 @@
-from typing import Callable, Mapping, Any
+from typing import Any, Callable, Mapping
 
 from shared.reports.resources import Report
 

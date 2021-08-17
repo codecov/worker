@@ -1,11 +1,11 @@
 import uuid
 
-from sqlalchemy import Column, types, ForeignKey
+from sqlalchemy import Column, ForeignKey, types
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from helpers.clock import get_utc_now
 from database.base import CodecovBaseModel
+from helpers.clock import get_utc_now
 
 
 class MixinBaseClass(object):
