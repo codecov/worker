@@ -97,7 +97,8 @@ class ProfilingSummarizationTask(BaseCodecovTask):
         location = archive_service.write_profiling_summary_result(
             profiling.version_identifier, json.dumps(summarized_results)
         )
-        profiling.joined_location = location
+        log.info("Summarized profiling data", extra=dict(location=location))
+        profiling.summarized_location = location
         return location
 
 
