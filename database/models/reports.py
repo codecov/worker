@@ -87,7 +87,7 @@ class Upload(CodecovBaseModel, MixinBaseClass):
 
 class UploadError(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_uploaderror"
-    report_session = relationship(Upload, backref="errors")
+    report_upload = relationship(Upload, backref="errors")
     upload_id = Column("upload_id", types.BigInteger, ForeignKey("reports_upload.id"))
     error_code = Column(types.String(100), nullable=False)
     error_params = Column(postgresql.JSON, default=dict)

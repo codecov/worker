@@ -12,7 +12,7 @@ from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.sessions import Session, SessionType
 
-from database.models import Commit, Repository, Upload
+from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
     CommitReport,
     ReportDetails,
@@ -491,7 +491,9 @@ class ReportService(object):
                 error=ProcessingError(code="report_empty", params={}),
             )
 
-    def update_upload_with_processing_result(self, upload_obj, processing_result):
+    def update_upload_with_processing_result(
+        self, upload_obj: Upload, processing_result: ProcessingResult
+    ):
         db_session = upload_obj.get_db_session()
         session = processing_result.session
         if processing_result.error is None:
@@ -514,7 +516,15 @@ class ReportService(object):
             if session.totals is not None:
                 upload_totals.update_from_totals(session.totals)
         else:
+            error = processing_result.error
             upload_obj.state = "error"
+            error_obj = UploadError(
+                upload_id=upload_obj.id,
+                error_code=error.code,
+                error_params=error.params,
+            )
+            db_session.add(error_obj)
+            db_session.flush()
 
     def save_report(self, commit: Commit, report: Report):
         if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:

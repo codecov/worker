@@ -8,9 +8,14 @@ from shared.reports.types import ReportLine, ReportTotals
 from shared.yaml import UserYaml
 
 from database.models import CommitReport, ReportDetails, RepositoryFlag, Upload
-from database.tests.factories import CommitFactory, RepositoryFactory
+from database.tests.factories import CommitFactory, UploadFactory
 from services.archive import ArchiveService
-from services.report import NotReadyToBuildReportYetError, ReportService
+from services.report import (
+    NotReadyToBuildReportYetError,
+    ReportService,
+    ProcessingResult,
+    ProcessingError,
+)
 from tests.base import BaseTestCase
 
 
@@ -3632,3 +3637,25 @@ class TestReportService(BaseTestCase):
         first_flag = res.flags[0]
         assert first_flag.flag_name == "unittest"
         assert first_flag.repository_id == commit.repoid
+
+    def test_update_upload_with_processing_result_error(self, mocker, dbsession):
+        upload_obj = UploadFactory.create(state="started", storage_path="url")
+        dbsession.add(upload_obj)
+        dbsession.flush()
+        assert len(upload_obj.errors) == 0
+        processing_result = ProcessingResult(
+            report=None,
+            session=mocker.MagicMock(),
+            error=ProcessingError(code="abclkj", params={"banana": "value"}),
+        )
+        assert (
+            ReportService({}).update_upload_with_processing_result(
+                upload_obj, processing_result
+            )
+            is None
+        )
+        dbsession.refresh(upload_obj)
+        assert len(upload_obj.errors) == 1
+        assert upload_obj.errors[0].error_code == "abclkj"
+        assert upload_obj.errors[0].error_params == {"banana": "value"}
+        assert upload_obj.errors[0].report_upload == upload_obj
