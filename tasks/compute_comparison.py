@@ -72,7 +72,7 @@ class ComputeComparisonTask(BaseCodecovTask):
                     "path": file.path,
                     "base_totals": before.astuple() if before else None,
                     "compare_totals": after.astuple() if after else None,
-                    "patch": file.totals.astuple(),
+                    "patch": file.totals.astuple() if file.totals else None,
                     "new": file.new,
                     "deleted": file.deleted,
                     "in_diff": file.in_diff,
@@ -84,7 +84,7 @@ class ComputeComparisonTask(BaseCodecovTask):
                 continue
             before = get_totals_from_file_in_reports(base_report, path)
             after = get_totals_from_file_in_reports(head_report, path)
-            data["changes"].append(
+            data["diff"].append(
                 {
                     "path": path,
                     "base_totals": before.astuple() if before else None,
