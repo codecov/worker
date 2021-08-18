@@ -1,13 +1,13 @@
-import pytest
 import os
 
 import mock
+import pytest
 from shared.torngit.exceptions import TorngitClientError, TorngitServerUnreachableError
+from shared.yaml import UserYaml
 
 from database.tests.factories import CommitFactory
-from tests.base import BaseTestCase
-from shared.yaml import UserYaml
 from services.yaml import get_current_yaml
+from tests.base import BaseTestCase
 
 
 class TestYamlService(BaseTestCase):

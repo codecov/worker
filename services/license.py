@@ -4,8 +4,8 @@ from enum import Enum, auto
 from functools import lru_cache
 from typing import Optional
 
-from shared.license import get_current_license
 from shared.config import get_config
+from shared.license import get_current_license
 from sqlalchemy import func
 from sqlalchemy.sql import text
 

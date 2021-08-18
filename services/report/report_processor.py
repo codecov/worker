@@ -1,46 +1,45 @@
 # -*- coding: utf-8 -*-
 
-from json import load
-from lxml import etree
-import numbers
 import logging
+import numbers
+from json import load
+from typing import Any, Optional, Tuple
 
+from lxml import etree
 from shared.reports.resources import Report
 
 from helpers.exceptions import CorruptRawReportError
-from services.report.languages.helpers import remove_non_ascii
-from services.report.parser import ParsedUploadedReportFile
 from helpers.metrics import metrics
-
 from services.report.languages import (
-    SCoverageProcessor,
-    JetBrainsXMLProcessor,
     CloverProcessor,
-    MonoProcessor,
+    CoberturaProcessor,
+    CoverallsProcessor,
     CSharpProcessor,
+    DLSTProcessor,
+    ElmProcessor,
+    FlowcoverProcessor,
+    GapProcessor,
+    GcovProcessor,
+    GoProcessor,
     JacocoProcessor,
+    JetBrainsXMLProcessor,
+    LcovProcessor,
+    LuaProcessor,
+    MonoProcessor,
+    NodeProcessor,
+    RlangProcessor,
+    RspecProcessor,
+    SalesforceProcessor,
+    ScalaProcessor,
+    SCoverageProcessor,
     VbProcessor,
     VbTwoProcessor,
-    CoberturaProcessor,
-    SalesforceProcessor,
-    ElmProcessor,
-    RlangProcessor,
-    FlowcoverProcessor,
     VOneProcessor,
-    ScalaProcessor,
-    CoverallsProcessor,
-    RspecProcessor,
-    NodeProcessor,
-    LcovProcessor,
-    GcovProcessor,
-    LuaProcessor,
-    GapProcessor,
-    DLSTProcessor,
-    GoProcessor,
-    XCodeProcessor,
     XCodePlistProcessor,
+    XCodeProcessor,
 )
-from typing import Any, Optional, Tuple
+from services.report.languages.helpers import remove_non_ascii
+from services.report.parser import ParsedUploadedReportFile
 
 log = logging.getLogger(__name__)
 

@@ -2,18 +2,18 @@ import logging
 import re
 from copy import deepcopy
 
+from shared.celery_config import (
+    notify_task_name,
+    pulls_task_name,
+    status_set_pending_task_name,
+)
 from shared.yaml import UserYaml
 
 from app import celery_app
-from tasks.base import BaseCodecovTask
 from database.models import Commit, Pull
 from services.redis import get_redis_connection
 from services.yaml import read_yaml_field
-from shared.celery_config import (
-    notify_task_name,
-    status_set_pending_task_name,
-    pulls_task_name,
-)
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 

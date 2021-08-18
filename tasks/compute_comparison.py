@@ -1,13 +1,13 @@
 import logging
 
 from shared.celery_config import compute_comparison_task_name
+
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.types import Change
 
 from app import celery_app
-from tasks.base import BaseCodecovTask
-from database.models import CompareCommit
 from database.enums import CompareCommitState
+
 from helpers.reports import get_totals_from_file_in_reports
 from services.archive import ArchiveService
 from services.comparison import ComparisonProxy
@@ -15,6 +15,10 @@ from services.comparison.types import Comparison, FullCommit
 from services.report import ReportService
 from services.repository import get_repo_provider_service
 from services.yaml import get_current_yaml
+
+from database.models import CompareCommit
+from tasks.base import BaseCodecovTask
+
 
 log = logging.getLogger(__name__)
 

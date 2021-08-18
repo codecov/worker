@@ -1,17 +1,17 @@
 import logging
-
-from app import celery_app
-from shared.celery_config import new_user_activated_task_name, notify_task_name
 from datetime import datetime, timedelta
+from typing import Iterator
+
+from shared.celery_config import new_user_activated_task_name, notify_task_name
 from sqlalchemy import func
 from sqlalchemy.orm import contains_eager
 
-from tasks.base import BaseCodecovTask
+from app import celery_app
 from database.enums import Decoration, Notification
 from database.models import Owner, Pull, Repository
 from helpers.metrics import metrics
 from services.billing import is_pr_billing_plan
-from typing import Iterator
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 

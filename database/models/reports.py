@@ -1,13 +1,12 @@
 import logging
 from functools import cached_property
 
-from sqlalchemy import Column, types, ForeignKey, Table
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy import Column, ForeignKey, Table, types
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import backref, relationship
 
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.models.core import Repository
-
 
 log = logging.getLogger(__name__)
 
@@ -88,7 +87,7 @@ class Upload(CodecovBaseModel, MixinBaseClass):
 
 class UploadError(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_uploaderror"
-    report_session = relationship(Upload, backref="errors")
+    report_upload = relationship(Upload, backref="errors")
     upload_id = Column("upload_id", types.BigInteger, ForeignKey("reports_upload.id"))
     error_code = Column(types.String(100), nullable=False)
     error_params = Column(postgresql.JSON, default=dict)

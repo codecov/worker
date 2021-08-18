@@ -1,16 +1,18 @@
 import logging
+
 import json
-from uuid import uuid4
-from datetime import datetime
-from hashlib import md5
+
 from base64 import b16encode
+from datetime import datetime
 from enum import Enum
+from typing import Any
+from uuid import uuid4
 
 from shared.config import get_config
+from shared.storage.base import BaseStorageService
+
 from helpers.metrics import metrics
 from services.storage import get_storage_client
-from shared.storage.base import BaseStorageService
-from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -21,6 +23,7 @@ class MinioEndpoints(Enum):
     raw = "v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt"
     profiling_collection = "{version}/repos/{repo_hash}/profilingcollections/{profiling_commit_id}/{location}"
     computed_comparison = "{version}/repos/{repo_hash}/comparisons/{comparison_id}.json"
+    profiling_normalization = "{version}/repos/{repo_hash}/profilingnormalizations/{profiling_commit_id}/{location}"
 
     def get_path(self, **kwaargs) -> str:
         return self.value.format(**kwaargs)
@@ -160,7 +163,7 @@ class ArchiveService(object):
         return path
 
     def write_profiling_summary_result(self, version_identifier, data):
-        location = uuid4().hex
+        location = f"{uuid4().hex}.txt"
         path = MinioEndpoints.profiling_summary.get_path(
             version="v4",
             repo_hash=self.storage_hash,
@@ -168,6 +171,17 @@ class ArchiveService(object):
             location=location,
         )
 
+        self.write_file(path, data)
+        return path
+
+    def write_profiling_normalization_result(self, version_identifier, data):
+        location = f"{uuid4().hex}.txt"
+        path = MinioEndpoints.profiling_normalization.get_path(
+            version="v4",
+            repo_hash=self.storage_hash,
+            profiling_commit_id=version_identifier,
+            location=location,
+        )
         self.write_file(path, data)
         return path
 

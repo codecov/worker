@@ -1,8 +1,7 @@
 from json import dumps
 
-from tests.base import BaseTestCase
 from services.report.languages import lcov
-
+from tests.base import BaseTestCase
 
 txt = b"""TN:
 SF:file.js

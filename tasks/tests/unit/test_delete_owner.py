@@ -2,18 +2,18 @@ import json
 from pathlib import Path
 
 import pytest
-from celery.exceptions import SoftTimeLimitExceeded, Retry
+from celery.exceptions import Retry, SoftTimeLimitExceeded
 
-from tasks.delete_owner import DeleteOwnerTask
+from database.models import Branch, Commit, Owner, Pull, Repository
 from database.tests.factories import (
-    OwnerFactory,
-    RepositoryFactory,
-    CommitFactory,
     BranchFactory,
+    CommitFactory,
+    OwnerFactory,
     PullFactory,
+    RepositoryFactory,
 )
-from database.models import Owner, Repository, Commit, Branch, Pull
 from services.archive import ArchiveService
+from tasks.delete_owner import DeleteOwnerTask
 
 here = Path(__file__)
 

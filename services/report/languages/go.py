@@ -1,13 +1,14 @@
 from collections import defaultdict
-from itertools import groupby
-from shared.utils import merge
 from io import BytesIO
+from itertools import groupby
 
-from services.yaml import read_yaml_field
 from shared.reports.resources import Report, ReportFile
-from shared.utils.merge import partials_to_line, LineType, line_type
 from shared.reports.types import ReportLine
+from shared.utils import merge
+from shared.utils.merge import LineType, line_type, partials_to_line
+
 from services.report.languages.base import BaseLanguageProcessor
+from services.yaml import read_yaml_field
 
 
 class GoProcessor(BaseLanguageProcessor):

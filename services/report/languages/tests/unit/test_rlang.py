@@ -1,8 +1,7 @@
 from json import loads
 
-from tests.base import BaseTestCase
 from services.report.languages import rlang
-
+from tests.base import BaseTestCase
 
 txt = """
 {

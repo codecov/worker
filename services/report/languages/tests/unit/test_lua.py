@@ -1,6 +1,5 @@
-from tests.base import BaseTestCase
 from services.report.languages import lua
-
+from tests.base import BaseTestCase
 
 txt = b"""
 ==============================================================================

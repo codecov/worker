@@ -2,11 +2,11 @@ from datetime import datetime
 
 import pytest
 
-from tasks.find_uncollected_profilings import FindUncollectedProfilingsTask
 from database.tests.factories.profiling import (
     ProfilingCommitFactory,
     ProfilingUploadFactory,
 )
+from tasks.find_uncollected_profilings import FindUncollectedProfilingsTask
 
 
 class TestFindUncollectedProfilingsTask(object):

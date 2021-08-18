@@ -1,11 +1,12 @@
+import dataclasses
 import json
 from json import JSONEncoder
-import dataclasses
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
-from .base import Base
 from shared.config import get_config
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
+
+from .base import Base
 
 
 def create_all(engine):

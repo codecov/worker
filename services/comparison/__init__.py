@@ -1,13 +1,13 @@
-from typing import List, Optional
 import asyncio
+from typing import List, Optional
 
 from shared.reports.types import Change
 
-from services.repository import get_repo_provider_service
-from services.comparison.changes import get_changes
-from services.comparison.types import Comparison, FullCommit
-from services.comparison.overlays import get_overlay
 from services.archive import ArchiveService
+from services.comparison.changes import get_changes
+from services.comparison.overlays import get_overlay
+from services.comparison.types import Comparison, FullCommit
+from services.repository import get_repo_provider_service
 
 
 class ComparisonProxy(object):

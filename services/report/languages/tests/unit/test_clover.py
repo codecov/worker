@@ -1,11 +1,11 @@
-from time import time
 import xml.etree.cElementTree as etree
+from time import time
+
 import pytest
 
-from tests.base import BaseTestCase
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import clover
-
+from tests.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="UTF-8"?>
 <coverage generated="%s">

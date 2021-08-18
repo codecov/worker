@@ -1,6 +1,6 @@
+import string
 from io import BytesIO
 from typing import BinaryIO, List, Optional
-import string
 
 from helpers.metrics import metrics
 

@@ -1,8 +1,8 @@
 import pytest
+from shared.torngit.status import Status
 
 from database.tests.factories import CommitFactory, RepositoryFactory
 from tasks.status_set_pending import StatusSetPendingTask
-from shared.torngit.status import Status
 
 
 @pytest.mark.integration

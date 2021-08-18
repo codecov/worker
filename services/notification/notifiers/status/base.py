@@ -1,25 +1,24 @@
 import logging
 from contextlib import nullcontext
+from typing import Dict
 
+from shared.analytics_tracking import track_event
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.utils.sessions import SessionType
-from shared.analytics_tracking import track_event
 
+from helpers.environment import is_enterprise
 from helpers.match import match
 from helpers.metrics import metrics
-from helpers.environment import is_enterprise
+from services.comparison import ComparisonProxy
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     Comparison,
     NotificationResult,
 )
 from services.repository import get_repo_provider_service
-from services.comparison import ComparisonProxy
 from services.urls import get_commit_url, get_compare_url
-from services.yaml.reader import get_paths_from_flags
 from services.yaml import read_yaml_field
-from typing import Dict
-
+from services.yaml.reader import get_paths_from_flags
 
 log = logging.getLogger(__name__)
 

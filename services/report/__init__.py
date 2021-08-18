@@ -1,45 +1,54 @@
 import logging
 import uuid
-from typing import Mapping, Any, Optional, Sequence
+from dataclasses import dataclass
 from json import loads
 from time import time
-from dataclasses import dataclass
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 from shared.metrics import metrics
-from shared.reports.resources import Report
-from shared.reports.editable import EditableReport
-from services.report.parser import ParsedRawReport
-from shared.storage.exceptions import FileNotInStorageError
 from shared.reports.carryforward import generate_carryforward_report
-from shared.utils.sessions import SessionType
-from shared.utils.sessions import Session
+from shared.reports.editable import EditableReport
+from shared.reports.resources import Report
+from shared.storage.exceptions import FileNotInStorageError
+from shared.utils.sessions import Session, SessionType
 
-from database.models import Commit, Upload, Repository
+from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
-    ReportLevelTotals,
-    UploadLevelTotals,
     CommitReport,
     ReportDetails,
+    ReportLevelTotals,
     RepositoryFlag,
+    UploadLevelTotals,
 )
-from helpers.exceptions import ReportExpiredException, ReportEmptyError
+from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from services.archive import ArchiveService
+from services.report.parser import RawReportParser
 from services.report.raw_upload_processor import process_raw_upload
 from services.yaml.reader import get_paths_from_flags
 
 
 @dataclass
+class ProcessingError(object):
+    code: str
+    params: Dict[str, Any]
+    is_retryable: bool = False
+
+    def as_dict(self):
+        return {"code": self.code, "params": self.params}
+
+
+@dataclass
 class ProcessingResult(object):
-    report: Report
+    report: Optional[Report]
     session: Session
-    error: Optional[Any]
+    error: Optional[ProcessingError]
 
     def as_dict(self):
         # Weird flow for now in order to keep things compatible with previous logging
         if self.error is not None:
             return {
                 "successful": False,
-                "error_type": self.error,
+                "error": self.error.as_dict(),
                 "report": self.report,
                 "should_retry": False,
             }
@@ -388,7 +397,7 @@ class ReportService(object):
         )
 
     def build_report_from_raw_content(
-        self, master: Optional[Report], reports: ParsedRawReport, upload: Upload
+        self, master: Optional[Report], upload: Upload
     ) -> ProcessingResult:
         """
             Processes an upload on top of an existing report `master` and returns
@@ -423,10 +432,27 @@ class ReportService(object):
             archive=archive_url or url,
             url=build_url,
         )
+        archive_service = self.get_archive_service(commit.repository)
+        archive_url = upload.storage_path
+        try:
+            raw_uploaded_report = RawReportParser.parse_raw_report_from_bytes(
+                archive_service.read_file(archive_url)
+            )
+        except FileNotInStorageError:
+            return ProcessingResult(
+                report=None,
+                session=session,
+                error=ProcessingError(
+                    code="file_not_in_storage",
+                    params={"location": archive_url},
+                    is_retryable=True,
+                ),
+            )
+        log.debug("Retrieved report for processing from url %s", archive_url)
         try:
             with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
                 report = process_raw_upload(
-                    self.current_yaml, master, reports, flags, session
+                    self.current_yaml, master, raw_uploaded_report, flags, session
                 )
             log.info(
                 "Successfully processed report",
@@ -438,7 +464,7 @@ class ReportService(object):
                     reportid=reportid,
                     commit_yaml=self.current_yaml.to_dict(),
                     timing_ms=t.ms,
-                    content_len=reports.size,
+                    content_len=raw_uploaded_report.size,
                 ),
             )
             return ProcessingResult(report=report, session=session, error=None)
@@ -449,7 +475,9 @@ class ReportService(object):
                 extra=dict(repoid=commit.repoid, commit=commit.commitid,),
             )
             return ProcessingResult(
-                report=None, session=session, error="report_expired"
+                report=None,
+                session=session,
+                error=ProcessingError(code="report_expired", params={}),
             )
         except ReportEmptyError:
             log.info(
@@ -457,9 +485,15 @@ class ReportService(object):
                 reportid,
                 extra=dict(repoid=commit.repoid, commit=commit.commitid,),
             )
-            return ProcessingResult(report=None, session=session, error="report_empty")
+            return ProcessingResult(
+                report=None,
+                session=session,
+                error=ProcessingError(code="report_empty", params={}),
+            )
 
-    def update_upload_with_processing_result(self, upload_obj, processing_result):
+    def update_upload_with_processing_result(
+        self, upload_obj: Upload, processing_result: ProcessingResult
+    ):
         db_session = upload_obj.get_db_session()
         session = processing_result.session
         if processing_result.error is None:
@@ -482,7 +516,15 @@ class ReportService(object):
             if session.totals is not None:
                 upload_totals.update_from_totals(session.totals)
         else:
+            error = processing_result.error
             upload_obj.state = "error"
+            error_obj = UploadError(
+                upload_id=upload_obj.id,
+                error_code=error.code,
+                error_params=error.params,
+            )
+            db_session.add(error_obj)
+            db_session.flush()
 
     def save_report(self, commit: Commit, report: Report):
         if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:

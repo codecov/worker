@@ -107,3 +107,11 @@ class TestSalesforce(BaseTestCase):
         processor = SalesforceProcessor()
 
         assert processor.matches_content(file_contents, "[", name) is False
+
+    def test_salesforce_matcher_empty_array(self):
+        name = "test-result-codecoverage.json"
+
+        file_contents = []
+        processor = SalesforceProcessor()
+
+        assert processor.matches_content(file_contents, "[", name) is False

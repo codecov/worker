@@ -1,32 +1,31 @@
-import logging
-from datetime import datetime
-from typing import Sequence, Dict, Any, List
-from collections import deque
-import os
 import json
+import logging
+import os
+from collections import deque
+from datetime import datetime
+from typing import Any, Dict, List, Sequence
 
 import sqlalchemy.orm
-from shared.celery_config import pulls_task_name, notify_task_name
 from redis.exceptions import LockError
-from shared.torngit.exceptions import TorngitClientError
-from helpers.metrics import metrics
-
-from database.models import Repository, Commit, Pull
-from services.redis import get_redis_connection
-from services.repository import (
-    get_repo_provider_service,
-    fetch_and_update_pull_request_information,
-    EnrichedPull,
-)
-from helpers.exceptions import RepositoryWithoutValidBotError
-from services.comparison.changes import get_changes
-from services.yaml.reader import read_yaml_field
-from shared.yaml import UserYaml
-from services.report import ReportService, Report
-from tasks.base import BaseCodecovTask
-from app import celery_app
+from shared.celery_config import notify_task_name, pulls_task_name
 from shared.reports.types import Change
+from shared.torngit.exceptions import TorngitClientError
+from shared.yaml import UserYaml
 
+from app import celery_app
+from database.models import Commit, Pull, Repository
+from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.metrics import metrics
+from services.comparison.changes import get_changes
+from services.redis import get_redis_connection
+from services.report import Report, ReportService
+from services.repository import (
+    EnrichedPull,
+    fetch_and_update_pull_request_information,
+    get_repo_provider_service,
+)
+from services.yaml.reader import read_yaml_field
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 

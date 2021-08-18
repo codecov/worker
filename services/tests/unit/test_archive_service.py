@@ -1,7 +1,8 @@
-from tests.base import BaseTestCase
-from services.archive import ArchiveService
-from database.tests.factories import RepositoryFactory
 from shared.storage import MinioStorageService
+
+from database.tests.factories import RepositoryFactory
+from services.archive import ArchiveService
+from tests.base import BaseTestCase
 
 
 class TestArchiveService(BaseTestCase):

@@ -1,4 +1,5 @@
 import dataclasses
+
 import pytest
 
 from database.enums import Decoration, Notification, NotificationState
@@ -8,11 +9,11 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
-from services.notification.notifiers.comment import CommentNotifier
-from services.notification.notifiers.base import NotificationResult
-from services.commit_notifications import (
+from services.notification.commit_notifications import (
     create_or_update_commit_notification_from_notification_result,
 )
+from services.notification.notifiers.base import NotificationResult
+from services.notification.notifiers.comment import CommentNotifier
 
 
 @pytest.fixture

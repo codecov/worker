@@ -1,11 +1,10 @@
 import os
 
 import sentry_sdk
+from celery.exceptions import SoftTimeLimitExceeded
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-from celery.exceptions import SoftTimeLimitExceeded
-
 from shared.config import get_config
 
 from helpers.version import get_current_version
