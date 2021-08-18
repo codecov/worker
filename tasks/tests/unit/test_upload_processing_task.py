@@ -360,7 +360,7 @@ class TestUploadProcessorTask(object):
             upload=mocker.ANY,
             upload_pk=mocker.ANY,
         )
-        mocked_3.assert_called_with(countdown=20, max_retries=5)
+        mocked_3.assert_called_with(countdown=20, max_retries=1)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_redis_lock_unobtainable(
