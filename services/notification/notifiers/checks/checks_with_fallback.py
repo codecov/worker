@@ -1,5 +1,7 @@
 import logging
+
 from shared.torngit.exceptions import TorngitClientError
+
 from services.notification.notifiers.base import AbstractBaseNotifier
 
 log = logging.getLogger(__name__)

@@ -1,23 +1,25 @@
-import pytest
-from urllib.parse import quote_plus
-from unittest.mock import Mock
 from asyncio import Future
 from copy import deepcopy
+from unittest.mock import Mock
+from urllib.parse import quote_plus
+
+import pytest
+from shared.reports.readonly import ReadOnlyReport
+from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.torngit.exceptions import TorngitClientGeneralError, TorngitError
+
+from services.decoration import Decoration
+from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.checks import (
-    ProjectChecksNotifier,
     ChangesChecksNotifier,
     PatchChecksNotifier,
+    ProjectChecksNotifier,
 )
-from services.notification.notifiers.status import PatchStatusNotifier
+from services.notification.notifiers.checks.base import ChecksNotifier
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
-from shared.reports.readonly import ReadOnlyReport
-from shared.torngit.exceptions import TorngitClientGeneralError, TorngitError
-from services.notification.notifiers.checks.base import ChecksNotifier
-from shared.reports.resources import ReportLine, ReportFile, Report
-from services.decoration import Decoration
-from services.notification.notifiers.base import NotificationResult
+from services.notification.notifiers.status import PatchStatusNotifier
 
 
 @pytest.fixture

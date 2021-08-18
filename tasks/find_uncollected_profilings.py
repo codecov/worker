@@ -1,13 +1,13 @@
 from datetime import timedelta
 
+from sqlalchemy import func
+
+from app import celery_app
+from celery_config import find_uncollected_profilings_task_name
+from database.models.profiling import ProfilingCommit, ProfilingUpload
+from helpers.clock import get_utc_now
 from tasks.crontasks import CodecovCronTask
 from tasks.profiling_collection import profiling_collection_task
-
-from database.models.profiling import ProfilingCommit, ProfilingUpload
-from celery_config import find_uncollected_profilings_task_name
-from sqlalchemy import func
-from app import celery_app
-from helpers.clock import get_utc_now
 
 
 class FindUncollectedProfilingsTask(CodecovCronTask):
@@ -47,7 +47,7 @@ class FindUncollectedProfilingsTask(CodecovCronTask):
         )
         delayed_pids = []
         for pid, count in query:
-            res = profiling_collection_task.delay(pid)
+            res = profiling_collection_task.delay(profiling_id=pid)
             delayed_pids.append((pid, count, res.as_tuple()))
         return {
             "delayed_profiling_ids": delayed_pids[:100],

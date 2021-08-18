@@ -1,6 +1,7 @@
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 from database.tests.factories import OwnerFactory
 from tasks.send_email import SendEmailTask

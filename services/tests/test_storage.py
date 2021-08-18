@@ -1,4 +1,4 @@
-from services.storage import get_storage_client, get_appropriate_storage_service
+from services.storage import get_appropriate_storage_service, get_storage_client
 
 
 class TestStorage(object):

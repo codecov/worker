@@ -2,19 +2,18 @@
 
 import logging
 import random
+from typing import Any
 
-
-from shared.utils.sessions import Session
 from shared.reports.resources import Report
+from shared.utils.sessions import Session
 
 from helpers.exceptions import ReportEmptyError
-from services.report.fixes import get_fixes_from_raw
-from services.path_fixer.fixpaths import clean_toc
 from services.path_fixer import PathFixer
-from services.report.report_processor import process_report
+from services.path_fixer.fixpaths import clean_toc
+from services.report.fixes import get_fixes_from_raw
 from services.report.parser import ParsedUploadedReportFile
+from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
-from typing import Any
 
 log = logging.getLogger(__name__)
 

@@ -1,36 +1,35 @@
 import logging
 
-from celery.exceptions import MaxRetriesExceededError
-from celery.exceptions import SoftTimeLimitExceeded
+from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
+from shared.celery_config import (
+    new_user_activated_task_name,
+    notify_task_name,
+    status_set_error_task_name,
+)
 from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from shared.yaml import UserYaml
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
-from shared.celery_config import (
-    notify_task_name,
-    status_set_error_task_name,
-    new_user_activated_task_name,
-)
 from database.enums import Decoration
 from database.models import Commit, Pull
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.activation import activate_user
 from services.commit_status import RepositoryCIFilter
-from services.decoration import determine_decoration_details
-from services.comparison.types import Comparison, FullCommit
 from services.comparison import ComparisonProxy
+from services.comparison.types import Comparison, FullCommit
+from services.decoration import determine_decoration_details
 from services.notification import NotificationService
+from services.redis import Redis, get_redis_connection
 from services.report import ReportService
-from services.redis import get_redis_connection, Redis
 from services.repository import (
-    get_repo_provider_service,
-    fetch_and_update_pull_request_information_from_commit,
     EnrichedPull,
+    fetch_and_update_pull_request_information_from_commit,
+    get_repo_provider_service,
 )
-from services.yaml import read_yaml_field, get_current_yaml
+from services.yaml import get_current_yaml, read_yaml_field
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)

@@ -1,4 +1,5 @@
 from enum import Enum, auto
+
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 
 

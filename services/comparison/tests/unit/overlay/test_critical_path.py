@@ -1,12 +1,11 @@
 import json
 
-from services.comparison.overlays.critical_path import (
-    _load_critical_path_report,
-    ProfilingDataAnalyzer,
-    CriticalPathOverlay,
-)
-
 from database.tests.factories.profiling import ProfilingCommitFactory
+from services.comparison.overlays.critical_path import (
+    CriticalPathOverlay,
+    ProfilingDataAnalyzer,
+    _load_critical_path_report,
+)
 
 
 def test_load_critical_path_report(

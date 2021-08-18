@@ -1,22 +1,22 @@
 import pytest
 from mock import patch
-
-from shared.reports.resources import ReportLine, ReportFile, Report
+from shared.reports.readonly import ReadOnlyReport
+from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.torngit.exceptions import (
     TorngitClientError,
-    TorngitServerUnreachableError,
     TorngitRepoNotFoundError,
+    TorngitServerUnreachableError,
 )
-from shared.reports.readonly import ReadOnlyReport
+from shared.torngit.status import Status
+
 from services.decoration import Decoration
+from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.status import (
-    ProjectStatusNotifier,
-    PatchStatusNotifier,
     ChangesStatusNotifier,
+    PatchStatusNotifier,
+    ProjectStatusNotifier,
 )
 from services.notification.notifiers.status.base import StatusNotifier
-from services.notification.notifiers.base import NotificationResult
-from shared.torngit.status import Status
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 import logging
-from typing import Mapping, Any
-from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_EVEN
+from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_EVEN, Decimal
+from typing import Any, Mapping
 
 log = logging.getLogger(__name__)
 

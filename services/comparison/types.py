@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+
 from shared.reports.resources import Report
 
-from services.repository import EnrichedPull
 from database.models import Commit, Pull
+from services.repository import EnrichedPull
 
 
 @dataclass

@@ -1,6 +1,7 @@
-from database.tests.factories import PullFactory, RepositoryFactory, OwnerFactory
-from services.urls import get_pull_url, append_tracking_params_to_urls
 import os
+
+from database.tests.factories import OwnerFactory, PullFactory, RepositoryFactory
+from services.urls import append_tracking_params_to_urls, get_pull_url
 
 
 def test_get_pull_url_returns_new_compare_url_for_whitelisted_owners():

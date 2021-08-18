@@ -1,9 +1,10 @@
 import logging
+
 from app import celery_app
 from database.models import Owner
-from tasks.base import BaseCodecovTask
 from services.archive import ArchiveService
 from services.sendgrid_service import Sendgrid
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 

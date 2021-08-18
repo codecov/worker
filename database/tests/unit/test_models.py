@@ -1,14 +1,13 @@
+from database.models import Branch, Commit, CommitNotification, Owner, Pull, Repository
 from database.tests.factories import (
-    OwnerFactory,
-    RepositoryFactory,
-    CommitFactory,
     BranchFactory,
-    PullFactory,
+    CommitFactory,
     CommitNotificationFactory,
     CompareCommitFactory,
+    OwnerFactory,
+    PullFactory,
+    RepositoryFactory,
 )
-
-from database.models import Owner, Repository, Commit, Branch, Pull, CommitNotification
 
 
 class TestReprModels(object):

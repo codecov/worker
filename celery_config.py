@@ -2,12 +2,12 @@
 import logging
 import logging.config
 
-from celery.schedules import crontab
 from celery import signals
-from shared.celery_config import BaseCeleryConfig
 from celery.beat import BeatLazyFunc
+from celery.schedules import crontab
+from shared.celery_config import BaseCeleryConfig
 
-from helpers.cache import cache, RedisBackend
+from helpers.cache import RedisBackend, cache
 from helpers.clock import get_utc_now_as_iso_format
 from services.redis import get_redis_connection
 

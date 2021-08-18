@@ -1,33 +1,33 @@
 import logging
 import re
-from json import loads
-from typing import Mapping, Any
 from datetime import datetime, timedelta
+from json import loads
+from typing import Any, Mapping
 
 from celery import chain
 from redis.exceptions import LockError
-from shared.yaml import UserYaml
+from shared.celery_config import upload_task_name
 from shared.config import get_config
 from shared.torngit.exceptions import (
-    TorngitObjectNotFoundError,
     TorngitClientError,
+    TorngitObjectNotFoundError,
     TorngitRepoNotFoundError,
 )
+from shared.validation.exceptions import InvalidYamlException
+from shared.yaml import UserYaml
 
 from app import celery_app
-from shared.celery_config import upload_task_name
 from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
-from services.redis import get_redis_connection, download_archive_from_redis, Redis
+from services.redis import Redis, download_archive_from_redis, get_redis_connection
+from services.report import NotReadyToBuildReportYetError, ReportService
 from services.repository import (
+    create_webhook_on_provider,
     get_repo_provider_service,
     update_commit_from_provider_info,
-    create_webhook_on_provider,
 )
-from services.report import ReportService, NotReadyToBuildReportYetError
 from services.yaml import save_repo_yaml_to_database_if_needed
-from shared.validation.exceptions import InvalidYamlException
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 from tasks.upload_finisher import upload_finisher_task

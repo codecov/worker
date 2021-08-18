@@ -2,18 +2,17 @@ import random
 import string
 from datetime import datetime
 
-from sqlalchemy import Column, types, ForeignKey
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy import Column, ForeignKey, Index, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
-from sqlalchemy import UniqueConstraint, Index
+from sqlalchemy.orm import backref, relationship
 from sqlalchemy.schema import FetchedValue
 
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.enums import (
+    CompareCommitState,
+    Decoration,
     Notification,
     NotificationState,
-    Decoration,
-    CompareCommitState,
 )
 
 

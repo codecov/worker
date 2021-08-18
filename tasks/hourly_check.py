@@ -1,9 +1,9 @@
 import logging
 
-from tasks.crontasks import CodecovCronTask
-from helpers.metrics import metrics
-from celery_config import hourly_check_task_name
 from app import celery_app
+from celery_config import hourly_check_task_name
+from helpers.metrics import metrics
+from tasks.crontasks import CodecovCronTask
 
 log = logging.getLogger(__name__)
 

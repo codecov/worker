@@ -1,15 +1,15 @@
 import json
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 import pytest
+from shared.storage.exceptions import FileNotInStorageError
 
-from tasks.profiling_collection import ProfilingCollectionTask
 from database.tests.factories.profiling import (
     ProfilingCommitFactory,
     ProfilingUploadFactory,
 )
 from helpers.clock import get_utc_now
-from shared.storage.exceptions import FileNotInStorageError
+from tasks.profiling_collection import ProfilingCollectionTask
 
 
 @pytest.mark.asyncio
@@ -47,8 +47,8 @@ async def test_run_async_simple_run_no_existing_data_new_uploads(
     dbsession.flush()
     pu = ProfilingUploadFactory.create(
         profiling_commit=pcf,
-        created_at=get_utc_now() - timedelta(seconds=120),
-        raw_upload_location="raw_upload_location",
+        normalized_at=get_utc_now() - timedelta(seconds=120),
+        normalized_location="raw_upload_location",
     )
     dbsession.add(pu)
     dbsession.flush()
@@ -133,8 +133,8 @@ class TestProfilingCollectionTask(object):
         )
         pu = ProfilingUploadFactory.create(
             profiling_commit=pcf,
-            created_at=get_utc_now() - timedelta(seconds=120),
-            raw_upload_location="raw_upload_location",
+            normalized_at=get_utc_now() - timedelta(seconds=120),
+            normalized_location="raw_upload_location",
         )
         dbsession.add(pu)
         dbsession.flush()
@@ -156,8 +156,8 @@ class TestProfilingCollectionTask(object):
         dbsession.flush()
         pu = ProfilingUploadFactory.create(
             profiling_commit=pcf,
-            created_at=get_utc_now() - timedelta(seconds=120),
-            raw_upload_location="raw_upload_location",
+            normalized_at=get_utc_now() - timedelta(seconds=120),
+            normalized_location="raw_upload_location",
         )
         dbsession.add(pu)
         dbsession.flush()
@@ -178,10 +178,10 @@ class TestProfilingCollectionTask(object):
         dbsession.add(another_pfc)
         dbsession.flush()
         first_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 0, 12, 14)
+            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 0, 12, 14)
         )
         second_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, created_at=datetime(2021, 6, 10, 0, 12, 14)
+            profiling_commit=pcf, normalized_at=datetime(2021, 6, 10, 0, 12, 14)
         )
         dbsession.add(first_pu)
         dbsession.add(second_pu)
@@ -202,16 +202,16 @@ class TestProfilingCollectionTask(object):
         dbsession.add(pcf)
         dbsession.flush()
         first_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 1, 1, 1)
+            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 1, 1, 1)
         )
         second_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 1, 30, 0)
+            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 1, 30, 0)
         )
         third_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 2, 1, 0)
+            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 2, 1, 0)
         )
         fourth_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, created_at=datetime(2021, 5, 1, 4, 12, 14)
+            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 4, 12, 14)
         )
         dbsession.add(first_pu)
         dbsession.add(second_pu)

@@ -1,13 +1,14 @@
 import logging
-
-from database.models import Repository, Owner
-from services.github import get_github_integration_token
-from services.encryption import encryptor
-from helpers.exceptions import RepositoryWithoutValidBotError, OwnerWithoutValidBotError
-from helpers.environment import is_enterprise
-from shared.torngit.base import TokenType
-from shared.config import get_config
 from typing import Dict
+
+from shared.config import get_config
+from shared.torngit.base import TokenType
+
+from database.models import Owner, Repository
+from helpers.environment import is_enterprise
+from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
+from services.encryption import encryptor
+from services.github import get_github_integration_token
 
 log = logging.getLogger(__name__)
 

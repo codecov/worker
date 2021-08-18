@@ -1,11 +1,11 @@
 import uuid
 
-from sqlalchemy import Column, types, ForeignKey
+from sqlalchemy import Column, ForeignKey, types
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from helpers.clock import get_utc_now
 from database.base import CodecovBaseModel
+from helpers.clock import get_utc_now
 
 
 class MixinBaseClass(object):
@@ -23,11 +23,10 @@ class ProfilingCommit(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "profiling_profilingcommit"
     last_joined_uploads_at = Column(types.DateTime(timezone=True), nullable=True)
     joined_location = Column(types.Text)
-    last_summarized_at = Column(types.Text)
+    last_summarized_at = Column(types.DateTime(timezone=True), nullable=True)
     summarized_location = Column(types.Text)
     version_identifier = Column(types.Text, nullable=False)
     repoid = Column(types.Integer, ForeignKey("repos.repoid"))
-    commit_sha = Column(types.Text)
     repository = relationship("Repository")
 
 
@@ -38,3 +37,5 @@ class ProfilingUpload(CodecovBaseModel, MixinBaseClass):
         types.BigInteger, ForeignKey("profiling_profilingcommit.id")
     )
     profiling_commit = relationship(ProfilingCommit)
+    normalized_at = Column(types.DateTime(timezone=True), nullable=True)
+    normalized_location = Column(types.Text)

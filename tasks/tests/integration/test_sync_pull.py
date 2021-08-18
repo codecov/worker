@@ -1,9 +1,10 @@
-import pytest
 from pathlib import Path
 
-from tasks.sync_pull import PullSyncTask
-from database.tests.factories import RepositoryFactory, CommitFactory, PullFactory
+import pytest
+
+from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.archive import ArchiveService
+from tasks.sync_pull import PullSyncTask
 
 here = Path(__file__)
 

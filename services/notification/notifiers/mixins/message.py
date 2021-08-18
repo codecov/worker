@@ -1,25 +1,26 @@
-import re
 import logging
-from decimal import Decimal
-from typing import Sequence, List
-from itertools import starmap
+import re
 from base64 import b64encode
 from collections import namedtuple
+from decimal import Decimal
+from itertools import starmap
+from typing import List, Sequence
 
-from services.comparison.overlays import OverlayType
-from services.urls import (
-    get_pull_url,
-    get_commit_url,
-    get_pull_graph_url,
-    get_commit_url_from_commit_sha,
-)
-from services.yaml.reader import read_yaml_field, round_number, get_minimum_precision
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
-from services.comparison.changes import Change
+
 from helpers.metrics import metrics
 from services.comparison import ComparisonProxy
+from services.comparison.changes import Change
+from services.comparison.overlays import OverlayType
+from services.urls import (
+    get_commit_url,
+    get_commit_url_from_commit_sha,
+    get_pull_graph_url,
+    get_pull_url,
+)
+from services.yaml.reader import get_minimum_precision, read_yaml_field, round_number
 
 log = logging.getLogger(__name__)
 

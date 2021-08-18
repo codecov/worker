@@ -1,16 +1,16 @@
 import logging
 
 from database.enums import Notification, NotificationState
-from database.models import Pull, CommitNotification
+from database.models import CommitNotification, Pull
 from services.notification.notifiers.base import (
-    NotificationResult,
     AbstractBaseNotifier,
+    NotificationResult,
 )
 
 log = logging.getLogger(__name__)
 
 
-def get_notification_state_from_result(result_dict) -> NotificationState:
+def _get_notification_state_from_result(result_dict) -> NotificationState:
     """
     Take notification result_dict from notification service and convert to
     the proper NotificationState enum
@@ -50,7 +50,7 @@ def create_or_update_commit_notification_from_notification_result(
         .first()
     )
 
-    notification_state = get_notification_state_from_result(result_dict)
+    notification_state = _get_notification_state_from_result(result_dict)
 
     if not commit_notification:
         commit_notification = CommitNotification(

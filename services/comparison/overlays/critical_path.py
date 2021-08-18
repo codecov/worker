@@ -1,10 +1,10 @@
-from typing import Sequence
 import json
-
-from database.models.profiling import ProfilingCommit
+from typing import Sequence
 
 from shared.profiling import ProfilingDataAnalyzer
 from shared.storage.exceptions import FileNotInStorageError
+
+from database.models.profiling import ProfilingCommit
 
 
 def _get_latest_profiling_commit(comparison):

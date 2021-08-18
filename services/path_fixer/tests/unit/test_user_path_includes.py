@@ -1,6 +1,5 @@
-from tests.base import BaseTestCase
-
 from services.path_fixer.user_path_includes import UserPathIncludes
+from tests.base import BaseTestCase
 
 
 class TestUserPathIncludes(BaseTestCase):

@@ -1,6 +1,5 @@
-from tests.base import BaseTestCase
 from services.report.languages import gap
-
+from tests.base import BaseTestCase
 
 RAW = b"""{"Type":"S","File":"lib/error.g","FileId":37}
 {"Type":"R","Line":1,"FileId":37}

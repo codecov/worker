@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from tasks.sync_teams import SyncTeamsTask
-from database.tests.factories import OwnerFactory
 from database.models import Owner
+from database.tests.factories import OwnerFactory
+from tasks.sync_teams import SyncTeamsTask
 
 here = Path(__file__)
 

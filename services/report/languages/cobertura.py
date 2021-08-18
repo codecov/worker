@@ -3,15 +3,13 @@ import re
 from os import path
 from typing import List
 
-from timestring import Date, TimestringInvalid
-
-
-from services.yaml import read_yaml_field
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+from timestring import Date, TimestringInvalid
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 

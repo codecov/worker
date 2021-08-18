@@ -1,8 +1,8 @@
 from decimal import Decimal
 
-from services.notification.notifiers.webhook import WebhookNotifier
-from database.tests.factories import RepositoryFactory, CommitFactory
+from database.tests.factories import CommitFactory, RepositoryFactory
 from services.comparison.types import FullCommit
+from services.notification.notifiers.webhook import WebhookNotifier
 
 
 class TestWebhookNotifier(object):

@@ -1,11 +1,11 @@
-from pathlib import Path
 import re
+from pathlib import Path
 
 import pytest
-
-from tests.base import BaseTestCase
-from services.yaml.parser import parse_yaml_file
 from shared.validation.exceptions import InvalidYamlException
+
+from services.yaml.parser import parse_yaml_file
+from tests.base import BaseTestCase
 
 here = Path(__file__)
 

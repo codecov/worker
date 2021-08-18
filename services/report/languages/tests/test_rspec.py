@@ -1,9 +1,8 @@
-from json import loads
 import pprint
+from json import loads
 
-from tests.base import BaseTestCase
 from services.report.languages import rspec
-
+from tests.base import BaseTestCase
 
 txt_v17 = """
 {

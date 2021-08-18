@@ -3,6 +3,7 @@ from itertools import chain, repeat
 
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+
 from services.report.languages.base import BaseLanguageProcessor
 
 

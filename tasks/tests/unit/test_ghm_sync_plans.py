@@ -2,10 +2,10 @@ import json
 
 import pytest
 
-from tasks.github_marketplace import SyncPlansTask
-from database.tests.factories import OwnerFactory, RepositoryFactory
 from database.models import Owner, Repository
+from database.tests.factories import OwnerFactory, RepositoryFactory
 from services.billing import BillingPlan
+from tasks.github_marketplace import SyncPlansTask
 
 
 class TestGHMarketplaceSyncPlansTaskUnit(object):
