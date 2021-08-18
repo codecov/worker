@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 class ProfilingCollectionTask(BaseCodecovTask):
 
-    name = "app.tasks.profilingsummarizationtask"
+    name = "app.tasks.profilingcollectiontask"
 
     async def run_async(
         self, db_session: Session, *, profiling_id: int, **kwargs,
@@ -41,6 +41,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
                 profiling, new_profiling_uploads_to_join
             )
             location = self.store_results(profiling, joined_execution_counts)
+            db_session.commit()
             task_id = profiling_summarization_task.delay(profiling_id=profiling_id)
             return {
                 "successful": True,
@@ -55,14 +56,14 @@ class ProfilingCollectionTask(BaseCodecovTask):
         db_session = profiling.get_db_session()
         new_profiling_uploads_to_join = db_session.query(ProfilingUpload).filter(
             ProfilingUpload.profiling_commit_id == profiling.id,
-            ProfilingUpload.created_at <= new_now,
+            ProfilingUpload.normalized_at <= new_now,
         )
         if profiling.last_joined_uploads_at is not None:
             new_profiling_uploads_to_join = new_profiling_uploads_to_join.filter(
-                ProfilingUpload.created_at > profiling.last_joined_uploads_at
+                ProfilingUpload.normalized_at > profiling.last_joined_uploads_at
             )
         return (
-            new_profiling_uploads_to_join.order_by(ProfilingUpload.created_at),
+            new_profiling_uploads_to_join.order_by(ProfilingUpload.normalized_at),
             new_now,
         )
 
@@ -86,7 +87,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
                 data["filename"]: data for data in existing_results["files"]
             }
             upload_data = json.loads(
-                archive_service.read_file(upload.raw_upload_location)
+                archive_service.read_file(upload.normalized_location)
             )
             for single_file in upload_data["files"]:
                 if single_file in file_mapping:
@@ -111,7 +112,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
         location = archive_service.write_profiling_collection_result(
             profiling.version_identifier, json.dumps(joined_execution_counts)
         )
-        profiling.summarized_location = location
+        profiling.joined_location = location
         return location
 
 

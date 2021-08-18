@@ -23,11 +23,10 @@ class ProfilingCommit(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "profiling_profilingcommit"
     last_joined_uploads_at = Column(types.DateTime(timezone=True), nullable=True)
     joined_location = Column(types.Text)
-    last_summarized_at = Column(types.Text)
+    last_summarized_at = Column(types.DateTime(timezone=True), nullable=True)
     summarized_location = Column(types.Text)
     version_identifier = Column(types.Text, nullable=False)
     repoid = Column(types.Integer, ForeignKey("repos.repoid"))
-    commit_sha = Column(types.Text)
     repository = relationship("Repository")
 
 
@@ -38,3 +37,5 @@ class ProfilingUpload(CodecovBaseModel, MixinBaseClass):
         types.BigInteger, ForeignKey("profiling_profilingcommit.id")
     )
     profiling_commit = relationship(ProfilingCommit)
+    normalized_at = Column(types.DateTime(timezone=True), nullable=True)
+    normalized_location = Column(types.Text)
