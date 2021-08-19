@@ -2,6 +2,8 @@ import logging
 from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_EVEN, Decimal
 from typing import Any, Mapping
 
+from shared.yaml.user_yaml import UserYaml
+
 log = logging.getLogger(__name__)
 
 
@@ -10,7 +12,7 @@ log = logging.getLogger(__name__)
 """
 
 
-def read_yaml_field(yaml_dict, keys, _else=None) -> Any:
+def read_yaml_field(yaml_dict: UserYaml, keys, _else=None) -> Any:
     log.debug("Field %s requested", keys)
     try:
         for key in keys:
@@ -28,7 +30,7 @@ def get_minimum_precision(yaml_dict: Mapping[str, Any]) -> Decimal:
     return Decimal("0.1") ** precision
 
 
-def round_number(yaml_dict: Mapping[str, Any], number: Decimal):
+def round_number(yaml_dict: UserYaml, number: Decimal):
     rounding = read_yaml_field(yaml_dict, ("coverage", "round"), "nearest")
     quantizer = get_minimum_precision(yaml_dict)
     if rounding == "up":
@@ -38,11 +40,13 @@ def round_number(yaml_dict: Mapping[str, Any], number: Decimal):
     return number.quantize(quantizer, rounding=ROUND_HALF_EVEN)
 
 
-def get_paths_from_flags(yaml_dict: Mapping[str, Any], flags):
+def get_paths_from_flags(yaml_dict: UserYaml, flags):
     if flags:
         res = []
         for flag in flags:
-            res.extend(read_yaml_field(yaml_dict, ("flags", flag, "paths")) or [])
+            res.extend(
+                (yaml_dict.get_flag_configuration(flag) or {}).get("paths") or []
+            )
         return list(set(res))
     else:
         return []

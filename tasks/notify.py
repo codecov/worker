@@ -256,7 +256,7 @@ class NotifyTask(BaseCodecovTask):
 
     async def submit_third_party_notifications(
         self,
-        current_yaml,
+        current_yaml: UserYaml,
         base_commit,
         commit,
         base_report,
