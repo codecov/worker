@@ -228,7 +228,7 @@ class TestNotificationService(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
