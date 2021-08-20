@@ -39,6 +39,14 @@ Then, try to run tests to see if the code is working. First get some postgres da
 make test
 ```
 
+### Linting and Import Sorts
+
+Install/run `black` and `isort` using
+
+```
+make lint
+```
+
 ### Getting into docker
 
 To build this into a docker image:
