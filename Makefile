@@ -56,6 +56,11 @@ build.portable:
 		--build-arg COMMIT_SHA="${sha}" \
 		--build-arg RELEASE_VERSION="${release_version}"
 
+lint:
+	pip install black==19.10b0 isort
+	black --check .
+	isort --profile black .
+
 test:
 	python -m pytest --cov=./
 
