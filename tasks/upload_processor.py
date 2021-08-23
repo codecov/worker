@@ -51,9 +51,9 @@ class UploadProcessorTask(BaseCodecovTask):
 
     name = upload_processor_task_name
 
-    def schedule_for_later_try(self):
+    def schedule_for_later_try(self, max_retries=5):
         retry_in = FIRST_RETRY_DELAY * 3 ** self.request.retries
-        self.retry(max_retries=5, countdown=retry_in)
+        self.retry(max_retries=max_retries, countdown=retry_in)
 
     async def run_async(
         self,
@@ -177,7 +177,7 @@ class UploadProcessorTask(BaseCodecovTask):
                             arguments=arguments,
                         ),
                     )
-                    self.schedule_for_later_try()
+                    self.schedule_for_later_try(max_retries=1)
                 if individual_info.get("successful"):
                     report = individual_info.pop("report")
                     n_processed += 1
