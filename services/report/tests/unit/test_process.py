@@ -186,19 +186,20 @@ class TestProcessRawUpload(BaseTestCase):
         original_report.add_session(Session(flags=["unit"]))
         assert len(original_report.sessions) == 1
 
-        result = process.process_raw_upload(
-            commit_yaml=None,
-            original_report=original_report,
-            reports=RawReportParser.parse_raw_report_from_io(
-                BytesIO("\n".join(report_data).encode())
-            ),
-            session=Session(flags=["fruits"]),
-            flags=[],
-        )
-        assert len(result.sessions) == 2
-        assert sorted(result.flags.keys()) == ["fruits", "unit"]
-        assert result.files == ["file_1.go", "file_2.py"]
-        assert result.flags["unit"].totals == ReportTotals(
+        with pytest.raises(ReportEmptyError):
+            process.process_raw_upload(
+                commit_yaml=None,
+                original_report=original_report,
+                reports=RawReportParser.parse_raw_report_from_io(
+                    BytesIO("\n".join(report_data).encode())
+                ),
+                session=Session(flags=["fruits"]),
+                flags=[],
+            )
+        assert len(original_report.sessions) == 2
+        assert sorted(original_report.flags.keys()) == ["fruits", "unit"]
+        assert original_report.files == ["file_1.go", "file_2.py"]
+        assert original_report.flags["unit"].totals == ReportTotals(
             files=2,
             lines=10,
             hits=10,
@@ -213,7 +214,7 @@ class TestProcessRawUpload(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
-        assert result.flags["fruits"].totals == ReportTotals(
+        assert original_report.flags["fruits"].totals == ReportTotals(
             files=0,
             lines=0,
             hits=0,
@@ -228,7 +229,7 @@ class TestProcessRawUpload(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
-        general_totals, json_data = result.to_database()
+        general_totals, json_data = original_report.to_database()
         assert general_totals == {
             "f": 2,
             "n": 10,
