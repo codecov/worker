@@ -8,7 +8,6 @@ from database.tests.factories import CompareCommitFactory
 from tasks.compute_comparison import ComputeComparisonTask
 
 
-
 class TestComputeComparisonTask(object):
     @pytest.mark.asyncio
     async def test_set_state_to_processed(
