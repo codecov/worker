@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 
 from shared.validation.exceptions import InvalidYamlException
-from shared.validation.yaml import validate_yaml
+from shared.yaml.validation import validate_yaml
 from yaml import safe_load
 from yaml.error import YAMLError
 
