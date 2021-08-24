@@ -1,6 +1,17 @@
 import logging
 import re
 from base64 import b64encode
+
+from helpers.reports import get_totals_from_file_in_reports
+from services.comparison.overlays import OverlayType
+from services.urls import (
+    get_pull_url,
+    get_commit_url,
+    get_pull_graph_url,
+    get_commit_url_from_commit_sha,
+)
+from services.yaml.reader import read_yaml_field, round_number, get_minimum_precision
+
 from collections import namedtuple
 from decimal import Decimal
 from itertools import starmap
@@ -24,7 +35,6 @@ from services.yaml.reader import get_minimum_precision, read_yaml_field, round_n
 
 log = logging.getLogger(__name__)
 
-null = namedtuple("_", ["totals"])(None)
 zero_change_regex = re.compile("0.0+%?")
 
 
@@ -413,8 +423,8 @@ class FileSectionWriter(BaseSectionWriter):
                 _diff["type"],
                 path,
                 make_metrics(
-                    base_report.get(path, null).totals or False,
-                    head_report.get(path, null).totals or False,
+                    get_totals_from_file_in_reports(base_report, path) or False,
+                    get_totals_from_file_in_reports(head_report, path) or False,
                     _diff["totals"],
                     self.show_complexity,
                     self.current_yaml,
@@ -485,8 +495,10 @@ class FileSectionWriter(BaseSectionWriter):
                         "changed",
                         change.path,
                         make_metrics(
-                            base_report.get(change.path, null).totals or False,
-                            head_report.get(change.path, null).totals or False,
+                            get_totals_from_file_in_reports(base_report, change.path)
+                            or False,
+                            get_totals_from_file_in_reports(head_report, change.path)
+                            or False,
                             None,
                             self.show_complexity,
                             self.current_yaml,
@@ -527,7 +539,7 @@ class FlagSectionWriter(BaseSectionWriter):
                 flags.append(
                     {
                         "name": name,
-                        "before": base_flags.get(name, null).totals,
+                        "before": get_totals_from_file_in_reports(base_flags, name),
                         "after": flag.totals,
                         "diff": flag.apply_diff(diff)
                         if walk(diff, ("files",))

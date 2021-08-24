@@ -113,6 +113,14 @@ class ComparisonProxy(object):
     def get_overlay(self, overlay_type, **kwargs):
         return get_overlay(overlay_type, self, **kwargs)
 
+    async def get_impacted_files(self):
+        files_in_diff = await self.get_diff()
+        self.head.report.apply_diff(files_in_diff)
+        return {
+            "changes": await self.get_changes(),
+            "diff": files_in_diff.get("files"),
+        }
+
 
 class FilteredComparison(object):
     def __init__(self, real_comparison: ComparisonProxy, *, flags, path_patterns):
