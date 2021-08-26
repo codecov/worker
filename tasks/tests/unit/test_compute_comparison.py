@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report
 
 from database.enums import CompareCommitState
@@ -23,7 +24,12 @@ class TestComputeComparisonTask(object):
         )
         mocked_get_current_yaml.return_value = {}
         mocker.patch.object(
-            ReportService, "get_existing_report_for_commit", return_value=Report()
+            ReadOnlyReport, "should_load_rust_version", return_value=True
+        )
+        mocker.patch.object(
+            ReportService,
+            "get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(Report()),
         )
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()
@@ -31,7 +37,12 @@ class TestComputeComparisonTask(object):
         data_in_storage = mock_storage.read_file(
             "archive", comparison.report_storage_path
         )
-        assert json.loads(data_in_storage) == {"changes": [], "diff": []}
+        assert json.loads(data_in_storage) == {
+            "files": [],
+            "changes_summary": {
+                "patch_totals": {"hits": 0, "misses": 0, "partials": 0}
+            },
+        }
 
     @pytest.mark.asyncio
     async def test_set_state_to_processed_non_empty_report(
@@ -46,8 +57,14 @@ class TestComputeComparisonTask(object):
         )
         mocked_get_current_yaml.return_value = {}
         mocker.patch.object(
-            ReportService, "get_existing_report_for_commit", return_value=sample_report
+            ReadOnlyReport, "should_load_rust_version", return_value=True
         )
+        mocker.patch.object(
+            ReportService,
+            "get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(sample_report),
+        )
+        print("A", ReadOnlyReport.create_from_report(sample_report).rust_report)
         mock_repo_provider.get_compare.return_value = {
             "diff": {
                 "files": {
@@ -68,28 +85,43 @@ class TestComputeComparisonTask(object):
             "archive", comparison.report_storage_path
         )
         assert json.loads(data_in_storage) == {
-            "changes": [
+            "files": [
                 {
-                    "path": "file_2.py",
-                    "base_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                    "compare_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                    "patch": None,
-                    "new": False,
-                    "deleted": False,
-                    "in_diff": True,
-                    "old_path": None,
+                    "base_name": "file_2.py",
+                    "head_name": "file_2.py",
+                    "file_was_added_by_diff": False,
+                    "file_was_removed_by_diff": False,
+                    "base_coverage": {
+                        "hits": 1,
+                        "misses": 0,
+                        "partials": 1,
+                        "branches": 1,
+                        "sessions": 0,
+                        "complexity": 0,
+                        "complexity_total": 0,
+                        "methods": 0,
+                    },
+                    "head_coverage": {
+                        "hits": 1,
+                        "misses": 0,
+                        "partials": 1,
+                        "branches": 1,
+                        "sessions": 0,
+                        "complexity": 0,
+                        "complexity_total": 0,
+                        "methods": 0,
+                    },
+                    "removed_diff_coverage": [],
+                    "added_diff_coverage": [],
+                    "unexpected_line_changes": [
+                        [[12, "h"], [11, None]],
+                        [[13, None], [12, "h"]],
+                        [[51, "p"], [50, None]],
+                        [[52, None], [51, "p"]],
+                    ],
                 }
             ],
-            "diff": [
-                {
-                    "path": "file_2.py",
-                    "base_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                    "compare_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                    "patch": [0, 0, 0, 0, 0, None, 0, 0, 0, 0, 0, 0, 0],
-                    "new": False,
-                    "deleted": False,
-                    "in_diff": True,
-                    "old_path": None,
-                }
-            ],
+            "changes_summary": {
+                "patch_totals": {"hits": 0, "misses": 0, "partials": 0}
+            },
         }
