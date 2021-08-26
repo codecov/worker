@@ -47,8 +47,12 @@ jobs:
       - run:
           name: Running linter
           command: |
-            pip3 install -Iv black==19.10b0
+            echo "Installing..."
+            pip3 install -Iv black==19.10b0 isort
+            echo "Linting..."
             black --check .
+            echo "Sorting..."
+            isort --profile black --check .
   build:
     executor: codecov-deploy
     steps:
