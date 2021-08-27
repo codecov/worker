@@ -306,6 +306,7 @@ workflows:
           requires:
             - build
             - test
-          # filters:
-          #   branches:
-          #     only: master
+            - standards-coverage-comparison
+          filters:
+            branches:
+              only: master
