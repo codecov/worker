@@ -66,8 +66,6 @@ jobs:
             make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
             make -f Makefile.circle build VERSION=$CIRCLE_TAG
             make -f Makefile.circle push
-      - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - run: make dockerhub-deploy-master GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
   standards-coverage-comparison:
     machine: true
     steps:
@@ -77,6 +75,8 @@ jobs:
           command: |
             docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
             make -f Makefile.circle pull-latest
+      - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - run: make -f Makefile.circle dockerhub-deploy-master
       - run:
           name: Clone Autotest and Start Acceptance Testing Containers
           command: |

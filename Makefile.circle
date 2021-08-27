@@ -85,6 +85,14 @@ pull-latest:
 	docker pull ${GCR_REPO}:latest
 	docker tag ${GCR_REPO}:latest codecov/$(name):latest
 
+# job: dockerhub-deploy-master
+# used to pull latest worker image and push it to dockerhub
+dockerhub-deploy-master:
+	pull-latest
+	docker push codecov/$(name):latest
+	docker tag codecov/$(name):latest codecov/$(name):${IMAGE_VERSION}
+	docker push codecov/$(name):${IMAGE_VERSION}
+
 # build and tag with staging tag
 # - when the docker image is uploaded to GCR with the "staging" tag, spinnaker will automatically detect the new image and deploy to the staging k8s cluster
 # - spinnaker pipeline: https://spinnaker.codecov.dev/?to=https%3A%2F%2Fspinnaker.codecov.dev%2F%23%2Fsearch#/applications/codecov-staging/executions?pipeline=worker
