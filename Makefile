@@ -83,11 +83,8 @@ push.enterprise:
 	docker tag codecov/enterprise-worker:${release_version} codecov/enterprise-worker:latest-stable
 	docker push codecov/enterprise-worker:latest-stable
 
-# Triggers the deploy job depending on if the command is called locally, in a PR or on master.
-dockerhub.deploy: dockerhub.deploy-$(release_env)
-
 # Deploy the docker container as the latest image for master/tags.
-dockerhub.deploy-master: build.portable
+dockerhub-deploy-master: build.portable
 	docker tag codecov/$(name)-portable codecov/$(name):${release_version}-${sha}
 	docker push codecov/$(name):latest
 	docker push codecov/$(name):${release_version}-${sha}

@@ -66,6 +66,8 @@ jobs:
             make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
             make -f Makefile.circle build VERSION=$CIRCLE_TAG
             make -f Makefile.circle push
+      - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - run: make dockerhub-deploy-master GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
   standards-coverage-comparison:
     machine: true
     steps:
