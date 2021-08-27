@@ -75,8 +75,6 @@ jobs:
           command: |
             docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
             make -f Makefile.circle pull-latest
-      - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - run: make -f Makefile.circle dockerhub-deploy-master
       - run:
           name: Clone Autotest and Start Acceptance Testing Containers
           command: |
@@ -195,7 +193,7 @@ jobs:
       - checkout
       - setup_remote_docker
       - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - run: make dockerhub.deploy GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+      - run: make -f Makefile.circle dockerhub-deploy-master
 
 workflows:
   version: 2
@@ -303,6 +301,6 @@ workflows:
           requires:
             - build
             - test
-          filters:
-            branches:
-              only: master
+          # filters:
+          #   branches:
+          #     only: master

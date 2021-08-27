@@ -71,7 +71,7 @@ tag:
 	docker pull ${GCR_REPO}:latest
 	docker tag ${GCR_REPO}:latest ${GCR_REPO}:${VERSION}
 	docker push ${GCR_REPO}:${VERSION}
-	
+
 # CIRCLECI
 # Pulls Standards image for coverage comparison from autotest
 run-standards-comparison:
