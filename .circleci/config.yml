@@ -206,9 +206,7 @@ workflows:
     jobs:
       - linter
       - build:
-          context:
-            - "DockerHub Push Context"
-            - "circleci google deploy context"
+          context: "circleci google deploy context"
           filters:
             tags:
               only: /.*/
