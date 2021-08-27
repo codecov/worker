@@ -1,13 +1,13 @@
 # TODO: Clean this
 
 import pytest
-from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.reports.readonly import ReadOnlyReport
+from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.comparison.types import FullCommit, Comparison
 from services.comparison import ComparisonProxy
+from services.comparison.types import Comparison, FullCommit
 from services.repository import EnrichedPull
 
 

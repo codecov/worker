@@ -12,9 +12,9 @@ from database.tests.factories import CommitFactory, UploadFactory
 from services.archive import ArchiveService
 from services.report import (
     NotReadyToBuildReportYetError,
-    ReportService,
-    ProcessingResult,
     ProcessingError,
+    ProcessingResult,
+    ReportService,
 )
 from tests.base import BaseTestCase
 

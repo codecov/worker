@@ -1,10 +1,11 @@
 import json
+
 import pytest
+from shared.reports.resources import Report
 
 from database.enums import CompareCommitState
-from services.report import ReportService
-from shared.reports.resources import Report
 from database.tests.factories import CompareCommitFactory
+from services.report import ReportService
 from tasks.compute_comparison import ComputeComparisonTask
 
 
