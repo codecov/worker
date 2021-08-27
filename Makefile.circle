@@ -88,7 +88,7 @@ pull-latest:
 # job: dockerhub-deploy-master
 # used to pull latest worker image and push it to dockerhub
 dockerhub-deploy-master:
-	pull-latest
+	$(call pull-latest)
 	docker push codecov/$(name):latest
 	docker tag codecov/$(name):latest codecov/$(name):${IMAGE_VERSION}
 	docker push codecov/$(name):${IMAGE_VERSION}
