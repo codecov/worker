@@ -261,6 +261,11 @@ class NotificationService(object):
             )
             return individual_result
         finally:
-            create_or_update_commit_notification_from_notification_result(
-                comparison.pull, notifier, individual_result["result"]
-            )
+            if not individual_result["result"] or individual_result["result"].get(
+                "notification_attempted"
+            ):
+                # only running if there is no result (indicating some exception)
+                # or there was an actual attempt
+                create_or_update_commit_notification_from_notification_result(
+                    comparison.pull, notifier, individual_result["result"]
+                )
