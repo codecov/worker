@@ -1,11 +1,9 @@
 import logging
 
-from database.enums import Notification, NotificationState
+from database.enums import NotificationState
 from database.models import CommitNotification, Pull
-from services.notification.notifiers.base import (
-    AbstractBaseNotifier,
-    NotificationResult,
-)
+from helpers.metrics import metrics
+from services.notification.notifiers.base import AbstractBaseNotifier
 
 log = logging.getLogger(__name__)
 
@@ -22,12 +20,11 @@ def _get_notification_state_from_result(result_dict) -> NotificationState:
 
     if successful:
         return NotificationState.success
-    elif successful is False:
-        return NotificationState.error
     else:
-        return NotificationState.pending
+        return NotificationState.error
 
 
+@metrics.timer("internal.services.notification.store_notification_result")
 def create_or_update_commit_notification_from_notification_result(
     pull: Pull, notifier: AbstractBaseNotifier, result_dict
 ) -> CommitNotification:
