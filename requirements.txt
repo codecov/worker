@@ -185,7 +185,7 @@ requests==2.25.1
     #   stripe
 rfc3986[idna2008]==1.4.0
     # via httpx
-git+ssh://git@github.com/codecov/ribs@v0.1.15#egg=ribs
+git+ssh://git@github.com/codecov/ribs@v0.1.16#egg=ribs
     # via shared
 rsa==4.7.2
     # via google-auth
@@ -193,7 +193,7 @@ s3transfer==0.3.4
     # via boto3
 sentry-sdk==0.20.3
     # via -r requirements.in
-git+ssh://git@github.com/codecov/shared.git@v0.6.4#egg=shared
+git+ssh://git@github.com/codecov/shared.git@v0.6.5#egg=shared
     # via -r requirements.in
 six==1.15.0
     # via
