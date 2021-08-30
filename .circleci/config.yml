@@ -192,8 +192,13 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - run: make dockerhub.deploy GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+      - run:
+          name: Pull Latest Worker Image and Deploy to DockerHub
+          command: |
+            docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
+            make -f Makefile.circle pull-latest
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+            make -f Makefile.circle dockerhub-deploy-master
 
 workflows:
   version: 2
@@ -299,6 +304,7 @@ workflows:
           requires:
             - build
             - test
+            - standards-coverage-comparison
           filters:
             branches:
               only: master

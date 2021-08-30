@@ -71,7 +71,7 @@ tag:
 	docker pull ${GCR_REPO}:latest
 	docker tag ${GCR_REPO}:latest ${GCR_REPO}:${VERSION}
 	docker push ${GCR_REPO}:${VERSION}
-	
+
 # CIRCLECI
 # Pulls Standards image for coverage comparison from autotest
 run-standards-comparison:
@@ -84,6 +84,13 @@ run-standards-comparison:
 pull-latest:
 	docker pull ${GCR_REPO}:latest
 	docker tag ${GCR_REPO}:latest codecov/$(name):latest
+
+# job: dockerhub-deploy-master
+# used to pull latest worker image and push it to dockerhub
+dockerhub-deploy-master:
+	docker push codecov/$(name):latest
+	docker tag codecov/$(name):latest codecov/$(name):${IMAGE_VERSION}
+	docker push codecov/$(name):${IMAGE_VERSION}
 
 # build and tag with staging tag
 # - when the docker image is uploaded to GCR with the "staging" tag, spinnaker will automatically detect the new image and deploy to the staging k8s cluster
