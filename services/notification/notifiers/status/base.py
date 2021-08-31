@@ -151,7 +151,8 @@ class StatusNotifier(AbstractBaseNotifier):
                 comparison, "flag_coverage_not_uploaded_behavior"
             )
             if (
-                flag_coverage_not_uploaded_behavior != "include"
+                flag_coverage_not_uploaded_behavior is not None
+                and flag_coverage_not_uploaded_behavior != "include"
                 and not self.flag_coverage_was_uploaded(comparison)
             ):
                 # flag_coverage_not_uploaded_behavior can be either `pass` or `exclude`

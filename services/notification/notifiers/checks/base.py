@@ -137,14 +137,13 @@ class ChecksNotifier(StatusNotifier):
         )
         try:
             with nullcontext():
-                payload = await self.build_payload(filtered_comparison)
-
                 # If flag coverage wasn't uploaded, apply the appropriate behavior
                 flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
                     comparison, "flag_coverage_not_uploaded_behavior"
                 )
                 if (
-                    flag_coverage_not_uploaded_behavior != "include"
+                    flag_coverage_not_uploaded_behavior is not None
+                    and flag_coverage_not_uploaded_behavior != "include"
                     and not self.flag_coverage_was_uploaded(comparison)
                 ):
                     log.info(
@@ -158,6 +157,7 @@ class ChecksNotifier(StatusNotifier):
                     )
 
                     if flag_coverage_not_uploaded_behavior == "pass":
+                        payload = await self.build_payload(filtered_comparison)
                         payload["state"] = "success"
                         payload["output"]["summary"] = (
                             payload.get("output", {}).get("summary", "")
@@ -171,6 +171,8 @@ class ChecksNotifier(StatusNotifier):
                             data_sent=None,
                             data_received=None,
                         )
+                else:
+                    payload = await self.build_payload(filtered_comparison)
             if (
                 comparison.pull
                 and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
