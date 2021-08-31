@@ -132,9 +132,6 @@ class ChecksNotifier(StatusNotifier):
             )
 
         payload = None
-        filtered_comparison = comparison.get_filtered_comparison(
-            **self.get_notifier_filters()
-        )
         try:
             with nullcontext():
                 # If flag coverage wasn't uploaded, apply the appropriate behavior
@@ -142,36 +139,33 @@ class ChecksNotifier(StatusNotifier):
                     comparison, "flag_coverage_not_uploaded_behavior"
                 )
                 if (
-                    flag_coverage_not_uploaded_behavior is not None
-                    and flag_coverage_not_uploaded_behavior != "include"
+                    flag_coverage_not_uploaded_behavior == "exclude"
                     and not self.flag_coverage_was_uploaded(comparison)
                 ):
-                    log.info(
-                        "Status check flag coverage was not uploaded, applying behavior based on YAML settings",
-                        extra=dict(
-                            commit=comparison.head.commit.commitid,
-                            repoid=comparison.head.commit.repoid,
-                            notifier_name=self.name,
-                            flag_coverage_not_uploaded_behavior=flag_coverage_not_uploaded_behavior,
-                        ),
+                    return NotificationResult(
+                        notification_attempted=False,
+                        notification_successful=None,
+                        explanation="exclude_flag_coverage_not_uploaded_checks",
+                        data_sent=None,
+                        data_received=None,
                     )
-
-                    if flag_coverage_not_uploaded_behavior == "pass":
-                        payload = await self.build_payload(filtered_comparison)
-                        payload["state"] = "success"
-                        payload["output"]["summary"] = (
-                            payload.get("output", {}).get("summary", "")
-                            + " [Auto passed due to carriedforward or missing coverage]"
-                        )
-                    elif flag_coverage_not_uploaded_behavior == "exclude":
-                        return NotificationResult(
-                            notification_attempted=False,
-                            notification_successful=None,
-                            explanation="exclude_flag_coverage_not_uploaded_checks",
-                            data_sent=None,
-                            data_received=None,
-                        )
+                elif (
+                    flag_coverage_not_uploaded_behavior == "pass"
+                    and not self.flag_coverage_was_uploaded(comparison)
+                ):
+                    filtered_comparison = comparison.get_filtered_comparison(
+                        **self.get_notifier_filters()
+                    )
+                    payload = await self.build_payload(filtered_comparison)
+                    payload["state"] = "success"
+                    payload["output"]["summary"] = (
+                        payload.get("output", {}).get("summary", "")
+                        + " [Auto passed due to carriedforward or missing coverage]"
+                    )
                 else:
+                    filtered_comparison = comparison.get_filtered_comparison(
+                        **self.get_notifier_filters()
+                    )
                     payload = await self.build_payload(filtered_comparison)
             if (
                 comparison.pull

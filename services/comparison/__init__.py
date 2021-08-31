@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from shared.reports.types import Change
 
+from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.comparison.changes import get_changes
 from services.comparison.overlays import get_overlay
@@ -47,6 +48,7 @@ class ComparisonProxy(object):
             )
         return self._archive_service
 
+    @metrics.timer("internal.services.comparison.get_filtered_comparison")
     def get_filtered_comparison(self, flags, path_patterns):
         if not flags and not path_patterns:
             return self

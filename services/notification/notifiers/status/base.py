@@ -78,21 +78,6 @@ class StatusNotifier(AbstractBaseNotifier):
             else default_rules_behavior
         )
 
-        location = "component" if component_behavior is not None else "default_rules"
-
-        log.debug(
-            "Determined status check behavior to apply",
-            extra=dict(
-                location=location,
-                field_name=field_name,
-                behavior=behavior_to_apply,
-                commit=comparison.head.commit.commitid,
-                repoid=comparison.head.commit.repoid,
-                notifier_name=self.name,
-                notifier_yaml_settings=self.notifier_yaml_settings,
-            ),
-        )
-
         return behavior_to_apply
 
     def flag_coverage_was_uploaded(self, comparison) -> bool:
