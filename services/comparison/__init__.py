@@ -1,6 +1,7 @@
 import asyncio
 from typing import List, Optional
 
+from shared.reports.changes import run_comparison_using_rust
 from shared.reports.types import Change
 
 from helpers.metrics import metrics
@@ -117,11 +118,9 @@ class ComparisonProxy(object):
 
     async def get_impacted_files(self):
         files_in_diff = await self.get_diff()
-        self.head.report.apply_diff(files_in_diff)
-        return {
-            "changes": await self.get_changes(),
-            "diff": files_in_diff.get("files"),
-        }
+        return run_comparison_using_rust(
+            self.comparison.base.report, self.comparison.head.report, files_in_diff
+        )
 
 
 class FilteredComparison(object):
