@@ -31,6 +31,19 @@ class TestComputeComparisonTask(object):
             "get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(Report()),
         )
+        mock_repo_provider.get_compare.return_value = {
+            "diff": {
+                "files": {
+                    "file_2.py": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {"header": ["2", "5", "2", "5"], "lines": ["+", "-", "-"]}
+                        ],
+                    }
+                }
+            }
+        }
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state is CompareCommitState.processed
