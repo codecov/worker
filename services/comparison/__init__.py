@@ -1,7 +1,8 @@
 import asyncio
+import logging
 from typing import List, Optional
 
-from shared.reports.changes import run_comparison_using_rust
+from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
 from shared.reports.types import Change
 
 from helpers.metrics import metrics
@@ -10,6 +11,8 @@ from services.comparison.changes import get_changes
 from services.comparison.overlays import get_overlay
 from services.comparison.types import Comparison, FullCommit
 from services.repository import get_repo_provider_service
+
+log = logging.getLogger(__name__)
 
 
 class ComparisonProxy(object):
@@ -100,9 +103,43 @@ class ComparisonProxy(object):
         async with self._changes_lock:
             if self._changes is None:
                 diff = await self.get_diff()
-                self._changes = get_changes(
-                    self.comparison.base.report, self.comparison.head.report, diff
-                )
+                with metrics.timer(
+                    "internal.worker.services.comparison.changes.get_changes_python"
+                ):
+                    self._changes = get_changes(
+                        self.comparison.base.report, self.comparison.head.report, diff
+                    )
+                if (
+                    self.comparison.base.report is not None
+                    and self.comparison.head.report is not None
+                    and self.comparison.base.report.rust_report is not None
+                    and self.comparison.head.report.rust_report is not None
+                ):
+                    try:
+                        with metrics.timer(
+                            "internal.worker.services.comparison.changes.get_changes_rust"
+                        ):
+                            rust_changes = get_changes_using_rust(
+                                self.comparison.base.report,
+                                self.comparison.head.report,
+                                diff,
+                            )
+                        original_paths = set([c.path for c in self._changes])
+                        new_paths = set([c.path for c in rust_changes])
+                        if original_paths != new_paths:
+                            only_on_new = new_paths - original_paths
+                            only_on_original = original_paths - new_paths
+                            log.info(
+                                "There are differences between python changes and rust changes",
+                                extra=dict(
+                                    only_on_new=only_on_new[:100],
+                                    only_on_original=only_on_original[:100],
+                                ),
+                            )
+                    except Exception:
+                        log.warning(
+                            "Error while calculating rust changes", exc_info=True
+                        )
             return self._changes
 
     async def get_existing_statuses(self):
