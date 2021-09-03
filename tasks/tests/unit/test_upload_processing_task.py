@@ -294,12 +294,6 @@ class TestUploadProcessorTask(object):
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         mocked_1.assert_called_with(commit.commitid)
-        # mocked_3.send_task.assert_called_with(
-        #     'app.tasks.notify.Notify',
-        #     args=None,
-        #     kwargs={'repoid': commit.repository.repoid, 'commitid': commit.commitid}
-        # )
-        # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
             f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,
@@ -352,13 +346,7 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         mocked_2.assert_called_with(
-            mocker.ANY,
-            commit,
-            mocker.ANY,
-            False,
-            url="url",
-            upload=mocker.ANY,
-            upload_pk=mocker.ANY,
+            mocker.ANY, commit, mocker.ANY, False, upload=upload
         )
         mocked_3.assert_called_with(countdown=20, max_retries=1)
 
@@ -522,17 +510,14 @@ class TestUploadProcessorTask(object):
             report__commit=commit, storage_path="locationlocation"
         )
         dbsession.add(upload)
-        arguments = {"url": "url2", "extra_param": 45}
         task = UploadProcessorTask()
         task.request.retries = 1
         result = task.process_individual_report(
             report_service=ReportService({"codecov": {"max_report_age": False}}),
-            redis_connection=mock_redis,
             commit=commit,
             report=false_report,
             upload_obj=upload,
             should_delete_archive=False,
-            **arguments,
         )
         expected_result = {
             "error": {
@@ -577,18 +562,15 @@ class TestUploadProcessorTask(object):
         dbsession.flush()
         upload = UploadFactory.create(report__commit=commit)
         dbsession.add(upload)
-        arguments = {"url": "url2", "extra_param": 45}
         task = UploadProcessorTask()
         task.request.retries = 0
         with pytest.raises(celery.exceptions.Retry):
             task.process_individual_report(
                 report_service=ReportService({"codecov": {"max_report_age": False}}),
-                redis_connection=mock_redis,
                 commit=commit,
                 report=false_report,
                 upload_obj=upload,
                 should_delete_archive=False,
-                **arguments,
             )
         mock_schedule_for_later_try.assert_called_with()
 

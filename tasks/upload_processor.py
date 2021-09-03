@@ -161,7 +161,6 @@ class UploadProcessorTask(BaseCodecovTask):
                             report,
                             upload_obj,
                             should_delete_archive,
-                            **arguments,
                         )
                     individual_info.update(result)
                 except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
@@ -215,10 +214,10 @@ class UploadProcessorTask(BaseCodecovTask):
             raise
 
     def process_individual_report(
-        self, report_service, commit, report, upload_obj, *args, **arguments,
+        self, report_service, commit, report, upload_obj, should_delete_archive,
     ):
         processing_result = self.do_process_individual_report(
-            report_service, commit, report, *args, upload=upload_obj, **arguments,
+            report_service, commit, report, should_delete_archive, upload=upload_obj
         )
         if (
             processing_result.error is not None
@@ -229,7 +228,9 @@ class UploadProcessorTask(BaseCodecovTask):
                 "Scheduling a retry in %d due to retryable error",
                 FIRST_RETRY_DELAY,
                 extra=dict(
-                    repoid=commit.repoid, commit=commit.commitid, arguments=arguments,
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    upload_id=upload_obj.id,
                 ),
             )
             self.schedule_for_later_try()
@@ -246,7 +247,6 @@ class UploadProcessorTask(BaseCodecovTask):
         should_delete_archive: bool,
         *,
         upload: Upload,
-        **kwargs,
     ):
         res = report_service.build_report_from_raw_content(current_report, upload)
         archive_url = upload.storage_path
