@@ -268,7 +268,7 @@ class TestChecksWithFallback(object):
     ):
         mock_repo_provider.create_check_run = Mock(
             side_effect=TorngitClientGeneralError(
-                403, response="No Access", message="No Access"
+                403, response_data="No Access", message="No Access"
             )
         )
 
@@ -312,7 +312,7 @@ class TestChecksWithFallback(object):
     async def test_checks_failure(self, sample_comparison, mocker, mock_repo_provider):
         mock_repo_provider.create_check_run = Mock(
             side_effect=TorngitClientGeneralError(
-                409, response="No Access", message="No Access"
+                409, response_data="No Access", message="No Access"
             )
         )
 
@@ -1088,7 +1088,7 @@ class TestPatchChecksNotifier(object):
         # Test exception handling when there's a TorngitClientError
         mock_repo_provider.get_compare = Mock(
             side_effect=TorngitClientGeneralError(
-                400, response="Error", message="Error"
+                400, response_data="Error", message="Error"
             )
         )
         result = await notifier.notify(sample_comparison)

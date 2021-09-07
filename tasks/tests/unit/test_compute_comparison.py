@@ -53,7 +53,12 @@ class TestComputeComparisonTask(object):
         assert json.loads(data_in_storage) == {
             "files": [],
             "changes_summary": {
-                "patch_totals": {"hits": 0, "misses": 0, "partials": 0}
+                "patch_totals": {
+                    "hits": 0,
+                    "misses": 0,
+                    "partials": 0,
+                    "coverage": None,
+                }
             },
         }
 
@@ -135,6 +140,11 @@ class TestComputeComparisonTask(object):
                 }
             ],
             "changes_summary": {
-                "patch_totals": {"hits": 0, "misses": 0, "partials": 0}
+                "patch_totals": {
+                    "hits": 0,
+                    "misses": 0,
+                    "partials": 0,
+                    "coverage": None,
+                }
             },
         }
