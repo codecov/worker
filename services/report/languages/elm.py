@@ -6,7 +6,7 @@ from services.report.languages.base import BaseLanguageProcessor
 
 class ElmProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
-        return bool(content.get("coverageData"))
+        return isinstance(content, dict) and bool(content.get("coverageData"))
 
     def process(
         self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None

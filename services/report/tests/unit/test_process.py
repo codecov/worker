@@ -721,6 +721,12 @@ class TestProcessReport(BaseTestCase):
                     ),
                 ),
             ),
+            (
+                "salesforce.from_json",
+                ParsedUploadedReportFile(
+                    filename=None, file_contents=BytesIO(b'[{"name": "banana"}]'),
+                ),
+            ),
         ],
     )
     def test_detect(self, lang, report):
@@ -734,6 +740,26 @@ class TestProcessReport(BaseTestCase):
             )
             assert res == lang
             assert func.called
+
+    @pytest.mark.parametrize(
+        "report",
+        [
+            (
+                ParsedUploadedReportFile(
+                    filename=None, file_contents=BytesIO(b'[{"a": "banana"}]'),
+                )
+            )
+        ],
+    )
+    def test_detect_nothing_found(self, report):
+        res = process.process_report(
+            report=report,
+            commit_yaml=None,
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str,
+        )
+        assert res is None
 
     def test_xxe_entity_not_called(self, mocker):
         report_xxe_xml = """<?xml version="1.0"?>
