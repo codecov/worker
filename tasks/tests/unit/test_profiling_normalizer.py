@@ -50,7 +50,6 @@ async def test_run_async_simple_normalizing_run(
     res = await task.run_async(dbsession, profiling_upload_id=puf.id)
     assert res["successful"]
     qwerty = json.loads(mock_storage.read_file("bucket", res["location"]).decode())
-    print(qwerty)
     assert qwerty == sample_open_telemetry_normalized
 
 
