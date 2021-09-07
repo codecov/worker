@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 from shared.storage.exceptions import FileNotInStorageError
@@ -10,6 +11,20 @@ from database.tests.factories.profiling import (
 )
 from helpers.clock import get_utc_now
 from tasks.profiling_collection import ProfilingCollectionTask
+
+here = Path(__file__)
+
+
+@pytest.fixture
+def sample_open_telemetry_normalized():
+    with open(here.parent / "samples/sample_opentelem_normalized.json", "r") as file:
+        return json.load(file)
+
+
+@pytest.fixture
+def sample_open_telemetry_collected():
+    with open(here.parent / "samples/sample_opentelem_collected.json", "r") as file:
+        return json.load(file)
 
 
 @pytest.mark.asyncio
@@ -32,7 +47,7 @@ async def test_run_async_simple_run_no_existing_data(
 
 
 @pytest.mark.asyncio
-async def test_run_async_simple_run_no_existing_data_new_uploads(
+async def test_run_async_simple_run_no_existing_data_yes_new_uploads(
     dbsession, mock_storage, mock_configuration, mock_redis, mocker
 ):
     mock_delay = mocker.patch("tasks.profiling_collection.profiling_summarization_task")
@@ -40,7 +55,17 @@ async def test_run_async_simple_run_no_existing_data_new_uploads(
     mock_storage.write_file(
         "bucket",
         "raw_upload_location",
-        json.dumps({"files": {"banana.py": {"5": 10, "68": 87}}}),
+        json.dumps(
+            {
+                "runs": [
+                    {
+                        "execs": [
+                            {"filename": "banana.py", "lines": {"5": 10, "68": 87},},
+                        ]
+                    }
+                ]
+            }
+        ),
     )
     pcf = ProfilingCommitFactory.create(joined_location=None)
     dbsession.add(pcf)
@@ -59,6 +84,42 @@ async def test_run_async_simple_run_no_existing_data_new_uploads(
         "files": [{"filename": "banana.py", "ln_ex_ct": [[5, 10], [68, 87]]}],
         "metadata": {"version": "v1"},
     }
+    mock_delay.delay.assert_called_with(profiling_id=pcf.id)
+
+
+@pytest.mark.asyncio
+async def test_run_async_simple_run_no_existing_data_sample_new_uploads(
+    dbsession,
+    mock_storage,
+    mock_configuration,
+    mock_redis,
+    mocker,
+    sample_open_telemetry_normalized,
+    sample_open_telemetry_collected,
+):
+    mock_delay = mocker.patch("tasks.profiling_collection.profiling_summarization_task")
+    mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
+    mock_storage.write_file(
+        "bucket", "raw_upload_location", json.dumps(sample_open_telemetry_normalized),
+    )
+    pcf = ProfilingCommitFactory.create(joined_location=None)
+    dbsession.add(pcf)
+    dbsession.flush()
+    pu = ProfilingUploadFactory.create(
+        profiling_commit=pcf,
+        normalized_at=get_utc_now() - timedelta(seconds=120),
+        normalized_location="raw_upload_location",
+    )
+    dbsession.add(pu)
+    dbsession.flush()
+    task = ProfilingCollectionTask()
+    res = await task.run_async(dbsession, profiling_id=pcf.id)
+    assert res["successful"]
+    print(mock_storage.read_file("bucket", res["location"]).decode())
+    assert (
+        json.loads(mock_storage.read_file("bucket", res["location"]).decode())
+        == sample_open_telemetry_collected
+    )
     mock_delay.delay.assert_called_with(profiling_id=pcf.id)
 
 
@@ -124,10 +185,17 @@ class TestProfilingCollectionTask(object):
             "raw_upload_location",
             json.dumps(
                 {
-                    "files": {
-                        "apple.py": {"2": 10, "101": 11},
-                        "banana.py": {"5": 1, "6": 2},
-                    }
+                    "runs": [
+                        {
+                            "execs": [
+                                {
+                                    "filename": "apple.py",
+                                    "lines": {"2": 10, "101": 11},
+                                },
+                                {"filename": "banana.py", "lines": {"5": 1, "6": 2}},
+                            ]
+                        }
+                    ]
                 }
             ),
         )
@@ -139,12 +207,116 @@ class TestProfilingCollectionTask(object):
         dbsession.add(pu)
         dbsession.flush()
         res = task.join_profiling_uploads(pcf, [pu])
+        print(res)
         assert res == {
             "files": [
-                {"filename": "banana.py", "ln_ex_ct": [(5, 11), (68, 87), (6, 2)]},
+                {"filename": "banana.py", "ln_ex_ct": [(5, 11), (6, 2), (68, 87)]},
                 {"filename": "apple.py", "ln_ex_ct": [(2, 10), (101, 11)]},
             ],
             "metadata": {"version": "v1"},
+        }
+
+    def test_join_profiling_uploads_with_existing_data_and_sample_uploads(
+        self,
+        dbsession,
+        mock_storage,
+        mock_configuration,
+        sample_open_telemetry_normalized,
+    ):
+        task = ProfilingCollectionTask()
+        pcf = ProfilingCommitFactory.create(joined_location="location")
+        dbsession.add(pcf)
+        dbsession.flush()
+        mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
+        mock_storage.write_file(
+            "bucket",
+            "location",
+            json.dumps(
+                {
+                    "files": [
+                        {
+                            "filename": "helpers/logging_config.py",
+                            "ln_ex_ct": [[5, 10], [28, 87]],
+                        }
+                    ],
+                    "metadata": {"version": "v1"},
+                }
+            ),
+        )
+        mock_storage.write_file(
+            "bucket",
+            "raw_upload_location",
+            json.dumps(sample_open_telemetry_normalized),
+        )
+        pu = ProfilingUploadFactory.create(
+            profiling_commit=pcf,
+            normalized_at=get_utc_now() - timedelta(seconds=120),
+            normalized_location="raw_upload_location",
+        )
+        dbsession.add(pu)
+        dbsession.flush()
+        res = task.join_profiling_uploads(pcf, [pu])
+        assert (sorted(x["filename"] for x in res["files"])) == [
+            "database/base.py",
+            "database/engine.py",
+            "database/models/core.py",
+            "database/models/reports.py",
+            "helpers/cache.py",
+            "helpers/logging_config.py",
+            "helpers/pathmap/pathmap.py",
+            "helpers/pathmap/tree.py",
+            "services/archive.py",
+            "services/bots.py",
+            "services/path_fixer/__init__.py",
+            "services/path_fixer/fixpaths.py",
+            "services/path_fixer/user_path_fixes.py",
+            "services/path_fixer/user_path_includes.py",
+            "services/redis.py",
+            "services/report/__init__.py",
+            "services/report/languages/base.py",
+            "services/report/languages/clover.py",
+            "services/report/languages/cobertura.py",
+            "services/report/languages/csharp.py",
+            "services/report/languages/helpers.py",
+            "services/report/languages/jacoco.py",
+            "services/report/languages/jetbrainsxml.py",
+            "services/report/languages/mono.py",
+            "services/report/languages/scoverage.py",
+            "services/report/languages/vb.py",
+            "services/report/languages/vb2.py",
+            "services/report/parser.py",
+            "services/report/raw_upload_processor.py",
+            "services/report/report_processor.py",
+            "services/repository.py",
+            "services/storage.py",
+            "services/yaml/reader.py",
+            "tasks/base.py",
+            "tasks/upload.py",
+            "tasks/upload_processor.py",
+        ]
+        # Asserting them all will produce a huge file. We will leave that full comparison
+        # to a different test
+        filename_mapping = {data["filename"]: data for data in res["files"]}
+        assert filename_mapping["services/report/languages/mono.py"] == {
+            "filename": "services/report/languages/mono.py",
+            "ln_ex_ct": [(9, 2)],
+        }
+        assert filename_mapping["helpers/logging_config.py"] == {
+            "filename": "helpers/logging_config.py",
+            "ln_ex_ct": [
+                (5, 10),
+                (11, 5),
+                (12, 5),
+                (13, 5),
+                (14, 5),
+                (15, 5),
+                (24, 5),
+                (25, 5),
+                (26, 5),
+                (27, 5),
+                (28, 92),
+                (30, 5),
+            ],
         }
 
     def test_merge_into_upload_file_does_not_exist(

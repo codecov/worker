@@ -1,9 +1,10 @@
 import json
 import logging
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, Sequence, Tuple
 
+from shared.celery_config import profiling_collection_task_name
 from shared.storage.exceptions import FileNotInStorageError
 from sqlalchemy.orm.session import Session
 
@@ -20,7 +21,7 @@ log = logging.getLogger(__name__)
 
 class ProfilingCollectionTask(BaseCodecovTask):
 
-    name = "app.tasks.profilingcollectiontask"
+    name = profiling_collection_task_name
 
     async def run_async(
         self, db_session: Session, *, profiling_id: int, **kwargs,
@@ -83,29 +84,31 @@ class ProfilingCollectionTask(BaseCodecovTask):
 
     def merge_into(self, archive_service, existing_results, upload):
         try:
-            file_mapping = {
-                data["filename"]: data for data in existing_results["files"]
-            }
             upload_data = json.loads(
                 archive_service.read_file(upload.normalized_location)
             )
-            for single_file in upload_data["files"]:
-                if single_file in file_mapping:
-                    file_dict = file_mapping[single_file]
-                else:
-                    file_dict = {"filename": single_file, "ln_ex_ct": []}
-                    existing_results["files"].append(file_dict)
-                counter = Counter()
-                for ln, ln_ct in file_dict["ln_ex_ct"]:
-                    counter[ln] += ln_ct
-                for ln, ln_ct in upload_data["files"][single_file].items():
-                    counter[int(ln)] += ln_ct
-                file_dict["ln_ex_ct"] = [(a, b) for (a, b) in counter.items()]
         except FileNotInStorageError:
             log.info(
                 "Skipping profiling upload because we can't fetch it from storage",
                 extra=dict(upload_id=upload.id),
             )
+            return
+        file_mapping = {data["filename"]: data for data in existing_results["files"]}
+        counters = defaultdict(Counter)
+        for run in upload_data["runs"]:
+            for single_file in run["execs"]:
+                filename = single_file["filename"]
+                for ln, ln_ct in single_file["lines"].items():
+                    counters[filename][int(ln)] += ln_ct
+        for filename, file_counter in counters.items():
+            if filename in file_mapping:
+                file_dict = file_mapping[filename]
+            else:
+                file_dict = {"filename": filename, "ln_ex_ct": []}
+                existing_results["files"].append(file_dict)
+            for ln, ln_ct in file_dict["ln_ex_ct"]:
+                file_counter[ln] += ln_ct
+            file_dict["ln_ex_ct"] = [(a, b) for (a, b) in sorted(file_counter.items())]
 
     def store_results(self, profiling, joined_execution_counts):
         archive_service = ArchiveService(profiling.repository)

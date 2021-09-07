@@ -1,9 +1,11 @@
 import dataclasses
 import json
 import logging
+from base64 import b64decode
 from io import BytesIO
 from typing import Dict, List
 
+from shared.celery_config import profiling_normalization_task_name
 from shared.storage.exceptions import FileNotInStorageError
 from sqlalchemy.orm.session import Session
 
@@ -21,7 +23,7 @@ log = logging.getLogger(__name__)
 
 class ProfilingNormalizerTask(BaseCodecovTask):
 
-    name = "app.tasks.profilingnormalizertask"
+    name = profiling_normalization_task_name
 
     async def run_async(
         self, db_session: Session, *, profiling_upload_id: int, **kwargs,
@@ -102,23 +104,33 @@ class ProfilingNormalizerTask(BaseCodecovTask):
         Returns:
             Dict: Description
         """
-        res = {}
+        runs = []
+        number_spans = 0
+        files_dict = {}
         for element in data["spans"]:
-            if "coverage" in element:
+            if "codecov" in element and "coverage" in element["codecov"]:
+                number_spans += 1
                 report_file_upload = ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(element["coverage"].encode())
+                    filename=None,
+                    file_contents=BytesIO(b64decode(element["codecov"]["coverage"])),
                 )
                 report = process_report(
                     report_file_upload, current_yaml, 1, {}, lambda x, bases_to_try: x
                 )
-                if report:
-                    self._extract_report_into_dict(report, res)
-        return {"files": res}
+                runs.append(self._extract_report_into_dict(report, element, files_dict))
+        for name in files_dict:
+            files_dict[name]["executable_lines"] = sorted(
+                files_dict[name]["executable_lines"]
+            )
+        return {"runs": runs, "files": files_dict}
 
-    def _extract_report_into_dict(self, report, into_dict):
+    def _extract_report_into_dict(self, report, element, files_dict):
+        into_dict = {"group": element["name"], "execs": []}
         for filename in report.files:
-            file_dict = into_dict.setdefault(filename, {})
+            file_dict = files_dict.setdefault(filename, {"executable_lines": set()})
             file_report = report.get(filename)
+            into_file_dict = {"filename": filename, "lines": {}}
+            into_dict["execs"].append(into_file_dict)
             for line_number, line in file_report.lines:
                 (
                     coverage,
@@ -133,9 +145,10 @@ class ProfilingNormalizerTask(BaseCodecovTask):
                     if coverage and isinstance(coverage, int)
                     else int(coverage)
                 )
-                if line_number not in file_dict:
-                    file_dict[line_number] = 0
-                file_dict[line_number] += line_count
+                file_dict["executable_lines"].add(line_number)
+                if line_count > 0:
+                    into_file_dict["lines"][line_number] = line_count
+        return into_dict
 
     def store_normalization_results(self, profiling: ProfilingUpload, results):
         archive_service = ArchiveService(profiling.profiling_commit.repository)
