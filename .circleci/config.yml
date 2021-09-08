@@ -82,7 +82,7 @@ jobs:
             git clone --depth 5 ssh://git@github.com/codecov/autotest.git
             cd autotest/
             echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-            docker-compose -f docker-compose-acceptance.yml up -d
+            docker-compose -f docker-compose-acceptance.yml up -d --quiet-pull
             sleep 10
       - run:
           name: Standards Coverage Comparison
