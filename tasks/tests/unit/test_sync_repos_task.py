@@ -1,9 +1,9 @@
-import json
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
+from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import Owner, Repository
@@ -379,7 +379,7 @@ class TestSyncReposTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_only_public_repos_already_in_db(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
+        self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
     ):
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -431,8 +431,27 @@ class TestSyncReposTaskUnit(object):
         assert len(repos) == 3
 
     @pytest.mark.asyncio
+    async def test_sync_repos_lock_error(
+        self, mocker, mock_configuration, dbsession, mock_redis
+    ):
+        user = OwnerFactory.create(
+            organizations=[],
+            service="github",
+            username="1nf1n1t3l00p",
+            permission=[],
+            service_id="45343385",
+        )
+        dbsession.add(user)
+        dbsession.flush()
+        mock_redis.lock.side_effect = LockError
+        await SyncReposTask().run_async(
+            dbsession, ownerid=user.ownerid, using_integration=False
+        )
+        assert user.permission == []  # there were no private repos to add
+
+    @pytest.mark.asyncio
     async def test_only_public_repos_not_in_db(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
+        self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
     ):
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -463,7 +482,7 @@ class TestSyncReposTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_sync_repos_using_integration(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
+        self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
     ):
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -525,7 +544,7 @@ class TestSyncReposTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_sync_repos_using_integration_no_repos(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
+        self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
     ):
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -580,7 +599,7 @@ class TestSyncReposTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_sync_repos_no_github_access(
-        self, mocker, mock_configuration, dbsession, mock_owner_provider
+        self, mocker, mock_configuration, dbsession, mock_owner_provider, mock_redis
     ):
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         repos = [RepositoryFactory.create(private=True) for _ in range(10)]
@@ -607,7 +626,7 @@ class TestSyncReposTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_sync_repos_timeout(
-        self, mocker, mock_configuration, dbsession, mock_owner_provider
+        self, mocker, mock_configuration, dbsession, mock_owner_provider, mock_redis
     ):
         repos = [RepositoryFactory.create(private=True) for _ in range(10)]
         dbsession.add_all(repos)

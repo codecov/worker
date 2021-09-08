@@ -2,14 +2,14 @@ import logging
 from datetime import datetime
 
 from celery.exceptions import SoftTimeLimitExceeded
+from redis.exceptions import LockError
 from shared.celery_config import sync_repos_task_name
 from shared.torngit.exceptions import TorngitClientError
-from sqlalchemy.dialects.postgresql import insert
 
 from app import celery_app
 from database.models import Owner, Repository
-from helpers.environment import is_enterprise
 from services.owner import get_owner_provider_service
+from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class SyncReposTask(BaseCodecovTask):
         ownerid,
         username=None,
         using_integration=False,
-        **kwargs
+        **kwargs,
     ):
         log.info(
             "Sync repos",
@@ -56,12 +56,25 @@ class SyncReposTask(BaseCodecovTask):
 
         assert owner, "Owner not found"
 
-        git = get_owner_provider_service(owner, using_integration)
-
-        if using_integration:
-            await self.sync_repos_using_integration(db_session, git, ownerid, username)
-        else:
-            await self.sync_repos(db_session, git, owner, username, using_integration)
+        lock_name = f"syncrepos_lock_{ownerid}_{using_integration}"
+        redis_connection = get_redis_connection()
+        try:
+            with redis_connection.lock(
+                lock_name,
+                timeout=max(300, self.hard_time_limit_task),
+                blocking_timeout=5,
+            ):
+                git = get_owner_provider_service(owner, using_integration)
+                if using_integration:
+                    await self.sync_repos_using_integration(
+                        db_session, git, ownerid, username
+                    )
+                else:
+                    await self.sync_repos(
+                        db_session, git, owner, username, using_integration
+                    )
+        except LockError:
+            log.warning("Unable to sync repos because another task is already doing it")
 
     async def sync_repos_using_integration(self, db_session, git, ownerid, username):
         repo_service_ids = await git.list_repos_using_installation(username)
