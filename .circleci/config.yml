@@ -70,8 +70,6 @@ jobs:
     machine: true
     steps:
       - checkout
-      - setup_remote_docker:
-          version: 20.10.6
       - run:
           name: Pull Latest Worker Image
           command: |
