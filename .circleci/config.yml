@@ -79,7 +79,7 @@ jobs:
           name: Clone Autotest and Start Acceptance Testing Containers
           command: |
             cd ..
-            git clone --depth 5 ssh://git@github.com/codecov/autotest.git
+            git clone --depth 5 ssh://git@github.com/codecov/autotest.git > /dev/null 2>&1
             cd autotest/
             echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
             docker-compose -f docker-compose-acceptance.yml up -d > /dev/null 2>&1
