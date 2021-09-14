@@ -310,6 +310,7 @@ class CompareCommit(MixinBaseClass, CodecovBaseModel):
     compare_commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
     compare_commit = relationship(Commit, foreign_keys=[compare_commit_id])
     report_storage_path = Column(types.String(150))
+    patch_totals = Column(postgresql.JSON)
     state = Column(
         postgresql.ENUM(
             CompareCommitState, values_callable=lambda x: [e.value for e in x]

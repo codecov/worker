@@ -50,6 +50,12 @@ class TestComputeComparisonTask(object):
         data_in_storage = mock_storage.read_file(
             "archive", comparison.report_storage_path
         )
+        assert comparison.patch_totals == {
+            "hits": 0,
+            "misses": 0,
+            "partials": 0,
+            "coverage": None,
+        }
         assert json.loads(data_in_storage) == {
             "files": [],
             "changes_summary": {

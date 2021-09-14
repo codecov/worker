@@ -30,6 +30,9 @@ class ComputeComparisonTask(BaseCodecovTask):
         impacted_files = await self.serialize_impacted_files(comparison_proxy)
         path = self.store_results(comparison, impacted_files)
         comparison.report_storage_path = path
+        comparison.patch_totals = impacted_files.get("changes_summary").get(
+            "patch_totals"
+        )
         comparison.state = CompareCommitState.processed
         log.info("Computing comparison successful", extra=log_extra)
         return {"successful": True}
