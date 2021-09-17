@@ -1,14 +1,13 @@
 import json
 import logging
 import statistics
-from datetime import datetime, timedelta
-from typing import Dict, Sequence, Tuple
 
+from shared.celery_config import profiling_summarization_task_name
 from shared.storage.exceptions import FileNotInStorageError
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
-from database.models.profiling import ProfilingCommit, ProfilingUpload
+from database.models.profiling import ProfilingCommit
 from services.archive import ArchiveService
 from tasks.base import BaseCodecovTask
 
@@ -17,7 +16,7 @@ log = logging.getLogger(__name__)
 
 class ProfilingSummarizationTask(BaseCodecovTask):
 
-    name = "app.tasks.profilingsummarizationtask"
+    name = profiling_summarization_task_name
 
     async def run_async(
         self, db_session: Session, *, profiling_id: int, **kwargs,

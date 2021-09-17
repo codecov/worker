@@ -6,7 +6,7 @@ from database.tests.factories.profiling import (
     ProfilingCommitFactory,
     ProfilingUploadFactory,
 )
-from tasks.find_uncollected_profilings import FindUncollectedProfilingsTask
+from tasks.profiling_find_uncollected import FindUncollectedProfilingsTask
 
 
 class TestFindUncollectedProfilingsTask(object):
@@ -23,10 +23,10 @@ class TestFindUncollectedProfilingsTask(object):
     @pytest.mark.asyncio
     async def test_run_cron_task_one_matching_profiling(self, dbsession, mocker):
         mocked_get_utc_now = mocker.patch(
-            "tasks.find_uncollected_profilings.get_utc_now"
+            "tasks.profiling_find_uncollected.get_utc_now"
         )
         mocked_collection_task = mocker.patch(
-            "tasks.find_uncollected_profilings.profiling_collection_task",
+            "tasks.profiling_find_uncollected.profiling_collection_task",
             delay=mocker.MagicMock(
                 return_value=mocker.MagicMock(
                     as_tuple=mocker.MagicMock(return_value=("1234",))

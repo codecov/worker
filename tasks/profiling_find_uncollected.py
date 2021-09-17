@@ -1,9 +1,9 @@
 from datetime import timedelta
 
+from shared.celery_config import profiling_finding_task_name
 from sqlalchemy import func
 
 from app import celery_app
-from celery_config import find_uncollected_profilings_task_name
 from database.models.profiling import ProfilingCommit, ProfilingUpload
 from helpers.clock import get_utc_now
 from tasks.crontasks import CodecovCronTask
@@ -12,7 +12,7 @@ from tasks.profiling_collection import profiling_collection_task
 
 class FindUncollectedProfilingsTask(CodecovCronTask):
 
-    name = find_uncollected_profilings_task_name
+    name = profiling_finding_task_name
 
     @classmethod
     def get_min_seconds_interval_between_executions(cls):
