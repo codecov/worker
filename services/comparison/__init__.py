@@ -127,8 +127,8 @@ class ComparisonProxy(object):
                         original_paths = set([c.path for c in self._changes])
                         new_paths = set([c.path for c in rust_changes])
                         if original_paths != new_paths:
-                            only_on_new = new_paths - original_paths
-                            only_on_original = original_paths - new_paths
+                            only_on_new = sorted(new_paths - original_paths)
+                            only_on_original = sorted(original_paths - new_paths)
                             log.info(
                                 "There are differences between python changes and rust changes",
                                 extra=dict(
