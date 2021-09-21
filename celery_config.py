@@ -12,7 +12,7 @@ from codecovopentelem import get_codecov_opentelemetry_instances
 from opentelemetry import trace
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from shared.celery_config import BaseCeleryConfig, profiling_finding_task_name
 
 from helpers.cache import RedisBackend, cache
@@ -60,7 +60,6 @@ def init_celery_tracing(*args, **kwargs):
         )
         provider.add_span_processor(generator)
         provider.add_span_processor(BatchSpanProcessor(exporter))
-        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
         CeleryInstrumentor().instrument()
 
 
