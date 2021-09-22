@@ -7,6 +7,7 @@ from typing import Dict, Sequence, Tuple
 from shared.celery_config import profiling_collection_task_name
 from shared.storage.exceptions import FileNotInStorageError
 from sqlalchemy.orm.session import Session
+from sqlalchemy.sql.expression import func
 
 from app import celery_app
 from database.models.profiling import ProfilingCommit, ProfilingUpload
@@ -37,11 +38,11 @@ class ProfilingCollectionTask(BaseCodecovTask):
             ) = self.find_uploads_to_join(
                 profiling, get_utc_now() - timedelta(seconds=60)
             )
-            profiling.last_joined_uploads_at = new_last_joined_at
             joined_execution_counts = self.join_profiling_uploads(
                 profiling, new_profiling_uploads_to_join
             )
             location = self.store_results(profiling, joined_execution_counts)
+            profiling.last_joined_uploads_at = new_last_joined_at
             db_session.commit()
             task_id = profiling_summarization_task.delay(profiling_id=profiling_id)
             return {
@@ -51,7 +52,10 @@ class ProfilingCollectionTask(BaseCodecovTask):
             }
 
     def find_uploads_to_join(
-        self, profiling: ProfilingCommit, before: datetime
+        self,
+        profiling: ProfilingCommit,
+        before: datetime,
+        max_number_of_results: int = 500,
     ) -> Tuple[Sequence[ProfilingUpload], datetime]:
         new_now = before
         db_session = profiling.get_db_session()
@@ -63,8 +67,27 @@ class ProfilingCollectionTask(BaseCodecovTask):
             new_profiling_uploads_to_join = new_profiling_uploads_to_join.filter(
                 ProfilingUpload.normalized_at > profiling.last_joined_uploads_at
             )
+        new_profiling_uploads_to_join = new_profiling_uploads_to_join.order_by(
+            ProfilingUpload.normalized_at
+        )
+        latest_upload_time = (
+            db_session.query(func.max(ProfilingUpload.normalized_at))
+            .filter(
+                ProfilingUpload.id.in_(
+                    new_profiling_uploads_to_join.with_entities(
+                        ProfilingUpload.id
+                    ).limit(max_number_of_results)
+                )
+            )
+            .first()
+        )[0]
+        if latest_upload_time:
+            new_now = latest_upload_time
+            new_profiling_uploads_to_join = new_profiling_uploads_to_join.filter(
+                ProfilingUpload.normalized_at <= latest_upload_time
+            ).order_by(ProfilingUpload.normalized_at)
         return (
-            new_profiling_uploads_to_join.order_by(ProfilingUpload.normalized_at),
+            new_profiling_uploads_to_join,
             new_now,
         )
 
