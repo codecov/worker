@@ -9,6 +9,8 @@ from helpers.clock import get_utc_now
 from tasks.crontasks import CodecovCronTask
 from tasks.profiling_collection import profiling_collection_task
 
+MIN_INTERVAL_PROFILINGS_HOURS = 4
+
 
 class FindUncollectedProfilingsTask(CodecovCronTask):
 
@@ -19,7 +21,7 @@ class FindUncollectedProfilingsTask(CodecovCronTask):
         return 3300
 
     async def run_cron_task(self, db_session, *args, **kwargs):
-        min_interval_profilings = timedelta(hours=12)
+        min_interval_profilings = timedelta(hours=MIN_INTERVAL_PROFILINGS_HOURS)
         now = get_utc_now()
         query = (
             db_session.query(ProfilingCommit.id, func.count())
@@ -35,7 +37,7 @@ class FindUncollectedProfilingsTask(CodecovCronTask):
                 | (
                     (
                         ProfilingCommit.last_joined_uploads_at
-                        < ProfilingUpload.created_at
+                        < ProfilingUpload.normalized_at
                     )
                     & (
                         ProfilingCommit.last_joined_uploads_at

@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -342,7 +342,7 @@ class TestProfilingCollectionTask(object):
         assert existing_result == {"files": {}}
 
     def test_find_uploads_to_join_first_joining(self, dbsession):
-        before = datetime(2021, 5, 2, 0, 3, 4)
+        before = datetime(2021, 5, 2, 0, 3, 4).replace(tzinfo=timezone.utc)
         task = ProfilingCollectionTask()
         pcf = ProfilingCommitFactory.create()
         another_pfc = ProfilingCommitFactory.create()
@@ -350,23 +350,25 @@ class TestProfilingCollectionTask(object):
         dbsession.add(another_pfc)
         dbsession.flush()
         first_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 0, 12, 14)
+            profiling_commit=pcf,
+            normalized_at=datetime(2021, 5, 1, 0, 12, 14).replace(tzinfo=timezone.utc),
         )
         second_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, normalized_at=datetime(2021, 6, 10, 0, 12, 14)
+            profiling_commit=pcf,
+            normalized_at=datetime(2021, 6, 10, 0, 12, 14).replace(tzinfo=timezone.utc),
         )
         dbsession.add(first_pu)
         dbsession.add(second_pu)
         res, when = task.find_uploads_to_join(pcf, before)
         assert list(res) == [first_pu]
-        assert when == before
+        assert when == datetime(2021, 5, 1, 0, 12, 14).replace(tzinfo=timezone.utc)
         # ensuring we don't get data from different pfcs
         another_res, another_when = task.find_uploads_to_join(another_pfc, before)
         assert list(another_res) == []
         assert another_when == before
 
     def test_find_uploads_to_join_already_joined(self, dbsession):
-        before = datetime(2021, 5, 1, 4, 0, 0)
+        before = datetime(2021, 5, 1, 4, 0, 0).replace(tzinfo=timezone.utc)
         task = ProfilingCollectionTask()
         pcf = ProfilingCommitFactory.create(
             last_joined_uploads_at=datetime(2021, 5, 1, 1, 2, 3)
@@ -374,16 +376,20 @@ class TestProfilingCollectionTask(object):
         dbsession.add(pcf)
         dbsession.flush()
         first_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 1, 1, 1)
+            profiling_commit=pcf,
+            normalized_at=datetime(2021, 5, 1, 1, 1, 1).replace(tzinfo=timezone.utc),
         )
         second_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 1, 30, 0)
+            profiling_commit=pcf,
+            normalized_at=datetime(2021, 5, 1, 1, 30, 0).replace(tzinfo=timezone.utc),
         )
         third_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 2, 1, 0)
+            profiling_commit=pcf,
+            normalized_at=datetime(2021, 5, 1, 2, 1, 0).replace(tzinfo=timezone.utc),
         )
         fourth_pu = ProfilingUploadFactory.create(
-            profiling_commit=pcf, normalized_at=datetime(2021, 5, 1, 4, 12, 14)
+            profiling_commit=pcf,
+            normalized_at=datetime(2021, 5, 1, 4, 12, 14).replace(tzinfo=timezone.utc),
         )
         dbsession.add(first_pu)
         dbsession.add(second_pu)
@@ -391,4 +397,9 @@ class TestProfilingCollectionTask(object):
         dbsession.add(fourth_pu)
         res, when = task.find_uploads_to_join(pcf, before)
         assert list(res) == [second_pu, third_pu]
-        assert when == before
+        assert when == third_pu.normalized_at
+        limited_res, limited_when = task.find_uploads_to_join(
+            pcf, before, max_number_of_results=1
+        )
+        assert list(limited_res) == [second_pu]
+        assert limited_when == second_pu.normalized_at
