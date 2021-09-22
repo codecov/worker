@@ -11,7 +11,10 @@ def _get_latest_profiling_commit(comparison):
     db_session = comparison.head.commit.get_db_session()
     return (
         db_session.query(ProfilingCommit)
-        .filter(ProfilingCommit.repoid == comparison.base.commit.repoid)
+        .filter(
+            ProfilingCommit.repoid == comparison.base.commit.repoid,
+            ~ProfilingCommit.summarized_location.is_(None),
+        )
         .order_by(ProfilingCommit.last_summarized_at.desc())
         .first()
     )
