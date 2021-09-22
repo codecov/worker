@@ -12,6 +12,7 @@ from sqlalchemy.sql.expression import func
 from app import celery_app
 from database.models.profiling import ProfilingCommit, ProfilingUpload
 from helpers.clock import get_utc_now
+from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
@@ -38,19 +39,27 @@ class ProfilingCollectionTask(BaseCodecovTask):
             ) = self.find_uploads_to_join(
                 profiling, get_utc_now() - timedelta(seconds=60)
             )
+            log.info(
+                "Joining profiling uploads into profiling commit",
+                extra=dict(
+                    profiling_id=profiling_id,
+                    number_uploads=new_profiling_uploads_to_join.count(),
+                ),
+            )
             joined_execution_counts = self.join_profiling_uploads(
                 profiling, new_profiling_uploads_to_join
             )
             location = self.store_results(profiling, joined_execution_counts)
             profiling.last_joined_uploads_at = new_last_joined_at
             db_session.commit()
-            task_id = profiling_summarization_task.delay(profiling_id=profiling_id)
+            task_id = profiling_summarization_task.delay(profiling_id=profiling_id).id
             return {
                 "successful": True,
                 "location": location,
                 "summarization_task_id": task_id,
             }
 
+    @metrics.timer("worker.internal.task.find_uploads_to_join")
     def find_uploads_to_join(
         self,
         profiling: ProfilingCommit,
@@ -91,6 +100,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
             new_now,
         )
 
+    @metrics.timer("worker.internal.task.join_profiling_uploads")
     def join_profiling_uploads(
         self, profiling: "ProfilingCommit", new_profiling_uploads_to_join
     ) -> Dict:
@@ -133,7 +143,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
                 file_counter[ln] += ln_ct
             file_dict["ln_ex_ct"] = [(a, b) for (a, b) in sorted(file_counter.items())]
 
-    def store_results(self, profiling, joined_execution_counts):
+    def store_results(self, profiling, joined_execution_counts) -> str:
         archive_service = ArchiveService(profiling.repository)
         location = archive_service.write_profiling_collection_result(
             profiling.version_identifier, json.dumps(joined_execution_counts)
