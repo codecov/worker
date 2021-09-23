@@ -44,9 +44,13 @@ def get_paths_from_flags(yaml_dict: UserYaml, flags):
     if flags:
         res = []
         for flag in flags:
-            res.extend(
-                (yaml_dict.get_flag_configuration(flag) or {}).get("paths") or []
-            )
+            flag_configuration = yaml_dict.get_flag_configuration(flag)
+            if flag_configuration is not None:
+                paths_from_flag = flag_configuration.get("paths")
+                if paths_from_flag is None:
+                    # flag is implicitly associated with all paths, so no filter here
+                    return []
+                res.extend(paths_from_flag)
         return list(set(res))
     else:
         return []
