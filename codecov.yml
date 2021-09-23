@@ -5,3 +5,5 @@ ignore:
   - "**/conftest.py"
   - "**tests**/test_*.py"
   - "database/tests/factories/**"
+comment:
+  show_critical_paths: true
