@@ -4,7 +4,7 @@ import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report
 
-from database.enums import CompareCommitState
+from database.enums import CompareCommitError, CompareCommitState
 from database.tests.factories import CompareCommitFactory
 from services.report import ReportService
 from tasks.compute_comparison import ComputeComparisonTask
@@ -154,3 +154,49 @@ class TestComputeComparisonTask(object):
                 }
             },
         }
+
+    @pytest.mark.asyncio
+    async def test_set_state_to_error_missing_base_report(self, dbsession, mocker):
+        comparison = CompareCommitFactory.create()
+        dbsession.add(comparison)
+        dbsession.flush()
+        task = ComputeComparisonTask()
+        mocked_get_current_yaml = mocker.patch(
+            "tasks.compute_comparison.get_current_yaml",
+        )
+        mocked_get_current_yaml.return_value = {}
+        mocker.patch.object(
+            ReadOnlyReport, "should_load_rust_version", return_value=True
+        )
+        mocker.patch.object(
+            ReportService, "get_existing_report_for_commit", return_value=None,
+        )
+        await task.run_async(dbsession, comparison.id)
+        dbsession.flush()
+        assert comparison.state is CompareCommitState.error
+        assert comparison.error is CompareCommitError.missing_base_report
+
+    @pytest.mark.asyncio
+    async def test_set_state_to_error_missing_head_report(
+        self, dbsession, mocker, sample_report
+    ):
+        comparison = CompareCommitFactory.create()
+        dbsession.add(comparison)
+        dbsession.flush()
+        task = ComputeComparisonTask()
+        mocked_get_current_yaml = mocker.patch(
+            "tasks.compute_comparison.get_current_yaml",
+        )
+        mocked_get_current_yaml.return_value = {}
+        mocker.patch.object(
+            ReadOnlyReport, "should_load_rust_version", return_value=True
+        )
+        mocker.patch.object(
+            ReportService,
+            "get_existing_report_for_commit",
+            side_effect=(ReadOnlyReport.create_from_report(sample_report), None),
+        )
+        await task.run_async(dbsession, comparison.id)
+        dbsession.flush()
+        assert comparison.state is CompareCommitState.error
+        assert comparison.error is CompareCommitError.missing_head_report

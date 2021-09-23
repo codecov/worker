@@ -70,6 +70,9 @@ class ComparisonProxy(object):
     def has_base_report(self):
         return self.comparison.has_base_report()
 
+    def has_head_report(self):
+        return self.comparison.has_head_report()
+
     @property
     def head(self):
         return self.comparison.head

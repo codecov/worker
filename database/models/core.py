@@ -9,6 +9,7 @@ from sqlalchemy.schema import FetchedValue
 
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.enums import (
+    CompareCommitError,
     CompareCommitState,
     Decoration,
     Notification,
@@ -314,6 +315,11 @@ class CompareCommit(MixinBaseClass, CodecovBaseModel):
     state = Column(
         postgresql.ENUM(
             CompareCommitState, values_callable=lambda x: [e.value for e in x]
+        )
+    )
+    error = Column(
+        postgresql.ENUM(
+            CompareCommitError, values_callable=lambda x: [e.value for e in x]
         )
     )
 
