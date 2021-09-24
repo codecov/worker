@@ -337,7 +337,7 @@ class TestProfilingCollectionTask(object):
             read_file=mocker.MagicMock(side_effect=FileNotInStorageError)
         )
         existing_result = {"files": {}}
-        res = task.merge_into(archive_service, existing_result, pu)
+        res = task.merge_into(archive_service, existing_result, [pu])
         assert res is None
         assert existing_result == {"files": {}}
 
