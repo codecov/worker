@@ -32,6 +32,7 @@ print(' --hiddenimport sqlalchemy.ext.baked')
 print(' --hiddenimport tasks')
 print(' --hiddenimport tornado.curl_httpclient')
 print(' --hiddenimport celery_config')
+print(' --hiddenimport opentelemetry-sdk')
 ")
 
 mkdir src
