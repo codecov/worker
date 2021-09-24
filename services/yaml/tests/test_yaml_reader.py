@@ -50,7 +50,7 @@ class TestYamlReader(object):
                 }
             }
         )
-        flags_to_use = ["sample_1", "sample_2", "sample_4", "sample_5"]
+        flags_to_use = ["sample_1", "sample_4", "sample_5"]
         expected_result = [
             "path_1/.*",
             r"path_2/.*\.py",
@@ -60,3 +60,17 @@ class TestYamlReader(object):
         ]
         result = get_paths_from_flags(yaml_dict, flags_to_use)
         assert set(expected_result) == set(result)
+        assert [] == get_paths_from_flags(
+            yaml_dict, ["sample_1", "sample_2", "sample_4", "sample_5"]
+        )
+        assert [
+            "path_1/.*",
+            r"path_2/.*\.py",
+            "path_5/.*",
+            r"path_6/.*/[^\/]+",
+            r"path_8/specific\.py",
+        ] == sorted(
+            get_paths_from_flags(
+                yaml_dict, ["sample_1", "sample_4", "sample_5", "banana"]
+            )
+        )
