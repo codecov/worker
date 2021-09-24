@@ -221,7 +221,9 @@ workflows:
             tags:
               only: /.*/
       - standards-coverage-comparison:
-          context: "DockerHub Push Context"
+          context:
+          - "DockerHub Push Context"
+          - "circleci google deploy context"
           requires:
             - build
       - staging:
