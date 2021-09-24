@@ -1,29 +1,30 @@
-import re
 import logging
-from decimal import Decimal
-from typing import Sequence, List
-from itertools import starmap
+import re
 from base64 import b64encode
 from collections import namedtuple
+from decimal import Decimal
+from itertools import starmap
+from typing import List, Sequence
 
-from services.notification.changes import get_changes
-from services.urls import (
-    get_pull_url,
-    get_commit_url,
-    get_pull_graph_url,
-    get_commit_url_from_commit_sha,
-)
-from services.yaml.reader import read_yaml_field, round_number, get_minimum_precision
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
-from services.notification.changes import Change
+
 from helpers.metrics import metrics
-from services.notification.comparison import ComparisonProxy
+from helpers.reports import get_totals_from_file_in_reports
+from services.comparison import ComparisonProxy
+from services.comparison.changes import Change
+from services.comparison.overlays import OverlayType
+from services.urls import (
+    get_commit_url,
+    get_commit_url_from_commit_sha,
+    get_pull_graph_url,
+    get_pull_url,
+)
+from services.yaml.reader import get_minimum_precision, read_yaml_field, round_number
 
 log = logging.getLogger(__name__)
 
-null = namedtuple("_", ["totals"])(None)
 zero_change_regex = re.compile("0.0+%?")
 
 
@@ -412,8 +413,8 @@ class FileSectionWriter(BaseSectionWriter):
                 _diff["type"],
                 path,
                 make_metrics(
-                    base_report.get(path, null).totals or False,
-                    head_report.get(path, null).totals or False,
+                    get_totals_from_file_in_reports(base_report, path) or False,
+                    get_totals_from_file_in_reports(head_report, path) or False,
                     _diff["totals"],
                     self.show_complexity,
                     self.current_yaml,
@@ -425,7 +426,6 @@ class FileSectionWriter(BaseSectionWriter):
             for path, _diff in (diff["files"] if diff else {}).items()
             if _diff.get("totals")
         ]
-
         if files_in_diff or changes:
             table_header = (
                 "| Coverage \u0394 |"
@@ -444,17 +444,27 @@ class FileSectionWriter(BaseSectionWriter):
             # get limit of results to show
             limit = int(self.layout.split(":")[1] if ":" in self.layout else 10)
             mentioned = []
+            files_in_critical = set()
+            if self.settings.get("show_critical_paths", False):
+                all_files = set(f[1] for f in files_in_diff or []) | set(
+                    c.path for c in changes or []
+                )
+                overlay = comparison.get_overlay(OverlayType.line_execution_count)
+                files_in_critical = set(
+                    overlay.search_files_for_critical_changes(all_files)
+                )
 
             def tree_cell(typ, path, metrics, _=None):
                 if path not in mentioned:
                     # mentioned: for files that are in diff and changes
                     mentioned.append(path)
-                    return "| {rm}[{path}]({compare}/diff?src=pr&el=tree#diff-{hash}){rm} {metrics}".format(
+                    return "| {rm}[{path}]({compare}/diff?src=pr&el=tree#diff-{hash}){rm}{file_tags} {metrics}".format(
                         rm="~~" if typ == "deleted" else "",
                         path=escape_markdown(ellipsis(path, 50, False)),
                         compare=links["pull"],
                         hash=b64encode(path.encode()).decode(),
                         metrics=metrics,
+                        file_tags=" **Critical**" if path in files_in_critical else "",
                     )
 
             # add to comment
@@ -475,8 +485,10 @@ class FileSectionWriter(BaseSectionWriter):
                         "changed",
                         change.path,
                         make_metrics(
-                            base_report.get(change.path, null).totals or False,
-                            head_report.get(change.path, null).totals or False,
+                            get_totals_from_file_in_reports(base_report, change.path)
+                            or False,
+                            get_totals_from_file_in_reports(head_report, change.path)
+                            or False,
                             None,
                             self.show_complexity,
                             self.current_yaml,
@@ -517,7 +529,7 @@ class FlagSectionWriter(BaseSectionWriter):
                 flags.append(
                     {
                         "name": name,
-                        "before": base_flags.get(name, null).totals,
+                        "before": get_totals_from_file_in_reports(base_flags, name),
                         "after": flag.totals,
                         "diff": flag.apply_diff(diff)
                         if walk(diff, ("files",))

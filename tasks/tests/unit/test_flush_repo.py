@@ -2,15 +2,15 @@ import pytest
 from sqlalchemy import null
 from sqlalchemy.dialects import postgresql
 
-from tasks.flush_repo import FlushRepoTask
+from database.models import Repository
 from database.tests.factories import (
-    RepositoryFactory,
+    BranchFactory,
     CommitFactory,
     PullFactory,
-    BranchFactory,
+    RepositoryFactory,
 )
-from database.models import Repository
 from services.archive import ArchiveService
+from tasks.flush_repo import FlushRepoTask
 
 
 class TestFlushRepo(object):

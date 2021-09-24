@@ -1,13 +1,13 @@
 from datetime import datetime
 
-from services.license import (
-    calculate_reason_for_not_being_valid,
-    InvalidLicenseReason,
-    has_valid_license,
-    requires_license,
-    is_properly_licensed,
-)
 from database.tests.factories import OwnerFactory, RepositoryFactory
+from services.license import (
+    InvalidLicenseReason,
+    calculate_reason_for_not_being_valid,
+    has_valid_license,
+    is_properly_licensed,
+    requires_license,
+)
 
 
 class TestLicenseService(object):

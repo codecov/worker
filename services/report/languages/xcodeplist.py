@@ -1,7 +1,8 @@
 import plistlib
 
 from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine, LineSession
+from shared.reports.types import LineSession, ReportLine
+
 from services.report.languages.base import BaseLanguageProcessor
 
 

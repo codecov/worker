@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-import logging
-import app
 import argparse
+import logging
 import os
 
-from services.storage import get_storage_client
 from shared.config import get_config
-from helpers.version import get_current_version
 from shared.storage.exceptions import BucketAlreadyExistsError
+
+import app
+from helpers.version import get_current_version
+from services.storage import get_storage_client
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +58,9 @@ def deal_worker_command(parser, codecov):
             ("debug" if codecov.debug else "info"),
             "-Q",
             codecov.queue,
+            "-B",
+            "-s",
+            "/home/codecov/celerybeat-schedule",  # TODO find file that can work on production and enterprise
         ]
     )
 

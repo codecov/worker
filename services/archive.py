@@ -1,23 +1,28 @@
+import json
 import logging
-
-from datetime import datetime
-from hashlib import md5
 from base64 import b16encode
+from datetime import datetime
 from enum import Enum
+from hashlib import md5
+from typing import Any
+from uuid import uuid4
 
 from shared.config import get_config
+from shared.storage.base import BaseStorageService
+
 from helpers.metrics import metrics
 from services.storage import get_storage_client
-from shared.storage.base import BaseStorageService
-from typing import Any
 
 log = logging.getLogger(__name__)
 
 
 class MinioEndpoints(Enum):
     chunks = "{version}/repos/{repo_hash}/commits/{commitid}/chunks.txt"
-    reports_json = "{version}/repos/{repo_hash}/commits/{commitid}/report.json"
+    profiling_summary = "{version}/repos/{repo_hash}/profilingsummaries/{profiling_commit_id}/{location}"
     raw = "v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt"
+    profiling_collection = "{version}/repos/{repo_hash}/profilingcollections/{profiling_commit_id}/{location}"
+    computed_comparison = "{version}/repos/{repo_hash}/comparisons/{comparison_id}.json"
+    profiling_normalization = "{version}/repos/{repo_hash}/profilingnormalizations/{profiling_commit_id}/{location}"
 
     def get_path(self, **kwaargs) -> str:
         return self.value.format(**kwaargs)
@@ -54,21 +59,9 @@ class ArchiveService(object):
             self.root = get_config("services", "minio", "bucket", default="archive")
         else:
             self.root = bucket
-        self.region = get_config("services", "minio", "region", default="us-east-1")
-        self.enterprise = bool(get_config("setup", "enterprise_license"))
-
         self.storage = get_storage_client()
         log.debug("Getting archive hash")
         self.storage_hash = self.get_archive_hash(repository)
-
-        # create storage based on the root, this will throw acceptable
-        # exceptions if the bucket exists. ResponseError if it doesn't.
-        # log.debug("Creating root storage")
-        # try:
-        #     self.storage.create_root_storage(self.root, self.region)
-        # except BucketAlreadyExistsError:
-        #     pass
-        # log.debug("Created root storage")
 
     def get_now(self) -> datetime:
         return datetime.now()
@@ -80,13 +73,6 @@ class ArchiveService(object):
 
     def storage_client(self) -> BaseStorageService:
         return self.storage
-
-    """
-    Getter. Returns true if the current configuration is enterprise.
-    """
-
-    def is_enterprise(self) -> bool:
-        return self.enterprise
 
     """
     Generates a hash key from repo specific information.
@@ -156,6 +142,48 @@ class ArchiveService(object):
 
         return path
 
+    def write_computed_comparison(self, comparison, data) -> str:
+        path = MinioEndpoints.computed_comparison.get_path(
+            version="v4", repo_hash=self.storage_hash, comparison_id=comparison.id,
+        )
+        self.write_file(path, json.dumps(data))
+        return path
+
+    def write_profiling_collection_result(self, version_identifier, data):
+        location = uuid4().hex
+        path = MinioEndpoints.profiling_collection.get_path(
+            version="v4",
+            repo_hash=self.storage_hash,
+            profiling_commit_id=version_identifier,
+            location=location,
+        )
+
+        self.write_file(path, data)
+        return path
+
+    def write_profiling_summary_result(self, version_identifier, data):
+        location = f"{uuid4().hex}.txt"
+        path = MinioEndpoints.profiling_summary.get_path(
+            version="v4",
+            repo_hash=self.storage_hash,
+            profiling_commit_id=version_identifier,
+            location=location,
+        )
+
+        self.write_file(path, data)
+        return path
+
+    def write_profiling_normalization_result(self, version_identifier, data):
+        location = f"{uuid4().hex}.txt"
+        path = MinioEndpoints.profiling_normalization.get_path(
+            version="v4",
+            repo_hash=self.storage_hash,
+            profiling_commit_id=version_identifier,
+            location=location,
+        )
+        self.write_file(path, data)
+        return path
+
     """
     Convenience method to write a chunks.txt file to storage.
     """
@@ -194,8 +222,8 @@ class ArchiveService(object):
     def delete_repo_files(self) -> int:
         path = "v4/repos/{}".format(self.storage_hash)
         objects = self.storage.list_folder_contents(self.root, path)
-        self.storage.delete_files(self.root, [obj["name"] for obj in objects])
-        return len(objects)
+        results = self.storage.delete_files(self.root, [obj["name"] for obj in objects])
+        return len(results)
 
     """
     Convenience method to read a chunks file from the archive.

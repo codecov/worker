@@ -1,24 +1,26 @@
-import pytest
 from decimal import Decimal
-from datetime import datetime
+
+import pytest
+from shared.reports.readonly import ReadOnlyReport
+from shared.reports.resources import Report, ReportFile
+from shared.reports.types import LineSession, ReportLine, ReportTotals
+from shared.torngit.exceptions import (
+    TorngitClientError,
+    TorngitObjectNotFoundError,
+    TorngitServerUnreachableError,
+)
+from shared.utils.sessions import Session
+
+from database.tests.factories import RepositoryFactory
+from services.decoration import Decoration
+from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message import (
+    Change,
+    FileSectionWriter,
     diff_to_string,
     format_number_to_str,
     sort_by_importance,
-    Change,
-)
-from services.decoration import Decoration
-from database.tests.factories import RepositoryFactory
-from services.notification.notifiers.base import NotificationResult
-from shared.reports.types import ReportTotals, ReportLine, LineSession
-from shared.reports.readonly import ReadOnlyReport
-from shared.reports.resources import Report, ReportFile
-from shared.utils.sessions import Session
-from shared.torngit.exceptions import (
-    TorngitObjectNotFoundError,
-    TorngitServerUnreachableError,
-    TorngitClientError,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 
@@ -2703,3 +2705,184 @@ class TestCommentNotifier(object):
             print(li)
             assert exp == res
         assert result == expected_result
+
+
+class TestFileSectionWriter(object):
+    def test_filesection_no_extra_settings(self, sample_comparison, mocker):
+        section_writer = FileSectionWriter(
+            sample_comparison.head.commit.repository,
+            "layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={},
+        )
+        changes = [
+            Change(
+                path="file_2.py",
+                in_diff=True,
+                totals=ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=-2,
+                    misses=1,
+                    partials=0,
+                    coverage=-23.333330000000004,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            ),
+            Change(
+                path="unrelated.py",
+                in_diff=False,
+                totals=ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=-3,
+                    misses=2,
+                    partials=0,
+                    coverage=-43.333330000000004,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            ),
+            Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
+        ]
+        lines = list(
+            section_writer.write_section(
+                sample_comparison,
+                {
+                    "files": {
+                        "file_1.go": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=2,
+                                misses=1,
+                                coverage=66.66,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        }
+                    }
+                },
+                changes,
+                links={"pull": "pull.link"},
+            )
+        )
+        assert lines == [
+            "| [Impacted Files](pull.link?src=pr&el=tree) | Coverage Δ | |",
+            "|---|---|---|",
+            "| [file\\_1.go](pull.link/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
+            "| [unrelated.py](pull.link/diff?src=pr&el=tree#diff-dW5yZWxhdGVkLnB5) | | |",
+            "| [file\\_2.py](pull.link/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
+            "| [added.py](pull.link/diff?src=pr&el=tree#diff-YWRkZWQucHk=) | | |",
+        ]
+
+    def test_file_with_critical(self, sample_comparison, mocker):
+        critical_path_report = mocker.MagicMock(
+            get_critical_files_filenames=mocker.MagicMock(
+                return_value=["file_1.go", "added.py"]
+            )
+        )
+        mocker.patch(
+            "services.comparison.overlays.critical_path._load_critical_path_report",
+            return_value=critical_path_report,
+        )
+        section_writer = FileSectionWriter(
+            sample_comparison.head.commit.repository,
+            "layout",
+            show_complexity=False,
+            settings={"show_critical_paths": True},
+            current_yaml={},
+        )
+        changes = [
+            Change(
+                path="file_2.py",
+                in_diff=True,
+                totals=ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=-2,
+                    misses=1,
+                    partials=0,
+                    coverage=-23.333330000000004,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            ),
+            Change(
+                path="unrelated.py",
+                in_diff=False,
+                totals=ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=-3,
+                    misses=2,
+                    partials=0,
+                    coverage=-43.333330000000004,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            ),
+            Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
+        ]
+        lines = list(
+            section_writer.write_section(
+                sample_comparison,
+                {
+                    "files": {
+                        "file_1.go": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=2,
+                                misses=1,
+                                coverage=66.66,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        }
+                    }
+                },
+                changes,
+                links={"pull": "pull.link"},
+            )
+        )
+        assert lines == [
+            "| [Impacted Files](pull.link?src=pr&el=tree) | Coverage Δ | |",
+            "|---|---|---|",
+            "| [file\\_1.go](pull.link/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) **Critical** | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
+            "| [unrelated.py](pull.link/diff?src=pr&el=tree#diff-dW5yZWxhdGVkLnB5) | | |",
+            "| [file\\_2.py](pull.link/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
+            "| [added.py](pull.link/diff?src=pr&el=tree#diff-YWRkZWQucHk=) **Critical** | | |",
+        ]

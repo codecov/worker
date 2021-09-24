@@ -1,7 +1,7 @@
 import pytest
 
-from services.owner import get_owner_provider_service
 from database.tests.factories import OwnerFactory
+from services.owner import get_owner_provider_service
 
 
 class TestOwnerServiceTestCase(object):

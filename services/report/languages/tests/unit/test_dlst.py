@@ -1,6 +1,7 @@
-from tests.base import BaseTestCase
-from services.report.languages import dlst
 import pytest
+
+from services.report.languages import dlst
+from tests.base import BaseTestCase
 
 RAW = b"""       |empty
       1|coverage

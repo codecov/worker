@@ -1,12 +1,13 @@
 import logging
-from typing import Sequence, Mapping, Any
+from typing import Any, Mapping, Sequence
+
 import shared.torngit as torngit
 from shared.yaml import (
     fetch_current_yaml_from_provider_via_reference as shared_fetch_current_yaml_from_provider_via_reference,
 )
 
-from helpers.cache import cache
 from database.models import Commit
+from helpers.cache import cache
 from services.yaml.parser import parse_yaml_file
 
 log = logging.getLogger(__name__)
@@ -20,4 +21,11 @@ async def fetch_commit_yaml_from_provider(
         commit.commitid, repository_service
     )
     if yaml_content:
-        return parse_yaml_file(yaml_content)
+        return parse_yaml_file(
+            yaml_content,
+            show_secrets_for=(
+                commit.repository.service,
+                commit.repository.owner.service_id,
+                commit.repository.service_id,
+            ),
+        )

@@ -1,8 +1,7 @@
-from json import loads, dumps
+from json import dumps, loads
 
-from tests.base import BaseTestCase
 from services.report.languages import coveralls
-
+from tests.base import BaseTestCase
 
 txt = """
 {

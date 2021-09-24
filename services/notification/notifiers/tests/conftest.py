@@ -1,14 +1,14 @@
 import pytest
-from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.reports.readonly import ReadOnlyReport
+from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.utils.sessions import Session
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.notification.types import FullCommit, Comparison
-from services.notification.comparison import ComparisonProxy
-from services.repository import EnrichedPull
 from services.archive import ArchiveService
+from services.comparison import ComparisonProxy
+from services.comparison.types import Comparison, FullCommit
 from services.report import ReportService
+from services.repository import EnrichedPull
 
 
 def get_small_report(flags=None):

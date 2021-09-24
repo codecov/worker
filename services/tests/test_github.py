@@ -1,7 +1,7 @@
 import pytest
 
-from services.github import get_github_integration_token
 from helpers.exceptions import RepositoryWithoutValidBotError
+from services.github import get_github_integration_token
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
 # one on which the code ran

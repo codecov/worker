@@ -1,30 +1,30 @@
-import pytest
 from datetime import datetime
-import mock
 
+import mock
+import pytest
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
 )
-from shared.torngit.base import TorngitBaseAdapter
 
-from services.repository import (
-    get_repo_provider_service,
-    fetch_appropriate_parent_for_commit,
-    get_or_create_author,
-    update_commit_from_provider_info,
-    get_repo_provider_service_by_id,
-    fetch_and_update_pull_request_information_from_commit,
-    fetch_and_update_pull_request_information,
-    _pick_best_base_comparedto_pair,
-)
 from database.models import Owner
 from database.tests.factories import (
-    RepositoryFactory,
-    OwnerFactory,
     CommitFactory,
+    OwnerFactory,
     PullFactory,
+    RepositoryFactory,
+)
+from services.repository import (
+    _pick_best_base_comparedto_pair,
+    fetch_and_update_pull_request_information,
+    fetch_and_update_pull_request_information_from_commit,
+    fetch_appropriate_parent_for_commit,
+    get_or_create_author,
+    get_repo_provider_service,
+    get_repo_provider_service_by_id,
+    update_commit_from_provider_info,
 )
 
 
@@ -914,11 +914,21 @@ class TestPullRequestFetcher(object):
             report_json=None,
             repository=repository,
         )
+        second_comparedto_commit = CommitFactory.create(
+            repository=repository,
+            branch="master",
+            merged=True,
+            timestamp=datetime(2019, 5, 6),
+        )
         compared_to_commit = CommitFactory.create(
-            repository=repository, branch="master", merged=True
+            repository=repository,
+            branch="master",
+            merged=True,
+            timestamp=datetime(2019, 7, 15),
         )
         dbsession.add(pull)
         dbsession.add(commit)
+        dbsession.add(second_comparedto_commit)
         dbsession.add(compared_to_commit)
         dbsession.flush()
         current_yaml = {}

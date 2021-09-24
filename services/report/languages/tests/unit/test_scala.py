@@ -1,8 +1,7 @@
 from json import dumps
 
-from tests.base import BaseTestCase
 from services.report.languages import scala
-
+from tests.base import BaseTestCase
 
 json = {
     "total": 87,

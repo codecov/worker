@@ -1,5 +1,6 @@
 import pytest
-from services.notification.comparison import ComparisonProxy, FilteredComparison
+
+from services.comparison import ComparisonProxy, FilteredComparison
 
 
 class TestFilteredComparison(object):

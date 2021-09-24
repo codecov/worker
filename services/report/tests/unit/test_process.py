@@ -1,24 +1,23 @@
-from unittest.mock import patch, Mock
 from io import BytesIO
-from lxml import etree
-import pytest
 from json import loads
 from pathlib import Path
+from unittest.mock import Mock, patch
 
-from shared.yaml import UserYaml
+import pytest
+from lxml import etree
+from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import ReportTotals
 from shared.utils.sessions import Session
-from shared.reports.resources import Report, ReportFile, ReportLine, LineSession
+from shared.yaml import UserYaml
 
-from helpers.exceptions import ReportEmptyError, CorruptRawReportError
-from tests.base import BaseTestCase
+from helpers.exceptions import CorruptRawReportError, ReportEmptyError
 from services.report import raw_upload_processor as process
 from services.report.parser import (
-    RawReportParser,
-    ParsedUploadedReportFile,
     ParsedRawReport,
+    ParsedUploadedReportFile,
+    RawReportParser,
 )
-
+from tests.base import BaseTestCase
 
 here = Path(__file__)
 folder = here.parent
@@ -187,19 +186,20 @@ class TestProcessRawUpload(BaseTestCase):
         original_report.add_session(Session(flags=["unit"]))
         assert len(original_report.sessions) == 1
 
-        result = process.process_raw_upload(
-            commit_yaml=None,
-            original_report=original_report,
-            reports=RawReportParser.parse_raw_report_from_io(
-                BytesIO("\n".join(report_data).encode())
-            ),
-            session=Session(flags=["fruits"]),
-            flags=[],
-        )
-        assert len(result.sessions) == 2
-        assert sorted(result.flags.keys()) == ["fruits", "unit"]
-        assert result.files == ["file_1.go", "file_2.py"]
-        assert result.flags["unit"].totals == ReportTotals(
+        with pytest.raises(ReportEmptyError):
+            process.process_raw_upload(
+                commit_yaml=None,
+                original_report=original_report,
+                reports=RawReportParser.parse_raw_report_from_io(
+                    BytesIO("\n".join(report_data).encode())
+                ),
+                session=Session(flags=["fruits"]),
+                flags=[],
+            )
+        assert len(original_report.sessions) == 2
+        assert sorted(original_report.flags.keys()) == ["fruits", "unit"]
+        assert original_report.files == ["file_1.go", "file_2.py"]
+        assert original_report.flags["unit"].totals == ReportTotals(
             files=2,
             lines=10,
             hits=10,
@@ -214,7 +214,7 @@ class TestProcessRawUpload(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
-        assert result.flags["fruits"].totals == ReportTotals(
+        assert original_report.flags["fruits"].totals == ReportTotals(
             files=0,
             lines=0,
             hits=0,
@@ -229,7 +229,7 @@ class TestProcessRawUpload(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
-        general_totals, json_data = result.to_database()
+        general_totals, json_data = original_report.to_database()
         assert general_totals == {
             "f": 2,
             "n": 10,
@@ -721,6 +721,12 @@ class TestProcessReport(BaseTestCase):
                     ),
                 ),
             ),
+            (
+                "salesforce.from_json",
+                ParsedUploadedReportFile(
+                    filename=None, file_contents=BytesIO(b'[{"name": "banana"}]'),
+                ),
+            ),
         ],
     )
     def test_detect(self, lang, report):
@@ -734,6 +740,26 @@ class TestProcessReport(BaseTestCase):
             )
             assert res == lang
             assert func.called
+
+    @pytest.mark.parametrize(
+        "report",
+        [
+            (
+                ParsedUploadedReportFile(
+                    filename=None, file_contents=BytesIO(b'[{"a": "banana"}]'),
+                )
+            )
+        ],
+    )
+    def test_detect_nothing_found(self, report):
+        res = process.process_report(
+            report=report,
+            commit_yaml=None,
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str,
+        )
+        assert res is None
 
     def test_xxe_entity_not_called(self, mocker):
         report_xxe_xml = """<?xml version="1.0"?>

@@ -47,8 +47,12 @@ jobs:
       - run:
           name: Running linter
           command: |
-            pip3 install -Iv black==19.10b0
+            echo "Installing..."
+            pip3 install -Iv black==19.10b0 isort
+            echo "Linting..."
             black --check .
+            echo "Sorting..."
+            isort --profile black --check .
   build:
     executor: codecov-deploy
     steps:
@@ -120,7 +124,7 @@ jobs:
       - run:
           name: codecov
           command: |
-            wget https://github.com/codecov/uploader/releases/download/v0.1.0_1681/codecov-alpine
+            wget https://github.com/codecov/uploader/releases/download/v0.1.0_8470/codecov-alpine
             chmod +x ./codecov-alpine
             ./codecov-alpine -R . -F integration -f integration.coverage.xml -Z
             ./codecov-alpine -R . -F unit -f unit.coverage.xml -Z
@@ -188,8 +192,13 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - run: make dockerhub.deploy GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
+      - run:
+          name: Pull Latest Worker Image and Deploy to DockerHub
+          command: |
+            docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
+            make -f Makefile.circle pull-latest
+            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+            make -f Makefile.circle dockerhub-deploy-master
 
 workflows:
   version: 2
@@ -222,8 +231,8 @@ workflows:
               only: /.*/
       - standards-coverage-comparison:
           context:
-          - "DockerHub Push Context"
-          - "circleci google deploy context"
+            - "DockerHub Push Context"
+            - "circleci google deploy context"
           requires:
             - build
       - staging:
@@ -246,8 +255,8 @@ workflows:
               only: production
       - enterprise:
           context:
-          - "DockerHub Push Context"
-          - "circleci google deploy context"
+            - "DockerHub Push Context"
+            - "circleci google deploy context"
           requires:
             - build-enterprise
             - test
@@ -270,8 +279,8 @@ workflows:
               ignore: /.*/
       - enterprise-release:
           context:
-          - "DockerHub Push Context"
-          - "circleci google deploy context"
+            - "DockerHub Push Context"
+            - "circleci google deploy context"
           requires:
             - enterprise
             - hold
@@ -281,6 +290,7 @@ workflows:
             branches:
               ignore: /.*/
       - deploy:
+          context: "circleci google deploy context"
           requires:
             - build
             - test
@@ -288,9 +298,13 @@ workflows:
             branches:
               only: production
       - dockerhub:
+          context:
+            - "DockerHub Push Context"
+            - "circleci google deploy context"
           requires:
             - build
             - test
+            - standards-coverage-comparison
           filters:
             branches:
               only: master

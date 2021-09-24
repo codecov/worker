@@ -1,11 +1,12 @@
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+
 from services.report.languages.base import BaseLanguageProcessor
 
 
 class SalesforceProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
-        return bool(type(content) is list)
+        return bool(content) and isinstance(content, list) and "name" in content[0]
 
     def process(
         self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None

@@ -56,6 +56,11 @@ build.portable:
 		--build-arg COMMIT_SHA="${sha}" \
 		--build-arg RELEASE_VERSION="${release_version}"
 
+lint:
+	pip install black==19.10b0 isort
+	black --check .
+	isort --profile black .
+
 test:
 	python -m pytest --cov=./
 
@@ -77,15 +82,6 @@ push.enterprise:
 	docker push codecov/enterprise-worker:${release_version}
 	docker tag codecov/enterprise-worker:${release_version} codecov/enterprise-worker:latest-stable
 	docker push codecov/enterprise-worker:latest-stable
-
-# Triggers the deploy job depending on if the command is called locally, in a PR or on master.
-dockerhub.deploy: dockerhub.deploy-$(release_env)
-
-# Deploy the docker container as the latest image for master/tags.
-dockerhub.deploy-master: build.portable
-	docker tag codecov/$(name)-portable codecov/$(name):${release_version}-${sha}
-	docker push codecov/$(name):latest
-	docker push codecov/$(name):${release_version}-${sha}
 
 update-requirements:
 	pip install pip-tools==6.1.0

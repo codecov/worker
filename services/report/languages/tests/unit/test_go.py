@@ -1,7 +1,7 @@
-from tests.base import BaseTestCase
-from services.report.languages import go
 from shared.reports.types import ReportTotals
 
+from services.report.languages import go
+from tests.base import BaseTestCase
 
 txt = b"""mode: atomic
 source:1.1,1.10 1 1

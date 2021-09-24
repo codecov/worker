@@ -1,32 +1,31 @@
 import pytest
-
-from shared.reports.resources import Report
+from celery.exceptions import MaxRetriesExceededError, Retry
+from redis.exceptions import LockError
 from shared.celery_config import new_user_activated_task_name
-from celery.exceptions import Retry, MaxRetriesExceededError
+from shared.reports.resources import Report
 from shared.torngit.exceptions import (
     TorngitClientGeneralError,
     TorngitServer5xxCodeError,
 )
-from redis.exceptions import LockError
 from shared.yaml import UserYaml
 
-from helpers.exceptions import RepositoryWithoutValidBotError
-from tasks.notify import NotifyTask
-from services.decoration import DecorationDetails
-from services.report import ReportService
-from services.repository import EnrichedPull
-from services.notification.notifiers.base import (
-    NotificationResult,
-    AbstractBaseNotifier,
-)
-from services.notification import NotificationService
-from database.enums import Notification, Decoration
+from database.enums import Decoration, Notification
 from database.tests.factories import (
-    RepositoryFactory,
     CommitFactory,
     OwnerFactory,
     PullFactory,
+    RepositoryFactory,
 )
+from helpers.exceptions import RepositoryWithoutValidBotError
+from services.decoration import DecorationDetails
+from services.notification import NotificationService
+from services.notification.notifiers.base import (
+    AbstractBaseNotifier,
+    NotificationResult,
+)
+from services.report import ReportService
+from services.repository import EnrichedPull
+from tasks.notify import NotifyTask
 
 
 @pytest.fixture

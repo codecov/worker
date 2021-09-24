@@ -1,25 +1,24 @@
 import logging
 from contextlib import nullcontext
+from typing import Dict
 
+from shared.analytics_tracking import track_event
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.utils.sessions import SessionType
-from shared.analytics_tracking import track_event
 
+from helpers.environment import is_enterprise
 from helpers.match import match
 from helpers.metrics import metrics
-from helpers.environment import is_enterprise
+from services.comparison import ComparisonProxy
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     Comparison,
     NotificationResult,
 )
 from services.repository import get_repo_provider_service
-from services.notification.comparison import ComparisonProxy
 from services.urls import get_commit_url, get_compare_url
-from services.yaml.reader import get_paths_from_flags
 from services.yaml import read_yaml_field
-from typing import Dict
-
+from services.yaml.reader import get_paths_from_flags
 
 log = logging.getLogger(__name__)
 
@@ -79,21 +78,6 @@ class StatusNotifier(AbstractBaseNotifier):
             else default_rules_behavior
         )
 
-        location = "component" if component_behavior is not None else "default_rules"
-
-        log.debug(
-            "Determined status check behavior to apply",
-            extra=dict(
-                location=location,
-                field_name=field_name,
-                behavior=behavior_to_apply,
-                commit=comparison.head.commit.commitid,
-                repoid=comparison.head.commit.repoid,
-                notifier_name=self.name,
-                notifier_yaml_settings=self.notifier_yaml_settings,
-            ),
-        )
-
         return behavior_to_apply
 
     def flag_coverage_was_uploaded(self, comparison) -> bool:
@@ -106,51 +90,12 @@ class StatusNotifier(AbstractBaseNotifier):
         flags_included_in_status_check = set(
             self.notifier_yaml_settings.get("flags") or []
         )
-
-        # initialize to true if there are no flags defined on the check, otherwise false
-        flag_coverage_was_uploaded = not bool(
-            flags_included_in_status_check
-        )  # fyi: calling "bool" on a set returns false if the set is empty
-
-        if comparison.head.report.sessions and bool(
-            flags_included_in_status_check
-        ):  # only loop if there are flags defined on the check
-            for session_id, session in comparison.head.report.sessions.items():
-                if session.session_type == SessionType.uploaded:
-                    # Figure out which flags in this session are included in this status check
-                    status_flags_in_uploaded_session = set(
-                        getattr(session, "flags", []) or []
-                    ).intersection(flags_included_in_status_check)
-
-                    # if there are any, that means some flag coverage was uploaded for this check, so our work here is done
-                    if bool(status_flags_in_uploaded_session):
-                        log.debug(
-                            "Found flag with uploaded coverage on this check",
-                            extra=dict(
-                                commit=comparison.head.commit.commitid,
-                                repoid=comparison.head.commit.repoid,
-                                notifier_name=self.name,
-                                flags_included_in_status_check=list(
-                                    flags_included_in_status_check
-                                ),
-                                status_flags_in_uploaded_session=status_flags_in_uploaded_session,
-                            ),
-                        )
-
-                        flag_coverage_was_uploaded = True
-                        break
-
-        log.debug(
-            "Determined whether flag coverage on this status check was uploaded",
-            extra=dict(
-                flag_coverage_was_uploaded=flag_coverage_was_uploaded,
-                commit=comparison.head.commit.commitid,
-                repoid=comparison.head.commit.repoid,
-                notifier_name=self.name,
-                flags_included_in_status_check=list(flags_included_in_status_check),
-            ),
+        if not flags_included_in_status_check:
+            return True
+        report_uploaded_flags = comparison.head.report.get_uploaded_flags()
+        return (
+            len(report_uploaded_flags.intersection(flags_included_in_status_check)) > 0
         )
-        return flag_coverage_was_uploaded
 
     async def get_diff(self, comparison: Comparison):
         return await comparison.get_diff()
@@ -182,49 +127,40 @@ class StatusNotifier(AbstractBaseNotifier):
             )
         # Filter the coverage report based on fields in this notification's YAML settings
         # e.g. if "paths" is specified, exclude the coverage not on those paths
-        filtered_comparison = comparison.get_filtered_comparison(
-            **self.get_notifier_filters()
-        )
         try:
-            with nullcontext():
-                with nullcontext():
-                    # If flag coverage wasn't uploaded, apply the appropriate behavior
-                    flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
-                        comparison, "flag_coverage_not_uploaded_behavior"
-                    )
-                    if (
-                        flag_coverage_not_uploaded_behavior != "include"
-                        and not self.flag_coverage_was_uploaded(comparison)
-                    ):
-                        # flag_coverage_not_uploaded_behavior can be either `pass` or `exclude`
-                        log.debug(
-                            "Status check flag coverage was not uploaded, applying behavior based on YAML settings",
-                            extra=dict(
-                                commit=comparison.head.commit.commitid,
-                                repoid=comparison.head.commit.repoid,
-                                notifier_name=self.name,
-                                flag_coverage_not_uploaded_behavior=flag_coverage_not_uploaded_behavior,
-                            ),
-                        )
-
-                        if flag_coverage_not_uploaded_behavior == "pass":
-                            payload = await self.build_payload(filtered_comparison)
-                            payload["state"] = "success"
-                            payload["message"] = (
-                                payload["message"]
-                                + " [Auto passed due to carriedforward or missing coverage]"
-                            )
-                        elif flag_coverage_not_uploaded_behavior == "exclude":
-                            return NotificationResult(
-                                notification_attempted=False,
-                                notification_successful=None,
-                                explanation="exclude_flag_coverage_not_uploaded_checks",
-                                data_sent=None,
-                                data_received=None,
-                            )
-                    else:
-                        payload = await self.build_payload(filtered_comparison)
-
+            # If flag coverage wasn't uploaded, apply the appropriate behavior
+            flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
+                comparison, "flag_coverage_not_uploaded_behavior"
+            )
+            if (
+                flag_coverage_not_uploaded_behavior == "exclude"
+                and not self.flag_coverage_was_uploaded(comparison)
+            ):
+                return NotificationResult(
+                    notification_attempted=False,
+                    notification_successful=None,
+                    explanation="exclude_flag_coverage_not_uploaded_checks",
+                    data_sent=None,
+                    data_received=None,
+                )
+            elif (
+                flag_coverage_not_uploaded_behavior == "pass"
+                and not self.flag_coverage_was_uploaded(comparison)
+            ):
+                filtered_comparison = comparison.get_filtered_comparison(
+                    **self.get_notifier_filters()
+                )
+                payload = await self.build_payload(filtered_comparison)
+                payload["state"] = "success"
+                payload["message"] = (
+                    payload["message"]
+                    + " [Auto passed due to carriedforward or missing coverage]"
+                )
+            else:
+                filtered_comparison = comparison.get_filtered_comparison(
+                    **self.get_notifier_filters()
+                )
+                payload = await self.build_payload(filtered_comparison)
             if (
                 comparison.pull
                 and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)

@@ -1,13 +1,14 @@
-from time import time
 import logging
 from datetime import datetime
-import requests
+from time import time
+
 import jwt
+import requests
 import shared.torngit as torngit
+from shared.config import get_config
 
 from helpers.cache import cache
 from helpers.exceptions import RepositoryWithoutValidBotError
-from shared.config import get_config
 from services.pem import get_pem
 
 log = logging.getLogger(__name__)

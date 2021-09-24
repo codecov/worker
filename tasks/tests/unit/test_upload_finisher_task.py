@@ -2,10 +2,10 @@ import json
 from pathlib import Path
 
 import pytest
-
 from shared.yaml import UserYaml
+
+from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from tasks.upload_finisher import UploadFinisherTask
-from database.tests.factories import CommitFactory, RepositoryFactory, PullFactory
 
 here = Path(__file__)
 

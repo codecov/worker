@@ -1,12 +1,12 @@
 import logging
 
 from celery.exceptions import SoftTimeLimitExceeded
+from shared.celery_config import delete_owner_task_name
 
 from app import celery_app
-from shared.celery_config import delete_owner_task_name
-from tasks.base import BaseCodecovTask
-from database.models import Owner, Repository, Branch, Pull, Commit, LoginSession
+from database.models import Branch, Commit, LoginSession, Owner, Pull, Repository
 from services.archive import ArchiveService
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 

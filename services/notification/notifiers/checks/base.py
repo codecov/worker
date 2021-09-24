@@ -1,23 +1,21 @@
 import logging
 from contextlib import nullcontext
-from services.yaml.reader import get_paths_from_flags
-from shared.torngit.exceptions import TorngitClientError, TorngitError
-from services.notification.notifiers.base import (
-    Comparison,
-    NotificationResult,
-)
-from services.notification.notifiers.status.base import StatusNotifier
 from typing import Dict
+
+from shared.torngit.exceptions import TorngitClientError, TorngitError
+
+from helpers.metrics import metrics
+from services.notification.notifiers.base import Comparison, NotificationResult
+from services.notification.notifiers.status.base import StatusNotifier
+from services.repository import get_repo_provider_service
 from services.urls import (
+    append_tracking_params_to_urls,
     get_commit_url,
     get_compare_url,
-    get_pull_url,
     get_org_account_url,
-    append_tracking_params_to_urls,
+    get_pull_url,
 )
-from services.repository import get_repo_provider_service
-from helpers.metrics import metrics
-
+from services.yaml.reader import get_paths_from_flags
 
 log = logging.getLogger(__name__)
 
@@ -134,45 +132,41 @@ class ChecksNotifier(StatusNotifier):
             )
 
         payload = None
-        filtered_comparison = comparison.get_filtered_comparison(
-            **self.get_notifier_filters()
-        )
         try:
             with nullcontext():
-                payload = await self.build_payload(filtered_comparison)
-
                 # If flag coverage wasn't uploaded, apply the appropriate behavior
                 flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
                     comparison, "flag_coverage_not_uploaded_behavior"
                 )
                 if (
-                    flag_coverage_not_uploaded_behavior != "include"
+                    flag_coverage_not_uploaded_behavior == "exclude"
                     and not self.flag_coverage_was_uploaded(comparison)
                 ):
-                    log.info(
-                        "Status check flag coverage was not uploaded, applying behavior based on YAML settings",
-                        extra=dict(
-                            commit=comparison.head.commit.commitid,
-                            repoid=comparison.head.commit.repoid,
-                            notifier_name=self.name,
-                            flag_coverage_not_uploaded_behavior=flag_coverage_not_uploaded_behavior,
-                        ),
+                    return NotificationResult(
+                        notification_attempted=False,
+                        notification_successful=None,
+                        explanation="exclude_flag_coverage_not_uploaded_checks",
+                        data_sent=None,
+                        data_received=None,
                     )
-
-                    if flag_coverage_not_uploaded_behavior == "pass":
-                        payload["state"] = "success"
-                        payload["output"]["summary"] = (
-                            payload.get("output", {}).get("summary", "")
-                            + " [Auto passed due to carriedforward or missing coverage]"
-                        )
-                    elif flag_coverage_not_uploaded_behavior == "exclude":
-                        return NotificationResult(
-                            notification_attempted=False,
-                            notification_successful=None,
-                            explanation="exclude_flag_coverage_not_uploaded_checks",
-                            data_sent=None,
-                            data_received=None,
-                        )
+                elif (
+                    flag_coverage_not_uploaded_behavior == "pass"
+                    and not self.flag_coverage_was_uploaded(comparison)
+                ):
+                    filtered_comparison = comparison.get_filtered_comparison(
+                        **self.get_notifier_filters()
+                    )
+                    payload = await self.build_payload(filtered_comparison)
+                    payload["state"] = "success"
+                    payload["output"]["summary"] = (
+                        payload.get("output", {}).get("summary", "")
+                        + " [Auto passed due to carriedforward or missing coverage]"
+                    )
+                else:
+                    filtered_comparison = comparison.get_filtered_comparison(
+                        **self.get_notifier_filters()
+                    )
+                    payload = await self.build_payload(filtered_comparison)
             if (
                 comparison.pull
                 and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
@@ -380,6 +374,13 @@ class ChecksNotifier(StatusNotifier):
                 notification_type="checks",
                 org_name=self.repository.owner.name,
             )
+        if payload.get("url"):
+            payload["url"] = append_tracking_params_to_urls(
+                payload["url"],
+                service=self.repository.service,
+                notification_type="checks",
+                org_name=self.repository.owner.name,
+            )
 
         # We need to first create the check run, get that id and update the status
         with metrics.timer(
@@ -412,6 +413,7 @@ class ChecksNotifier(StatusNotifier):
                             "summary": output.get("summary"),
                             "annotations": annotation_page,
                         },
+                        url=payload.get("url"),
                     )
 
         else:
@@ -419,7 +421,7 @@ class ChecksNotifier(StatusNotifier):
                 "worker.services.notifications.notifiers.checks.update_check_run"
             ):
                 await repository_service.update_check_run(
-                    check_id, state, output=output
+                    check_id, state, output=output, url=payload.get("url")
                 )
 
         return NotificationResult(

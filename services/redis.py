@@ -2,8 +2,8 @@ import logging
 import zlib
 from typing import Optional
 
-from shared.config import get_config
 from redis import Redis
+from shared.config import get_config
 
 log = logging.getLogger(__name__)
 

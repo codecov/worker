@@ -1,9 +1,10 @@
-import pytest
 from datetime import datetime
 
+import pytest
+
 from database.tests.factories import OwnerFactory
-from services.license import is_enterprise, _get_now
 from services.billing import is_pr_billing_plan
+from services.license import _get_now, is_enterprise
 
 
 class TestBillingServiceTestCase(object):

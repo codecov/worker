@@ -1,12 +1,12 @@
 import logging
 
-from database.models import Commit
-from shared.yaml import UserYaml
-from shared.validation.exceptions import InvalidYamlException
 from shared.torngit.exceptions import TorngitClientError, TorngitError
+from shared.validation.exceptions import InvalidYamlException
+from shared.yaml import UserYaml
 
-from services.yaml.reader import read_yaml_field
+from database.models import Commit
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
+from services.yaml.reader import read_yaml_field
 
 log = logging.getLogger(__name__)
 

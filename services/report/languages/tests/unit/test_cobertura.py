@@ -1,13 +1,13 @@
-from time import time
 import os
 import xml.etree.cElementTree as etree
+from time import time
+
 import pytest
 
-from tests.base import BaseTestCase
 from helpers.exceptions import ReportExpiredException
-from services.report.languages import cobertura
 from services.path_fixer import PathFixer
-
+from services.report.languages import cobertura
+from tests.base import BaseTestCase
 
 xml = """<?xml version="1.0" ?>
 <!DOCTYPE coverage

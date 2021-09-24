@@ -1,22 +1,19 @@
-import pytest
-from asyncio import TimeoutError as AsyncioTimeoutError, CancelledError
 import os
+from asyncio import CancelledError
+from asyncio import TimeoutError as AsyncioTimeoutError
+
 import mock
-
+import pytest
 from celery.exceptions import SoftTimeLimitExceeded
+from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.yaml import UserYaml
-from shared.reports.resources import ReportLine, ReportFile, Report
 
-from database.enums import Notification, NotificationState, Decoration
-from database.tests.factories import RepositoryFactory
+from database.enums import Decoration, Notification, NotificationState
+from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
+from services.comparison import ComparisonProxy
+from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.notification import NotificationService
 from services.notification.notifiers.base import NotificationResult
-from services.notification.types import Comparison, FullCommit, EnrichedPull
-from services.notification.comparison import ComparisonProxy
-from database.tests.factories import (
-    CommitFactory,
-    PullFactory,
-)
 from services.notification.notifiers.checks import ProjectChecksNotifier
 
 
@@ -231,7 +228,7 @@ class TestNotificationService(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
@@ -368,6 +365,13 @@ class TestNotificationService(object):
             notification_type=Notification.comment,
             decoration_type=Decoration.standard,
         )
+        no_attempt_notifier = mocker.MagicMock(
+            is_enabled=mocker.MagicMock(return_value=True),
+            notify=mock.AsyncMock(),
+            title="no_attempt_notifier",
+            notification_type=Notification.status_project,
+            decoration_type=Decoration.standard,
+        )
         bad_notifier = mocker.MagicMock(
             is_enabled=mocker.MagicMock(return_value=True),
             notify=mock.AsyncMock(),
@@ -387,6 +391,12 @@ class TestNotificationService(object):
             explanation="",
             data_sent={"some": "data"},
         )
+        no_attempt_notifier.notify.return_value = NotificationResult(
+            notification_attempted=False,
+            notification_successful=None,
+            explanation="no_need_to_send",
+            data_sent=None,
+        )
         good_notifier.name = "good_name"
         bad_notifier.name = "bad_name"
         disabled_notifier.name = "disabled_notifier_name"
@@ -394,7 +404,12 @@ class TestNotificationService(object):
         mocker.patch.object(
             NotificationService,
             "get_notifiers_instances",
-            return_value=[bad_notifier, good_notifier, disabled_notifier],
+            return_value=[
+                bad_notifier,
+                good_notifier,
+                disabled_notifier,
+                no_attempt_notifier,
+            ],
         )
         notifications_service = NotificationService(commit.repository, current_yaml)
         with pytest.raises(SoftTimeLimitExceeded):

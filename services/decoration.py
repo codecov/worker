@@ -1,9 +1,10 @@
 import logging
 from dataclasses import dataclass
+
 from sqlalchemy import func
 
-from database.models import Owner
 from database.enums import Decoration
+from database.models import Owner
 from services.billing import is_pr_billing_plan
 from services.repository import EnrichedPull
 

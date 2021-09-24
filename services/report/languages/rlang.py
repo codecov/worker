@@ -1,11 +1,12 @@
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+
 from services.report.languages.base import BaseLanguageProcessor
 
 
 class RlangProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
-        return content.get("uploader") == "R"
+        return isinstance(content, dict) and content.get("uploader") == "R"
 
     def process(
         self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None

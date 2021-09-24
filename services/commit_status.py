@@ -1,6 +1,8 @@
-from shared.config import get_config
-from services.yaml import read_yaml_field
 from typing import List
+
+from shared.config import get_config
+
+from services.yaml import read_yaml_field
 
 
 def _ci_providers() -> List[str]:

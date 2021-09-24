@@ -2,19 +2,18 @@
 
 import logging
 import random
+from typing import Any
 
-
-from shared.utils.sessions import Session
 from shared.reports.resources import Report
+from shared.utils.sessions import Session
 
 from helpers.exceptions import ReportEmptyError
-from services.report.fixes import get_fixes_from_raw
-from services.path_fixer.fixpaths import clean_toc
 from services.path_fixer import PathFixer
-from services.report.report_processor import process_report
+from services.path_fixer.fixpaths import clean_toc
+from services.report.fixes import get_fixes_from_raw
 from services.report.parser import ParsedUploadedReportFile
+from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
-from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -107,9 +106,6 @@ def process_raw_upload(
             if report:
                 temporary_report.merge(report, joined=True)
             path_fixer_to_use.log_abnormalities()
-    if temporary_report:
-        original_report.merge(temporary_report, joined=joined)
-        session.totals = temporary_report.totals
     if path_fixer.calculated_paths.get(None):
         ignored_files = sorted(path_fixer.calculated_paths.pop(None))
         log.info(
@@ -121,8 +117,10 @@ def process_raw_upload(
             ),
         )
 
-    # exit if empty
-    if original_report.is_empty():
+    if temporary_report:
+        original_report.merge(temporary_report, joined=joined)
+        session.totals = temporary_report.totals
+    else:
         raise ReportEmptyError("No files found in report.")
 
     path_with_same_results = [

@@ -1,6 +1,7 @@
+from shared.helpers.numeric import maxint
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
-from shared.helpers.numeric import maxint
+
 from services.report.languages.base import BaseLanguageProcessor
 
 

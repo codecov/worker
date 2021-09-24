@@ -1,13 +1,14 @@
 import os
+
 import pytest
 
 from main import (
-    setup_worker,
-    get_arg_parser,
     deal_test_command,
     deal_web_command,
     deal_worker_command,
+    get_arg_parser,
     main,
+    setup_worker,
 )
 
 
@@ -56,6 +57,9 @@ def test_deal_worker_command(mocker, mock_storage):
             "info",
             "-Q",
             codecov.queue,
+            "-B",
+            "-s",
+            "/home/codecov/celerybeat-schedule",
         ]
     )
 

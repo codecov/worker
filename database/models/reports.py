@@ -1,33 +1,14 @@
-import uuid
-import datetime
 import logging
 from functools import cached_property
 
-from sqlalchemy import Column, types, ForeignKey, Table
-from sqlalchemy.orm import relationship, backref
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, ForeignKey, Table, types
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import backref, relationship
 
-from database.base import CodecovBaseModel
+from database.base import CodecovBaseModel, MixinBaseClass
 from database.models.core import Repository
 
-
 log = logging.getLogger(__name__)
-
-
-class MixinBaseClass(object):
-    id_ = Column("id", types.BigInteger, primary_key=True)
-    external_id = Column(
-        UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False
-    )
-    created_at = Column(types.DateTime, default=datetime.datetime.now)
-    updated_at = Column(
-        types.DateTime, onupdate=datetime.datetime.now, default=datetime.datetime.now
-    )
-
-    @property
-    def id(self):
-        return self.id_
 
 
 class RepositoryFlag(CodecovBaseModel, MixinBaseClass):
@@ -106,7 +87,7 @@ class Upload(CodecovBaseModel, MixinBaseClass):
 
 class UploadError(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_uploaderror"
-    report_session = relationship(Upload, backref="errors")
+    report_upload = relationship(Upload, backref="errors")
     upload_id = Column("upload_id", types.BigInteger, ForeignKey("reports_upload.id"))
     error_code = Column(types.String(100), nullable=False)
     error_params = Column(postgresql.JSON, default=dict)

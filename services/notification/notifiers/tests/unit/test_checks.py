@@ -1,23 +1,26 @@
-import pytest
-from urllib.parse import quote_plus
-from unittest.mock import Mock
 from asyncio import Future
 from copy import deepcopy
+from unittest.mock import Mock
+from urllib.parse import quote_plus
+
+import pytest
+from shared.reports.readonly import ReadOnlyReport
+from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.torngit.exceptions import TorngitClientGeneralError, TorngitError
+from shared.yaml.user_yaml import UserYaml
+
+from services.decoration import Decoration
+from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.checks import (
-    ProjectChecksNotifier,
     ChangesChecksNotifier,
     PatchChecksNotifier,
+    ProjectChecksNotifier,
 )
-from services.notification.notifiers.status import PatchStatusNotifier
+from services.notification.notifiers.checks.base import ChecksNotifier
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
-from shared.reports.readonly import ReadOnlyReport
-from shared.torngit.exceptions import TorngitClientGeneralError, TorngitError
-from services.notification.notifiers.checks.base import ChecksNotifier
-from shared.reports.resources import ReportLine, ReportFile, Report
-from services.decoration import Decoration
-from services.notification.notifiers.base import NotificationResult
+from services.notification.notifiers.status import PatchStatusNotifier
 
 
 @pytest.fixture
@@ -265,7 +268,7 @@ class TestChecksWithFallback(object):
     ):
         mock_repo_provider.create_check_run = Mock(
             side_effect=TorngitClientGeneralError(
-                403, response="No Access", message="No Access"
+                403, response_data="No Access", message="No Access"
             )
         )
 
@@ -274,7 +277,7 @@ class TestChecksWithFallback(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         status_notifier = mocker.MagicMock(
             PatchStatusNotifier(
@@ -282,7 +285,7 @@ class TestChecksWithFallback(object):
                 title="title",
                 notifier_yaml_settings={"flags": ["flagone"]},
                 notifier_site_settings=True,
-                current_yaml={},
+                current_yaml=UserYaml({}),
             )
         )
         status_notifier.notify.return_value = "success"
@@ -309,7 +312,7 @@ class TestChecksWithFallback(object):
     async def test_checks_failure(self, sample_comparison, mocker, mock_repo_provider):
         mock_repo_provider.create_check_run = Mock(
             side_effect=TorngitClientGeneralError(
-                409, response="No Access", message="No Access"
+                409, response_data="No Access", message="No Access"
             )
         )
 
@@ -318,7 +321,7 @@ class TestChecksWithFallback(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         status_notifier = mocker.MagicMock(
             PatchStatusNotifier(
@@ -326,7 +329,7 @@ class TestChecksWithFallback(object):
                 title="title",
                 notifier_yaml_settings={"flags": ["flagone"]},
                 notifier_site_settings=True,
-                current_yaml={},
+                current_yaml=UserYaml({}),
             )
         )
         status_notifier.notify.return_value = "success"
@@ -363,7 +366,7 @@ class TestChecksWithFallback(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         status_notifier = mocker.MagicMock(
             PatchStatusNotifier(
@@ -371,7 +374,7 @@ class TestChecksWithFallback(object):
                 title="title",
                 notifier_yaml_settings={"flags": ["flagone"]},
                 notifier_site_settings=True,
-                current_yaml={},
+                current_yaml=UserYaml({}),
             )
         )
         status_notifier.notify.return_value = "success"
@@ -392,7 +395,7 @@ class TestChecksWithFallback(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         status_notifier = mocker.MagicMock(
             PatchStatusNotifier(
@@ -400,7 +403,7 @@ class TestChecksWithFallback(object):
                 title="title",
                 notifier_yaml_settings={"flags": ["flagone"]},
                 notifier_site_settings=True,
-                current_yaml={},
+                current_yaml=UserYaml({}),
             )
         )
         status_notifier.notify.return_value = "success"
@@ -422,7 +425,7 @@ class TestChecksWithFallback(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         status_notifier = mocker.MagicMock(
             PatchStatusNotifier(
@@ -430,7 +433,7 @@ class TestChecksWithFallback(object):
                 title="title",
                 notifier_yaml_settings={"flags": ["flagone"]},
                 notifier_site_settings=True,
-                current_yaml={},
+                current_yaml=UserYaml({}),
             )
         )
         status_notifier.notify.return_value = "success"
@@ -449,7 +452,7 @@ class TestBaseChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         diff = {
             "files": {
@@ -496,7 +499,7 @@ class TestBaseChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         diff = {
             "files": {
@@ -572,7 +575,7 @@ class TestBaseChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         files_with_change = [
             {
@@ -613,7 +616,7 @@ class TestBaseChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         report = Report()
         first_deleted_file = ReportFile("file_1.go")
@@ -667,7 +670,7 @@ class TestPatchChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         sample_array = list(range(1, 61, 1))
         expected_result = [
@@ -687,7 +690,7 @@ class TestPatchChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = {
             "state": "success",
@@ -709,7 +712,7 @@ class TestPatchChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
             decoration_type=Decoration.upgrade,
         )
         expected_result = {
@@ -732,7 +735,7 @@ class TestPatchChecksNotifier(object):
             title="default",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = {
             "state": "success",
@@ -764,7 +767,7 @@ class TestPatchChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"target": "70%", "paths": ["pathone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = {
             "state": "failure",
@@ -790,7 +793,7 @@ class TestPatchChecksNotifier(object):
             title="default",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = {
             "state": "success",
@@ -827,7 +830,7 @@ class TestPatchChecksNotifier(object):
             title="default",
             notifier_yaml_settings={"threshold": "5"},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = {
             "state": "success",
@@ -869,7 +872,7 @@ class TestPatchChecksNotifier(object):
             title="default",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = {
             "state": "failure",
@@ -936,7 +939,7 @@ class TestPatchChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         assert notifier.is_enabled()
         notifier.name
@@ -961,6 +964,7 @@ class TestPatchChecksNotifier(object):
         payload = {
             "state": "success",
             "output": {"title": "Codecov Report", "summary": f"Summary",},
+            "url": "https://app.codecov.io/gh/codecov/worker/compare/100?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term=codecov",
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -969,7 +973,7 @@ class TestPatchChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         result = await notifier.send_notification(sample_comparison, payload)
         assert result.notification_successful == True
@@ -977,6 +981,7 @@ class TestPatchChecksNotifier(object):
         assert result.data_sent == {
             "state": "success",
             "output": {"title": "Codecov Report", "summary": "Summary"},
+            "url": "https://app.codecov.io/gh/codecov/worker/compare/100?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term=codecov",
         }
 
     @pytest.mark.asyncio
@@ -999,7 +1004,7 @@ class TestPatchChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_calls = [
             {
@@ -1007,14 +1012,16 @@ class TestPatchChecksNotifier(object):
                     "title": "Codecov Report",
                     "summary": "Summary",
                     "annotations": list(range(1, 51, 1)),
-                }
+                },
+                "url": None,
             },
             {
                 "output": {
                     "title": "Codecov Report",
                     "summary": "Summary",
                     "annotations": list(range(51, 61, 1)),
-                }
+                },
+                "url": None,
             },
         ]
         result = await notifier.send_notification(sample_comparison, payload)
@@ -1049,7 +1056,7 @@ class TestPatchChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"paths": ["pathone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         base_commit = sample_comparison.base.commit
         head_commit = sample_comparison.head.commit
@@ -1075,13 +1082,13 @@ class TestPatchChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
 
         # Test exception handling when there's a TorngitClientError
         mock_repo_provider.get_compare = Mock(
             side_effect=TorngitClientGeneralError(
-                400, response="Error", message="Error"
+                400, response_data="Error", message="Error"
             )
         )
         result = await notifier.notify(sample_comparison)
@@ -1108,7 +1115,7 @@ class TestChangesChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = {
             "state": "success",
@@ -1131,7 +1138,7 @@ class TestChangesChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
             decoration_type=Decoration.upgrade,
         )
         expected_result = {
@@ -1161,7 +1168,7 @@ class TestChangesChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = {
             "state": "failure",
@@ -1187,7 +1194,7 @@ class TestChangesChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = {
             "state": "success",
@@ -1272,7 +1279,7 @@ class TestProjectChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         result = await notifier.build_payload(sample_comparison)
         base_commit = sample_comparison.base.commit
@@ -1296,7 +1303,7 @@ class TestProjectChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
             decoration_type=Decoration.upgrade,
         )
         expected_result = {
@@ -1498,7 +1505,7 @@ class TestProjectChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"target": "57%", "flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         repo = sample_comparison.head.commit.repository
         expected_result = {
@@ -1525,7 +1532,7 @@ class TestProjectChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         repo = sample_comparison_without_base_report.head.commit.repository
         expected_result = {
@@ -1556,7 +1563,7 @@ class TestProjectChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"paths": ["pathone"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         base_commit = sample_comparison.base.commit
         head_commit = sample_comparison.head.commit
@@ -1590,7 +1597,7 @@ class TestProjectChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"paths": ["file_1.go"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
 
         base_commit = sample_comparison.base.commit
@@ -1631,7 +1638,7 @@ class TestProjectChecksNotifier(object):
             title="title",
             notifier_yaml_settings={"paths": ["file_2.py", "file_1.go"]},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
 
         base_commit = sample_comparison.base.commit
@@ -1666,7 +1673,7 @@ class TestProjectChecksNotifier(object):
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         base_commit = sample_comparison.base.commit
         head_commit = sample_comparison.head.commit
@@ -1700,7 +1707,7 @@ class TestProjectChecksNotifier(object):
                 "flags": ["integration", "missing"],
             },
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         base_commit = sample_comparison_coverage_carriedforward.base.commit
         head_commit = sample_comparison_coverage_carriedforward.head.commit
@@ -1744,7 +1751,7 @@ class TestProjectChecksNotifier(object):
                 "flags": ["unit"],
             },
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         base_commit = sample_comparison_coverage_carriedforward.base.commit
         head_commit = sample_comparison_coverage_carriedforward.head.commit
@@ -1782,7 +1789,7 @@ class TestProjectChecksNotifier(object):
                 "flags": ["integration", "enterprise"],
             },
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         base_commit = sample_comparison_coverage_carriedforward.base.commit
         head_commit = sample_comparison_coverage_carriedforward.head.commit
@@ -1821,7 +1828,7 @@ class TestProjectChecksNotifier(object):
                 "flags": ["missing"],
             },
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         expected_result = NotificationResult(
             notification_attempted=False,
@@ -1851,7 +1858,7 @@ class TestProjectChecksNotifier(object):
                 "flags": ["unit"],
             },
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         base_commit = sample_comparison_coverage_carriedforward.base.commit
         head_commit = sample_comparison_coverage_carriedforward.head.commit
@@ -1894,7 +1901,7 @@ class TestProjectChecksNotifier(object):
                 ],  # only "unit" was uploaded, but this should still notify
             },
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         base_commit = sample_comparison_coverage_carriedforward.base.commit
         head_commit = sample_comparison_coverage_carriedforward.head.commit
@@ -1933,7 +1940,7 @@ class TestProjectChecksNotifier(object):
                 "flags": None,
             },
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml=UserYaml({}),
         )
         base_commit = sample_comparison_coverage_carriedforward.base.commit
         head_commit = sample_comparison_coverage_carriedforward.head.commit

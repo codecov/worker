@@ -1,7 +1,6 @@
 from io import BytesIO
 
-from services.report.parser import RawReportParser, ParsedUploadedReportFile
-
+from services.report.parser import ParsedUploadedReportFile, RawReportParser
 
 simple_content = b"""./codecov.yaml
 Makefile

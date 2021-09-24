@@ -1,4 +1,4 @@
-from services.commit_status import _ci_providers, RepositoryCIFilter
+from services.commit_status import RepositoryCIFilter, _ci_providers
 
 
 class TestCommitStatus(object):

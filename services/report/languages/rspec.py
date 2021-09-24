@@ -1,11 +1,12 @@
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+
 from services.report.languages.base import BaseLanguageProcessor
 
 
 class RspecProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
-        return content.get("command_name") == "RSpec"
+        return isinstance(content, dict) and content.get("command_name") == "RSpec"
 
     def process(
         self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None

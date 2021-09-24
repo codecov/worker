@@ -1,33 +1,39 @@
-import logging
-import dataclasses
-from typing import List, Iterator
-import asyncio
-from celery.exceptions import CeleryError, SoftTimeLimitExceeded
+"""Notification system
 
+This packages uses the following services:
+  - comparison
+
+"""
+import asyncio
+import dataclasses
+import logging
+from typing import Iterator, List
+
+from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.config import get_config
-from shared.yaml import UserYaml
 from shared.helpers.yaml import default_if_true
+from shared.yaml import UserYaml
 
 from helpers.metrics import metrics
+from services.comparison.types import Comparison
 from services.decoration import Decoration
-from services.notification.notifiers import (
-    get_all_notifier_classes_mapping,
-    get_status_notifier_class,
-    get_pull_request_notifiers,
-)
-from services.notification.types import Comparison
-from services.notification.notifiers.base import (
-    NotificationResult,
-    AbstractBaseNotifier,
-)
-from services.commit_notifications import (
+from services.license import is_properly_licensed
+from services.notification.commit_notifications import (
     create_or_update_commit_notification_from_notification_result,
 )
-from services.yaml import read_yaml_field
-from services.license import is_properly_licensed
+from services.notification.notifiers import (
+    get_all_notifier_classes_mapping,
+    get_pull_request_notifiers,
+    get_status_notifier_class,
+)
+from services.notification.notifiers.base import (
+    AbstractBaseNotifier,
+    NotificationResult,
+)
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -255,6 +261,11 @@ class NotificationService(object):
             )
             return individual_result
         finally:
-            create_or_update_commit_notification_from_notification_result(
-                comparison.pull, notifier, individual_result["result"]
-            )
+            if not individual_result["result"] or individual_result["result"].get(
+                "notification_attempted"
+            ):
+                # only running if there is no result (indicating some exception)
+                # or there was an actual attempt
+                create_or_update_commit_notification_from_notification_result(
+                    comparison.pull, notifier, individual_result["result"]
+                )

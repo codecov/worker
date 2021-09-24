@@ -1,8 +1,9 @@
-from json import loads, dumps
 from io import BytesIO
+from json import dumps, loads
 
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+
 from services.report.languages.base import BaseLanguageProcessor
 
 

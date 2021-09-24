@@ -3,9 +3,8 @@ from json import loads
 import pytest
 
 from helpers.exceptions import CorruptRawReportError
-from tests.base import BaseTestCase
 from services.report.languages import v1
-
+from tests.base import BaseTestCase
 
 txt = """
 {

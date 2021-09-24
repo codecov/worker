@@ -1,17 +1,16 @@
 import logging
 from datetime import datetime
 
-from sqlalchemy.dialects.postgresql import insert
 from celery.exceptions import SoftTimeLimitExceeded
-
-from app import celery_app
 from shared.celery_config import sync_repos_task_name
 from shared.torngit.exceptions import TorngitClientError
+from sqlalchemy.dialects.postgresql import insert
 
-from helpers.environment import is_enterprise
-from tasks.base import BaseCodecovTask
+from app import celery_app
 from database.models import Owner, Repository
+from helpers.environment import is_enterprise
 from services.owner import get_owner_provider_service
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 

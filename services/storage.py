@@ -3,7 +3,6 @@ import logging
 from shared.storage import get_appropriate_storage_service
 from shared.storage.base import BaseStorageService
 
-
 log = logging.getLogger(__name__)
 
 _storage_client = None

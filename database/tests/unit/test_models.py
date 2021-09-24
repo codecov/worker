@@ -1,13 +1,13 @@
+from database.models import Branch, Commit, CommitNotification, Owner, Pull, Repository
 from database.tests.factories import (
-    OwnerFactory,
-    RepositoryFactory,
-    CommitFactory,
     BranchFactory,
-    PullFactory,
+    CommitFactory,
     CommitNotificationFactory,
+    CompareCommitFactory,
+    OwnerFactory,
+    PullFactory,
+    RepositoryFactory,
 )
-
-from database.models import Owner, Repository, Commit, Branch, Pull, CommitNotification
 
 
 class TestReprModels(object):
@@ -89,6 +89,10 @@ class TestReprModels(object):
             f"Notification<{factoried_notification.notification_type}@commit<{factoried_notification.commit_id}>>"
             == repr(factoried_notification)
         )
+
+    def test_commit_compare_repr(self, dbsession):
+        compare_commit = CompareCommitFactory()
+        assert "CompareCommit<None...None>" == repr(compare_commit)
 
     def test_commit_notified(self, dbsession):
         commit = CommitFactory.create()

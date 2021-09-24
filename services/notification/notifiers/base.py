@@ -1,9 +1,10 @@
-from typing import Mapping, Any
 import logging
 from dataclasses import dataclass
+from typing import Any, Mapping
+
 from database.models import Repository
+from services.comparison.types import Comparison
 from services.decoration import Decoration
-from services.notification.types import Comparison
 
 log = logging.getLogger(__name__)
 

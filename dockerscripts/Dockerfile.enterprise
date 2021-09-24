@@ -36,7 +36,6 @@ RUN         ["/pyinstaller/package.sh"]
 FROM        alpine:3.13
 
 RUN         addgroup -S application && adduser -S codecov -G application
-RUN         rm -rf /home/codecov
 USER        codecov
 COPY        --from=build /home/enterprise /home/enterprise
 
