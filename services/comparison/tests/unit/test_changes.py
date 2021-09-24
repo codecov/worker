@@ -97,6 +97,17 @@ class TestChanges(object):
                     "stats": {"added": 1, "removed": 0},
                     "type": "new",
                 },
+                "added_unnacounted.py": {
+                    "before": None,
+                    "segments": [
+                        {
+                            "header": ["50", "0", "50", "1"],
+                            "lines": ["+This is an explanation"],
+                        }
+                    ],
+                    "stats": {"added": 1, "removed": 0},
+                    "type": "modified",
+                },
                 "deleted.py": {
                     "before": "tests/test_sample.py",
                     "stats": {"added": 0, "removed": 0},
@@ -117,6 +128,11 @@ class TestChanges(object):
         second_added_file.append(99, ReportLine.create(coverage=1))
         second_added_file.append(101, ReportLine.create(coverage=0))
         second_report.append(second_added_file)
+        # ADDED FILE BUT UNNACOUNTED FOR
+        second_added_file_unnaccounted_for = ReportFile("added_unnacounted.py")
+        second_added_file_unnaccounted_for.append(99, ReportLine.create(coverage=1))
+        second_added_file_unnaccounted_for.append(101, ReportLine.create(coverage=0))
+        second_report.append(second_added_file_unnaccounted_for)
         # MODIFIED FILE
         first_modified_file = ReportFile("modified.py")
         first_modified_file.append(17, ReportLine.create(coverage=1))
@@ -250,7 +266,7 @@ class TestChanges(object):
                 ),
             ),
             Change(
-                path="added.py",
+                path="added_unnacounted.py",
                 new=True,
                 deleted=False,
                 in_diff=None,

@@ -142,8 +142,17 @@ def get_changes(
             (diff.get("before") or filename) if diff else filename
         )
         if not base_report_file:
-            new_files.add(filename)
-            continue
+            if diff.get("type") == "new":
+                # File is lacking at base, present at head
+                # Diff says it's because it's new
+                # This is expected
+                continue
+            _, additions = get_segment_offsets(diff["segments"])
+            additions = set(additions)
+            if any(ln not in additions for ln, _ in _file.lines):
+                # file has new coverage lines that are not accounted by the diff
+                new_files.add(filename)
+                continue
 
         lines = list(
             iter_changed_lines(
@@ -204,7 +213,16 @@ def iter_changed_lines(
             get_segment_offsets(diff["segments"]) if diff else (None, None)
         )
         base_ln = 0
-        for ln in range(1, max((base_report_file.eof, head_report_file.eof)) + 1):
+        for ln in range(
+            1,
+            max(
+                (
+                    base_report_file.eof if base_report_file is not None else None,
+                    head_report_file.eof,
+                )
+            )
+            + 1,
+        ):
             if offsets:
                 base_ln += 1
                 _offset = offsets.get(ln)
@@ -212,7 +230,11 @@ def iter_changed_lines(
                     base_ln += _offset
 
             if not skip_lines or ln not in skip_lines:
-                base_line = base_report_file.get(base_ln or ln)
+                base_line = (
+                    base_report_file.get(base_ln or ln)
+                    if base_report_file is not None
+                    else None
+                )
                 head_line = head_report_file.get(ln)
                 # if a base line exist we can compare against
                 if base_line:
