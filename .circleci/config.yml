@@ -197,10 +197,12 @@ workflows:
     jobs:
       - linter
       - build:
+          context: "circleci google deploy context"
           filters:
             tags:
               only: /.*/
       - build-enterprise:
+          context: "circleci google deploy context"
           requires:
             - build
           filters:
@@ -212,6 +214,7 @@ workflows:
                 - /enterprise-.*/
                 - /qa-.*/
       - test:
+          context: "circleci google deploy context"
           requires:
             - build
           filters:
@@ -222,6 +225,7 @@ workflows:
           requires:
             - build
       - staging:
+          context: "circleci google deploy context"
           requires:
             - build
             - test
@@ -229,6 +233,7 @@ workflows:
             branches:
               only: master
       - production:
+          context: "circleci google deploy context"
           requires:
             - build
             - test
@@ -238,7 +243,9 @@ workflows:
             branches:
               only: production
       - enterprise:
-          context: "DockerHub Push Context"
+          context:
+          - "DockerHub Push Context"
+          - "circleci google deploy context"
           requires:
             - build-enterprise
             - test
@@ -260,7 +267,9 @@ workflows:
             branches:
               ignore: /.*/
       - enterprise-release:
-          context: "DockerHub Push Context"
+          context:
+          - "DockerHub Push Context"
+          - "circleci google deploy context"
           requires:
             - enterprise
             - hold
