@@ -131,15 +131,15 @@ class ProfilingCollectionTask(BaseCodecovTask):
                     "Skipping profiling upload because we can't fetch it from storage",
                     extra=dict(upload_id=upload.id),
                 )
-                return
-            file_mapping = {
-                data["filename"]: data for data in existing_results["files"]
-            }
-            for run in upload_data["runs"]:
-                for single_file in run["execs"]:
-                    filename = single_file["filename"]
-                    for ln, ln_ct in single_file["lines"].items():
-                        counters[filename][int(ln)] += ln_ct
+            else:
+                file_mapping = {
+                    data["filename"]: data for data in existing_results["files"]
+                }
+                for run in upload_data["runs"]:
+                    for single_file in run["execs"]:
+                        filename = single_file["filename"]
+                        for ln, ln_ct in single_file["lines"].items():
+                            counters[filename][int(ln)] += ln_ct
         with metrics.timer("worker.internal.task.merge_into"):
             for filename, file_counter in counters.items():
                 if filename in file_mapping:
