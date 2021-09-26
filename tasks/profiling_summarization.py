@@ -8,6 +8,7 @@ from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models.profiling import ProfilingCommit
+from helpers.clock import get_utc_now
 from services.archive import ArchiveService
 from tasks.base import BaseCodecovTask
 
@@ -98,6 +99,7 @@ class ProfilingSummarizationTask(BaseCodecovTask):
         )
         log.info("Summarized profiling data", extra=dict(location=location))
         profiling.summarized_location = location
+        profiling.last_summarized_at = get_utc_now()
         return location
 
 
