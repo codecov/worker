@@ -1,4 +1,6 @@
 import json
+import re
+from datetime import datetime, timezone
 
 import pytest
 
@@ -8,8 +10,12 @@ from tasks.profiling_summarization import ProfilingSummarizationTask
 
 @pytest.mark.asyncio
 async def test_summarize_run_async_simple_run(
-    dbsession, mock_storage, mock_configuration
+    dbsession, mock_storage, mock_configuration, mocker
 ):
+    mocker.patch(
+        "tasks.profiling_summarization.get_utc_now",
+        return_value=datetime(2021, 1, 3, 8, 6, 5).replace(tzinfo=timezone.utc),
+    )
     data = {
         "metadata": {"version": "v7"},
         "files": [
@@ -48,6 +54,16 @@ async def test_summarize_run_async_simple_run(
             },
         },
     }
+    dbsession.flush()
+    dbsession.refresh(pfc)
+    assert pfc.last_summarized_at == datetime(2021, 1, 3, 8, 6, 5).replace(
+        tzinfo=timezone.utc
+    )
+    assert pfc.summarized_location is not None
+    assert re.match(
+        r"v4/repos/[A-F0-9]{32}/profilingsummaries/.*?/[a-f0-9]{32}\.txt",
+        pfc.summarized_location,
+    )
 
 
 @pytest.mark.asyncio
