@@ -44,6 +44,7 @@ class ComparisonProxy(object):
         self._changes_lock = asyncio.Lock()
         self._existing_statuses_lock = asyncio.Lock()
         self._archive_service = None
+        self._overlays = {}
 
     def get_archive_service(self):
         if self._archive_service is None:
@@ -151,7 +152,9 @@ class ComparisonProxy(object):
             return self._existing_statuses
 
     def get_overlay(self, overlay_type, **kwargs):
-        return get_overlay(overlay_type, self, **kwargs)
+        if overlay_type not in self._overlays:
+            self._overlays[overlay_type] = get_overlay(overlay_type, self, **kwargs)
+        return self._overlays[overlay_type]
 
     async def get_impacted_files(self):
         files_in_diff = await self.get_diff()
