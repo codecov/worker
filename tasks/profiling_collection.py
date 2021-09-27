@@ -44,6 +44,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
                 extra=dict(
                     profiling_id=profiling_id,
                     number_uploads=new_profiling_uploads_to_join.count(),
+                    new_last_joined_at=new_last_joined_at.isoformat(),
                 ),
             )
             joined_execution_counts = self.join_profiling_uploads(
@@ -111,37 +112,46 @@ class ProfilingCollectionTask(BaseCodecovTask):
             )
         else:
             existing_results = {"metadata": {"version": "v1"}, "files": []}
-        for upload in new_profiling_uploads_to_join:
-            self.merge_into(archive_service, existing_results, upload)
+        self.merge_into(
+            archive_service, existing_results, new_profiling_uploads_to_join
+        )
         return existing_results
 
-    def merge_into(self, archive_service, existing_results, upload):
-        try:
-            upload_data = json.loads(
-                archive_service.read_file(upload.normalized_location)
-            )
-        except FileNotInStorageError:
-            log.info(
-                "Skipping profiling upload because we can't fetch it from storage",
-                extra=dict(upload_id=upload.id),
-            )
-            return
-        file_mapping = {data["filename"]: data for data in existing_results["files"]}
+    def merge_into(
+        self, archive_service, existing_results, new_profiling_uploads_to_join
+    ):
         counters = defaultdict(Counter)
-        for run in upload_data["runs"]:
-            for single_file in run["execs"]:
-                filename = single_file["filename"]
-                for ln, ln_ct in single_file["lines"].items():
-                    counters[filename][int(ln)] += ln_ct
-        for filename, file_counter in counters.items():
-            if filename in file_mapping:
-                file_dict = file_mapping[filename]
+        for upload in new_profiling_uploads_to_join:
+            try:
+                upload_data = json.loads(
+                    archive_service.read_file(upload.normalized_location)
+                )
+            except FileNotInStorageError:
+                log.info(
+                    "Skipping profiling upload because we can't fetch it from storage",
+                    extra=dict(upload_id=upload.id),
+                )
             else:
-                file_dict = {"filename": filename, "ln_ex_ct": []}
-                existing_results["files"].append(file_dict)
-            for ln, ln_ct in file_dict["ln_ex_ct"]:
-                file_counter[ln] += ln_ct
-            file_dict["ln_ex_ct"] = [(a, b) for (a, b) in sorted(file_counter.items())]
+                file_mapping = {
+                    data["filename"]: data for data in existing_results["files"]
+                }
+                for run in upload_data["runs"]:
+                    for single_file in run["execs"]:
+                        filename = single_file["filename"]
+                        for ln, ln_ct in single_file["lines"].items():
+                            counters[filename][int(ln)] += ln_ct
+        with metrics.timer("worker.internal.task.merge_into"):
+            for filename, file_counter in counters.items():
+                if filename in file_mapping:
+                    file_dict = file_mapping[filename]
+                else:
+                    file_dict = {"filename": filename, "ln_ex_ct": []}
+                    existing_results["files"].append(file_dict)
+                for ln, ln_ct in file_dict["ln_ex_ct"]:
+                    file_counter[ln] += ln_ct
+                file_dict["ln_ex_ct"] = [
+                    (a, b) for (a, b) in sorted(file_counter.items())
+                ]
 
     def store_results(self, profiling, joined_execution_counts) -> str:
         archive_service = ArchiveService(profiling.repository)
