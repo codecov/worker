@@ -217,7 +217,7 @@ def iter_changed_lines(
             1,
             max(
                 (
-                    base_report_file.eof if base_report_file is not None else None,
+                    base_report_file.eof if base_report_file is not None else 0,
                     head_report_file.eof,
                 )
             )
