@@ -6,6 +6,7 @@ from shared.reports.readonly import ReadOnlyReport
 from app import celery_app
 from database.enums import CompareCommitState
 from database.models import CompareCommit
+from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
@@ -26,9 +27,12 @@ class ComputeComparisonTask(BaseCodecovTask):
         log_extra = dict(comparison_id=comparison_id, repoid=repo.repoid)
         log.info("Computing comparison", extra=log_extra)
         current_yaml = await self.get_yaml_commit(comparison.compare_commit)
-        comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
-        impacted_files = await self.serialize_impacted_files(comparison_proxy)
-        path = self.store_results(comparison, impacted_files)
+        with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
+            comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
+        with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files"):
+            impacted_files = await self.serialize_impacted_files(comparison_proxy)
+        with metrics.timer(f"{self.metrics_prefix}.store_results"):
+            path = self.store_results(comparison, impacted_files)
         comparison.report_storage_path = path
         comparison.patch_totals = impacted_files.get("changes_summary").get(
             "patch_totals"
