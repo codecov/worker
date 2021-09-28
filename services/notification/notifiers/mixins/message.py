@@ -253,7 +253,21 @@ class MessageMixin(object):
                     current_head=comparison.head.commit.commitid[:7],
                 )
             )
-
+        if settings.get("show_critical_paths"):
+            all_potentially_affected_critical_files = set(
+                (diff["files"] if diff else {}).keys()
+            ) | set(c.path for c in changes or [])
+            overlay = comparison.get_overlay(OverlayType.line_execution_count)
+            files_in_critical = set(
+                overlay.search_files_for_critical_changes(
+                    all_potentially_affected_critical_files
+                )
+            )
+            if files_in_critical:
+                write(
+                    "Changes have been made to critical files, which contain lines commonly executed in production"
+                )
+                write("")
         if is_compact_message:
             write("<details><summary>Details</summary>\n")
 
