@@ -265,7 +265,7 @@ class MessageMixin(object):
             )
             if files_in_critical:
                 write(
-                    "Changes have been made to critical files, which contains lines commonly executed in production"
+                    "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
                 write("")
         if is_compact_message:
