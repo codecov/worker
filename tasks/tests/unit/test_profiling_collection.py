@@ -41,6 +41,7 @@ async def test_run_async_simple_run_no_existing_data(
     assert res["successful"]
     assert json.loads(mock_storage.read_file("bucket", res["location"]).decode()) == {
         "files": [],
+        "groups": [],
         "metadata": {"version": "v1"},
     }
     mock_delay.delay.assert_called_with(profiling_id=pcf.id)
@@ -59,9 +60,10 @@ async def test_run_async_simple_run_no_existing_data_yes_new_uploads(
             {
                 "runs": [
                     {
+                        "group": "fruit group",
                         "execs": [
                             {"filename": "banana.py", "lines": {"5": 10, "68": 87},},
-                        ]
+                        ],
                     }
                 ]
             }
@@ -81,6 +83,13 @@ async def test_run_async_simple_run_no_existing_data_yes_new_uploads(
     res = await task.run_async(dbsession, profiling_id=pcf.id)
     assert res["successful"]
     assert json.loads(mock_storage.read_file("bucket", res["location"]).decode()) == {
+        "groups": [
+            {
+                "count": 1,
+                "group_name": "fruit group",
+                "files": [{"filename": "banana.py", "ln_ex_ct": [[5, 10], [68, 87]]}],
+            }
+        ],
         "files": [{"filename": "banana.py", "ln_ex_ct": [[5, 10], [68, 87]]}],
         "metadata": {"version": "v1"},
     }
@@ -132,7 +141,7 @@ class TestProfilingCollectionTask(object):
         dbsession.add(pcf)
         dbsession.flush()
         res = task.join_profiling_uploads(pcf, [])
-        assert res == {"files": [], "metadata": {"version": "v1"}}
+        assert res == {"groups": [], "files": [], "metadata": {"version": "v1"}}
 
     def test_join_profiling_uploads_with_existing_data_no_new_uploads(
         self, dbsession, mock_storage, mock_configuration
@@ -147,6 +156,18 @@ class TestProfilingCollectionTask(object):
             "location",
             json.dumps(
                 {
+                    "groups": [
+                        {
+                            "count": 2,
+                            "files": [
+                                {
+                                    "filename": "banana.py",
+                                    "ln_ex_ct": [[5, 10], [68, 87]],
+                                }
+                            ],
+                            "group_name": "abcde",
+                        }
+                    ],
                     "files": [
                         {"filename": "banana.py", "ln_ex_ct": [[5, 10], [68, 87]]}
                     ],
@@ -156,7 +177,16 @@ class TestProfilingCollectionTask(object):
         )
         res = task.join_profiling_uploads(pcf, [])
         assert res == {
-            "files": [{"filename": "banana.py", "ln_ex_ct": [[5, 10], [68, 87]]}],
+            "groups": [
+                {
+                    "count": 2,
+                    "files": [
+                        {"filename": "banana.py", "ln_ex_ct": [[5, 10], [68, 87]]}
+                    ],
+                    "group_name": "abcde",
+                }
+            ],
+            "files": [{"filename": "banana.py", "ln_ex_ct": [(5, 10), (68, 87)]}],
             "metadata": {"version": "v1"},
         }
 
@@ -173,6 +203,18 @@ class TestProfilingCollectionTask(object):
             "location",
             json.dumps(
                 {
+                    "groups": [
+                        {
+                            "files": [
+                                {
+                                    "filename": "banana.py",
+                                    "ln_ex_ct": [[5, 10], [68, 87]],
+                                }
+                            ],
+                            "group_name": "POST /def",
+                            "count": 90,
+                        }
+                    ],
                     "files": [
                         {"filename": "banana.py", "ln_ex_ct": [[5, 10], [68, 87]]}
                     ],
@@ -182,19 +224,27 @@ class TestProfilingCollectionTask(object):
         )
         mock_storage.write_file(
             "bucket",
-            "raw_upload_location",
+            "normalized_pu_location",
             json.dumps(
                 {
                     "runs": [
                         {
+                            "group": "GET /abc",
                             "execs": [
                                 {
                                     "filename": "apple.py",
                                     "lines": {"2": 10, "101": 11},
                                 },
                                 {"filename": "banana.py", "lines": {"5": 1, "6": 2}},
-                            ]
-                        }
+                            ],
+                        },
+                        {
+                            "group": "POST /def",
+                            "execs": [
+                                {"filename": "banana.py", "lines": {"1": 1, "6": 2}},
+                                {"filename": "sugar.py", "lines": {"1": 100}},
+                            ],
+                        },
                     ]
                 }
             ),
@@ -202,15 +252,40 @@ class TestProfilingCollectionTask(object):
         pu = ProfilingUploadFactory.create(
             profiling_commit=pcf,
             normalized_at=get_utc_now() - timedelta(seconds=120),
-            normalized_location="raw_upload_location",
+            normalized_location="normalized_pu_location",
         )
         dbsession.add(pu)
         dbsession.flush()
         res = task.join_profiling_uploads(pcf, [pu])
         print(res)
         assert res == {
+            "groups": [
+                {
+                    "files": [
+                        {
+                            "filename": "banana.py",
+                            "ln_ex_ct": [(1, 1), (5, 10), (6, 2), (68, 87)],
+                        },
+                        {"filename": "sugar.py", "ln_ex_ct": [(1, 100)]},
+                    ],
+                    "group_name": "POST /def",
+                    "count": 91,
+                },
+                {
+                    "group_name": "GET /abc",
+                    "files": [
+                        {"filename": "apple.py", "ln_ex_ct": [(2, 10), (101, 11)]},
+                        {"filename": "banana.py", "ln_ex_ct": [(5, 1), (6, 2)]},
+                    ],
+                    "count": 1,
+                },
+            ],
             "files": [
-                {"filename": "banana.py", "ln_ex_ct": [(5, 11), (6, 2), (68, 87)]},
+                {
+                    "filename": "banana.py",
+                    "ln_ex_ct": [(1, 1), (5, 11), (6, 4), (68, 87)],
+                },
+                {"filename": "sugar.py", "ln_ex_ct": [(1, 100)]},
                 {"filename": "apple.py", "ln_ex_ct": [(2, 10), (101, 11)]},
             ],
             "metadata": {"version": "v1"},
@@ -233,6 +308,18 @@ class TestProfilingCollectionTask(object):
             "location",
             json.dumps(
                 {
+                    "groups": [
+                        {
+                            "group_name": "OPTIONS /banana",
+                            "files": [
+                                {
+                                    "filename": "helpers/logging_config.py",
+                                    "ln_ex_ct": [[5, 10], [28, 87]],
+                                }
+                            ],
+                            "count": 100,
+                        }
+                    ],
                     "files": [
                         {
                             "filename": "helpers/logging_config.py",
@@ -294,6 +381,11 @@ class TestProfilingCollectionTask(object):
             "tasks/upload.py",
             "tasks/upload_processor.py",
         ]
+        assert sorted(x["group_name"] for x in res["groups"]) == [
+            "OPTIONS /banana",
+            "run/app.tasks.upload.Upload",
+            "run/app.tasks.upload_processor.UploadProcessorTask",
+        ]
         # Asserting them all will produce a huge file. We will leave that full comparison
         # to a different test
         filename_mapping = {data["filename"]: data for data in res["files"]}
@@ -336,10 +428,10 @@ class TestProfilingCollectionTask(object):
         archive_service = mocker.MagicMock(
             read_file=mocker.MagicMock(side_effect=FileNotInStorageError)
         )
-        existing_result = {"files": {}}
+        existing_result = {"files": [], "groups": []}
         res = task.merge_into(archive_service, existing_result, [pu])
         assert res is None
-        assert existing_result == {"files": {}}
+        assert existing_result == {"files": [], "groups": []}
 
     def test_find_uploads_to_join_first_joining(self, dbsession):
         before = datetime(2021, 5, 2, 0, 3, 4).replace(tzinfo=timezone.utc)

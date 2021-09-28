@@ -111,7 +111,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
                 archive_service.read_file(profiling.joined_location)
             )
         else:
-            existing_results = {"metadata": {"version": "v1"}, "files": []}
+            existing_results = {"metadata": {"version": "v1"}, "groups": []}
         self.merge_into(
             archive_service, existing_results, new_profiling_uploads_to_join
         )
@@ -120,7 +120,8 @@ class ProfilingCollectionTask(BaseCodecovTask):
     def merge_into(
         self, archive_service, existing_results, new_profiling_uploads_to_join
     ):
-        counters = defaultdict(Counter)
+        counters = defaultdict(lambda: defaultdict(Counter))
+        group_appearance_counter = Counter()
         for upload in new_profiling_uploads_to_join:
             try:
                 upload_data = json.loads(
@@ -132,31 +133,57 @@ class ProfilingCollectionTask(BaseCodecovTask):
                     extra=dict(upload_id=upload.id),
                 )
             else:
-                file_mapping = {
-                    data["filename"]: data for data in existing_results["files"]
-                }
                 for run in upload_data["runs"]:
+                    group_name = run["group"]
+                    group_appearance_counter[group_name] += 1
                     for single_file in run["execs"]:
                         filename = single_file["filename"]
                         for ln, ln_ct in single_file["lines"].items():
-                            counters[filename][int(ln)] += ln_ct
+                            counters[group_name][filename][int(ln)] += ln_ct
         with metrics.timer("worker.internal.task.merge_into"):
-            for filename, file_counter in counters.items():
-                if filename in file_mapping:
-                    file_dict = file_mapping[filename]
+            group_mapping = {
+                data["group_name"]: data for data in existing_results["groups"]
+            }
+            for group_name, group_counter in counters.items():
+                if group_name in group_mapping:
+                    group_dict = group_mapping[group_name]
                 else:
-                    file_dict = {"filename": filename, "ln_ex_ct": []}
-                    existing_results["files"].append(file_dict)
-                for ln, ln_ct in file_dict["ln_ex_ct"]:
-                    file_counter[ln] += ln_ct
-                file_dict["ln_ex_ct"] = [
-                    (a, b) for (a, b) in sorted(file_counter.items())
-                ]
+                    group_dict = {"group_name": group_name, "files": [], "count": 0}
+                    existing_results["groups"].append(group_dict)
+                group_dict["count"] += group_appearance_counter[group_name]
+                file_mapping = {data["filename"]: data for data in group_dict["files"]}
+                for filename, file_counter in group_counter.items():
+                    if filename in file_mapping:
+                        file_dict = file_mapping[filename]
+                    else:
+                        file_dict = {"filename": filename, "ln_ex_ct": []}
+                        group_dict["files"].append(file_dict)
+                    for ln, ln_ct in file_dict["ln_ex_ct"]:
+                        file_counter[ln] += ln_ct
+                    file_dict["ln_ex_ct"] = [
+                        (a, b) for (a, b) in sorted(file_counter.items())
+                    ]
+            # temporary compatibility step while we decide what the summarization
+            # will use as source of data
+            file_counter = defaultdict(Counter)
+            for group in existing_results["groups"]:
+                for file in group["files"]:
+                    filename = file["filename"]
+                    for a, b in file["ln_ex_ct"]:
+                        file_counter[filename][a] += b
+            existing_results["files"] = [
+                {
+                    "filename": filename,
+                    "ln_ex_ct": [(a, b) for (a, b) in sorted(file_dict.items())],
+                }
+                for filename, file_dict in file_counter.items()
+            ]
 
     def store_results(self, profiling, joined_execution_counts) -> str:
         archive_service = ArchiveService(profiling.repository)
         location = archive_service.write_profiling_collection_result(
-            profiling.version_identifier, json.dumps(joined_execution_counts)
+            profiling.version_identifier,
+            json.dumps(joined_execution_counts, sort_keys=True),
         )
         profiling.joined_location = location
         return location
