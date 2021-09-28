@@ -33,8 +33,10 @@ class ComputeComparisonTask(BaseCodecovTask):
         if not comparison_proxy.has_base_report():
             comparison.error = CompareCommitError.missing_base_report
         elif not comparison_proxy.has_head_report():
-            comparison.error = CompareCommitError.missing_head_report
-        
+            comparison.error = CompareCommitError.missing_head_report        
+        else:
+            comparison.error = None
+
         if comparison.error:
             comparison.state = CompareCommitState.error
             log.warn("Compute comparison failed, %s", comparison.error, extra=log_extra)
