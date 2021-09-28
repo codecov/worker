@@ -740,7 +740,7 @@ class TestCommentNotifier(object):
             f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
-            "Changes have been made to critical files, which contains lines commonly executed in production",
+            "Changes have been made to critical files, which contain lines commonly executed in production",
             "",
             f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
