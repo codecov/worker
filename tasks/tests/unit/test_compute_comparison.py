@@ -46,7 +46,7 @@ class TestComputeComparisonTask(object):
         }
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()
-        assert comparison.state is CompareCommitState.processed
+        assert comparison.state == CompareCommitState.processed.value
         data_in_storage = mock_storage.read_file(
             "archive", comparison.report_storage_path
         )
@@ -104,7 +104,7 @@ class TestComputeComparisonTask(object):
         }
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()
-        assert comparison.state is CompareCommitState.processed
+        assert comparison.state == CompareCommitState.processed.value
         data_in_storage = mock_storage.read_file(
             "archive", comparison.report_storage_path
         )
@@ -173,8 +173,8 @@ class TestComputeComparisonTask(object):
         )
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()
-        assert comparison.state is CompareCommitState.error
-        assert comparison.error is CompareCommitError.missing_base_report
+        assert comparison.state == CompareCommitState.error.value
+        assert comparison.error == CompareCommitError.missing_base_report.value
 
     @pytest.mark.asyncio
     async def test_set_state_to_error_missing_head_report(
@@ -198,5 +198,5 @@ class TestComputeComparisonTask(object):
         )
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()
-        assert comparison.state is CompareCommitState.error
-        assert comparison.error is CompareCommitError.missing_head_report
+        assert comparison.state == CompareCommitState.error.value
+        assert comparison.error == CompareCommitError.missing_head_report.value

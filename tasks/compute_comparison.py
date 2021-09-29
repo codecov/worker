@@ -31,17 +31,17 @@ class ComputeComparisonTask(BaseCodecovTask):
         with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
             comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
         if not comparison_proxy.has_base_report():
-            comparison.error = CompareCommitError.missing_base_report
+            comparison.error = CompareCommitError.missing_base_report.value
         elif not comparison_proxy.has_head_report():
-            comparison.error = CompareCommitError.missing_head_report        
+            comparison.error = CompareCommitError.missing_head_report.value
         else:
             comparison.error = None
 
         if comparison.error:
-            comparison.state = CompareCommitState.error
+            comparison.state = CompareCommitState.error.value
             log.warn("Compute comparison failed, %s", comparison.error, extra=log_extra)
             return {"successful": False}
-        
+
         with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files"):
             impacted_files = await self.serialize_impacted_files(comparison_proxy)
         with metrics.timer(f"{self.metrics_prefix}.store_results"):
@@ -51,7 +51,7 @@ class ComputeComparisonTask(BaseCodecovTask):
         comparison.patch_totals = impacted_files.get("changes_summary").get(
             "patch_totals"
         )
-        comparison.state = CompareCommitState.processed
+        comparison.state = CompareCommitState.processed.value
         log.info("Computing comparison successful", extra=log_extra)
         return {"successful": True}
 
