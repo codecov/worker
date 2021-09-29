@@ -284,3 +284,24 @@ class TestChanges(object):
         assert sorted(res, key=lambda x: x.path) == sorted(
             expected_result, key=lambda x: x.path
         )
+
+    def test_get_changes_missing_file(self):
+        json_diff = {"files": {"a": {"before": "missing_file"}}}
+        first_report_file = ReportFile("missing_file")
+        first_report_file.append(18, ReportLine.create(coverage=1))
+        first_report = Report()
+        second_report = Report()
+        second_report.append(first_report_file)
+        res = get_changes(first_report, second_report, json_diff)
+        for r in res:
+            print(r)
+        assert res == [
+            Change(
+                path="missing_file",
+                new=True,
+                deleted=False,
+                in_diff=None,
+                old_path=None,
+                totals=None,
+            )
+        ]

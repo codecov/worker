@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 from collections import defaultdict
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple, Union
 
@@ -8,6 +9,8 @@ from shared.reports.types import Change, ReportTotals
 from shared.utils.merge import line_type
 
 from helpers.metrics import metrics
+
+log = logging.getLogger(__name__)
 
 
 def diff_totals(base, head, absolute=None) -> Union[bool, None, ReportTotals]:
@@ -132,11 +135,24 @@ def get_changes(
         if filename in missing_files or filename in new_files:
             continue
 
-        diff = diff_json["files"].get(filename)
+        diff = diff_json["files"].get(filename) if diff_json is not None else None
         base_report_file = base_report.get(
             (diff.get("before") or filename) if diff else filename
         )
         if not base_report_file:
+            if diff is None:
+                # Seems to only happen when there is a 'moved file' in a weird situation
+                log.info(
+                    "File not in the diff, not in base, but still not a 'new_file'",
+                    extra=dict(
+                        diff_keys=sorted(diff_keys),
+                        missing_filename=filename,
+                        base_is_none=base_report_file is None,
+                        moved_files=sorted(moved_files),
+                    ),
+                )
+                new_files.add(filename)
+                continue
             if diff.get("type") == "new":
                 # File is lacking at base, present at head
                 # Diff says it's because it's new
