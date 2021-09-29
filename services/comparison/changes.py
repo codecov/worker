@@ -69,11 +69,6 @@ def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
                 additions.append(ln + offset_r)
                 offsets[ln + offset_r] -= 1
                 offset_l -= 1
-
-            else:
-                # skip contextual lines too
-                additions.append(ln + offset_r)
-
     return dict([(k, v) for k, v in offsets.items() if v != 0]), additions
 
 
