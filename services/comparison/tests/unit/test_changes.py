@@ -141,6 +141,7 @@ class TestChanges(object):
         first_modified_file.append(20, ReportLine.create(coverage=0))
         first_modified_file.append(21, ReportLine.create(coverage=1))
         first_modified_file.append(22, ReportLine.create(coverage=1))
+        first_modified_file.append(23, ReportLine.create(coverage=1))
         first_report.append(first_modified_file)
         second_modified_file = ReportFile("modified.py")
         second_modified_file.append(18, ReportLine.create(coverage=1))
@@ -148,6 +149,7 @@ class TestChanges(object):
         second_modified_file.append(20, ReportLine.create(coverage=0))
         second_modified_file.append(21, ReportLine.create(coverage=1))
         second_modified_file.append(22, ReportLine.create(coverage=0))
+        second_modified_file.append(23, ReportLine.create(coverage=0))
         second_report.append(second_modified_file)
         # RENAMED WITHOUT CHANGES
         first_renamed_without_changes_file = ReportFile("old_renamed.py")
@@ -208,10 +210,10 @@ class TestChanges(object):
                 totals=ReportTotals(
                     files=0,
                     lines=0,
-                    hits=-2,
-                    misses=1,
+                    hits=-3,
+                    misses=2,
                     partials=0,
-                    coverage=-23.333330000000004,
+                    coverage=-35.714290000000005,
                     branches=0,
                     methods=0,
                     messages=0,
@@ -274,6 +276,11 @@ class TestChanges(object):
                 totals=None,
             ),
         ]
+        for individual_result, individual_expected_result in zip(
+            sorted(res, key=lambda x: x.path),
+            sorted(expected_result, key=lambda x: x.path),
+        ):
+            assert individual_result == individual_expected_result
         assert sorted(res, key=lambda x: x.path) == sorted(
             expected_result, key=lambda x: x.path
         )
