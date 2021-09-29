@@ -8,12 +8,7 @@ from sqlalchemy.orm import backref, relationship
 from sqlalchemy.schema import FetchedValue
 
 from database.base import CodecovBaseModel, MixinBaseClass
-from database.enums import (
-    CompareCommitState,
-    Decoration,
-    Notification,
-    NotificationState,
-)
+from database.enums import Decoration, Notification, NotificationState
 
 
 class Owner(CodecovBaseModel):
@@ -311,11 +306,8 @@ class CompareCommit(MixinBaseClass, CodecovBaseModel):
     compare_commit = relationship(Commit, foreign_keys=[compare_commit_id])
     report_storage_path = Column(types.String(150))
     patch_totals = Column(postgresql.JSON)
-    state = Column(
-        postgresql.ENUM(
-            CompareCommitState, values_callable=lambda x: [e.value for e in x]
-        )
-    )
+    state = Column(types.Text)
+    error = Column(types.Text)
 
     __table_args__ = (
         Index("compare_commitcomparison_base_commit_id_cf53c1d9", "base_commit_id",),

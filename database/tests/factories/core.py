@@ -178,8 +178,8 @@ class CommitNotificationFactory(Factory):
     class Meta:
         model = models.CommitNotification
 
-    notification_type = enums.Notification.comment.value
-    decoration_type = enums.Decoration.standard.value
+    notification_type = enums.Notification.comment
+    decoration_type = enums.Decoration.standard
     state = enums.NotificationState.pending
 
     commit = factory.SubFactory(CommitFactory)
@@ -189,6 +189,6 @@ class CompareCommitFactory(Factory):
     class Meta:
         model = models.CompareCommit
 
-    state = enums.CompareCommitState.pending
+    state = enums.CompareCommitState.pending.value
     base_commit = factory.SubFactory(CommitFactory)
     compare_commit = factory.SubFactory(CommitFactory)

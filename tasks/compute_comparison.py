@@ -4,7 +4,7 @@ from shared.celery_config import compute_comparison_task_name
 from shared.reports.readonly import ReadOnlyReport
 
 from app import celery_app
-from database.enums import CompareCommitState
+from database.enums import CompareCommitError, CompareCommitState
 from database.models import CompareCommit
 from helpers.metrics import metrics
 from services.archive import ArchiveService
@@ -27,17 +27,31 @@ class ComputeComparisonTask(BaseCodecovTask):
         log_extra = dict(comparison_id=comparison_id, repoid=repo.repoid)
         log.info("Computing comparison", extra=log_extra)
         current_yaml = await self.get_yaml_commit(comparison.compare_commit)
+
         with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
             comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
+        if not comparison_proxy.has_base_report():
+            comparison.error = CompareCommitError.missing_base_report.value
+        elif not comparison_proxy.has_head_report():
+            comparison.error = CompareCommitError.missing_head_report.value
+        else:
+            comparison.error = None
+
+        if comparison.error:
+            comparison.state = CompareCommitState.error.value
+            log.warn("Compute comparison failed, %s", comparison.error, extra=log_extra)
+            return {"successful": False}
+
         with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files"):
             impacted_files = await self.serialize_impacted_files(comparison_proxy)
         with metrics.timer(f"{self.metrics_prefix}.store_results"):
             path = self.store_results(comparison, impacted_files)
+
         comparison.report_storage_path = path
         comparison.patch_totals = impacted_files.get("changes_summary").get(
             "patch_totals"
         )
-        comparison.state = CompareCommitState.processed
+        comparison.state = CompareCommitState.processed.value
         log.info("Computing comparison successful", extra=log_extra)
         return {"successful": True}
 

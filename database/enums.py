@@ -31,3 +31,8 @@ class CompareCommitState(Enum):
     pending = "pending"
     processed = "processed"
     error = "error"
+
+
+class CompareCommitError(Enum):
+    missing_base_report = "missing_base_report"
+    missing_head_report = "missing_head_report"
