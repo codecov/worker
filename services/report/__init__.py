@@ -1,3 +1,4 @@
+import itertools
 import logging
 import uuid
 from dataclasses import dataclass
@@ -569,7 +570,10 @@ class ReportService(object):
                 repoid=commit.repoid,
                 commit=commit.commitid,
                 url=url,
-                new_report_sessions=network.get("sessions"),
+                number_sessions=len(network.get("sessions")),
+                new_report_sessions=dict(
+                    itertools.islice(network.get("sessions").items(), 20)
+                ),
             ),
         )
         return {"url": url}
