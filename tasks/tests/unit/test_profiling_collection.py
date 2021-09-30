@@ -433,6 +433,81 @@ class TestProfilingCollectionTask(object):
         assert res is None
         assert existing_result == {"files": [], "groups": []}
 
+    def test_merge_into_upload_file_old_result(self, dbsession, mock_storage, mocker):
+        task = ProfilingCollectionTask()
+        pcf = ProfilingCommitFactory.create(joined_location="location")
+        dbsession.add(pcf)
+        dbsession.flush()
+        pu = ProfilingUploadFactory.create(
+            profiling_commit=pcf,
+            normalized_at=get_utc_now() - timedelta(seconds=120),
+            normalized_location="normalized_pu_location",
+        )
+        dbsession.add(pu)
+        dbsession.flush()
+        archive_service = mocker.MagicMock(
+            read_file=mocker.MagicMock(
+                return_value=json.dumps(
+                    {
+                        "runs": [
+                            {
+                                "group": "GET /abc",
+                                "execs": [
+                                    {
+                                        "filename": "apple.py",
+                                        "lines": {"2": 10, "101": 11},
+                                    },
+                                    {
+                                        "filename": "banana.py",
+                                        "lines": {"5": 1, "6": 2},
+                                    },
+                                ],
+                            },
+                            {
+                                "group": "POST /def",
+                                "execs": [
+                                    {
+                                        "filename": "banana.py",
+                                        "lines": {"1": 1, "6": 2},
+                                    },
+                                    {"filename": "sugar.py", "lines": {"1": 100}},
+                                ],
+                            },
+                        ]
+                    }
+                )
+            )
+        )
+        existing_result = {"files": []}
+        res = task.merge_into(archive_service, existing_result, [pu])
+        assert res is None
+        print(existing_result)
+        assert existing_result == {
+            "files": [
+                {"filename": "apple.py", "ln_ex_ct": [(2, 10), (101, 11)]},
+                {"filename": "banana.py", "ln_ex_ct": [(1, 1), (5, 1), (6, 4)]},
+                {"filename": "sugar.py", "ln_ex_ct": [(1, 100)]},
+            ],
+            "groups": [
+                {
+                    "group_name": "GET /abc",
+                    "files": [
+                        {"filename": "apple.py", "ln_ex_ct": [(2, 10), (101, 11)]},
+                        {"filename": "banana.py", "ln_ex_ct": [(5, 1), (6, 2)]},
+                    ],
+                    "count": 1,
+                },
+                {
+                    "group_name": "POST /def",
+                    "files": [
+                        {"filename": "banana.py", "ln_ex_ct": [(1, 1), (6, 2)]},
+                        {"filename": "sugar.py", "ln_ex_ct": [(1, 100)]},
+                    ],
+                    "count": 1,
+                },
+            ],
+        }
+
     def test_find_uploads_to_join_first_joining(self, dbsession):
         before = datetime(2021, 5, 2, 0, 3, 4).replace(tzinfo=timezone.utc)
         task = ProfilingCollectionTask()
