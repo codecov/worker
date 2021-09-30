@@ -120,6 +120,8 @@ class ProfilingCollectionTask(BaseCodecovTask):
     def merge_into(
         self, archive_service, existing_results, new_profiling_uploads_to_join
     ):
+        if "groups" not in existing_results:
+            existing_results["groups"] = []
         counters = defaultdict(lambda: defaultdict(Counter))
         group_appearance_counter = Counter()
         for upload in new_profiling_uploads_to_join:
