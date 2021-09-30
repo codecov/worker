@@ -46,6 +46,7 @@ class Owner(CodecovBaseModel):
     plan_auto_activate = Column(types.Boolean, server_default=FetchedValue())
     stripe_customer_id = Column(types.Text, server_default=FetchedValue())
     stripe_subscription_id = Column(types.Text, server_default=FetchedValue())
+    onboarding_completed = Column(types.Boolean, default=False)
     bot_id = Column(
         "bot",
         types.Integer,
