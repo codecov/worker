@@ -3,14 +3,15 @@ import re
 from copy import deepcopy
 
 from shared.celery_config import (
+    compute_comparison_task_name,
     notify_task_name,
     pulls_task_name,
-    status_set_pending_task_name,
 )
 from shared.yaml import UserYaml
 
 from app import celery_app
 from database.models import Commit, Pull
+from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -135,6 +136,14 @@ class UploadFinisherTask(BaseCodecovTask):
                                     should_send_notifications=False,
                                 ),
                             )
+                            comparison = get_or_create_comparison(
+                                db_session, head, commit
+                            )
+                            db_session.commit()
+                            self.app.tasks[compute_comparison_task_name].apply_async(
+                                args=[comparison.id,]
+                            )
+
             else:
                 notifications_called = False
                 log.info(
