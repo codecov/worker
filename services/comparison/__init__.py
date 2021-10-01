@@ -5,6 +5,8 @@ from typing import List, Optional
 from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
 from shared.reports.types import Change
 
+from database.enums import CompareCommitState
+from database.models import CompareCommit
 from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.comparison.changes import get_changes
@@ -208,3 +210,20 @@ class FilteredComparison(object):
     @property
     def pull(self):
         return self.real_comparison.pull
+
+
+def get_or_create_comparison(db_session, base_commit, compare_commit):
+    comparison = (
+        db_session.query(CompareCommit)
+        .filter_by(base_commit=base_commit, compare_commit=compare_commit,)
+        .one_or_none()
+    )
+    if comparison is None:
+        comparison = CompareCommit(
+            base_commit=base_commit,
+            compare_commit=compare_commit,
+            state=CompareCommitState.pending.value,
+        )
+        db_session.add(comparison)
+        db_session.flush()
+    return comparison

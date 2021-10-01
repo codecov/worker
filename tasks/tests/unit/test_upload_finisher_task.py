@@ -343,6 +343,7 @@ class TestUploadFinisherTask(object):
             tasks={
                 "app.tasks.notify.Notify": mocker.MagicMock(),
                 "app.tasks.pulls.Sync": mocker.MagicMock(),
+                "app.tasks.compute_comparison.ComputeComparison": mocker.MagicMock(),
             },
         )
         repository = RepositoryFactory.create(
@@ -380,6 +381,10 @@ class TestUploadFinisherTask(object):
             }
         )
         assert mocked_app.send_task.call_count == 0
+
+        mocked_app.tasks[
+            "app.tasks.compute_comparison.ComputeComparison"
+        ].apply_async.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_finish_reports_processing_no_notification(self, dbsession, mocker):
