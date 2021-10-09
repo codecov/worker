@@ -86,6 +86,29 @@ class TestChanges(object):
                     "stats": {"added": 0, "removed": 0},
                     "type": "modified",
                 },
+                "removed_some_covered_lines.py": {
+                    "before": None,
+                    "segments": [
+                        {
+                            "header": ["10", "3", "10", "1"],
+                            "lines": ["-removed", "-r", " h"],
+                        },
+                        {
+                            "header": ["35", "3", "33", "1"],
+                            "lines": [" b", "-r", " a"],
+                        },
+                    ],
+                    "stats": {"added": 0, "removed": 0},
+                    "type": "modified",
+                },
+                "removed_all_covered_lines.py": {
+                    "before": None,
+                    "segments": [
+                        {"header": ["10", "1", "10", "0"], "lines": ["-removed"]}
+                    ],
+                    "stats": {"added": 0, "removed": 0},
+                    "type": "modified",
+                },
                 "added.py": {
                     "before": None,
                     "segments": [
@@ -109,7 +132,7 @@ class TestChanges(object):
                     "type": "modified",
                 },
                 "deleted.py": {
-                    "before": "tests/test_sample.py",
+                    "before": None,
                     "stats": {"added": 0, "removed": 0},
                     "type": "deleted",
                 },
@@ -123,6 +146,16 @@ class TestChanges(object):
         first_deleted_file.append(10, ReportLine.create(coverage=1))
         first_deleted_file.append(12, ReportLine.create(coverage=0))
         first_report.append(first_deleted_file)
+        # removed_some_covered_lines.py
+        second_deleted_file = ReportFile("removed_some_covered_lines.py")
+        second_deleted_file.append(10, ReportLine.create(coverage=0))
+        second_deleted_file.append(11, ReportLine.create(coverage=0))
+        second_deleted_file.append(12, ReportLine.create(coverage=0))
+        first_report.append(second_deleted_file)
+        # removed_all_covered_lines.py
+        third_deleted_file = ReportFile("removed_all_covered_lines.py")
+        third_deleted_file.append(10, ReportLine.create(coverage=0))
+        first_report.append(third_deleted_file)
         # ADDED FILE
         second_added_file = ReportFile("added.py")
         second_added_file.append(99, ReportLine.create(coverage=1))
@@ -275,6 +308,7 @@ class TestChanges(object):
                 old_path=None,
                 totals=None,
             ),
+            Change(path="removed_some_covered_lines.py", deleted=True),
         ]
         for individual_result, individual_expected_result in zip(
             sorted(res, key=lambda x: x.path),

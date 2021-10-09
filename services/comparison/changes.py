@@ -55,6 +55,7 @@ def diff_totals(base, head, absolute=None) -> Union[bool, None, ReportTotals]:
 def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
     offsets = defaultdict(lambda: 0)
     additions = []
+    removals = []
     # loop through the segments
     for seg in segments:
         # get the starting line number
@@ -65,6 +66,7 @@ def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
         for ln, line in enumerate(seg["lines"], start=start):
             l0 = line[0]
             if l0 == "-":
+                removals.append(ln + offset_r)
                 offsets[ln + offset_r] += 1
                 offset_r -= 1
 
@@ -72,7 +74,7 @@ def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
                 additions.append(ln + offset_r)
                 offsets[ln + offset_r] -= 1
                 offset_l -= 1
-    return dict([(k, v) for k, v in offsets.items() if v != 0]), additions
+    return dict([(k, v) for k, v in offsets.items() if v != 0]), additions, removals
 
 
 @metrics.timer("worker.services.comparison.changes.get_changes")
@@ -158,7 +160,7 @@ def get_changes(
                 # Diff says it's because it's new
                 # This is expected
                 continue
-            _, additions = get_segment_offsets(diff["segments"])
+            _, additions, _ = get_segment_offsets(diff["segments"])
             additions = set(additions)
             if any(ln not in additions for ln, _ in _file.lines):
                 # file has new coverage lines that are not accounted by the diff
@@ -190,6 +192,20 @@ def get_changes(
                 )
             )
 
+    for possibly_deleted_filename in (base_files - head_files) & diff_keys:
+        # these are files that are present on base, not present on head
+        # and are possibly accounted by the diff
+        # But to know that for sure we need to know that every line lost is accounted
+        # by the diff
+        diff = diff_json["files"].get(possibly_deleted_filename)
+        if diff.get("type") != "deleted":
+            base_report_file = base_report.get(possibly_deleted_filename)
+            present_lines_on_base = set(x[0] for x in base_report_file.lines)
+            _, _, line_removals = get_segment_offsets(diff["segments"])
+            lines_unnaccounted_for = present_lines_on_base - set(line_removals)
+            if lines_unnaccounted_for:
+                changes.append(Change(path=possibly_deleted_filename, deleted=True))
+
     # [deleted] [~~diff~~] == missing reports
     # left over deleted files
     # this one is "bad" because coverage reports are missing entirely.
@@ -220,8 +236,8 @@ def iter_changed_lines(
     streams line numbers that changed as integers > 0
     """
     if not diff or diff["type"] == "modified":
-        offsets, skip_lines = (
-            get_segment_offsets(diff["segments"]) if diff else (None, None)
+        offsets, skip_lines, _ = (
+            get_segment_offsets(diff["segments"]) if diff else (None, None, None)
         )
         base_ln = 0
         for ln in range(
