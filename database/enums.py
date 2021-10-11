@@ -36,3 +36,4 @@ class CompareCommitState(Enum):
 class CompareCommitError(Enum):
     missing_base_report = "missing_base_report"
     missing_head_report = "missing_head_report"
+    provider_client_error = "provider_client_error"
