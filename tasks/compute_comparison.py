@@ -11,8 +11,7 @@ from services.archive import ArchiveService
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.report import ReportService
-from services.repository import get_repo_provider_service
-from services.yaml import get_current_yaml
+from services.yaml import get_repo_yaml
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -26,7 +25,7 @@ class ComputeComparisonTask(BaseCodecovTask):
         repo = comparison.compare_commit.repository
         log_extra = dict(comparison_id=comparison_id, repoid=repo.repoid)
         log.info("Computing comparison", extra=log_extra)
-        current_yaml = await self.get_yaml_commit(comparison.compare_commit)
+        current_yaml = self.get_yaml_commit(comparison.compare_commit)
 
         with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
             comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
@@ -42,8 +41,9 @@ class ComputeComparisonTask(BaseCodecovTask):
             log.warn("Compute comparison failed, %s", comparison.error, extra=log_extra)
             return {"successful": False}
 
-        with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files"):
+        with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files") as tm:
             impacted_files = await self.serialize_impacted_files(comparison_proxy)
+        log.info("Files impact calculated", extra=dict(timing_ms=tm.ms, **log_extra))
         with metrics.timer(f"{self.metrics_prefix}.store_results"):
             path = self.store_results(comparison, impacted_files)
 
@@ -55,9 +55,8 @@ class ComputeComparisonTask(BaseCodecovTask):
         log.info("Computing comparison successful", extra=log_extra)
         return {"successful": True}
 
-    async def get_yaml_commit(self, commit):
-        repository_service = get_repo_provider_service(commit.repository)
-        return await get_current_yaml(commit, repository_service)
+    def get_yaml_commit(self, commit):
+        return get_repo_yaml(commit.repository)
 
     async def get_comparison_proxy(self, comparison, current_yaml):
         compare_commit = comparison.compare_commit

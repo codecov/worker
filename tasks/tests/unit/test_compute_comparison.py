@@ -19,10 +19,6 @@ class TestComputeComparisonTask(object):
         dbsession.add(comparison)
         dbsession.flush()
         task = ComputeComparisonTask()
-        mocked_get_current_yaml = mocker.patch(
-            "tasks.compute_comparison.get_current_yaml",
-        )
-        mocked_get_current_yaml.return_value = {}
         mocker.patch.object(
             ReadOnlyReport, "should_load_rust_version", return_value=True
         )
@@ -76,10 +72,6 @@ class TestComputeComparisonTask(object):
         dbsession.add(comparison)
         dbsession.flush()
         task = ComputeComparisonTask()
-        mocked_get_current_yaml = mocker.patch(
-            "tasks.compute_comparison.get_current_yaml",
-        )
-        mocked_get_current_yaml.return_value = {}
         mocker.patch.object(
             ReadOnlyReport, "should_load_rust_version", return_value=True
         )
@@ -161,10 +153,6 @@ class TestComputeComparisonTask(object):
         dbsession.add(comparison)
         dbsession.flush()
         task = ComputeComparisonTask()
-        mocked_get_current_yaml = mocker.patch(
-            "tasks.compute_comparison.get_current_yaml",
-        )
-        mocked_get_current_yaml.return_value = {}
         mocker.patch.object(
             ReadOnlyReport, "should_load_rust_version", return_value=True
         )
@@ -184,10 +172,6 @@ class TestComputeComparisonTask(object):
         dbsession.add(comparison)
         dbsession.flush()
         task = ComputeComparisonTask()
-        mocked_get_current_yaml = mocker.patch(
-            "tasks.compute_comparison.get_current_yaml",
-        )
-        mocked_get_current_yaml.return_value = {}
         mocker.patch.object(
             ReadOnlyReport, "should_load_rust_version", return_value=True
         )
