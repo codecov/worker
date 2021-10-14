@@ -346,6 +346,19 @@ class NullSectionWriter(BaseSectionWriter):
         return []
 
 
+class ImpactedEntrypointsWriter(BaseSectionWriter):
+    async def do_write_section(
+        self, comparison, diff, changes, links,
+    ):
+        overlay = comparison.get_overlay(OverlayType.line_execution_count)
+        impacted_endpoints = await overlay.find_impacted_endpoints()
+        if impacted_endpoints:
+            yield "| Endpoints |"
+            yield "|---|"
+            for endpoint in impacted_endpoints:
+                yield (f"|{endpoint['group_name']}|")
+
+
 class FooterSectionWriter(BaseSectionWriter):
     async def do_write_section(
         self, comparison, diff, changes, links,
