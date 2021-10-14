@@ -4,7 +4,7 @@ from datetime import datetime
 from database.tests.factories.profiling import ProfilingCommitFactory
 from services.comparison.overlays.critical_path import (
     CriticalPathOverlay,
-    ProfilingDataAnalyzer,
+    ProfilingSummaryDataAnalyzer,
     _load_critical_path_report,
 )
 
@@ -33,7 +33,7 @@ def test_load_critical_path_report(
     dbsession.add(pc)
     dbsession.flush()
     res = _load_critical_path_report(sample_comparison)
-    assert isinstance(res, ProfilingDataAnalyzer)
+    assert isinstance(res, ProfilingSummaryDataAnalyzer)
     assert res.get_critical_files_filenames() == ["efg.py"]
 
 
@@ -69,7 +69,7 @@ def test_load_critical_path_report_not_summarized(
     dbsession.add(second_pc)
     dbsession.flush()
     res = _load_critical_path_report(sample_comparison)
-    assert isinstance(res, ProfilingDataAnalyzer)
+    assert isinstance(res, ProfilingSummaryDataAnalyzer)
     assert res.get_critical_files_filenames() == ["efg.py"]
 
 

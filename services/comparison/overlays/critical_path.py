@@ -1,7 +1,7 @@
 import json
 from typing import Sequence
 
-from shared.profiling import ProfilingDataAnalyzer
+from shared.profiling import ProfilingSummaryDataAnalyzer
 from shared.storage.exceptions import FileNotInStorageError
 
 from database.models.profiling import ProfilingCommit
@@ -20,7 +20,7 @@ def _get_latest_profiling_commit(comparison):
     )
 
 
-def _load_critical_path_report(comparison) -> ProfilingDataAnalyzer:
+def _load_critical_path_report(comparison) -> ProfilingSummaryDataAnalyzer:
     latest_profiling_commit = _get_latest_profiling_commit(comparison)
     if latest_profiling_commit is None:
         return None
@@ -32,7 +32,7 @@ def _load_critical_path_report(comparison) -> ProfilingDataAnalyzer:
         )
     except FileNotInStorageError:
         return None
-    return ProfilingDataAnalyzer(data)
+    return ProfilingSummaryDataAnalyzer(data)
 
 
 class CriticalPathOverlay(object):
