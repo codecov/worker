@@ -135,6 +135,8 @@ class TestComputeComparisonTask(object):
                         [[51, "p"], [50, None]],
                         [[52, None], [51, "p"]],
                     ],
+                    "lines_only_on_base": [2, 3],
+                    "lines_only_on_head": [2],
                 }
             ],
             "changes_summary": {
