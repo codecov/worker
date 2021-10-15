@@ -37,7 +37,10 @@ async def test_run_async_simple_normalizing_run(
     sample_open_telemetry_normalized,
 ):
     puf = ProfilingUploadFactory.create(
-        profiling_commit__repository__yaml={"codecov": {"max_report_age": None}},
+        profiling_commit__repository__yaml={
+            "profiling": {"grouping_attributes": ["http.method", "celery.state"]},
+            "codecov": {"max_report_age": None},
+        },
         raw_upload_location="raw_upload_location",
     )
     mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
@@ -49,8 +52,9 @@ async def test_run_async_simple_normalizing_run(
     task = ProfilingNormalizerTask()
     res = await task.run_async(dbsession, profiling_upload_id=puf.id)
     assert res["successful"]
-    qwerty = json.loads(mock_storage.read_file("bucket", res["location"]).decode())
-    assert qwerty == sample_open_telemetry_normalized
+    result = json.loads(mock_storage.read_file("bucket", res["location"]).decode())
+    print(mock_storage.read_file("bucket", res["location"]).decode())
+    assert result == sample_open_telemetry_normalized
 
 
 @pytest.mark.asyncio
