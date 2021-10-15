@@ -19,6 +19,7 @@ from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message import (
     Change,
     FileSectionWriter,
+    ImpactedEntrypointsWriter,
     diff_to_string,
     format_number_to_str,
     sort_by_importance,
@@ -3105,3 +3106,95 @@ class TestFileSectionWriter(object):
             "| [file\\_2.py](pull.link/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
             "| [added.py](pull.link/diff?src=pr&el=tree#diff-YWRkZWQucHk=) **Critical** | | |",
         ]
+
+
+class TestImpactedEndpointWriter(object):
+    @pytest.mark.asyncio
+    async def test_impacted_endpoints_table(
+        self, sample_comparison, mocker, mock_repo_provider
+    ):
+        mock_repo_provider.get_compare.return_value = {
+            "diff": {
+                "files": {
+                    "README.md": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {
+                                "header": ["5", "8", "5", "9"],
+                                "lines": [
+                                    " Overview",
+                                    " --------",
+                                    " ",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "+",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    " ",
+                                    " .. code-block:: shell-session",
+                                    " ",
+                                ],
+                            },
+                            {
+                                "header": ["46", "12", "47", "19"],
+                                "lines": [
+                                    " ",
+                                    " You may need to configure a ``.coveragerc`` file. Learn more `here <http://coverage.readthedocs.org/en/latest/config.html>`_. Start with this `generic .coveragerc <https://gist.github.com/codecov-io/bf15bde2c7db1a011b6e>`_ for example.",
+                                    " -",
+                                ],
+                            },
+                        ],
+                        "stats": {"added": 11, "removed": 4},
+                    }
+                }
+            }
+        }
+        mocker.patch.object(
+            CriticalPathOverlay,
+            "full_analyzer",
+            new_callable=mocker.PropertyMock,
+            return_value=mocker.MagicMock(
+                find_impacted_endpoints=mocker.MagicMock(
+                    return_value=[
+                        {"group_name": "banana"},
+                        {"group_name": "GET /apple"},
+                    ]
+                )
+            ),
+        )
+        section_writer = ImpactedEntrypointsWriter(
+            sample_comparison.head.commit.repository,
+            "layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={},
+        )
+        lines = list(
+            await section_writer.write_section(
+                sample_comparison,
+                {
+                    "files": {
+                        "file_1.go": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=2,
+                                misses=1,
+                                coverage=66.66,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        }
+                    }
+                },
+                [],
+                links={"pull": "pull.link"},
+            )
+        )
+        assert lines == ["| Endpoints |", "|---|", "|banana|", "|GET /apple|"]
