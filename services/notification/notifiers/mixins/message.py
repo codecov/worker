@@ -273,9 +273,7 @@ class MessageMixin(object):
 
         if head_report:
             # loop through layouts
-            for layout in map(
-                lambda l: l.strip(), (settings["layout"] or "").split(",")
-            ):
+            for layout in self.get_layout_section_names(settings):
                 if layout.startswith("flag"):
                     section_writer = FlagSectionWriter(
                         self.repository, layout, show_complexity, settings, current_yaml
@@ -312,7 +310,7 @@ class MessageMixin(object):
                 with metrics.timer(
                     f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
                 ):
-                    for line in section_writer.write_section(
+                    for line in await section_writer.write_section(
                         comparison, diff, changes, links
                     ):
                         write(line)
@@ -322,6 +320,9 @@ class MessageMixin(object):
             write("</details>")
 
         return [m for m in message if m is not None]
+
+    def get_layout_section_names(self, settings):
+        return map(lambda l: l.strip(), (settings["layout"] or "").split(","))
 
 
 class BaseSectionWriter(object):
@@ -336,14 +337,17 @@ class BaseSectionWriter(object):
     def name(self):
         return self.__class__.__name__
 
+    async def write_section(self, *args, **kwargs):
+        return [i async for i in self.do_write_section(*args, **kwargs)]
+
 
 class NullSectionWriter(BaseSectionWriter):
-    def write_section(*args, **kwargs):
+    async def write_section(*args, **kwargs):
         return []
 
 
 class FooterSectionWriter(BaseSectionWriter):
-    def write_section(
+    async def do_write_section(
         self, comparison, diff, changes, links,
     ):
         pull_dict = comparison.enriched_pull.provider_pull
@@ -371,7 +375,7 @@ class FooterSectionWriter(BaseSectionWriter):
 
 
 class ReachSectionWriter(BaseSectionWriter):
-    def write_section(
+    async def do_write_section(
         self, comparison, diff, changes, links,
     ):
         pull = comparison.enriched_pull.database_pull
@@ -391,7 +395,7 @@ class ReachSectionWriter(BaseSectionWriter):
 
 
 class DiffSectionWriter(BaseSectionWriter):
-    def write_section(
+    async def do_write_section(
         self, comparison, diff, changes, links,
     ):
         base_report = comparison.base.report
@@ -408,13 +412,13 @@ class DiffSectionWriter(BaseSectionWriter):
             "#%s" % pull.pullid,
             head_report.totals,
         )
-        for l in lines:
-            yield (l)
+        for li in lines:
+            yield (li)
         yield ("```")
 
 
 class FileSectionWriter(BaseSectionWriter):
-    def write_section(
+    async def do_write_section(
         self, comparison, diff, changes, links,
     ):
         # create list of files changed in diff
@@ -520,7 +524,7 @@ class FileSectionWriter(BaseSectionWriter):
 
 
 class FlagSectionWriter(BaseSectionWriter):
-    def write_section(
+    async def do_write_section(
         self, comparison, diff, changes, links,
     ):
         # flags

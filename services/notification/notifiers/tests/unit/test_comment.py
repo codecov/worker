@@ -2925,7 +2925,8 @@ class TestCommentNotifier(object):
 
 
 class TestFileSectionWriter(object):
-    def test_filesection_no_extra_settings(self, sample_comparison, mocker):
+    @pytest.mark.asyncio
+    async def test_filesection_no_extra_settings(self, sample_comparison, mocker):
         section_writer = FileSectionWriter(
             sample_comparison.head.commit.repository,
             "layout",
@@ -2975,7 +2976,7 @@ class TestFileSectionWriter(object):
             Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
         ]
         lines = list(
-            section_writer.write_section(
+            await section_writer.write_section(
                 sample_comparison,
                 {
                     "files": {
@@ -3010,7 +3011,8 @@ class TestFileSectionWriter(object):
             "| [added.py](pull.link/diff?src=pr&el=tree#diff-YWRkZWQucHk=) | | |",
         ]
 
-    def test_file_with_critical(self, sample_comparison, mocker):
+    @pytest.mark.asyncio
+    async def test_file_with_critical(self, sample_comparison, mocker):
         critical_path_report = mocker.MagicMock(
             get_critical_files_filenames=mocker.MagicMock(
                 return_value=["file_1.go", "added.py"]
@@ -3069,7 +3071,7 @@ class TestFileSectionWriter(object):
             Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
         ]
         lines = list(
-            section_writer.write_section(
+            await section_writer.write_section(
                 sample_comparison,
                 {
                     "files": {
