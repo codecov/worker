@@ -140,7 +140,11 @@ class ProfilingCollectionTask(BaseCodecovTask):
                     group_appearance_counter[group_name] += 1
                     for single_file in run["execs"]:
                         filename = single_file["filename"]
-                        for ln, ln_ct in single_file["lines"].items():
+                        for ln, ln_ct in (
+                            single_file["lines"].items()
+                            if isinstance(single_file["lines"], dict)
+                            else single_file["lines"]
+                        ):
                             counters[group_name][filename][int(ln)] += ln_ct
         with metrics.timer("worker.internal.task.merge_into"):
             group_mapping = {

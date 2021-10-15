@@ -117,19 +117,35 @@ class ProfilingNormalizerTask(BaseCodecovTask):
                 report = process_report(
                     report_file_upload, current_yaml, 1, {}, lambda x, bases_to_try: x
                 )
-                runs.append(self._extract_report_into_dict(report, element, files_dict))
+                runs.append(
+                    self._extract_report_into_dict(
+                        current_yaml,
+                        report,
+                        element["span"] if "span" in element else element,
+                        files_dict,
+                    )
+                )
         for name in files_dict:
             files_dict[name]["executable_lines"] = sorted(
                 files_dict[name]["executable_lines"]
             )
         return {"runs": runs, "files": files_dict}
 
-    def _extract_report_into_dict(self, report, element, files_dict):
-        into_dict = {"group": element["name"], "execs": []}
+    def _extract_report_into_dict(self, current_yaml, report, element, files_dict):
+        relevant_attributes = sorted(
+            current_yaml.get("profiling", {}).get("grouping_attributes", [])
+        )
+        into_dict = {
+            "grouping_attributes": [
+                (key, element["attributes"].get(key)) for key in relevant_attributes
+            ],
+            "group": element["name"],
+            "execs": [],
+        }
         for filename in report.files:
             file_dict = files_dict.setdefault(filename, {"executable_lines": set()})
             file_report = report.get(filename)
-            into_file_dict = {"filename": filename, "lines": {}}
+            into_file_dict = {"filename": filename, "lines": []}
             into_dict["execs"].append(into_file_dict)
             for line_number, line in file_report.lines:
                 (
@@ -147,7 +163,7 @@ class ProfilingNormalizerTask(BaseCodecovTask):
                 )
                 file_dict["executable_lines"].add(line_number)
                 if line_count > 0:
-                    into_file_dict["lines"][line_number] = line_count
+                    into_file_dict["lines"].append((line_number, line_count))
         return into_dict
 
     def store_normalization_results(self, profiling: ProfilingUpload, results):
