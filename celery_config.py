@@ -8,7 +8,11 @@ from celery import signals
 from celery.beat import BeatLazyFunc
 from celery.schedules import crontab
 from celery.signals import worker_process_init
-from codecovopentelem import get_codecov_opentelemetry_instances
+from codecovopentelem import (
+    CoverageSpanFilter,
+    UnableToStartProcessorException,
+    get_codecov_opentelemetry_instances,
+)
 from opentelemetry import trace
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
@@ -50,17 +54,29 @@ def init_celery_tracing(*args, **kwargs):
         log.info("Configuring opentelemetry exporter")
         provider = TracerProvider()
         trace.set_tracer_provider(provider)
-        generator, exporter = get_codecov_opentelemetry_instances(
-            repository_token=os.getenv("OPENTELEMETRY_TOKEN"),
-            profiling_identifier=get_current_version(),
-            sample_rate=float(os.getenv("OPENTELEMETRY_CODECOV_RATE")),
-            name_regex=re.compile("run/.*"),
-            codecov_endpoint=os.getenv("OPENTELEMETRY_ENDPOINT"),
-            writeable_folder="/home/codecov",
-        )
-        provider.add_span_processor(generator)
-        provider.add_span_processor(BatchSpanProcessor(exporter))
-        CeleryInstrumentor().instrument()
+        export_rate = float(os.getenv("OPENTELEMETRY_CODECOV_RATE"))
+        try:
+            generator, exporter = get_codecov_opentelemetry_instances(
+                repository_token=os.getenv("OPENTELEMETRY_TOKEN"),
+                profiling_identifier=get_current_version(),
+                sample_rate=export_rate,
+                filters={
+                    CoverageSpanFilter.regex_name_filter: None,
+                    CoverageSpanFilter.span_kind_filter: [
+                        trace.SpanKind.SERVER,
+                        trace.SpanKind.CONSUMER,
+                    ],
+                },
+                untracked_export_rate=export_rate,
+                codecov_endpoint=os.getenv("OPENTELEMETRY_ENDPOINT"),
+                writeable_folder="/home/codecov",
+                environment="production",
+            )
+            provider.add_span_processor(generator)
+            provider.add_span_processor(BatchSpanProcessor(exporter))
+            CeleryInstrumentor().instrument()
+        except UnableToStartProcessorException:
+            log.warning("Unable to instrument opentelemetry on worker")
 
 
 hourly_check_task_name = "app.cron.hourly_check.HourlyCheckTask"
