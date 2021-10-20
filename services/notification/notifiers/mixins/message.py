@@ -294,6 +294,10 @@ class MessageMixin(object):
                     section_writer = FooterSectionWriter(
                         self.repository, layout, show_complexity, settings, current_yaml
                     )
+                elif layout == "betaprofiling":
+                    section_writer = ImpactedEntrypointsSectionWriter(
+                        self.repository, layout, show_complexity, settings, current_yaml
+                    )
                 else:
                     if layout not in LayoutStructure.acceptable_objects:
                         log.warning(
@@ -346,7 +350,7 @@ class NullSectionWriter(BaseSectionWriter):
         return []
 
 
-class ImpactedEntrypointsWriter(BaseSectionWriter):
+class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
     async def do_write_section(
         self, comparison, diff, changes, links,
     ):

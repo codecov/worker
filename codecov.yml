@@ -1,5 +1,7 @@
 codecov:
   require_ci_to_pass: false
+  notify:
+    wait_for_ci: false
 ignore:
   - conftest.py
   - "**/conftest.py"
@@ -7,3 +9,4 @@ ignore:
   - "database/tests/factories/**"
 comment:
   show_critical_paths: true
+  layout: "reach,diff,flags,tree,betaprofiling"

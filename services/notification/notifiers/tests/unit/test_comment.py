@@ -19,7 +19,7 @@ from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message import (
     Change,
     FileSectionWriter,
-    ImpactedEntrypointsWriter,
+    ImpactedEntrypointsSectionWriter,
     diff_to_string,
     format_number_to_str,
     sort_by_importance,
@@ -730,7 +730,10 @@ class TestCommentNotifier(object):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={"layout": "files", "show_critical_paths": True},
+            notifier_yaml_settings={
+                "layout": "files,betaprofiling",
+                "show_critical_paths": True,
+            },
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -748,6 +751,7 @@ class TestCommentNotifier(object):
             f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
+            "",
         ]
         res = await notifier.build_message(comparison)
         assert expected_result == res
@@ -3163,7 +3167,7 @@ class TestImpactedEndpointWriter(object):
                 )
             ),
         )
-        section_writer = ImpactedEntrypointsWriter(
+        section_writer = ImpactedEntrypointsSectionWriter(
             sample_comparison.head.commit.repository,
             "layout",
             show_complexity=False,
