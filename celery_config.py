@@ -55,10 +55,12 @@ def init_celery_tracing(*args, **kwargs):
         provider = TracerProvider()
         trace.set_tracer_provider(provider)
         export_rate = float(os.getenv("OPENTELEMETRY_CODECOV_RATE"))
+        current_version = get_current_version()
+        current_env = "production"
         try:
             generator, exporter = get_codecov_opentelemetry_instances(
                 repository_token=os.getenv("OPENTELEMETRY_TOKEN"),
-                profiling_identifier=get_current_version(),
+                version_identifier=current_version,
                 sample_rate=export_rate,
                 filters={
                     CoverageSpanFilter.regex_name_filter: None,
@@ -67,10 +69,11 @@ def init_celery_tracing(*args, **kwargs):
                         trace.SpanKind.CONSUMER,
                     ],
                 },
+                code=f"{current_version}:{current_env}",
                 untracked_export_rate=export_rate,
                 codecov_endpoint=os.getenv("OPENTELEMETRY_ENDPOINT"),
                 writeable_folder="/home/codecov",
-                environment="production",
+                environment=current_env,
             )
             provider.add_span_processor(generator)
             provider.add_span_processor(BatchSpanProcessor(exporter))
