@@ -74,7 +74,9 @@ def test_load_critical_path_report(
     url = "v4/banana/abcdef.json"
     mock_storage.write_file("bucket", url, json.dumps(data))
     pc = ProfilingCommitFactory.create(
-        summarized_location=url, repository=sample_comparison.base.commit.repository
+        summarized_location=url,
+        repository=sample_comparison.base.commit.repository,
+        last_summarized_at=datetime(2021, 10, 10),
     )
     dbsession.add(pc)
     dbsession.flush()
@@ -131,7 +133,9 @@ def test_load_critical_path_report_yes_commit_no_storage(
     mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
     url = "v4/banana/abcdef.json"
     pc = ProfilingCommitFactory.create(
-        summarized_location=url, repository=sample_comparison.base.commit.repository,
+        summarized_location=url,
+        repository=sample_comparison.base.commit.repository,
+        last_summarized_at=datetime(2021, 3, 1, 5),
     )
     dbsession.add(pc)
     dbsession.flush()

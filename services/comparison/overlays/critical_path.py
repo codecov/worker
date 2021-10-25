@@ -17,6 +17,7 @@ def _get_latest_profiling_commit(comparison):
         .filter(
             ProfilingCommit.repoid == comparison.base.commit.repoid,
             ~ProfilingCommit.summarized_location.is_(None),
+            ~ProfilingCommit.last_summarized_at.is_(None),
         )
         .order_by(ProfilingCommit.last_summarized_at.desc())
         .first()
