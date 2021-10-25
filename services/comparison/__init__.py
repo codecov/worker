@@ -140,6 +140,7 @@ class ComparisonProxy(object):
                                 extra=dict(
                                     only_on_new=only_on_new[:100],
                                     only_on_original=only_on_original[:100],
+                                    repoid=self.head.commit.repoid,
                                 ),
                             )
                     except Exception:
