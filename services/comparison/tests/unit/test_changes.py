@@ -2,7 +2,12 @@ import pytest
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.reports.types import ReportTotals
 
-from services.comparison.changes import Change, diff_totals, get_changes
+from services.comparison.changes import (
+    Change,
+    diff_totals,
+    get_changes,
+    get_segment_offsets,
+)
 
 
 class TestDiffTotals(object):
@@ -46,6 +51,43 @@ class TestDiffTotals(object):
     )
     def test_diff_totals(self, base, head, absolute, res):
         assert diff_totals(base, head, absolute) == res
+
+
+@pytest.mark.parametrize(
+    "segments, result",
+    [
+        ([(["1", "0", "1", "0"], "-+ ")], ({}, [1], [1])),
+        ([(["1", "0", "1", "0"], "++ ")], ({1: -1, 2: -1}, [1, 2], [])),
+        ([(["1", "0", "1", "0"], "-- ")], ({1: 2}, [], [1, 2])),
+        (
+            [(["1", "0", "1", "0"], " ++ --+ ")],
+            ({2: -1, 3: -1, 5: 1}, [2, 3, 5], [3, 4]),
+        ),
+        ([(["5", "0", "7", "0"], " -+ + ")], ({10: -1}, [8, 10], [6])),
+        ([(["0", "0", "0", "0"], "--++")], ({1: 1, 2: -1}, [1, 2], [1, 2])),
+        ([([" ", "0", "0", "0"], "--++")], ({1: 1, 2: -1}, [1, 2], [1, 2])),
+        ([(["1", "0", "1", "0"], "-----+ ")], ({1: 4}, [1], [1, 2, 3, 4, 5])),
+        (
+            [(["1", "0", "1", "0"], "-+ -+ -+ -----++++ ")],
+            (
+                {8: -1, 9: -1, 10: -1, 7: 4},
+                [1, 3, 5, 7, 8, 9, 10],
+                [1, 3, 5, 7, 8, 9, 10, 11],
+            ),
+        ),
+        (
+            [(["5", "0", "1", "0"], " - - - + - ")],
+            ({2: 1, 3: 1, 4: 1, 5: -1, 7: 1}, [5], [6, 8, 10, 13]),
+        ),
+    ],
+)
+def test_get_segment_offsets(segments, result):
+    assert (
+        get_segment_offsets(
+            [dict(header=seg[0], lines=list(seg[1])) for seg in segments]
+        )
+        == result
+    )
 
 
 class TestChanges(object):

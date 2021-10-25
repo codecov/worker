@@ -62,11 +62,16 @@ def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
         start = int(seg["header"][2]) or 1
         offset_l = 0  # used to offset the segment line number (not real line numbers)
         offset_r = 0  # used to offset the segment line number (not real line numbers)
+        base_start = (
+            int(seg["header"][0] if seg["header"][0] and seg["header"][0] != " " else 1)
+            or 1
+        )
+        starting_diff = start - base_start
         # loop through all the lines
         for ln, line in enumerate(seg["lines"], start=start):
             l0 = line[0]
             if l0 == "-":
-                removals.append(ln + offset_r)
+                removals.append(ln + offset_l - starting_diff)
                 offsets[ln + offset_r] += 1
                 offset_r -= 1
 
