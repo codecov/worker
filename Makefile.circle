@@ -3,7 +3,7 @@
 #GCLOUD_SERVICE_KEY := $(shell cat ~/.gcloud/codecov-enterprise-sandbox-03eb0a0ecaf2.json | base64 --wrap=0)
 GCR_REPO := gcr.io/test6u3411ty6xqh462sri/codecov-worker
 ENTERPRISE_GCR_REPO := gcr.io/codecov-enterprise-sandbox/codecov-worker
-REQUIREMENTS_TAG := requirements-v04-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)-$(shell sha1sum Dockerfile.requirements | cut -d ' ' -f 1)
+REQUIREMENTS_TAG := requirements-v04-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)-$(shell sha1sum dockerscripts/Dockerfile.requirements | cut -d ' ' -f 1)
 SEMANTIC_VERSION := `cat VERSION`
 IMAGE_VERSION := ${SEMANTIC_VERSION}-$(shell git rev-parse --short=7 HEAD)
 ssh_private_key = `cat ~/.ssh/id_rsa`
