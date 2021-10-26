@@ -122,6 +122,17 @@ class TestChanges(object):
                     "stats": {"added": 0, "removed": 0},
                     "type": "modified",
                 },
+                "renamed_and_missing.py": {
+                    "before": "old_renamed_and_missing.py",
+                    "segments": [
+                        {
+                            "header": ["1", "1", "1", "1"],
+                            "lines": ["-    return 2 * l", "+    return 2 * var"],
+                        }
+                    ],
+                    "stats": {"added": 0, "removed": 0},
+                    "type": "modified",
+                },
                 "renamed_with_changes.py": {
                     "before": "old_renamed_with_changes.py",
                     "segments": [],
@@ -272,6 +283,13 @@ class TestChanges(object):
         second_unrelated_file.append(16, ReportLine.create(coverage=1))
         second_unrelated_file.append(32, ReportLine.create(coverage=0))
         second_report.append(second_unrelated_file)
+        # JUST VANISHED
+        first_old_renamed_and_missing = ReportFile("old_renamed_and_missing.py")
+        first_old_renamed_and_missing.append(1, ReportLine.create(coverage=1))
+        first_old_renamed_and_missing.append(2, ReportLine.create(coverage=1))
+        first_old_renamed_and_missing.append(3, ReportLine.create(coverage=0))
+        first_old_renamed_and_missing.append(8, ReportLine.create(coverage=0))
+        first_report.append(first_old_renamed_and_missing)
         res = get_changes(first_report, second_report, json_diff)
         for r in res:
             print(r)
@@ -351,7 +369,16 @@ class TestChanges(object):
                 totals=None,
             ),
             Change(path="removed_some_covered_lines.py", deleted=True),
+            Change(
+                path="renamed_and_missing.py",
+                new=False,
+                deleted=True,
+                in_diff=None,
+                old_path=None,
+                totals=None,
+            ),
         ]
+        assert set([x.path for x in res]) == set([x.path for x in expected_result])
         for individual_result, individual_expected_result in zip(
             sorted(res, key=lambda x: x.path),
             sorted(expected_result, key=lambda x: x.path),
