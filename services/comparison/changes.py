@@ -196,20 +196,24 @@ def get_changes(
                     ),
                 )
             )
-
-    for possibly_deleted_filename in (base_files - head_files) & diff_keys:
+    vanished_base_files = {
+        d["before"] or k: (k, d)
+        for (k, d) in diff_json["files"].items()
+        if head_report.get(k) is None and base_report.get(d["before"] or k) is not None
+    }
+    for possibly_deleted_filename, data in vanished_base_files.items():
+        head_name, diff = data
         # these are files that are present on base, not present on head
         # and are possibly accounted by the diff
         # But to know that for sure we need to know that every line lost is accounted
         # by the diff
-        diff = diff_json["files"].get(possibly_deleted_filename)
         if diff.get("type") != "deleted":
             base_report_file = base_report.get(possibly_deleted_filename)
             present_lines_on_base = set(x[0] for x in base_report_file.lines)
             _, _, line_removals = get_segment_offsets(diff["segments"])
             lines_unnaccounted_for = present_lines_on_base - set(line_removals)
             if lines_unnaccounted_for:
-                changes.append(Change(path=possibly_deleted_filename, deleted=True))
+                changes.append(Change(path=head_name, deleted=True))
 
     # [deleted] [~~diff~~] == missing reports
     # left over deleted files
