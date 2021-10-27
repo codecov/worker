@@ -357,7 +357,7 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
         overlay = comparison.get_overlay(OverlayType.line_execution_count)
         impacted_endpoints = await overlay.find_impacted_endpoints()
         if impacted_endpoints:
-            yield "| Endpoints |"
+            yield "| Related Entrypoints |"
             yield "|---|"
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
