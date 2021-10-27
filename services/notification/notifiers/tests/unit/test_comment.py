@@ -3201,4 +3201,4 @@ class TestImpactedEndpointWriter(object):
                 links={"pull": "pull.link"},
             )
         )
-        assert lines == ["| Endpoints |", "|---|", "|banana|", "|GET /apple|"]
+        assert lines == ["| Related Entrypoints |", "|---|", "|banana|", "|GET /apple|"]
