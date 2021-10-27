@@ -9,7 +9,7 @@ from helpers.clock import get_utc_now
 from tasks.crontasks import CodecovCronTask
 from tasks.profiling_collection import profiling_collection_task
 
-MIN_INTERVAL_PROFILINGS_HOURS = 4
+MIN_INTERVAL_PROFILINGS_HOURS = 2
 
 
 class FindUncollectedProfilingsTask(CodecovCronTask):
@@ -18,7 +18,7 @@ class FindUncollectedProfilingsTask(CodecovCronTask):
 
     @classmethod
     def get_min_seconds_interval_between_executions(cls):
-        return 1700
+        return 800
 
     async def run_cron_task(self, db_session, *args, **kwargs):
         min_interval_profilings = timedelta(hours=MIN_INTERVAL_PROFILINGS_HOURS)

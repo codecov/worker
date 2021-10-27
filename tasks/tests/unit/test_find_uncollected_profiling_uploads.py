@@ -12,7 +12,7 @@ from tasks.profiling_find_uncollected import FindUncollectedProfilingsTask
 class TestFindUncollectedProfilingsTask(object):
     def test_get_min_seconds_interval_between_executions(self):
         task = FindUncollectedProfilingsTask()
-        assert task.get_min_seconds_interval_between_executions() == 1700
+        assert task.get_min_seconds_interval_between_executions() == 800
 
     @pytest.mark.asyncio
     async def test_run_cron_task_empty(self, dbsession):
