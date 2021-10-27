@@ -98,7 +98,7 @@ class PathFixer(object):
     def resolver(self, path: str, ancestors=None):
         return _resolve_path(self.tree, path, ancestors)
 
-    def __call__(self, path: str) -> str:
+    def __call__(self, path: str, bases_to_try=None) -> str:
         res = self.clean_path(path)
         self.calculated_paths[res].add(path)
         return res

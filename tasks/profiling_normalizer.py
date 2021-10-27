@@ -13,6 +13,7 @@ from app import celery_app
 from database.models.profiling import ProfilingUpload
 from helpers.clock import get_utc_now
 from services.archive import ArchiveService
+from services.path_fixer import PathFixer
 from services.report.parser import ParsedUploadedReportFile
 from services.report.report_processor import process_report
 from services.yaml import get_repo_yaml
@@ -114,8 +115,9 @@ class ProfilingNormalizerTask(BaseCodecovTask):
                     filename=None,
                     file_contents=BytesIO(b64decode(element["codecov"]["coverage"])),
                 )
+                path_fixer = PathFixer.init_from_user_yaml(current_yaml, [], [])
                 report = process_report(
-                    report_file_upload, current_yaml, 1, {}, lambda x, bases_to_try: x
+                    report_file_upload, current_yaml, 1, {}, path_fixer
                 )
                 runs.append(
                     self._extract_report_into_dict(
