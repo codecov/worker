@@ -72,7 +72,6 @@ def init_celery_tracing(*args, **kwargs):
                 code=f"{current_version}:{current_env}",
                 untracked_export_rate=export_rate,
                 codecov_endpoint=os.getenv("OPENTELEMETRY_ENDPOINT"),
-                writeable_folder="/home/codecov",
                 environment=current_env,
             )
             provider.add_span_processor(generator)
