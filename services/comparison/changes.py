@@ -245,15 +245,21 @@ def iter_changed_lines(
     streams line numbers that changed as integers > 0
     """
     if not diff or diff["type"] == "modified":
-        offsets, skip_lines, _ = (
+        offsets, skip_lines, removed_lines = (
             get_segment_offsets(diff["segments"]) if diff else (None, None, None)
         )
         base_ln = 0
+        base_report_file_eof = (
+            base_report_file.eof if base_report_file is not None else 0
+        )
         for ln in range(
             1,
             max(
                 (
-                    base_report_file.eof if base_report_file is not None else 0,
+                    base_report_file_eof,
+                    base_report_file_eof
+                    + len(skip_lines or [])
+                    - len(removed_lines or []),
                     head_report_file.eof,
                 )
             )

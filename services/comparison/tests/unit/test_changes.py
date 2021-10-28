@@ -91,6 +91,54 @@ def test_get_segment_offsets(segments, result):
 
 
 class TestChanges(object):
+    def test_get_changes_eof_case(self):
+        json_diff = {
+            "files": {
+                "filename.py": {
+                    "before": None,
+                    "segments": [
+                        {"header": ["1", "1", "1", "20"], "lines": ["-"] + ["+"] * 20}
+                    ],
+                    "stats": {"added": 20, "removed": 1},
+                    "type": "modified",
+                },
+            }
+        }
+        first_report = Report()
+        second_report = Report()
+        first_file = ReportFile("filename.py")
+        second_file = ReportFile("filename.py")
+        first_file.append(2, ReportLine.create(coverage=0))
+        second_file.append(2, ReportLine.create(coverage=0))
+        first_report.append(first_file)
+        second_report.append(second_file)
+        expected_result = [
+            Change(
+                "filename.py",
+                new=False,
+                deleted=False,
+                in_diff=True,
+                old_path=None,
+                totals=ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=0,
+                    misses=-1,
+                    partials=0,
+                    coverage=100.0,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            )
+        ]
+        res = get_changes(first_report, second_report, json_diff)
+        assert expected_result == res
+
     def test_get_changes(self):
         json_diff = {
             "files": {
