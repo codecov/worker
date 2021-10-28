@@ -136,13 +136,17 @@ class UploadFinisherTask(BaseCodecovTask):
                                     should_send_notifications=False,
                                 ),
                             )
-                            comparison = get_or_create_comparison(
-                                db_session, head, commit
-                            )
-                            db_session.commit()
-                            self.app.tasks[compute_comparison_task_name].apply_async(
-                                args=[comparison.id,]
-                            )
+                            compared_to = pull.get_comparedto_commit()
+                            if compared_to:
+                                comparison = get_or_create_comparison(
+                                    db_session, compared_to, commit
+                                )
+                                db_session.commit()
+                                self.app.tasks[
+                                    compute_comparison_task_name
+                                ].apply_async(
+                                    args=[comparison.id,]
+                                )
 
             else:
                 notifications_called = False

@@ -354,6 +354,8 @@ class TestUploadFinisherTask(object):
         dbsession.add(repository)
         dbsession.flush()
         pull = PullFactory.create(repository=repository)
+        compared_to = CommitFactory.create(repository=repository)
+        pull.compared_to = compared_to.commitid
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -362,6 +364,7 @@ class TestUploadFinisherTask(object):
         )
         processing_results = {"processings_so_far": [{"successful": True}]}
         dbsession.add(commit)
+        dbsession.add(compared_to)
         dbsession.add(pull)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
