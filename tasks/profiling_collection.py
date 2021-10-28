@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, Sequence, Tuple
 
+from redis.exceptions import LockError
 from shared.celery_config import profiling_collection_task_name
 from shared.storage.exceptions import FileNotInStorageError
 from sqlalchemy.orm.session import Session
@@ -29,35 +30,52 @@ class ProfilingCollectionTask(BaseCodecovTask):
         self, db_session: Session, *, profiling_id: int, **kwargs,
     ):
         redis_connection = get_redis_connection()
-        with redis_connection.lock(f"totalize_profilings_lock_{profiling_id}"):
-            profiling = (
-                db_session.query(ProfilingCommit).filter_by(id=profiling_id).first()
-            )
-            (
-                new_profiling_uploads_to_join,
-                new_last_joined_at,
-            ) = self.find_uploads_to_join(
-                profiling, get_utc_now() - timedelta(seconds=60)
-            )
+        try:
+            with redis_connection.lock(
+                f"totalize_profilings_lock_{profiling_id}",
+                timeout=max(60 * 5, self.hard_time_limit_task),
+                blocking_timeout=1,
+            ):
+                profiling = (
+                    db_session.query(ProfilingCommit).filter_by(id=profiling_id).first()
+                )
+                (
+                    new_profiling_uploads_to_join,
+                    new_last_joined_at,
+                ) = self.find_uploads_to_join(
+                    profiling, get_utc_now() - timedelta(seconds=60)
+                )
+                log.info(
+                    "Joining profiling uploads into profiling commit",
+                    extra=dict(
+                        profiling_id=profiling_id,
+                        number_uploads=new_profiling_uploads_to_join.count(),
+                        new_last_joined_at=new_last_joined_at.isoformat(),
+                    ),
+                )
+                joined_execution_counts = self.join_profiling_uploads(
+                    profiling, new_profiling_uploads_to_join
+                )
+                location = self.store_results(profiling, joined_execution_counts)
+                profiling.last_joined_uploads_at = new_last_joined_at
+                db_session.commit()
+                task_id = profiling_summarization_task.delay(
+                    profiling_id=profiling_id
+                ).id
+                return {
+                    "successful": True,
+                    "location": location,
+                    "summarization_task_id": task_id,
+                }
+        except LockError:
             log.info(
-                "Joining profiling uploads into profiling commit",
-                extra=dict(
-                    profiling_id=profiling_id,
-                    number_uploads=new_profiling_uploads_to_join.count(),
-                    new_last_joined_at=new_last_joined_at.isoformat(),
-                ),
+                "Not executing collection since another collection is already running",
+                extra=dict(profiling_id=profiling_id),
             )
-            joined_execution_counts = self.join_profiling_uploads(
-                profiling, new_profiling_uploads_to_join
-            )
-            location = self.store_results(profiling, joined_execution_counts)
-            profiling.last_joined_uploads_at = new_last_joined_at
-            db_session.commit()
-            task_id = profiling_summarization_task.delay(profiling_id=profiling_id).id
             return {
-                "successful": True,
-                "location": location,
-                "summarization_task_id": task_id,
+                "successful": False,
+                "location": None,
+                "summarization_task_id": None,
             }
 
     @metrics.timer("worker.internal.task.find_uploads_to_join")

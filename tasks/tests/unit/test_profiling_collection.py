@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from redis.exceptions import LockError
 from shared.storage.exceptions import FileNotInStorageError
 
 from database.tests.factories.profiling import (
@@ -130,6 +131,17 @@ async def test_run_async_simple_run_no_existing_data_sample_new_uploads(
         == sample_open_telemetry_collected
     )
     mock_delay.delay.assert_called_with(profiling_id=pcf.id)
+
+
+@pytest.mark.asyncio
+async def test_collection_task_redis_lock_unavailable(dbsession, mocker, mock_redis):
+    pcf = ProfilingCommitFactory.create(joined_location=None)
+    dbsession.add(pcf)
+    dbsession.flush()
+    task = ProfilingCollectionTask()
+    mock_redis.lock.return_value.__enter__.side_effect = LockError()
+    res = await task.run_async(dbsession, profiling_id=pcf.id)
+    assert res == {"location": None, "successful": False, "summarization_task_id": None}
 
 
 class TestProfilingCollectionTask(object):
