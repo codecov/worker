@@ -53,7 +53,7 @@ coverage==5.5
     #   -r requirements.in
     #   codecovopentelem
     #   pytest-cov
-cryptography==3.4.6
+cryptography==35.0.0
     # via shared
 deprecated==1.2.12
     # via opentelemetry-api
@@ -216,7 +216,7 @@ s3transfer==0.3.4
     # via boto3
 sentry-sdk==1.4.3
     # via -r requirements.in
-git+ssh://git@github.com/codecov/shared.git@v0.7.9#egg=shared
+git+ssh://git@github.com/codecov/shared.git@v0.7.10#egg=shared
     # via -r requirements.in
 six==1.15.0
     # via
