@@ -1,10 +1,11 @@
-import datetime
 import uuid
 
 from sqlalchemy import Column, types
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
+
+from helpers.clock import get_utc_now
 
 Base = declarative_base()
 
@@ -22,9 +23,9 @@ class MixinBaseClass(object):
     external_id = Column(
         UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False
     )
-    created_at = Column(types.DateTime, default=datetime.datetime.now)
+    created_at = Column(types.DateTime(timezone=True), default=get_utc_now)
     updated_at = Column(
-        types.DateTime, onupdate=datetime.datetime.now, default=datetime.datetime.now
+        types.DateTime(timezone=True), onupdate=get_utc_now, default=get_utc_now,
     )
 
     @property
