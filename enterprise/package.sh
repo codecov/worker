@@ -43,6 +43,7 @@ pyinstaller -F \
     --exclude-module pycrypto \
     --exclude-module PyInstaller \
     --add-data src:/src \
+    --additional-hooks-dir /pyinstaller/hooks \
     ${hiddenimport} \
     ${pyinstaller_args} \
     /worker/enterprise.py

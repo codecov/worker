@@ -13,10 +13,6 @@ from codecovopentelem import (
     UnableToStartProcessorException,
     get_codecov_opentelemetry_instances,
 )
-from opentelemetry import trace
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from shared.celery_config import BaseCeleryConfig, profiling_finding_task_name
 
 from helpers.cache import RedisBackend, cache
@@ -51,6 +47,11 @@ def init_celery_tracing(*args, **kwargs):
         and os.getenv("OPENTELEMETRY_CODECOV_RATE")
         and not is_enterprise()
     ):
+        from opentelemetry import trace
+        from opentelemetry.instrumentation.celery import CeleryInstrumentor
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
         log.info("Configuring opentelemetry exporter")
         provider = TracerProvider()
         trace.set_tracer_provider(provider)
