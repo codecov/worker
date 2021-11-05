@@ -3,6 +3,7 @@ import json
 import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report
+from shared.torngit.exceptions import TorngitRateLimitError
 
 from database.enums import CompareCommitError, CompareCommitState
 from database.tests.factories import CompareCommitFactory
@@ -80,7 +81,6 @@ class TestComputeComparisonTask(object):
             "get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
         )
-        print("A", ReadOnlyReport.create_from_report(sample_report).rust_report)
         mock_repo_provider.get_compare.return_value = {
             "diff": {
                 "files": {
@@ -186,3 +186,25 @@ class TestComputeComparisonTask(object):
         dbsession.flush()
         assert comparison.state == CompareCommitState.error.value
         assert comparison.error == CompareCommitError.missing_head_report.value
+
+    @pytest.mark.asyncio
+    async def test_run_task_ratelimit_error(self, dbsession, mocker, sample_report):
+        comparison = CompareCommitFactory.create()
+        dbsession.add(comparison)
+        dbsession.flush()
+        mocker.patch.object(
+            ComputeComparisonTask,
+            "serialize_impacted_files",
+            side_effect=TorngitRateLimitError("response_data", "message", "reset"),
+        )
+        task = ComputeComparisonTask()
+        mocker.patch.object(
+            ReportService,
+            "get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(sample_report),
+        )
+        res = await task.run_async(dbsession, comparison.id)
+        assert res == {"successful": False}
+        dbsession.flush()
+        assert comparison.state == CompareCommitState.pending.value
+        assert comparison.error is None
