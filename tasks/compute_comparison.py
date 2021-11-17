@@ -2,6 +2,7 @@ import logging
 
 from shared.celery_config import compute_comparison_task_name
 from shared.reports.readonly import ReadOnlyReport
+from shared.torngit.exceptions import TorngitRateLimitError
 
 from app import celery_app
 from database.enums import CompareCommitError, CompareCommitState
@@ -40,9 +41,17 @@ class ComputeComparisonTask(BaseCodecovTask):
             comparison.state = CompareCommitState.error.value
             log.warn("Compute comparison failed, %s", comparison.error, extra=log_extra)
             return {"successful": False}
-
-        with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files") as tm:
-            impacted_files = await self.serialize_impacted_files(comparison_proxy)
+        try:
+            with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files") as tm:
+                impacted_files = await self.serialize_impacted_files(comparison_proxy)
+        except TorngitRateLimitError:
+            log.warning(
+                "Unable to compute comparison due to rate limit error",
+                extra=dict(
+                    comparison_id=comparison_id, repoid=comparison.compare_commit.repoid
+                ),
+            )
+            return {"successful": False}
         log.info("Files impact calculated", extra=dict(timing_ms=tm.ms, **log_extra))
         with metrics.timer(f"{self.metrics_prefix}.store_results"):
             path = self.store_results(comparison, impacted_files)
