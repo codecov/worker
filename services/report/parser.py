@@ -51,6 +51,7 @@ class RawReportParser(object):
     network_separator = b"<<<<<< network"
     env_separator = b"<<<<<< ENV"
     eof_separator = b"<<<<<< EOF"
+    ignore_from_now_on_marker = b"==FROMNOWONIGNOREDBYCODECOV==>>>"
 
     separator_lines = [
         network_separator,
@@ -154,8 +155,21 @@ class RawReportParser(object):
     @classmethod
     @metrics.timer("services.report.parser.parse_raw_report_from_bytes")
     def parse_raw_report_from_bytes(cls, raw_report: bytes) -> ParsedRawReport:
+        raw_report, _, compat_report_str = raw_report.partition(
+            cls.ignore_from_now_on_marker
+        )
         sections = cls.cut_sections(raw_report)
-        return cls._generate_parsed_report_from_sections(sections)
+        res = cls._generate_parsed_report_from_sections(sections)
+        if compat_report_str:
+            compat_report = cls._generate_parsed_report_from_sections(
+                cls.cut_sections(compat_report_str)
+            )
+            cls.compare_compat_and_main_reports(res, compat_report)
+        return res
+
+    @classmethod
+    def compare_compat_and_main_reports(cls, actual_result, compat_result):
+        pass
 
     @classmethod
     def parse_raw_report_from_io(cls, raw_report: BinaryIO) -> ParsedRawReport:
