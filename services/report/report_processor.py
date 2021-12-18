@@ -11,6 +11,7 @@ from shared.reports.resources import Report
 from helpers.exceptions import CorruptRawReportError
 from helpers.metrics import metrics
 from services.report.languages import (
+    BullseyeProcessor,
     CloverProcessor,
     CoberturaProcessor,
     CoverallsProcessor,
@@ -95,6 +96,7 @@ def get_possible_processors_list(report_type) -> list:
     processor_dict = {
         "plist": [XCodePlistProcessor()],
         "xml": [
+            BullseyeProcessor(),
             SCoverageProcessor(),
             JetBrainsXMLProcessor(),
             CloverProcessor(),
