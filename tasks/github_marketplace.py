@@ -240,7 +240,7 @@ class SyncPlansTask(BaseCodecovTask):
 
         if owner:
             # deactivate repos and remove all activated users for this owner
-            owner.plan = BillingPlan.users_free.value
+            owner.plan = BillingPlan.users_basic.value
             owner.plan_user_count = 5
             owner.plan_activated_users = None
 

@@ -160,7 +160,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         result = await task.run_async(
             dbsession, sender=sender, account=account, action=action
         )
-        assert result["plan_type_synced"] is "free"
+        assert result["plan_type_synced"] == "free"
 
         owner = (
             dbsession.query(Owner)
@@ -171,9 +171,9 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner is not None
         assert owner.username == "some-org"
         assert owner.plan_provider == "github"
-        assert owner.plan == BillingPlan.users_free.value
+        assert owner.plan == BillingPlan.users_basic.value
         assert owner.plan_user_count == 5
-        assert owner.plan_activated_users == None
+        assert owner.plan_activated_users is None
 
     @pytest.mark.asyncio
     async def test_cancelled(self, dbsession, mocker, mock_configuration, codecov_vcr):
@@ -256,7 +256,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner is not None
         assert owner.username == "cc-test"
         assert owner.plan_provider == "github"
-        assert owner.plan == "users-free"
+        assert owner.plan == "users-basic"
         assert owner.plan_user_count == 5
         assert owner.plan_activated_users == None
 
