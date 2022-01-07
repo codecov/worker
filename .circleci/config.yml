@@ -134,7 +134,8 @@ jobs:
     executor: codecov-deploy
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 20.10.7
       - run:
           <<: *gcloud_auth
       - run:
@@ -146,7 +147,8 @@ jobs:
     executor: codecov-deploy
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 20.10.7
       - run:
           <<: *gcloud_auth
       - run:
@@ -157,7 +159,8 @@ jobs:
     executor: codecov-deploy
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 20.10.7
       - run:
           <<: *gcloud_auth_enterprise
       - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
@@ -169,7 +172,8 @@ jobs:
     executor: codecov-deploy
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 20.10.7
       - run:
           <<: *gcloud_auth_enterprise
       - run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
@@ -181,7 +185,8 @@ jobs:
     executor: codecov-deploy
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 20.10.7
       - run:
           <<: *gcloud_auth
       - run:
@@ -192,7 +197,8 @@ jobs:
     executor: codecov-deploy
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 20.10.7
       - run:
           name: Pull Latest Worker Image and Deploy to DockerHub
           command: |
