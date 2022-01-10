@@ -361,6 +361,8 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             yield "|---|"
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
+        elif impacted_endpoints is not None:
+            yield "This change has been scanned for critical changes"
 
 
 class FooterSectionWriter(BaseSectionWriter):
