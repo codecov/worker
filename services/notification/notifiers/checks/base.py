@@ -60,7 +60,7 @@ class ChecksNotifier(StatusNotifier):
                 f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
                 f"Please [activate this user on Codecov]({links['org_account']}/users) to display a detailed status check.",
                 f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
-                f"Please don't hesitate to email us at success@codecov.io with any questions.",
+                f"Please don't hesitate to email us at support@codecov.io with any questions.",
             ]
         )
 
