@@ -29,7 +29,7 @@ build-requirements:
 # pulls intermediate dependencies image and adds app code
 build:
 	docker pull ${GCR_REPO}:${REQUIREMENTS_TAG}
-	docker build \
+	DOCKER_BUILDKIT=1 docker build \
 		-f dockerscripts/Dockerfile.circle . \
 		-t ${GCR_REPO}:latest \
 		--build-arg REQUIREMENTS_IMAGE=${GCR_REPO}:${REQUIREMENTS_TAG} \
@@ -96,7 +96,7 @@ dockerhub-deploy-master:
 # - when the docker image is uploaded to GCR with the "staging" tag, spinnaker will automatically detect the new image and deploy to the staging k8s cluster
 # - spinnaker pipeline: https://spinnaker.codecov.dev/?to=https%3A%2F%2Fspinnaker.codecov.dev%2F%23%2Fsearch#/applications/codecov-staging/executions?pipeline=worker
 staging:
-	docker build \
+	DOCKER_BUILDKIT=1 docker build \
 		-f  dockerscripts/Dockerfile.circle . \
 		-t ${GCR_REPO}:staging-${VERSION} \
 		--build-arg RELEASE_VERSION=${IMAGE_VERSION} \
@@ -107,7 +107,7 @@ staging:
 # - when the docker image is uploaded to GCR with the "production" tag, spinnaker will automatically detect the new image and deploy to the production k8s cluster
 # - spinnaker pipeline: https://spinnaker.codecov.dev/?to=https%3A%2F%2Fspinnaker.codecov.dev%2F%23%2Fsearch#/applications/codecov-production/executions?pipeline=worker
 production:
-	docker build \
+	DOCKER_BUILDKIT=1 docker build \
 		-f  dockerscripts/Dockerfile.circle . \
 		-t ${GCR_REPO}:production-${VERSION} \
 		--build-arg RELEASE_VERSION=${IMAGE_VERSION} \
