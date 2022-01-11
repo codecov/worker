@@ -12,6 +12,7 @@ class BillingPlan(Enum):
     users_monthly = "users-inappm"
     users_yearly = "users-inappy"
     users_free = "users-free"
+    users_basic = "users-basic"
     pr_monthly = "users-pr-inappm"
     pr_yearly = "users-pr-inappy"
 
