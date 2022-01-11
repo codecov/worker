@@ -23,6 +23,7 @@ def is_pr_billing_plan(plan: str) -> bool:
             BillingPlan.pr_monthly.value,
             BillingPlan.pr_yearly.value,
             BillingPlan.users_free.value,
+            BillingPlan.users_basic.value,
         ]
     else:
         license = get_current_license()
