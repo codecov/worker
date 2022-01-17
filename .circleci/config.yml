@@ -67,27 +67,27 @@ jobs:
             make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
             make -f Makefile.circle build VERSION=$CIRCLE_TAG
             make -f Makefile.circle push
-  standards-coverage-comparison:
-    machine: true
-    steps:
-      - checkout
-      - run:
-          name: Pull Latest Worker Image
-          command: |
-            docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
-            make -f Makefile.circle pull-latest
-      - run:
-          name: Clone Autotest and Start Acceptance Testing Containers
-          command: |
-            cd ..
-            git clone --depth 5 ssh://git@github.com/codecov/autotest.git
-            cd autotest/
-            echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-            docker-compose -f docker-compose-acceptance.yml up -d
-            sleep 10
-      - run:
-          name: Standards Coverage Comparison
-          command: make -f Makefile.circle run-standards-comparison
+  # standards-coverage-comparison:
+  #   machine: true
+  #   steps:
+  #     - checkout
+  #     - run:
+  #         name: Pull Latest Worker Image
+  #         command: |
+  #           docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
+  #           make -f Makefile.circle pull-latest
+  #     - run:
+  #         name: Clone Autotest and Start Acceptance Testing Containers
+  #         command: |
+  #           cd ..
+  #           git clone --depth 5 ssh://git@github.com/codecov/autotest.git
+  #           cd autotest/
+  #           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  #           docker-compose -f docker-compose-acceptance.yml up -d
+  #           sleep 10
+  #     - run:
+  #         name: Standards Coverage Comparison
+  #         command: make -f Makefile.circle run-standards-comparison
   build-enterprise:
     executor: codecov-deploy
     steps:
@@ -236,12 +236,12 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - standards-coverage-comparison:
-          context:
-            - "DockerHub Push Context"
-            - "circleci google deploy context"
-          requires:
-            - build
+      # - standards-coverage-comparison:
+      #     context:
+      #       - "DockerHub Push Context"
+      #       - "circleci google deploy context"
+      #     requires:
+      #       - build
       - staging:
           context: "circleci google deploy context"
           requires:
@@ -311,7 +311,7 @@ workflows:
           requires:
             - build
             - test
-            - standards-coverage-comparison
+            # - standards-coverage-comparison
           filters:
             branches:
               only: master
