@@ -1,7 +1,3 @@
-import imp
-from collections import defaultdict
-from fractions import Fraction
-from time import time
 from xml.etree.ElementTree import Element
 
 from shared.reports.resources import Report, ReportFile
@@ -65,7 +61,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                         elif attribs["event"] == "none":
                             coverage = 0
                         else:
-                            coverage = Fraction("1/2")
+                            coverage = "1/2"
                         _file.append(
                             ln,
                             ReportLine.create(
