@@ -3202,3 +3202,99 @@ class TestImpactedEndpointWriter(object):
             )
         )
         assert lines == ["| Related Entrypoints |", "|---|", "|banana|", "|GET /apple|"]
+
+    @pytest.mark.asyncio
+    async def test_impacted_endpoints_table_empty_list_result(
+        self, sample_comparison, mocker, mock_repo_provider
+    ):
+        mocker.patch.object(
+            CriticalPathOverlay,
+            "full_analyzer",
+            new_callable=mocker.PropertyMock,
+            return_value=mocker.MagicMock(
+                find_impacted_endpoints=mocker.MagicMock(return_value=[])
+            ),
+        )
+        section_writer = ImpactedEntrypointsSectionWriter(
+            sample_comparison.head.commit.repository,
+            "layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={},
+        )
+        lines = list(
+            await section_writer.write_section(
+                sample_comparison,
+                {
+                    "files": {
+                        "file_1.go": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=2,
+                                misses=1,
+                                coverage=66.66,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        }
+                    }
+                },
+                [],
+                links={"pull": "pull.link"},
+            )
+        )
+        assert lines == ["This change has been scanned for critical changes"]
+
+    @pytest.mark.asyncio
+    async def test_impacted_endpoints_table_none_result(
+        self, sample_comparison, mocker, mock_repo_provider
+    ):
+        mocker.patch.object(
+            CriticalPathOverlay,
+            "full_analyzer",
+            new_callable=mocker.PropertyMock,
+            return_value=mocker.MagicMock(
+                find_impacted_endpoints=mocker.MagicMock(return_value=None)
+            ),
+        )
+        section_writer = ImpactedEntrypointsSectionWriter(
+            sample_comparison.head.commit.repository,
+            "layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={},
+        )
+        lines = list(
+            await section_writer.write_section(
+                sample_comparison,
+                {
+                    "files": {
+                        "file_1.go": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=2,
+                                misses=1,
+                                coverage=66.66,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        }
+                    }
+                },
+                [],
+                links={"pull": "pull.link"},
+            )
+        )
+        assert lines == []
