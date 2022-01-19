@@ -1,7 +1,6 @@
 sha := $(shell git rev-parse --short=7 HEAD)
 release_version = `cat VERSION`
 _gcr := gcr.io/test6u3411ty6xqh462sri/codecov
-ssh_private_key = `cat ~/.ssh/codecov-io_rsa`
 build_date ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
 name ?= worker
 branch = $(shell git branch | grep \* | cut -f2 -d' ')
@@ -12,7 +11,7 @@ build.local:
 	docker build -f dockerscripts/Dockerfile . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}"
 
 build.base:
-	docker build -f dockerscripts/Dockerfile.requirements . -t codecov/baseworker:latest --build-arg SSH_PRIVATE_KEY="${ssh_private_key}"
+	DOCKER_BUILDKIT=1 docker build -f dockerscripts/Dockerfile.requirements . -t codecov/baseworker:latest --ssh default
 
 build:
 	$(MAKE) build.base
