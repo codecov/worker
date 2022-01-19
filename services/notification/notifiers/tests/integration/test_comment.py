@@ -276,7 +276,7 @@ class TestCommentNotifierIntegration(object):
             "The author of this PR, 1nf1n1t3l00p, is not an activated member of this organization on Codecov.",
             "Please [activate this user on Codecov](None/account/gh/1nf1n1t3l00p/users) to display this PR comment.",
             "Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
-            "Please don't hesitate to email us at success@codecov.io with any questions.",
+            "Please don't hesitate to email us at support@codecov.io with any questions.",
         ]
         for exp, res in zip(result.data_sent["message"], expected_message):
             assert exp == res
