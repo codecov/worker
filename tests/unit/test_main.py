@@ -59,7 +59,7 @@ def test_deal_worker_command(mocker, mock_storage):
             codecov.queue,
             "-B",
             "-s",
-            "/home/codecov/celerybeat-schedule",
+            "/tmp/celerybeat-schedule",
         ]
     )
 
