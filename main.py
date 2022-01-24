@@ -60,7 +60,7 @@ def deal_worker_command(parser, codecov):
             codecov.queue,
             "-B",
             "-s",
-            "/home/codecov/celerybeat-schedule",  # TODO find file that can work on production and enterprise
+            "/tmp/celerybeat-schedule",  # TODO find file that can work on production and enterprise
         ]
     )
 
