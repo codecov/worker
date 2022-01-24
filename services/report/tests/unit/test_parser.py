@@ -493,3 +493,57 @@ github.com/mypath/bugsbunny.go:41.2,43.12 2 2
 github.com/mypath/bugsbunny.go:13.20,16.3 2 1
 github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
         )
+
+    def test_cases_compatibility_mode(self):
+        res = RawReportParser.parse_raw_report_from_bytes(
+            b"==FROMNOWONIGNOREDBYCODECOV==>>>".join([simple_content, more_complex])
+        )
+        would_be_simple_content_res = RawReportParser.parse_raw_report_from_bytes(
+            simple_content
+        )
+        assert res.has_toc()
+        assert would_be_simple_content_res.has_toc()
+        assert res.toc.getvalue() == would_be_simple_content_res.toc.getvalue()
+        assert not res.has_env()
+        assert not would_be_simple_content_res.has_env()
+        assert not res.has_path_fixes()
+        assert not would_be_simple_content_res.has_path_fixes()
+        assert len(res.uploaded_files) == len(
+            would_be_simple_content_res.uploaded_files
+        )
+        assert (
+            res.uploaded_files[0].filename
+            == would_be_simple_content_res.uploaded_files[0].filename
+        )
+        assert (
+            res.uploaded_files[0].contents
+            == would_be_simple_content_res.uploaded_files[0].contents
+        )
+
+    def test_cases_compatibility_mode_failed_case(self):
+        res = RawReportParser.parse_raw_report_from_bytes(
+            b"==FROMNOWONIGNOREDBYCODECOV==>>>".join(
+                [simple_content, b"somemeaninglessstuff"]
+            )
+        )
+        would_be_simple_content_res = RawReportParser.parse_raw_report_from_bytes(
+            simple_content
+        )
+        assert res.has_toc()
+        assert would_be_simple_content_res.has_toc()
+        assert res.toc.getvalue() == would_be_simple_content_res.toc.getvalue()
+        assert not res.has_env()
+        assert not would_be_simple_content_res.has_env()
+        assert not res.has_path_fixes()
+        assert not would_be_simple_content_res.has_path_fixes()
+        assert len(res.uploaded_files) == len(
+            would_be_simple_content_res.uploaded_files
+        )
+        assert (
+            res.uploaded_files[0].filename
+            == would_be_simple_content_res.uploaded_files[0].filename
+        )
+        assert (
+            res.uploaded_files[0].contents
+            == would_be_simple_content_res.uploaded_files[0].contents
+        )
