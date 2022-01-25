@@ -8,8 +8,7 @@ from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.celery_config import upload_processor_task_name
 from shared.config import get_config
-from shared.storage.exceptions import FileNotInStorageError
-from shared.torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitError
 from shared.yaml import UserYaml
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -282,13 +281,13 @@ class UploadProcessorTask(BaseCodecovTask):
         try:
             repository_service = get_repo_provider_service(repository, commit)
             report.apply_diff(await repository_service.get_commit_diff(commitid))
-        except TorngitClientError:
+        except TorngitError:
             # When this happens, we have that commit.totals["diff"] is not available.
             # Since there is no way to calculate such diff without the git commit,
             # then we assume having the rest of the report saved there is better than the
             # alternative of refusing an otherwise "good" report because of the lack of diff
             log.warning(
-                "Could not apply diff to report because there was a 4xx error",
+                "Could not apply diff to report because there was an error fetching diff from provider",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid,),
                 exc_info=True,
             )
