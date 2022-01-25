@@ -3,6 +3,7 @@ from decimal import Decimal
 from itertools import chain, combinations
 
 import pytest
+from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, Session, SessionType
 from shared.reports.types import ReportLine, ReportTotals
 from shared.yaml import UserYaml
@@ -3655,7 +3656,28 @@ class TestReportService(BaseTestCase):
             is None
         )
         dbsession.refresh(upload_obj)
+        assert upload_obj.state == "error"
+        assert upload_obj.state_id == UploadState.error.value
         assert len(upload_obj.errors) == 1
         assert upload_obj.errors[0].error_code == "abclkj"
         assert upload_obj.errors[0].error_params == {"banana": "value"}
         assert upload_obj.errors[0].report_upload == upload_obj
+
+    def test_update_upload_with_processing_result_success(self, mocker, dbsession):
+        upload_obj = UploadFactory.create(state="started", storage_path="url")
+        dbsession.add(upload_obj)
+        dbsession.flush()
+        assert len(upload_obj.errors) == 0
+        processing_result = ProcessingResult(
+            report=Report(), session=Session(), error=None,
+        )
+        assert (
+            ReportService({}).update_upload_with_processing_result(
+                upload_obj, processing_result
+            )
+            is None
+        )
+        dbsession.refresh(upload_obj)
+        assert upload_obj.state == "processed"
+        assert upload_obj.state_id == UploadState.processed.value
+        assert len(upload_obj.errors) == 0

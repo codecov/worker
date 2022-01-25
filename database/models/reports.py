@@ -79,6 +79,8 @@ class Upload(CodecovBaseModel, MixinBaseClass):
     )
     upload_extras = Column(postgresql.JSON, nullable=False)
     upload_type = Column(types.String(100), nullable=False)
+    state_id = Column(types.Integer)
+    upload_type_id = Column(types.Integer)
 
     @cached_property
     def flag_names(self):
