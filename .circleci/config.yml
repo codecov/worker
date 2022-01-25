@@ -67,27 +67,21 @@ jobs:
             make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
             make -f Makefile.circle build VERSION=$CIRCLE_TAG
             make -f Makefile.circle push
-  # standards-coverage-comparison:
-  #   machine: true
-  #   steps:
-  #     - checkout
-  #     - run:
-  #         name: Pull Latest Worker Image
-  #         command: |
-  #           docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
-  #           make -f Makefile.circle pull-latest
-  #     - run:
-  #         name: Clone Autotest and Start Acceptance Testing Containers
-  #         command: |
-  #           cd ..
-  #           git clone --depth 5 ssh://git@github.com/codecov/autotest.git
-  #           cd autotest/
-  #           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  #           docker-compose -f docker-compose-acceptance.yml up -d
-  #           sleep 10
-  #     - run:
-  #         name: Standards Coverage Comparison
-  #         command: make -f Makefile.circle run-standards-comparison
+  mutations:
+    executor: codecov-worker
+    steps:
+      - checkout
+      - run:
+          name: Run Mutations
+          command: |
+            apk add git
+            git diff master $CIRCLE_SHA1 > data.patch
+            pip install mutmut[patch]
+            mutmut run --use-patch-file data.patch || true
+            mkdir /tmp/artifacts;
+            mutmut junitxml > /tmp/artifacts/mut.xml
+      - store_test_results:
+          path: /tmp/artifacts/mut.xml
   build-enterprise:
     executor: codecov-deploy
     steps:
@@ -108,8 +102,6 @@ jobs:
             make -f Makefile.circle build-enterprise VERSION=$CIRCLE_TAG
             make -f Makefile.circle push-enterprise
   test:
-    environment:
-      SONARSCANNER_VERSION: "4.3.0.2102"
     executor: codecov-worker
     steps:
       - run:
@@ -229,6 +221,13 @@ workflows:
               only:
                 - /enterprise-.*/
                 - /qa-.*/
+      - mutations:
+          context: "circleci google deploy context"
+          requires:
+            - build
+          filters:
+            tags:
+              only: /.*/
       - test:
           context: "circleci google deploy context"
           requires:
