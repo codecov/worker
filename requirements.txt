@@ -103,7 +103,7 @@ jmespath==0.10.0
     #   botocore
 kombu==4.6.11
     # via celery
-lxml==4.6.3
+lxml==4.7.1
     # via -r requirements.in
 minio==6.0.2
     # via shared
