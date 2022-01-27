@@ -9,6 +9,7 @@ from typing import Any, Dict, Mapping, Optional, Sequence
 from shared.metrics import metrics
 from shared.reports.carryforward import generate_carryforward_report
 from shared.reports.editable import EditableReport
+from shared.reports.enums import UploadState, UploadType
 from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.sessions import Session, SessionType
@@ -184,6 +185,8 @@ class ReportService(object):
             order_number=None,
             upload_extras={},
             upload_type=SessionType.uploaded.value,
+            state_id=UploadState.uploaded.value,
+            upload_type_id=UploadType.uploaded.value,
         )
         db_session.add(upload)
         db_session.flush()
@@ -499,6 +502,7 @@ class ReportService(object):
         session = processing_result.session
         if processing_result.error is None:
             upload_obj.state = "processed"
+            upload_obj.state_id = UploadState.processed.value
             upload_obj.order_number = session.id
             upload_totals = upload_obj.totals
             if upload_totals is None:
@@ -519,6 +523,7 @@ class ReportService(object):
         else:
             error = processing_result.error
             upload_obj.state = "error"
+            upload_obj.state_id = UploadState.error.value
             error_obj = UploadError(
                 upload_id=upload_obj.id,
                 error_code=error.code,
