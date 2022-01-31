@@ -2,9 +2,10 @@ from pathlib import Path
 
 import celery
 import pytest
+from celery.exceptions import Retry
 from redis.exceptions import LockError
+from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
-from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitObjectNotFoundError
 
 from database.models import CommitReport, ReportDetails
@@ -15,13 +16,23 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from services.archive import ArchiveService
-from services.report import ProcessingError, ProcessingResult, ReportService
+from services.report import ReportService
 from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
 
 
 class TestUploadProcessorTask(object):
+    def test_schedule_for_later_try(self, mocker):
+        mock_retry = mocker.patch.object(
+            UploadProcessorTask, "retry", side_effect=Retry()
+        )
+        task = UploadProcessorTask()
+        task.request.retries = 2
+        with pytest.raises(Retry):
+            task.schedule_for_later_try()
+        mock_retry.assert_called_with(countdown=180, max_retries=5)
+
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_upload_processor_task_call(
@@ -301,7 +312,7 @@ class TestUploadProcessorTask(object):
         )
 
     @pytest.mark.asyncio
-    async def test_upload_task_call_with_try_later(
+    async def test_upload_task_call_exception_within_individual_upload(
         self,
         mocker,
         mock_configuration,
@@ -316,7 +327,7 @@ class TestUploadProcessorTask(object):
         mocked_2 = mocker.patch.object(
             UploadProcessorTask, "do_process_individual_report"
         )
-        mocked_2.side_effect = Exception()
+        mocked_2.side_effect = Exception("first", "aruba", "digimon")
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_3 = mocker.patch.object(UploadProcessorTask, "retry")
         mocked_3.side_effect = celery.exceptions.Retry()
@@ -336,7 +347,7 @@ class TestUploadProcessorTask(object):
         dbsession.add(upload)
         dbsession.flush()
         redis_queue = [{"url": "url", "upload_pk": upload.id_}]
-        with pytest.raises(celery.exceptions.Retry):
+        with pytest.raises(Exception) as exc:
             await UploadProcessorTask().run_async(
                 dbsession,
                 {},
@@ -345,10 +356,13 @@ class TestUploadProcessorTask(object):
                 commit_yaml={},
                 arguments_list=redis_queue,
             )
+        assert exc.value.args == ("first", "aruba", "digimon")
         mocked_2.assert_called_with(
             mocker.ANY, commit, mocker.ANY, False, upload=upload
         )
-        mocked_3.assert_called_with(countdown=20, max_retries=1)
+        assert upload.state_id == UploadState.error.value
+        assert upload.state == "error"
+        assert not mocked_3.called
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_redis_lock_unobtainable(
@@ -765,7 +779,7 @@ class TestUploadProcessorTask(object):
         assert upload_1.errors[0].report_upload == upload_1
 
     @pytest.mark.asyncio
-    async def test_upload_task_call_celeryerror(
+    async def test_upload_task_call_softtimelimit(
         self,
         mocker,
         mock_configuration,
@@ -808,6 +822,51 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         assert commit.state == "error"
+
+    @pytest.mark.asyncio
+    async def test_upload_task_call_celeryerror(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_repo_provider,
+        mock_storage,
+        mock_redis,
+        celery_app,
+    ):
+        mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
+        mocked_1.return_value = None
+        mocked_2 = mocker.patch.object(UploadProcessorTask, "process_individual_report")
+        mocked_2.side_effect = celery.exceptions.Retry("banana")
+        # Mocking retry to also raise the exception so we can see how it is called
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
+        commit = CommitFactory.create(state="pending")
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        dbsession.add(report_details)
+        dbsession.flush()
+        upload_1 = UploadFactory.create(
+            report=current_report_row, state="started", storage_path="url"
+        )
+        dbsession.add(upload_1)
+        dbsession.flush()
+        redis_queue = [
+            {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
+        ]
+        with pytest.raises(celery.exceptions.Retry, match="banana"):
+            await UploadProcessorTask().run_async(
+                dbsession,
+                {},
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml={},
+                arguments_list=redis_queue,
+            )
+        assert commit.state == "pending"
 
     @pytest.mark.asyncio
     async def test_save_report_results_apply_diff_not_there(

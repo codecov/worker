@@ -8,6 +8,7 @@ from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.celery_config import upload_processor_task_name
 from shared.config import get_config
+from shared.reports.enums import UploadState
 from shared.torngit.exceptions import TorngitError
 from shared.yaml import UserYaml
 from sqlalchemy.exc import SQLAlchemyError
@@ -131,6 +132,11 @@ class UploadProcessorTask(BaseCodecovTask):
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")
+                upload_obj = (
+                    db_session.query(Upload)
+                    .filter_by(id_=arguments.get("upload_pk"))
+                    .first()
+                )
                 log.info(
                     "Processing individual report %s",
                     arguments.get("reportid"),
@@ -139,6 +145,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         commit=commitid,
                         arguments=arguments,
                         commit_yaml=commit_yaml.to_dict(),
+                        upload=upload_obj.id_,
                     ),
                 )
                 individual_info = {"arguments": arguments.copy()}
@@ -146,11 +153,6 @@ class UploadProcessorTask(BaseCodecovTask):
                     arguments_commitid = arguments.pop("commit", None)
                     if arguments_commitid:
                         assert arguments_commitid == commit.commitid
-                    upload_obj = (
-                        db_session.query(Upload)
-                        .filter_by(id_=arguments.get("upload_pk"))
-                        .first()
-                    )
                     with metrics.timer(
                         f"{self.metrics_prefix}.process_individual_report"
                     ):
@@ -175,7 +177,9 @@ class UploadProcessorTask(BaseCodecovTask):
                             arguments=arguments,
                         ),
                     )
-                    self.schedule_for_later_try(max_retries=1)
+                    upload_obj.state_id = UploadState.error.value
+                    upload_obj.state = "error"
+                    raise
                 if individual_info.get("successful"):
                     report = individual_info.pop("report")
                     n_processed += 1
