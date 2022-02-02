@@ -657,6 +657,7 @@ class TestNotifyTask(object):
                                 "> The diff coverage is `n/a`.",
                                 "",
                                 "> :exclamation: Current head 11daa27 differs from pull request most recent head e999aac. Consider uploading reports for the commit e999aac to get more accurate results",
+                                "",
                                 "[![Impacted file tree graph](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=tree)",
                                 "",
                                 "```diff",

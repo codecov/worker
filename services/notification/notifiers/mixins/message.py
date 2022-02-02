@@ -253,6 +253,7 @@ class MessageMixin(object):
                     current_head=comparison.head.commit.commitid[:7],
                 )
             )
+            write("")
         if settings.get("show_critical_paths"):
             all_potentially_affected_critical_files = set(
                 (diff["files"] if diff else {}).keys()
