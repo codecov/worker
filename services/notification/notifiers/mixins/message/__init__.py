@@ -11,13 +11,8 @@ from services.notification.notifiers.mixins.message.helpers import (
     should_message_be_compact,
 )
 from services.notification.notifiers.mixins.message.sections import (
-    DiffSectionWriter,
-    FileSectionWriter,
-    FlagSectionWriter,
-    FooterSectionWriter,
-    ImpactedEntrypointsSectionWriter,
     NullSectionWriter,
-    ReachSectionWriter,
+    get_section_class_from_layout_name,
 )
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import read_yaml_field, round_number
@@ -163,28 +158,9 @@ class MessageMixin(object):
         if head_report:
             # loop through layouts
             for layout in self.get_layout_section_names(settings):
-                if layout.startswith("flag"):
-                    section_writer = FlagSectionWriter(
-                        self.repository, layout, show_complexity, settings, current_yaml
-                    )
-                elif layout == "diff":
-                    section_writer = DiffSectionWriter(
-                        self.repository, layout, show_complexity, settings, current_yaml
-                    )
-                elif layout.startswith(("files", "tree")):
-                    section_writer = FileSectionWriter(
-                        self.repository, layout, show_complexity, settings, current_yaml
-                    )
-                elif layout == "reach":
-                    section_writer = ReachSectionWriter(
-                        self.repository, layout, show_complexity, settings, current_yaml
-                    )
-                elif layout == "footer":
-                    section_writer = FooterSectionWriter(
-                        self.repository, layout, show_complexity, settings, current_yaml
-                    )
-                elif layout == "betaprofiling":
-                    section_writer = ImpactedEntrypointsSectionWriter(
+                section_writer_class = get_section_class_from_layout_name(layout)
+                if section_writer_class is not None:
+                    section_writer = section_writer_class(
                         self.repository, layout, show_complexity, settings, current_yaml
                     )
                 else:

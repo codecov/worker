@@ -17,6 +17,24 @@ from services.notification.notifiers.mixins.message.helpers import (
 from services.urls import get_commit_url_from_commit_sha, get_pull_graph_url
 
 
+def get_section_class_from_layout_name(layout_name):
+    if layout_name.startswith("flag"):
+        return FlagSectionWriter
+    if layout_name == "diff":
+        return DiffSectionWriter
+    if layout_name.startswith(("files", "tree")):
+        return FileSectionWriter
+    if layout_name == "reach":
+        return ReachSectionWriter
+    if layout_name == "footer":
+        return FooterSectionWriter
+    if layout_name == "betaprofiling":
+        return ImpactedEntrypointsSectionWriter
+    if layout_name == "announcements":
+        return AnnouncementSectionWriter
+    return None
+
+
 class BaseSectionWriter(object):
     def __init__(self, repository, layout, show_complexity, settings, current_yaml):
         self.repository = repository
@@ -36,6 +54,11 @@ class BaseSectionWriter(object):
 class NullSectionWriter(BaseSectionWriter):
     async def write_section(*args, **kwargs):
         return []
+
+
+class AnnouncementSectionWriter(BaseSectionWriter):
+    async def do_write_section(*args, **kwargs):
+        yield ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"
 
 
 class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
