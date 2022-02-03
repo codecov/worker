@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile
-from shared.reports.types import LineSession, ReportLine, ReportTotals
+from shared.reports.types import Change, LineSession, ReportLine, ReportTotals
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
@@ -17,9 +17,10 @@ from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message import (
-    Change,
     FileSectionWriter,
     ImpactedEntrypointsSectionWriter,
+)
+from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
     format_number_to_str,
     sort_by_importance,
