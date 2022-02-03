@@ -144,7 +144,7 @@ class ArchiveService(object):
 
     def write_computed_comparison(self, comparison, data) -> str:
         path = MinioEndpoints.computed_comparison.get_path(
-            version="v4", repo_hash=self.storage_hash, comparison_id=comparison.id,
+            version="v4", repo_hash=self.storage_hash, comparison_id=comparison.id
         )
         self.write_file(path, json.dumps(data))
         return path

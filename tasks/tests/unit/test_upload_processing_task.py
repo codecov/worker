@@ -147,7 +147,7 @@ class TestUploadProcessorTask(object):
 
     @pytest.mark.asyncio
     async def test_upload_processor_call_with_upload_obj(
-        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis,
+        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
@@ -415,18 +415,13 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocker.patch.object(
-            ArchiveService, "read_file", return_value=b"",
-        )
+        mocker.patch.object(ArchiveService, "read_file", return_value=b"")
         mocked_2 = mocker.patch("services.report.process_raw_upload")
         false_report = Report()
         false_report_file = ReportFile("file.c")
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
-        mocked_2.side_effect = [
-            false_report,
-            ReportExpiredException(),
-        ]
+        mocked_2.side_effect = [false_report, ReportExpiredException()]
         # Mocking retry to also raise the exception so we can see how it is called
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
@@ -570,7 +565,7 @@ class TestUploadProcessorTask(object):
         mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
         mocked_4.send_task.return_value = True
         commit = CommitFactory.create(
-            message="", repository__yaml={"codecov": {"max_report_age": False}},
+            message="", repository__yaml={"codecov": {"max_report_age": False}}
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -601,18 +596,13 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocker.patch.object(
-            ArchiveService, "read_file", return_value=b"",
-        )
+        mocker.patch.object(ArchiveService, "read_file", return_value=b"")
         mocked_2 = mocker.patch("services.report.process_raw_upload")
         false_report = Report()
         false_report_file = ReportFile("file.c")
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
-        mocked_2.side_effect = [
-            false_report,
-            ReportEmptyError(),
-        ]
+        mocked_2.side_effect = [false_report, ReportEmptyError()]
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
             message="",
@@ -697,9 +687,7 @@ class TestUploadProcessorTask(object):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
         mocked_2 = mocker.patch("services.report.process_raw_upload")
-        mocker.patch.object(
-            ArchiveService, "read_file", return_value=b"",
-        )
+        mocker.patch.object(ArchiveService, "read_file", return_value=b"")
         mocked_2.side_effect = [ReportEmptyError(), ReportExpiredException()]
         # Mocking retry to also raise the exception so we can see how it is called
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
@@ -809,9 +797,7 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(upload_1)
         dbsession.flush()
-        redis_queue = [
-            {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
-        ]
+        redis_queue = [{"url": "url", "what": "huh", "upload_pk": upload_1.id_}]
         with pytest.raises(celery.exceptions.SoftTimeLimitExceeded, match="banana"):
             await UploadProcessorTask().run_async(
                 dbsession,
@@ -854,9 +840,7 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(upload_1)
         dbsession.flush()
-        redis_queue = [
-            {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
-        ]
+        redis_queue = [{"url": "url", "what": "huh", "upload_pk": upload_1.id_}]
         with pytest.raises(celery.exceptions.Retry, match="banana"):
             await UploadProcessorTask().run_async(
                 dbsession,
@@ -1114,7 +1098,7 @@ class TestUploadProcessorTask(object):
         pr_value,
         expected_pr_result,
     ):
-        commit = CommitFactory.create(pullid=None,)
+        commit = CommitFactory.create(pullid=None)
         dbsession.add(commit)
         dbsession.flush()
         report = mocker.Mock()

@@ -69,7 +69,7 @@ config_dict = {
             "formatter": "json",
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",  # Default is stderr
-        },
+        }
     },
     "loggers": {},
 }

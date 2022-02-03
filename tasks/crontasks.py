@@ -26,7 +26,7 @@ class CodecovCronTask(BaseCodecovTask):
             coming right after it won't run (unless there is some crazy queue that makes
             a task take 50 minute to run) while still making sure the task arriving
             on the next hour can still run
-        
+
         Returns:
             int: Number of seconds to wait before the task is run again
         """
@@ -63,7 +63,5 @@ class CodecovCronTask(BaseCodecovTask):
                 result = await self.run_cron_task(db_session, *args, **kwargs)
                 return {"executed": True, "result": result}
         except LockError:
-            log.info("Not executing cron task since another one is already running it",)
-            return {
-                "executed": False,
-            }
+            log.info("Not executing cron task since another one is already running it")
+            return {"executed": False}

@@ -31,16 +31,16 @@ from services.notification.notifiers.tests.conftest import generate_sample_compa
 @pytest.fixture
 def sample_comparison_bunch_empty_flags(request, dbsession):
     """
-        This is what this fixture has regarding to flags
-        - first is on both reports, both with 100% coverage (the common already existing result)
-        - second is declared on both reports, but is only on the head report, with 50% coverage
-        - third is declared on both reports, but only has coverage information on the base report,
-        with 50% coverage
-        - fourth is declared on both reports, and has no coverage information anywhere
-        - fifthis only declared at the head report, but has no coverage information there
-        - sixth is only declared at the head report, and has information: 100% coverage there
-        - seventh is only declared at the base report, but has no coverage information there
-        - eighth is only declared at the base report, and has 100% coverage there
+    This is what this fixture has regarding to flags
+    - first is on both reports, both with 100% coverage (the common already existing result)
+    - second is declared on both reports, but is only on the head report, with 50% coverage
+    - third is declared on both reports, but only has coverage information on the base report,
+    with 50% coverage
+    - fourth is declared on both reports, and has no coverage information anywhere
+    - fifthis only declared at the head report, but has no coverage information there
+    - sixth is only declared at the head report, and has information: 100% coverage there
+    - seventh is only declared at the base report, but has no coverage information there
+    - eighth is only declared at the base report, and has 100% coverage there
     """
     head_report = Report()
     head_report.add_session(Session(flags=["first"]))
@@ -1414,7 +1414,7 @@ class TestCommentNotifier(object):
 
     @pytest.mark.asyncio
     async def test_build_message_show_carriedforward_flags_no_cf_coverage(
-        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison,
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
         comparison = sample_comparison

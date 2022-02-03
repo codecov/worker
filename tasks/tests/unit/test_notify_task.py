@@ -78,10 +78,10 @@ class TestNotifyTaskHelpers(object):
             username="ThiagoCodecov",
         )
         repository = RepositoryFactory.create(
-            owner=owner, yaml={"codecov": {"max_report_age": "1y ago"}},
+            owner=owner, yaml={"codecov": {"max_report_age": "1y ago"}}
         )
         different_repository = RepositoryFactory.create(
-            owner=owner, yaml={"codecov": {"max_report_age": "1y ago"}},
+            owner=owner, yaml={"codecov": {"max_report_age": "1y ago"}}
         )
         dbsession.add(repository)
         right_parent_commit = CommitFactory.create(
@@ -276,7 +276,7 @@ class TestNotifyTask(object):
             commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
         )
         mocked_fetch_yaml = mocker.patch(
-            "services.yaml.fetch_commit_yaml_from_provider",
+            "services.yaml.fetch_commit_yaml_from_provider"
         )
         mocked_fetch_yaml.return_value = {}
         dbsession.add(commit)
@@ -322,13 +322,13 @@ class TestNotifyTask(object):
             return_value=fetch_and_update_whether_ci_passed_result,
         )
         mocked_fetch_pull = mocker.patch(
-            "tasks.notify.fetch_and_update_pull_request_information_from_commit",
+            "tasks.notify.fetch_and_update_pull_request_information_from_commit"
         )
         mocker.patch.object(
             ReportService, "get_existing_report_for_commit", return_value=Report()
         )
         mocked_fetch_pull.return_value = None
-        commit = CommitFactory.create(message="", pullid=None,)
+        commit = CommitFactory.create(message="", pullid=None)
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
@@ -380,13 +380,13 @@ class TestNotifyTask(object):
             return_value=fetch_and_update_whether_ci_passed_result,
         )
         mocked_fetch_pull = mocker.patch(
-            "tasks.notify.fetch_and_update_pull_request_information_from_commit",
+            "tasks.notify.fetch_and_update_pull_request_information_from_commit"
         )
         mocker.patch.object(
             ReportService, "get_existing_report_for_commit", return_value=Report()
         )
         mocked_fetch_pull.return_value = EnrichedPull(None, None)
-        commit = CommitFactory.create(message="", pullid=None,)
+        commit = CommitFactory.create(message="", pullid=None)
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
@@ -683,7 +683,7 @@ class TestNotifyTask(object):
         mocker.patch.object(NotifyTask, "should_wait_longer", return_value=True)
         mocker.patch.object(NotifyTask, "retry", side_effect=MaxRetriesExceededError())
         mocked_fetch_and_update_whether_ci_passed = mocker.patch.object(
-            NotifyTask, "fetch_and_update_whether_ci_passed",
+            NotifyTask, "fetch_and_update_whether_ci_passed"
         )
         mocked_fetch_and_update_whether_ci_passed.return_value = True
         commit = CommitFactory.create(
@@ -780,11 +780,7 @@ class TestNotifyTask(object):
             commitid=commit.commitid,
             current_yaml=current_yaml,
         )
-        assert res == {
-            "notifications": [],
-            "notified": True,
-            "reason": "yay",
-        }
+        assert res == {"notifications": [], "notified": True, "reason": "yay"}
         mocked_run_async_within_lock.assert_called_with(
             dbsession,
             repoid=commit.repoid,

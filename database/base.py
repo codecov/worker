@@ -25,7 +25,7 @@ class MixinBaseClass(object):
     )
     created_at = Column(types.DateTime(timezone=True), default=get_utc_now)
     updated_at = Column(
-        types.DateTime(timezone=True), onupdate=get_utc_now, default=get_utc_now,
+        types.DateTime(timezone=True), onupdate=get_utc_now, default=get_utc_now
     )
 
     @property

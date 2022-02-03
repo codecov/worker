@@ -85,9 +85,7 @@ class NewUserActivatedTask(BaseCodecovTask):
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
 
         if not owner:
-            log.info(
-                "Org not found", extra=dict(org_ownerid=ownerid),
-            )
+            log.info("Org not found", extra=dict(org_ownerid=ownerid))
             return False
 
         if owner.service == "gitlab" and owner.parent_service_id:
@@ -144,7 +142,7 @@ class NewUserActivatedTask(BaseCodecovTask):
                 extra=dict(repoid=repoid, pullid=pullid, commitid=pull.head),
             )
             self.app.tasks[notify_task_name].apply_async(
-                kwargs=dict(repoid=repoid, commitid=pull.head),
+                kwargs=dict(repoid=repoid, commitid=pull.head)
             )
             was_notification_scheduled = True
 

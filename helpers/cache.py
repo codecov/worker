@@ -33,7 +33,7 @@ def make_hash_sha256(o: Any) -> str:
 
 def make_hashable(o: Any) -> Hashable:
     """
-        Converts any object into an object that will have a consistent hash
+    Converts any object into an object that will have a consistent hash
     """
     if isinstance(o, (tuple, list)):
         return tuple((make_hashable(e) for e in o))
@@ -46,13 +46,13 @@ def make_hashable(o: Any) -> Hashable:
 
 class BaseBackend(object):
     """
-        This is the interface a class needs to honor in order to work as a backend.
+    This is the interface a class needs to honor in order to work as a backend.
 
-        The only two needed functions are `get` and `set`, which will fetch information from the
-            cache and send information to it, respectively.
+    The only two needed functions are `get` and `set`, which will fetch information from the
+        cache and send information to it, respectively.
 
-        However the cache wants to work internally, it's their choice. They only need to be able to
-            `set` and `get` without raising any exceptions
+    However the cache wants to work internally, it's their choice. They only need to be able to
+        `set` and `get` without raising any exceptions
     """
 
     def get(self, key: str) -> Any:
@@ -72,12 +72,12 @@ class BaseBackend(object):
 
 class NullBackend(BaseBackend):
     """
-        This is the default implementation of BaseBackend that is used.
+    This is the default implementation of BaseBackend that is used.
 
-        It essentially `gets` as if nothing is cached, and does not cache anything when requested
-            to.
+    It essentially `gets` as if nothing is cached, and does not cache anything when requested
+        to.
 
-        This makes the cache virtually transparent. It acts as if no cache was there
+    This makes the cache virtually transparent. It acts as if no cache was there
     """
 
     def get(self, key: str) -> Any:
@@ -117,37 +117,37 @@ class RedisBackend(BaseBackend):
 
 class OurOwnCache(object):
     """
-        This is codecov distributed cache's implementation.
+    This is codecov distributed cache's implementation.
 
-        The tldr to use it is, given a function f:
+    The tldr to use it is, given a function f:
 
-        ```
-        from helpers.cache import cache
+    ```
+    from helpers.cache import cache
 
-        @cache.cache_function()
-        def f(...):
-            ...
-        ```
+    @cache.cache_function()
+    def f(...):
+        ...
+    ```
 
-        Now to explain its internal workings.
+    Now to explain its internal workings.
 
-        This is a configurable-at-runtime cache. Its whole idea is based on the fact that it does
-            not need information at import-time. This allows us to use it transparently and still
-            not have to change tests, for example, due to it. All tests occur as if the cache was
-            not there.
+    This is a configurable-at-runtime cache. Its whole idea is based on the fact that it does
+        not need information at import-time. This allows us to use it transparently and still
+        not have to change tests, for example, due to it. All tests occur as if the cache was
+        not there.
 
-        All that is needed to configure the backend is to do
+    All that is needed to configure the backend is to do
 
-        ```
-        cache.configure(any_backend)
-        ```
+    ```
+    cache.configure(any_backend)
+    ```
 
-        which we currently do at `worker_process_init` time with a RedisBackend instance. Other
-            instances can be plugged in easily, once needed. A backend is any implementation
-            of `BaseBackend`, which is described at their docstrings.
+    which we currently do at `worker_process_init` time with a RedisBackend instance. Other
+        instances can be plugged in easily, once needed. A backend is any implementation
+        of `BaseBackend`, which is described at their docstrings.
 
-        When `cache.cache_function()` is called, a `FunctionCacher` is returned. They do the heavy
-            lifting of actually decorating the function properly, dealign with sync-async context.
+    When `cache.cache_function()` is called, a `FunctionCacher` is returned. They do the heavy
+        lifting of actually decorating the function properly, dealign with sync-async context.
 
     """
 

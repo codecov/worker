@@ -15,20 +15,19 @@ class AddToSendgridListTask(BaseCodecovTask):
     async def run_async(self, db_session, ownerid, list_type=None, *args, **kwargs):
         if list_type is None:
             log.error(
-                "Did not receive a Sendgrid list type", extra=dict(ownerid=ownerid),
+                "Did not receive a Sendgrid list type", extra=dict(ownerid=ownerid)
             )
             return None
 
         log.info(
-            "Add to Sendgrid List", extra=dict(ownerid=ownerid, list_type=list_type),
+            "Add to Sendgrid List", extra=dict(ownerid=ownerid, list_type=list_type)
         )
         # get owner object from database
         owners = db_session.query(Owner).filter_by(ownerid=ownerid)
         owner = owners.first()
         if not owner:
             log.error(
-                "Unable to find owner",
-                extra=dict(ownerid=ownerid, list_type=list_type),
+                "Unable to find owner", extra=dict(ownerid=ownerid, list_type=list_type)
             )
             return None
         email_helper = Sendgrid(list_type=list_type)

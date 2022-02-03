@@ -96,9 +96,7 @@ class UploadTask(BaseCodecovTask):
     name = upload_task_name
 
     def has_pending_jobs(self, redis_connection, repoid, commitid) -> bool:
-        uploads_locations = [
-            f"uploads/{repoid}/{commitid}",
-        ]
+        uploads_locations = [f"uploads/{repoid}/{commitid}"]
         for uploads_list_key in uploads_locations:
             if redis_connection.exists(uploads_list_key):
                 return True
@@ -119,9 +117,7 @@ class UploadTask(BaseCodecovTask):
         Yields:
             dict: A dict with the parameters to be passed
         """
-        uploads_locations = [
-            f"uploads/{repoid}/{commitid}",
-        ]
+        uploads_locations = [f"uploads/{repoid}/{commitid}"]
         for uploads_list_key in uploads_locations:
             log.debug("Fetching arguments from redis %s", uploads_list_key)
             while redis_connection.exists(uploads_list_key):
@@ -191,7 +187,7 @@ class UploadTask(BaseCodecovTask):
                     "tasks_were_scheduled": False,
                     "reason": "too_many_retries",
                 }
-            self.retry(max_retries=3, countdown=20 * 2 ** self.request.retries)
+            self.retry(max_retries=3, countdown=20 * 2**self.request.retries)
 
     async def run_async_within_lock(
         self, db_session, redis_connection, repoid, commitid, *args, **kwargs
@@ -349,7 +345,7 @@ class UploadTask(BaseCodecovTask):
                     repoid=commit.repoid,
                     commitid=commit.commitid,
                     commit_yaml=commit_yaml,
-                ),
+                )
             )
             chain_to_call.append(finish_sig)
             res = chain(*chain_to_call).apply_async()
@@ -429,12 +425,12 @@ class UploadTask(BaseCodecovTask):
         self, commit: Commit, arguments: Mapping[str, Any], redis_connection: Redis
     ):
         """
-            Normalizes and validates the argument list from the user.
+        Normalizes and validates the argument list from the user.
 
-            Does things like:
+        Does things like:
 
-                - replacing a redis-stored value with a storage one (by doing an upload)
-                - Removing unecessary sensitive information for the arguments
+            - replacing a redis-stored value with a storage one (by doing an upload)
+            - Removing unecessary sensitive information for the arguments
         """
         commit_sha = commit.commitid
         reportid = arguments.get("reportid")

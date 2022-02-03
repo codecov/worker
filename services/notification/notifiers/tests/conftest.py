@@ -257,7 +257,7 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
 def create_sample_comparison(dbsession, request, sample_report):
     def _comparison(service="github", username="codecov-test"):
         repository = RepositoryFactory.create(
-            owner__username=username, owner__service=service,
+            owner__username=username, owner__service=service
         )
         dbsession.add(repository)
         dbsession.flush()
@@ -317,7 +317,7 @@ def sample_comparison(dbsession, request, sample_report):
                 database_pull=pull,
                 provider_pull={
                     "author": {"id": "12345", "username": "codecov-test-user"},
-                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "base": {"branch": "master", "commitid": base_commit.commitid},
                     "head": {
                         "branch": "reason/some-testing",
                         "commitid": head_commit.commitid,
@@ -416,7 +416,7 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
                 database_pull=pull,
                 provider_pull={
                     "author": {"id": "12345", "username": "codecov-test-user"},
-                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "base": {"branch": "master", "commitid": base_commit.commitid},
                     "head": {
                         "branch": "reason/some-testing",
                         "commitid": head_commit.commitid,
@@ -462,7 +462,7 @@ def sample_comparison_no_change(dbsession, request, sample_report):
                 database_pull=pull,
                 provider_pull={
                     "author": {"id": "12345", "username": "codecov-test-user"},
-                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "base": {"branch": "master", "commitid": base_commit.commitid},
                     "head": {
                         "branch": "reason/some-testing",
                         "commitid": head_commit.commitid,
@@ -509,7 +509,7 @@ def sample_comparison_without_pull(dbsession, request, sample_report):
 
 @pytest.fixture
 def sample_comparison_database_pull_without_provider(dbsession, request, sample_report):
-    repository = RepositoryFactory.create(owner__username=request.node.name,)
+    repository = RepositoryFactory.create(owner__username=request.node.name)
     dbsession.add(repository)
     dbsession.flush()
     base_commit = CommitFactory.create(repository=repository)
@@ -565,7 +565,7 @@ def generate_sample_comparison(username, dbsession, base_report, head_report):
                 database_pull=pull,
                 provider_pull={
                     "author": {"id": "12345", "username": "codecov-test-user"},
-                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "base": {"branch": "master", "commitid": base_commit.commitid},
                     "head": {
                         "branch": "reason/some-testing",
                         "commitid": head_commit.commitid,
@@ -610,7 +610,7 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
                 database_pull=pull,
                 provider_pull={
                     "author": {"id": "12345", "username": "codecov-test-user"},
-                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "base": {"branch": "master", "commitid": base_commit.commitid},
                     "head": {
                         "branch": "reason/some-testing",
                         "commitid": head_commit.commitid,

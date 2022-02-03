@@ -39,9 +39,7 @@ class NullSectionWriter(BaseSectionWriter):
 
 
 class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
-    async def do_write_section(
-        self, comparison, diff, changes, links,
-    ):
+    async def do_write_section(self, comparison, diff, changes, links):
         overlay = comparison.get_overlay(OverlayType.line_execution_count)
         impacted_endpoints = await overlay.find_impacted_endpoints()
         if impacted_endpoints:
@@ -54,9 +52,7 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
 
 
 class FooterSectionWriter(BaseSectionWriter):
-    async def do_write_section(
-        self, comparison, diff, changes, links,
-    ):
+    async def do_write_section(self, comparison, diff, changes, links):
         pull_dict = comparison.enriched_pull.provider_pull
         yield ("------")
         yield ("")
@@ -82,9 +78,7 @@ class FooterSectionWriter(BaseSectionWriter):
 
 
 class ReachSectionWriter(BaseSectionWriter):
-    async def do_write_section(
-        self, comparison, diff, changes, links,
-    ):
+    async def do_write_section(self, comparison, diff, changes, links):
         pull = comparison.enriched_pull.database_pull
         yield (
             "[![Impacted file tree graph]({})]({}?src=pr&el=tree)".format(
@@ -102,9 +96,7 @@ class ReachSectionWriter(BaseSectionWriter):
 
 
 class DiffSectionWriter(BaseSectionWriter):
-    async def do_write_section(
-        self, comparison, diff, changes, links,
-    ):
+    async def do_write_section(self, comparison, diff, changes, links):
         base_report = comparison.base.report
         head_report = comparison.head.report
         if base_report is None:
@@ -125,9 +117,7 @@ class DiffSectionWriter(BaseSectionWriter):
 
 
 class FileSectionWriter(BaseSectionWriter):
-    async def do_write_section(
-        self, comparison, diff, changes, links,
-    ):
+    async def do_write_section(self, comparison, diff, changes, links):
         # create list of files changed in diff
         base_report = comparison.base.report
         head_report = comparison.head.report
@@ -231,9 +221,7 @@ class FileSectionWriter(BaseSectionWriter):
 
 
 class FlagSectionWriter(BaseSectionWriter):
-    async def do_write_section(
-        self, comparison, diff, changes, links,
-    ):
+    async def do_write_section(self, comparison, diff, changes, links):
         # flags
         base_report = comparison.base.report
         head_report = comparison.head.report

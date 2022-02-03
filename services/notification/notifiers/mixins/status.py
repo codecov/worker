@@ -81,8 +81,10 @@ class StatusChangesMixin(object):
         if changes:
             lpc = len(changes)
             eng = "files have" if lpc > 1 else "file has"
-            description = "{0} {1} unexpected coverage changes not visible in diff".format(
-                lpc, eng
+            description = (
+                "{0} {1} unexpected coverage changes not visible in diff".format(
+                    lpc, eng
+                )
             )
             state = (
                 "success"

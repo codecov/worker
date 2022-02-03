@@ -26,7 +26,7 @@ def pytest_configure(config):
 
 
 def pytest_itemcollected(item):
-    """ logic that runs on the test collection step """
+    """logic that runs on the test collection step"""
     if "codecov_vcr" in item.fixturenames:
         # Tests with codecov_vcr fixtures are automatically 'integration'
         item.add_marker("integration")
@@ -38,7 +38,7 @@ def engine(request, sqlalchemy_connect_url, app_config):
     See http://docs.sqlalchemy.org/en/latest/core/engines.html
     for more details.
     :sqlalchemy_connect_url: Connection URL to the database. E.g
-    postgresql://scott:tiger@localhost:5432/mydatabase 
+    postgresql://scott:tiger@localhost:5432/mydatabase
     :app_config: Path to a ini config file containing the sqlalchemy.url
     config variable in the DEFAULT section.
     :returns: Engine instance

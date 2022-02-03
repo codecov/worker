@@ -137,7 +137,7 @@ class TestNewUserActivatedTaskUnit(object):
     @pytest.mark.asyncio
     async def test_no_commit_notifications_found(self, mocker, dbsession, pull):
         mocked_possibly_resend_notifications = mocker.patch(
-            "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications",
+            "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications"
         )
         res = await NewUserActivatedTask().run_async(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
@@ -153,7 +153,7 @@ class TestNewUserActivatedTaskUnit(object):
     async def test_no_head_commit_on_pull(self, mocker, dbsession, pull):
         pull.head = None
         mocked_possibly_resend_notifications = mocker.patch(
-            "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications",
+            "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications"
         )
         res = await NewUserActivatedTask().run_async(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
@@ -217,7 +217,7 @@ class TestNewUserActivatedTaskUnit(object):
         mocked_app = mocker.patch.object(
             NewUserActivatedTask,
             "app",
-            tasks={"app.tasks.notify.Notify": mocker.MagicMock(),},
+            tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
         )
 
         res = await NewUserActivatedTask().run_async(
@@ -232,5 +232,5 @@ class TestNewUserActivatedTaskUnit(object):
             "reason": None,
         }
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
-            kwargs=dict(commitid=pull.head, repoid=pull.repoid),
+            kwargs=dict(commitid=pull.head, repoid=pull.repoid)
         )

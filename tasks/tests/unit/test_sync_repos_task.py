@@ -222,7 +222,7 @@ class TestSyncReposTaskUnit(object):
             "branch": b"master",
         }
         correct_owner = OwnerFactory.create(
-            organizations=[], service=service, username="1nf1n1t3l00p", permission=[],
+            organizations=[], service=service, username="1nf1n1t3l00p", permission=[]
         )
         dbsession.add(correct_owner)
         dbsession.flush()
@@ -235,7 +235,7 @@ class TestSyncReposTaskUnit(object):
         )
         dbsession.add(repo_same_name)
         wrong_owner = OwnerFactory.create(
-            organizations=[], service=service, username="cc", permission=[],
+            organizations=[], service=service, username="cc", permission=[]
         )
         dbsession.add(wrong_owner)
         right_service_id_repo = RepositoryFactory.create(
@@ -632,7 +632,7 @@ class TestSyncReposTaskUnit(object):
         dbsession.add_all(repos)
         dbsession.flush()
         user = OwnerFactory.create(
-            organizations=[], permission=sorted([r.repoid for r in repos]),
+            organizations=[], permission=sorted([r.repoid for r in repos])
         )
         assert len(user.permission) > 0
         dbsession.add(user)

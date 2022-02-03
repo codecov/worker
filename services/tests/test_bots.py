@@ -238,9 +238,7 @@ class TestBotsService(BaseTestCase):
                 bot=OwnerFactory.create(unencrypted_oauth_token=None),
             ),
         )
-        expected_result = {
-            "key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp",
-        }
+        expected_result = {"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_owner_appropriate_bot_token_owner_no_bot_no_integration(self):
@@ -292,9 +290,7 @@ class TestBotsService(BaseTestCase):
             bot=OwnerFactory.create(unencrypted_oauth_token=None),
         )
 
-        expected_result = {
-            "key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp",
-        }
+        expected_result = {"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}
         assert (
             get_owner_appropriate_bot_token(owner, using_integration=True)
             == expected_result

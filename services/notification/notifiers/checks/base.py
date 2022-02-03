@@ -49,9 +49,7 @@ class ChecksNotifier(StatusNotifier):
 
     def get_upgrade_message(self, comparison: Comparison) -> str:
         db_pull = comparison.enriched_pull.database_pull
-        links = {
-            "org_account": get_org_account_url(db_pull),
-        }
+        links = {"org_account": get_org_account_url(db_pull)}
         author_username = comparison.enriched_pull.provider_pull["author"].get(
             "username"
         )
@@ -135,8 +133,10 @@ class ChecksNotifier(StatusNotifier):
         try:
             with nullcontext():
                 # If flag coverage wasn't uploaded, apply the appropriate behavior
-                flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
-                    comparison, "flag_coverage_not_uploaded_behavior"
+                flag_coverage_not_uploaded_behavior = (
+                    self.determine_status_check_behavior_to_apply(
+                        comparison, "flag_coverage_not_uploaded_behavior"
+                    )
                 )
                 if (
                     flag_coverage_not_uploaded_behavior == "exclude"
@@ -218,33 +218,33 @@ class ChecksNotifier(StatusNotifier):
 
     def get_line_diff(self, file_diff):
         """
-            This method traverses a git file diff and returns the lines (as line numbers) that where chnaged
-            Note: For now it only looks for line additions on diff, we can quickly add functionality to handle
-                  line deletions if needed
+        This method traverses a git file diff and returns the lines (as line numbers) that where chnaged
+        Note: For now it only looks for line additions on diff, we can quickly add functionality to handle
+              line deletions if needed
 
-            Parameters:
-                file_diff: file diff returned by repository.get_compare method.
-                    structure:
-                    {
-                        "type": (str),
-                        "path": (str),
-                        "segments": [
-                            {
-                                "header": [
-                                    base reference offset,
-                                    number of lines in file-segment before changes applied,
-                                    head reference offset,
-                                    number of lines in file-segment after changes applied
-                                ],
-                                "lines": [ # line values for lines in the diff
-                                    "+this is an added line",
-                                    "-this is a removed line",
-                                    "this line is unchanged in the diff",
-                                    ...
-                                ]
-                            }
-                        ]
-                    }
+        Parameters:
+            file_diff: file diff returned by repository.get_compare method.
+                structure:
+                {
+                    "type": (str),
+                    "path": (str),
+                    "segments": [
+                        {
+                            "header": [
+                                base reference offset,
+                                number of lines in file-segment before changes applied,
+                                head reference offset,
+                                number of lines in file-segment after changes applied
+                            ],
+                            "lines": [ # line values for lines in the diff
+                                "+this is an added line",
+                                "-this is a removed line",
+                                "this line is unchanged in the diff",
+                                ...
+                            ]
+                        }
+                    ]
+                }
 
         """
         segments = file_diff["segments"]
@@ -317,7 +317,7 @@ class ChecksNotifier(StatusNotifier):
             for path, _diff in (diff["files"] if diff else {}).items()
             if _diff.get("totals")
         ]
-        file_additions = [self.get_line_diff(_file,) for _file in files_with_change]
+        file_additions = [self.get_line_diff(_file) for _file in files_with_change]
         lines_to_annotate = self.get_lines_to_annotate(comparison, file_additions)
         annotations = []
         for line in lines_to_annotate:

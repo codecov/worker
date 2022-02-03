@@ -186,7 +186,7 @@ class PullSyncTask(BaseCodecovTask):
         if should_send_notifications:
             notifier_was_called = True
             self.app.tasks[notify_task_name].apply_async(
-                kwargs=dict(repoid=repoid, commitid=pull.head,)
+                kwargs=dict(repoid=repoid, commitid=pull.head)
             )
         self.clear_pull_related_caches(redis_connection, enriched_pull)
         return {
@@ -209,7 +209,7 @@ class PullSyncTask(BaseCodecovTask):
         if pull.repository.owner.ownerid in owners_with_cached_changes:
             log.info(
                 "Caching files with changes",
-                extra=dict(pullid=pull.pullid, repoid=pull.repoid,),
+                extra=dict(pullid=pull.pullid, repoid=pull.repoid),
             )
             redis = get_redis_connection()
             key = "/".join(
@@ -228,7 +228,7 @@ class PullSyncTask(BaseCodecovTask):
             )
             log.info(
                 "Finished caching files with changes",
-                extra=dict(pullid=pull.pullid, repoid=pull.repoid,),
+                extra=dict(pullid=pull.pullid, repoid=pull.repoid),
             )
 
     async def update_pull_from_reports(
@@ -394,7 +394,7 @@ class PullSyncTask(BaseCodecovTask):
         log.info(
             "Commits from PR not found on base tree. Calling it a squash merge",
             extra=dict(
-                commits_on_pr=commits_on_pr, base_head=base_ancestors_tree["commitid"],
+                commits_on_pr=commits_on_pr, base_head=base_ancestors_tree["commitid"]
             ),
         )
         return True

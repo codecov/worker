@@ -101,7 +101,7 @@ class TestChanges(object):
                     ],
                     "stats": {"added": 20, "removed": 1},
                     "type": "modified",
-                },
+                }
             }
         }
         first_report = Report()
@@ -194,10 +194,7 @@ class TestChanges(object):
                             "header": ["10", "3", "10", "1"],
                             "lines": ["-removed", "-r", " h"],
                         },
-                        {
-                            "header": ["35", "3", "33", "1"],
-                            "lines": [" b", "-r", " a"],
-                        },
+                        {"header": ["35", "3", "33", "1"], "lines": [" b", "-r", " a"]},
                     ],
                     "stats": {"added": 0, "removed": 0},
                     "type": "modified",

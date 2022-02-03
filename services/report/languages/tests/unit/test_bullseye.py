@@ -67,7 +67,7 @@ expected_result = {
     "archive": {
         "calc/CalcCore.cpp": [
             (11, 1, "m", [[0, 1, None, None, None]], None, None),
-            (40, "1/2", "m", [[0, "1/2", None, None, None]], None, None,),
+            (40, "1/2", "m", [[0, "1/2", None, None, None]], None, None),
             (47, 1, "m", [[0, 1, None, None, None]], None, None),
             (49, 1, "b", [[0, 1, None, None, None]], None, None),
             (57, 1, "m", [[0, 1, None, None, None]], None, None),

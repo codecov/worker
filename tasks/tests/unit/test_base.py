@@ -201,16 +201,16 @@ class TestBaseCodecovTaskHooks(object):
 class TestBaseCodecovRequest(object):
 
     """
-        All in all, this is a really weird class
+    All in all, this is a really weird class
 
-        We are trying here to test some of the hooks celery providers for requests
+    We are trying here to test some of the hooks celery providers for requests
 
-        It's not easy to generate a situation where they can be called without intensely
-            faking the situation
+    It's not easy to generate a situation where they can be called without intensely
+        faking the situation
 
-        If you every find a better way to test this, delete this class
+    If you every find a better way to test this, delete this class
 
-        If things start going badly because of those tests, delete this class
+    If things start going badly because of those tests, delete this class
     """
 
     def xRequest(self, mocker, name, celery_app):

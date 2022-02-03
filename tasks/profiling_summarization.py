@@ -19,9 +19,7 @@ class ProfilingSummarizationTask(BaseCodecovTask):
 
     name = profiling_summarization_task_name
 
-    async def run_async(
-        self, db_session: Session, *, profiling_id: int, **kwargs,
-    ):
+    async def run_async(self, db_session: Session, *, profiling_id: int, **kwargs):
         profiling = db_session.query(ProfilingCommit).filter_by(id=profiling_id).first()
         try:
             joined_execution_counts = json.loads(
@@ -37,19 +35,19 @@ class ProfilingSummarizationTask(BaseCodecovTask):
 
     def summarize(self, totalized_execution_counts: dict) -> dict:
         """
-            {
-                "metadata": {"version": "v7"},
-                "files": [
-                    {"filename": "abc.py", "ln_ex_ct": [[1, 1000], [5, 6], [6, 0]]},
-                    {"filename": "bcd.py", "ln_ex_ct": [[1, 333], [5, 3333], [6, 333]]},
-                    {"filename": "cde.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
-                    {"filename": "def.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
-                    ...
-                    {"filename": "stu.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
-                    {"filename": "tuv.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
-                    {"filename": "uvx.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
-                ],
-            }
+        {
+            "metadata": {"version": "v7"},
+            "files": [
+                {"filename": "abc.py", "ln_ex_ct": [[1, 1000], [5, 6], [6, 0]]},
+                {"filename": "bcd.py", "ln_ex_ct": [[1, 333], [5, 3333], [6, 333]]},
+                {"filename": "cde.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
+                {"filename": "def.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
+                ...
+                {"filename": "stu.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
+                {"filename": "tuv.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
+                {"filename": "uvx.py", "ln_ex_ct": [[1, 10], [5, 6], [6, 0]]},
+            ],
+        }
 
         """
         line_executions_map = {}

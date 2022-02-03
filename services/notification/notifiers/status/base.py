@@ -69,7 +69,7 @@ class StatusNotifier(AbstractBaseNotifier):
         # Get the value set at the global level via the default_rules key. This can be 'None' if no value was provided.
         # If provided, this is populated either by the YAML file directly or by the defaults set in 'shared'.
         default_rules_behavior = read_yaml_field(
-            self.current_yaml, ("coverage", "status", "default_rules", field_name),
+            self.current_yaml, ("coverage", "status", "default_rules", field_name)
         )
 
         behavior_to_apply = (
@@ -129,8 +129,10 @@ class StatusNotifier(AbstractBaseNotifier):
         # e.g. if "paths" is specified, exclude the coverage not on those paths
         try:
             # If flag coverage wasn't uploaded, apply the appropriate behavior
-            flag_coverage_not_uploaded_behavior = self.determine_status_check_behavior_to_apply(
-                comparison, "flag_coverage_not_uploaded_behavior"
+            flag_coverage_not_uploaded_behavior = (
+                self.determine_status_check_behavior_to_apply(
+                    comparison, "flag_coverage_not_uploaded_behavior"
+                )
             )
             if (
                 flag_coverage_not_uploaded_behavior == "exclude"

@@ -31,7 +31,7 @@ def sample_open_telemetry_collected_as_str():
                                 [22, 3],
                                 [26, 3],
                             ],
-                        },
+                        }
                     ],
                     "group_name": "run/app.tasks.upload.Upload",
                 },
@@ -149,9 +149,7 @@ class TestCriticalPathOverlay(object):
         assert a.search_files_for_critical_changes(["filenames", "to", "search"]) == []
 
     @pytest.mark.asyncio
-    async def test_find_impacted_endpoints_no_analyzer(
-        self, sample_comparison,
-    ):
+    async def test_find_impacted_endpoints_no_analyzer(self, sample_comparison):
         a = CriticalPathOverlay(sample_comparison, None)
         a._profiling_analyzer = None
         await a.find_impacted_endpoints() is None

@@ -93,7 +93,7 @@ def gitlab_enriched_pull_subgroup(dbsession, gitlab_root_group):
     dbsession.flush()
 
     repository = RepositoryFactory.create(
-        owner=subgroup, name="example-python", image_token="abcdefghij", private=True,
+        owner=subgroup, name="example-python", image_token="abcdefghij", private=True
     )
     dbsession.add(repository)
     dbsession.flush()

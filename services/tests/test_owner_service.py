@@ -49,7 +49,7 @@ class TestOwnerServiceTestCase(object):
         bot_token = "bcaa0dc0c66b4a8c8c65ac919a1a91aa"
         owner = OwnerFactory.create(
             unencrypted_oauth_token="testyftq3ovzkb3zmt823u3t04lkrt9w",
-            bot=OwnerFactory.create(unencrypted_oauth_token=bot_token,),
+            bot=OwnerFactory.create(unencrypted_oauth_token=bot_token),
         )
         dbsession.add(owner)
         dbsession.flush()

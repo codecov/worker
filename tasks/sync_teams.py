@@ -13,16 +13,13 @@ log = logging.getLogger(__name__)
 
 
 class SyncTeamsTask(BaseCodecovTask):
-    """This task syncs the orgs/teams that a user belongs to
-    """
+    """This task syncs the orgs/teams that a user belongs to"""
 
     name = sync_teams_task_name
     ignore_result = False
 
     async def run_async(self, db_session, ownerid, *, username=None, **kwargs):
-        log.info(
-            "Sync teams", extra=dict(ownerid=ownerid, username=username),
-        )
+        log.info("Sync teams", extra=dict(ownerid=ownerid, username=username))
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
 
         assert owner, "Owner not found"

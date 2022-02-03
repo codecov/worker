@@ -57,15 +57,8 @@ class TestGHMarketplaceSyncPlansTask(object):
         dbsession.add(owner)
         dbsession.flush()
 
-        sender = {
-            "login": "cc-test",
-            "id": 3877742,
-        }
-        account = {
-            "type": "User",
-            "id": 3877742,
-            "login": "cc-test",
-        }
+        sender = {"login": "cc-test", "id": 3877742}
+        account = {"type": "User", "id": 3877742, "login": "cc-test"}
         action = "purchased"
 
         task = SyncPlansTask()
@@ -97,15 +90,8 @@ class TestGHMarketplaceSyncPlansTask(object):
             use_stubbed=True
         )
 
-        sender = {
-            "login": "cc-test",
-            "id": 3877742,
-        }
-        account = {
-            "type": "User",
-            "id": 3877742,
-            "login": "cc-test",
-        }
+        sender = {"login": "cc-test", "id": 3877742}
+        account = {"type": "User", "id": 3877742, "login": "cc-test"}
         action = "purchased"
 
         task = SyncPlansTask()
@@ -145,15 +131,8 @@ class TestGHMarketplaceSyncPlansTask(object):
             use_stubbed=True
         )
 
-        sender = {
-            "login": "cc-test",
-            "id": 3877742,
-        }
-        account = {
-            "type": "Organization",
-            "id": 123456,
-            "login": "some-org",
-        }
+        sender = {"login": "cc-test", "id": 3877742}
+        account = {"type": "Organization", "id": 123456, "login": "some-org"}
         action = "purchased"
 
         task = SyncPlansTask()
@@ -230,15 +209,8 @@ class TestGHMarketplaceSyncPlansTask(object):
         dbsession.add(repo_spack)
         dbsession.flush()
 
-        sender = {
-            "login": "cc-test",
-            "id": 3877742,
-        }
-        account = {
-            "type": "User",
-            "id": 3877742,
-            "login": "cc-test",
-        }
+        sender = {"login": "cc-test", "id": 3877742}
+        account = {"type": "User", "id": 3877742, "login": "cc-test"}
         action = "cancelled"
 
         task = SyncPlansTask()

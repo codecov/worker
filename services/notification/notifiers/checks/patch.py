@@ -15,10 +15,10 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
 
     async def build_payload(self, comparison: Comparison):
         """
-            This method build the paylod of the patch github checks.
+        This method build the paylod of the patch github checks.
 
-            We only add annotaions to the top-level patch check of a project.
-            We do not add annotations on checks that are used with paths/flags
+        We only add annotaions to the top-level patch check of a project.
+        We do not add annotations on checks that are used with paths/flags
         """
         state, message = await self.get_patch_status(comparison)
         codecov_link = self.get_codecov_pr_link(comparison)

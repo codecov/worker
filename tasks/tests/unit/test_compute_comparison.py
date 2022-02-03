@@ -159,7 +159,7 @@ class TestComputeComparisonTask(object):
             ReadOnlyReport, "should_load_rust_version", return_value=True
         )
         mocker.patch.object(
-            ReportService, "get_existing_report_for_commit", return_value=None,
+            ReportService, "get_existing_report_for_commit", return_value=None
         )
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()

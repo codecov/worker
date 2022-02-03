@@ -330,7 +330,7 @@ class TestUploadFinisherTask(object):
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
             kwargs=dict(
                 commitid=commit.commitid, current_yaml=commit_yaml, repoid=commit.repoid
-            ),
+            )
         )
         assert mocked_app.send_task.call_count == 0
 
@@ -374,7 +374,7 @@ class TestUploadFinisherTask(object):
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
             kwargs=dict(
                 commitid=commit.commitid, current_yaml=commit_yaml, repoid=commit.repoid
-            ),
+            )
         )
         mocked_app.tasks["app.tasks.pulls.Sync"].apply_async.assert_called_with(
             kwargs={
