@@ -86,7 +86,7 @@ class TestSalesforce(BaseTestCase):
                     "percentage": "38%",
                     "coverage": {
                         "coveredLines": [1, 2, 3, 4, 5, 6, 7, 8, 9],
-                        "uncoveredLines": [10, 11, 12, 13,],
+                        "uncoveredLines": [10, 11, 12, 13],
                     },
                 },
                 {

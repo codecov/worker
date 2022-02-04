@@ -45,7 +45,7 @@ async def test_run_async_simple_normalizing_run(
     )
     mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
     mock_storage.write_file(
-        "bucket", "raw_upload_location", json.dumps(sample_open_telemetry_upload),
+        "bucket", "raw_upload_location", json.dumps(sample_open_telemetry_upload)
     )
     dbsession.add(puf)
     dbsession.flush()

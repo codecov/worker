@@ -98,9 +98,7 @@ class SyncPlansTask(BaseCodecovTask):
         """
         This is carried over from legacy to sync all plan accounts - it is not currently used
         """
-        log.info(
-            "Sync all", extra=dict(action=action),
-        )
+        log.info("Sync all", extra=dict(action=action))
 
         has_a_plan = []
 

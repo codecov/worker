@@ -20,15 +20,15 @@ class NotificationResult(object):
 
 class AbstractBaseNotifier(object):
     """
-        Base Notifier, abstract class that should not be used
+    Base Notifier, abstract class that should not be used
 
-        This class has the core ideas of a notifier that has the structure:
+    This class has the core ideas of a notifier that has the structure:
 
-        notifications:
-            <notifier_name:
-                <notifier_title>:
-                    ... <notifier_fields>
-                    
+    notifications:
+        <notifier_name:
+            <notifier_title>:
+                ... <notifier_fields>
+
     """
 
     def __init__(
@@ -41,13 +41,13 @@ class AbstractBaseNotifier(object):
         decoration_type: Decoration = None,
     ):
         """
-            :param repository: The repository notifications are being sent to.
-            :param title: The project name for this notification, if applicable. For more info see https://docs.codecov.io/docs/commit-status#splitting-up-projects-example
-            :param notifier_yaml_settings: Contains the codecov yaml fields, if any, for this particular notification.
-                example: status -> patch -> custom_project_name -> <whatever is here is in notifier_yaml_settings for custom_project_name's status patch notifier>
-            :param notifier_site_settings -> Contains the codecov yaml fields under the "notify" header
-            :param current_yaml -> The complete codecov yaml used for this notification.
-            :param decoration_type -> Indicates whether the user needs to upgrade their account before they can see the notification
+        :param repository: The repository notifications are being sent to.
+        :param title: The project name for this notification, if applicable. For more info see https://docs.codecov.io/docs/commit-status#splitting-up-projects-example
+        :param notifier_yaml_settings: Contains the codecov yaml fields, if any, for this particular notification.
+            example: status -> patch -> custom_project_name -> <whatever is here is in notifier_yaml_settings for custom_project_name's status patch notifier>
+        :param notifier_site_settings -> Contains the codecov yaml fields under the "notify" header
+        :param current_yaml -> The complete codecov yaml used for this notification.
+        :param decoration_type -> Indicates whether the user needs to upgrade their account before they can see the notification
         """
         self.repository = repository
         self.title = title

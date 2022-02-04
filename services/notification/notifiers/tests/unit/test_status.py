@@ -334,7 +334,7 @@ class TestBaseStatusNotifier(object):
             return_value={"state": "success", "message": "somemessage"},
         )
         mocked_send_notification = mocker.patch.object(
-            StatusNotifier, "send_notification",
+            StatusNotifier, "send_notification"
         )
         mocked_send_notification.return_value = NotificationResult(
             notification_attempted=True,
@@ -372,7 +372,7 @@ class TestBaseStatusNotifier(object):
         )
         no_settings_notifier.context = "fake"
         mocked_status_already_exists = mocker.patch.object(
-            StatusNotifier, "status_already_exists",
+            StatusNotifier, "status_already_exists"
         )
         mocked_status_already_exists.return_value = False
         mock_repo_provider.set_commit_status.side_effect = TorngitClientError(
@@ -407,17 +407,13 @@ class TestBaseStatusNotifier(object):
             )
             no_settings_notifier.context = "fake"
             mocked_status_already_exists = mocker.patch.object(
-                StatusNotifier, "status_already_exists",
+                StatusNotifier, "status_already_exists"
             )
             mocked_status_already_exists.return_value = False
             mock_repo_provider.set_commit_status.side_effect = TorngitClientError(
                 403, "response", "message"
             )
-            payload = {
-                "message": "something to say",
-                "state": "success",
-                "url": "url",
-            }
+            payload = {"message": "something to say", "state": "success", "url": "url"}
             await no_settings_notifier.send_notification(comparison, payload)
             assert mock_track.called_with(
                 15,
@@ -442,17 +438,13 @@ class TestBaseStatusNotifier(object):
             )
             no_settings_notifier.context = "fake"
             mocked_status_already_exists = mocker.patch.object(
-                StatusNotifier, "status_already_exists",
+                StatusNotifier, "status_already_exists"
             )
             mocked_status_already_exists.return_value = False
             mock_repo_provider.set_commit_status.side_effect = TorngitClientError(
                 403, "response", "message"
             )
-            payload = {
-                "message": "something to say",
-                "state": "success",
-                "url": "url",
-            }
+            payload = {"message": "something to say", "state": "success", "url": "url"}
             await no_settings_notifier.send_notification(comparison, payload)
             assert mock_track.called_with(
                 15,
@@ -467,20 +459,20 @@ class TestBaseStatusNotifier(object):
         notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
             title="component_check",
-            notifier_yaml_settings={"flag_coverage_not_uploaded_behavior": "exclude",},
+            notifier_yaml_settings={"flag_coverage_not_uploaded_behavior": "exclude"},
             notifier_site_settings=True,
             current_yaml={
                 "coverage": {
                     "status": {
                         "default_rules": {
-                            "flag_coverage_not_uploaded_behavior": "pass",
+                            "flag_coverage_not_uploaded_behavior": "pass"
                         },
                         "project": {
                             "component_check": {
-                                "flag_coverage_not_uploaded_behavior": "exclude",
-                            },
+                                "flag_coverage_not_uploaded_behavior": "exclude"
+                            }
                         },
-                    },
+                    }
                 }
             },
         )
@@ -502,10 +494,10 @@ class TestBaseStatusNotifier(object):
                 "coverage": {
                     "status": {
                         "default_rules": {
-                            "flag_coverage_not_uploaded_behavior": "pass",
+                            "flag_coverage_not_uploaded_behavior": "pass"
                         },
                         "project": {"component_check": {}},
-                    },
+                    }
                 }
             },
         )
@@ -523,9 +515,7 @@ class TestBaseStatusNotifier(object):
             title="component_check",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml={
-                "coverage": {"status": {"default_rules": {}, "project": {},},}
-            },
+            current_yaml={"coverage": {"status": {"default_rules": {}, "project": {}}}},
         )
         notifier.context = "fake"
         assert (
@@ -646,10 +636,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        expected_result = {
-            "message": "60.00% (target 57.00%)",
-            "state": "success",
-        }
+        expected_result = {"message": "60.00% (target 57.00%)", "state": "success"}
         result = await notifier.build_payload(sample_comparison)
         assert expected_result == result
 
@@ -665,10 +652,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        expected_result = {
-            "message": "60.00% (target 57.00%)",
-            "state": "success",
-        }
+        expected_result = {"message": "60.00% (target 57.00%)", "state": "success"}
         result = await notifier.build_payload(sample_comparison)
         assert expected_result == result
 
@@ -1224,7 +1208,7 @@ class TestPatchStatusNotifier(object):
                                     " .. code-block:: shell-session",
                                     " ",
                                 ],
-                            },
+                            }
                         ],
                         "stats": {"added": 11, "removed": 4},
                     }
@@ -1277,7 +1261,7 @@ class TestPatchStatusNotifier(object):
                                     " .. code-block:: shell-session",
                                     " ",
                                 ],
-                            },
+                            }
                         ],
                         "stats": {"added": 11, "removed": 4},
                     }

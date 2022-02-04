@@ -30,16 +30,16 @@ class MessageMixin(object):
         self, comparison: ComparisonProxy, pull_dict, yaml_settings
     ):
         """
-            Assemble the various components of the PR comments message in accordance with their YAML configuration.
-            See https://docs.codecov.io/docs/pull-request-comments for more context on the different parts of a PR comment.
+        Assemble the various components of the PR comments message in accordance with their YAML configuration.
+        See https://docs.codecov.io/docs/pull-request-comments for more context on the different parts of a PR comment.
 
-            Returns the PR comment message as a list of strings, where each item in the list corresponds to a line in the comment.
+        Returns the PR comment message as a list of strings, where each item in the list corresponds to a line in the comment.
 
-            Parameters:
-                yaml_settings: YAML settings for notifier
+        Parameters:
+            yaml_settings: YAML settings for notifier
 
-                    Note: Github Checks Notifers are initialized with "status" YAML settings.
-                          Thus, the comment block of the codecov YAML is passed as the "yaml_settings" parameter for these Notifiers.
+                Note: Github Checks Notifers are initialized with "status" YAML settings.
+                      Thus, the comment block of the codecov YAML is passed as the "yaml_settings" parameter for these Notifiers.
 
         """
         changes = await comparison.get_changes()

@@ -21,7 +21,7 @@ class TestPullSyncTask(object):
         dbsession.add(repository)
         dbsession.flush()
         base_commit = CommitFactory.create(repository=repository)
-        head_commit = CommitFactory.create(repository=repository,)
+        head_commit = CommitFactory.create(repository=repository)
         pull = PullFactory.create(
             repository=repository,
             base=base_commit.commitid,
@@ -53,7 +53,7 @@ class TestPullSyncTask(object):
         dbsession.flush()
         task = PullSyncTask()
         enriched_pull = EnrichedPull(
-            database_pull=pull, provider_pull=dict(base=dict(branch="lookatthis")),
+            database_pull=pull, provider_pull=dict(base=dict(branch="lookatthis"))
         )
         commits = [first_commit.commitid, third_commit.commitid]
         commits_at_base = {
@@ -82,7 +82,7 @@ class TestPullSyncTask(object):
         dbsession.add(repository)
         dbsession.flush()
         base_commit = CommitFactory.create(repository=repository)
-        head_commit = CommitFactory.create(repository=repository,)
+        head_commit = CommitFactory.create(repository=repository)
         pull = PullFactory.create(
             repository=repository,
             base=base_commit.commitid,
@@ -114,7 +114,7 @@ class TestPullSyncTask(object):
         dbsession.flush()
         task = PullSyncTask()
         enriched_pull = EnrichedPull(
-            database_pull=pull, provider_pull=dict(base=dict(branch="lookatthis")),
+            database_pull=pull, provider_pull=dict(base=dict(branch="lookatthis"))
         )
         commits = [first_commit.commitid, third_commit.commitid]
         commits_at_base = {
@@ -141,11 +141,11 @@ class TestPullSyncTask(object):
         self, dbsession, mocker, mock_redis
     ):
         task = PullSyncTask()
-        pull = PullFactory.create(head="head_commit_nonexistent_sha", state="open",)
+        pull = PullFactory.create(head="head_commit_nonexistent_sha", state="open")
         dbsession.add(pull)
         dbsession.flush()
         mocked_fetch_pr = mocker.patch(
-            "tasks.sync_pull.fetch_and_update_pull_request_information",
+            "tasks.sync_pull.fetch_and_update_pull_request_information"
         )
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=pull, provider_pull={}
@@ -161,7 +161,7 @@ class TestPullSyncTask(object):
     @pytest.mark.asyncio
     async def test_call_pullsync_task_nolock(self, dbsession, mock_redis):
         task = PullSyncTask()
-        pull = PullFactory.create(state="open",)
+        pull = PullFactory.create(state="open")
         dbsession.add(pull)
         dbsession.flush()
         mock_redis.lock.return_value.__enter__.side_effect = LockError
@@ -182,7 +182,7 @@ class TestPullSyncTask(object):
         dbsession.flush()
         task = PullSyncTask()
         mocked_fetch_pr = mocker.patch(
-            "tasks.sync_pull.fetch_and_update_pull_request_information",
+            "tasks.sync_pull.fetch_and_update_pull_request_information"
         )
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=None, provider_pull=None
@@ -207,7 +207,7 @@ class TestPullSyncTask(object):
         dbsession.flush()
         task = PullSyncTask()
         mocked_fetch_pr = mocker.patch(
-            "tasks.sync_pull.fetch_and_update_pull_request_information",
+            "tasks.sync_pull.fetch_and_update_pull_request_information"
         )
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=pull, provider_pull=None
@@ -223,7 +223,7 @@ class TestPullSyncTask(object):
     @pytest.mark.asyncio
     async def test_call_pullsync_no_bot(self, dbsession, mock_redis, mocker):
         task = PullSyncTask()
-        pull = PullFactory.create(state="open",)
+        pull = PullFactory.create(state="open")
         dbsession.add(pull)
         dbsession.flush()
         mocker.patch(
@@ -248,7 +248,7 @@ class TestPullSyncTask(object):
         dbsession.add(repository)
         dbsession.flush()
         base_commit = CommitFactory.create(repository=repository)
-        head_commit = CommitFactory.create(repository=repository,)
+        head_commit = CommitFactory.create(repository=repository)
         dbsession.add(base_commit)
         dbsession.add(head_commit)
         pull = PullFactory.create(
@@ -260,7 +260,7 @@ class TestPullSyncTask(object):
         dbsession.add(pull)
         dbsession.flush()
         mocked_fetch_pr = mocker.patch(
-            "tasks.sync_pull.fetch_and_update_pull_request_information",
+            "tasks.sync_pull.fetch_and_update_pull_request_information"
         )
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=pull, provider_pull={"head"}
@@ -360,7 +360,7 @@ class TestPullSyncTask(object):
                     pull.repository.owner.username,
                     pull.repository.name,
                     f"{pull.pullid}",
-                ),
+                )
             ),
             json.dumps(["f.py"]),
             ex=86400,

@@ -1659,7 +1659,7 @@ class TestReportService(BaseTestCase):
         report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
-            ["file_10.py", "file_11.py", "file_12.py", "file_13.py", "file_14.py",]
+            ["file_10.py", "file_11.py", "file_12.py", "file_13.py", "file_14.py"]
         )
         assert report.totals == ReportTotals(
             files=5,
@@ -2199,9 +2199,7 @@ class TestReportService(BaseTestCase):
     ):
         parent_commit = sample_commit_with_report_big
         commit = CommitFactory.create(
-            repository=parent_commit.repository,
-            parent_commit_id=None,
-            report_json=None,
+            repository=parent_commit.repository, parent_commit_id=None, report_json=None
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -2227,7 +2225,7 @@ class TestReportService(BaseTestCase):
         readable_report = self.convert_report_to_better_readable(report)
         expected_results = {
             "archive": {},
-            "report": {"files": {}, "sessions": {},},
+            "report": {"files": {}, "sessions": {}},
             "totals": {
                 "C": 0,
                 "M": 0,
@@ -2536,7 +2534,7 @@ class TestReportService(BaseTestCase):
                     "t": None,
                     "u": None,
                 },
-            },
+            }
         }
         assert (
             expected_results_report["sessions"]["2"]
@@ -2575,14 +2573,11 @@ class TestReportService(BaseTestCase):
         assert report is not None
         assert sorted(report.files) == []
         readable_report = self.convert_report_to_better_readable(report)
-        expected_results_report = {
-            "files": {},
-            "sessions": {},
-        }
+        expected_results_report = {"files": {}, "sessions": {}}
         assert expected_results_report == readable_report["report"]
 
     def test_create_new_report_parent_had_no_parent_and_pending(self, dbsession):
-        current_commit = CommitFactory.create(parent_commit_id=None, state="pending",)
+        current_commit = CommitFactory.create(parent_commit_id=None, state="pending")
         dbsession.add(current_commit)
         for i in range(5):
             current_commit = CommitFactory.create(
@@ -3669,7 +3664,7 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         assert len(upload_obj.errors) == 0
         processing_result = ProcessingResult(
-            report=Report(), session=Session(), error=None,
+            report=Report(), session=Session(), error=None
         )
         assert (
             ReportService({}).update_upload_with_processing_result(

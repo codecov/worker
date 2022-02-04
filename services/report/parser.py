@@ -53,11 +53,7 @@ class RawReportParser(object):
     eof_separator = b"<<<<<< EOF"
     ignore_from_now_on_marker = b"==FROMNOWONIGNOREDBYCODECOV==>>>"
 
-    separator_lines = [
-        network_separator,
-        env_separator,
-        eof_separator,
-    ]
+    separator_lines = [network_separator, env_separator, eof_separator]
 
     @classmethod
     def _find_place_to_cut(cls, raw_report: bytes):

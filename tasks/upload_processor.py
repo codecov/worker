@@ -52,7 +52,7 @@ class UploadProcessorTask(BaseCodecovTask):
     name = upload_processor_task_name
 
     def schedule_for_later_try(self, max_retries=5):
-        retry_in = FIRST_RETRY_DELAY * 3 ** self.request.retries
+        retry_in = FIRST_RETRY_DELAY * 3**self.request.retries
         self.retry(max_retries=max_retries, countdown=retry_in)
 
     async def run_async(
@@ -94,7 +94,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     commit=commitid, repoid=repoid, number_retries=self.request.retries
                 ),
             )
-            max_retry = 200 * 3 ** self.request.retries
+            max_retry = 200 * 3**self.request.retries
             retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
             self.retry(max_retries=5, countdown=retry_in)
 
@@ -203,9 +203,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     url=results_dict.get("url"),
                 ),
             )
-            return {
-                "processings_so_far": processings_so_far,
-            }
+            return {"processings_so_far": processings_so_far}
         except CeleryError:
             raise
         except Exception:
@@ -217,7 +215,7 @@ class UploadProcessorTask(BaseCodecovTask):
             raise
 
     def process_individual_report(
-        self, report_service, commit, report, upload_obj, should_delete_archive,
+        self, report_service, commit, report, upload_obj, should_delete_archive
     ):
         processing_result = self.do_process_individual_report(
             report_service, commit, report, should_delete_archive, upload=upload_obj
@@ -274,7 +272,7 @@ class UploadProcessorTask(BaseCodecovTask):
         self, db_session, report_service, repository, commit, report, pr
     ):
         """Saves the result of `report` to the commit database and chunks archive
-        
+
         This method only takes care of getting a processed Report to the database and archive.
 
         It also tries to calculate the diff of the report (which uses commit info
@@ -292,7 +290,7 @@ class UploadProcessorTask(BaseCodecovTask):
             # alternative of refusing an otherwise "good" report because of the lack of diff
             log.warning(
                 "Could not apply diff to report because there was an error fetching diff from provider",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
                 exc_info=True,
             )
         except RepositoryWithoutValidBotError:

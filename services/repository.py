@@ -116,8 +116,8 @@ async def fetch_appropriate_parent_for_commit(
 
 async def update_commit_from_provider_info(repository_service, commit):
     """
-        Takes the result from the torngit commit details, and updates the commit
-        properties with it
+    Takes the result from the torngit commit details, and updates the commit
+    properties with it
     """
     db_session = commit.get_db_session()
     commitid = commit.commitid
@@ -201,10 +201,10 @@ async def update_commit_from_provider_info(repository_service, commit):
 
 
 def get_or_create_author(
-    db_session, service, service_id, username, email=None, name=None,
+    db_session, service, service_id, username, email=None, name=None
 ) -> Owner:
     query = db_session.query(Owner).filter(
-        Owner.service == service, Owner.service_id == str(service_id),
+        Owner.service == service, Owner.service_id == str(service_id)
     )
     author = query.first()
     if author:
@@ -234,8 +234,8 @@ def get_or_create_author(
 
 async def create_webhook_on_provider(repository_service, token=None):
     """
-        Posts to the provider a webhook so we can receive updates from this
-        repo
+    Posts to the provider a webhook so we can receive updates from this
+    repo
     """
     webhook_url = get_config("setup", "webhook_url") or get_config(
         "setup", "codecov_url"
@@ -347,7 +347,7 @@ async def fetch_and_update_pull_request_information_from_commit(
 
 
 async def _pick_best_base_comparedto_pair(
-    repository_service, pull, current_yaml, pull_information,
+    repository_service, pull, current_yaml, pull_information
 ) -> Tuple[str, Optional[str]]:
     db_session = pull.get_db_session()
     repoid = pull.repoid
@@ -429,7 +429,7 @@ async def fetch_and_update_pull_request_information(
     pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
     db_session.refresh(pull)
     base_commit_sha, compared_to = await _pick_best_base_comparedto_pair(
-        repository_service, pull, current_yaml, pull_information,
+        repository_service, pull, current_yaml, pull_information
     )
     pull.base = base_commit_sha
     pull.compared_to = compared_to

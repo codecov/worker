@@ -69,7 +69,7 @@ class TestProcessRawUpload(BaseTestCase):
             BytesIO("\n".join(report).encode())
         )
         master = process.process_raw_upload(
-            commit_yaml=None, original_report=master, reports=parsed_report, flags=[],
+            commit_yaml=None, original_report=master, reports=parsed_report, flags=[]
         )
 
         if "e" in keys:
@@ -586,7 +586,7 @@ class TestProcessReport(BaseTestCase):
                 ParsedUploadedReportFile(
                     filename=None,
                     file_contents=BytesIO(
-                        ('{"coverage": {"data": "' + u"\xf1" + '"}}').encode()
+                        ('{"coverage": {"data": "' + "\xf1" + '"}}').encode()
                     ),
                 ),
             ),  # non-acii
@@ -621,7 +621,7 @@ class TestProcessReport(BaseTestCase):
                     filename=None,
                     file_contents=BytesIO(
                         (
-                            "<statements><data>" + u"\xf1" + "</data></statements>"
+                            "<statements><data>" + "\xf1" + "</data></statements>"
                         ).encode()
                     ),
                 ),
@@ -724,7 +724,7 @@ class TestProcessReport(BaseTestCase):
             (
                 "salesforce.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'[{"name": "banana"}]'),
+                    filename=None, file_contents=BytesIO(b'[{"name": "banana"}]')
                 ),
             ),
         ],
@@ -746,7 +746,7 @@ class TestProcessReport(BaseTestCase):
         [
             (
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'[{"a": "banana"}]'),
+                    filename=None, file_contents=BytesIO(b'[{"a": "banana"}]')
                 )
             )
         ],
@@ -792,7 +792,7 @@ class TestProcessReport(BaseTestCase):
             file_contents=BytesIO("<data>".encode()),
         )
         result = process.process_report(
-            report=r, commit_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str,
+            report=r, commit_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
         )
         assert result is None
         assert mocked.called

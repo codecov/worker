@@ -25,13 +25,13 @@ log = logging.getLogger(__name__)
 
 class StandardNotifier(AbstractBaseNotifier):
     """
-        This class is our standard notifier. It assumes and does the following:
+    This class is our standard notifier. It assumes and does the following:
 
-        - Ensure that the notifier has a valid `url` to be used
-        - Ensure that the `url` base is enabled on site-wide settings
-        - Check that the current branch is inside the list of enabled branches
-        - Filters the reports according to the given paths and flags
-        - Check that the threshold of the webhook is satisfied on this comparison
+    - Ensure that the notifier has a valid `url` to be used
+    - Ensure that the `url` base is enabled on site-wide settings
+    - Check that the current branch is inside the list of enabled branches
+    - Filters the reports according to the given paths and flags
+    - Check that the threshold of the webhook is satisfied on this comparison
     """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -228,8 +228,8 @@ class EnhancedJSONEncoder(json.JSONEncoder):
 
 class RequestsYamlBasedNotifier(StandardNotifier):
     """
-        This class is a small implementation detail for using `requests` package to communicate with
-            the server we want to notify
+    This class is a small implementation detail for using `requests` package to communicate with
+        the server we want to notify
     """
 
     json_headers = {

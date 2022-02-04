@@ -123,7 +123,7 @@ class TestYamlService(BaseTestCase):
                         "behavior": "default",
                         "layout": "header, diff",
                         "require_changes": False,
-                    },
+                    }
                 }
             }
         )
@@ -138,7 +138,7 @@ class TestYamlService(BaseTestCase):
         ]
         list_files_future = mocked_list_files_result
         sample_yaml = "\n".join(
-            ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
+            ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
         )
         contents_result = {"content": sample_yaml}
         contents_result_future = contents_result
@@ -152,8 +152,8 @@ class TestYamlService(BaseTestCase):
                     "precision": 2,
                     "round": "down",
                     "range": [70.0, 100.0],
-                    "status": {"project": True, "patch": True, "changes": False,},
-                },
+                    "status": {"project": True, "patch": True, "changes": False},
+                }
             }
         )
         res = await get_current_yaml(commit, valid_handler)
@@ -175,7 +175,7 @@ class TestYamlService(BaseTestCase):
                         "behavior": "default",
                         "layout": "header, diff",
                         "require_changes": False,
-                    },
+                    }
                 }
             }
         )
@@ -190,7 +190,7 @@ class TestYamlService(BaseTestCase):
         ]
         list_files_future = mocked_list_files_result
         sample_yaml = "\n".join(
-            ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
+            ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
         )
         contents_result = {"content": sample_yaml}
         contents_result_future = contents_result
@@ -204,8 +204,8 @@ class TestYamlService(BaseTestCase):
                     "precision": 2,
                     "round": "down",
                     "range": [70.0, 100.0],
-                    "status": {"project": True, "patch": True, "changes": False,},
-                },
+                    "status": {"project": True, "patch": True, "changes": False},
+                }
             },
             repository__owner__yaml={"codecov": {"bot": "ThiagoCodecov"}},
         )
@@ -232,16 +232,16 @@ class TestYamlService(BaseTestCase):
                         "behavior": "default",
                         "layout": "header, diff",
                         "require_changes": False,
-                    },
+                    }
                 }
             }
         )
         mocked_list_files_result = [
-            {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
+            {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"}
         ]
         list_files_future = mocked_list_files_result
         sample_yaml = "\n".join(
-            ["@codecov:", "  notify:", "    require_ci_to_pass: yes",]
+            ["@codecov:", "  notify:", "    require_ci_to_pass: yes"]
         )
         contents_result = {"content": sample_yaml}
         contents_result_future = contents_result
@@ -255,8 +255,8 @@ class TestYamlService(BaseTestCase):
                     "precision": 2,
                     "round": "down",
                     "range": [70.0, 100.0],
-                    "status": {"project": True, "patch": True, "changes": False,},
-                },
+                    "status": {"project": True, "patch": True, "changes": False},
+                }
             }
         )
         res = await get_current_yaml(commit, valid_handler)
@@ -265,7 +265,7 @@ class TestYamlService(BaseTestCase):
                 "precision": 2,
                 "round": "down",
                 "range": [70.0, 100.0],
-                "status": {"project": True, "patch": True, "changes": False,},
+                "status": {"project": True, "patch": True, "changes": False},
             },
             "comment": {
                 "behavior": "default",
@@ -283,14 +283,14 @@ class TestYamlService(BaseTestCase):
                         "behavior": "default",
                         "layout": "header, diff",
                         "require_changes": False,
-                    },
+                    }
                 }
             }
         )
         valid_handler = mocker.MagicMock(
             list_top_level_files=mocker.MagicMock(
                 side_effect=TorngitClientError(404, "response", "message")
-            ),
+            )
         )
         commit = CommitFactory.create(
             repository__yaml={
@@ -298,8 +298,8 @@ class TestYamlService(BaseTestCase):
                     "precision": 2,
                     "round": "down",
                     "range": [70.0, 100.0],
-                    "status": {"project": True, "patch": True, "changes": False,},
-                },
+                    "status": {"project": True, "patch": True, "changes": False},
+                }
             }
         )
         res = await get_current_yaml(commit, valid_handler)
@@ -308,7 +308,7 @@ class TestYamlService(BaseTestCase):
                 "precision": 2,
                 "round": "down",
                 "range": [70.0, 100.0],
-                "status": {"project": True, "patch": True, "changes": False,},
+                "status": {"project": True, "patch": True, "changes": False},
             },
             "comment": {
                 "behavior": "default",
@@ -328,14 +328,14 @@ class TestYamlService(BaseTestCase):
                         "behavior": "default",
                         "layout": "header, diff",
                         "require_changes": False,
-                    },
+                    }
                 }
             }
         )
         valid_handler = mocker.MagicMock(
             list_top_level_files=mocker.MagicMock(
                 side_effect=TorngitServerUnreachableError()
-            ),
+            )
         )
         commit = CommitFactory.create(
             repository__yaml={
@@ -343,8 +343,8 @@ class TestYamlService(BaseTestCase):
                     "precision": 2,
                     "round": "down",
                     "range": [70.0, 100.0],
-                    "status": {"project": True, "patch": True, "changes": False,},
-                },
+                    "status": {"project": True, "patch": True, "changes": False},
+                }
             }
         )
         res = await get_current_yaml(commit, valid_handler)
@@ -353,7 +353,7 @@ class TestYamlService(BaseTestCase):
                 "precision": 2,
                 "round": "down",
                 "range": [70.0, 100.0],
-                "status": {"project": True, "patch": True, "changes": False,},
+                "status": {"project": True, "patch": True, "changes": False},
             },
             "comment": {
                 "behavior": "default",

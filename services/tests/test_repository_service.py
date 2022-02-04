@@ -686,7 +686,7 @@ class TestPullRequestFetcher(object):
     ):
         now = datetime.utcnow()
         commit = CommitFactory.create(
-            message="", pullid=1, totals=None, report_json=None,
+            message="", pullid=1, totals=None, report_json=None
         )
         base_commit = CommitFactory.create(repository=commit.repository)
         dbsession.add(commit)
@@ -1083,7 +1083,7 @@ class TestPullRequestFetcher(object):
         repository_service = mocker.MagicMock(
             find_pull_request=mock.AsyncMock(
                 side_effect=TorngitClientError(422, "response", "message")
-            ),
+            )
         )
         res = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml
@@ -1114,7 +1114,7 @@ class TestPullRequestFetcher(object):
         repository_service = mocker.MagicMock(
             get_pull_request=mock.AsyncMock(
                 side_effect=TorngitObjectNotFoundError("response", "message")
-            ),
+            )
         )
         res = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml
@@ -1131,9 +1131,7 @@ class TestPullRequestFetcher(object):
         dbsession.flush()
         current_yaml = {}
         repository_service = mocker.MagicMock(
-            get_pull_request=mock.AsyncMock(
-                side_effect=TorngitServerUnreachableError()
-            ),
+            get_pull_request=mock.AsyncMock(side_effect=TorngitServerUnreachableError())
         )
         res = await fetch_and_update_pull_request_information(
             repository_service, dbsession, pull.repoid, pull.pullid, current_yaml
@@ -1167,7 +1165,7 @@ class TestPullRequestFetcher(object):
         repository_service = mocker.MagicMock(
             get_pull_request=mock.AsyncMock(
                 side_effect=TorngitObjectNotFoundError("response", "message")
-            ),
+            )
         )
         res = await fetch_and_update_pull_request_information_from_commit(
             repository_service, commit, current_yaml
@@ -1188,14 +1186,14 @@ class TestPullRequestFetcher(object):
         dbsession.add(pull)
         dbsession.flush()
         repository_service = mocker.Mock(
-            TorngitBaseAdapter, get_commit=get_commit_mocked,
+            TorngitBaseAdapter, get_commit=get_commit_mocked
         )
         current_yaml = mocker.MagicMock()
         pull_information = {
             "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
         }
         res = await _pick_best_base_comparedto_pair(
-            repository_service, pull, current_yaml, pull_information,
+            repository_service, pull, current_yaml, pull_information
         )
         assert res == ("abcqwertabcqwertabcqwertabcqwertabcqwert", None)
 
@@ -1216,14 +1214,14 @@ class TestPullRequestFetcher(object):
         dbsession.add(pull)
         dbsession.flush()
         repository_service = mocker.Mock(
-            TorngitBaseAdapter, get_commit=get_commit_mocked,
+            TorngitBaseAdapter, get_commit=get_commit_mocked
         )
         current_yaml = mocker.MagicMock()
         pull_information = {
             "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
         }
         res = await _pick_best_base_comparedto_pair(
-            repository_service, pull, current_yaml, pull_information,
+            repository_service, pull, current_yaml, pull_information
         )
         assert res == ("lkjhgfdslkjhgfdslkjhgfdslkjhgfdslkjhgfds", None)
 
@@ -1249,14 +1247,14 @@ class TestPullRequestFetcher(object):
         dbsession.add(commit)
         dbsession.flush()
         repository_service = mocker.Mock(
-            TorngitBaseAdapter, get_commit=get_commit_mocked,
+            TorngitBaseAdapter, get_commit=get_commit_mocked
         )
         current_yaml = mocker.MagicMock()
         pull_information = {
             "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
         }
         res = await _pick_best_base_comparedto_pair(
-            repository_service, pull, current_yaml, pull_information,
+            repository_service, pull, current_yaml, pull_information
         )
         assert res == (
             "1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
@@ -1285,14 +1283,14 @@ class TestPullRequestFetcher(object):
         dbsession.add(commit)
         dbsession.flush()
         repository_service = mocker.Mock(
-            TorngitBaseAdapter, get_commit=get_commit_mocked,
+            TorngitBaseAdapter, get_commit=get_commit_mocked
         )
         current_yaml = mocker.MagicMock()
         pull_information = {
             "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
         }
         res = await _pick_best_base_comparedto_pair(
-            repository_service, pull, current_yaml, pull_information,
+            repository_service, pull, current_yaml, pull_information
         )
         assert res == (
             "1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
@@ -1333,14 +1331,14 @@ class TestPullRequestFetcher(object):
         dbsession.add(other_commit)
         dbsession.flush()
         repository_service = mocker.Mock(
-            TorngitBaseAdapter, get_commit=get_commit_mocked,
+            TorngitBaseAdapter, get_commit=get_commit_mocked
         )
         current_yaml = mocker.MagicMock()
         pull_information = {
             "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
         }
         res = await _pick_best_base_comparedto_pair(
-            repository_service, pull, current_yaml, pull_information,
+            repository_service, pull, current_yaml, pull_information
         )
         assert res == (
             "1007cbfb857592b9e7cbe3ecb25748870e2c07fc",
@@ -1383,14 +1381,14 @@ class TestPullRequestFetcher(object):
         dbsession.add(other_commit)
         dbsession.flush()
         repository_service = mocker.Mock(
-            TorngitBaseAdapter, get_commit=get_commit_mocked,
+            TorngitBaseAdapter, get_commit=get_commit_mocked
         )
         current_yaml = mocker.MagicMock()
         pull_information = {
             "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
         }
         res = await _pick_best_base_comparedto_pair(
-            repository_service, pull, current_yaml, pull_information,
+            repository_service, pull, current_yaml, pull_information
         )
         assert res == (
             "abcqwertabcqwertabcqwertabcqwertabcqwert",
@@ -1407,7 +1405,7 @@ class TestPullRequestFetcher(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        pull = PullFactory.create(repository=repository, user_provided_base_sha=None,)
+        pull = PullFactory.create(repository=repository, user_provided_base_sha=None)
         dbsession.add(pull)
         dbsession.flush()
         commit = CommitFactory.create(
@@ -1428,14 +1426,14 @@ class TestPullRequestFetcher(object):
         dbsession.add(other_commit)
         dbsession.flush()
         repository_service = mocker.Mock(
-            TorngitBaseAdapter, get_commit=get_commit_mocked,
+            TorngitBaseAdapter, get_commit=get_commit_mocked
         )
         current_yaml = mocker.MagicMock()
         pull_information = {
             "base": {"commitid": "abcqwert" * 5, "branch": "basebranch"}
         }
         res = await _pick_best_base_comparedto_pair(
-            repository_service, pull, current_yaml, pull_information,
+            repository_service, pull, current_yaml, pull_information
         )
         assert res == (
             "abcqwertabcqwertabcqwertabcqwertabcqwert",

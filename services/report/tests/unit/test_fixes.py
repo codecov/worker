@@ -28,7 +28,7 @@ class TestFixes(unittest.TestCase):
         )
         assert res == {
             "file.kt": {"eof": 188, "lines": set([2])},
-            "lcov": {"lines": set([10, 21] + list(range(11, 21))),},
+            "lcov": {"lines": set([10, 21] + list(range(11, 21)))},
             "file.go": {"lines": set([20, 21, 23, 50, 52, 22, 51])},
             "file.php": {"lines": set([23, 17])},
         }

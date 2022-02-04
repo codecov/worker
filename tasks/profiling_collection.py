@@ -26,9 +26,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
 
     name = profiling_collection_task_name
 
-    async def run_async(
-        self, db_session: Session, *, profiling_id: int, **kwargs,
-    ):
+    async def run_async(self, db_session: Session, *, profiling_id: int, **kwargs):
         redis_connection = get_redis_connection()
         try:
             with redis_connection.lock(
@@ -114,10 +112,7 @@ class ProfilingCollectionTask(BaseCodecovTask):
             new_profiling_uploads_to_join = new_profiling_uploads_to_join.filter(
                 ProfilingUpload.normalized_at <= latest_upload_time
             ).order_by(ProfilingUpload.normalized_at)
-        return (
-            new_profiling_uploads_to_join,
-            new_now,
-        )
+        return (new_profiling_uploads_to_join, new_now)
 
     @metrics.timer("worker.internal.task.join_profiling_uploads")
     def join_profiling_uploads(

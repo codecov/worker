@@ -48,7 +48,7 @@ jobs:
           name: Running linter
           command: |
             echo "Installing..."
-            pip3 install -Iv black==19.10b0 isort
+            pip3 install black==22.1.0 isort
             echo "Linting..."
             black --check .
             echo "Sorting..."

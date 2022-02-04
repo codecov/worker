@@ -458,7 +458,7 @@ class TestParser(object):
         )
         assert res.uploaded_files[1].filename == "profile.cov"
         expected_second_file = b"\n".join(
-            [b"mode: count", b"github.com/path/ckey/key.go:43.38,47.2 1 1",]
+            [b"mode: count", b"github.com/path/ckey/key.go:43.38,47.2 1 1"]
         )
         assert res.uploaded_files[1].contents == expected_second_file
 

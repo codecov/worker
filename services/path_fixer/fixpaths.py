@@ -122,8 +122,7 @@ def clean_toc(toc: str) -> Sequence[str]:
 
 
 def first_not_null_index(_list) -> Optional[int]:
-    """return key of the first not null value in list
-    """
+    """return key of the first not null value in list"""
     for i, v in enumerate(_list):
         if v is not None:
             return i

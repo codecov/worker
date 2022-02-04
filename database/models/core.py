@@ -102,7 +102,7 @@ class Repository(CodecovBaseModel):
     using_integration = Column(types.Boolean)
     cache_do_not_use = Column("cache", postgresql.JSONB)
 
-    owner = relationship(Owner, foreign_keys=[ownerid], back_populates="repositories",)
+    owner = relationship(Owner, foreign_keys=[ownerid], back_populates="repositories")
     bot = relationship(Owner, foreign_keys=[bot_id])
 
     __table_args__ = (
@@ -287,7 +287,7 @@ class CommitNotification(CodecovBaseModel):
     commit = relationship(Commit, foreign_keys=[commit_id])
 
     __table_args__ = (
-        Index("notifications_commit_id", "commit_id",),
+        Index("notifications_commit_id", "commit_id"),
         UniqueConstraint(
             "commit_id",
             "notification_type",
@@ -312,9 +312,9 @@ class CompareCommit(MixinBaseClass, CodecovBaseModel):
     error = Column(types.Text)
 
     __table_args__ = (
-        Index("compare_commitcomparison_base_commit_id_cf53c1d9", "base_commit_id",),
+        Index("compare_commitcomparison_base_commit_id_cf53c1d9", "base_commit_id"),
         Index(
-            "compare_commitcomparison_compare_commit_id_3ea19610", "compare_commit_id",
+            "compare_commitcomparison_compare_commit_id_3ea19610", "compare_commit_id"
         ),
         UniqueConstraint(
             "base_commit_id",

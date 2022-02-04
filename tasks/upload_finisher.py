@@ -115,7 +115,7 @@ class UploadFinisherTask(BaseCodecovTask):
                         repoid=repoid,
                         commitid=commitid,
                         current_yaml=commit_yaml.to_dict(),
-                    ),
+                    )
                 )
                 if commit.pullid:
                     pull = (
@@ -134,7 +134,7 @@ class UploadFinisherTask(BaseCodecovTask):
                                     repoid=repoid,
                                     pullid=pull.pullid,
                                     should_send_notifications=False,
-                                ),
+                                )
                             )
                             compared_to = pull.get_comparedto_commit()
                             if compared_to:
@@ -144,9 +144,7 @@ class UploadFinisherTask(BaseCodecovTask):
                                 db_session.commit()
                                 self.app.tasks[
                                     compute_comparison_task_name
-                                ].apply_async(
-                                    args=[comparison.id,]
-                                )
+                                ].apply_async(args=[comparison.id])
 
             else:
                 notifications_called = False

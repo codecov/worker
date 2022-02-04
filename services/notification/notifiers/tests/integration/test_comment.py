@@ -51,7 +51,7 @@ def sample_comparison(dbsession, request, sample_report, small_report):
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
-                    "author": {"id": "12345", "username": "hootener",},
+                    "author": {"id": "12345", "username": "hootener"},
                     "base": {
                         "branch": "master",
                         "commitid": "30cc1ed751a59fa9e7ad8e79fff41a6fe11ef5dd",
@@ -114,7 +114,7 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
-                    "author": {"id": "12345", "username": "falco.lombardi",},
+                    "author": {"id": "12345", "username": "falco.lombardi"},
                     "base": {
                         "branch": "master",
                         "commitid": "842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4",
@@ -172,7 +172,7 @@ def sample_comparison_for_upgrade(dbsession, request, sample_report, small_repor
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
-                    "author": {"id": "12345", "username": "1nf1n1t3l00p",},
+                    "author": {"id": "12345", "username": "1nf1n1t3l00p"},
                     "base": {
                         "branch": "master",
                         "commitid": "842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4",

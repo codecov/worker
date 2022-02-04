@@ -54,10 +54,7 @@ class ProcessingResult(object):
                 "report": self.report,
                 "should_retry": False,
             }
-        return {
-            "successful": True,
-            "report": self.report,
-        }
+        return {"successful": True, "report": self.report}
 
 
 log = logging.getLogger(__name__)
@@ -96,7 +93,7 @@ class ReportService(object):
         """
             Initializes the commit report
 
-        
+
             This is one of the main entrypoint of this class. It takes care of:
                 - Creating the most basic models relating to that commit
                     report (CommitReport and ReportDetails), if needed
@@ -105,10 +102,10 @@ class ReportService(object):
                     report models
                 - If that commit needs something to be carryforwarded, it does that logic and
                     already saves the report into the database and storage
-        
+
         Args:
             commit (Commit): The commit we want to initialize
-        
+
         Returns:
             CommitReport: The CommitReport for that commit
         """
@@ -348,7 +345,7 @@ class ReportService(object):
     def create_new_report_for_commit(self, commit: Commit) -> Report:
         log.info(
             "Creating new report for commit",
-            extra=dict(commit=commit.commitid, repoid=commit.repoid,),
+            extra=dict(commit=commit.commitid, repoid=commit.repoid),
         )
         if not self.current_yaml:
             return Report()
@@ -358,7 +355,7 @@ class ReportService(object):
         if parent_commit is None:
             log.warning(
                 "Could not find parent for possible carryforward",
-                extra=dict(commit=commit.commitid, repoid=commit.repoid,),
+                extra=dict(commit=commit.commitid, repoid=commit.repoid),
             )
             return Report()
         parent_report = self.get_existing_report_for_commit(parent_commit)
@@ -476,7 +473,7 @@ class ReportService(object):
             log.info(
                 "Report %s is expired",
                 reportid,
-                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             return ProcessingResult(
                 report=None,
@@ -487,7 +484,7 @@ class ReportService(object):
             log.info(
                 "Report %s is empty",
                 reportid,
-                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             return ProcessingResult(
                 report=None,

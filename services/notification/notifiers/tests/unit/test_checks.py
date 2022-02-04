@@ -673,10 +673,7 @@ class TestPatchChecksNotifier(object):
             current_yaml=UserYaml({}),
         )
         sample_array = list(range(1, 61, 1))
-        expected_result = [
-            list(range(1, 51, 1)),
-            list(range(51, 61, 1)),
-        ]
+        expected_result = [list(range(1, 51, 1)), list(range(51, 61, 1))]
         result = list(notifier.paginate_annotations(sample_array))
         assert expected_result == result
 
@@ -926,7 +923,7 @@ class TestPatchChecksNotifier(object):
                                     " .. code-block:: shell-session",
                                     " ",
                                 ],
-                            },
+                            }
                         ],
                         "stats": {"added": 11, "removed": 4},
                     }
@@ -963,7 +960,7 @@ class TestPatchChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary",},
+            "output": {"title": "Codecov Report", "summary": f"Summary"},
             "url": "https://app.codecov.io/gh/codecov/worker/compare/100?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term=codecov",
         }
         mock_repo_provider.create_check_run.return_value = 2234563
@@ -1047,7 +1044,7 @@ class TestPatchChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary",},
+            "output": {"title": "Codecov Report", "summary": f"Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1553,7 +1550,7 @@ class TestProjectChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary",},
+            "output": {"title": "Codecov Report", "summary": f"Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1587,7 +1584,7 @@ class TestProjectChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary",},
+            "output": {"title": "Codecov Report", "summary": f"Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1628,7 +1625,7 @@ class TestProjectChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary",},
+            "output": {"title": "Codecov Report", "summary": f"Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1663,7 +1660,7 @@ class TestProjectChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary",},
+            "output": {"title": "Codecov Report", "summary": f"Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"

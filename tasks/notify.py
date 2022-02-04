@@ -132,7 +132,7 @@ class NotifyTask(BaseCodecovTask):
         except TorngitServerFailureError:
             log.info(
                 "Unable to fetch CI results due to server issues. Not notifying user",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             return {
                 "notified": False,
@@ -147,10 +147,10 @@ class NotifyTask(BaseCodecovTask):
             if commit.repository.using_integration or commit.repository.hookid:
                 # rely on the webhook, but still retry in case we miss the webhook
                 max_retries = 5
-                countdown = (60 * 3) * 2 ** self.request.retries
+                countdown = (60 * 3) * 2**self.request.retries
             else:
                 max_retries = 10
-                countdown = 15 * 2 ** self.request.retries
+                countdown = 15 * 2**self.request.retries
             try:
                 self.retry(max_retries=max_retries, countdown=countdown)
             except MaxRetriesExceededError:
@@ -303,7 +303,7 @@ class NotifyTask(BaseCodecovTask):
             )
             log.info(
                 "Not sending notifications because CI failed",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid,),
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             return False
 
@@ -361,7 +361,7 @@ class NotifyTask(BaseCodecovTask):
         celery_app.send_task(
             new_user_activated_task_name,
             args=None,
-            kwargs=dict(org_ownerid=org_ownerid, user_ownerid=user_ownerid,),
+            kwargs=dict(org_ownerid=org_ownerid, user_ownerid=user_ownerid),
         )
 
     async def fetch_and_update_whether_ci_passed(

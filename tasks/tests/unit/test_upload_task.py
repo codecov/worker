@@ -23,8 +23,8 @@ here = Path(__file__)
 
 class FakeRedis(object):
     """
-        This is a fake, very rudimentary redis implementation to ease the managing
-         of mocking `exists`, `lpop` and whatnot in the context of Upload jobs
+    This is a fake, very rudimentary redis implementation to ease the managing
+     of mocking `exists`, `lpop` and whatnot in the context of Upload jobs
     """
 
     def __init__(self, mocker):
@@ -141,7 +141,7 @@ class TestUploadTaskIntegration(object):
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-            ),
+            )
         )
         mocked_1.assert_called_with(t1, t2)
 
@@ -408,7 +408,7 @@ class TestUploadTaskIntegration(object):
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-            ),
+            )
         )
         mocked_1.assert_called_with(t1, t2, t3, t_final)
         mock_redis.lock.assert_any_call(
@@ -660,10 +660,7 @@ class TestUploadTaskUnit(object):
             json.dumps(x) for x in first_redis_queue
         ]
         res = list(task.lists_of_arguments(mock_redis, 542, "commitid"))
-        assert res == [
-            {"url": "http://example.first.com"},
-            {"and_another": "one"},
-        ]
+        assert res == [{"url": "http://example.first.com"}, {"and_another": "one"}]
 
     def test_normalize_upload_arguments_no_changes(
         self, dbsession, mock_redis, mock_storage
@@ -693,9 +690,7 @@ class TestUploadTaskUnit(object):
         result = UploadTask().normalize_upload_arguments(
             commit, previous_arguments, mock_redis
         )
-        expected_result = {
-            "reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235",
-        }
+        expected_result = {"reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235"}
         assert expected_result == result
 
     def test_normalize_upload_arguments(
@@ -766,7 +761,7 @@ class TestUploadTaskUnit(object):
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml.to_dict(),
-            ),
+            )
         )
         mocked_chain.assert_called_with(t1, t2)
 
@@ -876,7 +871,7 @@ class TestUploadTaskUnit(object):
         commit = CommitFactory.create()
         get_source_result = {
             "content": "\n".join(
-                ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
+                ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
             )
         }
         list_top_level_files_result = [
@@ -913,7 +908,7 @@ class TestUploadTaskUnit(object):
         commit = CommitFactory.create()
         get_source_result = {
             "content": "\n".join(
-                ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
+                ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
             )
         }
         list_top_level_files_result = [
@@ -953,7 +948,7 @@ class TestUploadTaskUnit(object):
         )
         get_source_result = {
             "content": "\n".join(
-                ["codecov:", "  notify:", "    require_ci_to_pass: yes",]
+                ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
             )
         }
         list_top_level_files_result = [
@@ -1024,7 +1019,7 @@ class TestUploadTaskUnit(object):
         )
         get_source_result = {
             "content": "\n".join(
-                ["bad_key:", "  notify:", "    require_ci_to_pass: yes",]
+                ["bad_key:", "  notify:", "    require_ci_to_pass: yes"]
             )
         }
         list_top_level_files_result = [

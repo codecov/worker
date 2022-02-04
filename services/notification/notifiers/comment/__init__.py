@@ -172,7 +172,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         except TorngitServerFailureError:
             log.warning(
                 "Unable to send comments because the provider server was not reachable or errored",
-                extra=dict(git_service=self.repository.service,),
+                extra=dict(git_service=self.repository.service),
                 exc_info=True,
             )
             return NotificationResult(
@@ -361,9 +361,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
 
     def _create_upgrade_message(self, comparison):
         db_pull = comparison.enriched_pull.database_pull
-        links = {
-            "org_account": get_org_account_url(db_pull),
-        }
+        links = {"org_account": get_org_account_url(db_pull)}
         author_username = comparison.enriched_pull.provider_pull["author"].get(
             "username"
         )

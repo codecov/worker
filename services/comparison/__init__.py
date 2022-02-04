@@ -152,8 +152,10 @@ class ComparisonProxy(object):
     async def get_existing_statuses(self):
         async with self._existing_statuses_lock:
             if self._existing_statuses is None:
-                self._existing_statuses = await self.repository_service.get_commit_statuses(
-                    self.head.commit.commitid
+                self._existing_statuses = (
+                    await self.repository_service.get_commit_statuses(
+                        self.head.commit.commitid
+                    )
                 )
             return self._existing_statuses
 
@@ -216,7 +218,7 @@ class FilteredComparison(object):
 def get_or_create_comparison(db_session, base_commit, compare_commit):
     comparison = (
         db_session.query(CompareCommit)
-        .filter_by(base_commit=base_commit, compare_commit=compare_commit,)
+        .filter_by(base_commit=base_commit, compare_commit=compare_commit)
         .one_or_none()
     )
     if comparison is None:

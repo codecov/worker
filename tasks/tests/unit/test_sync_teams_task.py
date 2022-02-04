@@ -37,7 +37,7 @@ class TestSyncTeamsTaskUnit(object):
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         token = "testv2ztxs03zwys22v36ama292esl13swroe6dj"
-        prev_team = OwnerFactory.create(service="github", username="Evil_Corp",)
+        prev_team = OwnerFactory.create(service="github", username="Evil_Corp")
         dbsession.add(prev_team)
         user = OwnerFactory.create(
             organizations=[prev_team.ownerid],

@@ -89,7 +89,7 @@ def sample_comparison(dbsession, request, sample_report):
                 database_pull=pull,
                 provider_pull={
                     "author": {"id": "12345", "username": "codecov-test-user"},
-                    "base": {"branch": "master", "commitid": base_commit.commitid,},
+                    "base": {"branch": "master", "commitid": base_commit.commitid},
                     "head": {
                         "branch": "reason/some-testing",
                         "commitid": head_commit.commitid,

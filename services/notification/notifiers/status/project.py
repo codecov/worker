@@ -36,7 +36,4 @@ class ProjectStatusNotifier(StatusProjectMixin, StatusNotifier):
         state, message = self.get_project_status(comparison)
         if self.should_use_upgrade_decoration():
             message = self.get_upgrade_message()
-        return {
-            "state": state,
-            "message": message,
-        }
+        return {"state": state, "message": message}

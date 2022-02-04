@@ -140,18 +140,18 @@ def append_tracking_params_to_urls(
     input_string: str, service: str, notification_type: str, org_name: str
 ) -> str:
     """
-        Append tracking parameters to markdown links pointing to a codecov urls in a given string, using regex to
-        detect and modify the urls.
-        
-        Args:
-            input_string (str): a string that may contain a markdown link to a Codecov url, for example: PR comments, Checks annotation.
-        
-        Returns:
-            string: the string with tracking parameters appended to the Codecov url.
+    Append tracking parameters to markdown links pointing to a codecov urls in a given string, using regex to
+    detect and modify the urls.
 
-        Example:
-            input: "This string has a [link](codecov.io/pulls) to a codecov url that will be changed (but we won't change this reference to codecov.io) since  it's not a Markdown link."
-            output: "This string has a [link](codecov.io/pulls?<tracking params go here>) to a codecov url that will be changed (but we won't change this reference to codecov.io) since  it's not a Markdown link."
+    Args:
+        input_string (str): a string that may contain a markdown link to a Codecov url, for example: PR comments, Checks annotation.
+
+    Returns:
+        string: the string with tracking parameters appended to the Codecov url.
+
+    Example:
+        input: "This string has a [link](codecov.io/pulls) to a codecov url that will be changed (but we won't change this reference to codecov.io) since  it's not a Markdown link."
+        output: "This string has a [link](codecov.io/pulls?<tracking params go here>) to a codecov url that will be changed (but we won't change this reference to codecov.io) since  it's not a Markdown link."
 
     """
     # regex matches against the pattern: ](<text>codecov.io<text>)

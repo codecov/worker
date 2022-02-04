@@ -63,7 +63,7 @@ async def test_run_async_simple_run_no_existing_data_yes_new_uploads(
                     {
                         "group": "fruit group",
                         "execs": [
-                            {"filename": "banana.py", "lines": {"5": 10, "68": 87},},
+                            {"filename": "banana.py", "lines": {"5": 10, "68": 87}}
                         ],
                     }
                 ]
@@ -110,7 +110,7 @@ async def test_run_async_simple_run_no_existing_data_sample_new_uploads(
     mock_delay = mocker.patch("tasks.profiling_collection.profiling_summarization_task")
     mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
     mock_storage.write_file(
-        "bucket", "raw_upload_location", json.dumps(sample_open_telemetry_normalized),
+        "bucket", "raw_upload_location", json.dumps(sample_open_telemetry_normalized)
     )
     pcf = ProfilingCommitFactory.create(joined_location=None)
     dbsession.add(pcf)
@@ -243,10 +243,7 @@ class TestProfilingCollectionTask(object):
                         {
                             "group": "GET /abc",
                             "execs": [
-                                {
-                                    "filename": "apple.py",
-                                    "lines": {"2": 10, "101": 11},
-                                },
+                                {"filename": "apple.py", "lines": {"2": 10, "101": 11}},
                                 {"filename": "banana.py", "lines": {"5": 1, "6": 2}},
                             ],
                         },

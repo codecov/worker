@@ -456,7 +456,7 @@ class TestNotificationService(object):
                     {
                         "name": "strawberry",
                         "carryforward": True,
-                        "statuses": [{"name_prefix": "haha", "type": "patch",}],
+                        "statuses": [{"name_prefix": "haha", "type": "patch"}],
                     }
                 ],
             },

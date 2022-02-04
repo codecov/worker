@@ -46,7 +46,7 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
         if db_pull.repository.private is False:
             # public repo or repo we arent certain is private should be standard
             return DecorationDetails(
-                decoration_type=Decoration.standard, reason="Public repo",
+                decoration_type=Decoration.standard, reason="Public repo"
             )
 
         org = db_pull.repository.owner
@@ -67,7 +67,7 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
 
         if not is_pr_billing_plan(org.plan):
             return DecorationDetails(
-                decoration_type=Decoration.standard, reason="Org not on PR plan",
+                decoration_type=Decoration.standard, reason="Org not on PR plan"
             )
 
         pr_author = (
