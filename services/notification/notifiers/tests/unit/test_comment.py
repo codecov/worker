@@ -16,14 +16,15 @@ from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
-from services.notification.notifiers.mixins.message import (
-    FileSectionWriter,
-    ImpactedEntrypointsSectionWriter,
-)
 from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
     format_number_to_str,
     sort_by_importance,
+)
+from services.notification.notifiers.mixins.message.sections import (
+    AnnouncementSectionWriter,
+    FileSectionWriter,
+    ImpactedEntrypointsSectionWriter,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 
@@ -2898,6 +2899,38 @@ class TestCommentNotifier(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_message_announcements_only(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "announcements"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = sample_comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            "> The diff coverage is `66.67%`.",
+            "",
+            ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)",
+            "",
+        ]
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
     async def test_message_hide_details_bitbucket(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -3299,3 +3332,19 @@ class TestImpactedEndpointWriter(object):
             )
         )
         assert lines == []
+
+
+class TestAnnouncementsSectionWriter(object):
+    @pytest.mark.asyncio
+    async def test_announcement_section_writer(self, mocker):
+        writer = AnnouncementSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        res = list(await writer.write_section())
+        assert res == [
+            ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"
+        ]
