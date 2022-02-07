@@ -8,7 +8,7 @@ gh_access_token := $(shell echo ${GH_ACCESS_TOKEN})
 epoch := $(shell date +"%s")
 
 build.local:
-	docker build -f dockerscripts/Dockerfile . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}"
+	docker build -f dockerscripts/Dockerfile . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}" --ssh default
 
 build.base:
 	DOCKER_BUILDKIT=1 docker build -f dockerscripts/Dockerfile.requirements . -t codecov/baseworker:latest --ssh default
