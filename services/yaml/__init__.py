@@ -13,7 +13,9 @@ log = logging.getLogger(__name__)
 
 def get_repo_yaml(repository):
     return UserYaml.get_final_yaml(
-        owner_yaml=repository.owner.yaml, repo_yaml=repository.yaml
+        owner_yaml=repository.owner.yaml,
+        repo_yaml=repository.yaml,
+        ownerid=repository.owner.ownerid,
     )
 
 
@@ -64,6 +66,7 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
         owner_yaml=repository.owner.yaml,
         repo_yaml=repository.yaml,
         commit_yaml=commit_yaml,
+        ownerid=repository.owner.ownerid,
     )
 
 

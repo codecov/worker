@@ -258,6 +258,7 @@ class UploadTask(BaseCodecovTask):
                 owner_yaml=repository.owner.yaml,
                 repo_yaml=repository.yaml,
                 commit_yaml=None,
+                ownerid=repository.owner.ownerid,
             )
         report_service = ReportService(commit_yaml)
         try:
@@ -321,6 +322,7 @@ class UploadTask(BaseCodecovTask):
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
             commit_yaml=commit_yaml,
+            ownerid=repository.owner.ownerid,
         )
 
     def schedule_task(self, commit, commit_yaml, argument_list):
