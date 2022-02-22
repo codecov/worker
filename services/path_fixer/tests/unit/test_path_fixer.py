@@ -67,6 +67,31 @@ class TestPathFixer(BaseTestCase):
         )
         assert pf("simple/notapath/to/something.py") is None
 
+    def test_init_from_user_yaml_extra_fixes(self):
+        commit_yaml = {
+            "fixes": [r"(?s:before/tests\-[^\/]+)::after/"],
+            "ignore": ["complex/path"],
+            "flags": {
+                "flagone": {"paths": ["!simple/notapath.*"]},
+                "flagtwo": {"paths": ["af"]},
+            },
+        }
+        toc = []
+        flags = ["flagone"]
+        pf = PathFixer.init_from_user_yaml(
+            UserYaml(commit_yaml), toc, flags, extra_fixes=[r"notsimple::goal"]
+        )
+        # This next path is expected to change with the extra fixes
+        assert pf("notsimple/path/to/something.py") == "goal/path/to/something.py"
+        assert pf("complex/path/to/something.py") is None
+        assert pf("before/tests-apples/test.js") == "after/test.js"
+        assert pf("after/path/to/something.py") == "after/path/to/something.py"
+        assert (
+            pf("after/before/path/to/something.py")
+            == "after/before/path/to/something.py"
+        )
+        assert pf("simple/notapath/to/something.py") is None
+
 
 class TestBasePathAwarePathFixer(object):
     def test_basepath_uses_main_result_if_not_none_when_disagreement(self):

@@ -31,7 +31,7 @@ class PathFixer(object):
 
     @classmethod
     def init_from_user_yaml(
-        cls, commit_yaml: dict, toc: Sequence[str], flags: Sequence
+        cls, commit_yaml: dict, toc: Sequence[str], flags: Sequence, extra_fixes=None
     ):
         """
         :param commit_yaml: Codecov yaml file in effect for this commit.
@@ -51,8 +51,11 @@ class PathFixer(object):
         disable_default_path_fixes = read_yaml_field(
             commit_yaml, ("codecov", "disable_default_path_fixes")
         )
+        yaml_fixes = read_yaml_field(commit_yaml, ("fixes",)) or []
+        if extra_fixes:
+            yaml_fixes.extend(extra_fixes)
         return cls(
-            yaml_fixes=read_yaml_field(commit_yaml, ("fixes",)),
+            yaml_fixes=yaml_fixes,
             path_patterns=path_patterns,
             toc=toc,
             should_disable_default_pathfixes=disable_default_path_fixes,
