@@ -115,7 +115,13 @@ class ProfilingNormalizerTask(BaseCodecovTask):
                     filename=None,
                     file_contents=BytesIO(b64decode(element["codecov"]["coverage"])),
                 )
-                path_fixer = PathFixer.init_from_user_yaml(current_yaml, [], [])
+                path_fixer = PathFixer.init_from_user_yaml(
+                    current_yaml,
+                    [],
+                    [],
+                    extra_fixes=current_yaml.read_yaml_field("profiling", "fixes")
+                    or [],
+                )
                 report = process_report(
                     report_file_upload, current_yaml, 1, {}, path_fixer
                 )
