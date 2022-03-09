@@ -35,6 +35,24 @@ def get_section_class_from_layout_name(layout_name):
     return None
 
 
+def get_section_class_from_layout_name_new(layout_name):
+    if layout_name.startswith("flag"):
+        return FlagSectionWriter
+    if layout_name == "diff":
+        return DiffSectionWriter
+    if layout_name.startswith(("files", "tree")):
+        return FileSectionWriter
+    if layout_name == "reach":
+        return ReachSectionWriter
+    if layout_name == "footer":
+        return NewFooterSectionWriter
+    if layout_name == "betaprofiling":
+        return ImpactedEntrypointsSectionWriter
+    if layout_name == "announcements":
+        return AnnouncementSectionWriter
+    return None
+
+
 class BaseSectionWriter(object):
     def __init__(self, repository, layout, show_complexity, settings, current_yaml):
         self.repository = repository
@@ -54,6 +72,26 @@ class BaseSectionWriter(object):
 class NullSectionWriter(BaseSectionWriter):
     async def write_section(*args, **kwargs):
         return []
+
+
+class NewFooterSectionWriter(BaseSectionWriter):
+    async def do_write_section(self, comparison, diff, changes, links):
+        repo_service = comparison.repository_service.service
+        yield ("")
+        yield (
+            "[:umbrella: View full report at Codecov]({0}?src=pr&el=continue).   ".format(
+                links["pull"]
+            )
+        )
+        yield (
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue]({0}).".format(
+                "https://github.com/codecov/Codecov-user-feedback/issues/8"
+                if repo_service == "github"
+                else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
+                if repo_service == "gitlab"
+                else ""
+            )
+        )
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):
