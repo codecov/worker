@@ -25,7 +25,7 @@ from services.notification.notifiers.mixins.message.sections import (
     AnnouncementSectionWriter,
     FileSectionWriter,
     ImpactedEntrypointsSectionWriter,
-    NewFooterSectionWriter
+    NewFooterSectionWriter,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 
@@ -3363,12 +3363,17 @@ class TestNewFooterSectionWriter(object):
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "github"
-        res = list(await writer.write_section(mock_comparison, {} ,[],links={"pull": "pull.link"}))
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
         assert res == [
-            "", 
+            "",
             "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8)."
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
         ]
+
     @pytest.mark.asyncio
     async def test_footer_section_writer_in_gitlab(self, mocker):
         writer = NewFooterSectionWriter(
@@ -3380,11 +3385,13 @@ class TestNewFooterSectionWriter(object):
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "gitlab"
-        res = list(await writer.write_section(mock_comparison, {} ,[],links={"pull": "pull.link"}))
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
         assert res == [
-            "", 
+            "",
             "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4)."
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
-
-
