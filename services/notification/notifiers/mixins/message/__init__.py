@@ -70,6 +70,7 @@ class MessageMixin(object):
             if base_report and head_report
             else Decimal(0)
         )
+
         if base_report and head_report:
             message_internal = "> Merging [#{pull}]({links[pull]}?src=pr&el=desc) ({commitid_head}) into [{base}]({links[base]}?el=desc) ({commitid_base}) will **{message}** coverage{coverage}.".format(
                 pull=pull.pullid,
@@ -156,13 +157,12 @@ class MessageMixin(object):
         if is_compact_message:
             write("<details><summary>Details</summary>\n")
 
-        is_new_comment_layout = False
         if head_report:
             # loop through layouts
             for layout in self.get_layout_section_names(settings):
                 section_writer_class = (
                     get_section_class_from_layout_name_new(layout)
-                    if is_new_comment_layout
+                    if self.should_serve_new_layout()
                     else get_section_class_from_layout_name(layout)
                 )
                 if section_writer_class is not None:
@@ -198,3 +198,6 @@ class MessageMixin(object):
 
     def get_layout_section_names(self, settings):
         return map(lambda l: l.strip(), (settings["layout"] or "").split(","))
+
+    def should_serve_new_layout(self):
+        return False
