@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 from shared.reports.readonly import ReadOnlyReport
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory

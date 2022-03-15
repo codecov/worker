@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from decimal import Decimal
 
 import pytest
@@ -3395,3 +3396,83 @@ class TestNewFooterSectionWriter(object):
             "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
+
+
+class TestAnnouncementsSectionWriterInNewLayout(object):
+    @patch(
+        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
+    )
+    @pytest.mark.asyncio
+    async def test_announcement_section_writer(
+        self, mock_should_serve_new_layout, mocker
+    ):
+        mock_should_serve_new_layout.return_value = True
+        writer = AnnouncementSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        res = list(await writer.write_section())
+        assert res == [
+            ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"
+        ]
+
+
+class TestImpactedEndpointWriterInNewLayout(object):
+    @patch(
+        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
+    )
+    @pytest.mark.asyncio
+    async def test_impacted_endpoints_table_empty_list_result(
+        self,
+        mock_should_serve_new_layout,
+        sample_comparison,
+        mocker,
+        mock_repo_provider,
+    ):
+        mock_should_serve_new_layout.return_value = True
+        mocker.patch.object(
+            CriticalPathOverlay,
+            "full_analyzer",
+            new_callable=mocker.PropertyMock,
+            return_value=mocker.MagicMock(
+                find_impacted_endpoints=mocker.MagicMock(return_value=[])
+            ),
+        )
+        section_writer = ImpactedEntrypointsSectionWriter(
+            sample_comparison.head.commit.repository,
+            "layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={},
+        )
+        lines = list(
+            await section_writer.write_section(
+                sample_comparison,
+                {
+                    "files": {
+                        "file_1.go": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=2,
+                                misses=1,
+                                coverage=66.66,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        }
+                    }
+                },
+                [],
+                links={"pull": "pull.link"},
+            )
+        )
+        assert lines == ["This change has been scanned for critical changes"]
