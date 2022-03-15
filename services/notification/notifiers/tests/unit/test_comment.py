@@ -1,5 +1,5 @@
-from unittest.mock import patch
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -3398,81 +3398,212 @@ class TestNewFooterSectionWriter(object):
         ]
 
 
-class TestAnnouncementsSectionWriterInNewLayout(object):
+class TestCommentNotifierInNewLayout(object):
     @patch(
         "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
     )
     @pytest.mark.asyncio
-    async def test_announcement_section_writer(
-        self, mock_should_serve_new_layout, mocker
-    ):
-        mock_should_serve_new_layout.return_value = True
-        writer = AnnouncementSectionWriter(
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-        )
-        res = list(await writer.write_section())
-        assert res == [
-            ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"
-        ]
-
-
-class TestImpactedEndpointWriterInNewLayout(object):
-    @patch(
-        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
-    )
-    @pytest.mark.asyncio
-    async def test_impacted_endpoints_table_empty_list_result(
+    async def test_message_announcements_only_in_new_layout(
         self,
         mock_should_serve_new_layout,
-        sample_comparison,
-        mocker,
+        dbsession,
+        mock_configuration,
         mock_repo_provider,
+        sample_comparison,
     ):
         mock_should_serve_new_layout.return_value = True
-        mocker.patch.object(
-            CriticalPathOverlay,
-            "full_analyzer",
-            new_callable=mocker.PropertyMock,
-            return_value=mocker.MagicMock(
-                find_impacted_endpoints=mocker.MagicMock(return_value=[])
-            ),
-        )
-        section_writer = ImpactedEntrypointsSectionWriter(
-            sample_comparison.head.commit.repository,
-            "layout",
-            show_complexity=False,
-            settings={},
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "announcements"},
+            notifier_site_settings=True,
             current_yaml={},
         )
-        lines = list(
-            await section_writer.write_section(
-                sample_comparison,
-                {
-                    "files": {
-                        "file_1.go": {
-                            "type": "added",
-                            "totals": ReportTotals(
-                                lines=3,
-                                hits=2,
-                                misses=1,
-                                coverage=66.66,
-                                branches=0,
-                                methods=0,
-                                messages=0,
-                                sessions=0,
-                                complexity=0,
-                                complexity_total=0,
-                                diff=0,
-                            ),
-                        }
-                    }
-                },
-                [],
-                links={"pull": "pull.link"},
-            )
+        repository = sample_comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            "> The diff coverage is `66.67%`.",
+            "",
+            ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)",
+            "",
+        ]
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @patch(
+        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
+    )
+    @pytest.mark.asyncio
+    async def test_create_message_files_section_with_critical_files(
+        self,
+        mock_should_serve_new_layout,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+        mocker,
+    ):
+        mock_should_serve_new_layout.return_value = True
+        comparison = sample_comparison
+        mocker.patch.object(
+            comparison,
+            "get_diff",
+            return_value={
+                "files": {
+                    "file_1.go": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {
+                                "header": ["105", "8", "105", "9"],
+                                "lines": [
+                                    " Overview",
+                                    " --------",
+                                    " ",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "+",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    " ",
+                                    " .. code-block:: shell-session",
+                                    " ",
+                                ],
+                            },
+                            {
+                                "header": ["1046", "12", "1047", "19"],
+                                "lines": [
+                                    " ",
+                                    " You may need to configure a ``.coveragerc`` file. Learn more",
+                                    " ",
+                                    "-We highly suggest adding `source` to your ``.coveragerc``",
+                                    "+We highly suggest adding ``source`` to your ``.coveragerc`",
+                                    " ",
+                                    " .. code-block:: ini",
+                                    " ",
+                                    "    [run]",
+                                    "    source=your_package_name",
+                                    "+   ",
+                                    "+If there are multiple sources, you instead should add ``include",
+                                    "+",
+                                    "+.. code-block:: ini",
+                                    "+",
+                                    "+   [run]",
+                                    "+   include=your_package_name/*",
+                                    " ",
+                                    " unittests",
+                                    " ---------",
+                                ],
+                            },
+                            {
+                                "header": ["10150", "5", "10158", "4"],
+                                "lines": [
+                                    " * Twitter: `@codecov <https://twitter.com/codecov>`_.",
+                                    " * Email: `hello@codecov.io <hello@codecov.io>`_.",
+                                    " ",
+                                    "-We are happy to help if you have any questions. ",
+                                    "-",
+                                    "+We are happy to help if you have any questions. .",
+                                ],
+                            },
+                        ],
+                        "stats": {"added": 11, "removed": 4},
+                    },
+                    "file_2.py": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {
+                                "header": ["10", "8", "10", "9"],
+                                "lines": [
+                                    " Overview",
+                                    " --------",
+                                    " ",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "+",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    " ",
+                                    " .. code-block:: shell-session",
+                                    " ",
+                                ],
+                            },
+                            {
+                                "header": ["50", "12", "51", "19"],
+                                "lines": [
+                                    " ",
+                                    " You may need to configure a ``.coveragerc`` file. Learn more `here <http://coverage.readthedocs.org/en/latest/config.html>`_. Start with this `generic .coveragerc <https://gist.github.com/codecov-io/bf15bde2c7db1a011b6e>`_ for example.",
+                                    " ",
+                                    "-We highly suggest adding `source` to your ``.coveragerc`` which solves a number of issues collecting coverage.",
+                                    "+We highly suggest adding ``source`` to your ``.coveragerc``, which solves a number of issues collecting coverage.",
+                                    " ",
+                                    " .. code-block:: ini",
+                                    " ",
+                                    "    [run]",
+                                    "    source=your_package_name",
+                                    "+   ",
+                                    "+If there are multiple sources, you instead should add ``include`` to your ``.coveragerc``",
+                                    "+",
+                                    "+.. code-block:: ini",
+                                    "+",
+                                    "+   [run]",
+                                    "+   include=your_package_name/*",
+                                    " ",
+                                    " unittests",
+                                    " ---------",
+                                ],
+                            },
+                        ],
+                        "stats": {"added": 11, "removed": 4},
+                    },
+                }
+            },
         )
-        assert lines == ["This change has been scanned for critical changes"]
+        mocked_search_files_for_critical_changes = mocker.patch.object(
+            CriticalPathOverlay,
+            "search_files_for_critical_changes",
+            return_value=["file_2.py"],
+        )
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "files,betaprofiling",
+                "show_critical_paths": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        pull = comparison.pull
+        repository = sample_comparison.head.commit.repository
+        expected_result = [
+            f"# [Codecov](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            "> The diff coverage is `n/a`.",
+            "",
+            "Changes have been made to critical files, which contain lines commonly executed in production",
+            "",
+            f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"",
+            "",
+        ]
+        res = await notifier.build_message(comparison)
+        assert expected_result == res
+        mocked_search_files_for_critical_changes.assert_called_with(
+            {"file_2.py", "file_1.go"}
+        )
+        assert mocked_search_files_for_critical_changes.call_count == 2
