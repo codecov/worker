@@ -50,7 +50,6 @@ def get_section_class_from_layout_name_new(layout_name):
         return ImpactedEntrypointsSectionWriter
     if layout_name == "announcements":
         return AnnouncementSectionWriter
-    return None
 
 
 class BaseSectionWriter(object):
