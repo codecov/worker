@@ -32,6 +32,8 @@ def get_section_class_from_layout_name(layout_name):
         return ImpactedEntrypointsSectionWriter
     if layout_name == "announcements":
         return AnnouncementSectionWriter
+    if layout_name == "newfooter":
+        return NewFooterSectionWriter
     return None
 
 
@@ -54,6 +56,24 @@ class BaseSectionWriter(object):
 class NullSectionWriter(BaseSectionWriter):
     async def write_section(*args, **kwargs):
         return []
+
+
+class NewFooterSectionWriter(BaseSectionWriter):
+    async def do_write_section(self, comparison, diff, changes, links):
+        repo_service = comparison.repository_service.service
+        yield ("")
+        yield (
+            "[:umbrella: View full report at Codecov]({0}?src=pr&el=continue).   ".format(
+                links["pull"]
+            )
+        )
+        yield (
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue]({0}).".format(
+                "https://github.com/codecov/Codecov-user-feedback/issues/8"
+                if repo_service == "github"
+                else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
+            )
+        )
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):

@@ -69,6 +69,7 @@ class MessageMixin(object):
             if base_report and head_report
             else Decimal(0)
         )
+
         if base_report and head_report:
             message_internal = "> Merging [#{pull}]({links[pull]}?src=pr&el=desc) ({commitid_head}) into [{base}]({links[base]}?el=desc) ({commitid_base}) will **{message}** coverage{coverage}.".format(
                 pull=pull.pullid,

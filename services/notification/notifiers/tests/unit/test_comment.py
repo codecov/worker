@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -25,6 +26,7 @@ from services.notification.notifiers.mixins.message.sections import (
     AnnouncementSectionWriter,
     FileSectionWriter,
     ImpactedEntrypointsSectionWriter,
+    NewFooterSectionWriter,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 
@@ -3347,4 +3349,72 @@ class TestAnnouncementsSectionWriter(object):
         res = list(await writer.write_section())
         assert res == [
             ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"
+        ]
+
+
+class TestNewFooterSectionWriter(object):
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_in_github(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "github"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_in_gitlab(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "gitlab"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_in_bitbucket(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "bitbucket"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]

@@ -14,7 +14,7 @@ def sample_comparison(dbsession, request, sample_report, small_report):
         owner__service="github",
         owner__username="ThiagoCodecov",
         name="example-python",
-        owner__unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
+        owner__unencrypted_oauth_token="ghp_testmgzs9qm7r27wp376fzv10aobbpva7hd3",
         image_token="abcdefghij",
     )
     dbsession.add(repository)
@@ -350,3 +350,64 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent["message"] == message
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 11}
         assert result.data_received == {"id": 305215656}
+
+    @pytest.mark.asyncio
+    async def test_notify_new_layout(self, sample_comparison, codecov_vcr):
+        comparison = sample_comparison
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, newfooter"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.notify(comparison)
+        assert result.notification_attempted
+        assert result.notification_successful
+        assert result.explanation is None
+        message = [
+            "# [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
+            "> Merging [#15](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) (2e2600a) into [master](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) (4535be1) will **increase** coverage by `10.00%`.",
+            "> The diff coverage is `n/a`.",
+            "",
+            "[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
+            "##             master      #15       +/-   ##",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
+            "| Flag | Coverage Δ | Complexity Δ | |",
+            "|---|---|---|---|",
+            "| integration | `?` | `?` | |",
+            "| unit | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
+            "| [Impacted Files](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            "|---|---|---|---|",
+            "| [file\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            "| [file\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |",
+            "",
+            "",
+            "[:umbrella: View full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   ",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            "",
+        ]
+        for exp, res in zip(result.data_sent["message"], message):
+            assert exp == res
+
+        assert result.data_sent["message"] == message
+        assert result.data_sent == {"commentid": None, "message": message, "pullid": 15}
+        assert result.data_received == {"id": 1068356611}
