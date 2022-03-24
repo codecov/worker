@@ -351,11 +351,8 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 11}
         assert result.data_received == {"id": 305215656}
 
-    
     @pytest.mark.asyncio
-    async def test_notify_new_layout(
-        self, sample_comparison, codecov_vcr
-    ):
+    async def test_notify_new_layout(self, sample_comparison, codecov_vcr):
         comparison = sample_comparison
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,

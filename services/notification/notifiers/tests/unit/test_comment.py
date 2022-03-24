@@ -3396,4 +3396,3 @@ class TestNewFooterSectionWriter(object):
             "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
-
