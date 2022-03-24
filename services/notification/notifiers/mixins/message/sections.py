@@ -32,24 +32,9 @@ def get_section_class_from_layout_name(layout_name):
         return ImpactedEntrypointsSectionWriter
     if layout_name == "announcements":
         return AnnouncementSectionWriter
-    return None
-
-
-def get_section_class_from_layout_name_new(layout_name):
-    if layout_name.startswith("flag"):
-        return FlagSectionWriter
-    if layout_name == "diff":
-        return DiffSectionWriter
-    if layout_name.startswith(("files", "tree")):
-        return FileSectionWriter
-    if layout_name == "reach":
-        return ReachSectionWriter
-    if layout_name == "footer":
+    if layout_name == "newfooter":
         return NewFooterSectionWriter
-    if layout_name == "betaprofiling":
-        return ImpactedEntrypointsSectionWriter
-    if layout_name == "announcements":
-        return AnnouncementSectionWriter
+    return None
 
 
 class BaseSectionWriter(object):

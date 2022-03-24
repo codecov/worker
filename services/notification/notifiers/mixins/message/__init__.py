@@ -13,7 +13,6 @@ from services.notification.notifiers.mixins.message.helpers import (
 from services.notification.notifiers.mixins.message.sections import (
     NullSectionWriter,
     get_section_class_from_layout_name,
-    get_section_class_from_layout_name_new,
 )
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import read_yaml_field, round_number
@@ -160,11 +159,7 @@ class MessageMixin(object):
         if head_report:
             # loop through layouts
             for layout in self.get_layout_section_names(settings):
-                section_writer_class = (
-                    get_section_class_from_layout_name_new(layout)
-                    if self.should_serve_new_layout()
-                    else get_section_class_from_layout_name(layout)
-                )
+                section_writer_class = get_section_class_from_layout_name(layout)
                 if section_writer_class is not None:
                     section_writer = section_writer_class(
                         self.repository, layout, show_complexity, settings, current_yaml
