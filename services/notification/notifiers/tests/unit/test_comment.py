@@ -3396,3 +3396,25 @@ class TestNewFooterSectionWriter(object):
             "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
+
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_in_bitbucket(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "bitbucket"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
+        ]

@@ -72,8 +72,6 @@ class NewFooterSectionWriter(BaseSectionWriter):
                 "https://github.com/codecov/Codecov-user-feedback/issues/8"
                 if repo_service == "github"
                 else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
-                if repo_service == "gitlab"
-                else ""
             )
         )
 
