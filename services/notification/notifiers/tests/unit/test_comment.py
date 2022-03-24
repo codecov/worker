@@ -894,7 +894,6 @@ class TestCommentNotifier(object):
             "reach, diff, flags, files, footer",
             "changes",
             "file",
-            "header",
             "suggestions",
             "sunburst",
             "uncovered",
@@ -956,7 +955,6 @@ class TestCommentNotifier(object):
             f"Last update "
             f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
             f"",
             f"",
             f"",
@@ -2889,6 +2887,7 @@ class TestCommentNotifier(object):
             f"> The diff coverage is `66.67%`.",
             f"",
             f"<details><summary>Details</summary>\n",
+            f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
             f"</details>",
@@ -3427,8 +3426,9 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
-            "> The diff coverage is `66.67%`.",
+            "Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:", 
+            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{sample_comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
+            "> Patch coverage: 66.67% of modified lines in pull request are covered.",
             "",
             ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)",
             "",
@@ -3444,7 +3444,7 @@ class TestCommentNotifierInNewLayout(object):
         "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
     )
     @pytest.mark.asyncio
-    async def test_create_message_files_section_with_critical_files(
+    async def test_create_message_files_section_with_critical_files_new_layout(
         self,
         mock_should_serve_new_layout,
         dbsession,
@@ -3589,8 +3589,9 @@ class TestCommentNotifierInNewLayout(object):
         repository = sample_comparison.head.commit.repository
         expected_result = [
             f"# [Codecov](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
-            "> The diff coverage is `n/a`.",
+            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
+            f"> Coverage data is based on head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{sample_comparison.base.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
+            "> Patch has no changes to coverable lines.",
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production",
             "",
@@ -3607,3 +3608,249 @@ class TestCommentNotifierInNewLayout(object):
             {"file_2.py", "file_1.go"}
         )
         assert mocked_search_files_for_critical_changes.call_count == 2
+
+    @patch(
+        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
+    )
+    @pytest.mark.asyncio
+    async def test_message_hide_details_github_new_layout(
+        self, mock_should_serve_new_layout, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_should_serve_new_layout.return_value = True
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach", "hide_comment_details": True},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = sample_comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
+            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{sample_comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
+            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"",
+            f"<details><summary>Details</summary>\n",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"</details>",
+        ]
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @patch(
+        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
+    )
+    @pytest.mark.asyncio
+    async def test_build_message_no_base_commit_new_layout(
+        self,
+        mock_should_serve_new_layout,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_without_base_with_pull,
+    ):
+        mock_should_serve_new_layout.return_value = True
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_without_base_with_pull
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Patch has no changes to coverable lines.",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"```diff",
+            f"@@            Coverage Diff            @@",
+            f"##             master      #{pull.pullid}   +/-   ##",
+            f"=========================================",
+            f"  Coverage          ?   60.00%           ",
+            f"  Complexity        ?       10           ",
+            f"=========================================",
+            f"  Files             ?        2           ",
+            f"  Lines             ?       10           ",
+            f"  Branches          ?        1           ",
+            f"=========================================",
+            f"  Hits              ?        6           ",
+            f"  Misses            ?        3           ",
+            f"  Partials          ?        1           ",
+            f"```",
+            f"",
+            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| unit | `100.00% <0.00%> (?)` | `0.00% <0.00%> (?%)` | |",
+            f"",
+            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            f"",
+            f"",
+            f"",
+            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   " ,
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            f"",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+            print(res)
+        assert result == expected_result
+
+
+    @patch(
+        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
+    )
+    @pytest.mark.asyncio
+    async def test_build_message_no_base_report(
+        self,
+        mock_should_serve_new_layout,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_without_base_report,
+    ):
+        mock_should_serve_new_layout.return_value = True
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_without_base_report
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"```diff",
+            f"@@            Coverage Diff            @@",
+            f"##             master      #{pull.pullid}   +/-   ##",
+            f"=========================================",
+            f"  Coverage          ?   60.00%           ",
+            f"  Complexity        ?       10           ",
+            f"=========================================",
+            f"  Files             ?        2           ",
+            f"  Lines             ?       10           ",
+            f"  Branches          ?        1           ",
+            f"=========================================",
+            f"  Hits              ?        6           ",
+            f"  Misses            ?        3           ",
+            f"  Partials          ?        1           ",
+            f"```",
+            f"",
+            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"",
+            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            f"",
+            f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
+            f"",
+            f"",
+            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   " ,
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            f"",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+
+    @patch(
+        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
+    )
+    @pytest.mark.asyncio
+    async def test_build_message_head_and_pull_head_differ(
+        self,
+        mock_should_serve_new_layout,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_head_and_pull_head_differ,
+    ):
+        mock_should_serve_new_layout.return_value = True
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_head_and_pull_head_differ
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
+            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
+            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"",
+            f"> :exclamation: Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}. Consider uploading reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"```diff",
+            f"@@              Coverage Diff              @@",
+            f"##             master      #{pull.pullid}       +/-   ##",
+            f"=============================================",
+            f"+ Coverage     50.00%   60.00%   +10.00%     ",
+            f"+ Complexity       11       10        -1     ",
+            f"=============================================",
+            f"  Files             2        2               ",
+            f"  Lines             6       10        +4     ",
+            f"  Branches          0        1        +1     ",
+            f"=============================================",
+            f"+ Hits              3        6        +3     ",
+            f"  Misses            3        3               ",
+            f"- Partials          0        1        +1     ",
+            f"```",
+            f"",
+            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| integration | `?` | `?` | |",
+            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"",
+            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            f"",
+            f"",
+            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   " ,
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            f"",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+

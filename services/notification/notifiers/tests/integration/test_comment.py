@@ -375,8 +375,9 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "# [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
-            "> Merging [#15](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) (2e2600a) into [master](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) (4535be1) will **increase** coverage by `10.00%`.",
-            "> The diff coverage is `n/a`.",
+            "Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
+            "> Coverage data is based on head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) compared to base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc).",
+            "> Patch has no changes to coverable lines.",
             "",
             "[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)",
             "",
@@ -418,4 +419,6 @@ class TestCommentNotifierIntegration(object):
 
         assert result.data_sent["message"] == message
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 15}
-        assert result.data_received == {"id": 1068356611}
+        assert result.data_received == {"id": 1069392024}
+
+    

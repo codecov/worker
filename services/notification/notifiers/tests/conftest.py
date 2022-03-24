@@ -674,3 +674,55 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
             ),
         )
     )
+
+@pytest.fixture
+def sample_comparison_head_and_pull_head_differ(dbsession, request, sample_report):
+    repository = RepositoryFactory.create(
+        owner__service="github",
+        owner__username="ThiagoCodecov",
+        name="example-python",
+        owner__unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
+        image_token="abcdefghij",
+    )
+    dbsession.add(repository)
+    dbsession.flush()
+    base_commit = CommitFactory.create(repository=repository, author__service="github")
+    head_commit = CommitFactory.create(
+        repository=repository, branch="new_branch", author__service="github"
+    )
+    random_commit = CommitFactory.create(repository=repository, author__service="github")
+    pull = PullFactory.create(
+        repository=repository, base=base_commit.commitid, head=head_commit.commitid
+    )
+    dbsession.add(base_commit)
+    dbsession.add(head_commit)
+    dbsession.add(pull)
+    dbsession.flush()
+    repository = base_commit.repository
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(get_small_report())
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "author": {"id": "12345", "username": "codecov-test-user"},
+                    "base": {"branch": "master", "commitid": base_commit.commitid},
+                    "head": {
+                        "branch": "reason/some-testing",
+                        "commitid": random_commit.commitid,
+                    },
+                    "number": str(pull.pullid),
+                    "id": str(pull.pullid),
+                    "state": "open",
+                    "title": "Creating new code for reasons no one knows",
+                },
+            ),
+        )
+    )
