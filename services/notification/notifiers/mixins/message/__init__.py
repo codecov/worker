@@ -193,6 +193,3 @@ class MessageMixin(object):
 
     def get_layout_section_names(self, settings):
         return map(lambda l: l.strip(), (settings["layout"] or "").split(","))
-
-    def should_serve_new_layout(self):
-        return False
