@@ -675,6 +675,7 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
         )
     )
 
+
 @pytest.fixture
 def sample_comparison_head_and_pull_head_differ(dbsession, request, sample_report):
     repository = RepositoryFactory.create(
@@ -690,7 +691,9 @@ def sample_comparison_head_and_pull_head_differ(dbsession, request, sample_repor
     head_commit = CommitFactory.create(
         repository=repository, branch="new_branch", author__service="github"
     )
-    random_commit = CommitFactory.create(repository=repository, author__service="github")
+    random_commit = CommitFactory.create(
+        repository=repository, author__service="github"
+    )
     pull = PullFactory.create(
         repository=repository, base=base_commit.commitid, head=head_commit.commitid
     )

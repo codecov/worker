@@ -365,7 +365,7 @@ class TestCommentNotifierIntegration(object):
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, newfooter"},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -420,5 +420,3 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent["message"] == message
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 15}
         assert result.data_received == {"id": 1069392024}
-
-    

@@ -37,28 +37,13 @@ def get_section_class_from_layout_name(layout_name):
         return ImpactedEntrypointsSectionWriter
     if layout_name == "announcements":
         return AnnouncementSectionWriter
+    if layout_name == "newfooter":
+        return NewFooterSectionWriter
+    if layout_name == "newheader":
+        return NewHeaderSectionWriter
     if layout_name == "header":
         return HeaderSectionWriter
     return None
-
-
-def get_section_class_from_layout_name_new(layout_name):
-    if layout_name.startswith("flag"):
-        return FlagSectionWriter
-    if layout_name == "diff":
-        return DiffSectionWriter
-    if layout_name.startswith(("files", "tree")):
-        return FileSectionWriter
-    if layout_name == "reach":
-        return ReachSectionWriter
-    if layout_name == "footer":
-        return NewFooterSectionWriter
-    if layout_name == "betaprofiling":
-        return ImpactedEntrypointsSectionWriter
-    if layout_name == "announcements":
-        return AnnouncementSectionWriter
-    if layout_name == "header":
-        return NewHeaderSectionWriter
 
 
 class BaseSectionWriter(object):
@@ -96,10 +81,9 @@ class NewFooterSectionWriter(BaseSectionWriter):
                 "https://github.com/codecov/Codecov-user-feedback/issues/8"
                 if repo_service == "github"
                 else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
-                if repo_service == "gitlab"
-                else ""
             )
         )
+
 
 class NewHeaderSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links):
@@ -109,7 +93,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
         pull = comparison.pull
         pull_dict = comparison.enriched_pull.provider_pull
         repo_service = comparison.repository_service.service
-        
+
         change = (
             Decimal(head_report.totals.coverage) - Decimal(base_report.totals.coverage)
             if base_report and head_report
@@ -139,7 +123,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                         )
                         if change != 0
                         else ""
-                        ),
+                    ),
                     emoji=" :tada:"
                     if change > 0
                     else " :thumbsup:"
@@ -158,21 +142,27 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 )
             )
         else:
-            yield(
+            yield (
                 "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
                     what="base" if not base_report else "head",
                     branch=pull_dict["base" if not base_report else "head"]["branch"],
-                    commit=pull_dict["base" if not base_report else "head"]["commitid"][:7],
-                    request_type="merge request" if repo_service == "gitlab" else "pull request"
+                    commit=pull_dict["base" if not base_report else "head"]["commitid"][
+                        :7
+                    ],
+                    request_type="merge request"
+                    if repo_service == "gitlab"
+                    else "pull request",
                 )
             )
 
         diff_totals = head_report.apply_diff(diff)
         if diff_totals and diff_totals.coverage is not None:
-            yield(
+            yield (
                 "> Patch coverage: {percentage}% of modified lines in {request_type} are covered.".format(
                     percentage=round_number(yaml, Decimal(diff_totals.coverage)),
-                    request_type="merge request" if repo_service == "gitlab" else "pull request"
+                    request_type="merge request"
+                    if repo_service == "gitlab"
+                    else "pull request",
                 )
             )
         else:
@@ -194,8 +184,8 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     ],
                 ),
             )
-            yield("")
-            yield(
+            yield ("")
+            yield (
                 "> :exclamation: Current head {current_head} differs from pull request most recent head {pull_head}. Consider uploading reports for the commit {pull_head} to get more accurate results".format(
                     pull_head=comparison.enriched_pull.provider_pull["head"][
                         "commitid"
@@ -215,15 +205,16 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 )
             )
             if files_in_critical:
-                yield("")
-                yield(
+                yield ("")
+                yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
 
         is_compact_message = should_message_be_compact(comparison, self.settings)
         if is_compact_message:
-            yield("")
-            yield("<details><summary>Details</summary>\n")
+            yield ("")
+            yield ("<details><summary>Details</summary>\n")
+
 
 class HeaderSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links):
@@ -240,7 +231,7 @@ class HeaderSectionWriter(BaseSectionWriter):
         )
 
         if head_report and base_report:
-            yield(
+            yield (
                 "> Merging [#{pull}]({links[pull]}?src=pr&el=desc) ({commitid_head}) into [{base}]({links[base]}?el=desc) ({commitid_base}) will **{message}** coverage{coverage}.".format(
                     pull=pull.pullid,
                     base=pull_dict["base"]["branch"],
@@ -258,17 +249,19 @@ class HeaderSectionWriter(BaseSectionWriter):
                 )
             )
         else:
-            yield(
+            yield (
                 "> :exclamation: No coverage uploaded for pull request {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
                     what="base" if not base_report else "head",
                     branch=pull_dict["base" if not base_report else "head"]["branch"],
-                    commit=pull_dict["base" if not base_report else "head"]["commitid"][:7],
+                    commit=pull_dict["base" if not base_report else "head"]["commitid"][
+                        :7
+                    ],
                 )
             )
 
         diff_totals = head_report.apply_diff(diff)
         if diff_totals and diff_totals.coverage is not None:
-            yield(
+            yield (
                 "> The diff coverage is `{0}%`.".format(
                     round_number(yaml, Decimal(diff_totals.coverage))
                 )
@@ -276,7 +269,6 @@ class HeaderSectionWriter(BaseSectionWriter):
         else:
             yield "> The diff coverage is `n/a`."
 
-        
         if (
             comparison.enriched_pull.provider_pull is not None
             and comparison.head.commit.commitid
@@ -293,8 +285,8 @@ class HeaderSectionWriter(BaseSectionWriter):
                     ],
                 ),
             )
-            yield("")
-            yield(
+            yield ("")
+            yield (
                 "> :exclamation: Current head {current_head} differs from pull request most recent head {pull_head}. Consider uploading reports for the commit {pull_head} to get more accurate results".format(
                     pull_head=comparison.enriched_pull.provider_pull["head"][
                         "commitid"
@@ -314,16 +306,16 @@ class HeaderSectionWriter(BaseSectionWriter):
                 )
             )
             if files_in_critical:
-                yield("")
-                yield(
+                yield ("")
+                yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
 
         is_compact_message = should_message_be_compact(comparison, self.settings)
         if is_compact_message:
-            yield("")
-            yield("<details><summary>Details</summary>\n")
-                
+            yield ("")
+            yield ("<details><summary>Details</summary>\n")
+
 
 class AnnouncementSectionWriter(BaseSectionWriter):
     async def do_write_section(*args, **kwargs):

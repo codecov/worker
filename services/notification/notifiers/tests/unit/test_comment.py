@@ -3396,6 +3396,28 @@ class TestNewFooterSectionWriter(object):
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
 
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_in_bitbucket(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "bitbucket"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
+        ]
+
 
 class TestCommentNotifierInNewLayout(object):
     @patch(
@@ -3426,7 +3448,7 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:", 
+            "Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
             f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{sample_comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
             "> Patch coverage: 66.67% of modified lines in pull request are covered.",
             "",
@@ -3614,7 +3636,12 @@ class TestCommentNotifierInNewLayout(object):
     )
     @pytest.mark.asyncio
     async def test_message_hide_details_github_new_layout(
-        self, mock_should_serve_new_layout, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+        self,
+        mock_should_serve_new_layout,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
     ):
         mock_should_serve_new_layout.return_value = True
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
@@ -3669,7 +3696,7 @@ class TestCommentNotifierInNewLayout(object):
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, newfooter"},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -3706,7 +3733,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"",
             f"",
-            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   " ,
+            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
             f"",
         ]
@@ -3715,12 +3742,11 @@ class TestCommentNotifierInNewLayout(object):
             print(res)
         assert result == expected_result
 
-
     @patch(
         "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
     )
     @pytest.mark.asyncio
-    async def test_build_message_no_base_report(
+    async def test_build_message_no_base_report_new_layout(
         self,
         mock_should_serve_new_layout,
         dbsession,
@@ -3736,7 +3762,7 @@ class TestCommentNotifierInNewLayout(object):
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, newfooter"},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -3776,7 +3802,7 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"",
-            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   " ,
+            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
             f"",
         ]
@@ -3784,12 +3810,11 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
-
     @patch(
         "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
     )
     @pytest.mark.asyncio
-    async def test_build_message_head_and_pull_head_differ(
+    async def test_build_message_head_and_pull_head_differ_new_layout(
         self,
         mock_should_serve_new_layout,
         dbsession,
@@ -3805,7 +3830,7 @@ class TestCommentNotifierInNewLayout(object):
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={"layout": "reach, diff, flags, footer"},
+            notifier_yaml_settings={"layout": "reach, diff, flags, newfooter"},
             notifier_site_settings=True,
             current_yaml={},
         )
@@ -3845,12 +3870,10 @@ class TestCommentNotifierInNewLayout(object):
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
             f"",
-            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   " ,
+            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
             f"",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
         assert result == expected_result
-
-
