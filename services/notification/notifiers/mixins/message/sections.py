@@ -43,6 +43,7 @@ def get_section_class_from_layout_name(layout_name):
         return NewHeaderSectionWriter
     if layout_name == "header":
         return HeaderSectionWriter
+
     return None
 
 
