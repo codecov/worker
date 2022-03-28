@@ -3596,25 +3596,17 @@ class TestCommentNotifierInNewLayout(object):
             CriticalPathOverlay,
             "search_files_for_critical_changes",
             return_value=["file_2.py"],
-=======
-    @pytest.mark.asyncio
-    async def test_footer_section_writer_in_bitbucket(self, mocker):
-        writer = NewFooterSectionWriter(
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-
         )
-        mock_comparison = mocker.MagicMock()
-        mock_comparison.repository_service.service = "bitbucket"
-        res = list(
-            await writer.write_section(
-                mock_comparison, {}, [], links={"pull": "pull.link"}
-            )
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "files,betaprofiling",
+                "show_critical_paths": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
         )
-
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
         expected_result = [
@@ -3630,14 +3622,8 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
-
-        assert res == [
-
             "",
-            "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
-
         res = await notifier.build_message(comparison)
         assert expected_result == res
         mocked_search_files_for_critical_changes.assert_called_with(
@@ -3891,4 +3877,3 @@ class TestCommentNotifierInNewLayout(object):
         for exp, res in zip(expected_result, result):
             assert exp == res
         assert result == expected_result
-

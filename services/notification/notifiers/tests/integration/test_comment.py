@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from shared.reports.readonly import ReadOnlyReport
 
@@ -351,9 +353,15 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 11}
         assert result.data_received == {"id": 305215656}
 
+    @patch(
+        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
+    )
     @pytest.mark.asyncio
-    async def test_notify_new_layout(self, sample_comparison, codecov_vcr):
+    async def test_notify_new_layout(
+        self, mock_should_serve_new_layout, sample_comparison, codecov_vcr
+    ):
         comparison = sample_comparison
+        mock_should_serve_new_layout.return_value = True
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
             title="title",
