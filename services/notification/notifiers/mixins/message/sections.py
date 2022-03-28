@@ -1,7 +1,7 @@
+import logging
 from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
-import logging
 
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
