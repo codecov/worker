@@ -211,11 +211,6 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
 
-        is_compact_message = should_message_be_compact(comparison, self.settings)
-        if is_compact_message:
-            yield ("")
-            yield ("<details><summary>Details</summary>\n")
-
 
 class HeaderSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links):

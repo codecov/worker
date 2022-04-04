@@ -3635,51 +3635,6 @@ class TestCommentNotifierInNewLayout(object):
         "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
     )
     @pytest.mark.asyncio
-    async def test_message_hide_details_github_new_layout(
-        self,
-        mock_should_serve_new_layout,
-        dbsession,
-        mock_configuration,
-        mock_repo_provider,
-        sample_comparison,
-    ):
-        mock_should_serve_new_layout.return_value = True
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
-        comparison = sample_comparison
-        comparison.repository_service.service = "github"
-        pull = comparison.pull
-        notifier = CommentNotifier(
-            repository=sample_comparison.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={"layout": "reach", "hide_comment_details": True},
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        repository = sample_comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
-        expected_result = [
-            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{sample_comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
-            f"",
-            f"<details><summary>Details</summary>\n",
-            f"",
-            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"</details>",
-        ]
-        li = 0
-        for exp, res in zip(expected_result, result):
-            li += 1
-            print(li)
-            assert exp == res
-        assert result == expected_result
-
-    @patch(
-        "services.notification.notifiers.mixins.message.MessageMixin.should_serve_new_layout"
-    )
-    @pytest.mark.asyncio
     async def test_build_message_no_base_commit_new_layout(
         self,
         mock_should_serve_new_layout,
