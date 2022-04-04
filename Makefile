@@ -56,7 +56,7 @@ build.portable:
 		--build-arg RELEASE_VERSION="${release_version}"
 
 lint:
-	pip install black==19.10b0 isort
+	pip install black==22.3.0 isort
 	black --check .
 	isort --profile black .
 
