@@ -110,7 +110,7 @@ class MessageMixin(object):
                 write("")  # nl at end of each layout
 
         if is_compact_message and not self.should_serve_new_layout():
-            write("</details>")
+            write("</details> ")
 
         return [m for m in message if m is not None]
 
