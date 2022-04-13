@@ -7,6 +7,7 @@ from shared.reports.types import ReportLine
 from shared.utils import merge
 from shared.utils.merge import LineType, line_type, partials_to_line
 
+from helpers.exceptions import CorruptRawReportError
 from services.report.languages.base import BaseLanguageProcessor
 from services.yaml import read_yaml_field
 
@@ -96,7 +97,13 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
         hits = int(hits)
         sl, el = columns.split(",", 1)
         sl, sc = list(map(int, sl.split(".", 1)))
-        el, ec = list(map(int, el.split(".", 1)))
+        try:
+            el, ec = list(map(int, el.split(".", 1)))
+        except ValueError:
+            raise CorruptRawReportError(
+                "Missing numberOfStatements count\n at the end of the line, or they are not given in the right format",
+                "name.go:line.column,line.column numberOfStatements count",
+            )
 
         # add start of line
         if sl == el:

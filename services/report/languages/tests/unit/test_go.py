@@ -1,5 +1,7 @@
+import pytest
 from shared.reports.types import ReportTotals
 
+from helpers.exceptions import CorruptRawReportError
 from services.report.languages import go
 from tests.base import BaseTestCase
 
@@ -631,3 +633,21 @@ class TestGo(BaseTestCase):
             [4, 6, 1],
             [6, 10, 0],
         ]  # inner overlay
+
+    def test_report_line_missing_number_of_statements_count_new_line(self):
+        def fixes(path):
+            return None if "ignore" in path else path
+
+        line = b"path/file.go:242.63,244.3path/file.go:242.63,244.3 1 0"
+
+        with pytest.raises(CorruptRawReportError) as ex:
+            go.from_txt(line, fixes, {}, 0, {})
+
+        assert (
+            ex.value.expected_format
+            == "Missing numberOfStatements count\n at the end of the line, or they are not given in the right format"
+        )
+        assert (
+            ex.value.corruption_error
+            == "name.go:line.column,line.column numberOfStatements count"
+        )
