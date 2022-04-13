@@ -171,9 +171,10 @@ interactions:
     url: https://gitlab.com/api/v4/projects/11087339/repository/commits/77b456d6209583d9674546970948fcc24305f5dc
 - request:
     body: '{"body": "# [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1)
-      Report\n> Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc)
-      into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4&el=desc)
-      will **increase** coverage by `10.00%`.\n> The diff coverage is `n/a`.\n\n[![Impacted
+      Report\nBase: **50.00**% // Head: **60.00**% // Increases project coverage by
+      **`+10.00%`** :tada:\n> Coverage data is based on head [(`46ce216`)](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc) 
+      compared to base [(`842f7c8`)](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4?el=desc).\n>
+      Patch has no changes to coverable lines.\n\n[![Impacted
       file tree graph](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree)\n\n```diff\n@@              Coverage
       Diff              @@\n##             master      #11       +/-   ##\n=============================================\n+
       Coverage     50.00%   60.00%   +10.00%     \n+ Complexity       11       10        -1     \n=============================================\n  Files             2        2               \n  Lines             6       10        +4     \n  Branches          0        1        +1     \n=============================================\n+
@@ -198,10 +199,11 @@ interactions:
     uri: https://gitlab.com/api/v4/projects/11087339/merge_requests/11/notes
   response:
     content: "{\"id\":305215656,\"type\":null,\"body\":\"# [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
-      u0026el=h1) Report\\n\\u003e Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
-      u0026el=desc) into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4\\\
-      u0026el=desc) will **increase** coverage by `10.00%`.\\n\\u003e The diff coverage\
-      \ is `n/a`.\\n\\n[![Impacted file tree graph](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/graphs/tree.svg?width=650\\\
+      u0026el=h1) Report\\nBase:
+      **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`**
+      :tada:\\n> Coverage data is based on head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc)
+      compared to base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc).\\n>
+      Patch has no changes to coverable lines.\\n\\n[![Impacted file tree graph](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/graphs/tree.svg?width=650\\\
       u0026height=150\\u0026src=pr\\u0026token=abcdefghij)](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\\
       u0026el=tree)\\n\\n```diff\\n@@              Coverage Diff              @@\\\
       n##             master      #11       +/-   ##\\n=============================================\\\

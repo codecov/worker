@@ -12,7 +12,9 @@ from services.notification.notifiers.mixins.message.helpers import (
 )
 from services.notification.notifiers.mixins.message.sections import (
     NullSectionWriter,
+    get_bottom_section_class_from_layout_name,
     get_section_class_from_layout_name,
+    get_upper_section_class_from_layout_name,
 )
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import read_yaml_field, round_number
@@ -76,10 +78,23 @@ class MessageMixin(object):
 
         is_compact_message = should_message_be_compact(comparison, settings)
 
-        self.add_header_to_settings(settings)
-
         if head_report:
-            # loop through layouts
+            layout = "header"
+            section_writer_class = get_upper_section_class_from_layout_name(layout)
+            section_writer = section_writer_class(
+                self.repository, layout, show_complexity, settings, current_yaml
+            )
+
+            await self.write_section_to_msg(
+                comparison, changes, diff, links, write, section_writer
+            )
+
+            if is_compact_message:
+                write(
+                    "<details><summary>Additional details and impacted files</summary>\n"
+                )
+                write("")
+
             for layout in self.get_layout_section_names(settings):
                 section_writer_class = get_section_class_from_layout_name(layout)
                 if section_writer_class is not None:
@@ -99,29 +114,38 @@ class MessageMixin(object):
                     section_writer = NullSectionWriter(
                         self.repository, layout, show_complexity, settings, current_yaml
                     )
-                with metrics.timer(
-                    f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
-                ):
-                    for line in await section_writer.write_section(
-                        comparison, diff, changes, links
-                    ):
-                        write(line)
 
-                write("")  # nl at end of each layout
+                await self.write_section_to_msg(
+                    comparison, changes, diff, links, write, section_writer
+                )
 
-        if is_compact_message and not self.should_serve_new_layout():
-            write("</details>")
+            if is_compact_message:
+                write("</details>")
+
+            if "newfooter" in self.get_layout_section_names(settings):
+                layout = "newfooter"
+                section_writer_class = get_bottom_section_class_from_layout_name(layout)
+                section_writer = section_writer_class(
+                    self.repository, layout, show_complexity, settings, current_yaml
+                )
+
+                await self.write_section_to_msg(
+                    comparison, changes, diff, links, write, section_writer
+                )
 
         return [m for m in message if m is not None]
 
+    async def write_section_to_msg(
+        self, comparison, changes, diff, links, write, section_writer
+    ):
+        with metrics.timer(
+            f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
+        ):
+            for line in await section_writer.write_section(
+                comparison, diff, changes, links
+            ):
+                write(line)
+        write("")
+
     def get_layout_section_names(self, settings):
         return map(lambda l: l.strip(), (settings["layout"] or "").split(","))
-
-    def should_serve_new_layout(self):
-        return False
-
-    def add_header_to_settings(self, settings):
-        if self.should_serve_new_layout():
-            settings["layout"] = "newheader," + settings["layout"]
-        else:
-            settings["layout"] = "header," + settings["layout"]
