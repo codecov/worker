@@ -134,7 +134,11 @@ class MessageMixin(object):
             )
             if section_writer_class is not None:
                 section_writer = section_writer_class(
-                    self.repository, lower_section_name, show_complexity, settings, current_yaml
+                    self.repository,
+                    lower_section_name,
+                    show_complexity,
+                    settings,
+                    current_yaml,
                 )
                 await self.write_section_to_msg(
                     comparison, changes, diff, links, write, section_writer
