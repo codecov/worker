@@ -13,7 +13,6 @@ from services.notification.notifiers.mixins.message.helpers import (
     ellipsis,
     escape_markdown,
     make_metrics,
-    should_message_be_compact,
     sort_by_importance,
 )
 from services.urls import get_commit_url_from_commit_sha, get_pull_graph_url
@@ -24,6 +23,8 @@ log = logging.getLogger(__name__)
 
 def get_upper_section_class_from_layout_name(layout_name):
     if layout_name == "header":
+        return HeaderSectionWriter
+    if layout_name == "newheader":
         return NewHeaderSectionWriter
 
 
@@ -44,7 +45,7 @@ def get_section_class_from_layout_name(layout_name):
         return AnnouncementSectionWriter
 
 
-def get_bottom_section_class_from_layout_name(layout_name):
+def get_lower_section_class_from_layout_name(layout_name):
     if layout_name == "newfooter":
         return NewFooterSectionWriter
 
@@ -170,6 +171,102 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             )
         else:
             yield "> Patch has no changes to coverable lines."
+
+        if (
+            comparison.enriched_pull.provider_pull is not None
+            and comparison.head.commit.commitid
+            != comparison.enriched_pull.provider_pull["head"]["commitid"]
+        ):
+            # Temporary log so we understand when this happens
+            log.info(
+                "Notifying user that current head and pull head differ",
+                extra=dict(
+                    repoid=comparison.head.commit.repoid,
+                    commit=comparison.head.commit.commitid,
+                    pull_head=comparison.enriched_pull.provider_pull["head"][
+                        "commitid"
+                    ],
+                ),
+            )
+            yield ("")
+            yield (
+                "> :exclamation: Current head {current_head} differs from pull request most recent head {pull_head}. Consider uploading reports for the commit {pull_head} to get more accurate results".format(
+                    pull_head=comparison.enriched_pull.provider_pull["head"][
+                        "commitid"
+                    ][:7],
+                    current_head=comparison.head.commit.commitid[:7],
+                )
+            )
+
+        if self.settings.get("show_critical_paths"):
+            all_potentially_affected_critical_files = set(
+                (diff["files"] if diff else {}).keys()
+            ) | set(c.path for c in changes or [])
+            overlay = comparison.get_overlay(OverlayType.line_execution_count)
+            files_in_critical = set(
+                overlay.search_files_for_critical_changes(
+                    all_potentially_affected_critical_files
+                )
+            )
+            if files_in_critical:
+                yield ("")
+                yield (
+                    "Changes have been made to critical files, which contain lines commonly executed in production"
+                )
+
+
+class HeaderSectionWriter(BaseSectionWriter):
+    async def do_write_section(self, comparison, diff, changes, links):
+        yaml = self.current_yaml
+        base_report = comparison.base.report
+        head_report = comparison.head.report
+        pull = comparison.pull
+        pull_dict = comparison.enriched_pull.provider_pull
+
+        change = (
+            Decimal(head_report.totals.coverage) - Decimal(base_report.totals.coverage)
+            if base_report and head_report
+            else Decimal(0)
+        )
+
+        if head_report and base_report:
+            yield (
+                "> Merging [#{pull}]({links[pull]}?src=pr&el=desc) ({commitid_head}) into [{base}]({links[base]}?el=desc) ({commitid_base}) will **{message}** coverage{coverage}.".format(
+                    pull=pull.pullid,
+                    base=pull_dict["base"]["branch"],
+                    commitid_head=comparison.head.commit.commitid[:7],
+                    commitid_base=comparison.base.commit.commitid[:7],
+                    # ternary operator, see https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator
+                    message={False: "decrease", "na": "not change", True: "increase"}[
+                        (change > 0) if change != 0 else "na"
+                    ],
+                    coverage={
+                        True: " by `{0}%`".format(round_number(yaml, abs(change))),
+                        False: "",
+                    }[(change != 0)],
+                    links=links,
+                )
+            )
+        else:
+            yield (
+                "> :exclamation: No coverage uploaded for pull request {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
+                    what="base" if not base_report else "head",
+                    branch=pull_dict["base" if not base_report else "head"]["branch"],
+                    commit=pull_dict["base" if not base_report else "head"]["commitid"][
+                        :7
+                    ],
+                )
+            )
+
+        diff_totals = head_report.apply_diff(diff)
+        if diff_totals and diff_totals.coverage is not None:
+            yield (
+                "> The diff coverage is `{0}%`.".format(
+                    round_number(yaml, Decimal(diff_totals.coverage))
+                )
+            )
+        else:
+            yield "> The diff coverage is `n/a`."
 
         if (
             comparison.enriched_pull.provider_pull is not None

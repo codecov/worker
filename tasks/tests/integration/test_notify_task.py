@@ -653,9 +653,8 @@ class TestNotifyTask(object):
                         "data_sent": {
                             "message": [
                                 "# [Codecov](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=h1) Report",
-                                "Base: **85.00**% // Head: **85.00**% // No change to project coverage :thumbsup:",
-                                "> Coverage data is based on head [(`11daa27`)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=desc) compared to base [(`f089529`)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775?el=desc).",
-                                "> Patch has no changes to coverable lines.",
+                                "> Merging [#18](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=desc) (11daa27) into [master](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775?el=desc) (f089529) will **not change** coverage.",
+                                "> The diff coverage is `n/a`.",
                                 "",
                                 "> :exclamation: Current head 11daa27 differs from pull request most recent head e999aac. Consider uploading reports for the commit e999aac to get more accurate results",
                                 "",

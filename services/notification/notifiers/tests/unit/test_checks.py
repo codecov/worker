@@ -1337,9 +1337,8 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"# [Codecov](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-                        f"> Coverage data is based on head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) compared to base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
-                        f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+                        f"> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+                        f"> The diff coverage is `66.67%`.",
                         f"",
                         f"| [Impacted Files](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
                         f"|---|---|---|---|",
@@ -1379,9 +1378,8 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"# [Codecov](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-                        f"> Coverage data is based on head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) compared to base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
-                        f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+                        f"> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+                        f"> The diff coverage is `66.67%`.",
                         f"",
                         f"| [Impacted Files](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
                         f"|---|---|---|---|",
@@ -1422,9 +1420,8 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"# [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-                        f"> Coverage data is based on head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) compared to base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/{test_name}/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
-                        f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+                        f"> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](test.example.br/gh/{test_name}/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+                        f"> The diff coverage is `66.67%`.",
                         f"",
                         f"| [Impacted Files](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
                         f"|---|---|---|---|",

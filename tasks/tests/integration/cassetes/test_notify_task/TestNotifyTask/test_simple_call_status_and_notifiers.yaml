@@ -752,9 +752,9 @@ interactions:
     url: https://api.github.com/repos/ThiagoCodecov/example-python/pulls/18/commits
 - request:
     body: '{"body": "# [Codecov](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=h1)
-      Report\nBase: **85.00**% // Head: **85.00**% // No change to project coverage :thumbsup:\n> Coverage data is based on head [(`11daa27`)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=desc) 
-      compared to base [(`f089529`)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775?el=desc).\n>
-      Patch has no changes to coverable lines.\n\n[![Impacted
+      Report\n> Merging [#18](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=desc)
+      into [master](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775&el=desc)
+      will **not change** coverage by `%`.\n> The diff coverage is `n/a`.\n\n[![Impacted
       file tree graph](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=tree)\n\n```diff\n@@           Coverage
       Diff           @@\n##           master      #18   +/-   ##\n=======================================\n  Coverage   85.00%   85.00%           \n=======================================\n  Files           3        3           \n  Lines          20       20           \n=======================================\n  Hits           17       17           \n  Misses          3        3           \n```\n\n|
       Flag | Coverage \u0394 | |\n|---|---|---|\n| #unit | `85.00% <\u00f8> (\u00f8)`
@@ -788,10 +788,9 @@ interactions:
       :\"https://api.github.com/users/ThiagoCodecov/received_events\",\"type\":\"\
       User\",\"site_admin\":false},\"created_at\":\"2020-04-09T16:24:44Z\",\"updated_at\"\
       :\"2020-04-09T16:24:44Z\",\"author_association\":\"OWNER\",\"body\":\"# [Codecov](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=h1)\
-      \ Report\\nBase: **85.00**% // Head: **85.00**% // No change to project coverage :thumbsup:\\n
-      > Coverage data is based on head [(`11daa27`)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=desc) 
-      compared to base [(`f089529`)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775?el=desc).\\n>
-      Patch has no changes to coverable lines.\\n\\\
+      \ Report\\n> Merging [#18](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=desc)\
+      \ into [master](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775&el=desc)\
+      \ will **not change** coverage by `%`.\\n> The diff coverage is `n/a`.\\n\\\
       n[![Impacted file tree graph](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=tree)\\\
       n\\n```diff\\n@@           Coverage Diff           @@\\n##           master\
       \      #18   +/-   ##\\n=======================================\\n  Coverage\

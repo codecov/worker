@@ -12,7 +12,7 @@ from services.notification.notifiers.mixins.message.helpers import (
 )
 from services.notification.notifiers.mixins.message.sections import (
     NullSectionWriter,
-    get_bottom_section_class_from_layout_name,
+    get_lower_section_class_from_layout_name,
     get_section_class_from_layout_name,
     get_upper_section_class_from_layout_name,
 )
@@ -79,10 +79,16 @@ class MessageMixin(object):
         is_compact_message = should_message_be_compact(comparison, settings)
 
         if head_report:
-            layout = "header"
-            section_writer_class = get_upper_section_class_from_layout_name(layout)
+            upper_section_name = self.get_upper_section_name(settings)
+            section_writer_class = get_upper_section_class_from_layout_name(
+                upper_section_name
+            )
             section_writer = section_writer_class(
-                self.repository, layout, show_complexity, settings, current_yaml
+                self.repository,
+                upper_section_name,
+                show_complexity,
+                settings,
+                current_yaml,
             )
 
             await self.write_section_to_msg(
@@ -95,7 +101,7 @@ class MessageMixin(object):
                 )
                 write("")
 
-            for layout in self.get_layout_section_names(settings):
+            for layout in self.get_middle_layout_section_names(settings):
                 section_writer_class = get_section_class_from_layout_name(layout)
                 if section_writer_class is not None:
                     section_writer = section_writer_class(
@@ -122,13 +128,14 @@ class MessageMixin(object):
             if is_compact_message:
                 write("</details>")
 
-            if "newfooter" in self.get_layout_section_names(settings):
-                layout = "newfooter"
-                section_writer_class = get_bottom_section_class_from_layout_name(layout)
+            lower_section_name = self.get_lower_section_name(settings)
+            section_writer_class = get_lower_section_class_from_layout_name(
+                lower_section_name
+            )
+            if section_writer_class is not None:
                 section_writer = section_writer_class(
-                    self.repository, layout, show_complexity, settings, current_yaml
+                    self.repository, lower_section_name, show_complexity, settings, current_yaml
                 )
-
                 await self.write_section_to_msg(
                     comparison, changes, diff, links, write, section_writer
                 )
@@ -147,5 +154,19 @@ class MessageMixin(object):
                 write(line)
         write("")
 
-    def get_layout_section_names(self, settings):
-        return map(lambda l: l.strip(), (settings["layout"] or "").split(","))
+    def get_middle_layout_section_names(self, settings):
+        sections = map(lambda l: l.strip(), (settings["layout"] or "").split(","))
+        return [
+            section
+            for section in sections
+            if section not in ["header", "newheader", "newfooter"]
+        ]
+
+    def get_upper_section_name(self, settings):
+        if "newheader" in settings["layout"]:
+            return "newheader"
+        return "header"
+
+    def get_lower_section_name(self, settings):
+        if "newfooter" in settings["layout"]:
+            return "newfooter"

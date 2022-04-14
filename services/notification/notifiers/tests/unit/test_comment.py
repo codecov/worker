@@ -588,9 +588,8 @@ class TestCommentNotifier(object):
         repository = sample_comparison.head.commit.repository
         expected_result = [
             f"# [Codecov](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch has no changes to coverable lines.",
+            f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `n/a`.",
             f"",
             f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
@@ -746,9 +745,8 @@ class TestCommentNotifier(object):
         repository = sample_comparison.head.commit.repository
         expected_result = [
             f"# [Codecov](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch has no changes to coverable lines.",
+            f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            "> The diff coverage is `n/a`.",
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production",
             "",
@@ -784,9 +782,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -861,9 +858,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **100.00**% // Head: **100.00**% // No change to project coverage :thumbsup:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch has no changes to coverable lines.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **not change** coverage.",
+            f"> The diff coverage is `n/a`.",
             f"",
             "| Flag | Coverage Δ | |",
             "|---|---|---|",
@@ -914,9 +910,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1071,9 +1066,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1149,7 +1143,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1220,7 +1214,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
-            f"> Patch has no changes to coverable lines.",
+            f"> The diff coverage is `n/a`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1289,9 +1283,8 @@ class TestCommentNotifier(object):
 
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **60.00**% // Head: **60.00**% // No change to project coverage :thumbsup:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **not change** coverage.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1365,9 +1358,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **60.00**% // Head: **50.00**% // Decreases project coverage by **`-10.00%`** :warning:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch has no changes to coverable lines.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **decrease** coverage by `10.00%`.",
+            f"> The diff coverage is `n/a`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1442,9 +1434,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1522,9 +1513,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **65.38**% // Head: **65.38**% // No change to project coverage :thumbsup:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch has no changes to coverable lines.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **not change** coverage.",
+            f"> The diff coverage is `n/a`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1583,9 +1573,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **65.38**% // Head: **65.38**% // No change to project coverage :thumbsup:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch has no changes to coverable lines.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **not change** coverage.",
+            f"> The diff coverage is `n/a`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1660,9 +1649,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **65.38**% // Head: **65.38**% // No change to project coverage :thumbsup:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch has no changes to coverable lines.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **not change** coverage.",
+            f"> The diff coverage is `n/a`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1737,9 +1725,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **65.38**% // Head: **65.38**% // No change to project coverage :thumbsup:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch has no changes to coverable lines.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **not change** coverage.",
+            f"> The diff coverage is `n/a`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1839,9 +1826,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(sample_comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -2897,9 +2883,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"<details><summary>Additional details and impacted files</summary>\n",
             f"",
@@ -2933,9 +2918,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{sample_comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
-            "> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            "> The diff coverage is `66.67%`.",
             "",
             ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)",
             "",
@@ -2966,9 +2950,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
-            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -3453,8 +3436,7 @@ class TestCommentNotifierInNewLayout(object):
             repository=comparison.head.commit.repository,
             title="title",
             notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, newfooter",
-                "hide_comment_details": True,
+                "layout": "newheader, reach, diff, flags, files, newfooter"
             },
             notifier_site_settings=True,
             current_yaml={},
@@ -3465,8 +3447,6 @@ class TestCommentNotifierInNewLayout(object):
             f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"> Patch has no changes to coverable lines.",
-            f"",
-            f"<details><summary>Additional details and impacted files</summary>\n",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -3494,8 +3474,6 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"",
             f"",
-            f"</details>",
-            f"",
             f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
             f"",
@@ -3521,7 +3499,7 @@ class TestCommentNotifierInNewLayout(object):
             repository=comparison.head.commit.repository,
             title="title",
             notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, newfooter",
+                "layout": "newheader, reach, diff, flags, files, newfooter",
                 "hide_comment_details": True,
             },
             notifier_site_settings=True,
@@ -3564,7 +3542,6 @@ class TestCommentNotifierInNewLayout(object):
             f"|---|---|---|---|",
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
-            f"",
             f"</details>",
             f"",
             f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
@@ -3591,7 +3568,7 @@ class TestCommentNotifierInNewLayout(object):
             repository=comparison.head.commit.repository,
             title="title",
             notifier_yaml_settings={
-                "layout": "reach, diff, flags, newfooter",
+                "layout": "newheader, reach, diff, flags, newfooter",
                 "hide_comment_details": True,
             },
             notifier_site_settings=True,
@@ -3633,7 +3610,6 @@ class TestCommentNotifierInNewLayout(object):
             f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
             f"",
             f"</details>",
             f"",
