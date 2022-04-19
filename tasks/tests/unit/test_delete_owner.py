@@ -4,14 +4,14 @@ from pathlib import Path
 import pytest
 from celery.exceptions import Retry, SoftTimeLimitExceeded
 
-from database.models import Branch, Commit, Owner, Pull, Repository, CompareCommit
+from database.models import Branch, Commit, CompareCommit, Owner, Pull, Repository
 from database.tests.factories import (
     BranchFactory,
     CommitFactory,
+    CompareCommitFactory,
     OwnerFactory,
     PullFactory,
     RepositoryFactory,
-    CompareCommitFactory,
 )
 from services.archive import ArchiveService
 from tasks.delete_owner import DeleteOwnerTask
