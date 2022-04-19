@@ -5,6 +5,7 @@ from shared.celery_config import delete_owner_task_name
 
 from app import celery_app
 from database.models import Branch, Commit, LoginSession, Owner, Pull, Repository
+from database.models.core import CompareCommit
 from services.archive import ArchiveService
 from tasks.base import BaseCodecovTask
 
@@ -39,11 +40,24 @@ class DeleteOwnerTask(BaseCodecovTask):
         involved_repos = db_session.query(Repository.repoid).filter(
             Repository.ownerid == ownerid
         )
+        involved_commits = db_session.query(Commit.id_).filter(
+            Commit.repoid.in_(involved_repos)
+        )
         log.info("Deleting branches from DB", extra=dict(ownerid=ownerid))
         db_session.query(Branch).filter(Branch.repoid.in_(involved_repos)).delete(
             synchronize_session=False
         )
         db_session.commit()
+
+        log.info("Deleting commit compare from DB", extra=dict(ownerid=ownerid))
+        db_session.query(CompareCommit).filter(
+            CompareCommit.base_commit_id.in_(involved_commits)
+        ).delete(synchronize_session=False)
+        db_session.query(CompareCommit).filter(
+            CompareCommit.compare_commit_id.in_(involved_commits)
+        ).delete(synchronize_session=False)
+        db_session.commit()
+
         log.info("Deleting pulls from DB", extra=dict(ownerid=ownerid))
         db_session.query(Pull).filter(Pull.repoid.in_(involved_repos)).delete(
             synchronize_session=False
