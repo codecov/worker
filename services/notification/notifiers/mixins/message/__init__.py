@@ -12,9 +12,7 @@ from services.notification.notifiers.mixins.message.helpers import (
 )
 from services.notification.notifiers.mixins.message.sections import (
     NullSectionWriter,
-    get_lower_section_class_from_layout_name,
     get_section_class_from_layout_name,
-    get_upper_section_class_from_layout_name,
 )
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import read_yaml_field, round_number
@@ -80,7 +78,7 @@ class MessageMixin(object):
 
         if head_report:
             upper_section_name = self.get_upper_section_name(settings)
-            section_writer_class = get_upper_section_class_from_layout_name(
+            section_writer_class = get_section_class_from_layout_name(
                 upper_section_name
             )
             section_writer = section_writer_class(
@@ -129,20 +127,21 @@ class MessageMixin(object):
                 write("</details>")
 
             lower_section_name = self.get_lower_section_name(settings)
-            section_writer_class = get_lower_section_class_from_layout_name(
-                lower_section_name
-            )
-            if section_writer_class is not None:
-                section_writer = section_writer_class(
-                    self.repository,
-                    lower_section_name,
-                    show_complexity,
-                    settings,
-                    current_yaml,
+            if lower_section_name is not None:
+                section_writer_class = get_section_class_from_layout_name(
+                    lower_section_name
                 )
-                await self.write_section_to_msg(
-                    comparison, changes, diff, links, write, section_writer
-                )
+                if section_writer_class is not None:
+                    section_writer = section_writer_class(
+                        self.repository,
+                        lower_section_name,
+                        show_complexity,
+                        settings,
+                        current_yaml,
+                    )
+                    await self.write_section_to_msg(
+                        comparison, changes, diff, links, write, section_writer
+                    )
 
         return [m for m in message if m is not None]
 

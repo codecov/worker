@@ -21,13 +21,6 @@ from services.yaml.reader import round_number
 log = logging.getLogger(__name__)
 
 
-def get_upper_section_class_from_layout_name(layout_name):
-    if layout_name == "header":
-        return HeaderSectionWriter
-    if layout_name == "newheader":
-        return NewHeaderSectionWriter
-
-
 def get_section_class_from_layout_name(layout_name):
     if layout_name.startswith("flag"):
         return FlagSectionWriter
@@ -43,9 +36,10 @@ def get_section_class_from_layout_name(layout_name):
         return ImpactedEntrypointsSectionWriter
     if layout_name == "announcements":
         return AnnouncementSectionWriter
-
-
-def get_lower_section_class_from_layout_name(layout_name):
+    if layout_name == "header":
+        return HeaderSectionWriter
+    if layout_name == "newheader":
+        return NewHeaderSectionWriter
     if layout_name == "newfooter":
         return NewFooterSectionWriter
 

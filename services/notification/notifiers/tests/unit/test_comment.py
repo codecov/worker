@@ -894,6 +894,7 @@ class TestCommentNotifier(object):
             "reach, diff, flags, files, footer",
             "changes",
             "file",
+            "header",
             "suggestions",
             "sunburst",
             "uncovered",
