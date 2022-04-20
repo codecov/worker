@@ -12,7 +12,7 @@ interactions:
     method: PUT
     uri: https://api.sendgrid.com/v3/marketing/contacts
   response:
-    body: {string: '{"job_id":"9791f6a7-3d3b-4ae9-8f71-67bd98f33008"}
+    content: {string: '{"job_id":"9791f6a7-3d3b-4ae9-8f71-67bd98f33008"}
 
         '}
     headers:
