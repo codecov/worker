@@ -61,7 +61,7 @@ class TestGithubSpecificLogic(object):
         service = "github"
         mock_configuration._params["github_enterprise"] = {"url": "http://legit-github"}
         integration_id = 1
-        mocked_post = mocker.patch("services.github.requests.post")
+        mocked_post = mocker.patch("services.github.httpx.post")
         mocked_post.return_value.status_code = 404
         mocker.patch("services.github.get_pem", return_value=fake_private_key)
         with pytest.raises(RepositoryWithoutValidBotError):
