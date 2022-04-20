@@ -2,8 +2,8 @@ import logging
 from datetime import datetime
 from time import time
 
-import jwt
 import httpx
+import jwt
 import shared.torngit as torngit
 from shared.config import get_config
 
