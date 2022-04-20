@@ -27,7 +27,7 @@ class TestGithubSpecificLogic(object):
         service = "github_enterprise"
         mock_configuration._params[service] = {"url": "http://legit-github"}
         integration_id = 1
-        mocked_post = mocker.patch("services.github.requests.post")
+        mocked_post = mocker.patch("services.github.httpx.post")
         mocked_post.return_value.json.return_value = {"token": "arriba"}
         mocker.patch("services.github.get_pem", return_value=fake_private_key)
         assert get_github_integration_token(service, integration_id) == "arriba"
@@ -44,7 +44,7 @@ class TestGithubSpecificLogic(object):
         service = "github"
         mock_configuration._params["github_enterprise"] = {"url": "http://legit-github"}
         integration_id = 1
-        mocked_post = mocker.patch("services.github.requests.post")
+        mocked_post = mocker.patch("services.github.httpx.post")
         mocked_post.return_value.json.return_value = {"token": "arriba"}
         mocker.patch("services.github.get_pem", return_value=fake_private_key)
         assert get_github_integration_token(service, integration_id) == "arriba"
@@ -81,7 +81,7 @@ class TestGithubSpecificLogic(object):
         service = "github"
         mock_configuration._params["github_enterprise"] = {"url": "http://legit-github"}
         integration_id = 1
-        mocked_post = mocker.patch("services.github.requests.post")
+        mocked_post = mocker.patch("services.github.httpx.post")
         mocked_post.return_value.status_code = 403
         mocked_post.return_value.json.return_value = {
             "message": "This installation has been suspended",
