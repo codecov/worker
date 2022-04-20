@@ -1,5 +1,5 @@
+import httpx
 import pytest
-import requests
 
 from database.tests.factories import RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
