@@ -1,6 +1,6 @@
 import logging
 
-import requests
+import httpx
 import shared.torngit as torngit
 from shared.config import get_config
 
@@ -54,10 +54,10 @@ class GitHubMarketplaceService(object):
             # https://developer.github.com/v3/apps/marketplace/#testing-with-stubbed-endpoints
             url = url.replace("marketplace_listing/", "marketplace_listing/stubbed/", 1)
 
-        res = requests.request(method, url, headers=_headers, params=params)
+        res = httpx.request(method, url, headers=_headers, params=params)
         try:
             res.raise_for_status()
-        except requests.exceptions.HTTPError:
+        except httpx.HTTPError:
             log.exception(
                 "Github Marketplace Service Error",
                 extra=dict(code=res.status_code, text=res.text),

@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 
-import requests
+import httpx
 from yaml import YAMLError, safe_load
 
 here = Path(__file__)
@@ -47,7 +47,7 @@ class Sendgrid(object):
             "list_ids": [self.config.get("list_id")],
             "contacts": [{"email": email}],
         }
-        r = requests.put(
+        r = httpx.put(
             self.base_url + self.contacts_path,
             data=json.dumps(data),
             headers=self.request_headers,

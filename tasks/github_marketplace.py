@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-import requests
+import httpx
 from shared.celery_config import ghm_sync_plans_task_name
 
 from app import celery_app
@@ -47,7 +47,7 @@ class SyncPlansTask(BaseCodecovTask):
             # TODO sync all team members - 3 year old todo from legacy...
             try:
                 plans = ghm_service.get_account_plans(account["id"])
-            except requests.exceptions.HTTPError as e:
+            except httpx.HTTPStatusError as e:
                 if e.response.status_code == 404:
                     # account has not purchased the listing
                     return self.sync_plan(

@@ -3,7 +3,7 @@ from datetime import datetime
 from time import time
 
 import jwt
-import requests
+import httpx
 import shared.torngit as torngit
 from shared.config import get_config
 
@@ -39,7 +39,7 @@ def get_github_integration_token(service, integration_id=None):
             "Authorization": "Bearer %s" % token,
         }
         url = "%s/app/installations/%s/access_tokens" % (api_endpoint, integration_id)
-        res = requests.post(url, headers=headers)
+        res = httpx.post(url, headers=headers)
         if res.status_code in (404, 403):
             log.warning(
                 "Integration could not be found to fetch token from or unauthorized",
@@ -48,7 +48,7 @@ def get_github_integration_token(service, integration_id=None):
             raise RepositoryWithoutValidBotError()
         try:
             res.raise_for_status()
-        except requests.exceptions.HTTPError:
+        except httpx.HTTPError:
             log.exception(
                 "Github Integration Error on service %s",
                 service,

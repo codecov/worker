@@ -57,5 +57,5 @@ class TestRepositoryServiceIntegration(object):
         )
         dbsession.add(repo)
         dbsession.flush()
-        with pytest.raises(requests.exceptions.HTTPError):
+        with pytest.raises(httpx.HTTPError):
             get_repo_appropriate_bot_token(repo)
