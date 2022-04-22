@@ -4,10 +4,11 @@ from pathlib import Path
 import pytest
 from celery.exceptions import Retry, SoftTimeLimitExceeded
 
-from database.models import Branch, Commit, Owner, Pull, Repository
+from database.models import Branch, Commit, CompareCommit, Owner, Pull, Repository
 from database.tests.factories import (
     BranchFactory,
     CommitFactory,
+    CompareCommitFactory,
     OwnerFactory,
     PullFactory,
     RepositoryFactory,
@@ -73,6 +74,79 @@ class TestDeleteOwnerTaskUnit(object):
         assert commits == []
         assert branches == []
         assert pulls == []
+
+    @pytest.mark.asyncio
+    async def test_delete_owner_deletes_owner_with_commit_compares(
+        self, mocker, mock_configuration, mock_storage, dbsession
+    ):
+        ownerid = 10777
+        serviceid = "12345"
+        repoid = 1337
+
+        user = OwnerFactory.create(ownerid=ownerid, service_id=serviceid)
+        dbsession.add(user)
+
+        repo = RepositoryFactory.create(
+            repoid=repoid, name="dracula", service_id="7331", owner=user
+        )
+        dbsession.add(repo)
+
+        base_commit_id = 1234
+        base_commit = CommitFactory.create(
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner=user,
+        )
+        dbsession.add(base_commit)
+
+        compare_commit_id = 1235
+        compare_commit = CommitFactory.create(
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581421",
+            repository__owner=user,
+        )
+        dbsession.add(compare_commit)
+
+        comparison = CompareCommitFactory.create(
+            base_commit=base_commit, compare_commit=compare_commit
+        )
+        dbsession.add(comparison)
+
+        branch = BranchFactory.create(repository=repo)
+        dbsession.add(branch)
+
+        pull = PullFactory.create(repository=repo)
+        dbsession.add(pull)
+
+        dbsession.flush()
+
+        await DeleteOwnerTask().run_async(dbsession, ownerid)
+
+        owner = dbsession.query(Owner).filter(Owner.ownerid == ownerid).first()
+
+        repos = dbsession.query(Repository).filter(Repository.ownerid == ownerid).all()
+
+        commits = dbsession.query(Commit).filter(Commit.repoid == repoid).all()
+
+        branches = dbsession.query(Branch).filter(Branch.repoid == repoid).all()
+
+        pulls = dbsession.query(Pull).filter(Pull.repoid == repoid).all()
+
+        comparisons = (
+            dbsession.query(CompareCommit)
+            .filter(
+                CompareCommit.base_commit_id == base_commit_id
+                or CompareCommit.compare_commit_id == compare_commit_id
+            )
+            .all()
+        )
+
+        assert owner is None
+        assert repos == []
+        assert commits == []
+        assert branches == []
+        assert pulls == []
+        assert comparisons == []
 
     def test_delete_owner_from_orgs_removes_ownerid_from_organizations_of_related_owners(
         self, mocker, mock_configuration, mock_storage, dbsession
