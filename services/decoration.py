@@ -1,11 +1,13 @@
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from sqlalchemy import func
 
 from database.enums import Decoration
-from database.models import Owner
-from services.billing import is_pr_billing_plan
+from database.models import Commit, Owner, Repository
+from database.models.reports import CommitReport, Upload
+from services.billing import BillingPlan, is_pr_billing_plan
 from services.repository import EnrichedPull
 
 log = logging.getLogger(__name__)
@@ -91,6 +93,33 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
             return DecorationDetails(
                 decoration_type=Decoration.upgrade,
                 reason="PR author not found in database",
+            )
+
+        # TODO declare this to be shared between codecov-api and worker
+        USER_BASIC_LIMIT_UPLOAD = 250
+        uploads_used = (
+            db_session.query(Upload)
+            .join(CommitReport)
+            .join(Commit)
+            .join(Repository)
+            .filter(
+                Upload.upload_type == "uploaded",
+                Repository.ownerid == org.ownerid,
+                Repository.private == True,
+                Upload.created_at >= (datetime.now() - timedelta(days=30)),
+                Commit.timestamp >= (datetime.now() - timedelta(days=60)),
+            )
+            .limit(USER_BASIC_LIMIT_UPLOAD)
+            .count()
+        )
+
+        if (
+            org.plan == BillingPlan.users_basic.value
+            and uploads_used >= USER_BASIC_LIMIT_UPLOAD
+        ):
+            return DecorationDetails(
+                decoration_type=Decoration.upload_limit,
+                reason="User has exceeded the upload limit",
             )
 
         if (
