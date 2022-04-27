@@ -371,7 +371,6 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                       upgrade to our [pro plan]({links['org_account']}/billing).",
             f"",
             f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
-
         ]
 
     def _create_upgrade_message(self, comparison):
