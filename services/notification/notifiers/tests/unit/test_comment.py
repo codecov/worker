@@ -1010,6 +1010,43 @@ class TestCommentNotifier(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_build_limited_upload_message(
+        self,
+        request,
+        dbsession,
+        mocker,
+        mock_configuration,
+        with_sql_functions,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        pull = comparison.enriched_pull.database_pull
+        repository = sample_comparison.head.commit.repository
+        notifier = CommentNotifier(
+            repository=repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upload_limit,
+        )
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/account/gh/{pull.repository.owner.username}/billing) upload limit reached :warning:",
+            f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each month.\
+                 This month's limit has been reached and additional reports cannot be generated. For unlimitd uploads,\
+                      upgrade to our [pro plan](test.example.br/account/gh/{pull.repository.owner.username}/billing).",
+            f"",
+            f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
+        ]
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
     async def test_build_upgrade_message_enterprise(
         self,
         request,
