@@ -79,3 +79,7 @@ class AbstractBaseNotifier(object):
 
     def should_use_upgrade_decoration(self) -> bool:
         return self.decoration_type == Decoration.upgrade
+
+    def should_use_upload_limit_decoration(self) -> bool:
+        return self.decoration_type == Decoration.upload_limit
+

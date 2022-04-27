@@ -4,6 +4,7 @@ from enum import Enum
 class Decoration(Enum):
     standard = "standard"
     upgrade = "upgrade"
+    upload_limit = "upload_limit"
 
 
 class Notification(Enum):
