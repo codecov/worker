@@ -190,6 +190,64 @@ def sample_comparison_for_upgrade(dbsession, request, sample_report, small_repor
         )
     )
 
+@pytest.fixture
+def sample_comparison_for_limited_upload(dbsession, request, sample_report, small_report):
+    repository = RepositoryFactory.create(
+        owner__username="test-acc9",
+        owner__service="github",
+        name="priv_example",
+        owner__unencrypted_oauth_token="ghp_test1xwr5rxl12dbm97a7r4anr6h67uw0thf",
+        image_token="abcdefghij",
+    )
+    dbsession.add(repository)
+    dbsession.flush()
+    base_commit = CommitFactory.create(
+        repository=repository, commitid="ef6edf5ae6643d53a7971fb8823d3f7b2ac65619"
+    )
+    head_commit = CommitFactory.create(
+        repository=repository,
+        branch="featureA",
+        commitid="610ada9fa2bbc49f1a08917da3f73bef2d03709c",
+    )
+    pull = PullFactory.create(
+        repository=repository,
+        base=base_commit.commitid,
+        head=head_commit.commitid,
+        pullid=1,
+    )
+    dbsession.add(base_commit)
+    dbsession.add(head_commit)
+    dbsession.add(pull)
+    dbsession.flush()
+    repository = base_commit.repository
+    base_full_commit = FullCommit(commit=base_commit, report=small_report)
+    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            base=base_full_commit,
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "author": {"id": "12345", "username": "dana-yaish"},
+                    "base": {
+                        "branch": "master",
+                        "commitid": "ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
+                    },
+                    "head": {
+                        "branch": "featureA",
+                        "commitid": "610ada9fa2bbc49f1a08917da3f73bef2d03709c",
+                    },
+                    "state": "open",
+                    "title": "Create randomcommit.me",
+                    "id": "1",
+                    "number": "1",
+                },
+            ),
+        )
+    )
+
+
 
 class TestCommentNotifierIntegration(object):
     @pytest.mark.asyncio
@@ -287,6 +345,41 @@ class TestCommentNotifierIntegration(object):
             "pullid": 1,
         }
         assert result.data_received == {"id": 609479265}
+
+    @pytest.mark.asyncio
+    async def test_notify_upload_limited(
+        self, dbsession, sample_comparison_for_limited_upload, codecov_vcr
+    ):
+        comparison = sample_comparison_for_limited_upload
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.upload_limit,
+        )
+        result = await notifier.notify(comparison)
+        assert result.notification_attempted
+        assert result.notification_successful
+        assert result.explanation is None
+        expected_message = [
+            f"# [Codecov](None/account/gh/test-acc9/billing) upload limit reached :warning:",
+            f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each month.\
+                 This month's limit has been reached and additional reports cannot be generated. For unlimitd uploads,\
+                      upgrade to our [pro plan](None/account/gh/test-acc9/billing).",
+            f"",
+            f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
+        ]
+        for exp, res in zip(result.data_sent["message"], expected_message):
+            assert exp == res
+        assert result.data_sent["message"] == expected_message
+        assert result.data_sent == {
+            "commentid": None,
+            "message": expected_message,
+            "pullid": 1,
+        }
+        assert result.data_received == {"id": 1111984446}
 
     @pytest.mark.asyncio
     async def test_notify_gitlab(self, sample_comparison_gitlab, codecov_vcr):
