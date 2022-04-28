@@ -354,10 +354,24 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     async def build_message(self, comparison: Comparison) -> List[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
+        if self.should_use_upload_limit_decoration():
+            return self._create_reached_upload_limit_message(comparison)
         pull_dict = comparison.enriched_pull.provider_pull
         return await self.create_message(
             comparison, pull_dict, self.notifier_yaml_settings
         )
+
+    def _create_reached_upload_limit_message(self, comparison):
+        db_pull = comparison.enriched_pull.database_pull
+        links = {"org_account": get_org_account_url(db_pull)}
+        return [
+            f"# [Codecov]({links['org_account']}/billing) upload limit reached :warning:",
+            f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each month.\
+                 This month's limit has been reached and additional reports cannot be generated. For unlimitd uploads,\
+                      upgrade to our [pro plan]({links['org_account']}/billing).",
+            f"",
+            f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
+        ]
 
     def _create_upgrade_message(self, comparison):
         db_pull = comparison.enriched_pull.database_pull
