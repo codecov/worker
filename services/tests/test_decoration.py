@@ -1,10 +1,14 @@
+from datetime import datetime
+
 import pytest
 
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
     PullFactory,
+    ReportFactory,
     RepositoryFactory,
+    UploadFactory,
 )
 from services.decoration import (
     BOT_USER_EMAILS,
@@ -168,6 +172,34 @@ def gitlab_enriched_pull_root(dbsession, gitlab_root_group):
 
 
 class TestDecorationServiceTestCase(object):
+    def test_decoration_type_limited_upload(self, enriched_pull, dbsession):
+        pr_author = OwnerFactory.create(
+            service="github",
+            username=enriched_pull.provider_pull["author"]["username"],
+            service_id=enriched_pull.provider_pull["author"]["id"],
+        )
+        dbsession.add(pr_author)
+        dbsession.flush()
+
+        enriched_pull.database_pull.repository.owner.plan = "users-basic"
+        enriched_pull.database_pull.repository.private = True
+
+        commit = CommitFactory.create(
+            repository=enriched_pull.database_pull.repository,
+            author__service="github",
+            timestamp=datetime.now(),
+        )
+
+        report = ReportFactory.create(commit=commit)
+        for i in range(250):
+            upload = UploadFactory.create(report=report, storage_path="url")
+            dbsession.add(upload)
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull)
+        assert decoration_details.decoration_type == Decoration.upload_limit
+        assert decoration_details.reason == "Org has exceeded the upload limit"
+
     def test_get_decoration_type_no_pull(self, mocker):
         decoration_details = determine_decoration_details(None)
 

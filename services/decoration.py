@@ -119,7 +119,7 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
         ):
             return DecorationDetails(
                 decoration_type=Decoration.upload_limit,
-                reason="User has exceeded the upload limit",
+                reason="Org has exceeded the upload limit",
             )
 
         if (
