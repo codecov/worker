@@ -1035,7 +1035,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"# [Codecov](test.example.br/account/gh/{pull.repository.owner.username}/billing) upload limit reached :warning:",
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each month.\
-                 This month's limit has been reached and additional reports cannot be generated. For unlimitd uploads,\
+                 This month's limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan](test.example.br/account/gh/{pull.repository.owner.username}/billing).",
             f"",
             f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",

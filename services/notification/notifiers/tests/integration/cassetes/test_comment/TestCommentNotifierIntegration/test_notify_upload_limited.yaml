@@ -3,7 +3,7 @@ interactions:
     body: '{"body": "# [Codecov](None/account/gh/test-acc9/billing) upload limit reached
       :warning:\nThis org is currently on the free Basic Plan; which includes 250
       free private repo uploads each month.                 This month''s limit has
-      been reached and additional reports cannot be generated. For unlimitd uploads,                      upgrade
+      been reached and additional reports cannot be generated. For unlimited uploads,                      upgrade
       to our [pro plan](None/account/gh/test-acc9/billing).\n\n**Do you have questions
       or need help?** Connect with our sales team today at ` sales@codecov.io `"}'
     headers:
@@ -28,7 +28,7 @@ interactions:
       [Codecov](None/account/gh/test-acc9/billing) upload limit reached :warning:\nThis
       org is currently on the free Basic Plan; which includes 250 free private repo
       uploads each month.                 This month''s limit has been reached and
-      additional reports cannot be generated. For unlimitd uploads,                      upgrade
+      additional reports cannot be generated. For unlimited uploads,                      upgrade
       to our [pro plan](None/account/gh/test-acc9/billing).\n\n**Do you have questions
       or need help?** Connect with our sales team today at ` sales@codecov.io `","reactions":{"url":"https://api.github.com/repos/test-acc9/priv_example/issues/comments/1111984446/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"performed_via_github_app":null}'
     headers:
