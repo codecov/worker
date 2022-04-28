@@ -190,8 +190,11 @@ def sample_comparison_for_upgrade(dbsession, request, sample_report, small_repor
         )
     )
 
+
 @pytest.fixture
-def sample_comparison_for_limited_upload(dbsession, request, sample_report, small_report):
+def sample_comparison_for_limited_upload(
+    dbsession, request, sample_report, small_report
+):
     repository = RepositoryFactory.create(
         owner__username="test-acc9",
         owner__service="github",
@@ -246,7 +249,6 @@ def sample_comparison_for_limited_upload(dbsession, request, sample_report, smal
             ),
         )
     )
-
 
 
 class TestCommentNotifierIntegration(object):
