@@ -366,8 +366,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         links = {"org_account": get_org_account_url(db_pull)}
         return [
             f"# [Codecov]({links['org_account']}/billing) upload limit reached :warning:",
-            f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each month.\
-                 This month's limit has been reached and additional reports cannot be generated. For unlimited uploads,\
+            f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
+                 This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan]({links['org_account']}/billing).",
             f"",
             f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
