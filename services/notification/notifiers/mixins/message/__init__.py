@@ -71,28 +71,25 @@ class MessageMixin(object):
         write = message.append
         # note: since we're using append, calling write("") will add a newline to the message
 
-        if base_report is None:
-            base_report = Report()
+        upper_section_name = self.get_upper_section_name(settings)
+        section_writer_class = get_section_class_from_layout_name(upper_section_name)
+        section_writer = section_writer_class(
+            self.repository,
+            upper_section_name,
+            show_complexity,
+            settings,
+            current_yaml,
+        )
+        await self.write_section_to_msg(
+            comparison, changes, diff, links, write, section_writer
+        )
 
         is_compact_message = should_message_be_compact(comparison, settings)
 
+        if base_report is None:
+            base_report = Report()
+
         if head_report:
-            upper_section_name = self.get_upper_section_name(settings)
-            section_writer_class = get_section_class_from_layout_name(
-                upper_section_name
-            )
-            section_writer = section_writer_class(
-                self.repository,
-                upper_section_name,
-                show_complexity,
-                settings,
-                current_yaml,
-            )
-
-            await self.write_section_to_msg(
-                comparison, changes, diff, links, write, section_writer
-            )
-
             if is_compact_message:
                 write(
                     "<details><summary>Additional details and impacted files</summary>\n"
