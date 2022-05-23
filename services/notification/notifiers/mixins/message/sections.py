@@ -42,6 +42,8 @@ def get_section_class_from_layout_name(layout_name):
         return NewHeaderSectionWriter
     if layout_name == "newfooter":
         return NewFooterSectionWriter
+    if layout_name == "feedback":
+        return FeedbackSectionWriter
 
 
 class BaseSectionWriter(object):
