@@ -24,6 +24,7 @@ from services.notification.notifiers.mixins.message.helpers import (
 )
 from services.notification.notifiers.mixins.message.sections import (
     AnnouncementSectionWriter,
+    FeedbackSectionWriter,
     FileSectionWriter,
     ImpactedEntrypointsSectionWriter,
     NewFooterSectionWriter,
@@ -3454,6 +3455,22 @@ class TestNewFooterSectionWriter(object):
             "",
             "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
+        ]
+
+
+class TestFeedbackSectionWriter(object):
+    @pytest.mark.asyncio
+    async def test_feedback_section_writer(self, mocker):
+        writer = FeedbackSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        res = list(await writer.write_section())
+        assert res == [
+            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps/?utm_medium=referral&utm_source=github&utm_content=pr-comment)."
         ]
 
 
