@@ -3470,7 +3470,7 @@ class TestFeedbackSectionWriter(object):
         )
         res = list(await writer.write_section())
         assert res == [
-            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps/)."
+            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps)."
         ]
 
 
