@@ -85,7 +85,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
 
 class FeedbackSectionWriter(BaseSectionWriter):
     async def do_write_section(*args, **kwargs):
-        yield "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps/?utm_medium=referral&utm_source=github&utm_content=pr-comment)."
+        yield "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps/)."
 
 
 class NewHeaderSectionWriter(BaseSectionWriter):
