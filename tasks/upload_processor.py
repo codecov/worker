@@ -226,14 +226,14 @@ class UploadProcessorTask(BaseCodecovTask):
             and self.request.retries == 0
         ):
             log.info(
-                "Scheduling a retry in %d due to retryable error with code %s and parameters %s",
+                "Scheduling a retry in %d due to retryable error",
                 FIRST_RETRY_DELAY,
-                processing_result.error.code,
-                processing_result.error.params,
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
                     upload_id=upload_obj.id,
+                    processing_result_error_code = processing_result.error.code,
+                    processing_result_error_params = processing_result.error.params,
                 ),
             )
             self.schedule_for_later_try()
