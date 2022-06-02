@@ -409,3 +409,25 @@ class TestUploadFinisherTask(object):
         assert res == {"notifications_called": False}
         assert mocked_app.send_task.call_count == 0
         assert not mocked_app.tasks["app.tasks.notify.Notify"].apply_async.called
+
+    @pytest.mark.asyncio
+    async def test_upload_finisher_task_calls_save_commit_measurements(
+        self, mocker, dbsession, mock_redis
+    ):
+        mocked_save_commit_measurements = mocker.patch(
+            "tasks.upload_finisher.save_commit_measurements"
+        )
+
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+
+        await UploadFinisherTask().run_async(
+            dbsession,
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={},
+        )
+
+        mocked_save_commit_measurements.assert_called_once_with(dbsession, commit)
