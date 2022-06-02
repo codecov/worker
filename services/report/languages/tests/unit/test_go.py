@@ -644,10 +644,10 @@ class TestGo(BaseTestCase):
             go.from_txt(line, fixes, {}, 0, {})
 
         assert (
-            ex.value.expected_format
+            ex.value.corruption_error
             == "Missing numberOfStatements count\n at the end of the line, or they are not given in the right format"
         )
         assert (
-            ex.value.corruption_error
+            ex.value.expected_format
             == "name.go:line.column,line.column numberOfStatements count"
         )

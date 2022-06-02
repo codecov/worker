@@ -101,8 +101,8 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
             el, ec = list(map(int, el.split(".", 1)))
         except ValueError:
             raise CorruptRawReportError(
-                "Missing numberOfStatements count\n at the end of the line, or they are not given in the right format",
                 "name.go:line.column,line.column numberOfStatements count",
+                "Missing numberOfStatements count\n at the end of the line, or they are not given in the right format",
             )
 
         # add start of line
