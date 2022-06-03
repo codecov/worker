@@ -274,9 +274,17 @@ class UploadTask(BaseCodecovTask):
             normalized_arguments = self.normalize_upload_arguments(
                 commit, arguments, redis_connection
             )
-            upload = report_service.create_report_upload(
-                normalized_arguments, commit_report
-            )
+            if "upload_id" in normalized_arguments:
+                upload = report_service.fetch_report_upload(
+                    commit_report, normalized_arguments["upload_id"]
+                )
+            else:
+                upload = None
+            # Fallback to create new Upload if the provided one is not found
+            if upload is None:
+                upload = report_service.create_report_upload(
+                    normalized_arguments, commit_report
+                )
             normalized_arguments["upload_pk"] = upload.id_
             argument_list.append(normalized_arguments)
         if argument_list:
