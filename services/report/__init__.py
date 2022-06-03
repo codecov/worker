@@ -152,6 +152,22 @@ class ReportService(object):
                 self.save_full_report(commit, report)
         return current_report_row
 
+    def fetch_report_upload(
+        self, commit_report: CommitReport, upload_id: int
+    ) -> Optional[Upload]:
+        db_session = commit_report.get_db_session()
+        upload = db_session.query(Upload).filter_by(id_=int(upload_id)).first()
+        if not upload:
+            log.warning(
+                f"Couldn't find existing Upload by id ({upload_id})",
+                extra=dict(
+                    commit=commit_report.commit_id,
+                    repo=commit_report.commit.repoid,
+                    upload_id=upload_id,
+                ),
+            )
+        return upload
+
     def create_report_upload(
         self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
     ) -> Upload:
