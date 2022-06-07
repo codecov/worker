@@ -38,10 +38,10 @@ def save_commit_measurements(db_session: Session, commit: Commit) -> None:
                 Measurement.name,
                 Measurement.owner_id,
                 Measurement.repo_id,
-                Measurement.flag_id,
                 Measurement.commit_sha,
                 Measurement.timestamp,
             ],
+            index_where=(Measurement.flag_id.is_(None)),
             set_=dict(
                 branch=commit.branch,
                 value=float(report.totals.coverage),
@@ -86,6 +86,7 @@ def save_commit_measurements(db_session: Session, commit: Commit) -> None:
                     Measurement.commit_sha,
                     Measurement.timestamp,
                 ],
+                index_where=(Measurement.flag_id.isnot(None)),
                 set_=dict(
                     branch=commit.branch,
                     value=float(flag.totals.coverage),

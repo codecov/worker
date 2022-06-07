@@ -1,7 +1,7 @@
 from enum import Enum
 
 from sqlalchemy import Column, types
-from sqlalchemy.schema import UniqueConstraint
+from sqlalchemy.schema import Index
 
 from database.base import CodecovBaseModel
 
@@ -30,8 +30,26 @@ class Measurement(TimeseriesBaseModel):
     value = Column(types.Float, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint(
-            "timestamp", "owner_id", "repo_id", "flag_id", "commit_sha", "name"
+        Index(
+            "timeseries_measurement_noflag_unique",
+            timestamp,
+            owner_id,
+            repo_id,
+            commit_sha,
+            name,
+            unique=True,
+            postgresql_where=flag_id.is_(None),
+        ),
+        Index(
+            "timeseries_measurement_flag_unique",
+            timestamp,
+            owner_id,
+            repo_id,
+            flag_id,
+            commit_sha,
+            name,
+            unique=True,
+            postgresql_where=flag_id.isnot(None),
         ),
     )
 
