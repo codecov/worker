@@ -1,19 +1,26 @@
+import logging
+
 from shared.config import get_config
 from shared.reports.readonly import ReadOnlyReport
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
 
 from database.models import Commit, Measurement, MeasurementName
 from database.models.reports import RepositoryFlag
 from services.report import ReportService
 from services.yaml import get_repo_yaml
 
-timeseries_enabled = get_config("setup", "timeseries", "enabled", default=False)
+log = logging.getLogger(__name__)
 
 
-def save_commit_measurements(db_session: Session, commit: Commit) -> None:
-    if not timeseries_enabled:
+def timeseries_enabled() -> bool:
+    return get_config("setup", "timeseries", "enabled", default=False)
+
+
+def save_commit_measurements(commit: Commit) -> None:
+    if not timeseries_enabled():
         return
+
+    db_session = commit.get_db_session()
 
     current_yaml = get_repo_yaml(commit.repository)
     report_service = ReportService(current_yaml)
@@ -62,8 +69,16 @@ def save_commit_measurements(db_session: Session, commit: Commit) -> None:
         )
 
         if not repo_flag:
-            # we don't have record of this flag for some reason
-            continue
+            log.warning(
+                "Repository flag not found.  Created repository flag.",
+                extra=dict(repo=commit.repoid, flag_name=flag_name),
+            )
+            repo_flag = RepositoryFlag(
+                repository_id=commit.repoid,
+                flag_name=flag_name,
+            )
+            db_session.add(repo_flag)
+            db_session.flush()
 
         command = (
             insert(Measurement.__table__)

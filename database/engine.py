@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from database.models.timeseries import TimeseriesBaseModel
+from services.timeseries import timeseries_enabled
 
 from .base import Base
 
@@ -32,8 +33,7 @@ main_engine = create_engine(
     json_serializer=json_dumps,
 )
 
-timeseries_enabled = get_config("setup", "timeseries", "enabled", default=False)
-if timeseries_enabled:
+if timeseries_enabled():
     default_timeseries_database_url = "postgres://postgres:@timescale:5432/postgres"
     timeseries_engine = create_engine(
         get_config(

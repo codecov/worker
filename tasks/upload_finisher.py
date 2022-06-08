@@ -64,7 +64,7 @@ class UploadFinisherTask(BaseCodecovTask):
             result = await self.finish_reports_processing(
                 db_session, commit, commit_yaml, processing_results
             )
-            save_commit_measurements(db_session, commit)
+            save_commit_measurements(commit)
             self.invalidate_caches(redis_connection, commit)
             if commit.repository.branch == commit.branch:
                 author_dict = None

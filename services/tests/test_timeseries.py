@@ -39,7 +39,7 @@ def sample_report():
 
 class TestTimeseriesService(object):
     def test_insert_commit_measurement(self, dbsession, sample_report, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", True)
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -49,7 +49,7 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        save_commit_measurements(dbsession, commit)
+        save_commit_measurements(commit)
 
         measurement = (
             dbsession.query(Measurement)
@@ -74,7 +74,7 @@ class TestTimeseriesService(object):
         assert measurement.value == 60.0
 
     def test_update_commit_measurement(self, dbsession, sample_report, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", True)
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -97,7 +97,7 @@ class TestTimeseriesService(object):
         dbsession.add(measurement)
         dbsession.flush()
 
-        save_commit_measurements(dbsession, commit)
+        save_commit_measurements(commit)
 
         measurements = (
             dbsession.query(Measurement)
@@ -123,7 +123,7 @@ class TestTimeseriesService(object):
         assert measurement.value == 60.0
 
     def test_commit_measurement_insert_flags(self, dbsession, sample_report, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", True)
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -145,7 +145,7 @@ class TestTimeseriesService(object):
         dbsession.add(repository_flag2)
         dbsession.flush()
 
-        save_commit_measurements(dbsession, commit)
+        save_commit_measurements(commit)
 
         measurement = (
             dbsession.query(Measurement)
@@ -194,7 +194,7 @@ class TestTimeseriesService(object):
         assert measurement.value == 100.0
 
     def test_commit_measurement_update_flags(self, dbsession, sample_report, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", True)
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -242,7 +242,7 @@ class TestTimeseriesService(object):
         dbsession.add(measurement2)
         dbsession.flush()
 
-        save_commit_measurements(dbsession, commit)
+        save_commit_measurements(commit)
 
         measurement = (
             dbsession.query(Measurement)

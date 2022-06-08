@@ -430,4 +430,4 @@ class TestUploadFinisherTask(object):
             commit_yaml={},
         )
 
-        mocked_save_commit_measurements.assert_called_once_with(dbsession, commit)
+        mocked_save_commit_measurements.assert_called_once_with(commit)
