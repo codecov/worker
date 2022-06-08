@@ -279,9 +279,6 @@ class UploadTask(BaseCodecovTask):
                     commit_report, normalized_arguments["upload_id"]
                 )
             else:
-                upload = None
-            # Fallback to create new Upload if the provided one is not found
-            if upload is None:
                 upload = report_service.create_report_upload(
                     normalized_arguments, commit_report
                 )

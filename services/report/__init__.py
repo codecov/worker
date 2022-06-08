@@ -154,13 +154,17 @@ class ReportService(object):
 
     def fetch_report_upload(
         self, commit_report: CommitReport, upload_id: int
-    ) -> Optional[Upload]:
+    ) -> Upload:
+        """
+        Fetch Upload by the given upload_id.
+        :raises: Exception if Upload is not found.
+        """
         db_session = commit_report.get_db_session()
         upload = db_session.query(Upload).filter_by(id_=int(upload_id)).first()
         if not upload:
-            log.warning(
-                f"Couldn't find existing Upload by id ({upload_id})",
-                extra=dict(
+            raise Exception(
+                f"Failed to find existing upload by ID ({upload_id})",
+                dict(
                     commit=commit_report.commit_id,
                     repo=commit_report.commit.repoid,
                     upload_id=upload_id,
