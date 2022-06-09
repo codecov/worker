@@ -2,6 +2,7 @@ from datetime import datetime
 
 import mock
 import pytest
+from shared.encryption.oauth import get_encryptor_from_configuration
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -56,6 +57,53 @@ class TestRepositoryServiceTestCase(object):
             "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
             "secret": None,
         }
+
+    def test_get_repo_provider_service_with_token_refresh_callback(self, dbsession):
+        repo = RepositoryFactory.create(
+            owner__unencrypted_oauth_token="testyftq3ovzkb3zmt823u3t04lkrt9w",
+            owner__service="gitlab",
+            name="example-python",
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+        res = get_repo_provider_service(repo)
+        expected_data = {
+            "owner": {
+                "ownerid": repo.owner.ownerid,
+                "service_id": repo.owner.service_id,
+                "username": repo.owner.username,
+            },
+            "repo": {
+                "name": "example-python",
+                "using_integration": False,
+                "service_id": repo.service_id,
+                "repoid": repo.repoid,
+            },
+        }
+        assert res.data == expected_data
+        assert res._on_token_refresh is not None
+        assert res.token == {
+            "username": repo.owner.username,
+            "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
+            "secret": None,
+        }
+
+    def test_token_refresh_callback(self, dbsession):
+        repo = RepositoryFactory.create(
+            owner__unencrypted_oauth_token="testyftq3ovzkb3zmt823u3t04lkrt9w",
+            owner__service="gitlab",
+            name="example-python",
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+        res = get_repo_provider_service(repo)
+        new_token = dict(key="new_access_token", refresh_token="new_refresh_token")
+        res._on_token_refresh(new_token)
+        owner = dbsession.query(Owner).filter_by(ownerid=repo.owner.ownerid).first()
+        encryptor = get_encryptor_from_configuration()
+        saved_token = encryptor.decrypt_token(owner.oauth_token)
+        assert saved_token["key"] == "new_access_token"
+        assert saved_token["refresh_token"] == "new_refresh_token"
 
     def test_get_repo_provider_service_different_bot(self, dbsession):
         bot_token = "bcaa0dc0c66b4a8c8c65ac919a1a91aa"

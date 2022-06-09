@@ -2,10 +2,12 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 import shared.torngit as torngit
 from shared.config import get_config, get_verify_ssl
+from shared.encryption.oauth import get_encryptor_from_configuration
+from shared.encryption.token import encode_token
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitError,
@@ -13,6 +15,7 @@ from shared.torngit.exceptions import (
 )
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from database.models import Commit, Owner, Pull, Repository
 from services.bots import get_repo_appropriate_bot_token, get_token_type_mapping
@@ -21,6 +24,38 @@ from services.yaml import read_yaml_field
 log = logging.getLogger(__name__)
 
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
+
+
+def get_token_refresh_callback(
+    db_session: Session, ownerid: int, service: str
+) -> Callable[[Dict], None]:
+    """
+    Produces a callback function that will encode and update the oauth token of a user.
+    This callback is passed to the TorngitAdapter for the service.
+    """
+    if service != "gitlab" and service != "gitlab_enterprise":
+        return None
+
+    def callback(new_token: Dict) -> None:
+        if "key" not in new_token and "access_token" not in new_token:
+            log.error(
+                "Can't save updated token. Key missing from dict",
+                extra=dict(ownerid=ownerid, service=service),
+            )
+            return
+        # shared uses a key with the token.
+        # providers return access_token.
+        # We can have both just in case
+        new_token["access_token"] = new_token["key"]
+        string_to_save = encode_token(new_token)
+        encryptor = get_encryptor_from_configuration()
+        oauth_token = encryptor.encode(string_to_save).decode()
+        db_session.query(Owner).filter_by(ownerid=ownerid).update(
+            values=dict(oauth_token=oauth_token)
+        )
+        db_session.commit()
+
+    return callback
 
 
 def get_repo_provider_service(
@@ -51,6 +86,9 @@ def get_repo_provider_service(
         oauth_consumer_token=dict(
             key=get_config(service, "client_id"),
             secret=get_config(service, "client_secret"),
+        ),
+        on_token_refresh=get_token_refresh_callback(
+            repository.get_db_session(), repository.ownerid, repository.owner.service
         ),
     )
     return _get_repo_provider_service_instance(repository.service, **adapter_params)
