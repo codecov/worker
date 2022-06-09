@@ -232,6 +232,8 @@ class UploadProcessorTask(BaseCodecovTask):
                     repoid=commit.repoid,
                     commit=commit.commitid,
                     upload_id=upload_obj.id,
+                    processing_result_error_code=processing_result.error.code,
+                    processing_result_error_params=processing_result.error.params,
                 ),
             )
             self.schedule_for_later_try()
