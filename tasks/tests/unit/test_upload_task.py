@@ -6,10 +6,13 @@ import mock
 import pytest
 from celery.exceptions import Retry
 from redis.exceptions import LockError
+from shared.reports.enums import UploadState, UploadType
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
+from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
 from database.models import Upload
+from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
@@ -645,6 +648,89 @@ class TestUploadTaskIntegration(object):
             [
                 {"build": "part1", "url": "url1", "upload_pk": first_session.id},
                 {"build": "part2", "url": "url2", "upload_pk": second_session.id},
+            ],
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_task_upload_already_created(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_redis,
+        mock_repo_provider,
+        mock_storage,
+    ):
+        mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
+        mock_possibly_update_commit_from_provider_info = mocker.patch.object(
+            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        )
+        mock_create_upload = mocker.patch.object(ReportService, "create_report_upload")
+
+        def fail_if_try_to_create_upload(*args, **kwargs):
+            raise Exception("tried to create Upload")
+
+        mock_create_upload.side_effect = fail_if_try_to_create_upload
+        mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
+        mock_app = mocker.patch.object(UploadTask, "app")
+        mock_app.send_task.return_value = True
+        reportid = "5fbeee8b-5a41-4925-b59d-470b9d171235"
+        commit = CommitFactory.create(
+            message="",
+            parent_commit_id=None,
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="ThiagoCodecov",
+            repository__yaml={"codecov": {"max_report_age": "764y ago"}},
+        )
+        report = CommitReport(commit_id=commit.id_)
+        upload = Upload(
+            external_id=reportid,
+            build_code="part1",
+            build_url="build_url",
+            env=None,
+            report_id=report.id_,
+            job_code="job",
+            name="name",
+            provider="service",
+            state="started",
+            storage_path="url",
+            order_number=None,
+            upload_extras={},
+            upload_type=SessionType.uploaded.value,
+            state_id=UploadState.uploaded.value,
+            upload_type_id=UploadType.uploaded.value,
+        )
+        mock_repo_provider.data = dict(repo=dict(repoid=commit.repoid))
+        dbsession.add(commit)
+        dbsession.add(report)
+        dbsession.add(upload)
+        dbsession.flush()
+
+        redis_queue = [
+            {"build": "part1", "url": "url1", "upload_id": upload.id_},
+        ]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
+        result = await UploadTask().run_async_within_lock(
+            dbsession, mock_redis, commit.repoid, commit.commitid
+        )
+        assert {"was_setup": True, "was_updated": True} == result
+        assert commit.message == ""
+        assert commit.parent_commit_id is None
+        assert commit.report is not None
+        assert commit.report.details is not None
+        mocked_schedule_task.assert_called_with(
+            commit,
+            UserYaml({"codecov": {"max_report_age": "764y ago"}}),
+            [
+                {
+                    "build": "part1",
+                    "url": "url1",
+                    "upload_pk": upload.id_,
+                    "upload_id": upload.id_,
+                }
             ],
         )
 
