@@ -27,39 +27,62 @@ def json_dumps(d):
     return json.dumps(d, cls=DatabaseEncoder)
 
 
-default_database_url = "postgres://postgres:@postgres:5432/postgres"
-main_engine = create_engine(
-    get_config("services", "database_url", default=default_database_url),
-    json_serializer=json_dumps,
+class SessionFactory:
+    def __init__(self, database_url, timeseries_database_url=None):
+        self.database_url = database_url
+        self.timeseries_database_url = timeseries_database_url
+        self.main_engine = None
+        self.timeseries_engine = None
+
+    def create_session(self):
+        self.main_engine = create_engine(
+            self.database_url,
+            json_serializer=json_dumps,
+        )
+
+        if timeseries_enabled():
+            self.timeseries_engine = create_engine(
+                self.timeseries_database_url,
+                json_serializer=json_dumps,
+            )
+
+            main_engine = self.main_engine
+            timeseries_engine = self.timeseries_engine
+
+            class RoutingSession(Session):
+                def get_bind(self, mapper=None, clause=None):
+                    if mapper is not None and issubclass(
+                        mapper.class_, TimeseriesBaseModel
+                    ):
+                        return timeseries_engine
+                    if (
+                        clause is not None
+                        and hasattr(clause, "table")
+                        and clause.table.name.startswith("timeseries_")
+                    ):
+                        return timeseries_engine
+                    return main_engine
+
+            session_factory = sessionmaker(class_=RoutingSession)
+        else:
+            session_factory = sessionmaker(bind=self.main_engine)
+
+        return scoped_session(session_factory)
+
+
+session_factory = SessionFactory(
+    database_url=get_config(
+        "services",
+        "database_url",
+        default="postgres://postgres:@postgres:5432/postgres",
+    ),
+    timeseries_database_url=get_config(
+        "services",
+        "timeseries_database_url",
+        default="postgres://postgres:@timescale:5432/postgres",
+    ),
 )
 
-if timeseries_enabled():
-    default_timeseries_database_url = "postgres://postgres:@timescale:5432/postgres"
-    timeseries_engine = create_engine(
-        get_config(
-            "services",
-            "timeseries_database_url",
-            default=default_timeseries_database_url,
-        ),
-        json_serializer=json_dumps,
-    )
-
-    class RoutingSession(Session):
-        def get_bind(self, mapper=None, clause=None):
-            if mapper is not None and isinstance(mapper.class_, TimeseriesBaseModel):
-                return timeseries_engine
-            if (
-                clause is not None
-                and hasattr(clause, "table")
-                and clause.table.name.startswith("timeseries_")
-            ):
-                return timeseries_engine
-            return main_engine
-
-    session_factory = sessionmaker(class_=RoutingSession)
-else:
-    session_factory = sessionmaker(bind=main_engine)
-
-session = scoped_session(session_factory)
+session = session_factory.create_session()
 
 get_db_session = session
