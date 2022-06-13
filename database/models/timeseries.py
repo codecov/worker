@@ -17,6 +17,15 @@ class MeasurementName(Enum):
 
 
 class Measurement(TimeseriesBaseModel):
+    """
+    This model is defined here in order to describe the available columns and
+    indexes on the table.  The table does not have a primary key and so you'll
+    likely run into issues if you try to use the model in an ORM-style of loading
+    and saving single records based on the primary key.  The primary key is defined
+    below to appease SQLAlchemy only and is not intended to be used.
+
+    See `services/timeseries.py` for an example of inserting/updating measurements.
+    """
 
     __tablename__ = "timeseries_measurement"
 
