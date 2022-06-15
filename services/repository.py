@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 
 from database.models import Commit, Owner, Pull, Repository
 from services.bots import get_repo_appropriate_bot_token, get_token_type_mapping
-from services.yaml import read_yaml_field
 from services.encryption import encryptor
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
