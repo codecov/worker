@@ -218,7 +218,10 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 track_event(
                     user_id=BLANK_SEGMENT_USER_ID,
                     event_name="Impact Analysis Critical Files Sent",
-                    event_data={"repo_id": self.repository.repoid, "repo_owner_id": self.repository.ownerid},
+                    event_data={
+                        "repo_id": self.repository.repoid,
+                        "repo_owner_id": self.repository.ownerid,
+                    },
                 )
 
 
@@ -319,7 +322,10 @@ class HeaderSectionWriter(BaseSectionWriter):
                 track_event(
                     user_id=BLANK_SEGMENT_USER_ID,
                     event_name="Impact Analysis Critical Files Sent",
-                    event_data={"repo_id": self.repository.repoid, "repo_owner_id": self.repository.ownerid},
+                    event_data={
+                        "repo_id": self.repository.repoid,
+                        "repo_owner_id": self.repository.ownerid,
+                    },
                 )
 
 
@@ -340,7 +346,10 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             track_event(
                 user_id=BLANK_SEGMENT_USER_ID,
                 event_name="Impact Analysis Related Entrypoints Sent",
-                event_data={"repo_id": self.repository.repoid, "repo_owner_id": self.repository.ownerid},
+                event_data={
+                    "repo_id": self.repository.repoid,
+                    "repo_owner_id": self.repository.ownerid,
+                },
             )
         elif impacted_endpoints is not None:
             yield "This change has been scanned for critical changes"
