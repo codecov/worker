@@ -3,6 +3,7 @@ from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
 
+from shared.analytics_tracking import track_event, BLANK_SEGMENT_USER_ID
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
 
@@ -214,6 +215,11 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
+                track_event(
+                    user_id=BLANK_SEGMENT_USER_ID,
+                    event_name="Impact Analysis Critical Files Sent",
+                    event_data={"repo_id": self.repository.repoid, "repo_owner_id": self.repository.ownerid},
+                )
 
 
 class HeaderSectionWriter(BaseSectionWriter):
@@ -310,6 +316,11 @@ class HeaderSectionWriter(BaseSectionWriter):
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
+                track_event(
+                    user_id=BLANK_SEGMENT_USER_ID,
+                    event_name="Impact Analysis Critical Files Sent",
+                    event_data={"repo_id": self.repository.repoid, "repo_owner_id": self.repository.ownerid},
+                )
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):
@@ -326,6 +337,11 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             yield "|---|"
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
+            track_event(
+                user_id=BLANK_SEGMENT_USER_ID,
+                event_name="Impact Analysis Related Entrypoints Sent",
+                event_data={"repo_id": self.repository.repoid, "repo_owner_id": self.repository.ownerid},
+            )
         elif impacted_endpoints is not None:
             yield "This change has been scanned for critical changes"
 
