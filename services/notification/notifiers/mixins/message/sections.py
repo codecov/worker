@@ -3,7 +3,7 @@ from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
 
-from shared.analytics_tracking import track_event, BLANK_SEGMENT_USER_ID
+from shared.analytics_tracking import BLANK_SEGMENT_USER_ID, track_event
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
 
