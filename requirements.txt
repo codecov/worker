@@ -274,7 +274,7 @@ text-unidecode==1.3
     # via faker
 timestring==1.6.4
     # via -r requirements.in
-tlslite-ng==0.7.6
+tlslite-ng==0.8.0-alpha3
     # via shared
 urllib3==1.26.5
     # via
