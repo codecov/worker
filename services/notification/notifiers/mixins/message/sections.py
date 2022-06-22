@@ -212,7 +212,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             if files_in_critical:
                 yield ("")
                 yield (
-                    "Changes have been made to critical files, which contain lines commonly executed in production"
+                    "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
                 )
 
 
@@ -308,7 +308,7 @@ class HeaderSectionWriter(BaseSectionWriter):
             if files_in_critical:
                 yield ("")
                 yield (
-                    "Changes have been made to critical files, which contain lines commonly executed in production"
+                    "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
                 )
 
 
@@ -327,7 +327,7 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
         elif impacted_endpoints is not None:
-            yield "This change has been scanned for critical changes"
+            yield "This change has been scanned for critical changes. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
 
 
 class FooterSectionWriter(BaseSectionWriter):

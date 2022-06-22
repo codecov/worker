@@ -749,7 +749,7 @@ class TestCommentNotifier(object):
             f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
-            "Changes have been made to critical files, which contain lines commonly executed in production",
+            "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
             f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
@@ -3352,7 +3352,9 @@ class TestImpactedEndpointWriter(object):
                 links={"pull": "pull.link"},
             )
         )
-        assert lines == ["This change has been scanned for critical changes"]
+        assert lines == [
+            "This change has been scanned for critical changes. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
+        ]
 
     @pytest.mark.asyncio
     async def test_impacted_endpoints_table_none_result(
@@ -3652,7 +3654,7 @@ class TestCommentNotifierInNewLayout(object):
             f"> Coverage data is based on head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{sample_comparison.base.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
             "> Patch has no changes to coverable lines.",
             "",
-            "Changes have been made to critical files, which contain lines commonly executed in production",
+            "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
             f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
