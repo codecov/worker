@@ -195,7 +195,9 @@ class ReportService(object):
             env=None,
             report_id=commit_report.id_,
             job_code=normalized_arguments.get("job"),
-            name=normalized_arguments.get("name")[:100],
+            name=normalized_arguments.get("name")[:100]
+            if normalized_arguments.get("name")
+            else None,
             provider=normalized_arguments.get("service"),
             state="started",
             storage_path=normalized_arguments.get("url"),
@@ -621,7 +623,7 @@ class ReportService(object):
                 env=session.env,
                 external_id=uuid.uuid4(),
                 job_code=session.job,
-                name=session.name[:100],
+                name=session.name[:100] if session.name is not None else None,
                 order_number=sess_id,
                 provider=session.provider,
                 report_id=commit.report.id_,
