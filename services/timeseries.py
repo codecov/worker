@@ -1,9 +1,11 @@
 import logging
+from datetime import datetime
 
 from shared.reports.readonly import ReadOnlyReport
 from sqlalchemy.dialects.postgresql import insert
 
 from database.models import Commit, Measurement, MeasurementName
+from database.models.core import Repository
 from database.models.reports import RepositoryFlag
 from helpers.timeseries import timeseries_enabled
 from services.report import ReportService
@@ -106,3 +108,22 @@ def save_commit_measurements(commit: Commit) -> None:
         )
         db_session.execute(command)
         db_session.flush()
+
+
+def save_repository_measurements(
+    repository: Repository, start_date: datetime, end_date: datetime
+) -> None:
+    db_session = repository.get_db_session()
+
+    commits = (
+        db_session.query(Commit)
+        .filter(
+            Commit.repoid == repository.repoid,
+            Commit.timestamp >= start_date,
+            Commit.timestamp <= end_date,
+        )
+        .yield_per(1000)
+    )
+
+    for commit in commits:
+        save_commit_measurements(commit)
