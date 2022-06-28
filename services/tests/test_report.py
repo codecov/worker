@@ -2650,6 +2650,9 @@ class TestReportService(BaseTestCase):
         dbsession.add(report_details)
         dbsession.flush()
         sample_report.sessions[0].archive = "path/to/upload/location"
+        sample_report.sessions[
+            0
+        ].name = "this name contains more than 100 chars 1111111111111111111111111111111111111111111111111111111111111this is more than 100"
         report_service = ReportService({})
         res = report_service.save_full_report(commit, sample_report)
         storage_hash = report_service.get_archive_service(
@@ -2671,7 +2674,10 @@ class TestReportService(BaseTestCase):
         assert first_upload.build_url is None
         assert first_upload.env is None
         assert first_upload.job_code is None
-        assert first_upload.name is None
+        assert (
+            first_upload.name
+            == "this name contains more than 100 chars 1111111111111111111111111111111111111111111111111111111111111"
+        )
         assert first_upload.provider == "circleci"
         assert first_upload.report_id == current_report_row.id_
         assert first_upload.state == "complete"
@@ -3588,7 +3594,7 @@ class TestReportService(BaseTestCase):
             "commit": "1280bf4b8d596f41b101ac425758226c021876da",
             "job": "thisjob",
             "flags": "unittest",
-            "name": "L MinGW 64-bit",
+            "name": "this name contains more than 100 chars 1111111111111111111111111111111111111111111111111111111111111this is more than 100",
             "owner": "greenlantern",
             "package": "github-action-20210309-2b87ace",
             "pr": "33",
@@ -3617,7 +3623,10 @@ class TestReportService(BaseTestCase):
         )
         assert res.env is None
         assert res.job_code == "thisjob"
-        assert res.name == "L MinGW 64-bit"
+        assert (
+            res.name
+            == "this name contains more than 100 chars 1111111111111111111111111111111111111111111111111111111111111"
+        )
         assert res.provider == "github-actions"
         assert res.report_id == current_report_row.id_
         assert res.state == "started"
