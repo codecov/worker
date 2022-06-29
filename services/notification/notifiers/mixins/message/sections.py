@@ -3,7 +3,10 @@ from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
 
-from shared.analytics_tracking import BLANK_SEGMENT_USER_ID, track_event
+from shared.analytics_tracking import (
+    track_critical_files_sent,
+    track_related_entrypoints_sent,
+)
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
 
@@ -215,13 +218,8 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
-                track_event(
-                    user_id=BLANK_SEGMENT_USER_ID,
-                    event_name="Impact Analysis Critical Files Sent",
-                    event_data={
-                        "repo_id": self.repository.repoid,
-                        "repo_owner_id": self.repository.ownerid,
-                    },
+                track_critical_files_sent(
+                    self.repository, comparison.head.commit.commitid, pull.pullid
                 )
 
 
@@ -319,13 +317,8 @@ class HeaderSectionWriter(BaseSectionWriter):
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
-                track_event(
-                    user_id=BLANK_SEGMENT_USER_ID,
-                    event_name="Impact Analysis Critical Files Sent",
-                    event_data={
-                        "repo_id": self.repository.repoid,
-                        "repo_owner_id": self.repository.ownerid,
-                    },
+                track_critical_files_sent(
+                    self.repository, comparison.head.commit.commitid, pull.pullid
                 )
 
 
@@ -343,13 +336,8 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             yield "|---|"
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
-            track_event(
-                user_id=BLANK_SEGMENT_USER_ID,
-                event_name="Impact Analysis Related Entrypoints Sent",
-                event_data={
-                    "repo_id": self.repository.repoid,
-                    "repo_owner_id": self.repository.ownerid,
-                },
+            track_related_entrypoints_sent(
+                self.repository, comparison.head.commit.commitid, comparison.pull.pullid
             )
         elif impacted_endpoints is not None:
             yield "This change has been scanned for critical changes"
