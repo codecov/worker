@@ -2,7 +2,7 @@ import logging
 from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
-from helpers.environment import is_enterprise
+
 
 from shared.analytics_tracking import (
     track_critical_files_sent,
@@ -11,6 +11,7 @@ from shared.analytics_tracking import (
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
 
+from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
 from services.comparison.overlays import OverlayType
 from services.notification.notifiers.mixins.message.helpers import (
