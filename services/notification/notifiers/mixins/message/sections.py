@@ -3,7 +3,6 @@ from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
 
-
 from shared.analytics_tracking import (
     track_critical_files_sent,
     track_related_entrypoints_sent,
