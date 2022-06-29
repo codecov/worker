@@ -2,6 +2,7 @@ import logging
 from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
+from helpers.environment import is_enterprise
 
 from shared.analytics_tracking import (
     track_critical_files_sent,
@@ -219,7 +220,10 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
                 track_critical_files_sent(
-                    self.repository, comparison.head.commit.commitid, pull.pullid
+                    self.repository,
+                    comparison.head.commit.commitid,
+                    pull.pullid,
+                    is_enterprise(),
                 )
 
 
@@ -318,7 +322,10 @@ class HeaderSectionWriter(BaseSectionWriter):
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
                 track_critical_files_sent(
-                    self.repository, comparison.head.commit.commitid, pull.pullid
+                    self.repository,
+                    comparison.head.commit.commitid,
+                    pull.pullid,
+                    is_enterprise(),
                 )
 
 
@@ -337,7 +344,10 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
             track_related_entrypoints_sent(
-                self.repository, comparison.head.commit.commitid, comparison.pull.pullid
+                self.repository,
+                comparison.head.commit.commitid,
+                comparison.pull.pullid,
+                is_enterprise(),
             )
         elif impacted_endpoints is not None:
             yield "This change has been scanned for critical changes"
