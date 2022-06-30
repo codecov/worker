@@ -3,7 +3,6 @@ from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
 
-from shared.analytics_tracking import segment_track_betaprofiling_in_YAML
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
 
@@ -320,7 +319,6 @@ class AnnouncementSectionWriter(BaseSectionWriter):
 
 class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links):
-        segment_track_betaprofiling_in_YAML(self.repository)
         overlay = comparison.get_overlay(OverlayType.line_execution_count)
         impacted_endpoints = await overlay.find_impacted_endpoints()
         if impacted_endpoints:
