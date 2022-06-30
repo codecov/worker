@@ -1,19 +1,19 @@
 import logging
 
-from shared.torngit.exceptions import TorngitClientError, TorngitError
-from shared.validation.exceptions import InvalidYamlException
-from shared.yaml import UserYaml
 from shared.analytics_tracking import (
     track_betaprofiling_added_in_YAML,
     track_betaprofiling_removed_from_YAML,
     track_show_critical_paths_added_in_YAML,
     track_show_critical_paths_removed_from_YAML,
 )
+from shared.torngit.exceptions import TorngitClientError, TorngitError
+from shared.validation.exceptions import InvalidYamlException
+from shared.yaml import UserYaml
 
 from database.models import Commit
+from helpers.environment import is_enterprise
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.reader import read_yaml_field
-from helpers.environment import is_enterprise
 
 log = logging.getLogger(__name__)
 
