@@ -72,6 +72,45 @@ class TestLua(BaseTestCase):
 
         assert expected_result_archive == processed_report["archive"]
 
+    def test_report_with_line_breaks_in_the_beginning(self):
+        content = b"\n".join(
+            [
+                b"==============================================================================",
+                b"socks.lua",
+                b"==============================================================================",
+                b"",
+                b"     914 socks = []",
+                b"",
+                b"     914 function fact(n)",
+                b"     914   if n == 0 then",
+                b"     914     return 1",
+                b"     914   else",
+                b"     914     return 0",
+                b"     914   end",
+                b"     914 end",
+                b"<<<<<< EOF",
+            ]
+        )
+        report = lua.from_txt(content, lambda x: x, {}, 0)
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+
+        pprint.pprint(processed_report["archive"])
+        expected_result_archive = {
+            "socks.lua": [
+                (2, 914, None, [[0, 914, None, None, None]], None, None),
+                (4, 914, None, [[0, 914, None, None, None]], None, None),
+                (5, 914, None, [[0, 914, None, None, None]], None, None),
+                (6, 914, None, [[0, 914, None, None, None]], None, None),
+                (7, 914, None, [[0, 914, None, None, None]], None, None),
+                (8, 914, None, [[0, 914, None, None, None]], None, None),
+                (9, 914, None, [[0, 914, None, None, None]], None, None),
+                (10, 914, None, [[0, 914, None, None, None]], None, None),
+            ]
+        }
+
+        assert expected_result_archive == processed_report["archive"]
+
     def test_detect(self):
         assert lua.detect(b"=========") is True
         assert lua.detect(b"=== fefef") is False
