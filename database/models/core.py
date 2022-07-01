@@ -325,19 +325,3 @@ class CompareCommit(MixinBaseClass, CodecovBaseModel):
 
     def __repr__(self):
         return f"CompareCommit<{self.base_commit_id}...{self.compare_commit_id}>"
-
-
-class CompareFlag(MixinBaseClass, CodecovBaseModel):
-    __tablename__ = "compare_flagcomparison"
-
-    commit_comparison_id = Column(
-        types.BigInteger, ForeignKey("compare_commitcomparison.id")
-    )
-    commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
-    flag_name = Column(types.Text)
-    carriedforward = Column(types.Boolean)
-    patch_totals = Column(postgresql.JSON)
-    coverage_totals = Column(postgresql.JSON)
-
-    def __repr__(self):
-        return f"CompareFlag<{self.flag_name}@comparison{self.commit_comparison_id}>"

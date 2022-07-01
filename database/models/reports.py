@@ -6,7 +6,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import backref, relationship
 
 from database.base import CodecovBaseModel, MixinBaseClass
-from database.models.core import Repository
+from database.models.core import CompareCommit, Repository
 
 log = logging.getLogger(__name__)
 
@@ -139,3 +139,19 @@ class UploadLevelTotals(CodecovBaseModel, AbstractTotals):
     __tablename__ = "reports_uploadleveltotals"
     upload_id = Column("upload_id", types.Integer, ForeignKey("reports_upload.id"))
     upload = relationship("Upload", foreign_keys=[upload_id])
+
+
+class CompareFlag(MixinBaseClass, CodecovBaseModel):
+    __tablename__ = "compare_flagcomparison"
+
+    commit_comparison_id = Column(
+        types.BigInteger, ForeignKey("compare_commitcomparison.id")
+    )
+    commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
+    repositoryflag_id = Column(types.Text, ForeignKey("reports_repositoryflag.id"))
+    repositoryflag = relationship(RepositoryFlag, foreign_keys=[repositoryflag_id])
+    patch_totals = Column(postgresql.JSON)
+    coverage_totals = Column(postgresql.JSON)
+
+    def __repr__(self):
+        return f"CompareFlag<{self.flag_name}@comparison{self.commit_comparison_id}>"

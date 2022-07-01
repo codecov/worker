@@ -10,7 +10,7 @@ from shared.yaml import UserYaml
 from app import celery_app
 from database.enums import CompareCommitError, CompareCommitState
 from database.models import CompareCommit, CompareFlag
-from database.models.reports import ReportLevelTotals
+from database.models.reports import ReportLevelTotals, RepositoryFlag
 from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.comparison import ComparisonProxy
@@ -79,15 +79,14 @@ class ComputeComparisonTask(BaseCodecovTask):
     ):
         log_extra = dict(comparison_id=comparison.id, current_yaml=current_yaml)
         log.info("Computing flag comparisons", extra=log_extra)
-        flags = await self.get_head_report_flags(comparison, current_yaml)
-        if not flags:
+        session_flags = await self.get_head_report_flags(comparison, current_yaml)
+        if not session_flags:
             log.info("Head report does not have any flags", extra=log_extra)
             return
         await self.create_or_update_flag_comparisons(
-            db_session, flags, comparison, comparison_proxy
+            db_session, session_flags, comparison, comparison_proxy
         )
 
-    # Returns a list of Flag objects if they exist
     async def get_head_report_flags(
         self, comparison: CompareCommit, current_yaml: UserYaml
     ) -> List[Flag]:
@@ -101,7 +100,7 @@ class ComputeComparisonTask(BaseCodecovTask):
     async def create_or_update_flag_comparisons(
         self,
         db_session,
-        flags: List[Flag],
+        session_flags: List[Flag],
         comparison: CompareCommit,
         comparison_proxy: ComparisonProxy,
     ):
@@ -116,7 +115,7 @@ class ComputeComparisonTask(BaseCodecovTask):
                 comparison.id,
             )
             await self.create_and_store_flag_comparisons(
-                db_session, flags, comparison, comparison_proxy
+                db_session, session_flags, comparison, comparison_proxy
             )
         else:
             log.info(
@@ -124,43 +123,62 @@ class ComputeComparisonTask(BaseCodecovTask):
                 comparison.id,
             )
             await self.update_or_add_flag_comparisons_for_new_upload(
-                db_session, flags, comparison, comparison_proxy
+                db_session, session_flags, comparison, comparison_proxy
             )
 
     async def create_and_store_flag_comparisons(
         self,
         db_session,
-        flags: List[Flag],
+        session_flags: List[Flag],
         comparison: CompareCommit,
         comparison_proxy: ComparisonProxy,
     ):
-        for flag_name, flag_obj in flags.items():
+        for flag_name, flag_obj in session_flags.items():
             coverage_totals, patch_totals = await self.get_flag_comparison_totals(
                 flag_obj, comparison_proxy
+            )
+            repositoryflag = (
+                db_session.query(RepositoryFlag)
+                .filter_by(
+                    flag_name=flag_name,
+                    repository_id=comparison.compare_commit.repository.repoid,
+                )
+                .first()
             )
             self.store_flag_comparison(
                 db_session,
                 comparison,
-                flag_name,
+                repositoryflag,
                 coverage_totals,
                 patch_totals,
-                flag_obj.carriedforward,
             )
-        log.info("%s flag comparisons stored successfully", len(flags))
+        log.info("%s flag comparisons stored successfully", len(session_flags))
 
     async def update_or_add_flag_comparisons_for_new_upload(
         self,
         db_session,
-        flags: List[Flag],
+        session_flags: List[Flag],
         comparison: CompareCommit,
         comparison_proxy: ComparisonProxy,
     ):
-        for flag_name, flag_obj in flags.items():
-            flag_comparison_entry = (
-                db_session.query(CompareFlag)
-                .filter_by(commit_comparison_id=comparison.id, flag_name=flag_name)
+        for flag_name, flag_obj in session_flags.items():
+            repositoryflag = (
+                db_session.query(RepositoryFlag)
+                .filter_by(
+                    flag_name=flag_name,
+                    repository_id=comparison.compare_commit.repository.repoid,
+                )
                 .first()
             )
+            flag_comparison_entry = (
+                db_session.query(CompareFlag)
+                .filter_by(
+                    commit_comparison_id=comparison.id,
+                    repositoryflag_id=repositoryflag.id,
+                )
+                .first()
+            )
+
             if not flag_comparison_entry:
                 log.info("Adding new flag comparison")
                 coverage_totals, patch_totals = await self.get_flag_comparison_totals(
@@ -172,7 +190,6 @@ class ComputeComparisonTask(BaseCodecovTask):
                     flag_name,
                     coverage_totals,
                     patch_totals,
-                    flag_obj.carriedforward,
                 )
             else:
                 log.info("Updating totals for existing flag comparison entry")
@@ -181,7 +198,7 @@ class ComputeComparisonTask(BaseCodecovTask):
                 )
                 flag_comparison_entry.coverage_totals = coverage_totals
                 flag_comparison_entry.patch_totals = patch_totals
-        log.info("%s flag comparisons stored successfully", len(flags))
+        log.info("%s flag comparisons stored successfully", len(session_flags))
 
     async def get_flag_comparison_totals(
         self, flag_obj: Flag, comparison_proxy: ComparisonProxy
@@ -196,15 +213,13 @@ class ComputeComparisonTask(BaseCodecovTask):
         self,
         db_session,
         comparison: CompareCommit,
-        flag_name: str,
+        repositoryflag: RepositoryFlag,
         coverage_totals: Dict[str, ReportLevelTotals],
         patch_totals: Dict[str, ReportLevelTotals],
-        carriedforward: bool,
     ):
         flag_comparison = CompareFlag(
             commit_comparison=comparison,
-            flag_name=flag_name,
-            carriedforward=carriedforward,
+            repositoryflag=repositoryflag,
             patch_totals=patch_totals,
             coverage_totals=coverage_totals,
         )
