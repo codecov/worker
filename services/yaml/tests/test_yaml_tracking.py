@@ -1,10 +1,10 @@
-from tests.base import BaseTestCase
 from database.tests.factories import RepositoryFactory
 from services.yaml import (
-    tracking_runtime_insights_fields,
     betaprofiling_is_added_in_yaml,
     betaprofiling_is_removed_from_yaml,
+    tracking_runtime_insights_fields,
 )
+from tests.base import BaseTestCase
 
 
 class TestYamlTrackingService(BaseTestCase):
