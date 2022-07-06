@@ -2,11 +2,10 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 import shared.torngit as torngit
 from shared.config import get_config, get_verify_ssl
-from shared.encryption.oauth import get_encryptor_from_configuration
 from shared.encryption.token import encode_token
 from shared.torngit.exceptions import (
     TorngitClientError,
