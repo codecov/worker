@@ -48,7 +48,7 @@ def get_token_type_mapping(repo: Repository):
         return None
     admin_bot = None
     try:
-        admin_bot = get_repo_particular_bot_token(repo)
+        admin_bot, _ = get_repo_particular_bot_token(repo)
     except RepositoryWithoutValidBotError:
         log.warning(
             "Repository has no good bot for admin, but still continuing operations in case it is not doing an admin call anyway",
