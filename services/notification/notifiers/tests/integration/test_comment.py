@@ -506,7 +506,7 @@ class TestCommentNotifierIntegration(object):
             "</details>",
             "",
             "[:umbrella: View full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   ",
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):

@@ -78,7 +78,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
         )
         yield (
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue]({0}).".format(
-                "https://github.com/codecov/Codecov-user-feedback/issues/8"
+                "https://about.codecov.io/codecov-pr-comment-feedback/"
                 if repo_service == "github"
                 else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
             )

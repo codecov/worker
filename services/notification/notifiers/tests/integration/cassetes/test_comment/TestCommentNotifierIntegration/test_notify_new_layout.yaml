@@ -110,7 +110,7 @@ interactions:
       | `50.00% <0.00%> (\u00f8)` | `0.00% <0.00%> (\u00f8%)` | |\n| [file\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv)
       | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\n\n</details>\n[:umbrella:
       View full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   \n:loudspeaker:
-      Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).\n"}'
+      Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).\n"}'
     headers:
       accept:
       - application/json
@@ -152,7 +152,7 @@ interactions:
       | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\\n\\n</details>\\n[:umbrella:
       View full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).
       \  \\n:loudspeaker: Do you have feedback about the report comment? [Let us know
-      in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).\\n\",\"reactions\":{\"url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1069392024/reactions\",\"total_count\":0,\"+1\":0,\"-1\":0,\"laugh\":0,\"hooray\":0,\"confused\":0,\"heart\":0,\"rocket\":0,\"eyes\":0},\"performed_via_github_app\":null}"
+      in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).\\n\",\"reactions\":{\"url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1069392024/reactions\",\"total_count\":0,\"+1\":0,\"-1\":0,\"laugh\":0,\"hooray\":0,\"confused\":0,\"heart\":0,\"rocket\":0,\"eyes\":0},\"performed_via_github_app\":null}"
     headers:
       Access-Control-Allow-Origin:
       - '*'
