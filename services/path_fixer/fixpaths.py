@@ -133,6 +133,7 @@ _star_to_glob = re.compile(r"(?<!\.)\*").sub
 
 def _fixpaths_regs(fix: str) -> str:
     key = tuple(fix.split("::"))[0]
+    # @tomhu - 2022-07-07 - we should consider using fnmatch.translate for glob -> regex translations
     # [DEPRECIATING] because handled by validators, but some data is cached in db
     # a/**/b => a/.*/b
     key = key.replace("**", r".*")
