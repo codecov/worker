@@ -137,6 +137,6 @@ def _fixpaths_regs(fix: str) -> str:
     # [DEPRECIATING] because handled by validators, but some data is cached in db
     # a/**/b => a/.*/b
     key = key.replace("**", r".*")
-    # a/*/b => a/[^\/\n]+/b
-    key = _star_to_glob(r"[^\/\n]+", key)
+    # a/*/b => a/[^\/\n]*/b
+    key = _star_to_glob(r"[^\/\n]*", key)
     return key.lstrip("/")
