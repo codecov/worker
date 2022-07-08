@@ -3441,7 +3441,7 @@ class TestNewFooterSectionWriter(object):
         assert res == [
             "",
             "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
 
     @pytest.mark.asyncio
@@ -3725,7 +3725,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"",
             f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
         for exp, res in zip(expected_result, result):
@@ -3795,7 +3795,7 @@ class TestCommentNotifierInNewLayout(object):
             f"</details>",
             f"",
             f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
         for exp, res in zip(expected_result, result):
@@ -3864,7 +3864,7 @@ class TestCommentNotifierInNewLayout(object):
             f"</details>",
             f"",
             f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
         for exp, res in zip(expected_result, result):
