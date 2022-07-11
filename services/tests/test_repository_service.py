@@ -1,3 +1,4 @@
+import inspect
 from datetime import datetime
 
 import mock
@@ -82,13 +83,15 @@ class TestRepositoryServiceTestCase(object):
         }
         assert res.data == expected_data
         assert res._on_token_refresh is not None
+        assert inspect.isawaitable(res._on_token_refresh(None))
         assert res.token == {
             "username": repo.owner.username,
             "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
             "secret": None,
         }
 
-    def test_token_refresh_callback(self, dbsession):
+    @pytest.mark.asyncio
+    async def test_token_refresh_callback(self, dbsession):
         repo = RepositoryFactory.create(
             owner__unencrypted_oauth_token="testyftq3ovzkb3zmt823u3t04lkrt9w",
             owner__service="gitlab",
@@ -98,7 +101,7 @@ class TestRepositoryServiceTestCase(object):
         dbsession.flush()
         res = get_repo_provider_service(repo)
         new_token = dict(key="new_access_token", refresh_token="new_refresh_token")
-        res._on_token_refresh(new_token)
+        await res._on_token_refresh(new_token)
         owner = dbsession.query(Owner).filter_by(ownerid=repo.owner.ownerid).first()
         encryptor = get_encryptor_from_configuration()
         saved_token = encryptor.decrypt_token(owner.oauth_token)
