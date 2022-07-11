@@ -120,7 +120,7 @@ jmespath==0.10.0
     #   botocore
 kombu==5.2.4
     # via celery
-lxml==4.7.1
+lxml==4.9.1
     # via -r requirements.in
 minio==6.0.2
     # via shared
@@ -179,7 +179,7 @@ pyasn1-modules==0.2.8
     # via google-auth
 pycparser==2.20
     # via cffi
-pyjwt==1.7.1
+pyjwt==2.4.0
     # via -r requirements.in
 pyparsing==2.4.7
     # via
