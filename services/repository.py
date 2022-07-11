@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 import shared.torngit as torngit
+from asgiref.sync import sync_to_async
 from shared.config import get_config, get_verify_ssl
 from shared.encryption.token import encode_token
 from shared.torngit.exceptions import (
@@ -41,17 +42,8 @@ def get_token_refresh_callback(
     if owner is None:
         return None
 
+    @sync_to_async
     def callback(new_token: Dict) -> None:
-        if "key" not in new_token and "access_token" not in new_token:
-            log.error(
-                "Can't save updated token. Key missing from dict",
-                extra=dict(ownerid=owner.ownerid, service=service),
-            )
-            return
-        # shared uses a key with the token.
-        # providers return access_token.
-        # We can have both just in case
-        new_token["access_token"] = new_token["key"]
         string_to_save = encode_token(new_token)
         oauth_token = encryptor.encode(string_to_save).decode()
         owner.oauth_token = oauth_token
