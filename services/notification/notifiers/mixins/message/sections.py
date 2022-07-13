@@ -220,7 +220,8 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
                 track_critical_files_sent(
-                    self.repository,
+                    self.repository.repoid,
+                    self.repository.ownerid,
                     comparison.head.commit.commitid,
                     pull.pullid,
                     is_enterprise(),
@@ -322,7 +323,8 @@ class HeaderSectionWriter(BaseSectionWriter):
                     "Changes have been made to critical files, which contain lines commonly executed in production"
                 )
                 track_critical_files_sent(
-                    self.repository,
+                    self.repository.repoid,
+                    self.repository.ownerid,
                     comparison.head.commit.commitid,
                     pull.pullid,
                     is_enterprise(),
@@ -344,7 +346,8 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
             track_related_entrypoints_sent(
-                self.repository,
+                self.repository.repoid,
+                self.repository.ownerid,
                 comparison.head.commit.commitid,
                 comparison.pull.pullid,
                 is_enterprise(),
