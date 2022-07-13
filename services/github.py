@@ -26,7 +26,7 @@ def get_github_integration_token(service, integration_id=None):
         # Integration's GitHub identifier
         "iss": get_config(service, "integration", "id"),
     }
-    token = jwt.encode(payload, get_pem(service), algorithm="RS256").decode()
+    token = jwt.encode(payload, get_pem(service), algorithm="RS256")
     if integration_id:
         api_endpoint = (
             torngit.Github.api_url
