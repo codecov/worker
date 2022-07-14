@@ -155,4 +155,4 @@ class CompareFlag(MixinBaseClass, CodecovBaseModel):
     patch_totals = Column(postgresql.JSON)
 
     def __repr__(self):
-        return f"CompareFlag<{self.flag_name}@comparison{self.commit_comparison_id}>"
+        return f"CompareFlag<@comparison{self.commit_comparison_id}>"
