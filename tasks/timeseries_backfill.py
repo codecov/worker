@@ -1,6 +1,6 @@
 import logging
+from datetime import datetime
 
-import dateutil.parser as dateparser
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 class TimeseriesBackfillTask(BaseCodecovTask):
 
-    # FIXME: add name to `shared.celery_config`
+    # TODO: add name to `shared.celery_config`
     name = "app.tasks.timeseries.backfill"
 
     async def run_async(
@@ -34,11 +34,11 @@ class TimeseriesBackfillTask(BaseCodecovTask):
             return {"successful": False}
 
         try:
-            start_date = dateparser.parse(start_date)
-            end_date = dateparser.parse(end_date)
+            start_date = datetime.fromisoformat(start_date)
+            end_date = datetime.fromisoformat(end_date)
             save_repository_measurements(repository, start_date, end_date)
             return {"successful": True}
-        except dateparser.ParserError:
+        except ValueError:
             log.error(
                 "Invalid date range",
                 extra=dict(start_date=start_date, end_date=end_date),

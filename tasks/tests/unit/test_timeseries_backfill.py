@@ -18,8 +18,8 @@ async def test_backfill_run_async(dbsession, mocker):
     )
 
     task = TimeseriesBackfillTask()
-    start_date = "2022-06-01T00:00:00+0000"
-    end_date = "2022-06-30T00:00:00+0000"
+    start_date = "2022-06-01T00:00:00"
+    end_date = "2022-06-30T00:00:00"
     res = await task.run_async(
         dbsession, repoid=repository.repoid, start_date=start_date, end_date=end_date
     )
@@ -27,8 +27,8 @@ async def test_backfill_run_async(dbsession, mocker):
 
     save_repository_measurements.assert_called_once_with(
         repository,
-        datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
-        datetime(2022, 6, 30, 0, 0, 0).replace(tzinfo=timezone.utc),
+        datetime(2022, 6, 1, 0, 0, 0),
+        datetime(2022, 6, 30, 0, 0, 0),
     )
 
 
@@ -39,7 +39,7 @@ async def test_backfill_run_async_invalid_repo(dbsession, mocker):
     )
 
     task = TimeseriesBackfillTask()
-    start_date = "2022-06-01T00:00:00+0000"
+    start_date = "2022-06-01T00:00:00"
     end_date = "wrong"
     res = await task.run_async(
         dbsession, repoid=9999, start_date=start_date, end_date=end_date
@@ -61,7 +61,7 @@ async def test_backfill_run_async_invalid_start_date(dbsession, mocker):
 
     task = TimeseriesBackfillTask()
     start_date = "wrong"
-    end_date = "2022-06-30T00:00:00+0000"
+    end_date = "2022-06-30T00:00:00"
     res = await task.run_async(
         dbsession, repoid=repository.repoid, start_date=start_date, end_date=end_date
     )
@@ -81,7 +81,7 @@ async def test_backfill_run_async_invalid_end_date(dbsession, mocker):
     )
 
     task = TimeseriesBackfillTask()
-    start_date = "2022-06-01T00:00:00+0000"
+    start_date = "2022-06-01T00:00:00"
     end_date = "wrong"
     res = await task.run_async(
         dbsession, repoid=repository.repoid, start_date=start_date, end_date=end_date

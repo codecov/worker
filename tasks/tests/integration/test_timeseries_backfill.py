@@ -34,8 +34,8 @@ async def test_backfill_run_async(dbsession, mocker, mock_storage):
         mock_storage.write_file("archive", master_chunks_url, content)
 
     task = TimeseriesBackfillTask()
-    start_date = "2022-06-01T00:00:00+0000"
-    end_date = "2022-06-30T00:00:00+0000"
+    start_date = "2022-06-01T00:00:00"
+    end_date = "2022-06-30T00:00:00"
     res = await task.run_async(
         dbsession, repoid=repository.repoid, start_date=start_date, end_date=end_date
     )
