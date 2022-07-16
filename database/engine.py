@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from database.models.timeseries import TimeseriesBaseModel
-from services.timeseries import timeseries_enabled
+from helpers.timeseries import timeseries_enabled
 
 from .base import Base
 

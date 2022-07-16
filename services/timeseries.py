@@ -1,19 +1,15 @@
 import logging
 
-from shared.config import get_config
 from shared.reports.readonly import ReadOnlyReport
 from sqlalchemy.dialects.postgresql import insert
 
 from database.models import Commit, Measurement, MeasurementName
 from database.models.reports import RepositoryFlag
+from helpers.timeseries import timeseries_enabled
 from services.report import ReportService
 from services.yaml import get_repo_yaml
 
 log = logging.getLogger(__name__)
-
-
-def timeseries_enabled() -> bool:
-    return get_config("setup", "timeseries", "enabled", default=False)
 
 
 def save_commit_measurements(commit: Commit) -> None:
