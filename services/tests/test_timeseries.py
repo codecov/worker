@@ -1,4 +1,5 @@
-from datetime import timezone
+from datetime import datetime, timezone
+from time import time
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -6,10 +7,10 @@ from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.utils.sessions import Session
 
 from database.models.timeseries import Measurement, MeasurementName
-from database.tests.factories import CommitFactory
+from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.reports import RepositoryFlagFactory
 from database.tests.factories.timeseries import MeasurementFactory
-from services.timeseries import save_commit_measurements
+from services.timeseries import save_commit_measurements, save_repository_measurements
 
 
 @pytest.fixture
@@ -289,3 +290,41 @@ class TestTimeseriesService(object):
         ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert measurement.branch == "foo"
         assert measurement.value == 100.0
+
+    def test_save_repository_measurements(self, dbsession, mocker):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        commit1 = CommitFactory.create(
+            repository=repository,
+            timestamp=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
+        )
+        dbsession.add(commit1)
+        commit2 = CommitFactory.create(
+            repository=repository,
+            timestamp=datetime(2022, 6, 10, 0, 0, 0).replace(tzinfo=timezone.utc),
+        )
+        dbsession.add(commit2)
+        commit3 = CommitFactory.create(
+            repository=repository,
+            timestamp=datetime(2022, 6, 17, 0, 0, 0).replace(tzinfo=timezone.utc),
+        )
+        dbsession.add(commit3)
+        commit4 = CommitFactory.create(
+            timestamp=datetime(2022, 6, 10, 0, 0, 0).replace(tzinfo=timezone.utc)
+        )
+        dbsession.add(commit4)
+        dbsession.flush()
+
+        save_commit_measurements = mocker.patch(
+            "services.timeseries.save_commit_measurements"
+        )
+
+        save_repository_measurements(
+            repository,
+            start_date=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
+            end_date=datetime(2022, 6, 15, 0, 0, 0).replace(tzinfo=timezone.utc),
+        )
+
+        assert save_commit_measurements.call_count == 2
+        save_commit_measurements.assert_any_call(commit1)
+        save_commit_measurements.assert_any_call(commit2)
