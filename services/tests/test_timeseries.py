@@ -97,9 +97,7 @@ class TestTimeseriesService(object):
         assert measurement.branch == "foo"
         assert measurement.value == 60.0
 
-    def test_save_commit_measurements_no_report(
-        self, dbsession, repository, mocker
-    ):
+    def test_save_commit_measurements_no_report(self, dbsession, repository, mocker):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
