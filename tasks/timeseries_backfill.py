@@ -5,6 +5,7 @@ from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Repository
+from database.models.timeseries import Dataset
 from services.timeseries import save_repository_measurements
 from tasks.base import BaseCodecovTask
 
@@ -37,6 +38,9 @@ class TimeseriesBackfillTask(BaseCodecovTask):
             start_date = datetime.fromisoformat(start_date)
             end_date = datetime.fromisoformat(end_date)
             save_repository_measurements(repository, start_date, end_date)
+            db_session.query(Dataset).filter(
+                Dataset.repository_id == repository.repoid
+            ).update({Dataset.backfilled: True})
             return {"successful": True}
         except ValueError:
             log.error(

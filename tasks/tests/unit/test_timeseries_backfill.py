@@ -3,7 +3,9 @@ from time import time
 
 import pytest
 
+from database.models import Dataset, MeasurementName
 from database.tests.factories import RepositoryFactory
+from database.tests.factories.timeseries import DatasetFactory
 from tasks.timeseries_backfill import TimeseriesBackfillTask
 
 
@@ -11,6 +13,15 @@ from tasks.timeseries_backfill import TimeseriesBackfillTask
 async def test_backfill_run_async(dbsession, mocker):
     repository = RepositoryFactory.create()
     dbsession.add(repository)
+    dbsession.flush()
+    coverage_dataset = DatasetFactory.create(
+        name=MeasurementName.coverage.value, repository_id=repository.repoid
+    )
+    dbsession.add(coverage_dataset)
+    flag_coverage_dataset = DatasetFactory.create(
+        name=MeasurementName.flag_coverage.value, repository_id=repository.repoid
+    )
+    dbsession.add(flag_coverage_dataset)
     dbsession.flush()
 
     save_repository_measurements = mocker.patch(
@@ -30,6 +41,13 @@ async def test_backfill_run_async(dbsession, mocker):
         datetime(2022, 6, 1, 0, 0, 0),
         datetime(2022, 6, 30, 0, 0, 0),
     )
+
+    backfilled = (
+        dbsession.query(Dataset)
+        .filter_by(repository_id=repository.repoid, backfilled=True)
+        .count()
+    )
+    assert backfilled == 2
 
 
 @pytest.mark.asyncio

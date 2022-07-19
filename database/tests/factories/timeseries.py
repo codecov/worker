@@ -3,7 +3,7 @@ from datetime import datetime
 
 import factory
 
-from database.models.timeseries import Measurement
+from database.models.timeseries import Dataset, Measurement
 
 
 class MeasurementFactory(factory.Factory):
@@ -17,3 +17,13 @@ class MeasurementFactory(factory.Factory):
 
     class Meta:
         model = Measurement
+
+
+class DatasetFactory(factory.Factory):
+
+    repository_id = 1
+    name = "testing"
+    backfilled = False
+
+    class Meta:
+        model = Dataset
