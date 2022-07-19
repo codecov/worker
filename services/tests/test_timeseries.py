@@ -97,6 +97,33 @@ class TestTimeseriesService(object):
         assert measurement.branch == "foo"
         assert measurement.value == 60.0
 
+    def test_save_commit_measurements_no_report(
+        self, dbsession, repository, mocker
+    ):
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch(
+            "services.report.ReportService.get_existing_report_for_commit",
+            return_value=None,
+        )
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+
+        save_commit_measurements(commit)
+
+        measurement = (
+            dbsession.query(Measurement)
+            .filter_by(
+                name=MeasurementName.coverage.value,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+            )
+            .one_or_none()
+        )
+
+        assert measurement is None
+
     def test_update_commit_measurement(
         self, dbsession, sample_report, repository, mocker
     ):

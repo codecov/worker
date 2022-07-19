@@ -30,92 +30,97 @@ def save_commit_measurements(commit: Commit, datasets: Iterable[str] = None) -> 
         commit, report_class=ReadOnlyReport
     )
 
+    if report is None:
+        return
+
     db_session = commit.get_db_session()
 
     if MeasurementName.coverage.value in datasets:
-        command = (
-            insert(Measurement.__table__)
-            .values(
-                name=MeasurementName.coverage.value,
-                owner_id=commit.repository.ownerid,
-                repo_id=commit.repoid,
-                flag_id=None,
-                branch=commit.branch,
-                commit_sha=commit.commitid,
-                timestamp=commit.timestamp,
-                value=float(report.totals.coverage),
-            )
-            .on_conflict_do_update(
-                index_elements=[
-                    Measurement.name,
-                    Measurement.owner_id,
-                    Measurement.repo_id,
-                    Measurement.commit_sha,
-                    Measurement.timestamp,
-                ],
-                index_where=(Measurement.flag_id.is_(None)),
-                set_=dict(
-                    branch=commit.branch,
-                    value=float(report.totals.coverage),
-                ),
-            )
-        )
-        db_session.execute(command)
-        db_session.flush()
-
-    if MeasurementName.flag_coverage.value in datasets:
-        for flag_name, flag in report.flags.items():
-            repo_flag = (
-                db_session.query(RepositoryFlag)
-                .filter_by(
-                    repository=commit.repository,
-                    flag_name=flag_name,
-                )
-                .one_or_none()
-            )
-
-            if not repo_flag:
-                log.warning(
-                    "Repository flag not found.  Created repository flag.",
-                    extra=dict(repo=commit.repoid, flag_name=flag_name),
-                )
-                repo_flag = RepositoryFlag(
-                    repository_id=commit.repoid,
-                    flag_name=flag_name,
-                )
-                db_session.add(repo_flag)
-                db_session.flush()
-
+        if report.totals.coverage is not None:
             command = (
                 insert(Measurement.__table__)
                 .values(
-                    name=MeasurementName.flag_coverage.value,
+                    name=MeasurementName.coverage.value,
                     owner_id=commit.repository.ownerid,
                     repo_id=commit.repoid,
-                    flag_id=repo_flag.id,
+                    flag_id=None,
                     branch=commit.branch,
                     commit_sha=commit.commitid,
                     timestamp=commit.timestamp,
-                    value=float(flag.totals.coverage),
+                    value=float(report.totals.coverage),
                 )
                 .on_conflict_do_update(
                     index_elements=[
                         Measurement.name,
                         Measurement.owner_id,
                         Measurement.repo_id,
-                        Measurement.flag_id,
                         Measurement.commit_sha,
                         Measurement.timestamp,
                     ],
-                    index_where=(Measurement.flag_id.isnot(None)),
+                    index_where=(Measurement.flag_id.is_(None)),
                     set_=dict(
                         branch=commit.branch,
-                        value=float(flag.totals.coverage),
+                        value=float(report.totals.coverage),
                     ),
                 )
             )
             db_session.execute(command)
             db_session.flush()
+
+    if MeasurementName.flag_coverage.value in datasets:
+        for flag_name, flag in report.flags.items():
+            if flag.totals.coverage is not None:
+                repo_flag = (
+                    db_session.query(RepositoryFlag)
+                    .filter_by(
+                        repository=commit.repository,
+                        flag_name=flag_name,
+                    )
+                    .one_or_none()
+                )
+
+                if not repo_flag:
+                    log.warning(
+                        "Repository flag not found.  Created repository flag.",
+                        extra=dict(repo=commit.repoid, flag_name=flag_name),
+                    )
+                    repo_flag = RepositoryFlag(
+                        repository_id=commit.repoid,
+                        flag_name=flag_name,
+                    )
+                    db_session.add(repo_flag)
+                    db_session.flush()
+
+                command = (
+                    insert(Measurement.__table__)
+                    .values(
+                        name=MeasurementName.flag_coverage.value,
+                        owner_id=commit.repository.ownerid,
+                        repo_id=commit.repoid,
+                        flag_id=repo_flag.id,
+                        branch=commit.branch,
+                        commit_sha=commit.commitid,
+                        timestamp=commit.timestamp,
+                        value=float(flag.totals.coverage),
+                    )
+                    .on_conflict_do_update(
+                        index_elements=[
+                            Measurement.name,
+                            Measurement.owner_id,
+                            Measurement.repo_id,
+                            Measurement.flag_id,
+                            Measurement.commit_sha,
+                            Measurement.timestamp,
+                        ],
+                        index_where=(Measurement.flag_id.isnot(None)),
+                        set_=dict(
+                            branch=commit.branch,
+                            value=float(flag.totals.coverage),
+                        ),
+                    )
+                )
+                db_session.execute(command)
+                db_session.flush()
 
 
 def save_repository_measurements(
