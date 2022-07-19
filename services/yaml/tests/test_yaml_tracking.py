@@ -58,11 +58,11 @@ class TestYamlTrackingService(BaseTestCase):
             "comment": {"layout": "reach ,diff,betaprofiling, flags, files, footer"}
         }
         new_yaml = {"comment": {"layout": "reach ,diff, flags, files, footer"}}
-        mocked_betaprofiling_added_segment_track = mocker.patch(
+        mocked_betaprofiling_removed_segment_track = mocker.patch(
             "services.yaml.track_betaprofiling_removed_from_YAML"
         )
         tracking_runtime_insights_fields(existing_yaml, new_yaml, repo)
-        mocked_betaprofiling_added_segment_track.assert_called_once()
+        mocked_betaprofiling_removed_segment_track.assert_called_once()
 
     def test_tracking_added_show_critical_paths(self, mocker):
         repo = RepositoryFactory.create()
@@ -78,8 +78,8 @@ class TestYamlTrackingService(BaseTestCase):
         repo = RepositoryFactory.create()
         existing_yaml = {"comment": {"show_critical_paths": True}}
         new_yaml = {"comment": ""}
-        mocked_show_critical_paths_added_segment_track = mocker.patch(
+        mocked_show_critical_paths_removed_segment_track = mocker.patch(
             "services.yaml.track_show_critical_paths_removed_from_YAML"
         )
         tracking_runtime_insights_fields(existing_yaml, new_yaml, repo)
-        mocked_show_critical_paths_added_segment_track.assert_called_once()
+        mocked_show_critical_paths_removed_segment_track.assert_called_once()
