@@ -14,6 +14,7 @@ from codecovopentelem import (
     get_codecov_opentelemetry_instances,
 )
 from shared.celery_config import BaseCeleryConfig, profiling_finding_task_name
+from shared.config import get_config
 
 from helpers.cache import RedisBackend, cache
 from helpers.clock import get_utc_now_as_iso_format
@@ -102,3 +103,15 @@ class CeleryWorkerConfig(BaseCeleryConfig):
             },
         },
     }
+
+
+# TODO: delete this once we're on `shared` v0.8.1 (which includes this in the base config)
+CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill"] = {
+    "queue": get_config(
+        "setup",
+        "tasks",
+        "timeseries",
+        "queue",
+        default=CeleryWorkerConfig.task_default_queue,
+    )
+}
