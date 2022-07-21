@@ -151,7 +151,7 @@ def repository_datasets(repository: Repository) -> Iterable[str]:
     db_session = repository.get_db_session()
 
     datasets = (
-        db_session.query(Dataset.name).filter_by(repository_id=repository.repoid).all()
+        db_session.query(Dataset).filter_by(repository_id=repository.repoid).all()
     )
 
-    return [dataset.name for dataset in datasets]
+    return [dataset.name for dataset in datasets if not dataset.backfilled]
