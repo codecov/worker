@@ -11,7 +11,6 @@ from services.repository import get_repo_provider_service
 from services.urls import (
     append_tracking_params_to_urls,
     get_commit_url,
-    get_compare_url,
     get_org_account_url,
     get_pull_url,
 )
@@ -167,13 +166,9 @@ class ChecksNotifier(StatusNotifier):
                         **self.get_notifier_filters()
                     )
                     payload = await self.build_payload(filtered_comparison)
-            if (
-                comparison.pull
-                and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
-                and comparison.base.commit is not None
-            ):
-                payload["url"] = get_compare_url(
-                    comparison.base.commit, comparison.head.commit
+            if comparison.pull:
+                payload["url"] = get_pull_url(
+                    comparison.pull
                 )
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)

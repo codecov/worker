@@ -17,7 +17,7 @@ from services.notification.notifiers.base import (
     NotificationResult,
 )
 from services.repository import get_repo_provider_service
-from services.urls import get_commit_url, get_compare_url
+from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import get_paths_from_flags, round_number
 
 log = logging.getLogger(__name__)
@@ -178,9 +178,7 @@ class StandardNotifier(AbstractBaseNotifier):
                 else "decreased"
             )
             notation = "" if difference == 0 else "+" if difference > 0 else "-"
-            comparison_url = get_compare_url(
-                base_full_commit.commit, head_full_commit.commit
-            )
+            comparison_url = get_pull_url(comparison.pull) if comparison.pull else None
         else:
             difference = None
             message = "unknown"
