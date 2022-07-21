@@ -71,7 +71,7 @@ def get_graph_url(commit: Commit, graph_filename: str, **kwargs) -> str:
 
 
 def get_compare_url(base_commit: Commit, head_commit: Commit) -> str:
-    # this is deprecated. The new UI does not support compare urls 
+    # this is deprecated. The new UI does not support compare urls
     return SiteUrls.compare_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(head_commit.repository.service),

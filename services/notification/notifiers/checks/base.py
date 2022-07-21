@@ -167,9 +167,7 @@ class ChecksNotifier(StatusNotifier):
                     )
                     payload = await self.build_payload(filtered_comparison)
             if comparison.pull:
-                payload["url"] = get_pull_url(
-                    comparison.pull
-                )
+                payload["url"] = get_pull_url(comparison.pull)
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)
             return await self.send_notification(comparison, payload)

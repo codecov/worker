@@ -163,9 +163,7 @@ class StatusNotifier(AbstractBaseNotifier):
                     **self.get_notifier_filters()
                 )
                 payload = await self.build_payload(filtered_comparison)
-            if (
-                comparison.pull
-            ):
+            if comparison.pull:
                 payload["url"] = get_pull_url(comparison.pull)
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)
