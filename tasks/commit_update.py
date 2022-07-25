@@ -1,18 +1,19 @@
 import logging
-from app import celery_app
 
-from tasks.base import BaseCodecovTask
-from database.models import Commit
-from services.repository import (
-    get_repo_provider_service,
-    update_commit_from_provider_info,
-)
-from helpers.exceptions import RepositoryWithoutValidBotError
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
     TorngitRepoNotFoundError,
 )
+
+from app import celery_app
+from database.models import Commit
+from helpers.exceptions import RepositoryWithoutValidBotError
+from services.repository import (
+    get_repo_provider_service,
+    update_commit_from_provider_info,
+)
+from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
