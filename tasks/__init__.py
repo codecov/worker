@@ -19,3 +19,4 @@ from tasks.sync_teams import sync_teams_task
 from tasks.upload import upload_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
+from tasks.commit_update import commit_update_task
