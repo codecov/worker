@@ -2,8 +2,9 @@ from datetime import datetime
 
 import pytest
 
-from database.models import Measurement
+from database.models import Measurement, MeasurementName
 from database.tests.factories import CommitFactory, RepositoryFactory
+from database.tests.factories.timeseries import DatasetFactory
 from services.archive import ArchiveService
 from tasks.timeseries_backfill import TimeseriesBackfillTask
 
@@ -15,6 +16,15 @@ async def test_backfill_run_async(dbsession, mocker, mock_storage):
 
     repository = RepositoryFactory.create()
     dbsession.add(repository)
+    dbsession.flush()
+    coverage_dataset = DatasetFactory.create(
+        name=MeasurementName.coverage.value, repository_id=repository.repoid
+    )
+    dbsession.add(coverage_dataset)
+    flag_coverage_dataset = DatasetFactory.create(
+        name=MeasurementName.flag_coverage.value, repository_id=repository.repoid
+    )
+    dbsession.add(flag_coverage_dataset)
     dbsession.flush()
 
     commit = CommitFactory.create(

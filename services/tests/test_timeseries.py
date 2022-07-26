@@ -9,8 +9,12 @@ from shared.utils.sessions import Session
 from database.models.timeseries import Measurement, MeasurementName
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.reports import RepositoryFlagFactory
-from database.tests.factories.timeseries import MeasurementFactory
-from services.timeseries import save_commit_measurements, save_repository_measurements
+from database.tests.factories.timeseries import DatasetFactory, MeasurementFactory
+from services.timeseries import (
+    repository_datasets_query,
+    save_commit_measurements,
+    save_repository_measurements,
+)
 
 
 @pytest.fixture
@@ -38,15 +42,40 @@ def sample_report():
     return report
 
 
+@pytest.fixture
+def repository(dbsession):
+    repository = RepositoryFactory.create()
+    dbsession.add(repository)
+    dbsession.flush()
+
+    coverage_dataset = DatasetFactory.create(
+        repository_id=repository.repoid,
+        name=MeasurementName.coverage.value,
+        backfilled=True,
+    )
+    dbsession.add(coverage_dataset)
+    flag_coverage_dataset = DatasetFactory.create(
+        repository_id=repository.repoid,
+        name=MeasurementName.flag_coverage.value,
+        backfilled=False,
+    )
+    dbsession.add(flag_coverage_dataset)
+    dbsession.flush()
+
+    return repository
+
+
 class TestTimeseriesService(object):
-    def test_insert_commit_measurement(self, dbsession, sample_report, mocker):
+    def test_insert_commit_measurement(
+        self, dbsession, sample_report, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
         )
 
-        commit = CommitFactory.create(branch="foo")
+        commit = CommitFactory.create(branch="foo", repository=repository)
         dbsession.add(commit)
         dbsession.flush()
 
@@ -74,14 +103,41 @@ class TestTimeseriesService(object):
         assert measurement.branch == "foo"
         assert measurement.value == 60.0
 
-    def test_update_commit_measurement(self, dbsession, sample_report, mocker):
+    def test_save_commit_measurements_no_report(self, dbsession, repository, mocker):
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch(
+            "services.report.ReportService.get_existing_report_for_commit",
+            return_value=None,
+        )
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+
+        save_commit_measurements(commit)
+
+        measurement = (
+            dbsession.query(Measurement)
+            .filter_by(
+                name=MeasurementName.coverage.value,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+            )
+            .one_or_none()
+        )
+
+        assert measurement is None
+
+    def test_update_commit_measurement(
+        self, dbsession, sample_report, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
         )
 
-        commit = CommitFactory.create(branch="foo")
+        commit = CommitFactory.create(branch="foo", repository=repository)
         dbsession.add(commit)
         dbsession.flush()
 
@@ -123,14 +179,16 @@ class TestTimeseriesService(object):
         assert measurement.branch == "foo"
         assert measurement.value == 60.0
 
-    def test_commit_measurement_insert_flags(self, dbsession, sample_report, mocker):
+    def test_commit_measurement_insert_flags(
+        self, dbsession, sample_report, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
         )
 
-        commit = CommitFactory.create(branch="foo")
+        commit = CommitFactory.create(branch="foo", repository=repository)
         dbsession.add(commit)
         dbsession.flush()
 
@@ -194,14 +252,16 @@ class TestTimeseriesService(object):
         assert measurement.branch == "foo"
         assert measurement.value == 100.0
 
-    def test_commit_measurement_update_flags(self, dbsession, sample_report, mocker):
+    def test_commit_measurement_update_flags(
+        self, dbsession, sample_report, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
         )
 
-        commit = CommitFactory.create(branch="foo")
+        commit = CommitFactory.create(branch="foo", repository=repository)
         dbsession.add(commit)
         dbsession.flush()
 
@@ -291,9 +351,68 @@ class TestTimeseriesService(object):
         assert measurement.branch == "foo"
         assert measurement.value == 100.0
 
-    def test_save_repository_measurements(self, dbsession, mocker):
+    def test_commit_measurement_no_datasets(self, dbsession, mocker):
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+
         repository = RepositoryFactory.create()
         dbsession.add(repository)
+        dbsession.flush()
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+
+        save_commit_measurements(commit)
+
+        assert dbsession.query(Measurement).count() == 0
+
+    def test_save_repository_measurements(self, dbsession, repository, mocker):
+        commit1 = CommitFactory.create(
+            repository=repository,
+            timestamp=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
+        )
+        dbsession.add(commit1)
+        commit2 = CommitFactory.create(
+            repository=repository,
+            timestamp=datetime(2022, 6, 10, 0, 0, 0).replace(tzinfo=timezone.utc),
+        )
+        dbsession.add(commit2)
+        commit3 = CommitFactory.create(
+            repository=repository,
+            timestamp=datetime(2022, 6, 17, 0, 0, 0).replace(tzinfo=timezone.utc),
+        )
+        dbsession.add(commit3)
+        commit4 = CommitFactory.create(
+            timestamp=datetime(2022, 6, 10, 0, 0, 0).replace(tzinfo=timezone.utc)
+        )
+        dbsession.add(commit4)
+        dbsession.flush()
+
+        save_commit_measurements = mocker.patch(
+            "services.timeseries.save_commit_measurements"
+        )
+
+        dataset_names = [
+            MeasurementName.coverage.value,
+            MeasurementName.flag_coverage.value,
+        ]
+
+        save_repository_measurements(
+            repository,
+            start_date=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
+            end_date=datetime(2022, 6, 15, 0, 0, 0).replace(tzinfo=timezone.utc),
+            dataset_names=dataset_names,
+        )
+
+        assert save_commit_measurements.call_count == 2
+        save_commit_measurements.assert_any_call(commit1, dataset_names=dataset_names)
+        save_commit_measurements.assert_any_call(commit2, dataset_names=dataset_names)
+
+    def test_save_repository_measurements_no_datasets(self, dbsession, mocker):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+
         commit1 = CommitFactory.create(
             repository=repository,
             timestamp=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
@@ -325,6 +444,21 @@ class TestTimeseriesService(object):
             end_date=datetime(2022, 6, 15, 0, 0, 0).replace(tzinfo=timezone.utc),
         )
 
-        assert save_commit_measurements.call_count == 2
-        save_commit_measurements.assert_any_call(commit1)
-        save_commit_measurements.assert_any_call(commit2)
+        assert save_commit_measurements.call_count == 0
+
+    def test_repository_datasets_query(self, repository):
+        datasets = repository_datasets_query(repository)
+        assert [dataset.name for dataset in datasets] == [
+            MeasurementName.coverage.value,
+            MeasurementName.flag_coverage.value,
+        ]
+
+        datasets = repository_datasets_query(repository, backfilled=True)
+        assert [dataset.name for dataset in datasets] == [
+            MeasurementName.coverage.value,
+        ]
+
+        datasets = repository_datasets_query(repository, backfilled=False)
+        assert [dataset.name for dataset in datasets] == [
+            MeasurementName.flag_coverage.value,
+        ]

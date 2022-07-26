@@ -65,3 +65,21 @@ class Measurement(TimeseriesBaseModel):
     __mapper_args__ = {
         "primary_key": [timestamp, owner_id, repo_id, flag_id, commit_sha, name]
     }
+
+
+class Dataset(TimeseriesBaseModel):
+    __tablename__ = "timeseries_dataset"
+
+    id_ = Column("id", types.BigInteger, primary_key=True)
+    name = Column(types.String(256), nullable=False)
+    repository_id = Column(types.BigInteger, nullable=False)
+    backfilled = Column(types.Boolean, nullable=False, default=False)
+
+    __table_args__ = (
+        Index(
+            "timeseries_dataset_name_repo_unique",
+            name,
+            repository_id,
+            unique=True,
+        ),
+    )
