@@ -15,7 +15,9 @@ async def test_backfill_run_async(dbsession, mocker):
     dbsession.add(repository)
     dbsession.flush()
     coverage_dataset = DatasetFactory.create(
-        name=MeasurementName.coverage.value, repository_id=repository.repoid
+        name=MeasurementName.coverage.value,
+        repository_id=repository.repoid,
+        backfilled=False,
     )
     dbsession.add(coverage_dataset)
     flag_coverage_dataset = DatasetFactory.create(
@@ -32,7 +34,11 @@ async def test_backfill_run_async(dbsession, mocker):
     start_date = "2022-06-01T00:00:00"
     end_date = "2022-06-30T00:00:00"
     res = await task.run_async(
-        dbsession, repoid=repository.repoid, start_date=start_date, end_date=end_date
+        dbsession,
+        repoid=repository.repoid,
+        start_date=start_date,
+        end_date=end_date,
+        backfilled=False,
     )
     assert res == {"successful": True}
 
@@ -40,6 +46,10 @@ async def test_backfill_run_async(dbsession, mocker):
         repository,
         datetime(2022, 6, 1, 0, 0, 0),
         datetime(2022, 6, 30, 0, 0, 0),
+        dataset_names=[
+            MeasurementName.coverage.value,
+            MeasurementName.flag_coverage.value,
+        ],
     )
 
     backfilled = (

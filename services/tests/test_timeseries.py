@@ -10,7 +10,11 @@ from database.models.timeseries import Measurement, MeasurementName
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.reports import RepositoryFlagFactory
 from database.tests.factories.timeseries import DatasetFactory, MeasurementFactory
-from services.timeseries import save_commit_measurements, save_repository_measurements
+from services.timeseries import (
+    repository_datasets,
+    save_commit_measurements,
+    save_repository_measurements,
+)
 
 
 @pytest.fixture
@@ -47,11 +51,13 @@ def repository(dbsession):
     coverage_dataset = DatasetFactory.create(
         repository_id=repository.repoid,
         name=MeasurementName.coverage.value,
+        backfilled=True,
     )
     dbsession.add(coverage_dataset)
     flag_coverage_dataset = DatasetFactory.create(
         repository_id=repository.repoid,
         name=MeasurementName.flag_coverage.value,
+        backfilled=False,
     )
     dbsession.add(flag_coverage_dataset)
     dbsession.flush()
@@ -386,20 +392,21 @@ class TestTimeseriesService(object):
             "services.timeseries.save_commit_measurements"
         )
 
-        save_repository_measurements(
-            repository,
-            start_date=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
-            end_date=datetime(2022, 6, 15, 0, 0, 0).replace(tzinfo=timezone.utc),
-        )
-
-        datasets = [
+        dataset_names = [
             MeasurementName.coverage.value,
             MeasurementName.flag_coverage.value,
         ]
 
+        save_repository_measurements(
+            repository,
+            start_date=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
+            end_date=datetime(2022, 6, 15, 0, 0, 0).replace(tzinfo=timezone.utc),
+            dataset_names=dataset_names,
+        )
+
         assert save_commit_measurements.call_count == 2
-        save_commit_measurements.assert_any_call(commit1, datasets=datasets)
-        save_commit_measurements.assert_any_call(commit2, datasets=datasets)
+        save_commit_measurements.assert_any_call(commit1, dataset_names=dataset_names)
+        save_commit_measurements.assert_any_call(commit2, dataset_names=dataset_names)
 
     def test_save_repository_measurements_no_datasets(self, dbsession, mocker):
         repository = RepositoryFactory.create()
@@ -438,3 +445,20 @@ class TestTimeseriesService(object):
         )
 
         assert save_commit_measurements.call_count == 0
+
+    def test_repository_datasets(self, repository):
+        datasets = repository_datasets(repository)
+        assert [dataset.name for dataset in datasets] == [
+            MeasurementName.coverage.value,
+            MeasurementName.flag_coverage.value,
+        ]
+
+        datasets = repository_datasets(repository, backfilled=True)
+        assert [dataset.name for dataset in datasets] == [
+            MeasurementName.coverage.value,
+        ]
+
+        datasets = repository_datasets(repository, backfilled=False)
+        assert [dataset.name for dataset in datasets] == [
+            MeasurementName.flag_coverage.value,
+        ]

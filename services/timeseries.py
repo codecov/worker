@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Optional
 
 from shared.reports.readonly import ReadOnlyReport
 from sqlalchemy.dialects.postgresql import insert
@@ -15,13 +15,17 @@ from services.yaml import get_repo_yaml
 log = logging.getLogger(__name__)
 
 
-def save_commit_measurements(commit: Commit, datasets: Iterable[str] = None) -> None:
+def save_commit_measurements(
+    commit: Commit, dataset_names: Iterable[str] = None
+) -> None:
     if not timeseries_enabled():
         return
 
-    if datasets is None:
-        datasets = repository_datasets(commit.repository)
-    if len(datasets) == 0:
+    if dataset_names is None:
+        dataset_names = [
+            dataset.name for dataset in repository_datasets(commit.repository)
+        ]
+    if len(dataset_names) == 0:
         return
 
     current_yaml = get_repo_yaml(commit.repository)
@@ -35,7 +39,7 @@ def save_commit_measurements(commit: Commit, datasets: Iterable[str] = None) -> 
 
     db_session = commit.get_db_session()
 
-    if MeasurementName.coverage.value in datasets:
+    if MeasurementName.coverage.value in dataset_names:
         if report.totals.coverage is not None:
             command = (
                 insert(Measurement.__table__)
@@ -67,7 +71,7 @@ def save_commit_measurements(commit: Commit, datasets: Iterable[str] = None) -> 
             db_session.execute(command)
             db_session.flush()
 
-    if MeasurementName.flag_coverage.value in datasets:
+    if MeasurementName.flag_coverage.value in dataset_names:
         for flag_name, flag in report.flags.items():
             if flag.totals.coverage is not None:
                 repo_flag = (
@@ -124,10 +128,14 @@ def save_commit_measurements(commit: Commit, datasets: Iterable[str] = None) -> 
 
 
 def save_repository_measurements(
-    repository: Repository, start_date: datetime, end_date: datetime
+    repository: Repository,
+    start_date: datetime,
+    end_date: datetime,
+    dataset_names: Iterable[str] = None,
 ) -> None:
-    datasets = repository_datasets(repository)
-    if len(datasets) == 0:
+    if dataset_names is None:
+        dataset_names = []
+    if len(dataset_names) == 0:
         return
 
     db_session = repository.get_db_session()
@@ -144,19 +152,16 @@ def save_repository_measurements(
     )
 
     for commit in commits:
-        save_commit_measurements(commit, datasets=datasets)
+        save_commit_measurements(commit, dataset_names=dataset_names)
 
 
-def repository_datasets(repository: Repository) -> Iterable[str]:
+def repository_datasets(
+    repository: Repository, backfilled: Optional[bool] = None
+) -> Iterable[Dataset]:
     db_session = repository.get_db_session()
 
-    datasets = (
-        db_session.query(Dataset.name)
-        .filter_by(
-            repository_id=repository.repoid,
-            backfilled=False,
-        )
-        .all()
-    )
+    datasets = db_session.query(Dataset.name).filter_by(repository_id=repository.repoid)
+    if backfilled is not None:
+        datasets = datasets.filter_by(backfilled=backfilled)
 
-    return [dataset.name for dataset in datasets]
+    return datasets
