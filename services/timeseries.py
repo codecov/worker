@@ -23,7 +23,7 @@ def save_commit_measurements(
 
     if dataset_names is None:
         dataset_names = [
-            dataset.name for dataset in repository_datasets(commit.repository)
+            dataset.name for dataset in repository_datasets_query(commit.repository)
         ]
     if len(dataset_names) == 0:
         return
@@ -155,7 +155,7 @@ def save_repository_measurements(
         save_commit_measurements(commit, dataset_names=dataset_names)
 
 
-def repository_datasets(
+def repository_datasets_query(
     repository: Repository, backfilled: Optional[bool] = None
 ) -> Iterable[Dataset]:
     db_session = repository.get_db_session()

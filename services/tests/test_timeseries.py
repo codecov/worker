@@ -11,7 +11,7 @@ from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.reports import RepositoryFlagFactory
 from database.tests.factories.timeseries import DatasetFactory, MeasurementFactory
 from services.timeseries import (
-    repository_datasets,
+    repository_datasets_query,
     save_commit_measurements,
     save_repository_measurements,
 )
@@ -446,19 +446,19 @@ class TestTimeseriesService(object):
 
         assert save_commit_measurements.call_count == 0
 
-    def test_repository_datasets(self, repository):
-        datasets = repository_datasets(repository)
+    def test_repository_datasets_query(self, repository):
+        datasets = repository_datasets_query(repository)
         assert [dataset.name for dataset in datasets] == [
             MeasurementName.coverage.value,
             MeasurementName.flag_coverage.value,
         ]
 
-        datasets = repository_datasets(repository, backfilled=True)
+        datasets = repository_datasets_query(repository, backfilled=True)
         assert [dataset.name for dataset in datasets] == [
             MeasurementName.coverage.value,
         ]
 
-        datasets = repository_datasets(repository, backfilled=False)
+        datasets = repository_datasets_query(repository, backfilled=False)
         assert [dataset.name for dataset in datasets] == [
             MeasurementName.flag_coverage.value,
         ]

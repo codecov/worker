@@ -6,7 +6,7 @@ from sqlalchemy.orm.session import Session
 from app import celery_app
 from database.models import Repository
 from database.models.timeseries import Dataset
-from services.timeseries import repository_datasets, save_repository_measurements
+from services.timeseries import repository_datasets_query, save_repository_measurements
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class TimeseriesBackfillTask(BaseCodecovTask):
         try:
             start_date = datetime.fromisoformat(start_date)
             end_date = datetime.fromisoformat(end_date)
-            datasets = repository_datasets(repository, backfilled=False)
+            datasets = repository_datasets_query(repository, backfilled=False)
             save_repository_measurements(
                 repository,
                 start_date,
