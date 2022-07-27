@@ -12,6 +12,7 @@ class TestCommitUpdate(object):
         mocker,
         mock_configuration,
         dbsession,
+        codecov_vcr,
         mock_redis,
         celery_app,
     ):
