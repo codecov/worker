@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from typing import Iterable
 
 from sqlalchemy.orm.session import Session
 
@@ -24,6 +25,7 @@ class TimeseriesBackfillTask(BaseCodecovTask):
         repoid: int,
         start_date: str,
         end_date: str,
+        dataset_names: Iterable[str] = None,
         **kwargs
     ):
         repository = db_session.query(Repository).filter_by(repoid=repoid).first()
@@ -37,12 +39,14 @@ class TimeseriesBackfillTask(BaseCodecovTask):
         try:
             start_date = datetime.fromisoformat(start_date)
             end_date = datetime.fromisoformat(end_date)
-            datasets = repository_datasets_query(repository, backfilled=False)
+            if dataset_names is None:
+                datasets = repository_datasets_query(repository, backfilled=False)
+                dataset_names = [dataset.name for dataset in datasets]
             save_repository_measurements(
                 repository,
                 start_date,
                 end_date,
-                dataset_names=[dataset.name for dataset in datasets],
+                dataset_names=dataset_names,
             )
             return {"successful": True}
         except ValueError:
