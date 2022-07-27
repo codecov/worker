@@ -23,7 +23,13 @@ class CommitUpdateTask(BaseCodecovTask):
     # TODO add this to shared
     name = "app.tasks.commit_update.CommitUpdate"
 
-    async def run_async(self, db_session, *, commitid, repoid):
+    async def run_async(
+        self,
+        db_session,
+        repoid: int,
+        commitid: str,
+        **kwargs,
+    ):
         commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
@@ -59,6 +65,7 @@ class CommitUpdateTask(BaseCodecovTask):
                 "Commit updated successfully",
                 extra=dict(commitid=commitid, repoid=repoid),
             )
+        return {"was_updated": was_updated}
 
     # TODO move this into services as it is used in upload task also
     async def possibly_update_commit_from_provider_info(
