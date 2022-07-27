@@ -182,3 +182,32 @@ class TestCommitUpdate(object):
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
+
+    @pytest.mark.asyncio
+    async def test_update_commit_already_populated(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_redis,
+        mock_repo_provider,
+        mock_storage,
+    ):
+        commit = CommitFactory.create(
+            message="commit_msg",
+            parent_commit_id=None,
+            repository__owner__unencrypted_oauth_token="ghp_test3c8iyfspq6h4s9ugpmq19qp7826rv20o",
+            repository__owner__username="test-acc9",
+            repository__yaml={"codecov": {"max_report_age": "764y ago"}},
+            repository__name="test_example",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+
+        result = await CommitUpdateTask().run_async(
+            dbsession, commit.repoid, commit.commitid
+        )
+        expected_result = {"was_updated": False}
+        assert expected_result == result
+        assert commit.message == "commit_msg"
+        assert commit.parent_commit_id is None
