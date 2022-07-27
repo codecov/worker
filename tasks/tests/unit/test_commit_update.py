@@ -23,6 +23,7 @@ class TestCommitUpdate(object):
             repository__owner__unencrypted_oauth_token="ghp_test3c8iyfspq6h4s9ugpmq19qp7826rv20o",
             repository__owner__username="test-acc9",
             repository__owner__service="github",
+            repository__owner__service_id="104562106",
             repository__name="test_example",
         )
         dbsession.add(commit)
