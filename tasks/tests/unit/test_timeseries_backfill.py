@@ -52,13 +52,6 @@ async def test_backfill_run_async(dbsession, mocker):
         ],
     )
 
-    backfilled = (
-        dbsession.query(Dataset)
-        .filter_by(repository_id=repository.repoid, backfilled=True)
-        .count()
-    )
-    assert backfilled == 2
-
 
 @pytest.mark.asyncio
 async def test_backfill_run_async_invalid_repo(dbsession, mocker):

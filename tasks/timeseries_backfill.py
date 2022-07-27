@@ -44,7 +44,6 @@ class TimeseriesBackfillTask(BaseCodecovTask):
                 end_date,
                 dataset_names=[dataset.name for dataset in datasets],
             )
-            datasets.update({Dataset.backfilled: True})
             return {"successful": True}
         except ValueError:
             log.error(
