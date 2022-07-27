@@ -1,13 +1,13 @@
 import pytest
-
-from database.tests.factories import CommitFactory
-from tasks.commit_update import CommitUpdateTask
 from shared.torngit.exceptions import (
     TorngitClientError,
-    TorngitRepoNotFoundError,
     TorngitObjectNotFoundError,
+    TorngitRepoNotFoundError,
 )
+
+from database.tests.factories import CommitFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
+from tasks.commit_update import CommitUpdateTask
 
 
 @pytest.mark.integration
