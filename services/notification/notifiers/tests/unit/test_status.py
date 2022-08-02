@@ -1,3 +1,4 @@
+from random import sample
 import pytest
 from mock import patch
 from shared.reports.readonly import ReadOnlyReport
@@ -737,7 +738,7 @@ class TestProjectStatusNotifier(object):
             data_sent={
                 "message": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
                 "state": "success",
-                "url": f"test.example.br/gh/{repo.slug}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{repo.slug}/pull/{sample_comparison.pull.pullid}",
             },
             data_received=None,
         )
@@ -771,7 +772,7 @@ class TestProjectStatusNotifier(object):
             data_sent={
                 "message": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
                 "state": "success",
-                "url": f"test.example.br/gh/{repo.slug}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{repo.slug}/pull/{sample_comparison.pull.pullid}",
             },
             data_received=None,
         )
@@ -1014,7 +1015,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": f"62.50% (+12.50%) compared to {base_commit.commitid[:7]}",
             "state": "success",
-            "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/compare/{base_commit.commitid}...{sample_comparison.head.commit.commitid}",
+            "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
         }
         result = await notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
@@ -1040,7 +1041,7 @@ class TestProjectStatusNotifier(object):
             # base report does not have unit flag, so there is no coverage there
             "message": "No coverage information found on base report",
             "state": "success",
-            "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/compare/{base_commit.commitid}...{sample_comparison.head.commit.commitid}",
+            "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
         }
         result = await notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
@@ -1070,7 +1071,7 @@ class TestProjectStatusNotifier(object):
             # base report does not have unit flag, so there is no coverage there
             "message": f"100.00% (+0.00%) compared to {base_commit.commitid[:7]}",
             "state": "success",
-            "url": f"test.example.br/gh/{sample_comparison_matching_flags.head.commit.repository.slug}/compare/{base_commit.commitid}...{sample_comparison_matching_flags.head.commit.commitid}",
+            "url": f"test.example.br/gh/{sample_comparison_matching_flags.head.commit.repository.slug}/pull/{sample_comparison_matching_flags.pull.pullid}",
         }
         result = await notifier.notify(sample_comparison_matching_flags)
         assert result == mocked_send_notification.return_value
@@ -1439,7 +1440,7 @@ class TestChangesStatusNotifier(object):
         expected_result = {
             "message": "No unexpected coverage changes found",
             "state": "success",
-            "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/compare/{base_commit.commitid}...{sample_comparison.head.commit.commitid}",
+            "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
         }
         result = await notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
