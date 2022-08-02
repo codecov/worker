@@ -178,7 +178,11 @@ class StandardNotifier(AbstractBaseNotifier):
                 else "decreased"
             )
             notation = "" if difference == 0 else "+" if difference > 0 else "-"
-            comparison_url = get_pull_url(comparison.pull) if comparison.pull else get_commit_url(comparison.head.commit)
+            comparison_url = (
+                get_pull_url(comparison.pull)
+                if comparison.pull
+                else get_commit_url(comparison.head.commit)
+            )
         else:
             difference = None
             message = "unknown"
