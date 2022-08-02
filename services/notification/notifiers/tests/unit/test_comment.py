@@ -2992,7 +2992,7 @@ class TestCommentNotifier(object):
             f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `66.67%`.",
             "",
-            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps).",
+            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps). Have a feature suggestion? [Share it here.](https://app.codecov.io/gh/feedback/)",
             "",
         ]
         for exp, res in zip(expected_result, result):
@@ -3501,7 +3501,7 @@ class TestFeedbackSectionWriter(object):
         )
         res = list(await writer.write_section())
         assert res == [
-            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps)."
+            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps). Have a feature suggestion? [Share it here.](https://app.codecov.io/gh/feedback/)"
         ]
 
 
