@@ -1,4 +1,5 @@
 from random import sample
+
 import pytest
 from mock import patch
 from shared.reports.readonly import ReadOnlyReport
