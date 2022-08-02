@@ -382,18 +382,18 @@ class TestNotifyTask(object):
         ] = "https://myexamplewebsite.io"
         mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
-            owner__username="ThiagoCodecov",
+            owner__unencrypted_oauth_token="ghp_testd7ghzzmqzxjz34w447iv25vqb7efk27h",
+            owner__username="test-acc9",
             owner__service="github",
-            owner__service_id="44376991",
-            owner__email="thiago@test123.com",
-            name="example-python",
+            owner__service_id="104562106",
+            owner__email="atest7321@gmail.com",
+            name="test_example",
             image_token="abcdefghij",
         )
         dbsession.add(repository)
         dbsession.flush()
-        head_commitid = "11daa27b1b74fd181836a64106f936a16404089c"
-        master_sha = "f0895290dc26668faeeb20ee5ccd4cc995925775"
+        head_commitid = "610ada9fa2bbc49f1a08917da3f73bef2d03709c"
+        master_sha = "ef6edf5ae6643d53a7971fb8823d3f7b2ac65619"
         master_commit = CommitFactory.create(
             message="",
             pullid=None,
@@ -405,7 +405,7 @@ class TestNotifyTask(object):
         commit = CommitFactory.create(
             message="",
             pullid=None,
-            branch="thiago/f/something",
+            branch="featureA",
             commitid=head_commitid,
             parent_commit_id=master_commit.commitid,
             repository=repository,
@@ -454,7 +454,7 @@ class TestNotifyTask(object):
             },
         )
         expected_author_dict = {
-            "username": "ThiagoCodecov",
+            "username": "test-acc9",
             "service_id": repository.owner.service_id,
             "email": repository.owner.email,
             "service": "github",
@@ -472,14 +472,14 @@ class TestNotifyTask(object):
                         "explanation": None,
                         "data_sent": {
                             "repo": {
-                                "url": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python",
+                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example",
                                 "service_id": repository.service_id,
-                                "name": "example-python",
+                                "name": "test_example",
                                 "private": True,
                             },
                             "head": {
                                 "author": expected_author_dict,
-                                "url": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/11daa27b1b74fd181836a64106f936a16404089c",
+                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example/commit/610ada9fa2bbc49f1a08917da3f73bef2d03709c",
                                 "timestamp": "2019-02-01T17:59:47",
                                 "totals": {
                                     "files": 3,
@@ -511,13 +511,13 @@ class TestNotifyTask(object):
                                     ],
                                 },
                                 "commitid": head_commitid,
-                                "service_url": f"https://github.com/ThiagoCodecov/example-python/commit/{head_commitid}",
-                                "branch": "thiago/f/something",
+                                "service_url": f"https://github.com/test-acc9/test_example/commit/{head_commitid}",
+                                "branch": "featureA",
                                 "message": "",
                             },
                             "base": {
                                 "author": expected_author_dict,
-                                "url": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775",
+                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example/commit/ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
                                 "timestamp": "2019-02-01T17:59:47",
                                 "totals": {
                                     "files": 3,
@@ -548,34 +548,34 @@ class TestNotifyTask(object):
                                         0,
                                     ],
                                 },
-                                "commitid": "f0895290dc26668faeeb20ee5ccd4cc995925775",
-                                "service_url": "https://github.com/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775",
+                                "commitid": "ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
+                                "service_url": "https://github.com/test-acc9/test_example/commit/ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
                                 "branch": "master",
                                 "message": "",
                             },
                             "compare": {
-                                "url": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/compare/f0895290dc26668faeeb20ee5ccd4cc995925775...11daa27b1b74fd181836a64106f936a16404089c",
+                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1",
                                 "message": "no change",
                                 "coverage": Decimal("0.00"),
                                 "notation": "",
                             },
                             "owner": {
-                                "username": "ThiagoCodecov",
+                                "username": "test-acc9",
                                 "service_id": repository.owner.service_id,
                                 "service": "github",
                             },
                             "pull": {
                                 "head": {
-                                    "commit": "11daa27b1b74fd181836a64106f936a16404089c",
+                                    "commit": "610ada9fa2bbc49f1a08917da3f73bef2d03709c",
                                     "branch": "master",
                                 },
-                                "number": "18",
+                                "number": "1",
                                 "base": {
-                                    "commit": "081d91921f05a8a39d39aef667eddb88e96300c7",
+                                    "commit": "ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
                                     "branch": "master",
                                 },
                                 "open": True,
-                                "id": 18,
+                                "id": 1,
                                 "merged": False,
                             },
                         },
@@ -590,9 +590,9 @@ class TestNotifyTask(object):
                         "notification_successful": True,
                         "explanation": None,
                         "data_sent": {
-                            "text": f"Coverage for <https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/11daa27b1b74fd181836a64106f936a16404089c|ThiagoCodecov/example-python> *no change* `<https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/compare/f0895290dc26668faeeb20ee5ccd4cc995925775...11daa27b1b74fd181836a64106f936a16404089c|0.00%>` on `thiago/f/something` is `85.00000%` via `<https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/11daa27b1b74fd181836a64106f936a16404089c|{head_commitid[:7]}>`",
+                            "text": f"Coverage for <https://myexamplewebsite.io/gh/test-acc9/test_example/commit/610ada9fa2bbc49f1a08917da3f73bef2d03709c|test-acc9/test_example> *no change* `<https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1|0.00%>` on `featureA` is `85.00000%` via `<https://myexamplewebsite.io/gh/test-acc9/test_example/commit/610ada9fa2bbc49f1a08917da3f73bef2d03709c|610ada9>`",
                             "author_name": "Codecov",
-                            "author_link": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/11daa27b1b74fd181836a64106f936a16404089c",
+                            "author_link": "https://myexamplewebsite.io/gh/test-acc9/test_example/commit/610ada9fa2bbc49f1a08917da3f73bef2d03709c",
                             "attachments": [],
                         },
                         "data_received": None,
@@ -652,19 +652,19 @@ class TestNotifyTask(object):
                         "explanation": None,
                         "data_sent": {
                             "message": [
-                                "# [Codecov](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=h1) Report",
-                                "> Merging [#18](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=desc) (11daa27) into [master](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775?el=desc) (f089529) will **not change** coverage.",
+                                "# [Codecov](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=h1) Report",
+                                "> Merging [#1](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=desc) (610ada9) into [main](https://myexamplewebsite.io/gh/test-acc9/test_example/commit/ef6edf5ae6643d53a7971fb8823d3f7b2ac65619?el=desc) (ef6edf5) will **not change** coverage.",
                                 "> The diff coverage is `n/a`.",
                                 "",
-                                "> :exclamation: Current head 11daa27 differs from pull request most recent head e999aac. Consider uploading reports for the commit e999aac to get more accurate results",
+                                "> :exclamation: Current head 610ada9 differs from pull request most recent head a2d3e3c. Consider uploading reports for the commit a2d3e3c to get more accurate results",
                                 "",
-                                "[![Impacted file tree graph](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=tree)",
+                                "[![Impacted file tree graph](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=tree)",
                                 "",
                                 "```diff",
                                 "@@           Coverage Diff           @@",
-                                "##           master      #18   +/-   ##",
+                                "##             main       #1   +/-   ##",
                                 "=======================================",
-                                "  Coverage   85.00%   85.00%           ",
+                                "  Coverage   85.00%   85.00%           ",              
                                 "=======================================",
                                 "  Files           3        3           ",
                                 "  Lines          20       20           ",
@@ -683,23 +683,23 @@ class TestNotifyTask(object):
                                 "",
                                 "------",
                                 "",
-                                "[Continue to review full report at Codecov](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=continue).",
+                                "[Continue to review full report at Codecov](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=continue).",
                                 "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
                                 "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-                                "> Powered by [Codecov](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=footer). Last update [081d919...e999aac](https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/pull/18?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+                                "> Powered by [Codecov](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=footer). Last update [ef6edf5...a2d3e3c](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
                                 "",
                             ],
                             "commentid": None,
-                            "pullid": 18,
+                            "pullid": 1,
                         },
-                        "data_received": {"id": 611620549},
+                        "data_received": {"id": 1203062549},
                     },
                 },
             ],
         }
 
-        pull = dbsession.query(Pull).filter_by(pullid=18, repoid=commit.repoid).first()
-        assert pull.commentid == "611620549"
+        pull = dbsession.query(Pull).filter_by(pullid=1, repoid=commit.repoid).first()
+        assert pull.commentid == "1203062549"
 
         assert len(result["notifications"]) == len(expected_result["notifications"])
         for expected, actual in zip(
