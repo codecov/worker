@@ -2960,14 +2960,19 @@ class TestCommentNotifier(object):
             f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `66.67%`.",
             "",
-            ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)",
+            ":mega: message",
             "",
         ]
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
-            print(li)
-            assert exp == res
+            if exp == ":mega: message":
+                # We might not know the selected message if there are multiple active ones
+                assert res.startswith(":mega: ")
+                message = res[7:]
+                assert message in AnnouncementSectionWriter.current_active_messages
+                # We have to change the expected line to pass the global check
+                expected_result[4] = f":mega: {message}"
+            else:
+                assert exp == res
         assert result == expected_result
 
     @pytest.mark.asyncio
@@ -3416,9 +3421,11 @@ class TestAnnouncementsSectionWriter(object):
             mocker.MagicMock(),
         )
         res = list(await writer.write_section())
-        assert res == [
-            ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"
-        ]
+        assert len(res) == 1
+        line = res[0]
+        assert line.startswith(":mega: ")
+        message = line[7:]
+        assert message in AnnouncementSectionWriter.current_active_messages
 
 
 class TestNewFooterSectionWriter(object):
