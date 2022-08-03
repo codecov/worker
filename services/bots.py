@@ -1,5 +1,5 @@
 import logging
-from typing import Dict
+from typing import Dict, Optional, Tuple
 
 from shared.config import get_config
 from shared.torngit.base import TokenType
@@ -13,12 +13,13 @@ from services.github import get_github_integration_token
 log = logging.getLogger(__name__)
 
 
-def get_repo_appropriate_bot_token(repo: Repository) -> Dict:
+def get_repo_appropriate_bot_token(repo: Repository) -> Tuple[Dict, Optional[Owner]]:
     if repo.using_integration and repo.owner.integration_id:
         github_token = get_github_integration_token(
             repo.owner.service, repo.owner.integration_id
         )
-        return dict(key=github_token)
+        # The token is not owned by an Owner object, so 2nd arg is None
+        return dict(key=github_token), None
     if not repo.private or (
         is_enterprise() and get_config(repo.service, "bot") is not None
     ):
@@ -28,15 +29,16 @@ def get_repo_appropriate_bot_token(repo: Repository) -> Dict:
                 "Using default bot",
                 extra=dict(repoid=repo.repoid, botname=public_bot_dict.get("username")),
             )
-            return public_bot_dict
+            # Once again token not owned by an Owner.
+            return public_bot_dict, None
     return get_repo_particular_bot_token(repo)
 
 
-def get_repo_particular_bot_token(repo):
+def get_repo_particular_bot_token(repo) -> Tuple[Dict, Owner]:
     appropriate_bot = _get_repo_appropriate_bot(repo)
     token_dict = encryptor.decrypt_token(appropriate_bot.oauth_token)
     token_dict["username"] = appropriate_bot.username
-    return token_dict
+    return token_dict, appropriate_bot
 
 
 def get_token_type_mapping(repo: Repository):
@@ -46,7 +48,7 @@ def get_token_type_mapping(repo: Repository):
         return None
     admin_bot = None
     try:
-        admin_bot = get_repo_particular_bot_token(repo)
+        admin_bot, _ = get_repo_particular_bot_token(repo)
     except RepositoryWithoutValidBotError:
         log.warning(
             "Repository has no good bot for admin, but still continuing operations in case it is not doing an admin call anyway",
@@ -60,7 +62,7 @@ def get_token_type_mapping(repo: Repository):
     }
 
 
-def _get_repo_appropriate_bot(repo):
+def _get_repo_appropriate_bot(repo: Repository) -> Owner:
     if repo.bot is not None and repo.bot.oauth_token is not None:
         log.info(
             "Repo has specific bot",

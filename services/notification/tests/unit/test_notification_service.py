@@ -209,8 +209,9 @@ class TestNotificationService(object):
 
     @pytest.mark.asyncio
     async def test_notify_individual_checks_notifier(
-        self, mocker, sample_comparison, mock_repo_provider
+        self, mocker, sample_comparison, mock_repo_provider, mock_configuration
     ):
+        mock_configuration._params["setup"] = {"codecov_url": None}
         current_yaml = {}
         commit = sample_comparison.head.commit
         report = Report()

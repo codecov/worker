@@ -13,6 +13,7 @@ from app import celery_app
 from database.models import Commit, Pull
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
+from services.timeseries import save_commit_measurements
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -63,6 +64,7 @@ class UploadFinisherTask(BaseCodecovTask):
             result = await self.finish_reports_processing(
                 db_session, commit, commit_yaml, processing_results
             )
+            save_commit_measurements(commit)
             self.invalidate_caches(redis_connection, commit)
             if commit.repository.branch == commit.branch:
                 author_dict = None

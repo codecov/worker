@@ -2,10 +2,11 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 import shared.torngit as torngit
 from shared.config import get_config, get_verify_ssl
+from shared.encryption.token import encode_token
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitError,
@@ -13,14 +14,42 @@ from shared.torngit.exceptions import (
 )
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from database.models import Commit, Owner, Pull, Repository
 from services.bots import get_repo_appropriate_bot_token, get_token_type_mapping
+from services.encryption import encryptor
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
+
+
+def get_token_refresh_callback(owner: Owner) -> Callable[[Dict], None]:
+    """
+    Produces a callback function that will encode and update the oauth token of a user.
+    This callback is passed to the TorngitAdapter for the service.
+    """
+    # Some tokens don't have to be refreshed (GH integration, default bots)
+    # They don't belong to any owners.
+    if owner is None:
+        return None
+
+    service = owner.service
+    if service != "gitlab" and service != "gitlab_enterprise":
+        return None
+
+    async def callback(new_token: Dict) -> None:
+        log.info(
+            "Saving new token after refresh",
+            extra=dict(owner=owner.username, ownerid=owner.ownerid),
+        )
+        string_to_save = encode_token(new_token)
+        oauth_token = encryptor.encode(string_to_save).decode()
+        owner.oauth_token = oauth_token
+
+    return callback
 
 
 def get_repo_provider_service(
@@ -31,7 +60,7 @@ def get_repo_provider_service(
         get_config("setup", "http", "timeouts", "receive", default=60),
     ]
     service = repository.owner.service
-    token = get_repo_appropriate_bot_token(repository)
+    token, token_owner = get_repo_appropriate_bot_token(repository)
     adapter_params = dict(
         repo=dict(
             name=repository.name,
@@ -52,6 +81,7 @@ def get_repo_provider_service(
             key=get_config(service, "client_id"),
             secret=get_config(service, "client_secret"),
         ),
+        on_token_refresh=get_token_refresh_callback(token_owner),
     )
     return _get_repo_provider_service_instance(repository.service, **adapter_params)
 

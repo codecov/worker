@@ -1,4 +1,5 @@
 import logging
+import random
 from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
@@ -87,7 +88,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
 
 class FeedbackSectionWriter(BaseSectionWriter):
     async def do_write_section(*args, **kwargs):
-        yield "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps)."
+        yield "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps). Have a feature suggestion? [Share it here.](https://app.codecov.io/gh/feedback/)"
 
 
 class NewHeaderSectionWriter(BaseSectionWriter):
@@ -313,8 +314,17 @@ class HeaderSectionWriter(BaseSectionWriter):
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):
+    current_active_messages = [
+        "We’re building smart automated test selection to slash your CI/CD build times. [Learn more](https://about.codecov.io/iterative-testing/)",
+        #   "Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"  # This is disabled as of CODE-1885. But we might bring it back later.
+    ]
+
     async def do_write_section(*args, **kwargs):
-        yield ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"
+        # This allows us to shift through active messages while respecting the annoucement limit.
+        message_to_display = random.choice(
+            AnnouncementSectionWriter.current_active_messages
+        )
+        yield f":mega: {message_to_display}"
 
 
 class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
