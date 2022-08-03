@@ -127,17 +127,11 @@ def save_commit_measurements(
                 db_session.flush()
 
 
-def save_repository_measurements(
+def repository_commits_query(
     repository: Repository,
     start_date: datetime,
     end_date: datetime,
-    dataset_names: Iterable[str] = None,
-) -> None:
-    if dataset_names is None:
-        dataset_names = []
-    if len(dataset_names) == 0:
-        return
-
+) -> Iterable[Commit]:
     db_session = repository.get_db_session()
 
     commits = (
@@ -151,6 +145,21 @@ def save_repository_measurements(
         .yield_per(1000)
     )
 
+    return commits
+
+
+def save_repository_measurements(
+    repository: Repository,
+    start_date: datetime,
+    end_date: datetime,
+    dataset_names: Iterable[str] = None,
+) -> None:
+    if dataset_names is None:
+        dataset_names = []
+    if len(dataset_names) == 0:
+        return
+
+    commits = repository_commits_query(repository, start_date, end_date)
     for commit in commits:
         save_commit_measurements(commit, dataset_names=dataset_names)
 
