@@ -142,7 +142,7 @@ def repository_commits_query(
             Commit.timestamp <= end_date,
         )
         .order_by(Commit.timestamp.desc())
-        .yield_per(1000)
+        .yield_per(100)
     )
 
     return commits
