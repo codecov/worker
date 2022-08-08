@@ -38,3 +38,15 @@ class CompareCommitError(Enum):
     missing_base_report = "missing_base_report"
     missing_head_report = "missing_head_report"
     provider_client_error = "provider_client_error"
+
+
+class CommitErrorTypes(Enum):
+    class Yaml(Enum):
+        INVALID = "invalid"
+        CLIENT_ERROR = "client_error"
+        UNKNOWN_ERROR = "unknown_error"
+
+    class Bot(Enum):
+        UNAUTHENTICATED = "unauthenticated"
+        REPO_BOT_INVALID = "repo_bot_invalid"
+        OWNER_BOT_INVALID = "owner_bot_invalid"

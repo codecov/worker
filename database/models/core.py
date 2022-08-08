@@ -325,3 +325,12 @@ class CompareCommit(MixinBaseClass, CodecovBaseModel):
 
     def __repr__(self):
         return f"CompareCommit<{self.base_commit_id}...{self.compare_commit_id}>"
+
+
+class CommitError(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "core_commiterror"
+
+    commit = relationship(Commit, backref="errors")
+    error_code = Column(types.String(100), nullable=True)
+    error_params = Column(postgresql.JSON, default=dict)
+    error_type = Column(types.Text)
