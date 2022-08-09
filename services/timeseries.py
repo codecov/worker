@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from database.models import Commit, Dataset, Measurement, MeasurementName
 from database.models.core import Repository
 from database.models.reports import RepositoryFlag
-from helpers.timeseries import timeseries_enabled
+from helpers.timeseries import backfill_batch_size, timeseries_enabled
 from services.report import ReportService
 from services.yaml import get_repo_yaml
 
@@ -127,16 +127,14 @@ def save_commit_measurements(
                 db_session.flush()
 
 
-def save_repository_measurements(
+def repository_commits_query(
     repository: Repository,
     start_date: datetime,
     end_date: datetime,
-    dataset_names: Iterable[str] = None,
-) -> None:
-    if dataset_names is None:
-        dataset_names = []
-    if len(dataset_names) == 0:
-        return
+    batch_size: Optional[int] = None,
+) -> Iterable[Commit]:
+    if batch_size is None:
+        batch_size = backfill_batch_size()
 
     db_session = repository.get_db_session()
 
@@ -148,9 +146,24 @@ def save_repository_measurements(
             Commit.timestamp <= end_date,
         )
         .order_by(Commit.timestamp.desc())
-        .yield_per(1000)
+        .yield_per(batch_size)
     )
 
+    return commits
+
+
+def save_repository_measurements(
+    repository: Repository,
+    start_date: datetime,
+    end_date: datetime,
+    dataset_names: Iterable[str] = None,
+) -> None:
+    if dataset_names is None:
+        dataset_names = []
+    if len(dataset_names) == 0:
+        return
+
+    commits = repository_commits_query(repository, start_date, end_date)
     for commit in commits:
         save_commit_measurements(commit, dataset_names=dataset_names)
 

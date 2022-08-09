@@ -105,13 +105,20 @@ class CeleryWorkerConfig(BaseCeleryConfig):
     }
 
 
-# TODO: delete this once we're on `shared` v0.8.1 (which includes this in the base config)
+# TODO: move this to `shared`
+timeseries_queue = get_config(
+    "setup",
+    "tasks",
+    "timeseries",
+    "queue",
+    default=CeleryWorkerConfig.task_default_queue,
+)
 CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill"] = {
-    "queue": get_config(
-        "setup",
-        "tasks",
-        "timeseries",
-        "queue",
-        default=CeleryWorkerConfig.task_default_queue,
-    )
+    "queue": timeseries_queue,
+}
+CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_commits"] = {
+    "queue": timeseries_queue,
+}
+CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_dataset"] = {
+    "queue": timeseries_queue,
 }
