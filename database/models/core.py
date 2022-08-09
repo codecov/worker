@@ -333,4 +333,3 @@ class CommitError(CodecovBaseModel, MixinBaseClass):
     commit = relationship(Commit, backref="errors")
     error_code = Column(types.String(100), nullable=True)
     error_params = Column(postgresql.JSON, default=dict)
-    error_type = Column(types.Text)
