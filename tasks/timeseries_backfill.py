@@ -169,10 +169,10 @@ class TimeseriesBackfillDatasetTask(BaseCodecovTask):
         commit_ids = []
         signatures = []
         for commit in commits:
+            commit_ids.append(commit.id_)
             if len(commit_ids) == batch_size:
                 signatures.append(self._backfill_commits_signature(dataset, commit_ids))
                 commit_ids = []
-            commit_ids.append(commit.id_)
         if len(commit_ids) > 0:
             signatures.append(self._backfill_commits_signature(dataset, commit_ids))
         return signatures

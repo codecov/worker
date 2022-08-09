@@ -6,4 +6,4 @@ def timeseries_enabled() -> bool:
 
 
 def backfill_batch_size() -> int:
-    return int(get_config("setup", "timeseries", "backfill_batch_size", default=100))
+    return get_config("setup", "timeseries", "backfill_batch_size", default=100)
