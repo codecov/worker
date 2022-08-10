@@ -1,49 +1,9 @@
 import string
 from io import BytesIO
-from typing import BinaryIO, List, Optional
+from typing import BinaryIO
 
 from helpers.metrics import metrics
-
-
-class ParsedUploadedReportFile(object):
-    def __init__(self, filename: Optional[str], file_contents: BinaryIO):
-        self.filename = filename
-        self.contents = file_contents.getvalue()
-        self.size = len(self.contents)
-
-    @property
-    def file_contents(self):
-        return BytesIO(self.contents)
-
-    def get_first_line(self):
-        return self.file_contents.readline()
-
-
-class ParsedRawReport(object):
-    def __init__(
-        self,
-        toc: Optional[BinaryIO],
-        env: Optional[BinaryIO],
-        uploaded_files: List[ParsedUploadedReportFile],
-        path_fixes: Optional[BinaryIO],
-    ):
-        self.toc = toc
-        self.env = env
-        self.uploaded_files = uploaded_files
-        self.path_fixes = path_fixes
-
-    def has_toc(self) -> bool:
-        return self.toc is not None
-
-    def has_env(self) -> bool:
-        return self.env is not None
-
-    def has_path_fixes(self) -> bool:
-        return self.path_fixes is not None
-
-    @property
-    def size(self):
-        return sum(f.size for f in self.uploaded_files)
+from services.report.parser.types import ParsedRawReport, ParsedUploadedReportFile
 
 
 class RawReportParser(object):
@@ -55,8 +15,7 @@ class RawReportParser(object):
 
     separator_lines = [network_separator, env_separator, eof_separator]
 
-    @classmethod
-    def _find_place_to_cut(cls, raw_report: bytes):
+    def _find_place_to_cut(self, raw_report: bytes):
         """Finds the locations of all separators in the report, as listed above.
 
         Args:
@@ -71,7 +30,7 @@ class RawReportParser(object):
             next_place = raw_report.find(common_base, starting_point)
             if next_place >= 0:
                 starting_point = next_place + 1
-                for separator in cls.separator_lines:
+                for separator in self.separator_lines:
                     w = raw_report.find(
                         separator, next_place, next_place + len(separator)
                     )
@@ -81,8 +40,7 @@ class RawReportParser(object):
             else:
                 return
 
-    @classmethod
-    def _get_sections_to_cut(cls, raw_report: bytes):
+    def _get_sections_to_cut(self, raw_report: bytes):
         """Finds which are the sections to cut when parsing `raw_report`.
             It yields, for each section, where it starts, ends and what separator it uses
 
@@ -92,7 +50,7 @@ class RawReportParser(object):
         Yields:
             tuple: tuple in the format (start_index, end_index, separator used)
         """
-        places_to_cut = sorted(cls._find_place_to_cut(raw_report))
+        places_to_cut = sorted(self._find_place_to_cut(raw_report))
         if places_to_cut:
             yield (0, places_to_cut[0][0], places_to_cut[0][1])
             for prev, nex in zip(places_to_cut, places_to_cut[1:]):
@@ -105,8 +63,7 @@ class RawReportParser(object):
         else:
             yield (0, len(raw_report), None)
 
-    @classmethod
-    def cut_sections(cls, raw_report: bytes):
+    def cut_sections(self, raw_report: bytes):
         """Cuts `raw_report` into the sections that we recognize in a report
 
         This function takes the proper steps to find all the relevant sections of a report:
@@ -125,7 +82,7 @@ class RawReportParser(object):
             dict: Dicts with contents, filename and footer of each section
         """
         whitespaces = set(string.whitespace.encode())
-        sections = cls._get_sections_to_cut(raw_report)
+        sections = self._get_sections_to_cut(raw_report)
         for start, end, separator in sections:
             i_start, i_end = start, end
             while i_start < i_end and raw_report[i_start] in whitespaces:
@@ -148,39 +105,35 @@ class RawReportParser(object):
                     "footer": separator,
                 }
 
-    @classmethod
     @metrics.timer("services.report.parser.parse_raw_report_from_bytes")
-    def parse_raw_report_from_bytes(cls, raw_report: bytes) -> ParsedRawReport:
+    def parse_raw_report_from_bytes(self, raw_report: bytes) -> ParsedRawReport:
         raw_report, _, compat_report_str = raw_report.partition(
-            cls.ignore_from_now_on_marker
+            self.ignore_from_now_on_marker
         )
-        sections = cls.cut_sections(raw_report)
-        res = cls._generate_parsed_report_from_sections(sections)
+        sections = self.cut_sections(raw_report)
+        res = self._generate_parsed_report_from_sections(sections)
         if compat_report_str:
-            compat_report = cls._generate_parsed_report_from_sections(
-                cls.cut_sections(compat_report_str)
+            compat_report = self._generate_parsed_report_from_sections(
+                self.cut_sections(compat_report_str)
             )
-            cls.compare_compat_and_main_reports(res, compat_report)
+            self.compare_compat_and_main_reports(res, compat_report)
         return res
 
-    @classmethod
-    def compare_compat_and_main_reports(cls, actual_result, compat_result):
+    def compare_compat_and_main_reports(self, actual_result, compat_result):
         pass
 
-    @classmethod
-    def parse_raw_report_from_io(cls, raw_report: BinaryIO) -> ParsedRawReport:
-        return cls.parse_raw_report_from_bytes(raw_report.getvalue())
+    def parse_raw_report_from_io(self, raw_report: BinaryIO) -> ParsedRawReport:
+        return self.parse_raw_report_from_bytes(raw_report.getvalue())
 
-    @classmethod
-    def _generate_parsed_report_from_sections(cls, sections):
+    def _generate_parsed_report_from_sections(self, sections):
         uploaded_files = []
         toc_section = None
         env_section = None
         path_fixes_section = None
         for sect in sections:
-            if sect["footer"] == cls.network_separator:
+            if sect["footer"] == self.network_separator:
                 toc_section = sect["contents"]
-            elif sect["footer"] == cls.env_separator:
+            elif sect["footer"] == self.env_separator:
                 env_section = sect["contents"]
             else:
                 if sect["filename"] == "fixes":

@@ -11,7 +11,7 @@ from helpers.exceptions import ReportEmptyError
 from services.path_fixer import PathFixer
 from services.path_fixer.fixpaths import clean_toc
 from services.report.fixes import get_fixes_from_raw
-from services.report.parser import ParsedUploadedReportFile
+from services.report.parser.types import ParsedUploadedReportFile
 from services.report.report_builder import ReportBuilder
 from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
