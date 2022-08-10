@@ -16,7 +16,11 @@ from tasks.status_set_pending import status_set_pending_task
 from tasks.sync_pull import pull_sync_task
 from tasks.sync_repos import sync_repos_task
 from tasks.sync_teams import sync_teams_task
-from tasks.timeseries_backfill import timeseries_backfill_task
+from tasks.timeseries_backfill import (
+    timeseries_backfill_commits_task,
+    timeseries_backfill_dataset_task,
+    timeseries_backfill_task,
+)
 from tasks.upload import upload_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
