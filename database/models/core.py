@@ -329,8 +329,8 @@ class CompareCommit(MixinBaseClass, CodecovBaseModel):
 
 class CommitError(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "core_commiterror"
-    
+
     commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
-    commit = relationship(Commit,foreign_keys=[commit_id], backref="errors")
+    commit = relationship(Commit, foreign_keys=[commit_id], backref="errors")
     error_code = Column(types.String(100), nullable=True)
     error_params = Column(postgresql.JSON, default=dict)
