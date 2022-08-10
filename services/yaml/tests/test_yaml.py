@@ -260,7 +260,7 @@ class TestYamlService(BaseTestCase):
             }
         )
         res = await get_current_yaml(commit, valid_handler)
-        
+
         assert res.to_dict() == {
             "coverage": {
                 "precision": 2,
