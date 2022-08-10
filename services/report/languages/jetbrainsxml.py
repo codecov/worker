@@ -1,7 +1,10 @@
+import typing
+
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import LineSession, ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.report_builder import ReportBuilder
 
 
 class JetBrainsXMLProcessor(BaseLanguageProcessor):
@@ -9,8 +12,14 @@ class JetBrainsXMLProcessor(BaseLanguageProcessor):
         return bool(content.tag == "Root")
 
     def process(
-        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
-    ):
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
+    ) -> Report:
+        path_fixer, ignored_lines, sessionid, repo_yaml = (
+            report_builder.path_fixer,
+            report_builder.ignored_lines,
+            report_builder.sessionid,
+            report_builder.repo_yaml,
+        )
         return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
 
 

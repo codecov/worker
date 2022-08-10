@@ -1,9 +1,11 @@
+import typing
 from io import BytesIO
 
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.report_builder import ReportBuilder
 
 
 class DLSTProcessor(BaseLanguageProcessor):
@@ -11,8 +13,14 @@ class DLSTProcessor(BaseLanguageProcessor):
         return bool(content[-7:] == b"covered")
 
     def process(
-        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
-    ):
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
+    ) -> Report:
+        path_fixer, ignored_lines, sessionid, repo_yaml = (
+            report_builder.path_fixer,
+            report_builder.ignored_lines,
+            report_builder.sessionid,
+            report_builder.repo_yaml,
+        )
         return from_string(name, content, path_fixer, ignored_lines, sessionid)
 
 

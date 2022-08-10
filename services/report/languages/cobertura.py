@@ -1,5 +1,6 @@
 import logging
 import re
+import typing
 from os import path
 from typing import List
 
@@ -9,6 +10,7 @@ from timestring import Date, TimestringInvalid
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.report_builder import ReportBuilder
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -20,7 +22,15 @@ class CoberturaProcessor(BaseLanguageProcessor):
             return True
         return bool(list(content.iter("scoverage")))
 
-    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
+    def process(
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
+    ) -> Report:
+        path_fixer, ignored_lines, sessionid, repo_yaml = (
+            report_builder.path_fixer,
+            report_builder.ignored_lines,
+            report_builder.sessionid,
+            report_builder.current_yaml,
+        )
         return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
 
 

@@ -1,4 +1,5 @@
 import logging
+import typing
 from collections import defaultdict
 from io import BytesIO
 
@@ -6,6 +7,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.report_builder import ReportBuilder
 
 log = logging.getLogger(__name__)
 
@@ -15,8 +17,13 @@ class LcovProcessor(BaseLanguageProcessor):
         return detect(content)
 
     def process(
-        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
-    ):
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
+    ) -> Report:
+        path_fixer, ignored_lines, sessionid = (
+            report_builder.path_fixer,
+            report_builder.ignored_lines,
+            report_builder.sessionid,
+        )
         return from_txt(content, path_fixer, ignored_lines, sessionid)
 
 

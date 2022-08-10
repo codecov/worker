@@ -12,6 +12,7 @@ from services.path_fixer import PathFixer
 from services.path_fixer.fixpaths import clean_toc
 from services.report.fixes import get_fixes_from_raw
 from services.report.parser import ParsedUploadedReportFile
+from services.report.report_builder import ReportBuilder
 from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
 
@@ -87,6 +88,8 @@ def process_raw_upload(
     # ---------------
     # Process reports
     # ---------------
+    ignored_lines = ignored_file_lines or {}
+    report_builder = ReportBuilder(commit_yaml, sessionid, ignored_lines, path_fixer)
     for report_file in reports.uploaded_files:
         current_filename = report_file.filename
         if report_file.contents:
@@ -96,13 +99,7 @@ def process_raw_upload(
             path_fixer_to_use = path_fixer.get_relative_path_aware_pathfixer(
                 current_filename
             )
-            report = process_report(
-                report=report_file,
-                commit_yaml=commit_yaml,
-                sessionid=sessionid,
-                ignored_lines=ignored_file_lines or {},
-                path_fixer=path_fixer_to_use,
-            )
+            report = process_report(report=report_file, report_builder=report_builder)
             if report:
                 temporary_report.merge(report, joined=True)
             path_fixer_to_use.log_abnormalities()

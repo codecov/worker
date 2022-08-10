@@ -1,3 +1,4 @@
+import typing
 from io import BytesIO
 
 from shared.helpers.numeric import maxint
@@ -6,6 +7,7 @@ from shared.reports.types import LineSession, ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.languages.helpers import remove_non_ascii
+from services.report.report_builder import ReportBuilder
 
 START_PARTIAL = "\033[0;41m"
 END_PARTIAL = "\033[0m"
@@ -33,8 +35,14 @@ class XCodeProcessor(BaseLanguageProcessor):
         )
 
     def process(
-        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
-    ):
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
+    ) -> Report:
+        path_fixer, ignored_lines, sessionid, repo_yaml = (
+            report_builder.path_fixer,
+            report_builder.ignored_lines,
+            report_builder.sessionid,
+            report_builder.repo_yaml,
+        )
         return from_txt(content, path_fixer, ignored_lines, sessionid)
 
 
