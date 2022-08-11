@@ -139,7 +139,7 @@ def repository_commits_query(
     db_session = repository.get_db_session()
 
     commits = (
-        db_session.query(Commit)
+        db_session.query(Commit.id_)
         .filter(
             Commit.repoid == repository.repoid,
             Commit.timestamp >= start_date,
@@ -150,22 +150,6 @@ def repository_commits_query(
     )
 
     return commits
-
-
-def save_repository_measurements(
-    repository: Repository,
-    start_date: datetime,
-    end_date: datetime,
-    dataset_names: Iterable[str] = None,
-) -> None:
-    if dataset_names is None:
-        dataset_names = []
-    if len(dataset_names) == 0:
-        return
-
-    commits = repository_commits_query(repository, start_date, end_date)
-    for commit in commits:
-        save_commit_measurements(commit, dataset_names=dataset_names)
 
 
 def repository_datasets_query(

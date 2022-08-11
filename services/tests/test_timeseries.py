@@ -11,9 +11,9 @@ from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.reports import RepositoryFlagFactory
 from database.tests.factories.timeseries import DatasetFactory, MeasurementFactory
 from services.timeseries import (
+    repository_commits_query,
     repository_datasets_query,
     save_commit_measurements,
-    save_repository_measurements,
 )
 
 
@@ -366,7 +366,7 @@ class TestTimeseriesService(object):
 
         assert dbsession.query(Measurement).count() == 0
 
-    def test_save_repository_measurements(self, dbsession, repository, mocker):
+    def test_repository_commits_query(self, dbsession, repository, mocker):
         commit1 = CommitFactory.create(
             repository=repository,
             timestamp=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
@@ -388,63 +388,15 @@ class TestTimeseriesService(object):
         dbsession.add(commit4)
         dbsession.flush()
 
-        save_commit_measurements = mocker.patch(
-            "services.timeseries.save_commit_measurements"
-        )
-
-        dataset_names = [
-            MeasurementName.coverage.value,
-            MeasurementName.flag_coverage.value,
-        ]
-
-        save_repository_measurements(
-            repository,
-            start_date=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
-            end_date=datetime(2022, 6, 15, 0, 0, 0).replace(tzinfo=timezone.utc),
-            dataset_names=dataset_names,
-        )
-
-        assert save_commit_measurements.call_count == 2
-        save_commit_measurements.assert_any_call(commit1, dataset_names=dataset_names)
-        save_commit_measurements.assert_any_call(commit2, dataset_names=dataset_names)
-
-    def test_save_repository_measurements_no_datasets(self, dbsession, mocker):
-        repository = RepositoryFactory.create()
-        dbsession.add(repository)
-        dbsession.flush()
-
-        commit1 = CommitFactory.create(
-            repository=repository,
-            timestamp=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
-        )
-        dbsession.add(commit1)
-        commit2 = CommitFactory.create(
-            repository=repository,
-            timestamp=datetime(2022, 6, 10, 0, 0, 0).replace(tzinfo=timezone.utc),
-        )
-        dbsession.add(commit2)
-        commit3 = CommitFactory.create(
-            repository=repository,
-            timestamp=datetime(2022, 6, 17, 0, 0, 0).replace(tzinfo=timezone.utc),
-        )
-        dbsession.add(commit3)
-        commit4 = CommitFactory.create(
-            timestamp=datetime(2022, 6, 10, 0, 0, 0).replace(tzinfo=timezone.utc)
-        )
-        dbsession.add(commit4)
-        dbsession.flush()
-
-        save_commit_measurements = mocker.patch(
-            "services.timeseries.save_commit_measurements"
-        )
-
-        save_repository_measurements(
+        commits = repository_commits_query(
             repository,
             start_date=datetime(2022, 6, 1, 0, 0, 0).replace(tzinfo=timezone.utc),
             end_date=datetime(2022, 6, 15, 0, 0, 0).replace(tzinfo=timezone.utc),
         )
 
-        assert save_commit_measurements.call_count == 0
+        assert len(list(commits)) == 2
+        assert commits[0].id_ == commit2.id_
+        assert commits[1].id_ == commit1.id_
 
     def test_repository_datasets_query(self, repository):
         datasets = repository_datasets_query(repository)
