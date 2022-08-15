@@ -122,3 +122,11 @@ CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_commits"] = {
 CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_dataset"] = {
     "queue": timeseries_queue,
 }
+CeleryWorkerConfig.task_annotations["app.tasks.timeseries.backfill_commits"] = {
+    "soft_time_limit": get_config(
+        "setup", "tasks", "timeseries", "soft_timelimit", default=400
+    ),
+    "time_limit": get_config(
+        "setup", "tasks", "timeseries", "hard_timelimit", default=480
+    ),
+}
