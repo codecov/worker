@@ -122,3 +122,9 @@ class SingleFileSnapshotAnalyzer(object):
             ),
         )
         return (AntecessorFindingResult.file, self._filepath)
+
+    def find_function_by_identifier(self, function_identifier):
+        for func in self._analysis_file_data["functions"]:
+            if func["identifier"] == function_identifier:
+                return func
+        return None
