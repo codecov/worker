@@ -1,6 +1,7 @@
 from json import dumps
 
 from services.report.languages import lcov
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 txt = b"""TN:
@@ -82,29 +83,6 @@ BRDA:77,4,1,0
 end_of_record
 """
 
-result = {
-    "files": {
-        "file.js": {"l": {"1": {"c": 1, "s": [[0, 1, None, None, None]]}}},
-        "file.ts": {"l": {"2": {"c": 1, "s": [[0, 1, None, None, None]]}}},
-        "file.cpp": {
-            "l": {
-                "1": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "5": {"c": "2/2", "t": "b", "s": [[0, "2/2", None, None, None]]},
-                "2": {
-                    "c": "1/3",
-                    "t": "m",
-                    "s": [[0, "1/3", ["1:1", "1:3"], None, None]],
-                },
-                "77": {
-                    "c": "0/4",
-                    "t": "b",
-                    "s": [[0, "0/4", ["4:1", "4:0", "3:0", "3:1"], None, None]],
-                },
-            }
-        },
-    }
-}
-
 
 class TestLcov(BaseTestCase):
     def test_report(self):
@@ -114,7 +92,13 @@ class TestLcov(BaseTestCase):
             assert path in ("file.js", "file.ts", "file.cpp", "empty.js")
             return path
 
-        report = lcov.from_txt(txt, fixes, {}, 0)
+        report_builder = ReportBuilder(
+            path_fixer=fixes, ignored_lines={}, sessionid=0, current_yaml=None
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = lcov.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 
@@ -147,6 +131,9 @@ class TestLcov(BaseTestCase):
         assert lcov.detect(b"") is False
 
     def test_negative_execution_count(self):
+        report_builder = ReportBuilder(
+            path_fixer=str, ignored_lines={}, sessionid=0, current_yaml=None
+        )
         text = "\n".join(
             [
                 "TN:",
@@ -160,7 +147,9 @@ class TestLcov(BaseTestCase):
                 "end_of_record",
             ]
         ).encode()
-        report = lcov.from_txt(text, lambda x: x, {}, 0)
+        report = lcov.from_txt(
+            text, report_builder.create_report_builder_session("filename")
+        )
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report["archive"] == {
             "file.js": [
