@@ -3,6 +3,7 @@ git+ssh://git@github.com/codecov/opentelem-python.git@v0.0.4a1#egg=codecovopente
 git+ssh://git@github.com/codecov/codecov-cli.git@bbbb4ebec1e7cdcf1534deb357b6ef2dc0cada5a#egg=codecov-cli
 boto3
 celery
+click
 coverage
 factory-boy
 google-cloud-storage
