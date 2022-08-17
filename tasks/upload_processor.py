@@ -298,14 +298,17 @@ class UploadProcessorTask(BaseCodecovTask):
                 exc_info=True,
             )
         except RepositoryWithoutValidBotError:
-            db_session = commit.get_db_session()
-            err = CommitError(
-                commit=commit,
-                error_code=CommitErrorTypes.Bot.value.REPO_BOT_INVALID.value,
-                error_params={},
-            )
-            db_session.add(err)
-            db_session.commit()
+            try:
+                db_session = commit.get_db_session()
+                err = CommitError(
+                    commit=commit,
+                    error_code=CommitErrorTypes.Bot.value.REPO_BOT_INVALID.value,
+                    error_params={},
+                )
+                db_session.add(err)
+                db_session.commit()
+            except Exception as e:
+                log.info("Error saving bot commit error -repo bot invalid-", e)
 
             log.warning(
                 "Could not apply diff to report because there is no valid bot found for that repo",

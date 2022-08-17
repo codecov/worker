@@ -236,14 +236,17 @@ class UploadTask(BaseCodecovTask):
             )
             was_setup = await self.possibly_setup_webhooks(commit, repository_service)
         except RepositoryWithoutValidBotError:
-            db_session = commit.get_db_session()
-            err = CommitError(
-                commit=commit,
-                error_code=CommitErrorTypes.Bot.value.REPO_BOT_INVALID.value,
-                error_params={},
-            )
-            db_session.add(err)
-            db_session.commit()
+            try:
+                db_session = commit.get_db_session()
+                err = CommitError(
+                    commit=commit,
+                    error_code=CommitErrorTypes.Bot.value.REPO_BOT_INVALID.value,
+                    error_params={},
+                )
+                db_session.add(err)
+                db_session.commit()
+            except Exception as e:
+                log.info("Error saving bot commit error -repo bot invalid-", e)
 
             log.warning(
                 "Unable to reach git provider because repo doesn't have a valid bot",

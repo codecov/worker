@@ -21,11 +21,14 @@ def get_repo_yaml(repository):
     )
 
 
-def save_error(commit, code):
-    db_session = commit.get_db_session()
-    err = CommitError(commit=commit, error_code=code, error_params={})
-    db_session.add(err)
-    db_session.commit()
+def save_yaml_error(commit: Commit, code):
+    try:
+        db_session = commit.get_db_session()
+        err = CommitError(commit=commit, error_code=code, error_params={})
+        db_session.add(err)
+        db_session.commit()
+    except Exception as e:
+        log.info("Error saving yaml commit error", e, code)
 
 
 async def get_current_yaml(commit: Commit, repository_service) -> dict:
@@ -51,7 +54,7 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
     try:
         commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
     except InvalidYamlException as ex:
-        save_error(commit, code=CommitErrorTypes.Yaml.value.INVALID.value)
+        save_yaml_error(commit, code=CommitErrorTypes.Yaml.value.INVALID.value)
 
         log.warning(
             "Unable to use yaml from commit because it is invalid",
@@ -63,7 +66,7 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
             exc_info=True,
         )
     except TorngitClientError:
-        save_error(commit, code=CommitErrorTypes.Yaml.value.CLIENT_ERROR.value)
+        save_yaml_error(commit, code=CommitErrorTypes.Yaml.value.CLIENT_ERROR.value)
 
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to client issues",
@@ -71,7 +74,7 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
             exc_info=True,
         )
     except TorngitError:
-        save_error(commit, code=CommitErrorTypes.Yaml.value.UNKNOWN_ERROR.value)
+        save_yaml_error(commit, code=CommitErrorTypes.Yaml.value.UNKNOWN_ERROR.value)
 
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to unknown issues",
