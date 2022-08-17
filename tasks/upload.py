@@ -21,6 +21,7 @@ from database.enums import CommitErrorTypes
 from database.models import Commit
 from database.models.core import CommitError
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.save_bot_error import save_bot_error
 from services.archive import ArchiveService
 from services.redis import Redis, download_archive_from_redis, get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -236,17 +237,7 @@ class UploadTask(BaseCodecovTask):
             )
             was_setup = await self.possibly_setup_webhooks(commit, repository_service)
         except RepositoryWithoutValidBotError:
-            try:
-                db_session = commit.get_db_session()
-                err = CommitError(
-                    commit=commit,
-                    error_code=CommitErrorTypes.Bot.value.REPO_BOT_INVALID.value,
-                    error_params={},
-                )
-                db_session.add(err)
-                db_session.commit()
-            except Exception as e:
-                log.info("Error saving bot commit error -repo bot invalid-", e)
+            save_bot_error(commit)
 
             log.warning(
                 "Unable to reach git provider because repo doesn't have a valid bot",

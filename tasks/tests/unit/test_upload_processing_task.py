@@ -17,7 +17,7 @@ from helpers.exceptions import (
 )
 from services.archive import ArchiveService
 from services.report import ReportService
-from tasks.upload_processor import UploadProcessorTask
+from tasks.upload_processor import UploadProcessorTask, save_bot_error
 
 here = Path(__file__)
 
