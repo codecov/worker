@@ -9,8 +9,12 @@ from sqlalchemy.orm.session import Session
 from app import celery_app
 from database.models import Commit, Repository
 from database.models.timeseries import Dataset
-from helpers.timeseries import backfill_batch_size, timeseries_enabled
-from services.timeseries import repository_commits_query, save_commit_measurements
+from helpers.timeseries import timeseries_enabled
+from services.timeseries import (
+    backfill_batch_size,
+    repository_commits_query,
+    save_commit_measurements,
+)
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -66,9 +70,6 @@ class TimeseriesBackfillDatasetTask(BaseCodecovTask):
             log.warning("Timeseries not enabled")
             return {"successful": False}
 
-        if batch_size is None:
-            batch_size = backfill_batch_size()
-
         dataset = db_session.query(Dataset).filter(Dataset.id_ == dataset_id).first()
         if not dataset:
             log.error(
@@ -87,6 +88,9 @@ class TimeseriesBackfillDatasetTask(BaseCodecovTask):
             )
             return {"successful": False}
 
+        if batch_size is None:
+            batch_size = backfill_batch_size(repository)
+
         try:
             start_date = datetime.fromisoformat(start_date)
             end_date = datetime.fromisoformat(end_date)
@@ -98,9 +102,7 @@ class TimeseriesBackfillDatasetTask(BaseCodecovTask):
             return {"successful": False}
 
         # all commits in given time range
-        commits = repository_commits_query(
-            repository, start_date, end_date, batch_size=batch_size
-        )
+        commits = repository_commits_query(repository, start_date, end_date)
 
         # split commits into batches of equal size
         signatures = self._commit_batch_signatures(dataset, commits, batch_size)
