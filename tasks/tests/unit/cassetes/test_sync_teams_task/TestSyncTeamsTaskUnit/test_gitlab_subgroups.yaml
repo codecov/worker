@@ -2,8 +2,10 @@ interactions:
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://gitlab.com/api/v4/groups?per_page=100
   response:
@@ -15,37 +17,67 @@ interactions:
       Awesome Group / subgroup2","full_path":"l00p_group_1/subgroup2","parent_id":4165904,"ldap_cn":null,"ldap_access":null},{"id":4255344,"web_url":"https://gitlab.com/groups/l00p_group_1/subgroup2/subsub","name":"subsub","path":"subsub","description":"","visibility":"private","share_with_group_lock":false,"require_two_factor_authentication":false,"two_factor_grace_period":48,"project_creation_level":"developer","auto_devops_enabled":null,"subgroup_creation_level":"owner","emails_disabled":null,"lfs_enabled":true,"avatar_url":null,"request_access_enabled":false,"full_name":"My
       Awesome Group / subgroup2 / subsub","full_path":"l00p_group_1/subgroup2/subsub","parent_id":4165907,"ldap_cn":null,"ldap_access":null}]'
     headers:
-      Cache-Control: ['max-age=0, private, must-revalidate']
-      Connection: [close]
-      Content-Length: ['4554']
-      Content-Type: [application/json]
-      Date: ['Thu, 24 Oct 2019 21:44:59 GMT']
-      Etag: [W/"52ac61adbb1454a98c89845aa24cd882"]
-      Gitlab-Lb: [fe-15-lb-gprd]
-      Gitlab-Sv: [localhost]
-      Link: ['<https://gitlab.com/api/v4/groups?order_by=name&owned=false&page=1&per_page=100&sort=asc&statistics=false&with_custom_attributes=false>;
-          rel="first", <https://gitlab.com/api/v4/groups?order_by=name&owned=false&page=1&per_page=100&sort=asc&statistics=false&with_custom_attributes=false>;
-          rel="last"']
-      Ratelimit-Limit: ['600']
-      Ratelimit-Observed: ['1']
-      Ratelimit-Remaining: ['599']
-      Ratelimit-Reset: ['1571953559']
-      Ratelimit-Resettime: ['Thu, 24 Oct 2019 21:45:59 GMT']
-      Referrer-Policy: [strict-origin-when-cross-origin]
-      Server: [nginx]
-      Strict-Transport-Security: [max-age=31536000]
-      Vary: [Origin]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [SAMEORIGIN]
-      X-Next-Page: ['']
-      X-Page: ['1']
-      X-Per-Page: ['100']
-      X-Prev-Page: ['']
-      X-Request-Id: [f9jlP4u8pu4]
-      X-Runtime: ['0.077474']
-      X-Total: ['8']
-      X-Total-Pages: ['1']
-    status: {code: 200, message: OK}
+      Cache-Control:
+      - max-age=0, private, must-revalidate
+      Connection:
+      - close
+      Content-Length:
+      - '4554'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 24 Oct 2019 21:44:59 GMT
+      Etag:
+      - W/"52ac61adbb1454a98c89845aa24cd882"
+      Gitlab-Lb:
+      - fe-15-lb-gprd
+      Gitlab-Sv:
+      - localhost
+      Link:
+      - <https://gitlab.com/api/v4/groups?order_by=name&owned=false&page=1&per_page=100&sort=asc&statistics=false&with_custom_attributes=false>;
+        rel="first", <https://gitlab.com/api/v4/groups?order_by=name&owned=false&page=1&per_page=100&sort=asc&statistics=false&with_custom_attributes=false>;
+        rel="last"
+      Ratelimit-Limit:
+      - '600'
+      Ratelimit-Observed:
+      - '1'
+      Ratelimit-Remaining:
+      - '599'
+      Ratelimit-Reset:
+      - '1571953559'
+      Ratelimit-Resettime:
+      - Thu, 24 Oct 2019 21:45:59 GMT
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000
+      Vary:
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Next-Page:
+      - ''
+      X-Page:
+      - '1'
+      X-Per-Page:
+      - '100'
+      X-Prev-Page:
+      - ''
+      X-Request-Id:
+      - f9jlP4u8pu4
+      X-Runtime:
+      - '0.077474'
+      X-Total:
+      - '8'
+      X-Total-Pages:
+      - '1'
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://gitlab.com/api/v4/groups?per_page=100
 version: 1

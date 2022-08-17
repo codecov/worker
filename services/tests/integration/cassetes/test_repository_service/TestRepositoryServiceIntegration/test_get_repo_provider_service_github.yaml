@@ -2,8 +2,10 @@ interactions:
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/commits/6895b64
   response:
@@ -28,36 +30,63 @@ interactions:
       code-block:: ini\n+\n+   [run]\n+   include=your_package_name/*\n \n unittests\n
       ---------"}]}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Fri, 27 Sep 2019 20:17:39 GMT']
-      Etag: [W/"34680c6edd4947802517db4ac91cbc6f"]
-      Last-Modified: ['Mon, 09 Jul 2018 23:39:20 GMT']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP']
-      X-Accepted-Oauth-Scopes: ['']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['464F:069D:1DF8E:28829:5D8E6E63']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4998']
-      X-Ratelimit-Reset: ['1569618944']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Fri, 27 Sep 2019 20:17:39 GMT
+      Etag:
+      - W/"34680c6edd4947802517db4ac91cbc6f"
+      Last-Modified:
+      - Mon, 09 Jul 2018 23:39:20 GMT
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      X-Accepted-Oauth-Scopes:
+      - ''
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - 464F:069D:1DF8E:28829:5D8E6E63
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4998'
+      X-Ratelimit-Reset:
+      - '1569618944'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/repos/ThiagoCodecov/example-python/commits/6895b64
 version: 1

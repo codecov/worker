@@ -2,8 +2,10 @@ interactions:
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status?page=1&per_page=100
   response:
@@ -15,85 +17,138 @@ interactions:
       - 10 - capybara","target_url":"https://localhost:50036/github/codecov","context":"capybara","created_at":"2020-04-08T20:49:47Z","updated_at":"2020-04-08T20:49:47Z"}],"sha":"f0895290dc26668faeeb20ee5ccd4cc995925775","total_count":5,"repository":{"id":156617777,"node_id":"MDEwOlJlcG9zaXRvcnkxNTY2MTc3Nzc=","name":"example-python","full_name":"ThiagoCodecov/example-python","private":false,"owner":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"html_url":"https://github.com/ThiagoCodecov/example-python","description":"Python
       coverage example","fork":true,"url":"https://api.github.com/repos/ThiagoCodecov/example-python","forks_url":"https://api.github.com/repos/ThiagoCodecov/example-python/forks","keys_url":"https://api.github.com/repos/ThiagoCodecov/example-python/keys{/key_id}","collaborators_url":"https://api.github.com/repos/ThiagoCodecov/example-python/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/ThiagoCodecov/example-python/teams","hooks_url":"https://api.github.com/repos/ThiagoCodecov/example-python/hooks","issue_events_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues/events{/number}","events_url":"https://api.github.com/repos/ThiagoCodecov/example-python/events","assignees_url":"https://api.github.com/repos/ThiagoCodecov/example-python/assignees{/user}","branches_url":"https://api.github.com/repos/ThiagoCodecov/example-python/branches{/branch}","tags_url":"https://api.github.com/repos/ThiagoCodecov/example-python/tags","blobs_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/refs{/sha}","trees_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees{/sha}","statuses_url":"https://api.github.com/repos/ThiagoCodecov/example-python/statuses/{sha}","languages_url":"https://api.github.com/repos/ThiagoCodecov/example-python/languages","stargazers_url":"https://api.github.com/repos/ThiagoCodecov/example-python/stargazers","contributors_url":"https://api.github.com/repos/ThiagoCodecov/example-python/contributors","subscribers_url":"https://api.github.com/repos/ThiagoCodecov/example-python/subscribers","subscription_url":"https://api.github.com/repos/ThiagoCodecov/example-python/subscription","commits_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits{/sha}","git_commits_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/commits{/sha}","comments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/comments{/number}","issue_comment_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments{/number}","contents_url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/{+path}","compare_url":"https://api.github.com/repos/ThiagoCodecov/example-python/compare/{base}...{head}","merges_url":"https://api.github.com/repos/ThiagoCodecov/example-python/merges","archive_url":"https://api.github.com/repos/ThiagoCodecov/example-python/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/ThiagoCodecov/example-python/downloads","issues_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues{/number}","pulls_url":"https://api.github.com/repos/ThiagoCodecov/example-python/pulls{/number}","milestones_url":"https://api.github.com/repos/ThiagoCodecov/example-python/milestones{/number}","notifications_url":"https://api.github.com/repos/ThiagoCodecov/example-python/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/ThiagoCodecov/example-python/labels{/name}","releases_url":"https://api.github.com/repos/ThiagoCodecov/example-python/releases{/id}","deployments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/deployments"},"commit_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775","url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status"}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:07 GMT']
-      Etag: [W/"7b5cf4b2890fc250c0b842b249fb140e"]
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['repo, repo:status']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD0:05F2:2169DC:2EEB68:5E8F4957']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4981']
-      X-Ratelimit-Reset: ['1586451769']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:07 GMT
+      Etag:
+      - W/"7b5cf4b2890fc250c0b842b249fb140e"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - repo, repo:status
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD0:05F2:2169DC:2EEB68:5E8F4957
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4981'
+      X-Ratelimit-Reset:
+      - '1586451769'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status?page=1&per_page=100
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/search/issues?q=f0895290dc26668faeeb20ee5ccd4cc995925775+repo%3AThiagoCodecov%2Fexample-python+type%3Apr+state%3Aopen
   response:
     content: '{"total_count":0,"incomplete_results":false,"items":[]}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: [no-cache]
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:07 GMT']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept-Encoding, Accept, X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD1:0F75:1A8057:269E76:5E8F4957']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['30']
-      X-Ratelimit-Remaining: ['29']
-      X-Ratelimit-Reset: ['1586448787']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - no-cache
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:07 GMT
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - ''
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD1:0F75:1A8057:269E76:5E8F4957
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '30'
+      X-Ratelimit-Remaining:
+      - '29'
+      X-Ratelimit-Reset:
+      - '1586448787'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/search/issues?q=f0895290dc26668faeeb20ee5ccd4cc995925775+repo%3AThiagoCodecov%2Fexample-python+type%3Apr+state%3Aopen
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status?page=1&per_page=100
   response:
@@ -105,44 +160,71 @@ interactions:
       - 10 - capybara","target_url":"https://localhost:50036/github/codecov","context":"capybara","created_at":"2020-04-08T20:49:47Z","updated_at":"2020-04-08T20:49:47Z"}],"sha":"f0895290dc26668faeeb20ee5ccd4cc995925775","total_count":5,"repository":{"id":156617777,"node_id":"MDEwOlJlcG9zaXRvcnkxNTY2MTc3Nzc=","name":"example-python","full_name":"ThiagoCodecov/example-python","private":false,"owner":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"html_url":"https://github.com/ThiagoCodecov/example-python","description":"Python
       coverage example","fork":true,"url":"https://api.github.com/repos/ThiagoCodecov/example-python","forks_url":"https://api.github.com/repos/ThiagoCodecov/example-python/forks","keys_url":"https://api.github.com/repos/ThiagoCodecov/example-python/keys{/key_id}","collaborators_url":"https://api.github.com/repos/ThiagoCodecov/example-python/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/ThiagoCodecov/example-python/teams","hooks_url":"https://api.github.com/repos/ThiagoCodecov/example-python/hooks","issue_events_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues/events{/number}","events_url":"https://api.github.com/repos/ThiagoCodecov/example-python/events","assignees_url":"https://api.github.com/repos/ThiagoCodecov/example-python/assignees{/user}","branches_url":"https://api.github.com/repos/ThiagoCodecov/example-python/branches{/branch}","tags_url":"https://api.github.com/repos/ThiagoCodecov/example-python/tags","blobs_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/refs{/sha}","trees_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees{/sha}","statuses_url":"https://api.github.com/repos/ThiagoCodecov/example-python/statuses/{sha}","languages_url":"https://api.github.com/repos/ThiagoCodecov/example-python/languages","stargazers_url":"https://api.github.com/repos/ThiagoCodecov/example-python/stargazers","contributors_url":"https://api.github.com/repos/ThiagoCodecov/example-python/contributors","subscribers_url":"https://api.github.com/repos/ThiagoCodecov/example-python/subscribers","subscription_url":"https://api.github.com/repos/ThiagoCodecov/example-python/subscription","commits_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits{/sha}","git_commits_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/commits{/sha}","comments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/comments{/number}","issue_comment_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments{/number}","contents_url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/{+path}","compare_url":"https://api.github.com/repos/ThiagoCodecov/example-python/compare/{base}...{head}","merges_url":"https://api.github.com/repos/ThiagoCodecov/example-python/merges","archive_url":"https://api.github.com/repos/ThiagoCodecov/example-python/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/ThiagoCodecov/example-python/downloads","issues_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues{/number}","pulls_url":"https://api.github.com/repos/ThiagoCodecov/example-python/pulls{/number}","milestones_url":"https://api.github.com/repos/ThiagoCodecov/example-python/milestones{/number}","notifications_url":"https://api.github.com/repos/ThiagoCodecov/example-python/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/ThiagoCodecov/example-python/labels{/name}","releases_url":"https://api.github.com/repos/ThiagoCodecov/example-python/releases{/id}","deployments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/deployments"},"commit_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775","url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status"}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:08 GMT']
-      Etag: [W/"7b5cf4b2890fc250c0b842b249fb140e"]
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['repo, repo:status']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD4:05F3:1E35DC:2A2F0A:5E8F4957']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4980']
-      X-Ratelimit-Reset: ['1586451770']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:08 GMT
+      Etag:
+      - W/"7b5cf4b2890fc250c0b842b249fb140e"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - repo, repo:status
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD4:05F3:1E35DC:2A2F0A:5E8F4957
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4980'
+      X-Ratelimit-Reset:
+      - '1586451770'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status?page=1&per_page=100
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/compare/081d91921f05a8a39d39aef667eddb88e96300c7...f0895290dc26668faeeb20ee5ccd4cc995925775
   response:
@@ -185,45 +267,73 @@ interactions:
       awesome.fib(3) == 3\n-    assert awesome.fib(5) == 8\n+    assert fib(3) ==
       3\n+    assert fib(5) == 8\n \n \n def test_something_wrong():"}]}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:08 GMT']
-      Etag: [W/"21d9209aa0bebbcb7c80cf4911297b26"]
-      Last-Modified: ['Tue, 24 Mar 2020 22:01:33 GMT']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD2:05F3:1E35DC:2A2F09:5E8F4957']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4979']
-      X-Ratelimit-Reset: ['1586451770']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:08 GMT
+      Etag:
+      - W/"21d9209aa0bebbcb7c80cf4911297b26"
+      Last-Modified:
+      - Tue, 24 Mar 2020 22:01:33 GMT
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - ''
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD2:05F3:1E35DC:2A2F09:5E8F4957
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4979'
+      X-Ratelimit-Reset:
+      - '1586451770'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/repos/ThiagoCodecov/example-python/compare/081d91921f05a8a39d39aef667eddb88e96300c7...f0895290dc26668faeeb20ee5ccd4cc995925775
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/compare/081d91921f05a8a39d39aef667eddb88e96300c7...f0895290dc26668faeeb20ee5ccd4cc995925775
   response:
@@ -266,90 +376,145 @@ interactions:
       awesome.fib(3) == 3\n-    assert awesome.fib(5) == 8\n+    assert fib(3) ==
       3\n+    assert fib(5) == 8\n \n \n def test_something_wrong():"}]}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:08 GMT']
-      Etag: [W/"21d9209aa0bebbcb7c80cf4911297b26"]
-      Last-Modified: ['Tue, 24 Mar 2020 22:01:33 GMT']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD3:0F75:1A805B:269E7D:5E8F4957']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4978']
-      X-Ratelimit-Reset: ['1586451770']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:08 GMT
+      Etag:
+      - W/"21d9209aa0bebbcb7c80cf4911297b26"
+      Last-Modified:
+      - Tue, 24 Mar 2020 22:01:33 GMT
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - ''
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD3:0F75:1A805B:269E7D:5E8F4957
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4978'
+      X-Ratelimit-Reset:
+      - '1586451770'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/repos/ThiagoCodecov/example-python/compare/081d91921f05a8a39d39aef667eddb88e96300c7...f0895290dc26668faeeb20ee5ccd4cc995925775
 - request:
     body: '{"state": "success", "target_url": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775",
       "context": "codecov/project", "description": "85.00% (+0.00%) compared to 081d919"}'
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: POST
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775
   response:
     content: '{"url":"https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","id":9333281614,"node_id":"MDEzOlN0YXR1c0NvbnRleHQ5MzMzMjgxNjE0","state":"success","description":"85.00%
       (+0.00%) compared to 081d919","target_url":"https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775","context":"codecov/project","created_at":"2020-04-09T16:12:08Z","updated_at":"2020-04-09T16:12:08Z","creator":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false}}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Length: ['1523']
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:08 GMT']
-      Etag: ['"731de6d02eba962df2bf8ca0dc9ae3d1"']
-      Location: ['https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [201 Created]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['']
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD5:4EFE:1B5027:271077:5E8F4958']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4977']
-      X-Ratelimit-Reset: ['1586451769']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 201, message: Created}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Length:
+      - '1523'
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:08 GMT
+      Etag:
+      - '"731de6d02eba962df2bf8ca0dc9ae3d1"'
+      Location:
+      - https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 201 Created
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD5:4EFE:1B5027:271077:5E8F4958
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4977'
+      X-Ratelimit-Reset:
+      - '1586451769'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 201
+      message: Created
     status_code: 201
     url: https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status?page=1&per_page=100
   response:
@@ -362,44 +527,71 @@ interactions:
       (+0.00%) compared to 081d919","target_url":"https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775","context":"codecov/project","created_at":"2020-04-09T16:12:08Z","updated_at":"2020-04-09T16:12:08Z"}],"sha":"f0895290dc26668faeeb20ee5ccd4cc995925775","total_count":6,"repository":{"id":156617777,"node_id":"MDEwOlJlcG9zaXRvcnkxNTY2MTc3Nzc=","name":"example-python","full_name":"ThiagoCodecov/example-python","private":false,"owner":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"html_url":"https://github.com/ThiagoCodecov/example-python","description":"Python
       coverage example","fork":true,"url":"https://api.github.com/repos/ThiagoCodecov/example-python","forks_url":"https://api.github.com/repos/ThiagoCodecov/example-python/forks","keys_url":"https://api.github.com/repos/ThiagoCodecov/example-python/keys{/key_id}","collaborators_url":"https://api.github.com/repos/ThiagoCodecov/example-python/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/ThiagoCodecov/example-python/teams","hooks_url":"https://api.github.com/repos/ThiagoCodecov/example-python/hooks","issue_events_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues/events{/number}","events_url":"https://api.github.com/repos/ThiagoCodecov/example-python/events","assignees_url":"https://api.github.com/repos/ThiagoCodecov/example-python/assignees{/user}","branches_url":"https://api.github.com/repos/ThiagoCodecov/example-python/branches{/branch}","tags_url":"https://api.github.com/repos/ThiagoCodecov/example-python/tags","blobs_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/refs{/sha}","trees_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees{/sha}","statuses_url":"https://api.github.com/repos/ThiagoCodecov/example-python/statuses/{sha}","languages_url":"https://api.github.com/repos/ThiagoCodecov/example-python/languages","stargazers_url":"https://api.github.com/repos/ThiagoCodecov/example-python/stargazers","contributors_url":"https://api.github.com/repos/ThiagoCodecov/example-python/contributors","subscribers_url":"https://api.github.com/repos/ThiagoCodecov/example-python/subscribers","subscription_url":"https://api.github.com/repos/ThiagoCodecov/example-python/subscription","commits_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits{/sha}","git_commits_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/commits{/sha}","comments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/comments{/number}","issue_comment_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments{/number}","contents_url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/{+path}","compare_url":"https://api.github.com/repos/ThiagoCodecov/example-python/compare/{base}...{head}","merges_url":"https://api.github.com/repos/ThiagoCodecov/example-python/merges","archive_url":"https://api.github.com/repos/ThiagoCodecov/example-python/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/ThiagoCodecov/example-python/downloads","issues_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues{/number}","pulls_url":"https://api.github.com/repos/ThiagoCodecov/example-python/pulls{/number}","milestones_url":"https://api.github.com/repos/ThiagoCodecov/example-python/milestones{/number}","notifications_url":"https://api.github.com/repos/ThiagoCodecov/example-python/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/ThiagoCodecov/example-python/labels{/name}","releases_url":"https://api.github.com/repos/ThiagoCodecov/example-python/releases{/id}","deployments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/deployments"},"commit_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775","url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status"}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:08 GMT']
-      Etag: [W/"fa60044ba8fa2bded529108a809b0aeb"]
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['repo, repo:status']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD7:4EFE:1B502A:27107D:5E8F4958']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4976']
-      X-Ratelimit-Reset: ['1586451769']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:08 GMT
+      Etag:
+      - W/"fa60044ba8fa2bded529108a809b0aeb"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - repo, repo:status
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD7:4EFE:1B502A:27107D:5E8F4958
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4976'
+      X-Ratelimit-Reset:
+      - '1586451769'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status?page=1&per_page=100
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status?page=1&per_page=100
   response:
@@ -412,37 +604,62 @@ interactions:
       (+0.00%) compared to 081d919","target_url":"https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775","context":"codecov/project","created_at":"2020-04-09T16:12:08Z","updated_at":"2020-04-09T16:12:08Z"}],"sha":"f0895290dc26668faeeb20ee5ccd4cc995925775","total_count":6,"repository":{"id":156617777,"node_id":"MDEwOlJlcG9zaXRvcnkxNTY2MTc3Nzc=","name":"example-python","full_name":"ThiagoCodecov/example-python","private":false,"owner":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"html_url":"https://github.com/ThiagoCodecov/example-python","description":"Python
       coverage example","fork":true,"url":"https://api.github.com/repos/ThiagoCodecov/example-python","forks_url":"https://api.github.com/repos/ThiagoCodecov/example-python/forks","keys_url":"https://api.github.com/repos/ThiagoCodecov/example-python/keys{/key_id}","collaborators_url":"https://api.github.com/repos/ThiagoCodecov/example-python/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/ThiagoCodecov/example-python/teams","hooks_url":"https://api.github.com/repos/ThiagoCodecov/example-python/hooks","issue_events_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues/events{/number}","events_url":"https://api.github.com/repos/ThiagoCodecov/example-python/events","assignees_url":"https://api.github.com/repos/ThiagoCodecov/example-python/assignees{/user}","branches_url":"https://api.github.com/repos/ThiagoCodecov/example-python/branches{/branch}","tags_url":"https://api.github.com/repos/ThiagoCodecov/example-python/tags","blobs_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/refs{/sha}","trees_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/trees{/sha}","statuses_url":"https://api.github.com/repos/ThiagoCodecov/example-python/statuses/{sha}","languages_url":"https://api.github.com/repos/ThiagoCodecov/example-python/languages","stargazers_url":"https://api.github.com/repos/ThiagoCodecov/example-python/stargazers","contributors_url":"https://api.github.com/repos/ThiagoCodecov/example-python/contributors","subscribers_url":"https://api.github.com/repos/ThiagoCodecov/example-python/subscribers","subscription_url":"https://api.github.com/repos/ThiagoCodecov/example-python/subscription","commits_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits{/sha}","git_commits_url":"https://api.github.com/repos/ThiagoCodecov/example-python/git/commits{/sha}","comments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/comments{/number}","issue_comment_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments{/number}","contents_url":"https://api.github.com/repos/ThiagoCodecov/example-python/contents/{+path}","compare_url":"https://api.github.com/repos/ThiagoCodecov/example-python/compare/{base}...{head}","merges_url":"https://api.github.com/repos/ThiagoCodecov/example-python/merges","archive_url":"https://api.github.com/repos/ThiagoCodecov/example-python/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/ThiagoCodecov/example-python/downloads","issues_url":"https://api.github.com/repos/ThiagoCodecov/example-python/issues{/number}","pulls_url":"https://api.github.com/repos/ThiagoCodecov/example-python/pulls{/number}","milestones_url":"https://api.github.com/repos/ThiagoCodecov/example-python/milestones{/number}","notifications_url":"https://api.github.com/repos/ThiagoCodecov/example-python/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/ThiagoCodecov/example-python/labels{/name}","releases_url":"https://api.github.com/repos/ThiagoCodecov/example-python/releases{/id}","deployments_url":"https://api.github.com/repos/ThiagoCodecov/example-python/deployments"},"commit_url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775","url":"https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status"}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:08 GMT']
-      Etag: [W/"fa60044ba8fa2bded529108a809b0aeb"]
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['repo, repo:status']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD6:05F3:1E35E6:2A2F18:5E8F4958']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4975']
-      X-Ratelimit-Reset: ['1586451769']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:08 GMT
+      Etag:
+      - W/"fa60044ba8fa2bded529108a809b0aeb"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - repo, repo:status
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD6:05F3:1E35E6:2A2F18:5E8F4958
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4975'
+      X-Ratelimit-Reset:
+      - '1586451769'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/repos/ThiagoCodecov/example-python/commits/f0895290dc26668faeeb20ee5ccd4cc995925775/status?page=1&per_page=100
 - request:
@@ -450,45 +667,72 @@ interactions:
       "context": "codecov/patch", "description": "Coverage not affected when comparing
       081d919...f089529"}'
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: POST
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775
   response:
     content: '{"url":"https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","id":9333281697,"node_id":"MDEzOlN0YXR1c0NvbnRleHQ5MzMzMjgxNjk3","state":"success","description":"Coverage
       not affected when comparing 081d919...f089529","target_url":"https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775","context":"codecov/patch","created_at":"2020-04-09T16:12:08Z","updated_at":"2020-04-09T16:12:08Z","creator":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false}}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Length: ['1540']
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:09 GMT']
-      Etag: ['"5125c0192a2899ec83518df88ca09f59"']
-      Location: ['https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [201 Created]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['']
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD9:0F74:1E9B6D:2BAF15:5E8F4958']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4974']
-      X-Ratelimit-Reset: ['1586451770']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 201, message: Created}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Length:
+      - '1540'
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:09 GMT
+      Etag:
+      - '"5125c0192a2899ec83518df88ca09f59"'
+      Location:
+      - https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 201 Created
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD9:0F74:1E9B6D:2BAF15:5E8F4958
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4974'
+      X-Ratelimit-Reset:
+      - '1586451770'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 201
+      message: Created
     status_code: 201
     url: https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775
 - request:
@@ -496,45 +740,72 @@ interactions:
       "context": "codecov/changes", "description": "1 file has unexpected coverage
       changes not visible in diff"}'
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: POST
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775
   response:
     content: '{"url":"https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","id":9333281703,"node_id":"MDEzOlN0YXR1c0NvbnRleHQ5MzMzMjgxNzAz","state":"failure","description":"1
       file has unexpected coverage changes not visible in diff","target_url":"https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775","context":"codecov/changes","created_at":"2020-04-09T16:12:08Z","updated_at":"2020-04-09T16:12:08Z","creator":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars3.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false}}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
-          Sunset']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Length: ['1546']
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 09 Apr 2020 16:12:09 GMT']
-      Etag: ['"7a180dbe2132fb9df3a5e5e6f24ef9d5"']
-      Location: ['https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [201 Created]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      X-Accepted-Oauth-Scopes: ['']
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['EBD8:4EFE:1B502F:271086:5E8F4958']
-      X-Oauth-Scopes: ['admin:org, admin:public_key, admin:repo_hook, repo, user,
-          write:discussion']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4973']
-      X-Ratelimit-Reset: ['1586451770']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 201, message: Created}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Length:
+      - '1546'
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 09 Apr 2020 16:12:09 GMT
+      Etag:
+      - '"7a180dbe2132fb9df3a5e5e6f24ef9d5"'
+      Location:
+      - https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 201 Created
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-Oauth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - EBD8:4EFE:1B502F:271086:5E8F4958
+      X-Oauth-Scopes:
+      - admin:org, admin:public_key, admin:repo_hook, repo, user, write:discussion
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4973'
+      X-Ratelimit-Reset:
+      - '1586451770'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 201
+      message: Created
     status_code: 201
     url: https://api.github.com/repos/ThiagoCodecov/example-python/statuses/f0895290dc26668faeeb20ee5ccd4cc995925775
 version: 1
