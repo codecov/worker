@@ -54,7 +54,7 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
     try:
         commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
     except InvalidYamlException as ex:
-        save_yaml_error(commit, code=CommitErrorTypes.Yaml.value.INVALID.value)
+        save_yaml_error(commit, code=CommitErrorTypes.Yaml.value.INVALID_YAML.value)
 
         log.warning(
             "Unable to use yaml from commit because it is invalid",
@@ -66,7 +66,9 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
             exc_info=True,
         )
     except TorngitClientError:
-        save_yaml_error(commit, code=CommitErrorTypes.Yaml.value.CLIENT_ERROR.value)
+        save_yaml_error(
+            commit, code=CommitErrorTypes.Yaml.value.YAML_CLIENT_ERROR.value
+        )
 
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to client issues",
@@ -74,7 +76,9 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
             exc_info=True,
         )
     except TorngitError:
-        save_yaml_error(commit, code=CommitErrorTypes.Yaml.value.UNKNOWN_ERROR.value)
+        save_yaml_error(
+            commit, code=CommitErrorTypes.Yaml.value.YAML_UNKNOWN_ERROR.value
+        )
 
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to unknown issues",
