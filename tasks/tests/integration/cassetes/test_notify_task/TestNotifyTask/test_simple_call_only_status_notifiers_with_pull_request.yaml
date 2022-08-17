@@ -1030,4 +1030,78 @@ interactions:
       message: Created
     status_code: 201
     url: https://api.github.com/repos/ThiagoCodecov/example-python/statuses/11daa27b1b74fd181836a64106f936a16404089c
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://api.github.com/repos/ThiagoCodecov/example-python/commits/11daa27b1b74fd181836a64106f936a16404089c/pulls
+  response:
+    content: '[]'
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Length:
+      - '2'
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Wed, 17 Aug 2022 01:19:13 GMT
+      ETag:
+      - '"9df3c60ee9918425c5450f4f3dc01f2dfd32b2a251792108bb6907a0d6b21a92"'
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3
+      X-GitHub-Request-Id:
+      - C60B:0EF5:79E56B:8213D3:62FC4210
+      X-OAuth-Scopes:
+      - repo
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4982'
+      X-RateLimit-Reset:
+      - '1660701033'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '18'
+      X-XSS-Protection:
+      - '0'
+      github-authentication-token-expiration:
+      - 2022-08-24 01:18:21 UTC
+    http_version: HTTP/1.1
+    status_code: 200
 version: 1
