@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from database.models import Commit, Dataset, Measurement, MeasurementName
 from database.models.core import Repository
 from database.models.reports import RepositoryFlag
-from helpers.timeseries import timeseries_enabled
+from helpers.timeseries import backfill_max_batch_size, timeseries_enabled
 from services.report import ReportService
 from services.yaml import get_repo_yaml
 
@@ -127,32 +127,25 @@ def save_commit_measurements(
                 db_session.flush()
 
 
-def save_repository_measurements(
+def repository_commits_query(
     repository: Repository,
     start_date: datetime,
     end_date: datetime,
-    dataset_names: Iterable[str] = None,
-) -> None:
-    if dataset_names is None:
-        dataset_names = []
-    if len(dataset_names) == 0:
-        return
-
+) -> Iterable[Commit]:
     db_session = repository.get_db_session()
 
     commits = (
-        db_session.query(Commit)
+        db_session.query(Commit.id_)
         .filter(
             Commit.repoid == repository.repoid,
             Commit.timestamp >= start_date,
             Commit.timestamp <= end_date,
         )
         .order_by(Commit.timestamp.desc())
-        .yield_per(1000)
+        .yield_per(100)
     )
 
-    for commit in commits:
-        save_commit_measurements(commit, dataset_names=dataset_names)
+    return commits
 
 
 def repository_datasets_query(
@@ -165,3 +158,17 @@ def repository_datasets_query(
         datasets = datasets.filter_by(backfilled=backfilled)
 
     return datasets
+
+
+def backfill_batch_size(repository: Repository) -> int:
+    db_session = repository.get_db_session()
+
+    flag_count = (
+        db_session.query(RepositoryFlag)
+        .filter_by(repository_id=repository.repoid)
+        .count()
+    )
+
+    flag_count = max(flag_count, 1)
+    batch_size = int(backfill_max_batch_size() / flag_count)
+    return max(batch_size, 1)

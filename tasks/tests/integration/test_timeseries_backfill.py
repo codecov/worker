@@ -1,18 +1,17 @@
-from datetime import datetime
-
 import pytest
 
 from database.models import Measurement, MeasurementName
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.timeseries import DatasetFactory
 from services.archive import ArchiveService
-from tasks.timeseries_backfill import TimeseriesBackfillTask
+from tasks.timeseries_backfill import TimeseriesBackfillCommitsTask
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_backfill_run_async(dbsession, mocker, mock_storage):
+async def test_backfill_dataset_run_async(dbsession, mocker, mock_storage):
     mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
 
     repository = RepositoryFactory.create()
     dbsession.add(repository)
@@ -28,7 +27,7 @@ async def test_backfill_run_async(dbsession, mocker, mock_storage):
     dbsession.flush()
 
     commit = CommitFactory.create(
-        repository=repository, timestamp=datetime(2022, 6, 15)
+        repository=repository,
     )
     dbsession.add(commit)
     dbsession.flush()
@@ -43,18 +42,21 @@ async def test_backfill_run_async(dbsession, mocker, mock_storage):
         )
         mock_storage.write_file("archive", master_chunks_url, content)
 
-    task = TimeseriesBackfillTask()
-    start_date = "2022-06-01T00:00:00"
-    end_date = "2022-06-30T00:00:00"
+    task = TimeseriesBackfillCommitsTask()
     res = await task.run_async(
-        dbsession, repoid=repository.repoid, start_date=start_date, end_date=end_date
+        dbsession,
+        commit_ids=[commit.id_],
+        dataset_names=[
+            MeasurementName.coverage.value,
+            MeasurementName.flag_coverage.value,
+        ],
     )
     assert res == {"successful": True}
 
     coverage_measurement = (
         dbsession.query(Measurement)
         .filter_by(
-            name="coverage",
+            name=MeasurementName.coverage.value,
             commit_sha=commit.commitid,
         )
         .one_or_none()
@@ -66,7 +68,7 @@ async def test_backfill_run_async(dbsession, mocker, mock_storage):
     flag_coverage_measurement = (
         dbsession.query(Measurement)
         .filter_by(
-            name="flag_coverage",
+            name=MeasurementName.flag_coverage.value,
             commit_sha=commit.commitid,
         )
         .one_or_none()

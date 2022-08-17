@@ -2,36 +2,64 @@ interactions:
 - request:
     body: null
     headers:
-      Accept: [application/vnd.github.valkyrie-preview+json]
-      Connection: [keep-alive]
-      User-Agent: [Codecov]
+      Accept:
+      - application/vnd.github.valkyrie-preview+json
+      Connection:
+      - keep-alive
+      User-Agent:
+      - Codecov
     method: GET
     uri: https://api.github.com/marketplace_listing/stubbed/accounts/3877742
   response:
-    body: { string: '{"url":"https://api.github.com/orgs/github","type":"Organization","id":3877742,"login":"cc-test","email":"cc-test@codecov.io","organization_billing_email":"billing@github.com","marketplace_pending_change":null,"marketplace_purchase":{"billing_cycle":"monthly","next_billing_date":"2020-02-01T00:00:00.000Z","on_free_trial":false,"free_trial_ends_on":null,"unit_count":10,"updated_at":"2020-01-13T00:00:00.000Z","plan":{"url":"https://api.github.com/marketplace_listing/plans/3267","accounts_url":"https://api.github.com/marketplace_listing/plans/3267/accounts","id":3267,"number":3,"name":"Pro","description":"A professional-grade CI solution","monthly_price_in_cents":1099,"yearly_price_in_cents":11870,"has_free_trial":false,"price_model":"flat-rate","state":"published","unit_name":null,"bullets":["This is the first bullet of the Pro plan","This is the second bullet of the Pro plan"]}}}'}
+    body:
+      string: '{"url":"https://api.github.com/orgs/github","type":"Organization","id":3877742,"login":"cc-test","email":"cc-test@codecov.io","organization_billing_email":"billing@github.com","marketplace_pending_change":null,"marketplace_purchase":{"billing_cycle":"monthly","next_billing_date":"2020-02-01T00:00:00.000Z","on_free_trial":false,"free_trial_ends_on":null,"unit_count":10,"updated_at":"2020-01-13T00:00:00.000Z","plan":{"url":"https://api.github.com/marketplace_listing/plans/3267","accounts_url":"https://api.github.com/marketplace_listing/plans/3267/accounts","id":3267,"number":3,"name":"Pro","description":"A
+        professional-grade CI solution","monthly_price_in_cents":1099,"yearly_price_in_cents":11870,"has_free_trial":false,"price_model":"flat-rate","state":"published","unit_name":null,"bullets":["This
+        is the first bullet of the Pro plan","This is the second bullet of the Pro
+        plan"]}}}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
-      Cache-Control: ['public, max-age=60, s-maxage=60']
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Fri, 24 Jan 2020 00:13:35 GMT']
-      ETag: [W/"275358a665064f66410393b9de134be6"]
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: [Accept]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-GitHub-Media-Type: [github.v3; param=valkyrie-preview; format=json]
-      X-GitHub-Request-Id: ['B4A6:56CB:126D6B:2D5556:5E2A36AF']
-      X-RateLimit-Limit: ['5000']
-      X-RateLimit-Remaining: ['4992']
-      X-RateLimit-Reset: ['1579825791']
-      X-XSS-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type
+      Cache-Control:
+      - public, max-age=60, s-maxage=60
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Fri, 24 Jan 2020 00:13:35 GMT
+      ETag:
+      - W/"275358a665064f66410393b9de134be6"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Vary:
+      - Accept
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3; param=valkyrie-preview; format=json
+      X-GitHub-Request-Id:
+      - B4A6:56CB:126D6B:2D5556:5E2A36AF
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4992'
+      X-RateLimit-Reset:
+      - '1579825791'
+      X-XSS-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
 version: 1

@@ -2,8 +2,10 @@ interactions:
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/user/repos?per_page=100&page=1
   response:
@@ -14,41 +16,70 @@ interactions:
       flexible package manager that supports multiple versions, configurations, platforms,
       and compilers.","fork":true,"url":"https://api.github.com/repos/1nf1n1t3l00p/spack","forks_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/forks","keys_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/keys{/key_id}","collaborators_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/teams","hooks_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/hooks","issue_events_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/issues/events{/number}","events_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/events","assignees_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/assignees{/user}","branches_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/branches{/branch}","tags_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/tags","blobs_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/git/refs{/sha}","trees_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/git/trees{/sha}","statuses_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/statuses/{sha}","languages_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/languages","stargazers_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/stargazers","contributors_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/contributors","subscribers_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/subscribers","subscription_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/subscription","commits_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/commits{/sha}","git_commits_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/git/commits{/sha}","comments_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/comments{/number}","issue_comment_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/issues/comments{/number}","contents_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/contents/{+path}","compare_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/compare/{base}...{head}","merges_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/merges","archive_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/downloads","issues_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/issues{/number}","pulls_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/pulls{/number}","milestones_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/milestones{/number}","notifications_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/labels{/name}","releases_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/releases{/id}","deployments_url":"https://api.github.com/repos/1nf1n1t3l00p/spack/deployments","created_at":"2019-01-09T22:27:51Z","updated_at":"2019-01-09T22:28:01Z","pushed_at":"2019-01-09T22:19:36Z","git_url":"git://github.com/1nf1n1t3l00p/spack.git","ssh_url":"git@github.com:1nf1n1t3l00p/spack.git","clone_url":"https://github.com/1nf1n1t3l00p/spack.git","svn_url":"https://github.com/1nf1n1t3l00p/spack","homepage":"https://spack.io","size":50539,"stargazers_count":0,"watchers_count":0,"language":"Python","has_issues":false,"has_projects":true,"has_downloads":true,"has_wiki":true,"has_pages":false,"forks_count":0,"mirror_url":null,"archived":false,"disabled":false,"open_issues_count":0,"license":{"key":"other","name":"Other","spdx_id":"NOASSERTION","url":null,"node_id":"MDc6TGljZW5zZTA="},"forks":0,"open_issues":0,"watchers":0,"default_branch":"develop","permissions":{"admin":true,"push":true,"pull":true}}]'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Sun, 27 Oct 2019 03:14:12 GMT']
-      Etag: [W/"e3801bcbeed09428da1710250fede463"]
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP']
-      X-Accepted-Oauth-Scopes: ['']
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['C030:746A:10DBEF9:2327992:5DB50B84']
-      X-Oauth-Scopes: ['repo, user']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4999']
-      X-Ratelimit-Reset: ['1572149652']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Sun, 27 Oct 2019 03:14:12 GMT
+      Etag:
+      - W/"e3801bcbeed09428da1710250fede463"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      X-Accepted-Oauth-Scopes:
+      - ''
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - C030:746A:10DBEF9:2327992:5DB50B84
+      X-Oauth-Scopes:
+      - repo, user
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4999'
+      X-Ratelimit-Reset:
+      - '1572149652'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/user/repos?per_page=100&page=1
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/repos/1nf1n1t3l00p/pytest
   response:
@@ -63,42 +94,72 @@ interactions:
       functional testing","fork":false,"url":"https://api.github.com/repos/pytest-dev/pytest","forks_url":"https://api.github.com/repos/pytest-dev/pytest/forks","keys_url":"https://api.github.com/repos/pytest-dev/pytest/keys{/key_id}","collaborators_url":"https://api.github.com/repos/pytest-dev/pytest/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/pytest-dev/pytest/teams","hooks_url":"https://api.github.com/repos/pytest-dev/pytest/hooks","issue_events_url":"https://api.github.com/repos/pytest-dev/pytest/issues/events{/number}","events_url":"https://api.github.com/repos/pytest-dev/pytest/events","assignees_url":"https://api.github.com/repos/pytest-dev/pytest/assignees{/user}","branches_url":"https://api.github.com/repos/pytest-dev/pytest/branches{/branch}","tags_url":"https://api.github.com/repos/pytest-dev/pytest/tags","blobs_url":"https://api.github.com/repos/pytest-dev/pytest/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/pytest-dev/pytest/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/pytest-dev/pytest/git/refs{/sha}","trees_url":"https://api.github.com/repos/pytest-dev/pytest/git/trees{/sha}","statuses_url":"https://api.github.com/repos/pytest-dev/pytest/statuses/{sha}","languages_url":"https://api.github.com/repos/pytest-dev/pytest/languages","stargazers_url":"https://api.github.com/repos/pytest-dev/pytest/stargazers","contributors_url":"https://api.github.com/repos/pytest-dev/pytest/contributors","subscribers_url":"https://api.github.com/repos/pytest-dev/pytest/subscribers","subscription_url":"https://api.github.com/repos/pytest-dev/pytest/subscription","commits_url":"https://api.github.com/repos/pytest-dev/pytest/commits{/sha}","git_commits_url":"https://api.github.com/repos/pytest-dev/pytest/git/commits{/sha}","comments_url":"https://api.github.com/repos/pytest-dev/pytest/comments{/number}","issue_comment_url":"https://api.github.com/repos/pytest-dev/pytest/issues/comments{/number}","contents_url":"https://api.github.com/repos/pytest-dev/pytest/contents/{+path}","compare_url":"https://api.github.com/repos/pytest-dev/pytest/compare/{base}...{head}","merges_url":"https://api.github.com/repos/pytest-dev/pytest/merges","archive_url":"https://api.github.com/repos/pytest-dev/pytest/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/pytest-dev/pytest/downloads","issues_url":"https://api.github.com/repos/pytest-dev/pytest/issues{/number}","pulls_url":"https://api.github.com/repos/pytest-dev/pytest/pulls{/number}","milestones_url":"https://api.github.com/repos/pytest-dev/pytest/milestones{/number}","notifications_url":"https://api.github.com/repos/pytest-dev/pytest/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/pytest-dev/pytest/labels{/name}","releases_url":"https://api.github.com/repos/pytest-dev/pytest/releases{/id}","deployments_url":"https://api.github.com/repos/pytest-dev/pytest/deployments","created_at":"2015-06-15T20:28:27Z","updated_at":"2019-10-26T17:20:00Z","pushed_at":"2019-10-27T02:02:44Z","git_url":"git://github.com/pytest-dev/pytest.git","ssh_url":"git@github.com:pytest-dev/pytest.git","clone_url":"https://github.com/pytest-dev/pytest.git","svn_url":"https://github.com/pytest-dev/pytest","homepage":"https://pytest.org","size":18966,"stargazers_count":4986,"watchers_count":4986,"language":"Python","has_issues":true,"has_projects":true,"has_downloads":true,"has_wiki":true,"has_pages":false,"forks_count":1194,"mirror_url":null,"archived":false,"disabled":false,"open_issues_count":608,"license":{"key":"mit","name":"MIT
       License","spdx_id":"MIT","url":"https://api.github.com/licenses/mit","node_id":"MDc6TGljZW5zZTEz"},"forks":1194,"open_issues":608,"watchers":4986,"default_branch":"master"},"network_count":1194,"subscribers_count":0}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Sun, 27 Oct 2019 03:14:12 GMT']
-      Etag: [W/"5b77b875c911b58b9136a0e9569432a5"]
-      Last-Modified: ['Mon, 26 Nov 2018 00:46:44 GMT']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP']
-      X-Accepted-Oauth-Scopes: [repo]
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['C034:59D8:133AC85:26F6B8C:5DB50B84']
-      X-Oauth-Scopes: ['repo, user']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4997']
-      X-Ratelimit-Reset: ['1572149652']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Sun, 27 Oct 2019 03:14:12 GMT
+      Etag:
+      - W/"5b77b875c911b58b9136a0e9569432a5"
+      Last-Modified:
+      - Mon, 26 Nov 2018 00:46:44 GMT
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      X-Accepted-Oauth-Scopes:
+      - repo
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - C034:59D8:133AC85:26F6B8C:5DB50B84
+      X-Oauth-Scopes:
+      - repo, user
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4997'
+      X-Ratelimit-Reset:
+      - '1572149652'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/repos/1nf1n1t3l00p/pytest
 - request:
     body: null
     headers:
-      Accept: [application/json]
-      User-Agent: [Default]
+      Accept:
+      - application/json
+      User-Agent:
+      - Default
     method: GET
     uri: https://api.github.com/repos/1nf1n1t3l00p/spack
   response:
@@ -110,35 +171,63 @@ interactions:
       flexible package manager that supports multiple versions, configurations, platforms,
       and compilers.","fork":false,"url":"https://api.github.com/repos/spack/spack","forks_url":"https://api.github.com/repos/spack/spack/forks","keys_url":"https://api.github.com/repos/spack/spack/keys{/key_id}","collaborators_url":"https://api.github.com/repos/spack/spack/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/spack/spack/teams","hooks_url":"https://api.github.com/repos/spack/spack/hooks","issue_events_url":"https://api.github.com/repos/spack/spack/issues/events{/number}","events_url":"https://api.github.com/repos/spack/spack/events","assignees_url":"https://api.github.com/repos/spack/spack/assignees{/user}","branches_url":"https://api.github.com/repos/spack/spack/branches{/branch}","tags_url":"https://api.github.com/repos/spack/spack/tags","blobs_url":"https://api.github.com/repos/spack/spack/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/spack/spack/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/spack/spack/git/refs{/sha}","trees_url":"https://api.github.com/repos/spack/spack/git/trees{/sha}","statuses_url":"https://api.github.com/repos/spack/spack/statuses/{sha}","languages_url":"https://api.github.com/repos/spack/spack/languages","stargazers_url":"https://api.github.com/repos/spack/spack/stargazers","contributors_url":"https://api.github.com/repos/spack/spack/contributors","subscribers_url":"https://api.github.com/repos/spack/spack/subscribers","subscription_url":"https://api.github.com/repos/spack/spack/subscription","commits_url":"https://api.github.com/repos/spack/spack/commits{/sha}","git_commits_url":"https://api.github.com/repos/spack/spack/git/commits{/sha}","comments_url":"https://api.github.com/repos/spack/spack/comments{/number}","issue_comment_url":"https://api.github.com/repos/spack/spack/issues/comments{/number}","contents_url":"https://api.github.com/repos/spack/spack/contents/{+path}","compare_url":"https://api.github.com/repos/spack/spack/compare/{base}...{head}","merges_url":"https://api.github.com/repos/spack/spack/merges","archive_url":"https://api.github.com/repos/spack/spack/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/spack/spack/downloads","issues_url":"https://api.github.com/repos/spack/spack/issues{/number}","pulls_url":"https://api.github.com/repos/spack/spack/pulls{/number}","milestones_url":"https://api.github.com/repos/spack/spack/milestones{/number}","notifications_url":"https://api.github.com/repos/spack/spack/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/spack/spack/labels{/name}","releases_url":"https://api.github.com/repos/spack/spack/releases{/id}","deployments_url":"https://api.github.com/repos/spack/spack/deployments","created_at":"2014-01-08T09:22:12Z","updated_at":"2019-10-27T02:03:43Z","pushed_at":"2019-10-27T02:03:41Z","git_url":"git://github.com/spack/spack.git","ssh_url":"git@github.com:spack/spack.git","clone_url":"https://github.com/spack/spack.git","svn_url":"https://github.com/spack/spack","homepage":"https://spack.io","size":66728,"stargazers_count":1252,"watchers_count":1252,"language":"Python","has_issues":true,"has_projects":true,"has_downloads":true,"has_wiki":true,"has_pages":true,"forks_count":783,"mirror_url":null,"archived":false,"disabled":false,"open_issues_count":1383,"license":{"key":"other","name":"Other","spdx_id":"NOASSERTION","url":null,"node_id":"MDc6TGljZW5zZTA="},"forks":783,"open_issues":1383,"watchers":1252,"default_branch":"develop"},"network_count":783,"subscribers_count":0}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
-      Cache-Control: ['private, max-age=60, s-maxage=60']
-      Connection: [close]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Sun, 27 Oct 2019 03:14:13 GMT']
-      Etag: [W/"469e9879690659a462c89604c730d161"]
-      Last-Modified: ['Wed, 09 Jan 2019 22:28:01 GMT']
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: ['Accept, Authorization, Cookie, X-GitHub-OTP']
-      X-Accepted-Oauth-Scopes: [repo]
-      X-Consumed-Content-Encoding: [gzip]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-Github-Media-Type: [github.v3]
-      X-Github-Request-Id: ['C036:0DDA:11E82F3:24C6EEF:5DB50B85']
-      X-Oauth-Scopes: ['repo, user']
-      X-Ratelimit-Limit: ['5000']
-      X-Ratelimit-Remaining: ['4996']
-      X-Ratelimit-Reset: ['1572149652']
-      X-Xss-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Connection:
+      - close
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Sun, 27 Oct 2019 03:14:13 GMT
+      Etag:
+      - W/"469e9879690659a462c89604c730d161"
+      Last-Modified:
+      - Wed, 09 Jan 2019 22:28:01 GMT
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      X-Accepted-Oauth-Scopes:
+      - repo
+      X-Consumed-Content-Encoding:
+      - gzip
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-Github-Media-Type:
+      - github.v3
+      X-Github-Request-Id:
+      - C036:0DDA:11E82F3:24C6EEF:5DB50B85
+      X-Oauth-Scopes:
+      - repo, user
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4996'
+      X-Ratelimit-Reset:
+      - '1572149652'
+      X-Xss-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
     status_code: 200
     url: https://api.github.com/repos/1nf1n1t3l00p/spack
 version: 1

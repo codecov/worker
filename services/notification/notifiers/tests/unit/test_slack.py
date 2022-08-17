@@ -18,7 +18,7 @@ class TestSlackNotifier(object):
         commit = comparison.head.commit
         base_commit = comparison.base.commit
         repository = commit.repository
-        text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* `<test.example.br/gh/{repository.slug}/compare/{base_commit.commitid}...{commit.commitid}|+10.00%>` on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
+        text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* `<test.example.br/gh/{repository.slug}/pull/{comparison.pull.pullid}|+10.00%>` on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
         expected_result = {
             "attachments": [],
             "author_link": f"test.example.br/gh/{commit.repository.slug}/commit/{commit.commitid}",
@@ -44,7 +44,7 @@ class TestSlackNotifier(object):
         commit = comparison.head.commit
         base_commit = comparison.base.commit
         repository = commit.repository
-        text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* `<test.example.br/gh/{repository.slug}/compare/{base_commit.commitid}...{commit.commitid}|+10.00%>` on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
+        text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* `<test.example.br/gh/{repository.slug}/pull/{comparison.pull.pullid}|+10.00%>` on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
         expected_result = {
             "attachments": [
                 {
@@ -101,7 +101,7 @@ class TestSlackNotifier(object):
             current_yaml={},
         )
         result = notifier.build_payload(comparison)
-        text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* `<test.example.br/gh/{repository.slug}/compare/{base_commit.commitid}...{commit.commitid}|+10.00%>` on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
+        text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|+10.00%>` on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
         expected_result = {
             "attachments": [],
             "author_link": f"test.example.br/gh/{commit.repository.slug}/commit/{commit.commitid}",
