@@ -8,7 +8,7 @@ from helpers.save_commit_error import save_repo_bot_error, save_yaml_error
 LOGGER = logging.getLogger(__name__)
 
 
-class TestSaveBotError(object):
+class TestSaveCommitError(object):
     @pytest.mark.asyncio
     async def test_save_bot_error(self, mocker, dbsession):
         commit = CommitFactory.create()
