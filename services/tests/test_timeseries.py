@@ -11,6 +11,7 @@ from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.reports import RepositoryFlagFactory
 from database.tests.factories.timeseries import DatasetFactory, MeasurementFactory
 from services.timeseries import (
+    backfill_batch_size,
     repository_commits_query,
     repository_datasets_query,
     save_commit_measurements,
@@ -414,3 +415,30 @@ class TestTimeseriesService(object):
         assert [dataset.name for dataset in datasets] == [
             MeasurementName.flag_coverage.value,
         ]
+
+    def test_backfill_batch_size(self, repository):
+        batch_size = backfill_batch_size(repository)
+        assert batch_size == 500
+
+        dbsession = repository.get_db_session()
+        flag = RepositoryFlagFactory(repository=repository, flag_name="flag1")
+        dbsession.add(flag)
+        dbsession.flush()
+
+        batch_size = backfill_batch_size(repository)
+        assert batch_size == 500
+
+        flag = RepositoryFlagFactory(repository=repository, flag_name="flag2")
+        dbsession.add(flag)
+        dbsession.flush()
+
+        batch_size = backfill_batch_size(repository)
+        assert batch_size == 250
+
+        for i in range(8):
+            flag = RepositoryFlagFactory(repository=repository, flag_name="flag2")
+            dbsession.add(flag)
+            dbsession.flush()
+
+        batch_size = backfill_batch_size(repository)
+        assert batch_size == 50
