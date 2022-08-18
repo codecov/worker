@@ -1,9 +1,11 @@
 import json
+import re
 from typing import Sequence
 
 from shared.profiling import ProfilingDataFullAnalyzer, ProfilingSummaryDataAnalyzer
 from shared.ribs import rustify_diff
 from shared.storage.exceptions import FileNotInStorageError
+from shared.yaml import UserYaml
 
 from database.models.profiling import ProfilingCommit
 
@@ -73,12 +75,43 @@ class CriticalPathOverlay(object):
             self._profiling_analyzer = _load_full_profiling_analyzer(self._comparison)
         return self._profiling_analyzer
 
-    def search_files_for_critical_changes(self, filenames_to_search: Sequence[str]):
-        if self._critical_path_report is None:
-            return []
-        return set(filenames_to_search) & set(
-            self._critical_path_report.get_critical_files_filenames()
+    def _get_critical_files_from_yaml(self, filenames_to_search: Sequence[str]):
+        """
+        Get list of files in filenames_to_search that match the list of critical_file paths defined by the user in the YAML (under profiling.critical_files_paths)
+        """
+        repo = self._comparison.head.commit.repository
+        repo_yaml = UserYaml.get_final_yaml(
+            owner_yaml=repo.owner.yaml, repo_yaml=repo.yaml, ownerid=repo.owner.ownerid
         )
+        if not repo_yaml.get("profiling") or not repo_yaml["profiling"].get(
+            "critical_files_paths"
+        ):
+            return []
+        critical_files_paths = repo_yaml["profiling"]["critical_files_paths"]
+        compiled_files_paths = [re.compile(path) for path in critical_files_paths]
+        user_defined_critical_files = [
+            file
+            for file in filenames_to_search
+            if any(map(lambda regex: regex.match(file), compiled_files_paths))
+        ]
+        return user_defined_critical_files
+
+    def search_files_for_critical_changes(self, filenames_to_search: Sequence[str]):
+        """
+        Returns list of files considered critical in filenames_to_search.
+        Critical files comes from 2 sources:
+            1. Critical files from  self._critical_path_report (actually detected by impact analysis)
+            2. critical files that match paths defined in the user YAML
+        """
+        critical_files_from_profiling = set()
+        if self._critical_path_report:
+            critical_files_from_profiling = set(filenames_to_search) & set(
+                self._critical_path_report.get_critical_files_filenames()
+            )
+        critical_files_from_yaml = set(
+            self._get_critical_files_from_yaml(filenames_to_search)
+        )
+        return list(critical_files_from_profiling | critical_files_from_yaml)
 
     async def find_impacted_endpoints(self):
         analyzer = self.full_analyzer

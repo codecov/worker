@@ -7,6 +7,11 @@ from database.tests.factories.profiling import ProfilingCommitFactory
 from services.comparison.overlays.critical_path import (
     CriticalPathOverlay,
     ProfilingSummaryDataAnalyzer,
+)
+from services.comparison.overlays.critical_path import (
+    UserYaml as critical_path_useryaml,
+)
+from services.comparison.overlays.critical_path import (
     _load_critical_path_report,
     _load_full_profiling_analyzer,
 )
@@ -143,10 +148,54 @@ def test_load_critical_path_report_yes_commit_no_storage(
     assert _load_full_profiling_analyzer(sample_comparison) is None
 
 
+def test_critical_files_from_yaml_no_paths(mocker, sample_comparison):
+    mocked_useryaml = mocker.patch.object(
+        critical_path_useryaml, "get_final_yaml", return_value=dict()
+    )
+    overlay = CriticalPathOverlay(sample_comparison, None)
+    critical_paths_from_yaml = overlay._get_critical_files_from_yaml(
+        ["batata.txt", "a.py"]
+    )
+    assert critical_paths_from_yaml == []
+    mocked_useryaml.assert_called()
+
+
+def test_critical_files_from_yaml_with_paths(mocker, sample_comparison):
+    mocked_useryaml = mocker.patch.object(
+        critical_path_useryaml,
+        "get_final_yaml",
+        return_value=dict(
+            profiling=dict(critical_files_paths=["src/critical", "important.txt"])
+        ),
+    )
+    overlay = CriticalPathOverlay(sample_comparison, None)
+    critical_paths_from_yaml = overlay._get_critical_files_from_yaml(
+        ["batata.txt", "src/critical/a.py"]
+    )
+    assert critical_paths_from_yaml == ["src/critical/a.py"]
+    mocked_useryaml.assert_called()
+
+
 class TestCriticalPathOverlay(object):
     def test_search_files_for_critical_changes_none_report(self, sample_comparison):
         a = CriticalPathOverlay(sample_comparison, None)
         assert a.search_files_for_critical_changes(["filenames", "to", "search"]) == []
+
+    def test_search_files_for_critical_changes_none_report_with_yaml_path(
+        self, sample_comparison, mocker
+    ):
+        mocked_useryaml = mocker.patch.object(
+            critical_path_useryaml,
+            "get_final_yaml",
+            return_value=dict(
+                profiling=dict(critical_files_paths=["src/critical", "important.txt"])
+            ),
+        )
+        a = CriticalPathOverlay(sample_comparison, None)
+        assert a.search_files_for_critical_changes(
+            ["filenames", "to", "search", "important.txt"]
+        ) == ["important.txt"]
+        mocked_useryaml.assert_called()
 
     @pytest.mark.asyncio
     async def test_find_impacted_endpoints_no_analyzer(self, sample_comparison):
