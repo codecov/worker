@@ -45,7 +45,8 @@ class TestBotsService(BaseTestCase):
                 ),
             ),
         )
-        expected_result = {"key": "somekey"}
+        # It returns the owner, but in this case it's None
+        expected_result = ({"key": "somekey"}, None)
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_enterprise_yes_bot(
@@ -65,7 +66,7 @@ class TestBotsService(BaseTestCase):
                 ),
             ),
         )
-        expected_result = {"key": "somekey"}
+        expected_result = ({"key": "somekey"}, None)
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_enterprise_no_bot(
@@ -84,11 +85,14 @@ class TestBotsService(BaseTestCase):
                 ),
             ),
         )
-        expected_result = {
-            "username": repo.bot.username,
-            "key": "simple_code",
-            "secret": None,
-        }
+        expected_result = (
+            {
+                "username": repo.bot.username,
+                "key": "simple_code",
+                "secret": None,
+            },
+            repo.bot,
+        )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_public_bot_without_key(
@@ -106,11 +110,14 @@ class TestBotsService(BaseTestCase):
                 ),
             ),
         )
-        expected_result = {
-            "username": repo.bot.username,
-            "key": "simple_code",
-            "secret": None,
-        }
+        expected_result = (
+            {
+                "username": repo.bot.username,
+                "key": "simple_code",
+                "secret": None,
+            },
+            repo.bot,
+        )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_valid_bot(self):
@@ -125,11 +132,14 @@ class TestBotsService(BaseTestCase):
                 ),
             ),
         )
-        expected_result = {
-            "username": repo.bot.username,
-            "key": "simple_code",
-            "secret": None,
-        }
+        expected_result = (
+            {
+                "username": repo.bot.username,
+                "key": "simple_code",
+                "secret": None,
+            },
+            repo.bot,
+        )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_invalid_bot_valid_owner_bot(self):
@@ -143,11 +153,14 @@ class TestBotsService(BaseTestCase):
                 ),
             ),
         )
-        expected_result = {
-            "username": repo.owner.bot.username,
-            "key": "now_that_code_is_complex",
-            "secret": None,
-        }
+        expected_result = (
+            {
+                "username": repo.owner.bot.username,
+                "key": "now_that_code_is_complex",
+                "secret": None,
+            },
+            repo.owner.bot,
+        )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_no_bot_valid_owner_bot(self):
@@ -161,11 +174,14 @@ class TestBotsService(BaseTestCase):
                 ),
             ),
         )
-        expected_result = {
-            "username": repo.owner.bot.username,
-            "key": "now_that_code_is_complex",
-            "secret": None,
-        }
+        expected_result = (
+            {
+                "username": repo.owner.bot.username,
+                "key": "now_that_code_is_complex",
+                "secret": None,
+            },
+            repo.owner.bot,
+        )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_no_bot_invalid_owner_bot(self):
@@ -177,11 +193,14 @@ class TestBotsService(BaseTestCase):
                 bot=OwnerFactory.create(unencrypted_oauth_token=None),
             ),
         )
-        expected_result = {
-            "username": repo.owner.username,
-            "key": "not_so_simple_code",
-            "secret": None,
-        }
+        expected_result = (
+            {
+                "username": repo.owner.username,
+                "key": "not_so_simple_code",
+                "secret": None,
+            },
+            repo.owner,
+        )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_no_oauth_token_at_all(self):
@@ -208,11 +227,14 @@ class TestBotsService(BaseTestCase):
                 bot=OwnerFactory.create(unencrypted_oauth_token=None),
             ),
         )
-        expected_result = {
-            "username": repo.owner.username,
-            "key": "not_so_simple_code",
-            "secret": None,
-        }
+        expected_result = (
+            {
+                "username": repo.owner.username,
+                "key": "not_so_simple_code",
+                "secret": None,
+            },
+            repo.owner,
+        )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     @pytest.mark.integration
@@ -238,7 +260,7 @@ class TestBotsService(BaseTestCase):
                 bot=OwnerFactory.create(unencrypted_oauth_token=None),
             ),
         )
-        expected_result = {"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}
+        expected_result = ({"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}, None)
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_owner_appropriate_bot_token_owner_no_bot_no_integration(self):

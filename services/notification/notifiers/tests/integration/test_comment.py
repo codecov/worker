@@ -255,7 +255,8 @@ def sample_comparison_for_limited_upload(
 
 class TestCommentNotifierIntegration(object):
     @pytest.mark.asyncio
-    async def test_notify(self, sample_comparison, codecov_vcr):
+    async def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
+        mock_configuration._params["setup"] = {"codecov_url": None}
         comparison = sample_comparison
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -319,8 +320,9 @@ class TestCommentNotifierIntegration(object):
 
     @pytest.mark.asyncio
     async def test_notify_upgrade(
-        self, dbsession, sample_comparison_for_upgrade, codecov_vcr
+        self, dbsession, sample_comparison_for_upgrade, codecov_vcr, mock_configuration
     ):
+        mock_configuration._params["setup"] = {"codecov_url": None}
         comparison = sample_comparison_for_upgrade
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -352,8 +354,13 @@ class TestCommentNotifierIntegration(object):
 
     @pytest.mark.asyncio
     async def test_notify_upload_limited(
-        self, dbsession, sample_comparison_for_limited_upload, codecov_vcr
+        self,
+        dbsession,
+        sample_comparison_for_limited_upload,
+        codecov_vcr,
+        mock_configuration,
     ):
+        mock_configuration._params["setup"] = {"codecov_url": None}
         comparison = sample_comparison_for_limited_upload
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -386,7 +393,10 @@ class TestCommentNotifierIntegration(object):
         assert result.data_received == {"id": 1111984446}
 
     @pytest.mark.asyncio
-    async def test_notify_gitlab(self, sample_comparison_gitlab, codecov_vcr):
+    async def test_notify_gitlab(
+        self, sample_comparison_gitlab, codecov_vcr, mock_configuration
+    ):
+        mock_configuration._params["setup"] = {"codecov_url": None}
         comparison = sample_comparison_gitlab
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -449,7 +459,10 @@ class TestCommentNotifierIntegration(object):
         assert result.data_received == {"id": 305215656}
 
     @pytest.mark.asyncio
-    async def test_notify_new_layout(self, sample_comparison, codecov_vcr):
+    async def test_notify_new_layout(
+        self, sample_comparison, codecov_vcr, mock_configuration
+    ):
+        mock_configuration._params["setup"] = {"codecov_url": None}
         comparison = sample_comparison
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -506,7 +519,7 @@ class TestCommentNotifierIntegration(object):
             "</details>",
             "",
             "[:umbrella: View full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   ",
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):

@@ -14,6 +14,7 @@ from codecovopentelem import (
     get_codecov_opentelemetry_instances,
 )
 from shared.celery_config import BaseCeleryConfig, profiling_finding_task_name
+from shared.config import get_config
 
 from helpers.cache import RedisBackend, cache
 from helpers.clock import get_utc_now_as_iso_format
@@ -102,3 +103,30 @@ class CeleryWorkerConfig(BaseCeleryConfig):
             },
         },
     }
+
+
+# TODO: move this to `shared`
+timeseries_queue = get_config(
+    "setup",
+    "tasks",
+    "timeseries",
+    "queue",
+    default=CeleryWorkerConfig.task_default_queue,
+)
+CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill"] = {
+    "queue": timeseries_queue,
+}
+CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_commits"] = {
+    "queue": timeseries_queue,
+}
+CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_dataset"] = {
+    "queue": timeseries_queue,
+}
+CeleryWorkerConfig.task_annotations["app.tasks.timeseries.backfill_commits"] = {
+    "soft_time_limit": get_config(
+        "setup", "tasks", "timeseries", "soft_timelimit", default=400
+    ),
+    "time_limit": get_config(
+        "setup", "tasks", "timeseries", "hard_timelimit", default=480
+    ),
+}
