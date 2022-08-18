@@ -16,7 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import celery_app
 from database.models import Commit, Upload
 from helpers.metrics import metrics
-from helpers.save_bot_error import save_repo_bot_error
+from helpers.save_commit_error import save_repo_bot_error
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
 from services.report import Report, ReportService

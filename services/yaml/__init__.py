@@ -6,7 +6,7 @@ from shared.yaml import UserYaml
 
 from database.enums import CommitErrorTypes
 from database.models import Commit
-from database.models.core import CommitError
+from helpers.save_commit_error import save_yaml_error
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.reader import read_yaml_field
 
@@ -19,16 +19,6 @@ def get_repo_yaml(repository):
         repo_yaml=repository.yaml,
         ownerid=repository.owner.ownerid,
     )
-
-
-def save_yaml_error(commit: Commit, code):
-    try:
-        db_session = commit.get_db_session()
-        err = CommitError(commit=commit, error_code=code, error_params={})
-        db_session.add(err)
-        db_session.commit()
-    except Exception as e:
-        log.warning("Error saving yaml commit error", e, code)
 
 
 async def get_current_yaml(commit: Commit, repository_service) -> dict:
