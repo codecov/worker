@@ -239,7 +239,7 @@ class TestRequestsYamlBasedNotifier(object):
     @pytest.mark.asyncio
     async def test_send_notification_exception(self, mocker, sample_comparison):
         mocked_post = mocker.patch.object(httpx.AsyncClient, "post")
-        mocked_post.side_effect = httpx.HTTPError("message", request=mocker.MagicMock())
+        mocked_post.side_effect = httpx.HTTPError("message")
         notifier = RequestsYamlBasedNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",

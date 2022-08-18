@@ -1,4 +1,5 @@
 import logging
+import random
 from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
@@ -78,7 +79,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
         )
         yield (
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue]({0}).".format(
-                "https://github.com/codecov/Codecov-user-feedback/issues/8"
+                "https://about.codecov.io/codecov-pr-comment-feedback/"
                 if repo_service == "github"
                 else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
             )
@@ -87,7 +88,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
 
 class FeedbackSectionWriter(BaseSectionWriter):
     async def do_write_section(*args, **kwargs):
-        yield "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps)."
+        yield "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps). Have a feature suggestion? [Share it here.](https://app.codecov.io/gh/feedback/)"
 
 
 class NewHeaderSectionWriter(BaseSectionWriter):
@@ -212,7 +213,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             if files_in_critical:
                 yield ("")
                 yield (
-                    "Changes have been made to critical files, which contain lines commonly executed in production"
+                    "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
                 )
 
 
@@ -308,13 +309,22 @@ class HeaderSectionWriter(BaseSectionWriter):
             if files_in_critical:
                 yield ("")
                 yield (
-                    "Changes have been made to critical files, which contain lines commonly executed in production"
+                    "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
                 )
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):
+    current_active_messages = [
+        "We’re building smart automated test selection to slash your CI/CD build times. [Learn more](https://about.codecov.io/iterative-testing/)",
+        #   "Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"  # This is disabled as of CODE-1885. But we might bring it back later.
+    ]
+
     async def do_write_section(*args, **kwargs):
-        yield ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"
+        # This allows us to shift through active messages while respecting the annoucement limit.
+        message_to_display = random.choice(
+            AnnouncementSectionWriter.current_active_messages
+        )
+        yield f":mega: {message_to_display}"
 
 
 class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
@@ -327,7 +337,7 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
         elif impacted_endpoints is not None:
-            yield "This change has been scanned for critical changes"
+            yield "This change has been scanned for critical changes. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
 
 
 class FooterSectionWriter(BaseSectionWriter):

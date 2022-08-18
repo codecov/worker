@@ -97,7 +97,8 @@ interactions:
       Report\nBase: **50.00**% // Head: **60.00**% // Increases project coverage by
       **`+10.00%`** :tada:\n> Coverage data is based on head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc)
       compared to base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc).\n>
-      Patch has no changes to coverable lines.\n<details><summary>Additional details and impacted files</summary>\n\n\n[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)\n\n```diff\n@@              Coverage
+      Patch has no changes to coverable lines.\n<details><summary>Additional details
+      and impacted files</summary>\n\n\n[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)\n\n```diff\n@@              Coverage
       Diff              @@\n##             master      #15       +/-   ##\n=============================================\n+
       Coverage     50.00%   60.00%   +10.00%     \n+ Complexity       11       10        -1     \n=============================================\n  Files             2        2               \n  Lines             6       10        +4     \n  Branches          0        1        +1     \n=============================================\n+
       Hits              3        6        +3     \n  Misses            3        3               \n-
@@ -110,7 +111,7 @@ interactions:
       | `50.00% <0.00%> (\u00f8)` | `0.00% <0.00%> (\u00f8%)` | |\n| [file\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv)
       | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\n\n</details>\n[:umbrella:
       View full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   \n:loudspeaker:
-      Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).\n"}'
+      Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).\n"}'
     headers:
       accept:
       - application/json
@@ -134,7 +135,8 @@ interactions:
       **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`**
       :tada:\\n> Coverage data is based on head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc)
       compared to base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc).\\n>
-      Patch has no changes to coverable lines.\\n<details><summary>Additional details and impacted files</summary>\\n\\n[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)\\n\\n```diff\\n@@
+      Patch has no changes to coverable lines.\\n<details><summary>Additional details
+      and impacted files</summary>\\n\\n[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)\\n\\n```diff\\n@@
       \             Coverage Diff              @@\\n##             master      #15
       \      +/-   ##\\n=============================================\\n+ Coverage
       \    50.00%   60.00%   +10.00%     \\n+ Complexity       11       10        -1
@@ -152,7 +154,7 @@ interactions:
       | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\\n\\n</details>\\n[:umbrella:
       View full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).
       \  \\n:loudspeaker: Do you have feedback about the report comment? [Let us know
-      in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).\\n\",\"reactions\":{\"url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1069392024/reactions\",\"total_count\":0,\"+1\":0,\"-1\":0,\"laugh\":0,\"hooray\":0,\"confused\":0,\"heart\":0,\"rocket\":0,\"eyes\":0},\"performed_via_github_app\":null}"
+      in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).\\n\",\"reactions\":{\"url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1069392024/reactions\",\"total_count\":0,\"+1\":0,\"-1\":0,\"laugh\":0,\"hooray\":0,\"confused\":0,\"heart\":0,\"rocket\":0,\"eyes\":0},\"performed_via_github_app\":null}"
     headers:
       Access-Control-Allow-Origin:
       - '*'

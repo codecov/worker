@@ -749,7 +749,7 @@ class TestCommentNotifier(object):
             f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
-            "Changes have been made to critical files, which contain lines commonly executed in production",
+            "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
             f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
@@ -2960,14 +2960,19 @@ class TestCommentNotifier(object):
             f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `66.67%`.",
             "",
-            ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)",
+            ":mega: message",
             "",
         ]
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
-            print(li)
-            assert exp == res
+            if exp == ":mega: message":
+                # We might not know the selected message if there are multiple active ones
+                assert res.startswith(":mega: ")
+                message = res[7:]
+                assert message in AnnouncementSectionWriter.current_active_messages
+                # We have to change the expected line to pass the global check
+                expected_result[4] = f":mega: {message}"
+            else:
+                assert exp == res
         assert result == expected_result
 
     @pytest.mark.asyncio
@@ -2992,7 +2997,7 @@ class TestCommentNotifier(object):
             f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `66.67%`.",
             "",
-            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps).",
+            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps). Have a feature suggestion? [Share it here.](https://app.codecov.io/gh/feedback/)",
             "",
         ]
         for exp, res in zip(expected_result, result):
@@ -3352,7 +3357,9 @@ class TestImpactedEndpointWriter(object):
                 links={"pull": "pull.link"},
             )
         )
-        assert lines == ["This change has been scanned for critical changes"]
+        assert lines == [
+            "This change has been scanned for critical changes. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
+        ]
 
     @pytest.mark.asyncio
     async def test_impacted_endpoints_table_none_result(
@@ -3414,9 +3421,11 @@ class TestAnnouncementsSectionWriter(object):
             mocker.MagicMock(),
         )
         res = list(await writer.write_section())
-        assert res == [
-            ":mega: Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"
-        ]
+        assert len(res) == 1
+        line = res[0]
+        assert line.startswith(":mega: ")
+        message = line[7:]
+        assert message in AnnouncementSectionWriter.current_active_messages
 
 
 class TestNewFooterSectionWriter(object):
@@ -3439,7 +3448,7 @@ class TestNewFooterSectionWriter(object):
         assert res == [
             "",
             "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
 
     @pytest.mark.asyncio
@@ -3499,7 +3508,7 @@ class TestFeedbackSectionWriter(object):
         )
         res = list(await writer.write_section())
         assert res == [
-            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps)."
+            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps). Have a feature suggestion? [Share it here.](https://app.codecov.io/gh/feedback/)"
         ]
 
 
@@ -3652,7 +3661,7 @@ class TestCommentNotifierInNewLayout(object):
             f"> Coverage data is based on head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{sample_comparison.base.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc).",
             "> Patch has no changes to coverable lines.",
             "",
-            "Changes have been made to critical files, which contain lines commonly executed in production",
+            "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
             f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
@@ -3723,7 +3732,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"",
             f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
         for exp, res in zip(expected_result, result):
@@ -3793,7 +3802,7 @@ class TestCommentNotifierInNewLayout(object):
             f"</details>",
             f"",
             f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
         for exp, res in zip(expected_result, result):
@@ -3862,7 +3871,7 @@ class TestCommentNotifierInNewLayout(object):
             f"</details>",
             f"",
             f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://github.com/codecov/Codecov-user-feedback/issues/8).",
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
         for exp, res in zip(expected_result, result):

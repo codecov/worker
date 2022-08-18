@@ -2,44 +2,72 @@ interactions:
 - request:
     body: ''
     headers:
-      accept: [application/json]
-      accept-encoding: ['gzip, deflate']
-      connection: [keep-alive]
-      host: [api.github.com]
-      user-agent: [Default]
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.github.com
+      user-agent:
+      - Default
     method: GET
     uri: https://api.github.com/user/memberships/orgs?page=1
   response:
     content: '[]'
     headers:
-      access-control-allow-origin: ['*']
-      access-control-expose-headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Reset,
-          X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type,
-          Deprecation, Sunset']
-      cache-control: ['private, max-age=60, s-maxage=60']
-      content-length: ['2']
-      content-security-policy: [default-src 'none']
-      content-type: [application/json; charset=utf-8]
-      date: ['Thu, 29 Oct 2020 20:53:21 GMT']
-      etag: ['"6f7b0ea21eaeada815b32d296452cb826d6e059d8e60febd69f199af03450eed"']
-      referrer-policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      server: [GitHub.com]
-      status: [200 OK]
-      strict-transport-security: [max-age=31536000; includeSubdomains; preload]
-      vary: ['Accept, Authorization, Cookie, X-GitHub-OTP', 'Accept-Encoding, Accept,
-          X-Requested-With']
-      x-accepted-oauth-scopes: ['admin:org, read:org, repo, user, write:org']
-      x-content-type-options: [nosniff]
-      x-frame-options: [deny]
-      x-github-media-type: [github.v3]
-      x-github-request-id: ['138F:21E9:14389E:2C122A:5F9B2BC1']
-      x-oauth-scopes: ['repo, user']
-      x-ratelimit-limit: ['5000']
-      x-ratelimit-remaining: ['4999']
-      x-ratelimit-reset: ['1604008401']
-      x-ratelimit-used: ['1']
-      x-xss-protection: [1; mode=block]
+      access-control-allow-origin:
+      - '*'
+      access-control-expose-headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes,
+        X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset
+      cache-control:
+      - private, max-age=60, s-maxage=60
+      content-length:
+      - '2'
+      content-security-policy:
+      - default-src 'none'
+      content-type:
+      - application/json; charset=utf-8
+      date:
+      - Thu, 29 Oct 2020 20:53:21 GMT
+      etag:
+      - '"6f7b0ea21eaeada815b32d296452cb826d6e059d8e60febd69f199af03450eed"'
+      referrer-policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      server:
+      - GitHub.com
+      status:
+      - 200 OK
+      strict-transport-security:
+      - max-age=31536000; includeSubdomains; preload
+      vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      x-accepted-oauth-scopes:
+      - admin:org, read:org, repo, user, write:org
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - deny
+      x-github-media-type:
+      - github.v3
+      x-github-request-id:
+      - 138F:21E9:14389E:2C122A:5F9B2BC1
+      x-oauth-scopes:
+      - repo, user
+      x-ratelimit-limit:
+      - '5000'
+      x-ratelimit-remaining:
+      - '4999'
+      x-ratelimit-reset:
+      - '1604008401'
+      x-ratelimit-used:
+      - '1'
+      x-xss-protection:
+      - 1; mode=block
     http_version: HTTP/1.1
     status_code: 200
 version: 1

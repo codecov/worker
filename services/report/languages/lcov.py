@@ -87,7 +87,9 @@ def _process_file(doc: bytes, fix, ignored_lines, sessionid):
             if line.startswith("undefined,"):
                 continue
 
-            line, hit = content.split(",", 1)
+            splited_content = content.split(",")
+            line = splited_content[0]
+            hit = splited_content[1]
             if line[0] in ("0", "n") or hit[0] in ("=", "s"):
                 continue
 

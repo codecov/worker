@@ -27,7 +27,7 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid):
     filename = None
     report = Report()
     for string in docs(string.decode(errors="replace").replace("\t", " ")):
-        string = string.strip()
+        string = string.rstrip()
         if string == "Summary":
             filename = None
             continue

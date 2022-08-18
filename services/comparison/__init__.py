@@ -121,31 +121,26 @@ class ComparisonProxy(object):
                     and self.comparison.base.report.rust_report is not None
                     and self.comparison.head.report.rust_report is not None
                 ):
-                    try:
-                        with metrics.timer(
-                            "internal.worker.services.comparison.changes.get_changes_rust"
-                        ):
-                            rust_changes = get_changes_using_rust(
-                                self.comparison.base.report,
-                                self.comparison.head.report,
-                                diff,
-                            )
-                        original_paths = set([c.path for c in self._changes])
-                        new_paths = set([c.path for c in rust_changes])
-                        if original_paths != new_paths:
-                            only_on_new = sorted(new_paths - original_paths)
-                            only_on_original = sorted(original_paths - new_paths)
-                            log.info(
-                                "There are differences between python changes and rust changes",
-                                extra=dict(
-                                    only_on_new=only_on_new[:100],
-                                    only_on_original=only_on_original[:100],
-                                    repoid=self.head.commit.repoid,
-                                ),
-                            )
-                    except Exception:
-                        log.warning(
-                            "Error while calculating rust changes", exc_info=True
+                    with metrics.timer(
+                        "internal.worker.services.comparison.changes.get_changes_rust"
+                    ):
+                        rust_changes = get_changes_using_rust(
+                            self.comparison.base.report,
+                            self.comparison.head.report,
+                            diff,
+                        )
+                    original_paths = set([c.path for c in self._changes])
+                    new_paths = set([c.path for c in rust_changes])
+                    if original_paths != new_paths:
+                        only_on_new = sorted(new_paths - original_paths)
+                        only_on_original = sorted(original_paths - new_paths)
+                        log.info(
+                            "There are differences between python changes and rust changes",
+                            extra=dict(
+                                only_on_new=only_on_new[:100],
+                                only_on_original=only_on_original[:100],
+                                repoid=self.head.commit.repoid,
+                            ),
                         )
             return self._changes
 

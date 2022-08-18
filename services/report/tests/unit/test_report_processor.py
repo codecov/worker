@@ -35,21 +35,35 @@ class TestReportTypeMatching(object):
             )[1]
             == "txt"
         )
-        assert (
-            report_type_matching(
-                ParsedUploadedReportFile(
-                    filename="name",
-                    file_contents=BytesIO(json.dumps({"value": 1}).encode()),
-                )
-            )[1]
-            == "json"
-        )
+        assert report_type_matching(
+            ParsedUploadedReportFile(
+                filename="name",
+                file_contents=BytesIO(json.dumps({"value": 1}).encode()),
+            )
+        ) == ({"value": 1}, "json")
+        assert report_type_matching(
+            ParsedUploadedReportFile(
+                filename="name",
+                file_contents=BytesIO(('\n\n{"value": 1}').encode()),
+            )
+        ) == ({"value": 1}, "json")
         assert (
             report_type_matching(
                 ParsedUploadedReportFile(
                     filename="name",
                     file_contents=BytesIO(
                         '<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>'.encode()
+                    ),
+                )
+            )[1]
+            == "xml"
+        )
+        assert (
+            report_type_matching(
+                ParsedUploadedReportFile(
+                    filename="name",
+                    file_contents=BytesIO(
+                        '\n\n\n\n\n<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>'.encode()
                     ),
                 )
             )[1]
