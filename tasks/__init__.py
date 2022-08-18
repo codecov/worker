@@ -6,6 +6,7 @@ from tasks.delete_owner import delete_owner_task
 from tasks.flush_repo import flush_repo
 from tasks.github_marketplace import ghm_sync_plans_task
 from tasks.hourly_check import hourly_check_task
+from tasks.label_analysis import label_analysis_task
 from tasks.mutation_test_upload import mutation_test_upload_task
 from tasks.new_user_activated import new_user_activated_task
 from tasks.notify import notify_task
