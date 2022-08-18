@@ -16,7 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import celery_app
 from database.models import Commit, Upload
 from helpers.metrics import metrics
-from helpers.save_bot_error import save_bot_error
+from helpers.save_bot_error import save_repo_bot_error
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
 from services.report import Report, ReportService
@@ -297,7 +297,7 @@ class UploadProcessorTask(BaseCodecovTask):
                 exc_info=True,
             )
         except RepositoryWithoutValidBotError:
-            save_bot_error(commit)
+            save_repo_bot_error(commit)
 
             log.warning(
                 "Could not apply diff to report because there is no valid bot found for that repo",

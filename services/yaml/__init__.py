@@ -28,7 +28,7 @@ def save_yaml_error(commit: Commit, code):
         db_session.add(err)
         db_session.commit()
     except Exception as e:
-        log.info("Error saving yaml commit error", e, code)
+        log.warning("Error saving yaml commit error", e, code)
 
 
 async def get_current_yaml(commit: Commit, repository_service) -> dict:

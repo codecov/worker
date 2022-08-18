@@ -7,7 +7,7 @@ from database.models.core import CommitError
 log = logging.getLogger(__name__)
 
 
-def save_bot_error(commit: Commit):
+def save_repo_bot_error(commit: Commit):
     try:
         db_session = commit.get_db_session()
         err = CommitError(
@@ -18,5 +18,5 @@ def save_bot_error(commit: Commit):
         db_session.add(err)
         db_session.commit()
 
-    except Exception as e:
-        log.info("Error saving bot commit error -repo bot invalid-", e)
+    except:
+        log.warning("Error saving bot commit error -repo bot invalid-")

@@ -16,7 +16,7 @@ from app import celery_app
 from database.enums import Decoration
 from database.models import Commit, Pull
 from helpers.exceptions import RepositoryWithoutValidBotError
-from helpers.save_bot_error import save_bot_error
+from helpers.save_bot_error import save_repo_bot_error
 from services.activation import activate_user
 from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonProxy
@@ -106,7 +106,7 @@ class NotifyTask(BaseCodecovTask):
         try:
             repository_service = get_repo_provider_service(commit.repository)
         except RepositoryWithoutValidBotError:
-            save_bot_error(commit)
+            save_repo_bot_error(commit)
 
             log.warning(
                 "Unable to start notifications because repo doesn't have a valid bot",
