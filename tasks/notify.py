@@ -13,10 +13,10 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
-from database.enums import CommitErrorTypes, Decoration
+from database.enums import Decoration
 from database.models import Commit, Pull
-from database.models.core import CommitError
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.save_commit_error import save_repo_bot_error
 from services.activation import activate_user
 from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonProxy
@@ -106,14 +106,7 @@ class NotifyTask(BaseCodecovTask):
         try:
             repository_service = get_repo_provider_service(commit.repository)
         except RepositoryWithoutValidBotError:
-            db_session = commit.get_db_session()
-            err = CommitError(
-                commit=commit,
-                error_code=CommitErrorTypes.Bot.value.REPO_BOT_INVALID.value,
-                error_params={},
-            )
-            db_session.add(err)
-            db_session.commit()
+            save_repo_bot_error(commit)
 
             log.warning(
                 "Unable to start notifications because repo doesn't have a valid bot",

@@ -224,7 +224,9 @@ class TestYamlService(BaseTestCase):
         }
 
     @pytest.mark.asyncio
-    async def test_get_current_yaml_invalid_yaml(self, mocker, mock_configuration):
+    async def test_get_current_yaml_invalid_yaml(
+        self, mocker, dbsession, mock_configuration
+    ):
         mock_configuration.set_params(
             {
                 "site": {
@@ -259,8 +261,12 @@ class TestYamlService(BaseTestCase):
                 }
             }
         )
-        res = await get_current_yaml(commit, valid_handler)
 
+        mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
+        mocked_get_db_session.return_value = dbsession
+        commit.get_db_session = mocked_get_db_session
+
+        res = await get_current_yaml(commit, valid_handler)
         assert res.to_dict() == {
             "coverage": {
                 "precision": 2,
@@ -274,6 +280,9 @@ class TestYamlService(BaseTestCase):
                 "require_changes": False,
             },
         }
+
+        assert commit.errors
+        assert len(commit.errors) == 1
 
     @pytest.mark.asyncio
     async def test_get_current_yaml_no_permissions(self, mocker, mock_configuration):
