@@ -30,5 +30,6 @@ class StaticAnalysisSuiteFilepathFactory(factory.Factory):
     class Meta:
         model = StaticAnalysisSuiteFilepath
 
+    filepath = factory.Faker("file_name")
     file_snapshot = factory.SubFactory(StaticAnalysisSingleFileSnapshotFactory)
     analysis_suite = factory.SubFactory(StaticAnalysisSuiteFactory)
