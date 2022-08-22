@@ -1,10 +1,15 @@
 import logging
 
+from shared.analytics_tracking import (
+    track_manual_critical_file_labelling_added_in_YAML,
+    track_manual_critical_file_labelling_removed_from_YAML,
+)
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 
 from database.models import Commit
+from helpers.environment import is_enterprise
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.reader import read_yaml_field
 
@@ -79,6 +84,8 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
         current_commit.repository.branch,
         read_yaml_field(existing_yaml, ("codecov", "branch")),
     )
+
+    track_yaml_fields(existing_yaml, new_yaml, repository)
     if current_commit.branch and current_commit.branch in branches_considered_for_yaml:
         if not syb or syb == current_commit.branch:
             yaml_branch = read_yaml_field(new_yaml, ("codecov", "branch"))
@@ -87,3 +94,24 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
             repository.yaml = new_yaml
             return True
     return False
+
+
+def track_yaml_fields(existing_yaml, new_yaml, repository):
+    track_manual_critical_file_labelling_events(existing_yaml, new_yaml, repository)
+
+
+def track_manual_critical_file_labelling_events(existing_yaml, new_yaml, repository):
+    existing_critical_paths_field = read_yaml_field(
+        existing_yaml, ("profiling", "critical_files_paths")
+    )
+    new_critical_paths_field = read_yaml_field(
+        new_yaml, ("profiling", "critical_files_paths")
+    )
+    if new_critical_paths_field and not existing_critical_paths_field:
+        track_manual_critical_file_labelling_added_in_YAML(
+            repository.repoid, repository.ownerid, is_enterprise
+        )
+    if existing_critical_paths_field and not new_critical_paths_field:
+        track_manual_critical_file_labelling_removed_from_YAML(
+            repository.repoid, repository.ownerid, is_enterprise
+        )
