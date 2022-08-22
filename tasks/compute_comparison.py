@@ -33,12 +33,7 @@ class ComputeComparisonTask(BaseCodecovTask):
         current_yaml = self.get_yaml_commit(comparison.compare_commit)
 
         with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
-            comparison_reports = self.get_comparison_reports(
-                comparison=comparison, current_yaml=current_yaml
-            )
-            comparison_proxy = await self.get_comparison_proxy(
-                comparison, comparison_reports
-            )
+            comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
         if not comparison_proxy.has_base_report():
             comparison.error = CompareCommitError.missing_base_report.value
         elif not comparison_proxy.has_head_report():
@@ -50,7 +45,6 @@ class ComputeComparisonTask(BaseCodecovTask):
             comparison.state = CompareCommitState.error.value
             log.warn("Compute comparison failed, %s", comparison.error, extra=log_extra)
             return {"successful": False}
-
         try:
             with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files") as tm:
                 impacted_files = await self.serialize_impacted_files(comparison_proxy)
@@ -74,31 +68,13 @@ class ComputeComparisonTask(BaseCodecovTask):
         log.info("Computing comparison successful", extra=log_extra)
         db_session.commit()
 
-        await self.compute_flag_comparison(
-            db_session, comparison, comparison_proxy, comparison_reports
-        )
+        await self.compute_flag_comparison(db_session, comparison, comparison_proxy)
         return {"successful": True}
 
-    def get_comparison_reports(
-        self, comparison: CompareCommit, current_yaml: UserYaml
-    ) -> Mapping[str, ReportService]:
-        report_service = ReportService(current_yaml)
-        compare_commit = comparison.compare_commit
-        base_commit = comparison.base_commit
-        base_report = report_service.get_existing_report_for_commit(
-            base_commit, report_class=ReadOnlyReport
-        )
-        compare_report = report_service.get_existing_report_for_commit(
-            compare_commit, report_class=ReadOnlyReport
-        )
-        return dict(compare_report=compare_report, base_report=base_report)
-
-    async def compute_flag_comparison(
-        self, db_session, comparison, comparison_proxy, comparison_reports
-    ):
+    async def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
         log_extra = dict(comparison_id=comparison.id)
         log.info("Computing flag comparisons", extra=log_extra)
-        head_report_flags = comparison_reports.get("compare_report", {}).flags
+        head_report_flags = comparison_proxy.comparison.head.report.flags
         if not head_report_flags:
             log.info("Head report does not have any flags", extra=log_extra)
             return
@@ -107,7 +83,6 @@ class ComputeComparisonTask(BaseCodecovTask):
             head_report_flags,
             comparison,
             comparison_proxy,
-            comparison_reports,
         )
 
     async def create_or_update_flag_comparisons(
@@ -116,78 +91,15 @@ class ComputeComparisonTask(BaseCodecovTask):
         head_report_flags: List[Flag],
         comparison: CompareCommit,
         comparison_proxy: ComparisonProxy,
-        comparison_reports: Mapping[str, ReportService],
     ):
-        flag_comparisons = (
-            db_session.query(CompareFlag)
-            .filter_by(commit_comparison_id=comparison.id)
-            .all()
-        )
-        if not flag_comparisons:
-            log.info(
-                "No previous flag comparisons for commit_comparison_id %s. Storing flag comparisons",
-                comparison.id,
-            )
-            await self.create_and_store_flag_comparisons(
-                db_session,
-                head_report_flags,
-                comparison,
-                comparison_proxy,
-                comparison_reports,
-            )
-        else:
-            log.info(
-                "Existing flag comparisons for commit_comparison_id %s. Adding or updating flag comparisons",
-                comparison.id,
-            )
-            await self.update_or_add_flag_comparisons_for_new_upload(
-                db_session,
-                head_report_flags,
-                comparison,
-                comparison_proxy,
-                comparison_reports,
-            )
-
-    async def create_and_store_flag_comparisons(
-        self,
-        db_session,
-        head_report_flags: List[Flag],
-        comparison: CompareCommit,
-        comparison_proxy: ComparisonProxy,
-        comparison_reports: Mapping[str, ReportService],
-    ):
+        repository_id = comparison.compare_commit.repository.repoid
         for flag_name, _ in head_report_flags.items():
-            totals = await self.get_flag_comparison_totals(
-                flag_name, comparison_reports, comparison_proxy
-            )
+            totals = await self.get_flag_comparison_totals(flag_name, comparison_proxy)
             repositoryflag = (
                 db_session.query(RepositoryFlag)
                 .filter_by(
                     flag_name=flag_name,
-                    repository_id=comparison.compare_commit.repository.repoid,
-                )
-                .first()
-            )
-            self.store_flag_comparison(db_session, comparison, repositoryflag, totals)
-        log.info("%s flag comparisons stored successfully", len(head_report_flags))
-
-    async def update_or_add_flag_comparisons_for_new_upload(
-        self,
-        db_session,
-        head_report_flags: List[Flag],
-        comparison: CompareCommit,
-        comparison_proxy: ComparisonProxy,
-        comparison_reports: Mapping[str, ReportService],
-    ):
-        for flag_name, _ in head_report_flags.items():
-            totals = await self.get_flag_comparison_totals(
-                flag_name, comparison_reports, comparison_proxy
-            )
-            repositoryflag = (
-                db_session.query(RepositoryFlag)
-                .filter_by(
-                    flag_name=flag_name,
-                    repository_id=comparison.compare_commit.repository.repoid,
+                    repository_id=repository_id,
                 )
                 .first()
             )
@@ -201,29 +113,33 @@ class ComputeComparisonTask(BaseCodecovTask):
             )
 
             if not flag_comparison_entry:
-                log.info("Adding new flag comparison")
-                totals = await self.get_flag_comparison_totals(
-                    flag_name, comparison_reports, comparison_proxy
+                log.debug(
+                    "No previous flag comparisons; adding flag comparisons",
+                    extra=dict(repoid=repository_id),
                 )
-                self.store_flag_comparison(db_session, comparison, flag_name, totals)
+                self.store_flag_comparison(
+                    db_session, comparison, repositoryflag, totals
+                )
             else:
-                log.info("Updating totals for existing flag comparison entry")
-                totals = await self.get_flag_comparison_totals(
-                    flag_name, comparison_reports, comparison_proxy
+                log.debug(
+                    "Updating totals for existing flag comparison entry",
+                    extra=dict(repoid=repository_id),
                 )
                 flag_comparison_entry.head_totals = totals["head_totals"]
                 flag_comparison_entry.base_totals = totals["base_totals"]
                 flag_comparison_entry.patch_totals = totals["patch_totals"]
-        log.info("%s flag comparisons stored successfully", len(head_report_flags))
+        log.info(
+            "Flag comparisons stored successfully",
+            extra=dict(number_stored=len(head_report_flags)),
+        )
 
     async def get_flag_comparison_totals(
         self,
         flag_name: str,
-        comparison_reports: Mapping[str, ReportService],
         comparison_proxy: ComparisonProxy,
     ):
-        flag_head_report = comparison_reports["compare_report"].flags.get(flag_name)
-        flag_base_report = comparison_reports["base_report"].flags.get(flag_name)
+        flag_head_report = comparison_proxy.comparison.head.report.flags.get(flag_name)
+        flag_base_report = comparison_proxy.comparison.base.report.flags.get(flag_name)
         head_totals = None if not flag_head_report else flag_head_report.totals.asdict()
         base_totals = None if not flag_base_report else flag_base_report.totals.asdict()
         comparison_diff = await comparison_proxy.get_diff()
@@ -256,18 +172,21 @@ class ComputeComparisonTask(BaseCodecovTask):
     def get_yaml_commit(self, commit):
         return get_repo_yaml(commit.repository)
 
-    async def get_comparison_proxy(self, comparison, comparison_reports):
+    async def get_comparison_proxy(self, comparison, current_yaml):
         compare_commit = comparison.compare_commit
         base_commit = comparison.base_commit
+        report_service = ReportService(current_yaml)
+        base_report = report_service.get_existing_report_for_commit(
+            base_commit, report_class=ReadOnlyReport
+        )
+        compare_report = report_service.get_existing_report_for_commit(
+            compare_commit, report_class=ReadOnlyReport
+        )
         return ComparisonProxy(
             Comparison(
-                head=FullCommit(
-                    commit=compare_commit, report=comparison_reports["compare_report"]
-                ),
+                head=FullCommit(commit=compare_commit, report=compare_report),
                 enriched_pull=None,
-                base=FullCommit(
-                    commit=base_commit, report=comparison_reports["base_report"]
-                ),
+                base=FullCommit(commit=base_commit, report=base_report),
             )
         )
 

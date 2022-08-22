@@ -147,12 +147,13 @@ class CompareFlag(MixinBaseClass, CodecovBaseModel):
     commit_comparison_id = Column(
         types.BigInteger, ForeignKey("compare_commitcomparison.id")
     )
-    commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
-    repositoryflag_id = Column(types.Text, ForeignKey("reports_repositoryflag.id"))
-    repositoryflag = relationship(RepositoryFlag, foreign_keys=[repositoryflag_id])
+    repositoryflag_id = Column(types.Integer, ForeignKey("reports_repositoryflag.id"))
     head_totals = Column(postgresql.JSON)
     base_totals = Column(postgresql.JSON)
     patch_totals = Column(postgresql.JSON)
+
+    commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
+    repositoryflag = relationship(RepositoryFlag, foreign_keys=[repositoryflag_id])
 
     def __repr__(self):
         return f"CompareFlag<@comparison{self.commit_comparison_id}>"
