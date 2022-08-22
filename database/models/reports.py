@@ -154,6 +154,3 @@ class CompareFlag(MixinBaseClass, CodecovBaseModel):
 
     commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
     repositoryflag = relationship(RepositoryFlag, foreign_keys=[repositoryflag_id])
-
-    def __repr__(self):
-        return f"CompareFlag<@comparison{self.commit_comparison_id}>"
