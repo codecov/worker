@@ -1,8 +1,8 @@
 from database.tests.factories import RepositoryFactory
 from services.yaml import (
-    betaprofiling_is_added_in_yaml,
-    betaprofiling_is_removed_from_yaml,
-    tracking_yaml_fields,
+    was_betaprofiling_added_in_yaml,
+    was_betaprofiling_removed_from_yaml,
+    tracking_yaml_fields_changes,
 )
 from tests.base import BaseTestCase
 
@@ -11,7 +11,7 @@ class TestYamlTrackingService(BaseTestCase):
     def test_added_betaprofiling(self, mocker):
         existing_comment_sec = ["reach", "diff", "flags", "files", "footer"]
         new_comment_sec = ["reach", "diff", "flags", "files", "betaprofiling", "footer"]
-        assert betaprofiling_is_added_in_yaml(existing_comment_sec, new_comment_sec)
+        assert was_betaprofiling_added_in_yaml(existing_comment_sec, new_comment_sec)
 
     def test_removed_betaprofiling(self, mocker):
         existing_comment_sec = [
@@ -23,7 +23,9 @@ class TestYamlTrackingService(BaseTestCase):
             "footer",
         ]
         new_comment_sec = ["reach", "diff", "flags", "files", "footer"]
-        assert betaprofiling_is_removed_from_yaml(existing_comment_sec, new_comment_sec)
+        assert was_betaprofiling_removed_from_yaml(
+            existing_comment_sec, new_comment_sec
+        )
 
     def test_no_change_in_yaml(self, mocker):
         existing_comment_sec = [
@@ -35,10 +37,12 @@ class TestYamlTrackingService(BaseTestCase):
             "footer",
         ]
         new_comment_sec = ["reach", "diff", "flags", "files", "betaprofiling", "footer"]
-        assert not betaprofiling_is_removed_from_yaml(
+        assert not was_betaprofiling_removed_from_yaml(
             existing_comment_sec, new_comment_sec
         )
-        assert not betaprofiling_is_added_in_yaml(existing_comment_sec, new_comment_sec)
+        assert not was_betaprofiling_added_in_yaml(
+            existing_comment_sec, new_comment_sec
+        )
 
     def test_tracking_added_betaprofling(self, mocker):
         repo = RepositoryFactory.create()
@@ -49,7 +53,7 @@ class TestYamlTrackingService(BaseTestCase):
         mocked_betaprofiling_added_segment_track = mocker.patch(
             "services.yaml.track_betaprofiling_added_in_YAML"
         )
-        tracking_yaml_fields(existing_yaml, new_yaml, repo)
+        tracking_yaml_fields_changes(existing_yaml, new_yaml, repo)
         mocked_betaprofiling_added_segment_track.assert_called_once()
 
     def test_tracking_removed_betaprofling(self, mocker):
@@ -61,7 +65,7 @@ class TestYamlTrackingService(BaseTestCase):
         mocked_betaprofiling_removed_segment_track = mocker.patch(
             "services.yaml.track_betaprofiling_removed_from_YAML"
         )
-        tracking_yaml_fields(existing_yaml, new_yaml, repo)
+        tracking_yaml_fields_changes(existing_yaml, new_yaml, repo)
         mocked_betaprofiling_removed_segment_track.assert_called_once()
 
     def test_tracking_added_show_critical_paths(self, mocker):
@@ -71,7 +75,7 @@ class TestYamlTrackingService(BaseTestCase):
         mocked_show_critical_paths_added_segment_track = mocker.patch(
             "services.yaml.track_show_critical_paths_added_in_YAML"
         )
-        tracking_yaml_fields(existing_yaml, new_yaml, repo)
+        tracking_yaml_fields_changes(existing_yaml, new_yaml, repo)
         mocked_show_critical_paths_added_segment_track.assert_called_once()
 
     def test_tracking_removed_show_critical_paths(self, mocker):
@@ -81,5 +85,5 @@ class TestYamlTrackingService(BaseTestCase):
         mocked_show_critical_paths_removed_segment_track = mocker.patch(
             "services.yaml.track_show_critical_paths_removed_from_YAML"
         )
-        tracking_yaml_fields(existing_yaml, new_yaml, repo)
+        tracking_yaml_fields_changes(existing_yaml, new_yaml, repo)
         mocked_show_critical_paths_removed_segment_track.assert_called_once()
