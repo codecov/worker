@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import Iterable, Mapping, Optional
 
 from shared.reports.readonly import ReadOnlyReport
 from sqlalchemy.dialects.postgresql import insert
@@ -41,52 +41,44 @@ def save_commit_measurements(
 
     if MeasurementName.coverage.value in dataset_names:
         if report.totals.coverage is not None:
-            command = (
-                insert(Measurement.__table__)
-                .values(
-                    name=MeasurementName.coverage.value,
-                    owner_id=commit.repository.ownerid,
-                    repo_id=commit.repoid,
-                    flag_id=None,
-                    branch=commit.branch,
-                    commit_sha=commit.commitid,
-                    timestamp=commit.timestamp,
-                    value=float(report.totals.coverage),
-                )
-                .on_conflict_do_update(
-                    index_elements=[
-                        Measurement.name,
-                        Measurement.owner_id,
-                        Measurement.repo_id,
-                        Measurement.commit_sha,
-                        Measurement.timestamp,
-                    ],
-                    index_where=(Measurement.flag_id.is_(None)),
-                    set_=dict(
-                        branch=commit.branch,
-                        value=float(report.totals.coverage),
-                    ),
-                )
+            command = insert(Measurement.__table__).values(
+                name=MeasurementName.coverage.value,
+                owner_id=commit.repository.ownerid,
+                repo_id=commit.repoid,
+                flag_id=None,
+                branch=commit.branch,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+                value=float(report.totals.coverage),
+            )
+            command = command.on_conflict_do_update(
+                index_elements=[
+                    Measurement.name,
+                    Measurement.owner_id,
+                    Measurement.repo_id,
+                    Measurement.commit_sha,
+                    Measurement.timestamp,
+                ],
+                index_where=(Measurement.flag_id.is_(None)),
+                set_=dict(
+                    branch=command.excluded.branch,
+                    value=command.excluded.value,
+                ),
             )
             db_session.execute(command)
             db_session.flush()
 
     if MeasurementName.flag_coverage.value in dataset_names:
+        flag_ids = repository_flag_ids(commit.repository)
+        measurements = []
+
         for flag_name, flag in report.flags.items():
             if flag.totals.coverage is not None:
-                repo_flag = (
-                    db_session.query(RepositoryFlag)
-                    .filter_by(
-                        repository=commit.repository,
-                        flag_name=flag_name,
-                    )
-                    .one_or_none()
-                )
-
-                if not repo_flag:
+                flag_id = flag_ids.get(flag_name)
+                if not flag_id:
                     log.warning(
                         "Repository flag not found.  Created repository flag.",
-                        extra=dict(repo=commit.repoid, flag_name=flag_name),
+                        extra=dict(repoid=commit.repoid, flag_name=flag_name),
                     )
                     repo_flag = RepositoryFlag(
                         repository_id=commit.repoid,
@@ -94,37 +86,48 @@ def save_commit_measurements(
                     )
                     db_session.add(repo_flag)
                     db_session.flush()
+                    flag_id = repo_flag.id
 
-                command = (
-                    insert(Measurement.__table__)
-                    .values(
+                measurements.append(
+                    dict(
                         name=MeasurementName.flag_coverage.value,
                         owner_id=commit.repository.ownerid,
                         repo_id=commit.repoid,
-                        flag_id=repo_flag.id,
+                        flag_id=flag_id,
                         branch=commit.branch,
                         commit_sha=commit.commitid,
                         timestamp=commit.timestamp,
                         value=float(flag.totals.coverage),
                     )
-                    .on_conflict_do_update(
-                        index_elements=[
-                            Measurement.name,
-                            Measurement.owner_id,
-                            Measurement.repo_id,
-                            Measurement.flag_id,
-                            Measurement.commit_sha,
-                            Measurement.timestamp,
-                        ],
-                        index_where=(Measurement.flag_id.isnot(None)),
-                        set_=dict(
-                            branch=commit.branch,
-                            value=float(flag.totals.coverage),
-                        ),
-                    )
                 )
-                db_session.execute(command)
-                db_session.flush()
+
+        if len(measurements) > 0:
+            log.info(
+                "Upserting flag coverage measurements",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit_id=commit.id_,
+                    count=len(measurements),
+                ),
+            )
+            command = insert(Measurement.__table__).values(measurements)
+            command = command.on_conflict_do_update(
+                index_elements=[
+                    Measurement.name,
+                    Measurement.owner_id,
+                    Measurement.repo_id,
+                    Measurement.flag_id,
+                    Measurement.commit_sha,
+                    Measurement.timestamp,
+                ],
+                index_where=(Measurement.flag_id.isnot(None)),
+                set_=dict(
+                    branch=command.excluded.branch,
+                    value=command.excluded.value,
+                ),
+            )
+            db_session.execute(command)
+            db_session.flush()
 
 
 def repository_commits_query(
@@ -158,6 +161,16 @@ def repository_datasets_query(
         datasets = datasets.filter_by(backfilled=backfilled)
 
     return datasets
+
+
+def repository_flag_ids(repository: Repository) -> Mapping[str, int]:
+    db_session = repository.get_db_session()
+
+    repo_flags = (
+        db_session.query(RepositoryFlag).filter_by(repository=repository).yield_per(100)
+    )
+
+    return {repo_flag.flag_name: repo_flag.id for repo_flag in repo_flags}
 
 
 def backfill_batch_size(repository: Repository) -> int:
