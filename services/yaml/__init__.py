@@ -86,7 +86,7 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
         current_commit.repository.branch,
         read_yaml_field(existing_yaml, ("codecov", "branch")),
     )
-    tracking_runtime_insights_fields(existing_yaml, new_yaml, repository)
+    tracking_yaml_fields(existing_yaml, new_yaml, repository)
     if current_commit.branch and current_commit.branch in branches_considered_for_yaml:
         if not syb or syb == current_commit.branch:
             yaml_branch = read_yaml_field(new_yaml, ("codecov", "branch"))
@@ -97,7 +97,12 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
     return False
 
 
-def tracking_runtime_insights_fields(existing_yaml, new_yaml, repository):
+def tracking_yaml_fields(existing_yaml, new_yaml, repository):
+    track_betaprofiling(existing_yaml, new_yaml, repository)
+    track_show_critical_paths(existing_yaml, new_yaml, repository)
+
+
+def track_betaprofiling(existing_yaml, new_yaml, repository):
     existing_comment_layout_field = read_yaml_field(
         existing_yaml, ("comment", "layout")
     )
@@ -122,22 +127,6 @@ def tracking_runtime_insights_fields(existing_yaml, new_yaml, repository):
             repository.repoid, repository.ownerid, is_enterprise()
         )
 
-    existing_show_critical_paths = read_yaml_field(
-        existing_yaml, ("comment", "show_critical_paths")
-    )
-    new_show_critical_paths = read_yaml_field(
-        new_yaml, ("comment", "show_critical_paths")
-    )
-
-    if existing_show_critical_paths is None and new_show_critical_paths:
-        track_show_critical_paths_added_in_YAML(
-            repository.repoid, repository.ownerid, is_enterprise()
-        )
-    if existing_show_critical_paths and new_show_critical_paths is None:
-        track_show_critical_paths_removed_from_YAML(
-            repository.repoid, repository.ownerid, is_enterprise()
-        )
-
 
 def betaprofiling_is_added_in_yaml(existing_comment_sections, new_comment_sections):
     if (
@@ -155,3 +144,21 @@ def betaprofiling_is_removed_from_yaml(existing_comment_sections, new_comment_se
     ):
         return True
     return False
+
+
+def track_show_critical_paths(existing_yaml, new_yaml, repository):
+    existing_show_critical_paths = read_yaml_field(
+        existing_yaml, ("comment", "show_critical_paths")
+    )
+    new_show_critical_paths = read_yaml_field(
+        new_yaml, ("comment", "show_critical_paths")
+    )
+
+    if existing_show_critical_paths is None and new_show_critical_paths:
+        track_show_critical_paths_added_in_YAML(
+            repository.repoid, repository.ownerid, is_enterprise()
+        )
+    if existing_show_critical_paths and new_show_critical_paths is None:
+        track_show_critical_paths_removed_from_YAML(
+            repository.repoid, repository.ownerid, is_enterprise()
+        )

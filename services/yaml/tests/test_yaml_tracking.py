@@ -2,7 +2,7 @@ from database.tests.factories import RepositoryFactory
 from services.yaml import (
     betaprofiling_is_added_in_yaml,
     betaprofiling_is_removed_from_yaml,
-    tracking_runtime_insights_fields,
+    tracking_yaml_fields,
 )
 from tests.base import BaseTestCase
 
@@ -49,7 +49,7 @@ class TestYamlTrackingService(BaseTestCase):
         mocked_betaprofiling_added_segment_track = mocker.patch(
             "services.yaml.track_betaprofiling_added_in_YAML"
         )
-        tracking_runtime_insights_fields(existing_yaml, new_yaml, repo)
+        tracking_yaml_fields(existing_yaml, new_yaml, repo)
         mocked_betaprofiling_added_segment_track.assert_called_once()
 
     def test_tracking_removed_betaprofling(self, mocker):
@@ -61,7 +61,7 @@ class TestYamlTrackingService(BaseTestCase):
         mocked_betaprofiling_removed_segment_track = mocker.patch(
             "services.yaml.track_betaprofiling_removed_from_YAML"
         )
-        tracking_runtime_insights_fields(existing_yaml, new_yaml, repo)
+        tracking_yaml_fields(existing_yaml, new_yaml, repo)
         mocked_betaprofiling_removed_segment_track.assert_called_once()
 
     def test_tracking_added_show_critical_paths(self, mocker):
@@ -71,7 +71,7 @@ class TestYamlTrackingService(BaseTestCase):
         mocked_show_critical_paths_added_segment_track = mocker.patch(
             "services.yaml.track_show_critical_paths_added_in_YAML"
         )
-        tracking_runtime_insights_fields(existing_yaml, new_yaml, repo)
+        tracking_yaml_fields(existing_yaml, new_yaml, repo)
         mocked_show_critical_paths_added_segment_track.assert_called_once()
 
     def test_tracking_removed_show_critical_paths(self, mocker):
@@ -81,5 +81,5 @@ class TestYamlTrackingService(BaseTestCase):
         mocked_show_critical_paths_removed_segment_track = mocker.patch(
             "services.yaml.track_show_critical_paths_removed_from_YAML"
         )
-        tracking_runtime_insights_fields(existing_yaml, new_yaml, repo)
+        tracking_yaml_fields(existing_yaml, new_yaml, repo)
         mocked_show_critical_paths_removed_segment_track.assert_called_once()
