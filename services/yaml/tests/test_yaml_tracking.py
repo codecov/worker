@@ -1,8 +1,8 @@
 from database.tests.factories import RepositoryFactory
 from services.yaml import (
+    tracking_yaml_fields_changes,
     was_betaprofiling_added_in_yaml,
     was_betaprofiling_removed_from_yaml,
-    tracking_yaml_fields_changes,
 )
 from tests.base import BaseTestCase
 
