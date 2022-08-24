@@ -5,9 +5,9 @@ from typing import Sequence
 from shared.profiling import ProfilingDataFullAnalyzer, ProfilingSummaryDataAnalyzer
 from shared.ribs import rustify_diff
 from shared.storage.exceptions import FileNotInStorageError
-from shared.yaml import UserYaml
 
 from database.models.profiling import ProfilingCommit
+from services.yaml import get_repo_yaml
 
 sentinel = object()
 
@@ -80,9 +80,7 @@ class CriticalPathOverlay(object):
         Get list of files in filenames_to_search that match the list of critical_file paths defined by the user in the YAML (under profiling.critical_files_paths)
         """
         repo = self._comparison.head.commit.repository
-        repo_yaml = UserYaml.get_final_yaml(
-            owner_yaml=repo.owner.yaml, repo_yaml=repo.yaml, ownerid=repo.owner.ownerid
-        )
+        repo_yaml = get_repo_yaml(repository=repo)
         if not repo_yaml.get("profiling") or not repo_yaml["profiling"].get(
             "critical_files_paths"
         ):

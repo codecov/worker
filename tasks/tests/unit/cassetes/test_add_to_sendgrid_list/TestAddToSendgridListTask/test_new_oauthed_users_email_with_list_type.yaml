@@ -3,34 +3,57 @@ interactions:
     body: '{"list_ids": ["283c715a-48e0-4c35-9dbd-374760900ee2"], "contacts": [{"email":
       "tom@codecov.io"}]}'
     headers:
-      Accept: ['*/*']
-      Accept-Encoding: ['gzip, deflate']
-      Connection: [keep-alive]
-      Content-Length: ['100']
-      Content-Type: [application/json]
-      User-Agent: [python-requests/2.22.0]
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '100'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.22.0
     method: PUT
     uri: https://api.sendgrid.com/v3/marketing/contacts
   response:
-    body: {string: '{"job_id":"9791f6a7-3d3b-4ae9-8f71-67bd98f33008"}
+    body:
+      string: '{"job_id":"9791f6a7-3d3b-4ae9-8f71-67bd98f33008"}
 
-        '}
+        '
     headers:
-      Connection: [keep-alive]
-      Content-Length: ['50']
-      Content-Type: [application/json]
-      Date: ['Wed, 22 Jan 2020 21:33:47 GMT']
-      Server: [nginx]
-      access-control-allow-headers: ['AUTHORIZATION, Content-Type, On-behalf-of, x-sg-elas-acl,
-          X-Recaptcha, X-Request-Source']
-      access-control-allow-methods: ['PUT,DELETE,OPTIONS']
-      access-control-allow-origin: ['*']
-      access-control-expose-headers: ['Link, Location']
-      referrer-policy: [strict-origin-when-cross-origin]
-      x-amz-apigw-id: [GuLlIG2RPHcFtbA=]
-      x-amzn-requestid: [d4e105c8-b312-4585-97b4-f67d7f463ccf]
-      x-amzn-trace-id: [Root=1-5e28bfba-8aff770e542798e4a788763c;Sampled=0]
-      x-content-type-options: [nosniff]
-      x-envoy-upstream-service-time: ['1554']
-    status: {code: 202, message: Accepted}
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '50'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 Jan 2020 21:33:47 GMT
+      Server:
+      - nginx
+      access-control-allow-headers:
+      - AUTHORIZATION, Content-Type, On-behalf-of, x-sg-elas-acl, X-Recaptcha, X-Request-Source
+      access-control-allow-methods:
+      - PUT,DELETE,OPTIONS
+      access-control-allow-origin:
+      - '*'
+      access-control-expose-headers:
+      - Link, Location
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      x-amz-apigw-id:
+      - GuLlIG2RPHcFtbA=
+      x-amzn-requestid:
+      - d4e105c8-b312-4585-97b4-f67d7f463ccf
+      x-amzn-trace-id:
+      - Root=1-5e28bfba-8aff770e542798e4a788763c;Sampled=0
+      x-content-type-options:
+      - nosniff
+      x-envoy-upstream-service-time:
+      - '1554'
+    status:
+      code: 202
+      message: Accepted
 version: 1

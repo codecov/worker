@@ -8,6 +8,8 @@ from services.archive import ArchiveService
 from services.notification.notifiers.base import NotificationResult
 from tasks.notify import NotifyTask
 
+sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
+
 
 @pytest.mark.integration
 class TestNotifyTask(object):
@@ -25,7 +27,7 @@ class TestNotifyTask(object):
         mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
+            owner__unencrypted_oauth_token=sample_token,
             owner__username="ThiagoCodecov",
             owner__service_id="44376991",
             owner__service="github",
@@ -74,7 +76,7 @@ class TestNotifyTask(object):
         mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
+            owner__unencrypted_oauth_token=sample_token,
             owner__username="ThiagoCodecov",
             owner__service="github",
             owner__service_id="44376991",
@@ -151,7 +153,7 @@ class TestNotifyTask(object):
             "codecov_url"
         ] = "https://myexamplewebsite.io"
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
+            owner__unencrypted_oauth_token=sample_token,
             owner__service="github",
             owner__username="ThiagoCodecov",
             owner__service_id="44376991",
@@ -272,7 +274,7 @@ class TestNotifyTask(object):
         ] = "https://myexamplewebsite.io"
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token="909b86f2e90668589666e2b5b76966797cee4b24",
+            owner__unencrypted_oauth_token=sample_token,
             owner__service="github",
             owner__username="ThiagoCodecov",
             owner__service_id="44376991",
@@ -382,7 +384,7 @@ class TestNotifyTask(object):
         ] = "https://myexamplewebsite.io"
         mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token="ghp_testd7ghzzmqzxjz34w447iv25vqb7efk27h",
+            owner__unencrypted_oauth_token=sample_token,
             owner__username="test-acc9",
             owner__service="github",
             owner__service_id="104562106",
@@ -736,7 +738,7 @@ class TestNotifyTask(object):
         mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
-            owner__unencrypted_oauth_token="4877ed9686b74b0ee46af7f41a07a4d8063a8afa",
+            owner__unencrypted_oauth_token=sample_token,
             owner__username="ThiagoCodecov",
             owner__service="github",
             owner__service_id="44376991",
