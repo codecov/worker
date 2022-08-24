@@ -162,6 +162,7 @@ class ProfilingNormalizerTask(BaseCodecovTask):
                     sessions,
                     messages,
                     complexity,
+                    datapoints,
                 ) = dataclasses.astuple(line)
                 # TODO: Make this next lines more resilient
                 line_count = (
