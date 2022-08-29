@@ -2,10 +2,14 @@ interactions:
 - request:
     body: null
     headers:
-      Accept: [application/vnd.github.valkyrie-preview+json]
-      Accept-Encoding: ['gzip, deflate']
-      Connection: [keep-alive]
-      User-Agent: [Codecov]
+      Accept:
+      - application/vnd.github.valkyrie-preview+json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - Codecov
     method: GET
     uri: https://api.github.com/marketplace_listing/stubbed/accounts/3877742
   response:
@@ -20,29 +24,51 @@ interactions:
         9Ig0M3Cv56/J5tdPWhK09X82rFCTlZD3t9c8Vj47WpIQV2dd6nBMI0iMLdasPazL0+FaQpbwRB5H
         FQo8cYSiVz7EYk0Wtl9i2HOxGFR+Kg0grJHf1T6fz+c3q9/G6F0DAAA=
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
-      Cache-Control: ['public, max-age=60, s-maxage=60']
-      Content-Encoding: [gzip]
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Sat, 25 Jan 2020 18:42:13 GMT']
-      ETag: [W/"275358a665064f66410393b9de134be6"]
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: [Accept]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-GitHub-Media-Type: [github.v3; param=valkyrie-preview; format=json]
-      X-GitHub-Request-Id: ['A594:2048:1713F8F:2E697B7:5E2C8C05']
-      X-RateLimit-Limit: ['5000']
-      X-RateLimit-Remaining: ['4997']
-      X-RateLimit-Reset: ['1579978815']
-      X-XSS-Protection: [1; mode=block]
-    status: {code: 200, message: OK}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type
+      Cache-Control:
+      - public, max-age=60, s-maxage=60
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Sat, 25 Jan 2020 18:42:13 GMT
+      ETag:
+      - W/"275358a665064f66410393b9de134be6"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Vary:
+      - Accept
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3; param=valkyrie-preview; format=json
+      X-GitHub-Request-Id:
+      - A594:2048:1713F8F:2E697B7:5E2C8C05
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4997'
+      X-RateLimit-Reset:
+      - '1579978815'
+      X-XSS-Protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
 version: 1

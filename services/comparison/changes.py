@@ -197,9 +197,10 @@ def get_changes(
                 )
             )
     vanished_base_files = {
-        d["before"] or k: (k, d)
+        d.get("before") or k: (k, d)
         for (k, d) in diff_json["files"].items()
-        if head_report.get(k) is None and base_report.get(d["before"] or k) is not None
+        if head_report.get(k) is None
+        and base_report.get(d.get("before") or k) is not None
     }
     for possibly_deleted_filename, data in vanished_base_files.items():
         head_name, diff = data
