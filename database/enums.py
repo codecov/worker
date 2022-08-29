@@ -41,10 +41,7 @@ class CompareCommitError(Enum):
 
 
 class CommitErrorTypes(Enum):
-    class Yaml(Enum):
-        INVALID_YAML = "invalid_yaml"
-        YAML_CLIENT_ERROR = "yaml_client_error"
-        YAML_UNKNOWN_ERROR = "yaml_unknown_error"
-
-    class Bot(Enum):
-        REPO_BOT_INVALID = "repo_bot_invalid"
+    INVALID_YAML = "invalid_yaml"
+    YAML_CLIENT_ERROR = "yaml_client_error"
+    YAML_UNKNOWN_ERROR = "yaml_unknown_error"
+    REPO_BOT_INVALID = "repo_bot_invalid"

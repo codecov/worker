@@ -57,7 +57,7 @@ build.portable:
 
 lint:
 	pip install black==22.3.0 isort
-	black --check .
+	black .
 	isort --profile black .
 
 test:

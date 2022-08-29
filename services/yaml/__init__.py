@@ -1,12 +1,19 @@
 import logging
 
+from shared.analytics_tracking import (
+    track_betaprofiling_added_in_YAML,
+    track_betaprofiling_removed_from_YAML,
+    track_show_critical_paths_added_in_YAML,
+    track_show_critical_paths_removed_from_YAML,
+)
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 
 from database.enums import CommitErrorTypes
 from database.models import Commit
-from helpers.save_commit_error import save_yaml_error
+from helpers.environment import is_enterprise
+from helpers.save_commit_error import save_commit_error
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.reader import read_yaml_field
 
@@ -44,7 +51,7 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
     try:
         commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
     except InvalidYamlException as ex:
-        save_yaml_error(commit, code=CommitErrorTypes.Yaml.value.INVALID_YAML.value)
+        save_commit_error(commit, error_code=CommitErrorTypes.INVALID_YAML.value)
 
         log.warning(
             "Unable to use yaml from commit because it is invalid",
@@ -56,9 +63,7 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
             exc_info=True,
         )
     except TorngitClientError:
-        save_yaml_error(
-            commit, code=CommitErrorTypes.Yaml.value.YAML_CLIENT_ERROR.value
-        )
+        save_commit_error(commit, error_code=CommitErrorTypes.YAML_CLIENT_ERROR.value)
 
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to client issues",
@@ -66,9 +71,7 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
             exc_info=True,
         )
     except TorngitError:
-        save_yaml_error(
-            commit, code=CommitErrorTypes.Yaml.value.YAML_UNKNOWN_ERROR.value
-        )
+        save_commit_error(commit, error_code=CommitErrorTypes.YAML_UNKNOWN_ERROR.value)
 
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to unknown issues",
@@ -92,6 +95,7 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
         current_commit.repository.branch,
         read_yaml_field(existing_yaml, ("codecov", "branch")),
     )
+    tracking_yaml_fields_changes(existing_yaml, new_yaml, repository)
     if current_commit.branch and current_commit.branch in branches_considered_for_yaml:
         if not syb or syb == current_commit.branch:
             yaml_branch = read_yaml_field(new_yaml, ("codecov", "branch"))
@@ -100,3 +104,68 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
             repository.yaml = new_yaml
             return True
     return False
+
+
+def tracking_yaml_fields_changes(existing_yaml, new_yaml, repository):
+    track_betaprofiling(existing_yaml, new_yaml, repository)
+    track_show_critical_paths(existing_yaml, new_yaml, repository)
+
+
+def track_betaprofiling(existing_yaml, new_yaml, repository):
+    existing_comment_layout_field = read_yaml_field(
+        existing_yaml, ("comment", "layout")
+    )
+    new_comment_layout_field = read_yaml_field(new_yaml, ("comment", "layout"))
+
+    existing_comment_sections = list(
+        map(lambda l: l.strip(), (existing_comment_layout_field or "").split(","))
+    )
+    new_comment_sections = list(
+        map(lambda l: l.strip(), (new_comment_layout_field or "").split(","))
+    )
+
+    if was_betaprofiling_added_in_yaml(existing_comment_sections, new_comment_sections):
+        track_betaprofiling_added_in_YAML(
+            repository.repoid, repository.ownerid, is_enterprise()
+        )
+
+    if was_betaprofiling_removed_from_yaml(
+        existing_comment_sections, new_comment_sections
+    ):
+        track_betaprofiling_removed_from_YAML(
+            repository.repoid, repository.ownerid, is_enterprise()
+        )
+
+
+def was_betaprofiling_added_in_yaml(existing_comment_sections, new_comment_sections):
+    return (
+        "betaprofiling" not in existing_comment_sections
+        and "betaprofiling" in new_comment_sections
+    )
+
+
+def was_betaprofiling_removed_from_yaml(
+    existing_comment_sections, new_comment_sections
+):
+    return (
+        "betaprofiling" in existing_comment_sections
+        and "betaprofiling" not in new_comment_sections
+    )
+
+
+def track_show_critical_paths(existing_yaml, new_yaml, repository):
+    existing_show_critical_paths = read_yaml_field(
+        existing_yaml, ("comment", "show_critical_paths")
+    )
+    new_show_critical_paths = read_yaml_field(
+        new_yaml, ("comment", "show_critical_paths")
+    )
+
+    if not existing_show_critical_paths and new_show_critical_paths:
+        track_show_critical_paths_added_in_YAML(
+            repository.repoid, repository.ownerid, is_enterprise()
+        )
+    if existing_show_critical_paths and not new_show_critical_paths:
+        track_show_critical_paths_removed_from_YAML(
+            repository.repoid, repository.ownerid, is_enterprise()
+        )
