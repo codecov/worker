@@ -13,6 +13,7 @@ def save_commit_error(commit: Commit, error_code, error_params={}):
         .filter_by(commit=commit, error_code=error_code)
         .first()
     )
+
     if not error_exist:
         err = CommitError(
             commit=commit,
