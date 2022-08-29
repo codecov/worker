@@ -2,9 +2,9 @@ import logging
 
 import pytest
 
+from database.enums import CommitErrorTypes
 from database.tests.factories import CommitFactory
 from helpers.save_commit_error import save_commit_error
-from database.enums import CommitErrorTypes
 
 LOGGER = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
-from database.enums import Decoration, CommitErrorTypes
+from database.enums import CommitErrorTypes, Decoration
 from database.models import Commit, Pull
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error

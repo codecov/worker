@@ -14,6 +14,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
+from database.enums import CommitErrorTypes
 from database.models import Commit, Upload
 from helpers.metrics import metrics
 from helpers.save_commit_error import save_commit_error
@@ -23,7 +24,6 @@ from services.report import Report, ReportService
 from services.repository import get_repo_provider_service
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
-from database.enums import CommitErrorTypes
 
 log = logging.getLogger(__name__)
 

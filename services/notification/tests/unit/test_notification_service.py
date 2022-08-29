@@ -248,7 +248,7 @@ class TestNotificationService(object):
                         "title": "No coverage information found on head",
                         "summary": f"[View this Pull Request on Codecov](None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo coverage information found on head",
                     },
-                    "url": f"None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/compare/{sample_comparison.base.commit.commitid}...{sample_comparison.head.commit.commitid}",
+                    "url": f"None/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
                 },
                 "data_received": None,
             },
