@@ -1103,6 +1103,7 @@ class TestUploadTaskUnit(object):
             repository__branch="supeduperbranch",
             branch="supeduperbranch",
         )
+        dbsession.add(commit)
         get_source_result = {
             "content": "\n".join(
                 ["bad_key:", "  notify:", "    require_ci_to_pass: yes"]

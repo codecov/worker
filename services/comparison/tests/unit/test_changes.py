@@ -453,3 +453,12 @@ class TestChanges(object):
                 totals=None,
             )
         ]
+
+    def test_get_changes_diff_with_no_before(self):
+        json_diff = {"files": {"file_on_base": {"type": "binary"}}}
+        first_report = Report()
+        second_report = Report()
+        res = get_changes(first_report, second_report, json_diff)
+        for r in res:
+            print(r)
+        assert res == []
