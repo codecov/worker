@@ -20,7 +20,7 @@ from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
-from helpers.save_commit_error import save_repo_bot_error, save_yaml_error
+from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
 from services.redis import Redis, download_archive_from_redis, get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -236,7 +236,9 @@ class UploadTask(BaseCodecovTask):
             )
             was_setup = await self.possibly_setup_webhooks(commit, repository_service)
         except RepositoryWithoutValidBotError:
-            save_repo_bot_error(commit)
+            save_commit_error(
+                commit, error_code=CommitErrorTypes.REPO_BOT_INVALID.value
+            )
 
             log.warning(
                 "Unable to reach git provider because repo doesn't have a valid bot",
@@ -310,7 +312,7 @@ class UploadTask(BaseCodecovTask):
             )
             save_repo_yaml_to_database_if_needed(commit, commit_yaml)
         except InvalidYamlException as ex:
-            save_yaml_error(commit, code=CommitErrorTypes.Yaml.value.INVALID_YAML.value)
+            save_commit_error(commit, error_code=CommitErrorTypes.INVALID_YAML.value)
             log.warning(
                 "Unable to use yaml from commit because it is invalid",
                 extra=dict(

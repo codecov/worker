@@ -285,7 +285,9 @@ class TestYamlService(BaseTestCase):
         assert len(commit.errors) == 1
 
     @pytest.mark.asyncio
-    async def test_get_current_yaml_no_permissions(self, mocker, mock_configuration):
+    async def test_get_current_yaml_no_permissions(
+        self, mocker, mock_configuration, dbsession
+    ):
         mock_configuration.set_params(
             {
                 "site": {
@@ -312,6 +314,7 @@ class TestYamlService(BaseTestCase):
                 }
             }
         )
+        dbsession.add(commit)
         res = await get_current_yaml(commit, valid_handler)
         assert res.to_dict() == {
             "coverage": {
@@ -329,7 +332,7 @@ class TestYamlService(BaseTestCase):
 
     @pytest.mark.asyncio
     async def test_get_current_yaml_unreachable_provider(
-        self, mocker, mock_configuration
+        self, mocker, mock_configuration, dbsession
     ):
         mock_configuration.set_params(
             {
@@ -357,6 +360,7 @@ class TestYamlService(BaseTestCase):
                 }
             }
         )
+        dbsession.add(commit)
         res = await get_current_yaml(commit, valid_handler)
         assert res.to_dict() == {
             "coverage": {
