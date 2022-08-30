@@ -325,3 +325,13 @@ class CompareCommit(MixinBaseClass, CodecovBaseModel):
 
     def __repr__(self):
         return f"CompareCommit<{self.base_commit_id}...{self.compare_commit_id}>"
+
+
+class OrganizationLevelToken(MixinBaseClass, CodecovBaseModel):
+    __tablename__ = "codecov_auth_organizationleveltoken"
+
+    ownerid = Column(types.Integer, ForeignKey("owners.ownerid"))
+    owner = relationship(Owner, foreign_keys=[ownerid])
+    token = Column(postgresql.UUID)
+    valid_until = Column(types.DateTime)
+    token_type = Column(types.String)
