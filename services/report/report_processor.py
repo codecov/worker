@@ -41,6 +41,7 @@ from services.report.languages import (
 )
 from services.report.languages.helpers import remove_non_ascii
 from services.report.parser import ParsedUploadedReportFile
+from services.report.report_builder import ReportBuilder
 
 log = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ def get_possible_processors_list(report_type) -> list:
 
 
 def process_report(
-    report: ParsedUploadedReportFile, commit_yaml, sessionid, ignored_lines, path_fixer
+    report: ParsedUploadedReportFile, report_builder: ReportBuilder
 ) -> Optional[Report]:
     name = report.filename or ""
     first_line = remove_non_ascii(report.get_first_line().decode(errors="replace"))
@@ -148,14 +149,7 @@ def process_report(
                 f"worker.services.report.processors.{processor.name}.run"
             ):
                 try:
-                    res = processor.process(
-                        name,
-                        parsed_report,
-                        path_fixer,
-                        ignored_lines,
-                        sessionid,
-                        commit_yaml,
-                    )
+                    res = processor.process(name, parsed_report, report_builder)
                     metrics.incr(
                         f"worker.services.report.processors.{processor.name}.success"
                     )

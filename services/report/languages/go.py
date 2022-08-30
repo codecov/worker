@@ -1,3 +1,4 @@
+import typing
 from collections import defaultdict
 from io import BytesIO
 from itertools import groupby
@@ -9,6 +10,7 @@ from shared.utils.merge import LineType, line_type, partials_to_line
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.report_builder import ReportBuilder
 from services.yaml import read_yaml_field
 
 
@@ -17,8 +19,14 @@ class GoProcessor(BaseLanguageProcessor):
         return content[:6] == b"mode: " or ".go:" in first_line
 
     def process(
-        self, name, content: bytes, path_fixer, ignored_lines, sessionid, repo_yaml
-    ):
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
+    ) -> Report:
+        path_fixer, ignored_lines, sessionid, repo_yaml = (
+            report_builder.path_fixer,
+            report_builder.ignored_lines,
+            report_builder.sessionid,
+            report_builder.repo_yaml,
+        )
         return from_txt(
             content,
             path_fixer,

@@ -1,4 +1,5 @@
 from services.report.languages.salesforce import SalesforceProcessor
+from services.report.report_processor import ReportBuilder
 from tests.base import BaseTestCase
 
 
@@ -19,9 +20,13 @@ class TestSalesforce(BaseTestCase):
         processor = SalesforceProcessor()
         name = "name"
         sessionid = 0
-        res = processor.process(
-            name, user_input, lambda x: x, {}, sessionid, repo_yaml=None
+        report_builder = ReportBuilder(
+            current_yaml=None,
+            sessionid=sessionid,
+            ignored_lines={},
+            path_fixer=lambda x: x,
         )
+        res = processor.process(name, user_input, report_builder)
         result = self.convert_report_to_better_readable(res)
         assert result == {
             "archive": {
