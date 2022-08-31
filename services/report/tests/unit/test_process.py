@@ -17,6 +17,7 @@ from services.report.parser import (
     ParsedUploadedReportFile,
     RawReportParser,
 )
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 here = Path(__file__)
@@ -422,10 +423,9 @@ class TestProcessReport(BaseTestCase):
             report=ParsedUploadedReportFile(
                 filename=None, file_contents=BytesIO(report.encode())
             ),
-            commit_yaml=None,
-            sessionid=0,
-            ignored_lines={},
-            path_fixer=str,
+            report_builder=ReportBuilder(
+                current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+            ),
         )
 
         assert res is None
@@ -436,10 +436,9 @@ class TestProcessReport(BaseTestCase):
                 filename="app.coverage.txt",
                 file_contents=BytesIO("/file:\n 1 | 1|line".encode()),
             ),
-            commit_yaml=None,
-            sessionid=0,
-            ignored_lines={},
-            path_fixer=str,
+            report_builder=ReportBuilder(
+                current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+            ),
         )
 
         assert res.get("file") is not None
@@ -447,10 +446,10 @@ class TestProcessReport(BaseTestCase):
     def test_path_fixes_same_final_result(self):
         commit_yaml = {"fixes": ["arroba::prefix", "bingo::prefix"]}
         master = process.process_raw_upload(
-            commit_yaml=commit_yaml,
+            commit_yaml=UserYaml(commit_yaml),
             original_report=None,
             session={},
-            reports=RawReportParser.parse_raw_report_from_io(
+            reports=RawReportParser().parse_raw_report_from_io(
                 BytesIO(
                     '{"coverage": {"arroba/test.py": [null, 0], "bingo/test.py": [null, 1]}}'.encode()
                 )
@@ -727,16 +726,24 @@ class TestProcessReport(BaseTestCase):
                     filename=None, file_contents=BytesIO(b'[{"name": "banana"}]')
                 ),
             ),
+            (
+                "bullseye.from_xml",
+                ParsedUploadedReportFile(
+                    filename=None,
+                    file_contents=BytesIO(
+                        b'<?xml version="1.0" encoding="UTF-8"?><BullseyeCoverage name="test.cov" dir="c:/project/cov/sample/" buildId="1234_%s" version="6" xmlns="https://www.bullseye.com/covxml" fn_cov="29" fn_total="29" cd_cov="108" cd_total="161" d_cov="107" d_total="153"><folder name="calc" fn_cov="10" fn_total="10" cd_cov="21" cd_total="50" d_cov="21" d_total="50"></folder></BullseyeCoverage>'
+                    ),
+                ),
+            ),
         ],
     )
     def test_detect(self, lang, report):
         with patch("services.report.languages.%s" % lang, return_value=lang) as func:
             res = process.process_report(
                 report=report,
-                commit_yaml=None,
-                sessionid=0,
-                ignored_lines={},
-                path_fixer=str,
+                report_builder=ReportBuilder(
+                    current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+                ),
             )
             assert res == lang
             assert func.called
@@ -754,10 +761,9 @@ class TestProcessReport(BaseTestCase):
     def test_detect_nothing_found(self, report):
         res = process.process_report(
             report=report,
-            commit_yaml=None,
-            sessionid=0,
-            ignored_lines={},
-            path_fixer=str,
+            report_builder=ReportBuilder(
+                current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+            ),
         )
         assert res is None
 
@@ -773,10 +779,9 @@ class TestProcessReport(BaseTestCase):
             report=ParsedUploadedReportFile(
                 filename=None, file_contents=BytesIO(report_xxe_xml.encode())
             ),
-            commit_yaml=None,
-            sessionid=0,
-            ignored_lines={},
-            path_fixer=str,
+            report_builder=ReportBuilder(
+                current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+            ),
         )
         assert func.called
         func.assert_called_with(mocker.ANY, str, {}, 0)
@@ -792,7 +797,10 @@ class TestProcessReport(BaseTestCase):
             file_contents=BytesIO("<data>".encode()),
         )
         result = process.process_report(
-            report=r, commit_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+            report=r,
+            report_builder=ReportBuilder(
+                current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+            ),
         )
         assert result is None
         assert mocked.called
@@ -817,10 +825,9 @@ class TestProcessReport(BaseTestCase):
                     filename="/Users/path/to/app.coverage.txt",
                     file_contents=BytesIO("<data>".encode()),
                 ),
-                commit_yaml=None,
-                sessionid=0,
-                ignored_lines={},
-                path_fixer=str,
+                report_builder=ReportBuilder(
+                    current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+                ),
             )
 
     def test_process_report_corrupt_format(self, mocker):
@@ -842,10 +849,9 @@ class TestProcessReport(BaseTestCase):
                 filename="/Users/path/to/app.coverage.txt",
                 file_contents=BytesIO("<data>".encode()),
             ),
-            commit_yaml=None,
-            sessionid=0,
-            ignored_lines={},
-            path_fixer=str,
+            report_builder=ReportBuilder(
+                current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+            ),
         )
         assert res is None
 

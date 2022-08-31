@@ -2,36 +2,62 @@ interactions:
 - request:
     body: null
     headers:
-      Accept: [application/vnd.github.valkyrie-preview+json]
-      Connection: [keep-alive]
-      User-Agent: [Codecov]
+      Accept:
+      - application/vnd.github.valkyrie-preview+json
+      Connection:
+      - keep-alive
+      User-Agent:
+      - Codecov
     method: GET
     uri: https://api.github.com/marketplace_listing/stubbed/accounts/123456
   response:
-    body: {string: '{"message":"Not Found"}'}
+    body:
+      string: '{"message":"Not Found"}'
     headers:
-      Access-Control-Allow-Origin: ['*']
-      Access-Control-Expose-Headers: ['ETag, Link, Location, Retry-After, X-GitHub-OTP,
-          X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes,
-          X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type']
-      Cache-Control: ['public, max-age=60, s-maxage=60']
-      Content-Security-Policy: [default-src 'none']
-      Content-Type: [application/json; charset=utf-8]
-      Date: ['Sat, 25 Jan 2020 18:18:57 GMT']
-      ETag: [W/"275358a665064f66410393b9de134be6"]
-      Referrer-Policy: ['origin-when-cross-origin, strict-origin-when-cross-origin']
-      Server: [GitHub.com]
-      Status: [200 OK]
-      Strict-Transport-Security: [max-age=31536000; includeSubdomains; preload]
-      Transfer-Encoding: [chunked]
-      Vary: [Accept, Accept-Encoding]
-      X-Content-Type-Options: [nosniff]
-      X-Frame-Options: [deny]
-      X-GitHub-Media-Type: [github.v3; param=valkyrie-preview; format=json]
-      X-GitHub-Request-Id: ['EDD2:0DE2:12F2066:2B23392:5E2C8691']
-      X-RateLimit-Limit: ['5000']
-      X-RateLimit-Remaining: ['4998']
-      X-RateLimit-Reset: ['1579978815']
-      X-XSS-Protection: [1; mode=block]
-    status: {code: 404, message: Not Found}
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+        X-GitHub-Media-Type
+      Cache-Control:
+      - public, max-age=60, s-maxage=60
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Sat, 25 Jan 2020 18:18:57 GMT
+      ETag:
+      - W/"275358a665064f66410393b9de134be6"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Vary:
+      - Accept
+      - Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3; param=valkyrie-preview; format=json
+      X-GitHub-Request-Id:
+      - EDD2:0DE2:12F2066:2B23392:5E2C8691
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4998'
+      X-RateLimit-Reset:
+      - '1579978815'
+      X-XSS-Protection:
+      - 1; mode=block
+    status:
+      code: 404
+      message: Not Found
 version: 1

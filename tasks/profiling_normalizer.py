@@ -3,7 +3,7 @@ import json
 import logging
 from base64 import b64decode
 from io import BytesIO
-from typing import Dict, List
+from typing import Dict
 
 from shared.celery_config import profiling_normalization_task_name
 from shared.storage.exceptions import FileNotInStorageError
@@ -15,6 +15,7 @@ from helpers.clock import get_utc_now
 from services.archive import ArchiveService
 from services.path_fixer import PathFixer
 from services.report.parser import ParsedUploadedReportFile
+from services.report.report_builder import ReportBuilder
 from services.report.report_processor import process_report
 from services.yaml import get_repo_yaml
 from tasks.base import BaseCodecovTask
@@ -123,7 +124,8 @@ class ProfilingNormalizerTask(BaseCodecovTask):
                     or [],
                 )
                 report = process_report(
-                    report_file_upload, current_yaml, 1, {}, path_fixer
+                    report_file_upload,
+                    report_builder=ReportBuilder(current_yaml, 1, {}, path_fixer),
                 )
                 runs.append(
                     self._extract_report_into_dict(
@@ -162,6 +164,7 @@ class ProfilingNormalizerTask(BaseCodecovTask):
                     sessions,
                     messages,
                     complexity,
+                    datapoints,
                 ) = dataclasses.astuple(line)
                 # TODO: Make this next lines more resilient
                 line_count = (

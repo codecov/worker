@@ -41,6 +41,10 @@ def get_token_refresh_callback(owner: Owner) -> Callable[[Dict], None]:
         return None
 
     async def callback(new_token: Dict) -> None:
+        log.info(
+            "Saving new token after refresh",
+            extra=dict(owner=owner.username, ownerid=owner.ownerid),
+        )
         string_to_save = encode_token(new_token)
         oauth_token = encryptor.encode(string_to_save).decode()
         owner.oauth_token = oauth_token

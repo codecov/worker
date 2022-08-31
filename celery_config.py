@@ -84,6 +84,7 @@ def init_celery_tracing(*args, **kwargs):
 
 
 hourly_check_task_name = "app.cron.hourly_check.HourlyCheckTask"
+daily_plan_manager_task_name = "app.cron.daily.PlanManagerTask"
 
 
 class CeleryWorkerConfig(BaseCeleryConfig):
@@ -102,16 +103,38 @@ class CeleryWorkerConfig(BaseCeleryConfig):
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },
         },
+        "daily_plan_manager_task": {
+            "task": daily_plan_manager_task_name,
+            "schedule": crontab(hour="0"),
+            "kwargs": {
+                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            },
+        },
     }
 
 
-# TODO: delete this once we're on `shared` v0.8.1 (which includes this in the base config)
+# TODO: move this to `shared`
+timeseries_queue = get_config(
+    "setup",
+    "tasks",
+    "timeseries",
+    "queue",
+    default=CeleryWorkerConfig.task_default_queue,
+)
 CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill"] = {
-    "queue": get_config(
-        "setup",
-        "tasks",
-        "timeseries",
-        "queue",
-        default=CeleryWorkerConfig.task_default_queue,
-    )
+    "queue": timeseries_queue,
+}
+CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_commits"] = {
+    "queue": timeseries_queue,
+}
+CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_dataset"] = {
+    "queue": timeseries_queue,
+}
+CeleryWorkerConfig.task_annotations["app.tasks.timeseries.backfill_commits"] = {
+    "soft_time_limit": get_config(
+        "setup", "tasks", "timeseries", "soft_timelimit", default=400
+    ),
+    "time_limit": get_config(
+        "setup", "tasks", "timeseries", "hard_timelimit", default=480
+    ),
 }
