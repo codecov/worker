@@ -334,3 +334,13 @@ class CommitError(CodecovBaseModel, MixinBaseClass):
     commit = relationship(Commit, foreign_keys=[commit_id], backref="errors")
     error_code = Column(types.String(100), nullable=True)
     error_params = Column(postgresql.JSON, default=dict)
+
+
+class OrganizationLevelToken(MixinBaseClass, CodecovBaseModel):
+    __tablename__ = "codecov_auth_organizationleveltoken"
+
+    ownerid = Column(types.Integer, ForeignKey("owners.ownerid"))
+    owner = relationship(Owner, foreign_keys=[ownerid])
+    token = Column(postgresql.UUID)
+    valid_until = Column(types.DateTime)
+    token_type = Column(types.String)

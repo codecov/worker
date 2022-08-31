@@ -16,7 +16,7 @@ from services.notification.notifiers.base import (
     NotificationResult,
 )
 from services.repository import get_repo_provider_service
-from services.urls import get_commit_url, get_compare_url
+from services.urls import get_commit_url, get_pull_url
 from services.yaml import read_yaml_field
 from services.yaml.reader import get_paths_from_flags
 
@@ -163,14 +163,8 @@ class StatusNotifier(AbstractBaseNotifier):
                     **self.get_notifier_filters()
                 )
                 payload = await self.build_payload(filtered_comparison)
-            if (
-                comparison.pull
-                and self.notifier_yaml_settings.get("base") in ("pr", "auto", None)
-                and comparison.base.commit is not None
-            ):
-                payload["url"] = get_compare_url(
-                    comparison.base.commit, comparison.head.commit
-                )
+            if comparison.pull:
+                payload["url"] = get_pull_url(comparison.pull)
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)
             return await self.send_notification(comparison, payload)
@@ -244,10 +238,10 @@ class StatusNotifier(AbstractBaseNotifier):
                 else "Coverage Report Failed"
             )
             track_event(
-                self.repository.ownerid,
-                event_name,
-                {"state": state, "repository_id": self.repository.repoid},
-                is_enterprise(),
+                user_id=self.repository.ownerid,
+                event_name=event_name,
+                is_enterprise=is_enterprise(),
+                event_data={"state": state, "repository_id": self.repository.repoid},
             )
 
             notification_result_data_sent = {

@@ -266,7 +266,7 @@ class TestWebhookNotifier(object):
                 "message": base_commit.message,
             },
             "compare": {
-                "url": f"test.example.br/gh/{repository.slug}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}",
                 "message": "increased",
                 "coverage": Decimal("10.00"),
                 "notation": "+",
@@ -389,7 +389,7 @@ class TestWebhookNotifier(object):
                 "message": base_commit.message,
             },
             "compare": {
-                "url": f"test.example.br/gh/{repository.slug}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}",
                 "message": "increased",
                 "coverage": Decimal("10.00"),
                 "notation": "+",
@@ -503,7 +503,7 @@ class TestWebhookNotifier(object):
                 "message": base_commit.message,
             },
             "compare": {
-                "url": f"test.example.br/gh/{repository.slug}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
                 "message": "increased",
                 "coverage": Decimal("10.00"),
                 "notation": "+",

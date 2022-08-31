@@ -16,10 +16,10 @@ from services.report.languages.lua import LuaProcessor
 from services.report.languages.mono import MonoProcessor
 from services.report.languages.node import NodeProcessor
 from services.report.languages.rlang import RlangProcessor
-from services.report.languages.rspec import RspecProcessor
 from services.report.languages.salesforce import SalesforceProcessor
 from services.report.languages.scala import ScalaProcessor
 from services.report.languages.scoverage import SCoverageProcessor
+from services.report.languages.simplecov import SimplecovProcessor
 from services.report.languages.v1 import VOneProcessor
 from services.report.languages.vb import VbProcessor
 from services.report.languages.vb2 import VbTwoProcessor

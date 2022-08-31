@@ -1066,7 +1066,7 @@ class TestPatchChecksNotifier(object):
                 "title": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nCoverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
             },
-            "url": f"test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            "url": f"test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/pull/{comparison.pull.pullid}",
         }
 
     @pytest.mark.asyncio
@@ -1573,7 +1573,7 @@ class TestProjectChecksNotifier(object):
                 "title": "No coverage information found on head",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo coverage information found on head",
             },
-            "url": f"test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            "url": f"test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
 
     @pytest.mark.asyncio
@@ -1608,7 +1608,7 @@ class TestProjectChecksNotifier(object):
                 "title": f"62.50% (+12.50%) compared to {base_commit.commitid[0:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_single_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n62.50% (+12.50%) compared to {base_commit.commitid[0:7]}",
             },
-            "url": f"test.example.br/gh/test_check_notify_single_path_match/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            "url": f"test.example.br/gh/test_check_notify_single_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
         assert result.data_sent["state"] == expected_result["state"]
         assert (
@@ -1649,7 +1649,7 @@ class TestProjectChecksNotifier(object):
                 "title": f"60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_multiple_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
             },
-            "url": f"test.example.br/gh/test_check_notify_multiple_path_match/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            "url": f"test.example.br/gh/test_check_notify_multiple_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
 
     @pytest.mark.asyncio
@@ -1683,7 +1683,7 @@ class TestProjectChecksNotifier(object):
                 "title": f"60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_with_paths/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
             },
-            "url": f"test.example.br/gh/test_check_notify_with_paths/{sample_comparison.head.commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+            "url": f"test.example.br/gh/test_check_notify_with_paths/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
 
     @pytest.mark.asyncio
@@ -1719,7 +1719,7 @@ class TestProjectChecksNotifier(object):
                     "title": f"25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n25.00% (+0.00%) compared to {base_commit.commitid[:7]} [Auto passed due to carriedforward or missing coverage]",
                 },
-                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
         result = await notifier.notify(sample_comparison_coverage_carriedforward)
@@ -1762,7 +1762,7 @@ class TestProjectChecksNotifier(object):
                     "title": f"25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
                 },
-                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
         result = await notifier.notify(sample_comparison_coverage_carriedforward)
@@ -1801,7 +1801,7 @@ class TestProjectChecksNotifier(object):
                     "title": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
                 },
-                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
         result = await notifier.notify(sample_comparison_coverage_carriedforward)
@@ -1870,7 +1870,7 @@ class TestProjectChecksNotifier(object):
                     "title": f"25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
                 },
-                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
         result = await notifier.notify(sample_comparison_coverage_carriedforward)
@@ -1913,7 +1913,7 @@ class TestProjectChecksNotifier(object):
                     "title": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
                 },
-                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
         result = await notifier.notify(sample_comparison_coverage_carriedforward)
@@ -1953,7 +1953,7 @@ class TestProjectChecksNotifier(object):
                     "title": f"65.38% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?src=pr&el=h1)\n\n65.38% (+0.00%) compared to {base_commit.commitid[:7]}",
                 },
-                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/compare/{base_commit.commitid}...{head_commit.commitid}",
+                "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
         result = await notifier.notify(sample_comparison_coverage_carriedforward)

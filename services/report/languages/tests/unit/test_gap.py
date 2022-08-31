@@ -1,4 +1,5 @@
 from services.report.languages import gap
+from services.report.report_processor import ReportBuilder
 from tests.base import BaseTestCase
 
 RAW = b"""{"Type":"S","File":"lib/error.g","FileId":37}
@@ -48,7 +49,10 @@ class TestGap(BaseTestCase):
     def test_report_from_dict(self):
         data = {"Type": "S", "File": "lib/error.g", "FileId": 37}
         name = "aaa"
-        report = gap.GapProcessor().process(name, data, str, {}, 0)
+        report_builder = ReportBuilder(
+            current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+        )
+        report = gap.GapProcessor().process(name, data, report_builder)
         processed_report = self.convert_report_to_better_readable(report)
         # import pprint
         # pprint.pprint(processed_report['archive'])

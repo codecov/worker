@@ -1,6 +1,9 @@
+import typing
 from typing import Any, Callable, Mapping
 
 from shared.reports.resources import Report
+
+from services.report.report_builder import ReportBuilder
 
 
 class BaseLanguageProcessor(object):
@@ -35,11 +38,7 @@ class BaseLanguageProcessor(object):
         pass
 
     def process(
-        self,
-        content: str,
-        path_fixer: Callable,
-        ignored_lines: Mapping[str, dict],
-        sessionid: str,
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
         """Processes a report uploaded by the user, returning a `Report`
 

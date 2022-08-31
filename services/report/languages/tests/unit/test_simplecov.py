@@ -1,7 +1,7 @@
 import pprint
 from json import loads
 
-from services.report.languages import rspec
+from services.report.languages import simplecov
 from tests.base import BaseTestCase
 
 txt_v17 = """
@@ -60,12 +60,12 @@ class TestRspecProcessor(BaseTestCase):
             ]
         }
 
-        report = rspec.from_json(loads(txt_v17), fixes, {}, 0)
+        report = simplecov.from_json(loads(txt_v17), fixes, {}, 0)
         processed_report = self.convert_report_to_better_readable(report)
         pprint.pprint(processed_report["archive"])
         assert expected_result_archive == processed_report["archive"]
 
-        report = rspec.from_json(loads(txt_v18), fixes, {}, 0)
+        report = simplecov.from_json(loads(txt_v18), fixes, {}, 0)
         processed_report = self.convert_report_to_better_readable(report)
         pprint.pprint(processed_report["archive"])
         assert expected_result_archive == processed_report["archive"]

@@ -1,3 +1,4 @@
+import typing
 from collections import defaultdict
 from fractions import Fraction
 
@@ -6,6 +7,7 @@ from shared.reports.types import ReportLine
 from shared.utils.merge import partials_to_line
 
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.report_builder import ReportBuilder
 from services.yaml import read_yaml_field
 
 
@@ -16,8 +18,14 @@ class NodeProcessor(BaseLanguageProcessor):
         return all(isinstance(data, dict) for data in content.values())
 
     def process(
-        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
-    ):
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
+    ) -> Report:
+        path_fixer, ignored_lines, sessionid, repo_yaml = (
+            report_builder.path_fixer,
+            report_builder.ignored_lines,
+            report_builder.sessionid,
+            report_builder.repo_yaml,
+        )
         config = read_yaml_field(repo_yaml, ("parsers", "javascript")) or {}
         return from_json(content, path_fixer, ignored_lines, sessionid, config)
 
