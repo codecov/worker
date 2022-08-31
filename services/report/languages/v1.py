@@ -5,7 +5,6 @@ from shared.reports.types import ReportLine
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.languages.helpers import list_to_dict
 from services.report.report_builder import ReportBuilder
 from services.yaml import read_yaml_field
 
@@ -38,6 +37,31 @@ class VOneProcessor(BaseLanguageProcessor):
         )
 
 
+def _list_to_dict(lines):
+    """
+    in:  [None, 1] || {"1": 1}
+    out: {"1": 1}
+    """
+    if type(lines) is list:
+        if len(lines) > 1:
+            return dict(
+                [
+                    (ln, cov)
+                    for ln, cov in enumerate(lines[1:], start=1)
+                    if cov is not None
+                ]
+            )
+        else:
+            return {}
+    elif "lines" in lines:
+        # lines format here is
+        # { "lines": [ None, None, 1, 1,...] },
+        # We add a fake first line because this function starts from line at index 1 not 0
+        return _list_to_dict([None] + lines["lines"])
+    else:
+        return lines or {}
+
+
 def from_json(json, fix, ignored_lines, sessionid, config):
     if type(json["coverage"]) is dict:
         # messages = json.get('messages', {})
@@ -47,7 +71,8 @@ def from_json(json, fix, ignored_lines, sessionid, config):
             if fn is None:
                 continue
 
-            lns = list_to_dict(lns)
+            lns = _list_to_dict(lns)
+            print(lns)
             if lns:
                 _file = ReportFile(fn, ignore=ignored_lines.get(fn))
                 for ln, cov in lns.items():
