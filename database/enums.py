@@ -38,3 +38,10 @@ class CompareCommitError(Enum):
     missing_base_report = "missing_base_report"
     missing_head_report = "missing_head_report"
     provider_client_error = "provider_client_error"
+
+
+class CommitErrorTypes(Enum):
+    INVALID_YAML = "invalid_yaml"
+    YAML_CLIENT_ERROR = "yaml_client_error"
+    YAML_UNKNOWN_ERROR = "yaml_unknown_error"
+    REPO_BOT_INVALID = "repo_bot_invalid"
