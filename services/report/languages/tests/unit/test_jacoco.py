@@ -5,6 +5,7 @@ import pytest
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import jacoco
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
@@ -56,8 +57,14 @@ class TestJacoco(BaseTestCase):
             assert path in ("base/source.java", "base/file.java", "base/empty")
             return path
 
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "file_name"
+        )
         report = jacoco.from_xml(
-            etree.fromstring(xml % int(time())), fixes, {}, 0, None
+            etree.fromstring(xml % int(time())), report_builder_session
         )
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
@@ -99,11 +106,23 @@ class TestJacoco(BaseTestCase):
             else:
                 return path if "src/main/java" in path else None
 
-        report = jacoco.from_xml(etree.fromstring(data), fixes, {}, 0, None)
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "file_name"
+        )
+        report = jacoco.from_xml(etree.fromstring(data), report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         assert [path] == list(processed_report["archive"].keys())
 
     @pytest.mark.parametrize("date", [(int(time()) - 172800), "01-01-2014"])
     def test_expired(self, date):
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=None
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "file_name"
+        )
         with pytest.raises(ReportExpiredException, match="Jacoco report expired"):
-            jacoco.from_xml(etree.fromstring(xml % date), None, {}, 0, None)
+            jacoco.from_xml(etree.fromstring(xml % date), report_builder_session)

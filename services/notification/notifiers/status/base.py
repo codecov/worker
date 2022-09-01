@@ -238,10 +238,10 @@ class StatusNotifier(AbstractBaseNotifier):
                 else "Coverage Report Failed"
             )
             track_event(
-                self.repository.ownerid,
-                event_name,
-                {"state": state, "repository_id": self.repository.repoid},
-                is_enterprise(),
+                user_id=self.repository.ownerid,
+                event_name=event_name,
+                is_enterprise=is_enterprise(),
+                event_data={"state": state, "repository_id": self.repository.repoid},
             )
 
             notification_result_data_sent = {

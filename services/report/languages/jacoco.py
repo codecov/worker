@@ -1,3 +1,4 @@
+import typing
 from collections import defaultdict
 
 from shared.reports.resources import Report, ReportFile
@@ -6,6 +7,7 @@ from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 
@@ -13,11 +15,14 @@ class JacocoProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name):
         return bool(content.tag == "report")
 
-    def process(self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml):
-        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
+    def process(
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
+    ) -> Report:
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_xml(content, report_builder_session)
 
 
-def from_xml(xml, fix, ignored_lines, sessionid, yaml):
+def from_xml(xml, report_builder_session: ReportBuilderSession):
     """
     nr = line number
     mi = missed instructions
@@ -25,6 +30,10 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
     mb = missed branches
     cb = covered branches
     """
+    path_fixer = report_builder_session.path_fixer
+    yaml = report_builder_session.current_yaml
+    ignored_lines = report_builder_session.ignored_lines
+    sessionid = report_builder_session.sessionid
     if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
         try:
             timestamp = next(xml.iter("sessioninfo")).get("start")
@@ -37,25 +46,23 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
         except StopIteration:
             pass
 
-    report = Report()
-
     project = xml.attrib.get("name", "")
     project = "" if " " in project else project.strip("/")
 
     def try_to_fix_path(path):
         if project:
             # project/package/path
-            filename = fix("%s/%s" % (project, path))
+            filename = path_fixer("%s/%s" % (project, path))
             if filename:
                 return filename
 
             # project/src/main/java/package/path
-            filename = fix("%s/src/main/java/%s" % (project, path))
+            filename = path_fixer("%s/src/main/java/%s" % (project, path))
             if filename:
                 return filename
 
         # package/path
-        return fix(path)
+        return path_fixer(path)
 
     for package in xml.iter("package"):
         base_name = package.attrib["name"]
@@ -113,6 +120,6 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 )
 
             # append file to report
-            report.append(_file)
+            report_builder_session.append(_file)
 
-    return report
+    return report_builder_session.output_report()

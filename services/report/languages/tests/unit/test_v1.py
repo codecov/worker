@@ -22,36 +22,24 @@ txt = """
 
 """
 
-invalid_report = """{
+alternative_report_format = """{
     "coverage": {
         "/home/repo/app/scable/channel.rb": {
             "lines": [
-                "1",
-                "1",
-                "None",
-                "None"
+                1,
+                1,
+                null,
+                null
             ]
         },
-        "/home/repo/app/scable/connection.rb": {},
-        "/home/repo/app/controllers/api/base_controller.rb": {},
-        "/home/path/to/base_controller.rb": {},
-        "/home/path/to/defaults.rb": {},
-        "/home/path/to/users_controller.rb": {},
-        "/home/path/to/validators/invoice_date.rb": {},
-        "/home/path/to/validators/max_length.rb": {},
-        "/home/repo/app/lib/parser/json_api.rb": {},
+        "/home/repo/app/scable/something.rb": {},
+        "/home/repo/app/scable/something_else.rb": { "lines": []},
         "/home/repo/lib/exceptions.rb": {
             "lines": [
-                "1",
-                "1",
-                "1",
-                "None",
-                "1",
-                "1",
-                "1",
-                "1",
-                "1",
-                "1"
+                1,
+                0,
+                10,
+                null
             ]
         }
     },
@@ -86,11 +74,35 @@ class TestVOne(BaseTestCase):
     def test_not_list(self):
         assert v1.from_json({"coverage": "<string>"}, str, {}, 0, {}) is None
 
-    def test_report_that_looks_valid_but_isnt(self):
-        with pytest.raises(CorruptRawReportError) as ex:
-            v1.from_json(loads(invalid_report), lambda x: x, {}, 0, {})
-        assert ex.value.expected_format == "v1"
+    def test_report_with_alternative_format(self):
+        report = v1.from_json(loads(alternative_report_format), lambda x: x, {}, 0, {})
+        processed_report = self.convert_report_to_better_readable(report)
+
+        expected_result_archive = {
+            "/home/repo/app/scable/channel.rb": [
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (2, 1, None, [[0, 1, None, None, None]], None, None),
+            ],
+            "/home/repo/lib/exceptions.rb": [
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (2, 0, None, [[0, 0, None, None, None]], None, None),
+                (3, 10, None, [[0, 10, None, None, None]], None, None),
+            ],
+        }
+        assert expected_result_archive == processed_report["archive"]
+
+    def test_corrupted_report(self):
+        corrupted_report = {
+            "coverage": {
+                "source": [None, 1],
+                "file": {"file1": 1, "file2": 2},
+            }
+        }
+        with pytest.raises(CorruptRawReportError) as e:
+            v1.from_json(corrupted_report, lambda x: x, {}, 0, {})
+        exp = e.value
         assert (
-            ex.value.corruption_error
+            exp.corruption_error
             == "file dictionaries expected to have integers, not strings"
         )
+        assert exp.expected_format == "v1"

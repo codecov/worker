@@ -3,7 +3,7 @@ from hashlib import sha1
 from uuid import uuid4
 
 import factory
-from factory import Factory, fuzzy
+from factory import Factory
 
 from database import enums, models
 from services.encryption import encryptor
@@ -192,3 +192,12 @@ class CompareCommitFactory(Factory):
     state = enums.CompareCommitState.pending.value
     base_commit = factory.SubFactory(CommitFactory)
     compare_commit = factory.SubFactory(CommitFactory)
+
+
+class OrgLevelTokenFactory(Factory):
+    class Meta:
+        model = models.OrganizationLevelToken
+
+    token = factory.LazyFunction(lambda: uuid4().hex)
+    token_type = "upload"
+    owner = factory.SubFactory(OwnerFactory)

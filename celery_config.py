@@ -84,6 +84,7 @@ def init_celery_tracing(*args, **kwargs):
 
 
 hourly_check_task_name = "app.cron.hourly_check.HourlyCheckTask"
+daily_plan_manager_task_name = "app.cron.daily.PlanManagerTask"
 
 
 class CeleryWorkerConfig(BaseCeleryConfig):
@@ -98,6 +99,13 @@ class CeleryWorkerConfig(BaseCeleryConfig):
         "find_uncollected_profilings": {
             "task": profiling_finding_task_name,
             "schedule": crontab(minute="0,15,30,45"),
+            "kwargs": {
+                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            },
+        },
+        "daily_plan_manager_task": {
+            "task": daily_plan_manager_task_name,
+            "schedule": crontab(hour="0"),
             "kwargs": {
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },

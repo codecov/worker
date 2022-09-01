@@ -1,9 +1,12 @@
+import typing
+
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.report_builder import ReportBuilder
 from services.yaml import read_yaml_field
 
 
@@ -12,8 +15,14 @@ class CloverProcessor(BaseLanguageProcessor):
         return bool(content.tag == "coverage" and content.attrib.get("generated"))
 
     def process(
-        self, name, content, path_fixer, ignored_lines, sessionid, repo_yaml=None
-    ):
+        self, name: str, content: typing.Any, report_builder: ReportBuilder
+    ) -> Report:
+        path_fixer, ignored_lines, sessionid, repo_yaml = (
+            report_builder.path_fixer,
+            report_builder.ignored_lines,
+            report_builder.sessionid,
+            report_builder.current_yaml,
+        )
         return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
 
 
