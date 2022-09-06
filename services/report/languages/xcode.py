@@ -7,7 +7,7 @@ from shared.reports.types import LineSession, ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.languages.helpers import remove_non_ascii
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 START_PARTIAL = "\033[0;41m"
 END_PARTIAL = "\033[0m"
@@ -37,13 +37,7 @@ class XCodeProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_txt(content, path_fixer, ignored_lines, sessionid)
+        return from_txt(content, report_builder.create_report_builder_session(name))
 
 
 def get_partials_in_line(line):
@@ -74,8 +68,12 @@ def get_partials_in_line(line):
         return partials
 
 
-def from_txt(content, fix, ignored_lines, sessionid):
-    report = Report()
+def from_txt(content, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     files = {}
     skip = False
     _file = None
@@ -90,7 +88,7 @@ def from_txt(content, fix, ignored_lines, sessionid):
                 if line.endswith(":") and "|" not in line:
                     # file names could be "relative/path.abc:" or "/absolute/path.abc:"
                     # new file
-                    filename = fix(line.replace(END_PARTIAL, "")[1:-1])
+                    filename = path_fixer(line.replace(END_PARTIAL, "")[1:-1])
                     # skip empty files
                     skip = filename is None
                     # add new file
@@ -161,5 +159,5 @@ def from_txt(content, fix, ignored_lines, sessionid):
                                 pass
 
     for val in files.values():
-        report.append(val)
-    return report
+        report_builder_session.append(val)
+    return report_builder_session.output_report()

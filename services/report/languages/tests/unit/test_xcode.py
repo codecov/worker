@@ -1,6 +1,5 @@
-from json import dumps, loads
-
 from services.report.languages import xcode
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 txt = b"""/source:
@@ -35,7 +34,13 @@ class TestXCode(BaseTestCase):
             assert path in ("source", "file", "empty", "totally_empty")
             return path
 
-        report = xcode.from_txt(txt, fixes, {}, 0)
+        report_builder = ReportBuilder(
+            path_fixer=fixes, ignored_lines={}, sessionid=0, current_yaml=None
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = xcode.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 
@@ -54,8 +59,12 @@ class TestXCode(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_removes_last(self):
+        report_builder = ReportBuilder(
+            path_fixer=str, ignored_lines={}, sessionid=0, current_yaml=None
+        )
         report = xcode.from_txt(
-            b"""\nnothing\n/file:\n    1 |   1|line\n/totally_empty:""", str, {}, 0
+            b"""\nnothing\n/file:\n    1 |   1|line\n/totally_empty:""",
+            report_builder.create_report_builder_session("filename"),
         )
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
