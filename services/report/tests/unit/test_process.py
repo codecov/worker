@@ -12,7 +12,7 @@ from shared.yaml import UserYaml
 
 from helpers.exceptions import CorruptRawReportError, ReportEmptyError
 from services.report import raw_upload_processor as process
-from services.report.parser import RawReportParser
+from services.report.parser import LegacyReportParser
 from services.report.parser.types import ParsedRawReport, ParsedUploadedReportFile
 from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
@@ -63,7 +63,7 @@ class TestProcessRawUpload(BaseTestCase):
             master = self.get_v3_report()
         else:
             master = None
-        parsed_report = RawReportParser().parse_raw_report_from_io(
+        parsed_report = LegacyReportParser().parse_raw_report_from_io(
             BytesIO("\n".join(report).encode())
         )
         master = process.process_raw_upload(
@@ -147,7 +147,7 @@ class TestProcessRawUpload(BaseTestCase):
         master = process.process_raw_upload(
             commit_yaml=None,
             original_report=None,
-            reports=RawReportParser().parse_raw_report_from_io(
+            reports=LegacyReportParser().parse_raw_report_from_io(
                 BytesIO("\n".join(report).encode())
             ),
             flags=[],
@@ -188,7 +188,7 @@ class TestProcessRawUpload(BaseTestCase):
             process.process_raw_upload(
                 commit_yaml=None,
                 original_report=original_report,
-                reports=RawReportParser().parse_raw_report_from_io(
+                reports=LegacyReportParser().parse_raw_report_from_io(
                     BytesIO("\n".join(report_data).encode())
                 ),
                 session=Session(flags=["fruits"]),
@@ -295,7 +295,10 @@ class TestProcessRawUpload(BaseTestCase):
     def test_none(self):
         with pytest.raises(ReportEmptyError, match="No files found in report."):
             process.process_raw_upload(
-                self, {}, RawReportParser().parse_raw_report_from_io(BytesIO(b"")), []
+                self,
+                {},
+                LegacyReportParser().parse_raw_report_from_io(BytesIO(b"")),
+                [],
             )
 
 
@@ -316,7 +319,7 @@ class TestProcessRawUploadFixed(BaseTestCase):
         report = process.process_raw_upload(
             commit_yaml={},
             original_report=None,
-            reports=RawReportParser().parse_raw_report_from_io(
+            reports=LegacyReportParser().parse_raw_report_from_io(
                 BytesIO(reports.encode())
             ),
             flags=[],
@@ -355,7 +358,7 @@ class TestProcessRawUploadNotJoined(BaseTestCase):
                     original_report=Mock(
                         merge=merge, add_session=Mock(return_value=(1, Session()))
                     ),
-                    reports=RawReportParser().parse_raw_report_from_io(
+                    reports=LegacyReportParser().parse_raw_report_from_io(
                         BytesIO("a<<<<<< EOF".encode())
                     ),
                     flags=[flag],
@@ -376,7 +379,7 @@ class TestProcessRawUploadFlags(BaseTestCase):
             commit_yaml=UserYaml({"flags": {"docker": flag}}),
             original_report={},
             session={},
-            reports=RawReportParser().parse_raw_report_from_io(
+            reports=LegacyReportParser().parse_raw_report_from_io(
                 BytesIO(
                     '{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'.encode()
                 )
@@ -393,7 +396,7 @@ class TestProcessSessions(BaseTestCase):
             commit_yaml={},
             original_report={},
             session={},
-            reports=RawReportParser().parse_raw_report_from_io(
+            reports=LegacyReportParser().parse_raw_report_from_io(
                 BytesIO(
                     '{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'.encode()
                 )
@@ -404,7 +407,7 @@ class TestProcessSessions(BaseTestCase):
             commit_yaml={},
             original_report=master,
             session={},
-            reports=RawReportParser().parse_raw_report_from_io(
+            reports=LegacyReportParser().parse_raw_report_from_io(
                 BytesIO(
                     '{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'.encode()
                 )
@@ -448,7 +451,7 @@ class TestProcessReport(BaseTestCase):
             commit_yaml=UserYaml(commit_yaml),
             original_report=None,
             session={},
-            reports=RawReportParser().parse_raw_report_from_io(
+            reports=LegacyReportParser().parse_raw_report_from_io(
                 BytesIO(
                     '{"coverage": {"arroba/test.py": [null, 0], "bingo/test.py": [null, 1]}}'.encode()
                 )

@@ -6,7 +6,7 @@ from helpers.metrics import metrics
 from services.report.parser.types import ParsedRawReport, ParsedUploadedReportFile
 
 
-class RawReportParser(object):
+class LegacyReportParser(object):
 
     network_separator = b"<<<<<< network"
     env_separator = b"<<<<<< ENV"

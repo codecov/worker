@@ -1,4 +1,11 @@
-from services.report.parser.version_one import NewReportParser, ParsedUploadedReportFile
+import base64
+import zlib
+from io import BytesIO
+
+from services.report.parser.version_one import (
+    ParsedUploadedReportFile,
+    VersionOneReportParser,
+)
 
 input_data = b"""{
     "path_fixes": {"format": "legacy", "value": ""},
@@ -27,7 +34,7 @@ input_data = b"""{
 
 
 def test_version_one_parser():
-    subject = NewReportParser()
+    subject = VersionOneReportParser()
     res = subject.parse_raw_report_from_bytes(input_data)
     assert res.env is None
     assert res.path_fixes == ""
@@ -53,3 +60,25 @@ def test_version_one_parser():
     )
     assert second_file.size == 3415
     assert second_file.labels == ["simple", "a.py::fileclass::test_simple"]
+
+
+def test_version_one_parser_parse_coverage_file_contents_bad_format():
+    subject = VersionOneReportParser()
+    coverage_file = {"format": "unknown", "data": b"simple", "filename": "filename.py"}
+    assert subject._parse_coverage_file_contents(coverage_file) == b"simple"
+
+
+def test_version_one_parser_parse_coverage_file_contents_base64_zip_format():
+    original_input = b"some_cool_string right \n here"
+    formatted_input = base64.b64encode(zlib.compress(original_input))
+    # An assert for the sake of showing the result
+    assert formatted_input == b"eJwrzs9NjU/Oz8+JLy4pysxLVyjKTM8oUeBSyEgtSgUArOcK4w=="
+    subject = VersionOneReportParser()
+    coverage_file = {
+        "format": "base64+compressed",
+        "data": formatted_input,
+        "filename": "filename.py",
+    }
+    res = subject._parse_coverage_file_contents(coverage_file)
+    assert isinstance(res, BytesIO)
+    assert res.getvalue() == b"some_cool_string right \n here"

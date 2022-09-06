@@ -9,7 +9,7 @@ from services.report.parser.types import ParsedRawReport, ParsedUploadedReportFi
 log = logging.getLogger(__name__)
 
 
-class NewReportParser(object):
+class VersionOneReportParser(object):
     def parse_raw_report_from_bytes(self, raw_report: bytes):
         data = json.loads(raw_report)
         return ParsedRawReport(
@@ -37,6 +37,6 @@ class NewReportParser(object):
             return BytesIO(zlib.decompress(base64.b64decode(coverage_file["data"])))
         log.warning(
             "Unkown format found while parsing upload",
-            extra=dict(filename=coverage_file["filename"]),
+            extra=dict(coverage_file_filename=coverage_file["filename"]),
         )
         return coverage_file["data"]
