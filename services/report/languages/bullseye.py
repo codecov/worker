@@ -7,7 +7,7 @@ from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 
@@ -18,17 +18,16 @@ class BullseyeProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
-def from_xml(xml, fix, ignored_lines, sessionid, yaml):
-
+def from_xml(xml, report_builder_session: ReportBuilderSession):
+    path_fixer, ignored_lines, sessionid, yaml = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+        report_builder_session.current_yaml,
+    )
     if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
         build_id = xml.attrib.get("buildId")
         # build_id format has timestamp at the end "4362c668_2020-10-28_17:55:47"
@@ -38,7 +37,6 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
         ):
             raise ReportExpiredException("Bullseye report expired %s" % timestamp)
 
-    report = Report()
     for folder in xml.iter("{https://www.bullseye.com/covxml}folder"):
         for file in folder.iter("{https://www.bullseye.com/covxml}src"):
             # Get filepath from parent folder(s)
@@ -47,7 +45,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             while element.getparent().tag == "{https://www.bullseye.com/covxml}folder":
                 element = element.getparent()
                 filepath = f'{element.attrib.get("name")}/{filepath}'
-            filename = fix(filepath + file.attrib.get("name"))
+            filename = path_fixer(filepath + file.attrib.get("name"))
             if filename:
                 _file = ReportFile(filename)
                 for function in file.iter("{https://www.bullseye.com/covxml}fn"):
@@ -78,6 +76,6 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                                 sessions=[[sessionid, coverage]],
                             ),
                         )
-                report.append(_file)
-    report.ignore_lines(ignored_lines)
-    return report
+                report_builder_session.append(_file)
+    report_builder_session.ignore_lines(ignored_lines)
+    return report_builder_session.output_report()
