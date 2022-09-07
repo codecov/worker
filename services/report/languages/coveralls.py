@@ -4,7 +4,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class CoverallsProcessor(BaseLanguageProcessor):
@@ -14,24 +14,23 @@ class CoverallsProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_json(content, path_fixer, ignored_lines, sessionid)
+        return from_json(content, report_builder.create_report_builder_session(name))
 
 
 def detect(report):
     return "source_files" in report
 
 
-def from_json(report, fix, ignored_lines, sessionid):
+def from_json(report, report_builder_session: ReportBuilderSession) -> Report:
     # https://github.com/codecov/support/issues/253
-    _report = Report()
+    path_fixer, ignored_lines, sessionid, repo_yaml = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+        report_builder_session.current_yaml,
+    )
     for _file in report["source_files"]:
-        filename = fix(_file["name"])
+        filename = path_fixer(_file["name"])
         if filename:
             report_file = ReportFile(filename, ignore=ignored_lines.get(filename))
             for ln, coverage in enumerate(_file["coverage"], start=1):
@@ -39,6 +38,6 @@ def from_json(report, fix, ignored_lines, sessionid):
                     report_file[ln] = ReportLine.create(
                         coverage, None, [[sessionid, coverage]]
                     )
-            _report.append(report_file)
+            report_builder_session.append(report_file)
 
-    return _report
+    return report_builder_session.output_report()
