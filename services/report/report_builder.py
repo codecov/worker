@@ -231,6 +231,8 @@ class ReportBuilder(object):
     def supports_labels(self) -> bool:
         # temporary check to make it limited to us while we check if
         # something breaks
-        return self.current_yaml.get(
-            "beta_groups"
-        ) and "labels" in self.current_yaml.get("beta_groups")
+        return (
+            self.current_yaml
+            and self.current_yaml.get("beta_groups")
+            and "labels" in self.current_yaml.get("beta_groups")
+        )
