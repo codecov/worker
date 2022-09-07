@@ -74,6 +74,9 @@ class ReportBuilderSession(object):
     def ignore_lines(self, *args, **kwargs):
         return self._report.ignore_lines(*args, **kwargs)
 
+    def resolve_paths(self, paths):
+        return self._report.resolve_paths(paths)
+
     def append(self, file):
         if file is not None:
             for line_number, line in file.lines:

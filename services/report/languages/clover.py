@@ -118,9 +118,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
 
     for f in files.values():
         report_builder_session.append((f))
-    report_builder_session._report.resolve_paths(
-        [(f, path_fixer(f)) for f in files.keys()]
-    )
+    report_builder_session.resolve_paths([(f, path_fixer(f)) for f in files.keys()])
     report_builder_session.ignore_lines(ignored_lines)
 
     return report_builder_session.output_report()
