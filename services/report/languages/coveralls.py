@@ -1,10 +1,13 @@
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class CoverallsProcessor(BaseLanguageProcessor):
@@ -32,11 +35,15 @@ def from_json(report, report_builder_session: ReportBuilderSession) -> Report:
     for _file in report["source_files"]:
         filename = path_fixer(_file["name"])
         if filename:
-            report_file = ReportFile(filename, ignore=ignored_lines.get(filename))
+            report_file = report_builder_session.file_class(
+                filename, ignore=ignored_lines.get(filename)
+            )
             for ln, coverage in enumerate(_file["coverage"], start=1):
                 if coverage is not None:
-                    report_file[ln] = ReportLine.create(
-                        coverage, None, [[sessionid, coverage]]
+                    report_file[ln] = report_builder_session.create_coverage_line(
+                        filename=filename,
+                        coverage=coverage,
+                        coverage_type=CoverageType.line,
                     )
             report_builder_session.append(report_file)
 
