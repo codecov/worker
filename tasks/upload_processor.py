@@ -299,7 +299,12 @@ class UploadProcessorTask(BaseCodecovTask):
             )
         except RepositoryWithoutValidBotError:
             save_commit_error(
-                commit, error_code=CommitErrorTypes.REPO_BOT_INVALID.value
+                commit,
+                error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
+                error_params=dict(
+                    repoid=commit.repoid,
+                    pr=pr,
+                ),
             )
 
             log.warning(

@@ -237,7 +237,9 @@ class UploadTask(BaseCodecovTask):
             was_setup = await self.possibly_setup_webhooks(commit, repository_service)
         except RepositoryWithoutValidBotError:
             save_commit_error(
-                commit, error_code=CommitErrorTypes.REPO_BOT_INVALID.value
+                commit,
+                error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
+                error_params=dict(repoid=repoid, repository_service=repository_service),
             )
 
             log.warning(
@@ -312,7 +314,15 @@ class UploadTask(BaseCodecovTask):
             )
             save_repo_yaml_to_database_if_needed(commit, commit_yaml)
         except InvalidYamlException as ex:
-            save_commit_error(commit, error_code=CommitErrorTypes.INVALID_YAML.value)
+            save_commit_error(
+                commit,
+                error_code=CommitErrorTypes.INVALID_YAML.value,
+                error_params=dict(
+                    repoid=repository.repoid,
+                    commit=commit.commitid,
+                    error_location=ex.error_location,
+                ),
+            )
             log.warning(
                 "Unable to use yaml from commit because it is invalid",
                 extra=dict(

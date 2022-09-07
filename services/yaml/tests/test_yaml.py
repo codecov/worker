@@ -262,9 +262,7 @@ class TestYamlService(BaseTestCase):
             }
         )
 
-        mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
-        mocked_get_db_session.return_value = dbsession
-        commit.get_db_session = mocked_get_db_session
+        dbsession.add(commit)
 
         res = await get_current_yaml(commit, valid_handler)
         assert res.to_dict() == {
@@ -281,7 +279,7 @@ class TestYamlService(BaseTestCase):
             },
         }
 
-        assert commit.errors
+        assert commit.errors[0].error_code == "invalid_yaml"
         assert len(commit.errors) == 1
 
     @pytest.mark.asyncio
