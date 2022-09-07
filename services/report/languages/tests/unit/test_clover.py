@@ -5,6 +5,7 @@ import pytest
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import clover
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -94,8 +95,14 @@ class TestCloverProcessor(BaseTestCase):
             assert path in ("source.php", "file.php", "nolines")
             return path
 
+        report_builder = ReportBuilder(
+            path_fixer=fixes, ignored_lines={}, sessionid=0, current_yaml=None
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         report = clover.from_xml(
-            etree.fromstring(xml % int(time())), fixes, {}, 0, None
+            etree.fromstring(xml % int(time())), report_builder_session
         )
         processed_report = self.convert_report_to_better_readable(report)
         expected_result = {
@@ -154,4 +161,10 @@ class TestCloverProcessor(BaseTestCase):
     @pytest.mark.parametrize("date", [(int(time()) - 172800), "01-01-2014"])
     def test_expired(self, date):
         with pytest.raises(ReportExpiredException, match="Clover report expired"):
-            clover.from_xml(etree.fromstring(xml % date), None, {}, 0, None)
+            report_builder = ReportBuilder(
+                path_fixer=str, ignored_lines={}, sessionid=0, current_yaml=None
+            )
+            report_builder_session = report_builder.create_report_builder_session(
+                "filename"
+            )
+            clover.from_xml(etree.fromstring(xml % date), report_builder_session)
