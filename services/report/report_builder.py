@@ -182,7 +182,8 @@ class ReportBuilderSession(object):
         coverage_type: CoverageType,
         labels: typing.List[typing.Union[str, SpecialLabelsEnum]] = None,
         partials=None,
-        missing_branches=None
+        missing_branches=None,
+        complexity=None
     ) -> ReportLine:
         coverage_type_str = coverage_type.map_to_string()
         return ReportLine.create(
@@ -191,8 +192,7 @@ class ReportBuilderSession(object):
             sessions=[
                 (
                     LineSession(
-                        id=self.sessionid,
-                        coverage=coverage,
+                        id=self.sessionid, coverage=coverage, complexity=complexity
                     )
                 )
             ],
@@ -206,7 +206,7 @@ class ReportBuilderSession(object):
             ]
             if self._report_builder.supports_labels()
             else None,
-            complexity=None,
+            complexity=complexity,
         )
 
 
@@ -234,6 +234,8 @@ class ReportBuilder(object):
     def supports_labels(self) -> bool:
         # temporary check to make it limited to us while we check if
         # something breaks
-        return self.current_yaml.get(
-            "beta_groups"
-        ) and "labels" in self.current_yaml.get("beta_groups")
+        return (
+            self.current_yaml
+            and self.current_yaml.get("beta_groups")
+            and "labels" in self.current_yaml.get("beta_groups")
+        )

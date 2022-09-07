@@ -1,12 +1,15 @@
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 from services.yaml import read_yaml_field
 
 
@@ -70,7 +73,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
             continue
 
         if filename not in files:
-            files[filename] = ReportFile(filename)
+            files[filename] = report_builder_session.file_class(filename)
 
         _file = files[filename]
 
@@ -89,7 +92,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
 
             # [typescript] https://github.com/gotwarlost/istanbul/blob/89e338fcb1c8a7dea3b9e8f851aa55de2bc3abee/lib/report/clover.js#L108-L110
             if attribs["type"] == "cond":
-                _type = "b"
+                _type = CoverageType.branch
                 t, f = int(attribs["truecount"]), int(attribs["falsecount"])
                 if t == f == 0:
                     coverage = "0/2"
@@ -100,19 +103,19 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
 
             elif attribs["type"] == "method":
                 coverage = int(attribs.get("count") or 0)
-                _type = "m"
+                _type = CoverageType.method
                 complexity = int(attribs.get("complexity") or 0)
                 # <line num="44" type="method" name="doRun" visibility="public" complexity="5" crap="5.20" count="1"/>
 
             else:
                 coverage = int(attribs.get("count") or 0)
-                _type = None
+                _type = CoverageType.line
 
             # add line to report
-            _file[ln] = ReportLine.create(
+            _file[ln] = report_builder_session.create_coverage_line(
                 coverage=coverage,
-                type=_type,
-                sessions=[[sessionid, coverage, None, None, complexity]],
+                coverage_type=_type,
+                filename=filename,
                 complexity=complexity,
             )
 
