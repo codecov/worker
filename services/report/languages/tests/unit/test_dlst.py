@@ -1,6 +1,7 @@
 import pytest
 
 from services.report.languages import dlst
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 RAW = b"""       |empty
@@ -28,7 +29,13 @@ class TestDLST(BaseTestCase):
             if path in ("file.d", "src/file.d"):
                 return "src/file.d"
 
-        report = dlst.from_string(filename, RAW, fixer, {}, 0)
+        report_builder = ReportBuilder(
+            path_fixer=fixer, ignored_lines={}, sessionid=0, current_yaml=None
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = dlst.from_string(RAW, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         # import pprint
         # pprint.pprint(processed_report['archive'])
@@ -42,8 +49,12 @@ class TestDLST(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_none(self):
+        report_builder = ReportBuilder(
+            path_fixer=lambda a: False, ignored_lines={}, sessionid=0, current_yaml=None
+        )
+        report_builder_session = report_builder.create_report_builder_session(None)
         report = dlst.from_string(
-            None, b"   1|test\nignore is 100% covered", lambda a: False, {}, 0
+            b"   1|test\nignore is 100% covered", report_builder_session
         )
         assert None is report
 
