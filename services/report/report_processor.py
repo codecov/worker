@@ -28,6 +28,7 @@ from services.report.languages import (
     LuaProcessor,
     MonoProcessor,
     NodeProcessor,
+    PyCoverageProcessor,
     RlangProcessor,
     SalesforceProcessor,
     ScalaProcessor,
@@ -127,6 +128,7 @@ def get_possible_processors_list(report_type) -> list:
             CoverallsProcessor(),
             SimplecovProcessor(),
             GapProcessor(),
+            PyCoverageProcessor(),
             NodeProcessor(),
         ],
     }
