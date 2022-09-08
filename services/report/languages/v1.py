@@ -5,7 +5,7 @@ from shared.reports.types import ReportLine
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 
@@ -16,25 +16,14 @@ class VOneProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
+
         if "RSpec" in content:
             content = content["RSpec"]
 
         elif "MiniTest" in content:
             content = content["MiniTest"]
 
-        return from_json(
-            content,
-            path_fixer,
-            ignored_lines,
-            sessionid,
-            read_yaml_field(repo_yaml, ("parsers", "v1")) or {},
-        )
+        return from_json(content, report_builder.create_report_builder_session(name))
 
 
 def _list_to_dict(lines):
@@ -62,12 +51,16 @@ def _list_to_dict(lines):
         return lines or {}
 
 
-def from_json(json, fix, ignored_lines, sessionid, config):
+def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     if type(json["coverage"]) is dict:
         # messages = json.get('messages', {})
-        report = Report()
         for fn, lns in json["coverage"].items():
-            fn = fix(fn)
+            fn = path_fixer(fn)
             if fn is None:
                 continue
 
@@ -99,5 +92,5 @@ def from_json(json, fix, ignored_lines, sessionid, config):
                             sessions=[[sessionid, cov]],
                         )
 
-                report.append(_file)
-        return report
+                report_builder_session.append(_file)
+        return report_builder_session.output_report()

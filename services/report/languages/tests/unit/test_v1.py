@@ -4,6 +4,7 @@ import pytest
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages import v1
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 txt = """
@@ -54,7 +55,13 @@ class TestVOne(BaseTestCase):
             assert path in ("source", "file", "empty")
             return path
 
-        report = v1.from_json(loads(txt), fixes, {}, 0, {})
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = v1.from_json(loads(txt), report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 
@@ -72,10 +79,22 @@ class TestVOne(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_not_list(self):
-        assert v1.from_json({"coverage": "<string>"}, str, {}, 0, {}) is None
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=str
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        assert v1.from_json({"coverage": "<string>"}, report_builder_session) is None
 
     def test_report_with_alternative_format(self):
-        report = v1.from_json(loads(alternative_report_format), lambda x: x, {}, 0, {})
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=lambda x: x
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = v1.from_json(loads(alternative_report_format), report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
 
         expected_result_archive = {
@@ -98,8 +117,14 @@ class TestVOne(BaseTestCase):
                 "file": {"file1": 1, "file2": 2},
             }
         }
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=lambda x: x
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         with pytest.raises(CorruptRawReportError) as e:
-            v1.from_json(corrupted_report, lambda x: x, {}, 0, {})
+            v1.from_json(corrupted_report, report_builder_session)
         exp = e.value
         assert (
             exp.corruption_error
