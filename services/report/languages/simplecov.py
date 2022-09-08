@@ -4,7 +4,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class SimplecovProcessor(BaseLanguageProcessor):
@@ -20,17 +20,16 @@ class SimplecovProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_json(content, path_fixer, ignored_lines, sessionid)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_json(content, report_builder_session)
 
 
-def from_json(json, fix, ignored_lines, sessionid):
-    report = Report()
+def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
+    fix, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     for data in json["files"]:
         fn = fix(data["filename"])
         if fn is None:
@@ -50,6 +49,6 @@ def from_json(json, fix, ignored_lines, sessionid):
         for ln, cov in enumerate(coverage_to_check, start=1):
             _file[ln] = ReportLine.create(coverage=cov, sessions=[[sessionid, cov]])
 
-        report.append(_file)
+        report_builder_session.append(_file)
 
-    return report
+    return report_builder_session.output_report()
