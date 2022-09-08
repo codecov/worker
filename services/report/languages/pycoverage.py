@@ -17,9 +17,9 @@ class PyCoverageProcessor(BaseLanguageProcessor):
     def matches_content(self, content, first_line, name) -> bool:
         return (
             "meta" in content
+            and isinstance(content.get("meta"), dict)
             and "show_contexts" in content.get("meta")
             and "files" in content
-            and name.endswith(".json")
         )
 
     def _convert_testname_to_label(self, testname):
@@ -35,27 +35,15 @@ class PyCoverageProcessor(BaseLanguageProcessor):
             fixed_filename = report_builder.path_fixer(filename)
             if fixed_filename:
                 report_file = report_builder_session.file_class(fixed_filename)
-                for ln in file_coverage["executed_lines"]:
+                lines_and_coverage = [
+                    (COVERAGE_HIT, ln) for ln in file_coverage["executed_lines"]
+                ] + [(COVERAGE_MISS, ln) for ln in file_coverage["missing_lines"]]
+                for cov, ln in lines_and_coverage:
                     report_file.append(
                         ln,
                         report_builder_session.create_coverage_line(
                             fixed_filename,
-                            COVERAGE_HIT,
-                            coverage_type=CoverageType.line,
-                            labels=[
-                                self._convert_testname_to_label(testname)
-                                for testname in file_coverage.get("contexts", {}).get(
-                                    str(ln), []
-                                )
-                            ],
-                        ),
-                    )
-                for ln in file_coverage["missing_lines"]:
-                    report_file.append(
-                        ln,
-                        report_builder_session.create_coverage_line(
-                            fixed_filename,
-                            COVERAGE_MISS,
+                            cov,
                             coverage_type=CoverageType.line,
                             labels=[
                                 self._convert_testname_to_label(testname)

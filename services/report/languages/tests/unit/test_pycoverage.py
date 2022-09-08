@@ -113,6 +113,8 @@ class TestPyCoverageProcessor(BaseTestCase):
     def test_matches_content_pycoverage(self):
         p = PyCoverageProcessor()
         assert p.matches_content(SAMPLE, "", "coverage.json")
+        assert not p.matches_content({"meta": True}, "", "coverage.json")
+        assert not p.matches_content({"meta": {}}, "", "coverage.json")
 
     def test_process_pycoverage(self):
         content = SAMPLE
