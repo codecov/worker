@@ -6,7 +6,7 @@ from services.static_analysis.single_file_analyzer import (
 # While the structure of this is correct, the data itself was manually edited
 # to make interesting test cases
 sample_input_data = {
-    "empty_lines": [2, 3, 11],
+    "empty_lines": [4, 8, 11],
     "warnings": [],
     "filename": "source.py",
     "functions": [
