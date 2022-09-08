@@ -7,7 +7,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 log = logging.getLogger(__name__)
 
@@ -19,26 +19,29 @@ class LcovProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-        )
-        return from_txt(content, path_fixer, ignored_lines, sessionid)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_txt(content, report_builder_session)
 
 
 def detect(report):
     return b"\nend_of_record" in report
 
 
-def from_txt(reports, fix, ignored_lines, sessionid):
+# def from_txt(reports, fix, ignored_lines, sessionid):
+def from_txt(reports, report_builder_session: ReportBuilderSession) -> Report:
     # http://ltp.sourceforge.net/coverage/lcov/geninfo.1.php
-    report = Report()
     # merge same files
+    fix, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     for string in reports.split(b"\nend_of_record"):
-        report.append(_process_file(string, fix, ignored_lines, sessionid))
+        report_builder_session.append(
+            _process_file(string, fix, ignored_lines, sessionid)
+        )
 
-    return report
+    return report_builder_session.output_report()
 
 
 def _process_file(doc: bytes, fix, ignored_lines, sessionid):

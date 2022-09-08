@@ -1,6 +1,7 @@
 from json import dumps
 
 from services.report.languages import lcov
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 txt = b"""TN:
@@ -114,7 +115,13 @@ class TestLcov(BaseTestCase):
             assert path in ("file.js", "file.ts", "file.cpp", "empty.js")
             return path
 
-        report = lcov.from_txt(txt, fixes, {}, 0)
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filepath"
+        )
+        report = lcov.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 
@@ -160,7 +167,13 @@ class TestLcov(BaseTestCase):
                 "end_of_record",
             ]
         ).encode()
-        report = lcov.from_txt(text, lambda x: x, {}, 0)
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, path_fixer=lambda x: x, ignored_lines={}
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filepath"
+        )
+        report = lcov.from_txt(text, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report["archive"] == {
             "file.js": [
