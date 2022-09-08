@@ -5,7 +5,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class LuaProcessor(BaseLanguageProcessor):
@@ -15,13 +15,8 @@ class LuaProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_txt(content, path_fixer, ignored_lines, sessionid)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_txt(content, report_builder_session)
 
 
 docs = re.compile(r"^=+\n", re.M).split
@@ -31,9 +26,12 @@ def detect(report: bytes):
     return report[:7] == b"======="
 
 
-def from_txt(string: bytes, fix, ignored_lines, sessionid):
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
     filename = None
-    report = Report()
+    ignored_lines, sessionid = (
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     for string in docs(string.decode(errors="replace").replace("\t", " ")):
         string = string.rstrip()
         if string == "Summary":
@@ -41,7 +39,7 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid):
             continue
 
         elif string.endswith((".lua", ".lisp")):
-            filename = fix(string)
+            filename = report_builder_session.path_fixer(string)
             if filename is None:
                 continue
 
@@ -56,6 +54,6 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid):
                 except Exception:
                     pass
 
-            report.append(_file)
+            report_builder_session.append(_file)
 
-    return report
+    return report_builder_session.output_report()
