@@ -10,7 +10,7 @@ from shared.utils.merge import LineType, line_type, partials_to_line
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 
@@ -21,22 +21,11 @@ class GoProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_txt(
-            content,
-            path_fixer,
-            ignored_lines,
-            sessionid,
-            read_yaml_field(repo_yaml, ("parsers", "go")) or {},
-        )
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_txt(content, report_builder_session)
 
 
-def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
     """
     mode: count
     github.com/codecov/sample_go/sample_go.go:7.14,9.2 1 1
@@ -62,6 +51,9 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
         - `name.go:line.column,line.column numberOfStatements count`
 
     """
+    go_parser_settings = (
+        read_yaml_field(report_builder_session.current_yaml, ("parsers", "go")) or {}
+    )
     _cur_file = None
     lines = None
     ignored_files = []
@@ -90,7 +82,7 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
             if filename in file_name_replacement:
                 filename = file_name_replacement[filename]
             else:
-                fixed = fix(filename)
+                fixed = report_builder_session.path_fixer(filename)
 
                 file_name_replacement[filename] = fixed
                 filename = fixed
@@ -125,7 +117,8 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
                 lines[el].add((None, ec, hits))
 
     # create a file
-    report = Report()
+    ignored_lines = report_builder_session.ignored_lines
+    sessionid = report_builder_session.sessionid
     for filename, lines in files.items():
         _file = ReportFile(filename, ignore=ignored_lines.get(filename))
         for ln, partials in lines.items():
@@ -142,9 +135,9 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
             ):
                 cov_to_use = 1
             _file[ln] = ReportLine.create(cov_to_use, None, [[sessionid, cov_to_use]])
-        report.append(_file)
+        report_builder_session.append(_file)
 
-    return report
+    return report_builder_session.output_report()
 
 
 def combine_partials(partials):

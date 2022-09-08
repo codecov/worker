@@ -3,6 +3,7 @@ from shared.reports.types import ReportTotals
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages import go
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 txt = b"""mode: atomic
@@ -118,7 +119,13 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report = go.from_txt(txt, fixes, {}, 0, {})
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = go.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 
@@ -142,7 +149,13 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report = go.from_txt(huge_txt, fixes, {}, 0, {})
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = go.from_txt(huge_txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         expected_result_archive = {
             "path/file.go": [
@@ -366,7 +379,16 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report = go.from_txt(huge_txt, fixes, {}, 0, {"partials_as_hits": True})
+        report_builder = ReportBuilder(
+            current_yaml={"parsers": {"go": {"partials_as_hits": True}}},
+            sessionid=0,
+            path_fixer=fixes,
+            ignored_lines={},
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = go.from_txt(huge_txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         print(processed_report["archive"])
         expected_result_archive = {
@@ -641,7 +663,13 @@ class TestGo(BaseTestCase):
         line = b"path/file.go:242.63,244.3path/file.go:242.63,244.3 1 0"
 
         with pytest.raises(CorruptRawReportError) as ex:
-            go.from_txt(line, fixes, {}, 0, {})
+            report_builder = ReportBuilder(
+                current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
+            )
+            report_builder_session = report_builder.create_report_builder_session(
+                "filename"
+            )
+            go.from_txt(line, report_builder_session)
 
         assert (
             ex.value.corruption_error
