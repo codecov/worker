@@ -1,6 +1,7 @@
 from shared.reports.resources import Report
 
 from services.report.languages import gcov
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 txt = b"""    -:    0:Source:tmp.c
@@ -150,14 +151,20 @@ _ZNK3rsl4h26413Mp4NaluParserINS_8DataViewIKhEEE7IsEmptyEv::
 
 class TestGcov(BaseTestCase):
     def test_report(self):
-        report = gcov.from_txt(
-            "temp.c.gcov",
-            txt,
-            str,
-            {},
-            0,
-            {"branch_detection": {"conditional": True, "loop": True}},
+        report_builder = ReportBuilder(
+            current_yaml={
+                "parsers": {
+                    "gcov": {"branch_detection": {"conditional": True, "loop": True}}
+                }
+            },
+            path_fixer=str,
+            sessionid=0,
+            ignored_lines={},
         )
+        report_builder_session = report_builder.create_report_builder_session(
+            "temp.c.gcov"
+        )
+        report = gcov.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 
@@ -177,14 +184,20 @@ class TestGcov(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_report_duplicate_lines(self):
-        report = gcov.from_txt(
-            "#project#rsl#h264#Mp4NaluParser.h.gcov.reduced",
-            txt_duplicate,
-            str,
-            {},
-            0,
-            {"branch_detection": {"conditional": True, "loop": True}},
+        report_builder = ReportBuilder(
+            current_yaml={
+                "parsers": {
+                    "gcov": {"branch_detection": {"conditional": True, "loop": True}}
+                }
+            },
+            path_fixer=str,
+            sessionid=0,
+            ignored_lines={},
         )
+        report_builder_session = report_builder.create_report_builder_session(
+            "#project#rsl#h264#Mp4NaluParser.h.gcov.reduced"
+        )
+        report = gcov.from_txt(txt_duplicate, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
 
         print(processed_report["archive"])
@@ -204,9 +217,16 @@ class TestGcov(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_no_cond_branch_report(self):
-        report = gcov.from_txt(
-            "", txt, str, {}, 1, {"branch_detection": {"conditional": False}}
+        report_builder = ReportBuilder(
+            current_yaml={
+                "parsers": {"gcov": {"branch_detection": {"conditional": False}}}
+            },
+            path_fixer=str,
+            sessionid=1,
+            ignored_lines={},
         )
+        report_builder_session = report_builder.create_report_builder_session("")
+        report = gcov.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report["archive"]["tmp.c"][3][0] == 10
         assert processed_report["archive"]["tmp.c"][3] == (
@@ -219,21 +239,30 @@ class TestGcov(BaseTestCase):
         )
 
     def test_single_line_report(self):
+        report_builder = ReportBuilder(
+            current_yaml={
+                "parsers": {"gcov": {"branch_detection": {"conditional": False}}}
+            },
+            path_fixer=str,
+            sessionid=1,
+            ignored_lines={},
+        )
+        report_builder_session = report_builder.create_report_builder_session("")
         report = gcov.from_txt(
-            "",
-            b"        -:    0:Source:another_tmp.c",
-            str,
-            {},
-            1,
-            {"branch_detection": {"conditional": False}},
+            b"        -:    0:Source:another_tmp.c", report_builder_session
         )
         assert not report
         assert isinstance(report, Report)
 
     def test_no_cond_loop_report(self):
-        report = gcov.from_txt(
-            "", txt, str, {}, 1, {"branch_detection": {"loop": False}}
+        report_builder = ReportBuilder(
+            current_yaml={"parsers": {"gcov": {"branch_detection": {"loop": False}}}},
+            path_fixer=str,
+            sessionid=1,
+            ignored_lines={},
         )
+        report_builder_session = report_builder.create_report_builder_session("")
+        report = gcov.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report["archive"]["tmp.c"][6][0] == 14
         assert processed_report["archive"]["tmp.c"][6] == (
@@ -254,9 +283,14 @@ class TestGcov(BaseTestCase):
         )
 
     def test_track_macro_report(self):
-        report = gcov.from_txt(
-            "", txt, str, {}, 1, {"branch_detection": {"macro": True}}
+        report_builder = ReportBuilder(
+            current_yaml={"parsers": {"gcov": {"branch_detection": {"macro": True}}}},
+            path_fixer=str,
+            sessionid=1,
+            ignored_lines={},
         )
+        report_builder_session = report_builder.create_report_builder_session("")
+        report = gcov.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report["archive"]["tmp.c"][5][0] == 13
         assert processed_report["archive"]["tmp.c"][5] == (
@@ -277,7 +311,14 @@ class TestGcov(BaseTestCase):
         )
 
     def test_no_yaml(self):
-        report = gcov.from_txt("", txt, str, {}, 1, None)
+        report_builder = ReportBuilder(
+            current_yaml={"parsers": {"gcov": {}}},
+            path_fixer=str,
+            sessionid=1,
+            ignored_lines={},
+        )
+        report_builder_session = report_builder.create_report_builder_session("")
+        report = gcov.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report["archive"]["tmp.c"][5][0] == 13
         assert processed_report["archive"]["tmp.c"][5] == (
@@ -304,7 +345,11 @@ class TestGcov(BaseTestCase):
         assert gcov.detect(b"0:Source") is False
 
     def test_ignored(self):
-        assert (
-            gcov.from_txt("", b"   -: 0:Source:black\n", lambda a: None, {}, 0, {})
-            is None
+        report_builder = ReportBuilder(
+            current_yaml={"parsers": {"gcov": {}}},
+            path_fixer=lambda a: None,
+            sessionid=0,
+            ignored_lines={},
         )
+        report_builder_session = report_builder.create_report_builder_session("")
+        assert gcov.from_txt(b"   -: 0:Source:black\n", report_builder_session) is None

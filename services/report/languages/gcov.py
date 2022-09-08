@@ -7,7 +7,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 
@@ -18,14 +18,8 @@ class GcovProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        settings = read_yaml_field(repo_yaml, ("parsers", "gcov"))
-        return from_txt(name, content, path_fixer, ignored_lines, sessionid, settings)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_txt(content, report_builder_session)
 
 
 ignored_lines = re.compile(r"(\{|\})(\s*\/\/.*)?").match
@@ -37,7 +31,16 @@ def detect(report):
     return b"0:Source:" in report.split(b"\n", 1)[0]
 
 
-def from_txt(name, string, fix, ignored_lines, sesisonid, settings):
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
+    name, repo_yaml, sessionid, fix, ignored_lines = (
+        report_builder_session._report_filepath,
+        report_builder_session.current_yaml,
+        report_builder_session.sessionid,
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+    )
+    settings = read_yaml_field(repo_yaml, ("parsers", "gcov"))
+
     line_iterator = iter(BytesIO(string))
     # clean and strip lines
     filename = next(line_iterator).decode(errors="replace").rstrip("\n")
@@ -49,16 +52,15 @@ def from_txt(name, string, fix, ignored_lines, sesisonid, settings):
     if not filename:
         return None
 
-    report = Report()
-    report.append(
+    report_builder_session.append(
         _process_gcov_file(
-            filename, ignored_lines.get(filename), line_iterator, sesisonid, settings
+            filename, ignored_lines.get(filename), line_iterator, sessionid, settings
         )
     )
-    return report
+    return report_builder_session.output_report()
 
 
-def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sesisonid, settings):
+def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sessionid, settings):
     ignore = False
     ln = None
     next_is_func = False
@@ -209,12 +211,12 @@ def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sesisonid, set
         if branches:
             coverage = "%s/%s" % tuple(branches)
             _file.append(
-                ln, ReportLine.create(coverage, _type, [[sesisonid, coverage]])
+                ln, ReportLine.create(coverage, _type, [[sessionid, coverage]])
             )
         else:
             for coverage in coverages:
                 _file.append(
-                    ln, ReportLine.create(coverage, _type, [[sesisonid, coverage]])
+                    ln, ReportLine.create(coverage, _type, [[sessionid, coverage]])
                 )
 
     return _file
