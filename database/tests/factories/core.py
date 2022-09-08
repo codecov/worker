@@ -172,6 +172,7 @@ class UploadFactory(Factory):
     state = "complete"
     upload_extras = {}
     upload_type = "uploaded"
+    storage_path = "storage/path.txt"
 
 
 class CommitNotificationFactory(Factory):

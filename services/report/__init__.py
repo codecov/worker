@@ -24,7 +24,7 @@ from database.models.reports import (
 )
 from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from services.archive import ArchiveService
-from services.report.parser import RawReportParser
+from services.report.parser import get_proper_parser
 from services.report.raw_upload_processor import process_raw_upload
 from services.yaml.reader import get_paths_from_flags
 
@@ -457,8 +457,9 @@ class ReportService(object):
         )
         archive_service = self.get_archive_service(commit.repository)
         archive_url = upload.storage_path
+        parser = get_proper_parser(upload)
         try:
-            raw_uploaded_report = RawReportParser.parse_raw_report_from_bytes(
+            raw_uploaded_report = parser.parse_raw_report_from_bytes(
                 archive_service.read_file(archive_url)
             )
         except FileNotInStorageError:
