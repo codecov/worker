@@ -49,6 +49,7 @@ charset-normalizer==2.0.12
     # via requests
 click==8.0.4
     # via
+    #   -r requirements.in
     #   celery
     #   click-didyoumean
     #   click-plugins
