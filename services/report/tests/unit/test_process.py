@@ -145,7 +145,7 @@ class TestProcessRawUpload(BaseTestCase):
         report.extend(json_section)
 
         master = process.process_raw_upload(
-            commit_yaml=None,
+            commit_yaml={},
             original_report=None,
             reports=LegacyReportParser().parse_raw_report_from_io(
                 BytesIO("\n".join(report).encode())
