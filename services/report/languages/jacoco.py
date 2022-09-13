@@ -1,13 +1,16 @@
 import typing
 from collections import defaultdict
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 from services.yaml import read_yaml_field
 
 
@@ -93,33 +96,37 @@ def from_xml(xml, report_builder_session: ReportBuilderSession):
 
             method_complixity = file_method_complixity[source_name.split(".")[0]]
 
-            _file = ReportFile(filename, ignore=ignored_lines.get(filename))
+            report_file_obj = report_builder_session.file_class(
+                filename, ignore=ignored_lines.get(filename)
+            )
 
             for line in source.iter("line"):
                 line = line.attrib
                 if line["mb"] != "0":
                     cov = "%s/%s" % (line["cb"], int(line["mb"]) + int(line["cb"]))
-                    _type = "b"
+                    coverage_type = CoverageType.branch
 
                 elif line["cb"] != "0":
                     cov = "%s/%s" % (line["cb"], line["cb"])
-                    _type = "b"
+                    coverage_type = CoverageType.branch
 
                 else:
                     cov = int(line["ci"])
-                    _type = None
+                    coverage_type = CoverageType.line
 
                 ln = int(line["nr"])
                 complexity = method_complixity.get(ln)
+                if complexity:
+                    coverage_type = CoverageType.method
                 # add line to file
-                _file[ln] = ReportLine.create(
+                report_file_obj[ln] = report_builder_session.create_coverage_line(
+                    filename,
                     coverage=cov,
-                    type="m" if complexity is not None else _type,
-                    sessions=[[sessionid, cov, None, None, complexity]],
+                    coverage_type=coverage_type,
                     complexity=complexity,
                 )
 
             # append file to report
-            report_builder_session.append(_file)
+            report_builder_session.append(report_file_obj)
 
     return report_builder_session.output_report()
