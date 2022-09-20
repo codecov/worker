@@ -1,11 +1,14 @@
 import re
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class LuaProcessor(BaseLanguageProcessor):
@@ -28,10 +31,7 @@ def detect(report: bytes):
 
 def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
     filename = None
-    ignored_lines, sessionid = (
-        report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
-    )
+    ignored_lines = report_builder_session.ignored_lines
     for string in docs(string.decode(errors="replace").replace("\t", " ")):
         string = string.rstrip()
         if string == "Summary":
@@ -44,12 +44,16 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
                 continue
 
         elif filename:
-            _file = ReportFile(filename, ignore=ignored_lines.get(filename))
+            _file = report_builder_session.file_class(
+                filename, ignore=ignored_lines.get(filename)
+            )
             for ln, source in enumerate(string.splitlines(), start=1):
                 try:
                     cov = source.strip().split(" ")[0]
                     cov = 0 if cov[-2:] in ("*0", "0") else int(cov)
-                    _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
+                    _file[ln] = report_builder_session.create_coverage_line(
+                        filename=filename, coverage=cov, coverage_type=CoverageType.line
+                    )
 
                 except Exception:
                     pass
