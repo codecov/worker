@@ -3,14 +3,17 @@ from collections import defaultdict
 from io import BytesIO
 from itertools import groupby
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 from shared.utils import merge
 from shared.utils.merge import LineType, line_type, partials_to_line
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 from services.yaml import read_yaml_field
 
 
@@ -118,9 +121,10 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
 
     # create a file
     ignored_lines = report_builder_session.ignored_lines
-    sessionid = report_builder_session.sessionid
     for filename, lines in files.items():
-        _file = ReportFile(filename, ignore=ignored_lines.get(filename))
+        _file = report_builder_session.file_class(
+            filename, ignore=ignored_lines.get(filename)
+        )
         for ln, partials in lines.items():
             best_in_partials = max(map(lambda p: p[2], partials))
             partials = combine_partials(partials)
@@ -134,7 +138,9 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
                 and line_type(cov_to_use) == LineType.partial
             ):
                 cov_to_use = 1
-            _file[ln] = ReportLine.create(cov_to_use, None, [[sessionid, cov_to_use]])
+            _file[ln] = report_builder_session.create_coverage_line(
+                filename=filename, coverage=cov_to_use, coverage_type=CoverageType.line
+            )
         report_builder_session.append(_file)
 
     return report_builder_session.output_report()
