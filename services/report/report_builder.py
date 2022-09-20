@@ -194,8 +194,9 @@ class ReportBuilderSession(object):
                     LineSession(
                         id=self.sessionid,
                         coverage=coverage,
-                        complexity=complexity,
                         branches=missing_branches,
+                        partials=partials,
+                        complexity=complexity,
                     )
                 )
             ],

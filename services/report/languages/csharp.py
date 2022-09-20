@@ -1,12 +1,17 @@
 import typing
 from collections import defaultdict
 from itertools import repeat
+from re import M
 
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class CSharpProcessor(BaseLanguageProcessor):
@@ -62,7 +67,10 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
         if filename:
             file_by_id[f.attrib["uid"]] = filename
             file_by_name.setdefault(
-                filename, ReportFile(filename, ignore=ignored_lines.get(filename))
+                filename,
+                report_builder_session.file_class(
+                    filename, ignore=ignored_lines.get(filename)
+                ),
             )
 
     for method in xml.iter("Method"):
@@ -80,7 +88,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                     if sl and el:
                         complexity = (
                             int(attrib("cyclomaticComplexity", 0))
-                            if _type == "m"
+                            if _type == CoverageType.method
                             else None
                         )
                         sl, el = int(sl), int(el)
@@ -89,7 +97,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                             bev = attrib("bev")
                             if bec != "0":
                                 coverage = "%s/%s" % (bev, bec)
-                                _type = _type or "b"
+                                _type = _type or CoverageType.branch
                             elif vc > 0:
                                 coverage = vc
                             else:
@@ -97,43 +105,29 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                         else:
                             coverage = vc
 
+                        coverage_type = _type or CoverageType.line
                         # spans > 1 line
                         if el > sl:
                             for ln in range(sl, el + 1):
                                 file_append(
                                     ln,
-                                    ReportLine.create(
+                                    report_builder_session.create_coverage_line(
+                                        filename=_file.name,
                                         coverage=coverage,
-                                        type=_type,
-                                        sessions=[
-                                            [
-                                                sessionid,
-                                                coverage,
-                                                branches_get(ln),
-                                                None,
-                                                complexity,
-                                            ]
-                                        ],
+                                        coverage_type=coverage_type,
+                                        missing_branches=branches_get(ln),
                                         complexity=complexity,
                                     ),
                                 )
-
                         # spans = 1 line
                         else:
                             file_append(
                                 sl,
-                                ReportLine.create(
+                                report_builder_session.create_coverage_line(
+                                    filename=_file.name,
                                     coverage=coverage,
-                                    type=_type,
-                                    sessions=[
-                                        [
-                                            sessionid,
-                                            coverage,
-                                            branches_get(sl),
-                                            None,
-                                            complexity,
-                                        ]
-                                    ],
+                                    coverage_type=coverage_type,
+                                    missing_branches=branches_get(sl),
                                     complexity=complexity,
                                 ),
                             )
