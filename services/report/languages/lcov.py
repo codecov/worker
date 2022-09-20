@@ -3,11 +3,14 @@ import typing
 from collections import defaultdict
 from io import BytesIO
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 log = logging.getLogger(__name__)
 
@@ -31,20 +34,14 @@ def detect(report):
 def from_txt(reports, report_builder_session: ReportBuilderSession) -> Report:
     # http://ltp.sourceforge.net/coverage/lcov/geninfo.1.php
     # merge same files
-    fix, ignored_lines, sessionid = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
-    )
     for string in reports.split(b"\nend_of_record"):
-        report_builder_session.append(
-            _process_file(string, fix, ignored_lines, sessionid)
-        )
+        report_builder_session.append(_process_file(string, report_builder_session))
 
     return report_builder_session.output_report()
 
 
-def _process_file(doc: bytes, fix, ignored_lines, sessionid):
+def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
+    ignored_lines = report_builder_session.ignored_lines
     _already_informed_of_negative_execution_count = False
     lines = {}
     branches = defaultdict(dict)
@@ -78,11 +75,13 @@ def _process_file(doc: bytes, fix, ignored_lines, sessionid):
             SF:<absolute path to the source file>
             """
             # file name
-            content = fix(content)
+            content = report_builder_session.path_fixer(content)
             if content is None:
                 return None
 
-            _file = ReportFile(content, ignore=ignored_lines.get(content))
+            _file = report_builder_session.file_class(
+                content, ignore=ignored_lines.get(content)
+            )
             JS = content[-3:] == ".js"
             CPP = content[-4:] == ".cpp"
 
@@ -118,7 +117,10 @@ def _process_file(doc: bytes, fix, ignored_lines, sessionid):
                     )
                     _already_informed_of_negative_execution_count = True
                 cov = 0
-            _file.append(int(line), ReportLine.create(cov, None, [[sessionid, cov]]))
+            coverage_line = report_builder_session.create_coverage_line(
+                filename=_file.name, coverage=cov, coverage_type=CoverageType.line
+            )
+            _file.append(int(line), coverage_line)
 
         elif method == "FN" and not JS:
             """
@@ -174,11 +176,13 @@ def _process_file(doc: bytes, fix, ignored_lines, sessionid):
         s, li = sum(br.values()), len(br.values())
         mb = [bid for bid, cov in br.items() if cov == 0]
         cov = "%s/%s" % (s, li)
-        # override bc inline js: """if (True) { echo() }"""
-        _file[int(ln)] = ReportLine.create(
-            cov,
-            "m" if ln in methods else "b",
-            [[sessionid, cov, mb if mb != [] else None]],
+
+        coverage_type = CoverageType.method if ln in methods else CoverageType.branch
+        _file[int(ln)] = report_builder_session.create_coverage_line(
+            filename=_file.name,
+            coverage=cov,
+            coverage_type=coverage_type,
+            missing_branches=(mb if mb != [] else None),
         )
 
     return _file
