@@ -10,8 +10,10 @@ from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 
+from database.enums import CommitErrorTypes
 from database.models import Commit
 from helpers.environment import is_enterprise
+from helpers.save_commit_error import save_commit_error
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.reader import read_yaml_field
 
@@ -29,6 +31,7 @@ def get_repo_yaml(repository):
 async def get_current_yaml(commit: Commit, repository_service) -> dict:
     """
         Fetches what the current yaml is supposed to be
+
 
         This function wraps the whole logic of fetching the current yaml for a given commit
             - It makes best effort in trying to fetch and parse the data from the repo
@@ -48,6 +51,16 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
     try:
         commit_yaml = await fetch_commit_yaml_from_provider(commit, repository_service)
     except InvalidYamlException as ex:
+        save_commit_error(
+            commit,
+            error_code=CommitErrorTypes.INVALID_YAML.value,
+            error_params=dict(
+                repoid=repository.repoid,
+                commit_yaml=commit_yaml,
+                error_location=ex.error_location,
+            ),
+        )
+
         log.warning(
             "Unable to use yaml from commit because it is invalid",
             extra=dict(
@@ -58,12 +71,30 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
             exc_info=True,
         )
     except TorngitClientError:
+        save_commit_error(
+            commit,
+            error_code=CommitErrorTypes.YAML_CLIENT_ERROR.value,
+            error_params=dict(
+                repoid=repository.repoid,
+                commit_yaml=commit_yaml,
+            ),
+        )
+
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to client issues",
             extra=dict(repoid=repository.repoid, commit=commit.commitid),
             exc_info=True,
         )
     except TorngitError:
+        save_commit_error(
+            commit,
+            error_code=CommitErrorTypes.YAML_UNKNOWN_ERROR.value,
+            error_params=dict(
+                repoid=repository.repoid,
+                commit_yaml=commit_yaml,
+            ),
+        )
+
         log.warning(
             "Unable to use yaml from commit because it cannot be fetched due to unknown issues",
             extra=dict(repoid=repository.repoid, commit=commit.commitid),
