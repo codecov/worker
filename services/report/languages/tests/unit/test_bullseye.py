@@ -6,6 +6,7 @@ from lxml import etree
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import bullseye
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -139,8 +140,14 @@ class TestBullseye(BaseTestCase):
             return path
 
         date = time.strftime("%Y-%m-%d_%H:%M:%S", (time.gmtime(time.time())))
+        report_builder = ReportBuilder(
+            path_fixer=fixes, ignored_lines={}, sessionid=0, current_yaml=None
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         report = bullseye.from_xml(
-            etree.fromstring((xml % date).encode(), None), fixes, {}, 0, None
+            etree.fromstring((xml % date).encode(), None), report_builder_session
         )
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report == expected_result
@@ -153,9 +160,15 @@ class TestBullseye(BaseTestCase):
         ],
     )
     def test_expired(self, date):
+        report_builder = ReportBuilder(
+            path_fixer=str, ignored_lines={}, sessionid=0, current_yaml=None
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         with pytest.raises(ReportExpiredException, match="Bullseye report expired"):
             bullseye.from_xml(
-                etree.fromstring((xml % date).encode(), None), None, {}, 0, None
+                etree.fromstring((xml % date).encode(), None), report_builder_session
             )
 
     def test_matches_content(self):
