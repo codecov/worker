@@ -6,7 +6,7 @@ from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 
@@ -17,13 +17,8 @@ class CloverProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.current_yaml,
-        )
-        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_xml(content, report_builder_session)
 
 
 def get_end_of_file(filename, xmlfile):
@@ -40,7 +35,14 @@ def get_end_of_file(filename, xmlfile):
                 pass
 
 
-def from_xml(xml, fix, ignored_lines, sessionid, yaml):
+def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid, yaml = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+        report_builder_session.current_yaml,
+    )
+
     if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
         try:
             timestamp = next(xml.iter("coverage")).get("generated")
@@ -114,10 +116,9 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                 complexity=complexity,
             )
 
-    report = Report()
     for f in files.values():
-        report.append((f))
-    report.resolve_paths([(f, fix(f)) for f in files.keys()])
-    report.ignore_lines(ignored_lines)
+        report_builder_session.append((f))
+    report_builder_session.resolve_paths([(f, path_fixer(f)) for f in files.keys()])
+    report_builder_session.ignore_lines(ignored_lines)
 
-    return report
+    return report_builder_session.output_report()
