@@ -85,6 +85,7 @@ def init_celery_tracing(*args, **kwargs):
 
 hourly_check_task_name = "app.cron.hourly_check.HourlyCheckTask"
 daily_plan_manager_task_name = "app.cron.daily.PlanManagerTask"
+health_check_task_name = "app.cron.health_check.HealthCheckTask"
 
 
 class CeleryWorkerConfig(BaseCeleryConfig):

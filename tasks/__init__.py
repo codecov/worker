@@ -5,6 +5,7 @@ from tasks.compute_comparison import compute_comparison_task
 from tasks.delete_owner import delete_owner_task
 from tasks.flush_repo import flush_repo
 from tasks.github_marketplace import ghm_sync_plans_task
+from tasks.health_check import health_check_task
 from tasks.hourly_check import hourly_check_task
 from tasks.label_analysis import label_analysis_task
 from tasks.mutation_test_upload import mutation_test_upload_task
