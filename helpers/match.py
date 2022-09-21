@@ -7,8 +7,8 @@ def match(patterns: Optional[List[str]], string: str) -> bool:
         return True
 
     patterns = set(filter(None, patterns))
-    negatives = filter(lambda a: a.startswith(("^!", "!")), patterns)
-    positives = patterns - set(negatives)
+    negatives = set(filter(lambda a: a.startswith(("^!", "!")), patterns))
+    positives = patterns - negatives
 
     # must not match
     for pattern in negatives:
