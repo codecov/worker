@@ -24,7 +24,7 @@ class TestStaticAnalysisCheckTask(object):
         for i in range(8):
             fp_obj = StaticAnalysisSuiteFilepathFactory.create(
                 analysis_suite=obj,
-                file_snapshot__state_id=StaticAnalysisSingleFileSnapshotState.created.value,
+                file_snapshot__state_id=StaticAnalysisSingleFileSnapshotState.CREATED.db_id,
             )
             dbsession.add(fp_obj)
         dbsession.flush()
@@ -43,19 +43,19 @@ class TestStaticAnalysisCheckTask(object):
         for i in range(17):
             fp_obj = StaticAnalysisSuiteFilepathFactory.create(
                 analysis_suite=another_obj_same_repo,
-                file_snapshot__state_id=StaticAnalysisSingleFileSnapshotState.created.value,
+                file_snapshot__state_id=StaticAnalysisSingleFileSnapshotState.CREATED.db_id,
             )
             dbsession.add(fp_obj)
         for i in range(23):
             fp_obj = StaticAnalysisSuiteFilepathFactory.create(
                 analysis_suite=obj,
-                file_snapshot__state_id=StaticAnalysisSingleFileSnapshotState.created.value,
+                file_snapshot__state_id=StaticAnalysisSingleFileSnapshotState.CREATED.db_id,
             )
             dbsession.add(fp_obj)
         for i in range(2):
             fp_obj = StaticAnalysisSuiteFilepathFactory.create(
                 analysis_suite=obj,
-                file_snapshot__state_id=StaticAnalysisSingleFileSnapshotState.valid.value,
+                file_snapshot__state_id=StaticAnalysisSingleFileSnapshotState.VALID.db_id,
             )
             dbsession.add(fp_obj)
         dbsession.flush()

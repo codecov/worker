@@ -360,7 +360,7 @@ class TestUploadProcessorTask(object):
         mocked_2.assert_called_with(
             mocker.ANY, commit, mocker.ANY, False, upload=upload
         )
-        assert upload.state_id == UploadState.error.value
+        assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
         assert not mocked_3.called
 

@@ -39,7 +39,7 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask):
             .filter(
                 StaticAnalysisSuiteFilepath.analysis_suite_id == suite_id,
                 StaticAnalysisSingleFileSnapshot.state_id
-                == StaticAnalysisSingleFileSnapshotState.created.value,
+                == StaticAnalysisSingleFileSnapshotState.CREATED.db_id,
             )
         )
 
@@ -47,7 +47,7 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask):
         # because we actually want to validate different stuff
         changed_count = 0
         for elem in query:
-            elem.state_id = StaticAnalysisSingleFileSnapshotState.valid.value
+            elem.state_id = StaticAnalysisSingleFileSnapshotState.VALID.db_id
             changed_count += 1
         db_session.commit()
         return {"successful": True, "changed_count": changed_count}
