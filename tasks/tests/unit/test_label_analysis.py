@@ -22,5 +22,5 @@ async def test_simple_label_request_call(dbsession):
     assert res == expected_result
     dbsession.flush()
     dbsession.refresh(larf)
-    assert larf.state_id == LabelAnalysisRequestState.finished.value
+    assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id
     assert larf.result == {"not": "ready"}

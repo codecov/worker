@@ -179,7 +179,7 @@ class UploadProcessorTask(BaseCodecovTask):
                             arguments=arguments,
                         ),
                     )
-                    upload_obj.state_id = UploadState.error.value
+                    upload_obj.state_id = UploadState.ERROR.db_id
                     upload_obj.state = "error"
                     raise
                 if individual_info.get("successful"):
