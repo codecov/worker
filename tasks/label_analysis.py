@@ -22,7 +22,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         log.info("Starting label analysis request", extra=dict(request_id=request_id))
         result = self.calculate_result(label_analysis_request)
         label_analysis_request.result = result
-        label_analysis_request.state_id = LabelAnalysisRequestState.finished.value
+        label_analysis_request.state_id = LabelAnalysisRequestState.FINISHED.db_id
         return {
             "success": True,
         }

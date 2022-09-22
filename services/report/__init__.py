@@ -204,8 +204,8 @@ class ReportService(object):
             order_number=None,
             upload_extras={},
             upload_type=SessionType.uploaded.value,
-            state_id=UploadState.uploaded.value,
-            upload_type_id=UploadType.uploaded.value,
+            state_id=UploadState.UPLOADED.db_id,
+            upload_type_id=UploadType.UPLOADED.db_id,
         )
         db_session.add(upload)
         db_session.flush()
@@ -522,7 +522,7 @@ class ReportService(object):
         session = processing_result.session
         if processing_result.error is None:
             upload_obj.state = "processed"
-            upload_obj.state_id = UploadState.processed.value
+            upload_obj.state_id = UploadState.PROCESSED.db_id
             upload_obj.order_number = session.id
             upload_totals = upload_obj.totals
             if upload_totals is None:
@@ -543,7 +543,7 @@ class ReportService(object):
         else:
             error = processing_result.error
             upload_obj.state = "error"
-            upload_obj.state_id = UploadState.error.value
+            upload_obj.state_id = UploadState.ERROR.db_id
             error_obj = UploadError(
                 upload_id=upload_obj.id,
                 error_code=error.code,
