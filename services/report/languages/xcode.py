@@ -2,12 +2,16 @@ import typing
 from io import BytesIO
 
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import LineSession, ReportLine
+from shared.reports.resources import Report
+from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.languages.helpers import remove_non_ascii
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 START_PARTIAL = "\033[0;41m"
 END_PARTIAL = "\033[0m"
@@ -95,7 +99,10 @@ def from_txt(content, report_builder_session: ReportBuilderSession) -> Report:
                     if not skip:
                         _file = files.setdefault(
                             filename,
-                            ReportFile(filename, ignore=ignored_lines.get(filename)),
+                            report_builder_session.file_class(
+                                filename,
+                                ignore=ignored_lines.get(filename),
+                            ),
                         )
 
                 elif skip:
@@ -124,15 +131,10 @@ def from_txt(content, report_builder_session: ReportBuilderSession) -> Report:
                             if partials:
                                 _file.append(
                                     ln,
-                                    ReportLine.create(
+                                    report_builder_session.create_coverage_line(
                                         coverage=0,
-                                        sessions=[
-                                            LineSession(
-                                                id=sessionid,
-                                                coverage=0,
-                                                partials=partials,
-                                            )
-                                        ],
+                                        coverage_type=CoverageType.line,
+                                        partials=partials,
                                     ),
                                 )
                                 continue
