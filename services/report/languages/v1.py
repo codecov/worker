@@ -64,7 +64,6 @@ def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
                 continue
 
             lns = _list_to_dict(lns)
-            print(lns)
             if lns:
                 report_file_obj = report_builder_session.file_class(
                     fn, ignore=report_builder_session.ignored_lines.get(fn)
