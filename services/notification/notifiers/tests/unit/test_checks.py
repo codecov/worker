@@ -1100,6 +1100,25 @@ class TestPatchChecksNotifier(object):
         assert result.explanation == "server_side_error_provider"
         assert result.data_sent is None
 
+    @pytest.mark.asyncio
+    async def test_notification_exception(self, sample_comparison, mocker):
+        notifier = ChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        mocker.patch.object(
+            ChecksNotifier, "can_we_set_this_status", return_value=False
+        )
+        result = await notifier.notify(sample_comparison)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "not_fit_criteria"
+        assert result.data_sent is None
+        assert result.data_received is None
+
 
 class TestChangesChecksNotifier(object):
     @pytest.mark.asyncio
