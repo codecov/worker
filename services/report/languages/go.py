@@ -29,96 +29,13 @@ class GoProcessor(BaseLanguageProcessor):
 
 
 def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    """
-    mode: count
-    github.com/codecov/sample_go/sample_go.go:7.14,9.2 1 1
-    github.com/codecov/sample_go/sample_go.go:11.26,13.2 1 1
-    github.com/codecov/sample_go/sample_go.go:15.19,17.2 1 0
-
-    Ending bracket is here                             v
-    github.com/codecov/sample_go/sample_go.go:15.19,17.2 1 0
-
-    All other continuation > .2 should continue
-    github.com/codecov/sample_go/sample_go.go:15.19,17.9 1 0
-
-    Need to be concious of customers whom have reports merged in the following way:
-    FILE:1.0,2.0 1 0
-    ...
-    FILE:1.0,2.0 1 1
-    ...
-    FILE:1.0,2.0 1 0
-    Need to respect the coverage
-
-    Line format explanation:
-        - https://github.com/golang/go/blob/0104a31b8fbcbe52728a08867b26415d282c35d2/src/cmd/cover/profile.go#L56
-        - `name.go:line.column,line.column numberOfStatements count`
-
-    """
     go_parser_settings = (
         read_yaml_field(report_builder_session.current_yaml, ("parsers", "go")) or {}
     )
-    _cur_file = None
-    lines = None
-    ignored_files = []
-    file_name_replacement = {}  # {old_name: new_name}
-    files = {}  # {new_name: <lines defaultdict(list)>}
-    for encoded_line in BytesIO(string):
-        line = encoded_line.decode(errors="replace").rstrip("\n")
-        if not line:
-            continue
 
-        elif line[:6] == "mode: ":
-            continue
-
-        # prepare data
-        filename, data = line.split(":", 1)
-        if data.endswith("%"):
-            # File outline e.g., "github.com/nfisher/rsqf/rsqf.go:19: calcP 100.0%"
-            continue
-
-        # if we are on the same file name we can pass this
-        if filename in ignored_files:
-            continue
-
-        if _cur_file != filename:
-            _cur_file = filename
-            if filename in file_name_replacement:
-                filename = file_name_replacement[filename]
-            else:
-                fixed = report_builder_session.path_fixer(filename)
-
-                file_name_replacement[filename] = fixed
-                filename = fixed
-                if filename is None:
-                    ignored_files.append(_cur_file)
-                    _cur_file = None
-                    continue
-
-            lines = files.setdefault(filename, defaultdict(set))
-
-        columns, _, hits = data.split(" ", 2)
-        hits = int(hits)
-        sl, el = columns.split(",", 1)
-        sl, sc = list(map(int, sl.split(".", 1)))
-        try:
-            el, ec = list(map(int, el.split(".", 1)))
-        except ValueError:
-            raise CorruptRawReportError(
-                "name.go:line.column,line.column numberOfStatements count",
-                "Missing numberOfStatements count\n at the end of the line, or they are not given in the right format",
-            )
-
-        # add start of line
-        if sl == el:
-            lines[sl].add((sc, ec, hits))
-        else:
-            lines[sl].add((sc, None, hits))
-            # add middles
-            [lines[ln].add((0, None, hits)) for ln in range(sl + 1, el)]
-            if ec > 2:
-                # add end of line
-                lines[el].add((None, ec, hits))
-
+    # Process the bytes from uploaded report to intermediary representation
+    # files: {new_name: <lines defaultdict(list)>}
+    files = process_bytes_into_files(string, report_builder_session.path_fixer)
     # create a file
     ignored_lines = report_builder_session.ignored_lines
     for filename, lines in files.items():
@@ -144,6 +61,94 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
         report_builder_session.append(_file)
 
     return report_builder_session.output_report()
+
+
+def process_bytes_into_files(
+    string: bytes, path_fixer: typing.Callable
+) -> typing.Dict[str, typing.Dict[str, typing.List]]:
+    """
+    mode: count
+    github.com/codecov/sample_go/sample_go.go:7.14,9.2 1 1
+    github.com/codecov/sample_go/sample_go.go:11.26,13.2 1 1
+    github.com/codecov/sample_go/sample_go.go:15.19,17.2 1 0
+
+    Ending bracket is here                             v
+    github.com/codecov/sample_go/sample_go.go:15.19,17.2 1 0
+
+    All other continuation > .2 should continue
+    github.com/codecov/sample_go/sample_go.go:15.19,17.9 1 0
+
+    Need to be concious of customers whom have reports merged in the following way:
+    FILE:1.0,2.0 1 0
+    ...
+    FILE:1.0,2.0 1 1
+    ...
+    FILE:1.0,2.0 1 0
+    Need to respect the coverage
+
+    Line format explanation:
+        - https://github.com/golang/go/blob/0104a31b8fbcbe52728a08867b26415d282c35d2/src/cmd/cover/profile.go#L56
+        - `name.go:line.column,line.column numberOfStatements count`
+
+    """
+    _cur_file = None
+    lines = None
+    ignored_files = []
+    file_name_replacement = {}  # {old_name: new_name}
+    files = {}  # {new_name: <lines defaultdict(list)>}
+    for encoded_line in BytesIO(string):
+        line = encoded_line.decode(errors="replace").rstrip("\n")
+        if not line or line.startswith("mode: "):
+            continue
+
+        # prepare data
+        filename, data = line.split(":", 1)
+        if data.endswith("%"):
+            # File outline e.g., "github.com/nfisher/rsqf/rsqf.go:19: calcP 100.0%"
+            continue
+
+        # if we are on the same file name we can pass this
+        if filename in ignored_files:
+            continue
+
+        if _cur_file != filename:
+            _cur_file = filename
+            if filename in file_name_replacement:
+                filename = file_name_replacement[filename]
+            else:
+                fixed = path_fixer(filename)
+                file_name_replacement[filename] = fixed
+                filename = fixed
+                if filename is None:
+                    ignored_files.append(_cur_file)
+                    _cur_file = None
+                    continue
+
+            lines = files.setdefault(filename, defaultdict(set))
+
+        columns, _, hits = data.split(" ", 2)
+        hits = int(hits)
+        line_start, line_end = columns.split(",", 1)
+        line_start, sc = list(map(int, line_start.split(".", 1)))
+        try:
+            line_end, ec = list(map(int, line_end.split(".", 1)))
+        except ValueError:
+            raise CorruptRawReportError(
+                "name.go:line.column,line.column numberOfStatements count",
+                "Missing numberOfStatements count\n at the end of the line, or they are not given in the right format",
+            )
+
+        # add start of line
+        if line_start == line_end:
+            lines[line_start].add((sc, ec, hits))
+        else:
+            lines[line_start].add((sc, None, hits))
+            # add middles
+            [lines[ln].add((0, None, hits)) for ln in range(line_start + 1, line_end)]
+            if ec > 2:
+                # add end of line
+                lines[line_end].add((None, ec, hits))
+    return files
 
 
 def combine_partials(partials):
