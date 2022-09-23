@@ -2,17 +2,18 @@ import os
 
 from click.testing import CliRunner
 
+from celery_config import HEALTH_CHECK_QUEUE
 from main import _get_queues_param_from_queue_input, cli, main, setup_worker, test, web
 
 
 def test_get_queues_param_from_queue_input():
     assert (
         _get_queues_param_from_queue_input(["worker,profiling,notify"])
-        == "worker,profiling,notify"
+        == f"worker,profiling,notify,{HEALTH_CHECK_QUEUE}"
     )
     assert (
         _get_queues_param_from_queue_input(["worker", "profiling", "notify"])
-        == "worker,profiling,notify"
+        == f"worker,profiling,notify,{HEALTH_CHECK_QUEUE}"
     )
 
 
@@ -96,7 +97,7 @@ def test_deal_worker_command_default(mocker, mock_storage):
             "-l",
             "info",
             "-Q",
-            "celery",
+            f"celery,{HEALTH_CHECK_QUEUE}",
             "-B",
             "-s",
             "/home/codecov/celerybeat-schedule",
@@ -139,7 +140,7 @@ def test_deal_worker_command(mocker, mock_storage):
             "-l",
             "info",
             "-Q",
-            "simple,one,two,some",
+            f"simple,one,two,some,{HEALTH_CHECK_QUEUE}",
             "-B",
             "-s",
             "/home/codecov/celerybeat-schedule",

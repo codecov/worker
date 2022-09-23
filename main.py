@@ -7,6 +7,7 @@ from shared.config import get_config
 from shared.storage.exceptions import BucketAlreadyExistsError
 
 import app
+from celery_config import HEALTH_CHECK_QUEUE
 from helpers.version import get_current_version
 from services.storage import get_storage_client
 
@@ -87,9 +88,11 @@ def worker(name, concurrency, debug, queue):
 
 
 def _get_queues_param_from_queue_input(queues: typing.List[str]) -> str:
+    # We always run the health_check queue to make sure the healthcheck is performed
+    # And also to avoid that queue fillign up with no workers to consume from it
     # this should support if one wants to pass comma separated values
     # since in the end all is joined again
-    return ",".join(queues)
+    return ",".join([*queues, HEALTH_CHECK_QUEUE])
 
 
 def main():
