@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from services.report.parser import ParsedUploadedReportFile, RawReportParser
+from services.report.parser import LegacyReportParser
 
 simple_content = b"""./codecov.yaml
 Makefile
@@ -318,21 +318,21 @@ github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
 
 class TestParser(object):
     def test_parser_with_toc(self):
-        res = RawReportParser.parse_raw_report_from_bytes(simple_content)
+        res = LegacyReportParser().parse_raw_report_from_bytes(simple_content)
         assert res.has_toc()
         assert not res.has_env()
         assert not res.has_path_fixes()
         assert len(res.uploaded_files) == 1
 
     def test_parser_no_toc(self):
-        res = RawReportParser.parse_raw_report_from_bytes(simple_no_toc)
+        res = LegacyReportParser().parse_raw_report_from_bytes(simple_no_toc)
         assert not res.has_toc()
         assert not res.has_env()
         assert not res.has_path_fixes()
         assert len(res.uploaded_files) == 1
 
     def test_parser_more_complete(self):
-        res = RawReportParser.parse_raw_report_from_bytes(more_complex)
+        res = LegacyReportParser().parse_raw_report_from_bytes(more_complex)
         assert res.has_toc()
         assert res.has_env()
         assert not res.has_path_fixes()
@@ -345,7 +345,9 @@ class TestParser(object):
         assert res.uploaded_files[1].contents.endswith(b"</coverage>")
 
     def test_parser_more_complete_with_line_end(self):
-        res = RawReportParser.parse_raw_report_from_bytes(more_complex_with_line_end)
+        res = LegacyReportParser().parse_raw_report_from_bytes(
+            more_complex_with_line_end
+        )
         assert res.has_toc()
         assert res.has_env()
         assert not res.has_path_fixes()
@@ -370,7 +372,7 @@ class TestParser(object):
         assert res.uploaded_files[1].contents == expected_second_file
 
     def test_line_end_no_line_break(self):
-        res = RawReportParser.parse_raw_report_from_bytes(line_end_no_line_break)
+        res = LegacyReportParser().parse_raw_report_from_bytes(line_end_no_line_break)
         assert res.has_toc()
         assert res.has_env()
         assert not res.has_path_fixes()
@@ -395,7 +397,9 @@ class TestParser(object):
         assert res.uploaded_files[1].contents == expected_second_file
 
     def test_cases_little_mor_ridiculous(self):
-        res = RawReportParser.parse_raw_report_from_bytes(cases_little_mor_ridiculous)
+        res = LegacyReportParser().parse_raw_report_from_bytes(
+            cases_little_mor_ridiculous
+        )
         assert res.has_toc()
         assert res.toc.getvalue() == b"\n".join(
             [
@@ -433,7 +437,7 @@ class TestParser(object):
         assert res.uploaded_files[1].contents == expected_second_file
 
     def test_cases_no_eof_end(self):
-        res = RawReportParser.parse_raw_report_from_bytes(cases_no_eof_end)
+        res = LegacyReportParser().parse_raw_report_from_bytes(cases_no_eof_end)
         assert res.has_toc()
         assert res.toc.getvalue() == b"\n".join(
             [
@@ -463,7 +467,7 @@ class TestParser(object):
         assert res.uploaded_files[1].contents == expected_second_file
 
     def test_cases_emptylines_betweenpath_and_content(self):
-        res = RawReportParser.parse_raw_report_from_bytes(
+        res = LegacyReportParser().parse_raw_report_from_bytes(
             cases_emptylines_betweenpath_and_content
         )
         assert res.has_toc()
@@ -495,10 +499,10 @@ github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
         )
 
     def test_cases_compatibility_mode(self):
-        res = RawReportParser.parse_raw_report_from_bytes(
+        res = LegacyReportParser().parse_raw_report_from_bytes(
             b"==FROMNOWONIGNOREDBYCODECOV==>>>".join([simple_content, more_complex])
         )
-        would_be_simple_content_res = RawReportParser.parse_raw_report_from_bytes(
+        would_be_simple_content_res = LegacyReportParser().parse_raw_report_from_bytes(
             simple_content
         )
         assert res.has_toc()
@@ -521,12 +525,12 @@ github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
         )
 
     def test_cases_compatibility_mode_failed_case(self):
-        res = RawReportParser.parse_raw_report_from_bytes(
+        res = LegacyReportParser().parse_raw_report_from_bytes(
             b"==FROMNOWONIGNOREDBYCODECOV==>>>".join(
                 [simple_content, b"somemeaninglessstuff"]
             )
         )
-        would_be_simple_content_res = RawReportParser.parse_raw_report_from_bytes(
+        would_be_simple_content_res = LegacyReportParser().parse_raw_report_from_bytes(
             simple_content
         )
         assert res.has_toc()

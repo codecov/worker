@@ -1,6 +1,7 @@
 from json import dumps
 
 from services.report.languages import scala
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 json = {
@@ -42,7 +43,13 @@ class TestScala(BaseTestCase):
             assert path in ("f1", "f2", "ignore")
             return path
 
-        report = scala.from_json(json, fixes, {}, 0)
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = scala.from_json(json, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 

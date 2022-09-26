@@ -1,7 +1,7 @@
 import json
 from io import BytesIO
 
-from services.report.parser import ParsedUploadedReportFile
+from services.report.parser.types import ParsedUploadedReportFile
 from services.report.report_processor import report_type_matching
 
 xcode_report = """/Users/distiller/project/Auth0/A0ChallengeGenerator.m:

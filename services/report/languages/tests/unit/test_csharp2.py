@@ -1,7 +1,7 @@
 import xml.etree.cElementTree as etree
-from json import dumps, loads
 
 from services.report.languages import csharp
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="utf-8"?>
@@ -71,7 +71,13 @@ class TestCSharp2(BaseTestCase):
             assert path in ("source",)
             return path
 
-        report = csharp.from_xml(etree.fromstring(xml), fixes, {}, 0)
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = csharp.from_xml(etree.fromstring(xml), report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         # import pprint
         # pprint.pprint(processed_report['archive'])

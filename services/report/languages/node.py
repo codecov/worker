@@ -7,7 +7,7 @@ from shared.reports.types import ReportLine
 from shared.utils.merge import partials_to_line
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 
@@ -20,14 +20,8 @@ class NodeProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        config = read_yaml_field(repo_yaml, ("parsers", "javascript")) or {}
-        return from_json(content, path_fixer, ignored_lines, sessionid, config)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_json(content, report_builder_session)
 
 
 def get_line_coverage(location, cov, line_type):
@@ -81,8 +75,12 @@ def must_be_dict(value):
         return value
 
 
-def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
-    report = Report()
+def next_from_json(report_dict, report_builder_session: ReportBuilderSession) -> Report:
+    fix, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     for filename, data in report_dict.items():
         name = fix(filename)
         if name is None:
@@ -94,7 +92,7 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
 
         if "lineData" in data:
             jscoverage(_file, data, sessionid)
-            report.append(_file)
+            report_builder_session.append(_file)
             continue
 
         if data.get("data"):
@@ -258,9 +256,9 @@ def next_from_json(report_dict, fix, ignored_lines, sessionid, config):
                         ln, ReportLine.create(cov, "m", [[sessionid, cov, None, None]])
                     )
 
-        report.append(_file)
+        report_builder_session.append(_file)
 
-    return report
+    return report_builder_session.output_report()
 
 
 def _location_to_lines(_file, location, cov, _type, sessionid):
@@ -313,13 +311,22 @@ def jscoverage(_file, data, sessionid):
             )
 
 
-def from_json(report_dict, fix, ignored_lines, sessionid, config):
+def from_json(report_dict, report_builder_session: ReportBuilderSession) -> Report:
+    config = (
+        read_yaml_field(report_builder_session.current_yaml, ("parsers", "javascript"))
+        or {}
+    )
+    fix, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
+
     if config.get("enable_partials", False):
         if next(iter(report_dict.items()))[0].endswith(".js"):
             # only javascript is supported ATM
-            return next_from_json(report_dict, fix, ignored_lines, sessionid, config)
+            return next_from_json(report_dict, report_builder_session)
 
-    report = Report()
     for filename, data in report_dict.items():
         name = fix(filename)
         if name is None:
@@ -335,7 +342,7 @@ def from_json(report_dict, fix, ignored_lines, sessionid, config):
 
         if "lineData" in data:
             jscoverage(_file, data, sessionid)
-            report.append(_file)
+            report_builder_session.append(_file)
             continue
 
         if "linesCovered" in data:
@@ -346,7 +353,7 @@ def from_json(report_dict, fix, ignored_lines, sessionid, config):
                         coverage=coverage, sessions=[[sessionid, coverage]]
                     ),
                 )
-            report.append(_file)
+            report_builder_session.append(_file)
             continue
 
         # statements
@@ -366,6 +373,6 @@ def from_json(report_dict, fix, ignored_lines, sessionid, config):
             if func.get("skip") is not True:
                 _location_to_lines(_file, func["loc"], data["f"][fid], "m", sessionid)
 
-        report.append(_file)
+        report_builder_session.append(_file)
 
-    return report
+    return report_builder_session.output_report()

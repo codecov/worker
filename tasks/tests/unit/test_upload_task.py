@@ -697,8 +697,8 @@ class TestUploadTaskIntegration(object):
             order_number=None,
             upload_extras={},
             upload_type=SessionType.uploaded.value,
-            state_id=UploadState.uploaded.value,
-            upload_type_id=UploadType.uploaded.value,
+            state_id=UploadState.UPLOADED.db_id,
+            upload_type_id=UploadType.UPLOADED.db_id,
         )
         mock_repo_provider.data = dict(repo=dict(repoid=commit.repoid))
         dbsession.add(commit)
@@ -1103,6 +1103,7 @@ class TestUploadTaskUnit(object):
             repository__branch="supeduperbranch",
             branch="supeduperbranch",
         )
+        dbsession.add(commit)
         get_source_result = {
             "content": "\n".join(
                 ["bad_key:", "  notify:", "    require_ci_to_pass: yes"]

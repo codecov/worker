@@ -1,11 +1,14 @@
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 from services.yaml import read_yaml_field
 
 
@@ -16,25 +19,14 @@ class VOneProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
+
         if "RSpec" in content:
             content = content["RSpec"]
 
         elif "MiniTest" in content:
             content = content["MiniTest"]
 
-        return from_json(
-            content,
-            path_fixer,
-            ignored_lines,
-            sessionid,
-            read_yaml_field(repo_yaml, ("parsers", "v1")) or {},
-        )
+        return from_json(content, report_builder.create_report_builder_session(name))
 
 
 def _list_to_dict(lines):
@@ -62,19 +54,21 @@ def _list_to_dict(lines):
         return lines or {}
 
 
-def from_json(json, fix, ignored_lines, sessionid, config):
+def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
+
     if type(json["coverage"]) is dict:
         # messages = json.get('messages', {})
-        report = Report()
         for fn, lns in json["coverage"].items():
-            fn = fix(fn)
+            fn = report_builder_session.path_fixer(fn)
             if fn is None:
                 continue
 
             lns = _list_to_dict(lns)
-            print(lns)
             if lns:
-                _file = ReportFile(fn, ignore=ignored_lines.get(fn))
+                report_file_obj = report_builder_session.file_class(
+                    fn, ignore=report_builder_session.ignored_lines.get(fn)
+                )
+
                 for ln, cov in lns.items():
                     try:
                         line_number = int(ln)
@@ -93,11 +87,16 @@ def from_json(json, fix, ignored_lines, sessionid, config):
                                 cov = int(cov)
 
                         # message = messages.get(fn, {}).get(ln)
-                        _file[line_number] = ReportLine.create(
-                            coverage=cov,
-                            type="b" if type(cov) in (str, bool) else None,
-                            sessions=[[sessionid, cov]],
+                        coverage_type = (
+                            CoverageType.branch
+                            if type(cov) in (str, bool)
+                            else CoverageType.line
+                        )
+                        report_file_obj[
+                            line_number
+                        ] = report_builder_session.create_coverage_line(
+                            filename=fn, coverage=cov, coverage_type=coverage_type
                         )
 
-                report.append(_file)
-        return report
+                report_builder_session.append(report_file_obj)
+        return report_builder_session.output_report()

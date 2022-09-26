@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from services.report.languages import node
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 here = Path(__file__)
@@ -68,7 +69,16 @@ class TestNodeProcessor(BaseTestCase):
         nodejson = loads(self.readfile("node/node%s.json" % i))
         nodejson.update(base_report)
 
-        report = node.from_json(nodejson, fixes, {}, 0, {"enable_partials": True})
+        report_builder = ReportBuilder(
+            current_yaml={"parsers": {"javascript": {"enable_partials": True}}},
+            path_fixer=fixes,
+            ignored_lines={},
+            sessionid=0,
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = node.from_json(nodejson, report_builder_session)
         totals_dict, report_dict = report.to_database()
         report_dict = loads(report_dict)
         archive = report.to_archive()
@@ -81,7 +91,16 @@ class TestNodeProcessor(BaseTestCase):
     @pytest.mark.parametrize("name", ["inline", "ifbinary", "ifbinarymb"])
     def test_singles(self, name):
         record = self.readjson("node/%s.json" % name)
-        report = node.from_json(record["report"], str, {}, 0, {"enable_partials": True})
+        report_builder = ReportBuilder(
+            current_yaml={"parsers": {"javascript": {"enable_partials": True}}},
+            path_fixer=str,
+            ignored_lines={},
+            sessionid=0,
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = node.from_json(record["report"], report_builder_session)
         for filename, lines in record["result"].items():
             for ln, result in lines.items():
                 assert loads(dumps(report[filename][int(ln)], cls=OwnEncoder)) == result
@@ -117,5 +136,14 @@ class TestNodeProcessor(BaseTestCase):
                 "statements": {"covered": 2, "pct": 66.67, "skipped": 0, "total": 3},
             }
         }
-        res = node.from_json(user_input, lambda x: x, {}, 0, {"enable_partials": False})
+        report_builder = ReportBuilder(
+            current_yaml={"parsers": {"javascript": {"enable_partials": True}}},
+            path_fixer=lambda x: x,
+            ignored_lines={},
+            sessionid=0,
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        res = node.from_json(user_input, report_builder_session)
         assert res.is_empty()

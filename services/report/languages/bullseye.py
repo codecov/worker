@@ -1,13 +1,16 @@
 import typing
 from xml.etree.ElementTree import Element
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 from services.yaml import read_yaml_field
 
 
@@ -18,17 +21,16 @@ class BullseyeProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
-def from_xml(xml, fix, ignored_lines, sessionid, yaml):
-
+def from_xml(xml, report_builder_session: ReportBuilderSession):
+    path_fixer, ignored_lines, sessionid, yaml = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+        report_builder_session.current_yaml,
+    )
     if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
         build_id = xml.attrib.get("buildId")
         # build_id format has timestamp at the end "4362c668_2020-10-28_17:55:47"
@@ -38,7 +40,6 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
         ):
             raise ReportExpiredException("Bullseye report expired %s" % timestamp)
 
-    report = Report()
     for folder in xml.iter("{https://www.bullseye.com/covxml}folder"):
         for file in folder.iter("{https://www.bullseye.com/covxml}src"):
             # Get filepath from parent folder(s)
@@ -47,9 +48,9 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             while element.getparent().tag == "{https://www.bullseye.com/covxml}folder":
                 element = element.getparent()
                 filepath = f'{element.attrib.get("name")}/{filepath}'
-            filename = fix(filepath + file.attrib.get("name"))
+            filename = path_fixer(filepath + file.attrib.get("name"))
             if filename:
-                _file = ReportFile(filename)
+                _file = report_builder_session.file_class(filename)
                 for function in file.iter("{https://www.bullseye.com/covxml}fn"):
                     for probe in function.iter(
                         "{https://www.bullseye.com/covxml}probe"
@@ -57,12 +58,12 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                         attribs = probe.attrib
                         ln = int(attribs["line"])
                         if attribs["kind"] in ("condition", "decision", "switch-label"):
-                            _type = "b"
+                            _type = CoverageType.branch
 
                         elif attribs["kind"] == "function":
-                            _type = "m"
+                            _type = CoverageType.method
                         else:
-                            _type = None
+                            _type = CoverageType.line
 
                         if attribs["event"] == "full":
                             coverage = 1
@@ -72,12 +73,12 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                             coverage = "1/2"
                         _file.append(
                             ln,
-                            ReportLine.create(
+                            report_builder_session.create_coverage_line(
+                                filename=filename,
                                 coverage=coverage,
-                                type=_type,
-                                sessions=[[sessionid, coverage]],
+                                coverage_type=_type,
                             ),
                         )
-                report.append(_file)
-    report.ignore_lines(ignored_lines)
-    return report
+                report_builder_session.append(_file)
+    report_builder_session.ignore_lines(ignored_lines)
+    return report_builder_session.output_report()

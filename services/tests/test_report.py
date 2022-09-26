@@ -3661,7 +3661,7 @@ class TestReportService(BaseTestCase):
         )
         dbsession.refresh(upload_obj)
         assert upload_obj.state == "error"
-        assert upload_obj.state_id == UploadState.error.value
+        assert upload_obj.state_id == UploadState.ERROR.db_id
         assert len(upload_obj.errors) == 1
         assert upload_obj.errors[0].error_code == "abclkj"
         assert upload_obj.errors[0].error_params == {"banana": "value"}
@@ -3683,5 +3683,5 @@ class TestReportService(BaseTestCase):
         )
         dbsession.refresh(upload_obj)
         assert upload_obj.state == "processed"
-        assert upload_obj.state_id == UploadState.processed.value
+        assert upload_obj.state_id == UploadState.PROCESSED.db_id
         assert len(upload_obj.errors) == 0

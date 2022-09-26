@@ -1,10 +1,13 @@
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class SimplecovProcessor(BaseLanguageProcessor):
@@ -20,23 +23,20 @@ class SimplecovProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_json(content, path_fixer, ignored_lines, sessionid)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_json(content, report_builder_session)
 
 
-def from_json(json, fix, ignored_lines, sessionid):
-    report = Report()
+def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
+    ignored_lines = report_builder_session.ignored_lines
     for data in json["files"]:
-        fn = fix(data["filename"])
+        fn = report_builder_session.path_fixer(data["filename"])
         if fn is None:
             continue
 
-        _file = ReportFile(fn, ignore=ignored_lines.get(fn))
+        report_file_obj = report_builder_session.file_class(
+            fn, ignore=ignored_lines.get(fn)
+        )
 
         # Structure depends on which Simplecov version was used so we need to handle either structure
         coverage = data["coverage"]
@@ -48,8 +48,10 @@ def from_json(json, fix, ignored_lines, sessionid):
         )
 
         for ln, cov in enumerate(coverage_to_check, start=1):
-            _file[ln] = ReportLine.create(coverage=cov, sessions=[[sessionid, cov]])
+            report_file_obj[ln] = report_builder_session.create_coverage_line(
+                filename=fn, coverage=cov, coverage_type=CoverageType.line
+            )
 
-        report.append(_file)
+        report_builder_session.append(report_file_obj)
 
-    return report
+    return report_builder_session.output_report()

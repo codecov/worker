@@ -295,6 +295,14 @@ class TestBaseStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         assert no_settings_notifier.can_we_set_this_status(comparison)
+        exclude_branch_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"only_pulls": False, "branches": ["!new_branch"]},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        assert not exclude_branch_notifier.can_we_set_this_status(comparison)
 
     @pytest.mark.asyncio
     async def test_notify_cannot_set_status(self, sample_comparison, mocker):

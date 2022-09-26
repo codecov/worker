@@ -3,6 +3,7 @@ import logging
 import logging.config
 import os
 import re
+from datetime import timedelta
 
 from celery import signals
 from celery.beat import BeatLazyFunc
@@ -85,6 +86,7 @@ def init_celery_tracing(*args, **kwargs):
 
 hourly_check_task_name = "app.cron.hourly_check.HourlyCheckTask"
 daily_plan_manager_task_name = "app.cron.daily.PlanManagerTask"
+health_check_task_name = "app.cron.health_check.HealthCheckTask"
 
 
 class CeleryWorkerConfig(BaseCeleryConfig):
@@ -106,6 +108,13 @@ class CeleryWorkerConfig(BaseCeleryConfig):
         "daily_plan_manager_task": {
             "task": daily_plan_manager_task_name,
             "schedule": crontab(hour="0"),
+            "kwargs": {
+                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            },
+        },
+        "health_check_task": {
+            "task": health_check_task_name,
+            "schedule": timedelta(seconds=10),
             "kwargs": {
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },
@@ -137,4 +146,9 @@ CeleryWorkerConfig.task_annotations["app.tasks.timeseries.backfill_commits"] = {
     "time_limit": get_config(
         "setup", "tasks", "timeseries", "hard_timelimit", default=480
     ),
+}
+
+HEALTH_CHECK_QUEUE = "healthcheck"
+CeleryWorkerConfig.task_routes[health_check_task_name] = {
+    "queue": HEALTH_CHECK_QUEUE,
 }

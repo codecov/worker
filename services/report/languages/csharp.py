@@ -1,12 +1,17 @@
 import typing
 from collections import defaultdict
-from itertools import chain, repeat
+from itertools import repeat
+from re import M
 
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class CSharpProcessor(BaseLanguageProcessor):
@@ -16,13 +21,8 @@ class CSharpProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_xml(content, path_fixer, ignored_lines, sessionid)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_xml(content, report_builder_session)
 
 
 def _build_branches(branch_gen):
@@ -40,7 +40,7 @@ def _build_branches(branch_gen):
     return branches
 
 
-def from_xml(xml, fix, ignored_lines, sessionid):
+def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
     """
     https://github.com/OpenCover/opencover/issues/293#issuecomment-94598145
     @sl - start line
@@ -52,16 +52,25 @@ def from_xml(xml, fix, ignored_lines, sessionid):
     @vc - statement executed
     <SequencePoint vc="2" uspid="3" ordinal="0" offset="0" sl="35" sc="8" el="35" ec="9" bec="0" bev="0" fileid="1" />
     """
+    ignored_lines, sessionid = (
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     # dict of {"fileid": "path"}
     file_by_id = {}
     file_by_id_get = file_by_id.get
     file_by_name = {None: None}
     for f in xml.iter("File"):
-        filename = fix(f.attrib["fullPath"].replace("\\", "/"))
+        filename = report_builder_session.path_fixer(
+            f.attrib["fullPath"].replace("\\", "/")
+        )
         if filename:
             file_by_id[f.attrib["uid"]] = filename
             file_by_name.setdefault(
-                filename, ReportFile(filename, ignore=ignored_lines.get(filename))
+                filename,
+                report_builder_session.file_class(
+                    filename, ignore=ignored_lines.get(filename)
+                ),
             )
 
     for method in xml.iter("Method"):
@@ -79,7 +88,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                     if sl and el:
                         complexity = (
                             int(attrib("cyclomaticComplexity", 0))
-                            if _type == "m"
+                            if _type == CoverageType.method
                             else None
                         )
                         sl, el = int(sl), int(el)
@@ -88,7 +97,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                             bev = attrib("bev")
                             if bec != "0":
                                 coverage = "%s/%s" % (bev, bec)
-                                _type = _type or "b"
+                                _type = _type or CoverageType.branch
                             elif vc > 0:
                                 coverage = vc
                             else:
@@ -96,49 +105,34 @@ def from_xml(xml, fix, ignored_lines, sessionid):
                         else:
                             coverage = vc
 
+                        coverage_type = _type or CoverageType.line
                         # spans > 1 line
                         if el > sl:
                             for ln in range(sl, el + 1):
                                 file_append(
                                     ln,
-                                    ReportLine.create(
+                                    report_builder_session.create_coverage_line(
+                                        filename=_file.name,
                                         coverage=coverage,
-                                        type=_type,
-                                        sessions=[
-                                            [
-                                                sessionid,
-                                                coverage,
-                                                branches_get(ln),
-                                                None,
-                                                complexity,
-                                            ]
-                                        ],
+                                        coverage_type=coverage_type,
+                                        missing_branches=branches_get(ln),
                                         complexity=complexity,
                                     ),
                                 )
-
                         # spans = 1 line
                         else:
                             file_append(
                                 sl,
-                                ReportLine.create(
+                                report_builder_session.create_coverage_line(
+                                    filename=_file.name,
                                     coverage=coverage,
-                                    type=_type,
-                                    sessions=[
-                                        [
-                                            sessionid,
-                                            coverage,
-                                            branches_get(sl),
-                                            None,
-                                            complexity,
-                                        ]
-                                    ],
+                                    coverage_type=coverage_type,
+                                    missing_branches=branches_get(sl),
                                     complexity=complexity,
                                 ),
                             )
 
-    report = Report()
     for v in file_by_name.values():
-        report.append(v)
+        report_builder_session.append(v)
 
-    return report
+    return report_builder_session.output_report()

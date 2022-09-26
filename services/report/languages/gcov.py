@@ -3,11 +3,14 @@ import typing
 from collections import defaultdict
 from io import BytesIO
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 from services.yaml import read_yaml_field
 
 
@@ -18,14 +21,8 @@ class GcovProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        settings = read_yaml_field(repo_yaml, ("parsers", "gcov"))
-        return from_txt(name, content, path_fixer, ignored_lines, sessionid, settings)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_txt(content, report_builder_session)
 
 
 ignored_lines = re.compile(r"(\{|\})(\s*\/\/.*)?").match
@@ -37,7 +34,13 @@ def detect(report):
     return b"0:Source:" in report.split(b"\n", 1)[0]
 
 
-def from_txt(name, string, fix, ignored_lines, sesisonid, settings):
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
+    name, fix, ignored_lines = (
+        report_builder_session._report_filepath,
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+    )
+
     line_iterator = iter(BytesIO(string))
     # clean and strip lines
     filename = next(line_iterator).decode(errors="replace").rstrip("\n")
@@ -49,16 +52,22 @@ def from_txt(name, string, fix, ignored_lines, sesisonid, settings):
     if not filename:
         return None
 
-    report = Report()
-    report.append(
+    report_builder_session.append(
         _process_gcov_file(
-            filename, ignored_lines.get(filename), line_iterator, sesisonid, settings
+            filename, ignored_lines.get(filename), line_iterator, report_builder_session
         )
     )
-    return report
+    return report_builder_session.output_report()
 
 
-def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sesisonid, settings):
+def _process_gcov_file(
+    filename,
+    ignore_func,
+    gcov_line_iterator,
+    report_builder_session: ReportBuilderSession,
+):
+    settings = read_yaml_field(report_builder_session.current_yaml, ("parsers", "gcov"))
+
     ignore = False
     ln = None
     next_is_func = False
@@ -97,7 +106,7 @@ def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sesisonid, set
                 _cur_branch_detected = False  # first set to false, prove me true
 
                 # class
-                if line_types[ln] == "m":
+                if line_types[ln] == CoverageType.method:
                     if (
                         read_yaml_field(settings, ("branch_detection", "method"))
                         is not True
@@ -105,7 +114,7 @@ def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sesisonid, set
                         continue
                 # loop
                 elif detect_loop(data):
-                    line_types[ln] = "b"
+                    line_types[ln] = CoverageType.branch
                     if (
                         read_yaml_field(settings, ("branch_detection", "loop"))
                         is not True
@@ -113,7 +122,7 @@ def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sesisonid, set
                         continue
                 # conditional
                 elif detect_conditional(data):
-                    line_types[ln] = "b"
+                    line_types[ln] = CoverageType.branch
                     if (
                         read_yaml_field(settings, ("branch_detection", "conditional"))
                         is not True
@@ -195,26 +204,32 @@ def _process_gcov_file(filename, ignore_func, gcov_line_iterator, sesisonid, set
                     continue
 
             if next_is_func:
-                line_types[ln] = "m"
+                line_types[ln] = CoverageType.method
             else:
-                line_types[ln] = None
+                line_types[ln] = CoverageType.line
             lines[ln].append(coverage)
 
             next_is_func = False
 
-    _file = ReportFile(filename, ignore=ignore_func)
+    _file = report_builder_session.file_class(filename, ignore=ignore_func)
     for ln, coverages in lines.items():
         _type = line_types[ln]
         branches = line_branches.get(ln)
         if branches:
             coverage = "%s/%s" % tuple(branches)
             _file.append(
-                ln, ReportLine.create(coverage, _type, [[sesisonid, coverage]])
+                ln,
+                report_builder_session.create_coverage_line(
+                    filename=filename, coverage=coverage, coverage_type=_type
+                ),
             )
         else:
             for coverage in coverages:
                 _file.append(
-                    ln, ReportLine.create(coverage, _type, [[sesisonid, coverage]])
+                    ln,
+                    report_builder_session.create_coverage_line(
+                        filename=filename, coverage=coverage, coverage_type=_type
+                    ),
                 )
 
     return _file

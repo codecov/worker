@@ -127,7 +127,14 @@ class ChecksNotifier(StatusNotifier):
                 data_sent=None,
                 data_received=None,
             )
-
+        # Check branches config for this status before sending the check
+        if not self.can_we_set_this_status(comparison):
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="not_fit_criteria",
+                data_sent=None,
+            )
         payload = None
         try:
             with nullcontext():

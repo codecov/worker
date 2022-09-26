@@ -3,14 +3,17 @@ from collections import defaultdict
 from io import BytesIO
 from itertools import groupby
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 from shared.utils import merge
 from shared.utils.merge import LineType, line_type, partials_to_line
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 from services.yaml import read_yaml_field
 
 
@@ -21,22 +24,48 @@ class GoProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_txt(
-            content,
-            path_fixer,
-            ignored_lines,
-            sessionid,
-            read_yaml_field(repo_yaml, ("parsers", "go")) or {},
-        )
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_txt(content, report_builder_session)
 
 
-def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
+    go_parser_settings = (
+        read_yaml_field(report_builder_session.current_yaml, ("parsers", "go")) or {}
+    )
+
+    # Process the bytes from uploaded report to intermediary representation
+    # files: {new_name: <lines defaultdict(list)>}
+    files = process_bytes_into_files(string, report_builder_session.path_fixer)
+    # create a file
+    ignored_lines = report_builder_session.ignored_lines
+    for filename, lines in files.items():
+        _file = report_builder_session.file_class(
+            filename, ignore=ignored_lines.get(filename)
+        )
+        for ln, partials in lines.items():
+            best_in_partials = max(map(lambda p: p[2], partials))
+            partials = combine_partials(partials)
+            if partials:
+                cov = partials_to_line(partials)
+                cov_to_use = cov
+            else:
+                cov_to_use = best_in_partials
+            if (
+                go_parser_settings.get("partials_as_hits", False)
+                and line_type(cov_to_use) == LineType.partial
+            ):
+                cov_to_use = 1
+            _file[ln] = report_builder_session.create_coverage_line(
+                filename=filename, coverage=cov_to_use, coverage_type=CoverageType.line
+            )
+        report_builder_session.append(_file)
+
+    return report_builder_session.output_report()
+
+
+def process_bytes_into_files(
+    string: bytes, path_fixer: typing.Callable
+) -> typing.Dict[str, typing.Dict[str, typing.List]]:
     """
     mode: count
     github.com/codecov/sample_go/sample_go.go:7.14,9.2 1 1
@@ -69,10 +98,7 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
     files = {}  # {new_name: <lines defaultdict(list)>}
     for encoded_line in BytesIO(string):
         line = encoded_line.decode(errors="replace").rstrip("\n")
-        if not line:
-            continue
-
-        elif line[:6] == "mode: ":
+        if not line or line.startswith("mode: "):
             continue
 
         # prepare data
@@ -90,8 +116,7 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
             if filename in file_name_replacement:
                 filename = file_name_replacement[filename]
             else:
-                fixed = fix(filename)
-
+                fixed = path_fixer(filename)
                 file_name_replacement[filename] = fixed
                 filename = fixed
                 if filename is None:
@@ -103,10 +128,10 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
 
         columns, _, hits = data.split(" ", 2)
         hits = int(hits)
-        sl, el = columns.split(",", 1)
-        sl, sc = list(map(int, sl.split(".", 1)))
+        line_start, line_end = columns.split(",", 1)
+        line_start, sc = list(map(int, line_start.split(".", 1)))
         try:
-            el, ec = list(map(int, el.split(".", 1)))
+            line_end, ec = list(map(int, line_end.split(".", 1)))
         except ValueError:
             raise CorruptRawReportError(
                 "name.go:line.column,line.column numberOfStatements count",
@@ -114,37 +139,16 @@ def from_txt(string: bytes, fix, ignored_lines, sessionid, go_parser_settings):
             )
 
         # add start of line
-        if sl == el:
-            lines[sl].add((sc, ec, hits))
+        if line_start == line_end:
+            lines[line_start].add((sc, ec, hits))
         else:
-            lines[sl].add((sc, None, hits))
+            lines[line_start].add((sc, None, hits))
             # add middles
-            [lines[ln].add((0, None, hits)) for ln in range(sl + 1, el)]
+            [lines[ln].add((0, None, hits)) for ln in range(line_start + 1, line_end)]
             if ec > 2:
                 # add end of line
-                lines[el].add((None, ec, hits))
-
-    # create a file
-    report = Report()
-    for filename, lines in files.items():
-        _file = ReportFile(filename, ignore=ignored_lines.get(filename))
-        for ln, partials in lines.items():
-            best_in_partials = max(map(lambda p: p[2], partials))
-            partials = combine_partials(partials)
-            if partials:
-                cov = partials_to_line(partials)
-                cov_to_use = cov
-            else:
-                cov_to_use = best_in_partials
-            if (
-                go_parser_settings.get("partials_as_hits", False)
-                and line_type(cov_to_use) == LineType.partial
-            ):
-                cov_to_use = 1
-            _file[ln] = ReportLine.create(cov_to_use, None, [[sessionid, cov_to_use]])
-        report.append(_file)
-
-    return report
+                lines[line_end].add((None, ec, hits))
+    return files
 
 
 def combine_partials(partials):

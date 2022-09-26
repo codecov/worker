@@ -1,4 +1,5 @@
 from services.report.languages import lua
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 txt = b"""
@@ -50,7 +51,13 @@ class TestLua(BaseTestCase):
             assert path in ("source.lua", "empty.lua", "file.lua")
             return path
 
-        report = lua.from_txt(txt, fixes, {}, 0)
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = lua.from_txt(txt, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 
@@ -91,7 +98,13 @@ class TestLua(BaseTestCase):
                 b"<<<<<< EOF",
             ]
         )
-        report = lua.from_txt(content, lambda x: x, {}, 0)
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, path_fixer=lambda x: x, ignored_lines={}
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = lua.from_txt(content, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 

@@ -1,6 +1,7 @@
 from json import dumps, loads
 
 from services.report.languages import coveralls
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 txt = """
@@ -29,7 +30,13 @@ class TestCoveralls(BaseTestCase):
             assert path in ("file", "ignore")
             return path if path == "file" else None
 
-        report = coveralls.from_json(loads(txt), fixes, {}, 0)
+        report_builder = ReportBuilder(
+            path_fixer=fixes, ignored_lines={}, sessionid=0, current_yaml=None
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = coveralls.from_json(loads(txt), report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 

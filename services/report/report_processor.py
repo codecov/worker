@@ -28,6 +28,7 @@ from services.report.languages import (
     LuaProcessor,
     MonoProcessor,
     NodeProcessor,
+    PyCoverageProcessor,
     RlangProcessor,
     SalesforceProcessor,
     ScalaProcessor,
@@ -40,7 +41,7 @@ from services.report.languages import (
     XCodeProcessor,
 )
 from services.report.languages.helpers import remove_non_ascii
-from services.report.parser import ParsedUploadedReportFile
+from services.report.parser.types import ParsedUploadedReportFile
 from services.report.report_builder import ReportBuilder
 
 log = logging.getLogger(__name__)
@@ -127,6 +128,7 @@ def get_possible_processors_list(report_type) -> list:
             CoverallsProcessor(),
             SimplecovProcessor(),
             GapProcessor(),
+            PyCoverageProcessor(),
             NodeProcessor(),
         ],
     }

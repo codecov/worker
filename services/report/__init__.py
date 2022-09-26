@@ -24,7 +24,7 @@ from database.models.reports import (
 )
 from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from services.archive import ArchiveService
-from services.report.parser import RawReportParser
+from services.report.parser import get_proper_parser
 from services.report.raw_upload_processor import process_raw_upload
 from services.yaml.reader import get_paths_from_flags
 
@@ -204,8 +204,8 @@ class ReportService(object):
             order_number=None,
             upload_extras={},
             upload_type=SessionType.uploaded.value,
-            state_id=UploadState.uploaded.value,
-            upload_type_id=UploadType.uploaded.value,
+            state_id=UploadState.UPLOADED.db_id,
+            upload_type_id=UploadType.UPLOADED.db_id,
         )
         db_session.add(upload)
         db_session.flush()
@@ -457,8 +457,9 @@ class ReportService(object):
         )
         archive_service = self.get_archive_service(commit.repository)
         archive_url = upload.storage_path
+        parser = get_proper_parser(upload)
         try:
-            raw_uploaded_report = RawReportParser.parse_raw_report_from_bytes(
+            raw_uploaded_report = parser.parse_raw_report_from_bytes(
                 archive_service.read_file(archive_url)
             )
         except FileNotInStorageError:
@@ -521,7 +522,7 @@ class ReportService(object):
         session = processing_result.session
         if processing_result.error is None:
             upload_obj.state = "processed"
-            upload_obj.state_id = UploadState.processed.value
+            upload_obj.state_id = UploadState.PROCESSED.db_id
             upload_obj.order_number = session.id
             upload_totals = upload_obj.totals
             if upload_totals is None:
@@ -542,7 +543,7 @@ class ReportService(object):
         else:
             error = processing_result.error
             upload_obj.state = "error"
-            upload_obj.state_id = UploadState.error.value
+            upload_obj.state_id = UploadState.ERROR.db_id
             error_obj = UploadError(
                 upload_id=upload_obj.id,
                 error_code=error.code,

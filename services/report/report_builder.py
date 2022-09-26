@@ -56,6 +56,10 @@ class ReportBuilderSession(object):
         return self._report.file_class
 
     @property
+    def filepath(self):
+        return self._report_filepath
+
+    @property
     def path_fixer(self):
         return self._report_builder.path_fixer
 
@@ -192,7 +196,11 @@ class ReportBuilderSession(object):
             sessions=[
                 (
                     LineSession(
-                        id=self.sessionid, coverage=coverage, complexity=complexity
+                        id=self.sessionid,
+                        coverage=coverage,
+                        branches=missing_branches,
+                        partials=partials,
+                        complexity=complexity,
                     )
                 )
             ],

@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-import argparse
 import logging
-import os
+import typing
 
+import click
 from shared.config import get_config
 from shared.storage.exceptions import BucketAlreadyExistsError
 
 import app
+from celery_config import HEALTH_CHECK_QUEUE
 from helpers.version import get_current_version
 from services.storage import get_storage_client
 
@@ -24,12 +25,20 @@ initialization_text = """
 """
 
 
-def deal_test_command(parser, codecov_args):
-    parser.error("System not suitable to run TEST mode")
+@click.group()
+@click.pass_context
+def cli(ctx: click.Context):
+    pass
 
 
-def deal_web_command(parser, codecov):
-    parser.error("System not suitable to run WEB mode")
+@cli.command()
+def test():
+    raise click.ClickException("System not suitable to run TEST mode")
+
+
+@cli.command()
+def web():
+    raise click.ClickException("System not suitable to run WEB mode")
 
 
 def setup_worker():
@@ -45,19 +54,32 @@ def setup_worker():
         pass
 
 
-def deal_worker_command(parser, codecov):
+@cli.command()
+@click.option("--name", envvar="HOSTNAME", default="worker", help="Node name")
+@click.option(
+    "--concurrency", type=int, default=2, help="Number for celery concurrency"
+)
+@click.option("--debug", is_flag=True, default=False, help="Enable celery debug mode")
+@click.option(
+    "--queue",
+    multiple=True,
+    default=["celery"],
+    help="Queues to listen to for this worker",
+)
+def worker(name, concurrency, debug, queue):
     setup_worker()
+    actual_queues = _get_queues_param_from_queue_input(queue)
     return app.celery_app.worker_main(
         argv=[
             "worker",
             "-n",
-            codecov.name,
+            name,
             "-c",
-            codecov.concurrency,
+            concurrency,
             "-l",
-            ("debug" if codecov.debug else "info"),
+            ("debug" if debug else "info"),
             "-Q",
-            codecov.queue,
+            actual_queues,
             "-B",
             "-s",
             "/home/codecov/celerybeat-schedule",  # TODO find file that can work on production and enterprise
@@ -65,59 +87,16 @@ def deal_worker_command(parser, codecov):
     )
 
 
-def get_arg_parser():
-    parser = argparse.ArgumentParser(
-        prog="codecov",
-        add_help=True,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""Read more at https://github.com/codecov/enterprise""",
-    )
-    subparsers = parser.add_subparsers(title="Commands")
-
-    cmd_web = subparsers.add_parser("web")
-    cmd_web.set_defaults(proc="web", func=deal_web_command)
-
-    cmd_worker = subparsers.add_parser("worker")
-    cmd_worker.set_defaults(
-        proc="worker",
-        func=deal_worker_command,
-        help="Run the celery worker. Take same arguments as 'celery worker'.",
-    )
-    cmd_worker.add_argument(
-        "-c",
-        "--concurrency",
-        nargs="?",
-        default="2",
-        help="number or celery concurrency",
-    )
-    cmd_worker.add_argument(
-        "-n",
-        "--name",
-        dest="name",
-        nargs="?",
-        default=os.getenv("HOSTNAME", "worker"),
-        help="node name",
-    )
-    cmd_worker.add_argument(
-        "-q",
-        "--queue",
-        nargs="?",
-        default="celery",
-        help="queues to listen to for this worker",
-    )
-    cmd_worker.add_argument(
-        "--debug", action="store_true", default=False, help="enable celery debug mode"
-    )
-
-    cmd_test = subparsers.add_parser("test", help="Run tests on service integrations")
-    cmd_test.set_defaults(proc="test", func=deal_test_command)
-    return parser
+def _get_queues_param_from_queue_input(queues: typing.List[str]) -> str:
+    # We always run the health_check queue to make sure the healthcheck is performed
+    # And also to avoid that queue fillign up with no workers to consume from it
+    # this should support if one wants to pass comma separated values
+    # since in the end all is joined again
+    return ",".join([*queues, HEALTH_CHECK_QUEUE])
 
 
 def main():
-    parser = get_arg_parser()
-    codecov, unknown = parser.parse_known_args()
-    return codecov.func(parser, codecov)
+    cli(obj={})
 
 
 if __name__ == "__main__":
