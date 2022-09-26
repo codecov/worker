@@ -5,7 +5,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class DLSTProcessor(BaseLanguageProcessor):
@@ -15,19 +15,20 @@ class DLSTProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_string(name, content, path_fixer, ignored_lines, sessionid)
+        return from_string(content, report_builder.create_report_builder_session(name))
 
 
-def from_string(filename, string, fix, ignored_lines, sessionid):
+def from_string(string, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid, repo_yaml, filename = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+        report_builder_session.current_yaml,
+        report_builder_session.filepath,
+    )
     if filename:
         # src/file.lst => src/file.d
-        filename = fix("%sd" % filename[:-3])
+        filename = path_fixer("%sd" % filename[:-3])
 
     if not filename:
         # file.d => src/file.d
@@ -36,7 +37,7 @@ def from_string(filename, string, fix, ignored_lines, sessionid):
         if filename.startswith("source "):
             filename = filename[7:]
 
-        filename = fix(filename)
+        filename = path_fixer(filename)
         if not filename:
             return None
 
@@ -50,6 +51,5 @@ def from_string(filename, string, fix, ignored_lines, sessionid):
             # not a vaild line
             pass
 
-    report = Report()
-    report.append(_file)
-    return report
+    report_builder_session.append(_file)
+    return report_builder_session.output_report()

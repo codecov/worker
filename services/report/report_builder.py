@@ -56,6 +56,10 @@ class ReportBuilderSession(object):
         return self._report.file_class
 
     @property
+    def filepath(self):
+        return self._report_filepath
+
+    @property
     def path_fixer(self):
         return self._report_builder.path_fixer
 
