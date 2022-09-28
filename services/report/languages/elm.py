@@ -4,7 +4,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import LineSession, ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class ElmProcessor(BaseLanguageProcessor):
@@ -14,19 +14,18 @@ class ElmProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_json(content, path_fixer, ignored_lines, sessionid)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_json(content, report_builder_session)
 
 
-def from_json(json, fix, ignored_lines, sessionid):
-    report = Report()
+def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     for name, data in json["coverageData"].items():
-        fn = fix(json["moduleMap"][name])
+        fn = path_fixer(json["moduleMap"][name])
         if fn is None:
             continue
 
@@ -63,6 +62,6 @@ def from_json(json, fix, ignored_lines, sessionid):
                     complexity=complexity,
                 )
 
-        report.append(_file)
+        report_builder_session.append(_file)
 
-    return report
+    return report_builder_session.output_report()
