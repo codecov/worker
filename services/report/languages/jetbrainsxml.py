@@ -1,10 +1,13 @@
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import LineSession, ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class JetBrainsXMLProcessor(BaseLanguageProcessor):
@@ -29,8 +32,8 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
     for f in xml.iter("File"):
         filename = path_fixer(f.attrib["Name"].replace("\\", "/"))
         if filename:
-            file_by_id[str(f.attrib["Index"])] = ReportFile(
-                filename, ignore=ignored_lines.get(filename)
+            file_by_id[str(f.attrib["Index"])] = report_builder_session.file_class(
+                name=filename, ignore=ignored_lines.get(filename)
             )
 
     for statement in xml.iter("Statement"):
@@ -44,18 +47,21 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
             if sl == el:
                 _file.append(
                     sl,
-                    ReportLine.create(
+                    report_builder_session.create_coverage_line(
+                        filename=filename,
                         coverage=cov,
-                        sessions=[
-                            LineSession(
-                                id=sessionid, coverage=cov, partials=[[sc, ec, cov]]
-                            )
-                        ],
+                        coverage_type=CoverageType.line,
+                        partials=[[sc, ec, cov]],
                     ),
                 )
             else:
                 _file.append(
-                    sl, ReportLine.create(coverage=cov, sessions=[[sessionid, cov]])
+                    sl,
+                    report_builder_session.create_coverage_line(
+                        filename=filename,
+                        coverage=cov,
+                        coverage_type=CoverageType.line,
+                    ),
                 )
 
     for fid, content in file_by_id.items():
