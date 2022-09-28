@@ -4,7 +4,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import LineSession, ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class JetBrainsXMLProcessor(BaseLanguageProcessor):
@@ -14,21 +14,20 @@ class JetBrainsXMLProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
-def from_xml(xml, fix, ignored_lines, sessionid, repo_yaml):
+def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     # dict of {"fileid": "path"}
     file_by_id = {}
     file_by_id_get = file_by_id.get
     for f in xml.iter("File"):
-        filename = fix(f.attrib["Name"].replace("\\", "/"))
+        filename = path_fixer(f.attrib["Name"].replace("\\", "/"))
         if filename:
             file_by_id[str(f.attrib["Index"])] = ReportFile(
                 filename, ignore=ignored_lines.get(filename)
@@ -59,9 +58,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, repo_yaml):
                     sl, ReportLine.create(coverage=cov, sessions=[[sessionid, cov]])
                 )
 
-    report = Report()
-    report_append = report.append
     for fid, content in file_by_id.items():
-        report_append(content)
+        report_builder_session.append(content)
 
-    return report
+    return report_builder_session.output_report()
