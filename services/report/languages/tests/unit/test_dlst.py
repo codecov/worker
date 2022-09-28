@@ -32,9 +32,7 @@ class TestDLST(BaseTestCase):
         report_builder = ReportBuilder(
             path_fixer=fixer, ignored_lines={}, sessionid=0, current_yaml=None
         )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
+        report_builder_session = report_builder.create_report_builder_session(filename)
         report = dlst.from_string(RAW, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         # import pprint

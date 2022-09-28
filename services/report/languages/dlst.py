@@ -1,11 +1,15 @@
 import typing
 from io import BytesIO
 
-from shared.reports.resources import Report, ReportFile
+from shared.reports.resources import Report
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class DLSTProcessor(BaseLanguageProcessor):
@@ -19,11 +23,10 @@ class DLSTProcessor(BaseLanguageProcessor):
 
 
 def from_string(string, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, sessionid, repo_yaml, filename = (
+    path_fixer, ignored_lines, sessionid, filename = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
         report_builder_session.sessionid,
-        report_builder_session.current_yaml,
         report_builder_session.filepath,
     )
     if filename:
@@ -41,7 +44,9 @@ def from_string(string, report_builder_session: ReportBuilderSession) -> Report:
         if not filename:
             return None
 
-    _file = ReportFile(filename, ignore=ignored_lines.get(filename))
+    _file = report_builder_session.file_class(
+        filename, ignore=ignored_lines.get(filename)
+    )
     for ln, encoded_line in enumerate(BytesIO(string), start=1):
         line = encoded_line.decode(errors="replace").rstrip("\n")
         try:
