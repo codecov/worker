@@ -31,9 +31,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
         if filename is None:
             continue
 
-        # get file
-        report = report_builder_session.output_report()
-        _file = report.get(filename)
+        _file = report_builder_session.get_file(filename)
         if not _file:
             _file = ReportFile(filename, ignore=ignored_lines.get(filename))
 
@@ -49,4 +47,4 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
 
         report_builder_session.append(_file)
 
-    return report
+    return report_builder_session.output_report()
