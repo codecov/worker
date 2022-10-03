@@ -26,7 +26,6 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
         report_builder_session.sessionid,
     )
 
-    # report = Report()
     ignore = []
     cache_fixes = {}
     _cur_file_name = None
