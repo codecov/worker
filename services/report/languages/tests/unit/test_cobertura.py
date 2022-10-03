@@ -7,6 +7,7 @@ import pytest
 from helpers.exceptions import ReportExpiredException
 from services.path_fixer import PathFixer
 from services.report.languages import cobertura
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 xml = """<?xml version="1.0" ?>
@@ -75,12 +76,17 @@ class TestCobertura(BaseTestCase):
             assert path in ("source", "empty", "file", "nolines")
             return path
 
+        report_builder = ReportBuilder(
+            path_fixer=fixes,
+            ignored_lines={},
+            sessionid=0,
+            current_yaml={"codecov": {"max_report_age": None}},
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         report = cobertura.from_xml(
-            etree.fromstring(xml % ("", int(time()), "", "")),
-            fixes,
-            {},
-            0,
-            {"codecov": {"max_report_age": None}},
+            etree.fromstring(xml % ("", int(time()), "", "")), report_builder_session
         )
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
@@ -166,12 +172,17 @@ class TestCobertura(BaseTestCase):
     def test_timestamp_zero_passes(self):
         # Some reports have timestamp as a string zero, check we can handle that
         timestring = "0"
+        report_builder = ReportBuilder(
+            path_fixer=lambda path, bases_to_try: path,
+            ignored_lines={},
+            sessionid=0,
+            current_yaml={"codecov": {"max_report_age": "12h"}},
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         report = cobertura.from_xml(
-            etree.fromstring(xml % ("", timestring, "", "")),
-            lambda path, bases_to_try: path,
-            {},
-            0,
-            {"codecov": {"max_report_age": "12h"}},
+            etree.fromstring(xml % ("", timestring, "", "")), report_builder_session
         )
         processed_report = self.convert_report_to_better_readable(report)
         assert len(processed_report["archive"]["file"]) == 3
@@ -180,13 +191,31 @@ class TestCobertura(BaseTestCase):
     @pytest.mark.parametrize("date", [(int(time()) - 172800), "01-01-2014"])
     def test_expired(self, date):
         with pytest.raises(ReportExpiredException, match="Cobertura report expired"):
+            report_builder = ReportBuilder(
+                path_fixer=None,
+                ignored_lines={},
+                sessionid=0,
+                current_yaml=None,
+            )
+            report_builder_session = report_builder.create_report_builder_session(
+                "filename"
+            )
             cobertura.from_xml(
-                etree.fromstring(xml % ("", date, "", "")), None, {}, None, None
+                etree.fromstring(xml % ("", date, "", "")), report_builder_session
             )
 
         with pytest.raises(ReportExpiredException, match="Cobertura report expired"):
+            report_builder = ReportBuilder(
+                path_fixer=None,
+                ignored_lines={},
+                sessionid=0,
+                current_yaml=None,
+            )
+            report_builder_session = report_builder.create_report_builder_session(
+                "filename"
+            )
             cobertura.from_xml(
-                etree.fromstring(xml % ("s", date, "", "s")), None, {}, None, None
+                etree.fromstring(xml % ("s", date, "", "s")), report_builder_session
             )
 
     def test_matches_content(self):
@@ -223,12 +252,20 @@ class TestCobertura(BaseTestCase):
         </sources>
         """
         processor = cobertura.CoberturaProcessor()
+        report_builder = ReportBuilder(
+            path_fixer=lambda path, bases_to_try: [
+                os.path.join(b, path) for b in bases_to_try
+            ][0],
+            ignored_lines={},
+            sessionid=0,
+            current_yaml={"codecov": {"max_report_age": None}},
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         report = cobertura.from_xml(
             etree.fromstring(xml % ("", int(time()), sources, "")),
-            lambda path, bases_to_try: [os.path.join(b, path) for b in bases_to_try][0],
-            {},
-            0,
-            {"codecov": {"max_report_age": None}},
+            report_builder_session,
         )
         processed_report = self.convert_report_to_better_readable(report)
         # prepend the source
@@ -242,12 +279,18 @@ class TestCobertura(BaseTestCase):
         </sources>
         """
         processor = cobertura.CoberturaProcessor()
+        report_builder = ReportBuilder(
+            path_fixer=lambda path, bases_to_try: path,
+            ignored_lines={},
+            sessionid=0,
+            current_yaml={"codecov": {"max_report_age": None}},
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         report = cobertura.from_xml(
             etree.fromstring(xml % ("", int(time()), sources, "")),
-            lambda path, bases_to_try: path,
-            {},
-            0,
-            {"codecov": {"max_report_age": None}},
+            report_builder_session,
         )
         processed_report = self.convert_report_to_better_readable(report)
         # doesnt use the source
@@ -262,12 +305,18 @@ class TestCobertura(BaseTestCase):
         </sources>
         """
         path_fixer = PathFixer([], [], ["/there/source", "/there/file"])
+        report_builder = ReportBuilder(
+            path_fixer=path_fixer.get_relative_path_aware_pathfixer("/somewhere"),
+            ignored_lines={},
+            sessionid=0,
+            current_yaml={"codecov": {"max_report_age": None}},
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         report = cobertura.from_xml(
             etree.fromstring(xml % ("", int(time()), sources, "")),
-            path_fixer.get_relative_path_aware_pathfixer("/somewhere"),
-            {},
-            0,
-            {"codecov": {"max_report_age": None}},
+            report_builder_session,
         )
         processed_report = self.convert_report_to_better_readable(report)
         # doesnt use the source as we dont know which one
@@ -282,12 +331,18 @@ class TestCobertura(BaseTestCase):
         </sources>
         """
         path_fixer = PathFixer([], [], ["source", "file", "/here/source"])
+        report_builder = ReportBuilder(
+            path_fixer=path_fixer.get_relative_path_aware_pathfixer("/somewhere"),
+            ignored_lines={},
+            sessionid=0,
+            current_yaml={"codecov": {"max_report_age": None}},
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         report = cobertura.from_xml(
             etree.fromstring(xml % ("", int(time()), sources, "")),
-            path_fixer.get_relative_path_aware_pathfixer("/somewhere"),
-            {},
-            0,
-            {"codecov": {"max_report_age": None}},
+            report_builder_session,
         )
         processed_report = self.convert_report_to_better_readable(report)
         # doesnt use the source as we dont know which one
@@ -304,12 +359,18 @@ class TestCobertura(BaseTestCase):
         path_fixer = PathFixer(
             [], [], ["/here/source", "/there/source", "/here/file", "/there/file"]
         )
+        report_builder = ReportBuilder(
+            path_fixer=path_fixer.get_relative_path_aware_pathfixer("/somewhere"),
+            ignored_lines={},
+            sessionid=0,
+            current_yaml={"codecov": {"max_report_age": None}},
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
         report = cobertura.from_xml(
             etree.fromstring(xml % ("", int(time()), sources, "")),
-            path_fixer.get_relative_path_aware_pathfixer("/somewhere"),
-            {},
-            0,
-            {"codecov": {"max_report_age": None}},
+            report_builder_session,
         )
         processed_report = self.convert_report_to_better_readable(report)
         # doesnt use the source as we dont know which one
