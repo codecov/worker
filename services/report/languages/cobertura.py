@@ -10,7 +10,7 @@ from timestring import Date, TimestringInvalid
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -25,13 +25,8 @@ class CoberturaProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.current_yaml,
-        )
-        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_xml(content, report_builder_session)
 
 
 def Int(value):
@@ -46,9 +41,16 @@ def get_sources_to_attempt(xml) -> List[str]:
     return [s for s in sources if isinstance(s, str) and s.startswith("/")]
 
 
-def from_xml(xml, fix, ignored_lines, sessionid, yaml):
+def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid, repo_yaml = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+        report_builder_session.current_yaml,
+    )
+
     # # process timestamp
-    if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
+    if read_yaml_field(repo_yaml, ("codecov", "max_report_age"), "12h ago"):
         try:
             timestamp = next(xml.iter("coverage")).get("timestamp")
         except StopIteration:
@@ -68,12 +70,10 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             timestamp
             and is_valid_timestamp
             and parsed_datetime
-            < read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago")
+            < read_yaml_field(repo_yaml, ("codecov", "max_report_age"), "12h ago")
         ):
             # report expired over 12 hours ago
             raise ReportExpiredException("Cobertura report expired " + timestamp)
-
-    report = Report()
 
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
@@ -165,20 +165,20 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                         [[sessionid, coverage]],
                     ),
                 )
-        report.append(_file)
+        report_builder_session.append(_file)
 
     # path rename
     path_name_fixing = []
     source_path_list = get_sources_to_attempt(xml)
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
-        fixed_name = fix(filename, bases_to_try=source_path_list)
+        fixed_name = path_fixer(filename, bases_to_try=source_path_list)
         path_name_fixing.append((filename, fixed_name))
 
     _set = set(("dist-packages", "site-packages"))
-    report.resolve_paths(
+    report_builder_session.resolve_paths(
         sorted(path_name_fixing, key=lambda a: _set & set(a[0].split("/")))
     )
 
-    report.ignore_lines(ignored_lines)
-    return report
+    report_builder_session.ignore_lines(ignored_lines)
+    return report_builder_session.output_report()
