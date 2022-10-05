@@ -31,6 +31,7 @@ class SiteUrls(Enum):
     new_client_pull_url = "https://app.codecov.io/{service_short}/{username}/{project_name}/compare/{pull_id}"
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
     org_acccount_url = "{base_url}/account/{service_short}/{username}"
+    members_url = "{base_url}/members/{service_short}/{username}"
 
     def get_url(self, **kwargs) -> str:
         return self.value.format(**kwargs)
@@ -136,6 +137,15 @@ def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
 def get_org_account_url(pull: Pull) -> str:
     repository = pull.repository
     return SiteUrls.org_acccount_url.get_url(
+        base_url=get_base_url(),
+        service_short=services_short_dict.get(repository.service),
+        username=repository.owner.username,
+    )
+
+
+def get_members_url(pull: Pull) -> str:
+    repository = pull.repository
+    return SiteUrls.members_url.get_url(
         base_url=get_base_url(),
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
