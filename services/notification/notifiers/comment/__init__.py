@@ -379,21 +379,24 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
 
     def _create_upgrade_message(self, comparison):
         db_pull = comparison.enriched_pull.database_pull
-        links = {"members_url": get_members_url(db_pull)}
+        links = {
+            "members_url_cloud": get_members_url(db_pull),
+            "members_url_self_hosted": get_members_url(db_pull, self_hosted=True),
+        }
         author_username = comparison.enriched_pull.provider_pull["author"].get(
             "username"
         )
         if not requires_license():
             return [
                 f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
-                f"Please [activate this user on Codecov]({links['members_url']}) to display this PR comment.",
+                f"Please [activate this user on Codecov]({links['members_url_cloud']}) to display this PR comment.",
                 f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
                 f"Please don't hesitate to email us at support@codecov.io with any questions.",
             ]
         else:
             return [
                 f"The author of this PR, {author_username}, is not activated in your Codecov Self-Hosted installation.",
-                f"Please [activate this user]({links['members_url']}) to display this PR comment.",
+                f"Please [activate this user]({links['members_url_self_hosted']}) to display this PR comment.",
                 f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
                 f"Please contact your Codecov On-Premises installation administrator with any questions.",
             ]
