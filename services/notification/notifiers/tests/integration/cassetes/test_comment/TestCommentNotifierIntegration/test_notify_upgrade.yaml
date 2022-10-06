@@ -151,7 +151,7 @@ interactions:
     url: https://api.github.com/repos/1nf1n1t3l00p/priv_example/pulls/1/commits
 - request:
     body: '{"body": "The author of this PR, 1nf1n1t3l00p, is not an active member
-      of this organization on Codecov.\nPlease [activate this user on Codecov](None/account/gh/1nf1n1t3l00p/users)
+      of this organization on Codecov.\nPlease [activate this user on Codecov](None/members/gh/1nf1n1t3l00p)
       to display this PR comment."}'
     headers:
       Accept:
@@ -163,7 +163,7 @@ interactions:
   response:
     content: '{"url":"https://api.github.com/repos/1nf1n1t3l00p/priv_example/issues/comments/609479265","html_url":"https://github.com/1nf1n1t3l00p/priv_example/pull/1#issuecomment-609479265","issue_url":"https://api.github.com/repos/1nf1n1t3l00p/priv_example/issues/1","id":609479265,"node_id":"MDEyOklzc3VlQ29tbWVudDYwOTQ3OTI2NQ==","user":{"login":"1nf1n1t3l00p","id":45343385,"node_id":"MDQ6VXNlcjQ1MzQzMzg1","avatar_url":"https://avatars3.githubusercontent.com/u/45343385?u=86aaa662c46ce41b7b6d6af3121d507b313ba9b4&v=4","gravatar_id":"","url":"https://api.github.com/users/1nf1n1t3l00p","html_url":"https://github.com/1nf1n1t3l00p","followers_url":"https://api.github.com/users/1nf1n1t3l00p/followers","following_url":"https://api.github.com/users/1nf1n1t3l00p/following{/other_user}","gists_url":"https://api.github.com/users/1nf1n1t3l00p/gists{/gist_id}","starred_url":"https://api.github.com/users/1nf1n1t3l00p/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/1nf1n1t3l00p/subscriptions","organizations_url":"https://api.github.com/users/1nf1n1t3l00p/orgs","repos_url":"https://api.github.com/users/1nf1n1t3l00p/repos","events_url":"https://api.github.com/users/1nf1n1t3l00p/events{/privacy}","received_events_url":"https://api.github.com/users/1nf1n1t3l00p/received_events","type":"User","site_admin":false},"created_at":"2020-04-05T20:41:25Z","updated_at":"2020-04-05T20:41:25Z","author_association":"OWNER","body":"The
       author of this PR, 1nf1n1t3l00p, is not an active member of this organization
-      on Codecov.\nPlease [activate this user on Codecov](None/account/gh/1nf1n1t3l00p/users)
+      on Codecov.\nPlease [activate this user on Codecov](None/members/gh/1nf1n1t3l00p)
       to display this PR comment."}'
     headers:
       Access-Control-Allow-Origin:

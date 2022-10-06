@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from shared.config import get_config
 
 from database.models import Commit, Pull, Repository
+from services.license import requires_license
 
 services_short_dict = dict(
     github="gh",
@@ -31,6 +32,8 @@ class SiteUrls(Enum):
     new_client_pull_url = "https://app.codecov.io/{service_short}/{username}/{project_name}/compare/{pull_id}"
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
     org_acccount_url = "{base_url}/account/{service_short}/{username}"
+    members_url = "{base_url}/members/{service_short}/{username}"
+    members_url_self_hosted = "{base_url}/internal/users"
 
     def get_url(self, **kwargs) -> str:
         return self.value.format(**kwargs)
@@ -140,6 +143,20 @@ def get_org_account_url(pull: Pull) -> str:
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
     )
+
+
+def get_members_url(pull: Pull) -> str:
+    repository = pull.repository
+    if not requires_license():
+        return SiteUrls.members_url.get_url(
+            base_url=get_base_url(),
+            service_short=services_short_dict.get(repository.service),
+            username=repository.owner.username,
+        )
+    else:
+        return SiteUrls.members_url_self_hosted.get_url(
+            base_url=get_base_url(),
+        )
 
 
 def append_tracking_params_to_urls(
