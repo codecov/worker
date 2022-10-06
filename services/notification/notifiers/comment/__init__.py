@@ -381,7 +381,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         db_pull = comparison.enriched_pull.database_pull
         links = {
             "members_url_cloud": get_members_url(db_pull),
-            "members_url_self_hosted": get_members_url(db_pull, self_hosted=True),
+            "members_url_self_hosted": get_members_url(db_pull),
         }
         author_username = comparison.enriched_pull.provider_pull["author"].get(
             "username"

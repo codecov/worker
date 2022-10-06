@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from shared.config import get_config
 
 from database.models import Commit, Pull, Repository
+from services.license import requires_license
 
 services_short_dict = dict(
     github="gh",
@@ -144,9 +145,9 @@ def get_org_account_url(pull: Pull) -> str:
     )
 
 
-def get_members_url(pull: Pull, self_hosted: bool = False) -> str:
+def get_members_url(pull: Pull) -> str:
     repository = pull.repository
-    if not self_hosted:
+    if not requires_license():
         return SiteUrls.members_url.get_url(
             base_url=get_base_url(),
             service_short=services_short_dict.get(repository.service),
