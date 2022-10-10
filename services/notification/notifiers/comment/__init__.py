@@ -17,11 +17,7 @@ from services.notification.notifiers.base import (
 )
 from services.notification.notifiers.mixins.message import MessageMixin
 from services.repository import get_repo_provider_service
-from services.urls import (
-    append_tracking_params_to_urls,
-    get_members_url,
-    get_org_account_url,
-)
+from services.urls import append_tracking_params_to_urls, get_members_url, get_plan_url
 
 log = logging.getLogger(__name__)
 
@@ -367,12 +363,12 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
 
     def _create_reached_upload_limit_message(self, comparison):
         db_pull = comparison.enriched_pull.database_pull
-        links = {"org_account": get_org_account_url(db_pull)}
+        links = {"plan_url": get_plan_url(db_pull)}
         return [
-            f"# [Codecov]({links['org_account']}/billing) upload limit reached :warning:",
+            f"# [Codecov]({links['plan_url']}) upload limit reached :warning:",
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
-                      upgrade to our [pro plan]({links['org_account']}/billing).",
+                      upgrade to our [pro plan]({links['plan_url']}).",
             f"",
             f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]

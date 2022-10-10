@@ -34,6 +34,7 @@ class SiteUrls(Enum):
     org_acccount_url = "{base_url}/account/{service_short}/{username}"
     members_url = "{base_url}/members/{service_short}/{username}"
     members_url_self_hosted = "{base_url}/internal/users"
+    plan_url = "{base_url}/plan/{service_short}/{username}"
 
     def get_url(self, **kwargs) -> str:
         return self.value.format(**kwargs)
@@ -157,6 +158,15 @@ def get_members_url(pull: Pull) -> str:
         return SiteUrls.members_url_self_hosted.get_url(
             base_url=get_base_url(),
         )
+
+
+def get_plan_url(pull: Pull) -> str:
+    repository = pull.repository
+    return SiteUrls.plan_url.get_url(
+        base_url=get_base_url(),
+        service_short=services_short_dict.get(repository.service),
+        username=repository.owner.username,
+    )
 
 
 def append_tracking_params_to_urls(

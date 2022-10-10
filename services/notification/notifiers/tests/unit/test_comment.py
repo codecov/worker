@@ -1033,10 +1033,10 @@ class TestCommentNotifier(object):
         )
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"# [Codecov](test.example.br/account/gh/{pull.repository.owner.username}/billing) upload limit reached :warning:",
+            f"# [Codecov](test.example.br/plan/gh/{pull.repository.owner.username}) upload limit reached :warning:",
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
-                      upgrade to our [pro plan](test.example.br/account/gh/{pull.repository.owner.username}/billing).",
+                      upgrade to our [pro plan](test.example.br/plan/gh/{pull.repository.owner.username}).",
             f"",
             f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
