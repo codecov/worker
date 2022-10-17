@@ -36,7 +36,7 @@ RUN             --mount=type=ssh pip wheel -r /requirements.txt
 FROM            python:3.9.14-alpine3.16
 
 RUN             apk add --upgrade --no-cache apk-tools && \
-                apk -U upgrade busybox libretls && \
+                apk -U upgrade busybox expat libretls  && \
                 apk add --no-cache postgresql-libs gcc libxslt-dev make
 
 WORKDIR         /pip-packages/
