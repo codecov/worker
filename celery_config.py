@@ -20,6 +20,7 @@ from shared.config import get_config
 from helpers.cache import RedisBackend, cache
 from helpers.clock import get_utc_now_as_iso_format
 from helpers.environment import is_enterprise
+from helpers.health_check import HEALTH_CHECK_QUEUE, get_health_check_interval_seconds
 from helpers.version import get_current_version
 from services.redis import get_redis_connection
 
@@ -114,7 +115,7 @@ class CeleryWorkerConfig(BaseCeleryConfig):
         },
         "health_check_task": {
             "task": health_check_task_name,
-            "schedule": timedelta(seconds=10),
+            "schedule": timedelta(get_health_check_interval_seconds()),
             "kwargs": {
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },
@@ -148,7 +149,6 @@ CeleryWorkerConfig.task_annotations["app.tasks.timeseries.backfill_commits"] = {
     ),
 }
 
-HEALTH_CHECK_QUEUE = "healthcheck"
 CeleryWorkerConfig.task_routes[health_check_task_name] = {
     "queue": HEALTH_CHECK_QUEUE,
 }
