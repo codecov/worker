@@ -34,6 +34,7 @@ from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
 from services.yaml import read_yaml_field
+from services.yaml.reader import get_components_from_yaml
 
 log = logging.getLogger(__name__)
 
@@ -117,19 +118,43 @@ class NotificationService(object):
                     decoration_type=self.decoration_type,
                 )
 
-    def get_statuses(self, current_flags):
+    def _get_component_statuses(self, current_flags: List[str]):
+        all_components = get_components_from_yaml(self.current_yaml)
+        for component in all_components:
+            for status in component.statuses:
+                if not status.get(
+                    "enabled", True
+                ):  # All defined statuses enabled by default
+                    continue
+                n_st = {
+                    "flags": component.get_matching_flags(current_flags),
+                    "paths": component.paths,
+                    **status,
+                }
+                yield (
+                    status["type"],
+                    f"{status.get('name_prefix', '')}{component.get_display_name()}",
+                    n_st,
+                )
+
+    def get_statuses(self, current_flags: List[str]):
         status_fields = read_yaml_field(self.current_yaml, ("coverage", "status"))
+        # Default statuses
         if status_fields:
             for key, value in status_fields.items():
                 if key in ["patch", "project", "changes"]:
                     for title, status_config in default_if_true(value):
                         yield (key, title, status_config)
+        # Flag based statuses
         for f_name in current_flags:
             flag_configuration = self.current_yaml.get_flag_configuration(f_name)
             if flag_configuration and flag_configuration.get("enabled", True):
                 for st in flag_configuration.get("statuses", []):
                     n_st = {"flags": [f_name], **st}
                     yield (st["type"], f"{st.get('name_prefix', '')}{f_name}", n_st)
+        # Component based statuses
+        for component_status in self._get_component_statuses(current_flags):
+            yield component_status
 
     async def notify(self, comparison: Comparison) -> List[NotificationResult]:
         if not is_properly_licensed(comparison.head.commit.get_db_session()):

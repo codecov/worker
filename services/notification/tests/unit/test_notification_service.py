@@ -478,3 +478,89 @@ class TestNotificationService(object):
         ]
         res = list(notifications_service.get_statuses(["unit", "banana", "strawberry"]))
         assert expected_result == res
+
+    @pytest.mark.asyncio
+    async def test_get_component_statuses(self, mocker, dbsession, sample_comparison):
+        current_yaml = {
+            "component_management": {
+                "default_rules": {
+                    "paths": [r"src/important/.*\.cpp"],
+                    "flag_regexes": [r"critical.*"],
+                    "statuses": [
+                        {"name_prefix": "important/", "type": "project"},
+                        {
+                            "name_prefix": "legacy/",
+                            "type": "project",
+                            "enabled": False,
+                        },  # this won't be in the results because it's not enabled
+                    ],
+                },
+                "individual_components": [
+                    {
+                        "component_id": "my-special-component",
+                        "flag_regexes": [r"special.*"],
+                        "statuses": [
+                            {"name_prefix": "special/", "type": "patch"},
+                            {"name_prefix": "legacy/", "type": "project"},
+                        ],
+                    },
+                    {
+                        "component_id": "inner-app",
+                        "paths": [r"src/inner_app/.*"],
+                        "statuses": [{"type": "patch"}],
+                    },
+                    {"component_id": "from_default"},
+                ],
+            }
+        }
+        commit = sample_comparison.head.commit
+        notifications_service = NotificationService(
+            commit.repository, UserYaml(current_yaml)
+        )
+        expected_result = [
+            (
+                "patch",
+                "special/my-special-component",
+                {
+                    "flags": ["special_flag"],
+                    "paths": [r"src/important/.*\.cpp"],
+                    "type": "patch",
+                    "name_prefix": "special/",
+                },
+            ),
+            (
+                "project",
+                "legacy/my-special-component",
+                {
+                    "flags": ["special_flag"],
+                    "paths": [r"src/important/.*\.cpp"],
+                    "type": "project",
+                    "name_prefix": "legacy/",
+                },
+            ),
+            (
+                "patch",
+                "inner-app",
+                {
+                    "flags": ["critical_files"],
+                    "paths": [r"src/inner_app/.*"],
+                    "type": "patch",
+                },
+            ),
+            (
+                "project",
+                "important/from_default",
+                {
+                    "flags": ["critical_files"],
+                    "name_prefix": "important/",
+                    "type": "project",
+                    "paths": [r"src/important/.*\.cpp"],
+                },
+            ),
+        ]
+        res = list(
+            notifications_service.get_statuses(
+                ["special_flag", "critical_files", "banana"]
+            )
+        )
+        assert expected_result == res
