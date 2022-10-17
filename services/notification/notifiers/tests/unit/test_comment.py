@@ -24,12 +24,14 @@ from services.notification.notifiers.mixins.message.helpers import (
 )
 from services.notification.notifiers.mixins.message.sections import (
     AnnouncementSectionWriter,
+    ComponentsSectionWriter,
     FeedbackSectionWriter,
     FileSectionWriter,
     ImpactedEntrypointsSectionWriter,
     NewFooterSectionWriter,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
+from services.yaml.reader import get_components_from_yaml
 
 
 @pytest.fixture
@@ -3877,3 +3879,271 @@ class TestCommentNotifierInNewLayout(object):
         for exp, res in zip(expected_result, result):
             assert exp == res
         assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_head_and_pull_head_differ_with_components(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_head_and_pull_head_differ,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_head_and_pull_head_differ
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "newheader, reach, diff, flags, components, newfooter",
+                "hide_comment_details": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "unit_flags", "flag_regexes": [r"unit.*"]},
+                    ]
+                }
+            },
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
+            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
+            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"",
+            f"> :exclamation: Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}. Consider uploading reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results",
+            f"",
+            f"<details><summary>Additional details and impacted files</summary>\n",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"```diff",
+            f"@@              Coverage Diff              @@",
+            f"##             master      #{pull.pullid}       +/-   ##",
+            f"=============================================",
+            f"+ Coverage     50.00%   60.00%   +10.00%     ",
+            f"+ Complexity       11       10        -1     ",
+            f"=============================================",
+            f"  Files             2        2               ",
+            f"  Lines             6       10        +4     ",
+            f"  Branches          0        1        +1     ",
+            f"=============================================",
+            f"+ Hits              3        6        +3     ",
+            f"  Misses            3        3               ",
+            f"- Partials          0        1        +1     ",
+            f"```",
+            f"",
+            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| integration | `?` | `?` | |",
+            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"",
+            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            f"",
+            f"| Components | Coverage Δ |",
+            f"|---|---|---|",
+            f"| go_files | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
+            f"| unit_flags | `100.00% <100.00%> (∅)` | |",
+            f"",
+            f"</details>",
+            f"",
+            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f"",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+
+class TestComponentWriterSection(object):
+    @pytest.mark.asyncio
+    async def test_write_message_component_section_empty(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        comparison = sample_comparison
+        section_writer = ComponentsSectionWriter(
+            repository=comparison.head.commit.repository,
+            layout="layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={},
+        )
+        message = await section_writer.write_section(
+            comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
+        )
+        expected = []
+        assert message == expected
+
+    @pytest.mark.asyncio
+    async def test_get_component_data_for_table(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        comparison = sample_comparison
+        section_writer = ComponentsSectionWriter(
+            repository=comparison.head.commit.repository,
+            layout="layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "py_files", "paths": [r".*\.py"]},
+                    ]
+                }
+            },
+        )
+        all_components = get_components_from_yaml(section_writer.current_yaml)
+        comparison = sample_comparison
+        component_data = await section_writer._get_table_data_for_components(
+            all_components, comparison
+        )
+        print(component_data)
+        expected_result = [
+            {
+                "name": "go_files",
+                "before": ReportTotals(
+                    files=1,
+                    lines=4,
+                    hits=2,
+                    misses=2,
+                    partials=0,
+                    coverage="50.00000",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=11,
+                    complexity_total=20,
+                    diff=0,
+                ),
+                "after": ReportTotals(
+                    files=1,
+                    lines=8,
+                    hits=5,
+                    misses=3,
+                    partials=0,
+                    coverage="62.50000",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=10,
+                    complexity_total=2,
+                    diff=0,
+                ),
+                "diff": ReportTotals(
+                    files=1,
+                    lines=3,
+                    hits=2,
+                    misses=1,
+                    partials=0,
+                    coverage="66.66667",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            },
+            {
+                "name": "py_files",
+                "before": ReportTotals(
+                    files=1,
+                    lines=2,
+                    hits=1,
+                    misses=1,
+                    partials=0,
+                    coverage="50.00000",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+                "after": ReportTotals(
+                    files=1,
+                    lines=2,
+                    hits=1,
+                    misses=0,
+                    partials=1,
+                    coverage="50.00000",
+                    branches=1,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+                "diff": ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=0,
+                    misses=0,
+                    partials=0,
+                    coverage=None,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=None,
+                    complexity_total=None,
+                    diff=0,
+                ),
+            },
+        ]
+        assert component_data == expected_result
+
+    @pytest.mark.asyncio
+    async def test_write_message_component_section(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        comparison = sample_comparison
+        section_writer = ComponentsSectionWriter(
+            repository=comparison.head.commit.repository,
+            layout="layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "py_files", "paths": [r".*\.py"]},
+                    ]
+                }
+            },
+        )
+        message = await section_writer.write_section(
+            comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
+        )
+        expected = [
+            "| Components | Coverage Δ |",
+            "|---|---|---|",
+            "| go_files | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
+            "| py_files | `50.00% <ø> (ø)` | |",
+        ]
+        assert message == expected

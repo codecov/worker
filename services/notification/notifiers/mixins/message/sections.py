@@ -3,6 +3,7 @@ import random
 from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
+from typing import List
 
 from shared.analytics_tracking import (
     track_critical_files_sent,
@@ -13,6 +14,7 @@ from shared.reports.resources import Report
 
 from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
+from services.comparison import ComparisonProxy
 from services.comparison.overlays import OverlayType
 from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
@@ -22,7 +24,7 @@ from services.notification.notifiers.mixins.message.helpers import (
     sort_by_importance,
 )
 from services.urls import get_commit_url_from_commit_sha, get_pull_graph_url
-from services.yaml.reader import round_number
+from services.yaml.reader import get_components_from_yaml, round_number
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +52,8 @@ def get_section_class_from_layout_name(layout_name):
         return NewFooterSectionWriter
     if layout_name == "feedback":
         return FeedbackSectionWriter
+    if layout_name.startswith("component"):
+        return ComponentsSectionWriter
 
 
 class BaseSectionWriter(object):
@@ -657,3 +661,54 @@ class FlagSectionWriter(BaseSectionWriter):
                 yield (
                     "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
                 )
+
+
+class ComponentsSectionWriter(BaseSectionWriter):
+    async def _get_table_data_for_components(
+        self, all_components, comparison: ComparisonProxy
+    ) -> List[dict]:
+        component_data = []
+        for component in all_components:
+            flags = component.get_matching_flags(comparison.head.report.flags.keys())
+            filtered_comparison = comparison.get_filtered_comparison(
+                flags, component.paths
+            )
+            diff = await filtered_comparison.get_diff()
+            component_data.append(
+                {
+                    "name": component.get_display_name(),
+                    "before": filtered_comparison.base.report.totals,
+                    "after": filtered_comparison.head.report.totals,
+                    "diff": filtered_comparison.head.report.apply_diff(
+                        diff, _save=False
+                    ),
+                }
+            )
+        return component_data
+
+    async def do_write_section(self, comparison: ComparisonProxy, diff, changes, links):
+        all_components = get_components_from_yaml(self.current_yaml)
+        if all_components == []:
+            return  # fast return if there's noting to process
+
+        component_data_to_show = await self._get_table_data_for_components(
+            all_components, comparison
+        )
+
+        # Table header and layout
+        yield "| Components | Coverage \u0394 |"
+        yield "|---|---|---|"
+        # The interesting part
+        for component_data in component_data_to_show:
+            yield (
+                "| {name} {metrics}".format(
+                    name=component_data["name"],
+                    metrics=make_metrics(
+                        component_data["before"],
+                        component_data["after"],
+                        component_data["diff"],
+                        show_complexity=False,
+                        yaml=self.current_yaml,
+                    ),
+                )
+            )
