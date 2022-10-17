@@ -1,10 +1,13 @@
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import LineSession, ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class ElmProcessor(BaseLanguageProcessor):
@@ -29,37 +32,34 @@ def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
         if fn is None:
             continue
 
-        _file = ReportFile(fn, ignore=ignored_lines.get(fn))
+        _file = report_builder_session.file_class(name=fn, ignore=ignored_lines.get(fn))
 
         for sec in data:
             cov = sec.get("count", 0)
             complexity = sec.get("complexity")
             sl, sc = sec["from"]["line"], sec["from"]["column"]
             el, ec = sec["to"]["line"], sec["to"]["column"]
-            _file[sl] = ReportLine.create(
+            _file[sl] = report_builder_session.create_coverage_line(
+                filename=fn,
                 coverage=cov,
-                sessions=[
-                    LineSession(
-                        id=sessionid,
-                        coverage=cov,
-                        partials=[[sc, ec if el == sl else None, cov]],
-                    )
-                ],
+                coverage_type=CoverageType.line,
                 complexity=complexity,
+                partials=[[sc, ec if el == sl else None, cov]],
             )
             if el > sl:
                 for ln in range(sl, el):
-                    _file[ln] = ReportLine.create(
-                        coverage=cov, sessions=[[sessionid, cov]], complexity=complexity
+                    _file[ln] = report_builder_session.create_coverage_line(
+                        filename=fn,
+                        coverage=cov,
+                        coverage_type=CoverageType.line,
+                        complexity=complexity,
                     )
-                _file[sl] = ReportLine.create(
+                _file[sl] = report_builder_session.create_coverage_line(
+                    filename=fn,
                     coverage=cov,
-                    sessions=[
-                        LineSession(
-                            id=sessionid, coverage=cov, partials=[[None, ec, cov]]
-                        )
-                    ],
+                    coverage_type=CoverageType.line,
                     complexity=complexity,
+                    partials=[[None, ec, cov]],
                 )
 
         report_builder_session.append(_file)
