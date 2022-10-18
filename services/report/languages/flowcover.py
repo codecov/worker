@@ -1,10 +1,13 @@
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class FlowcoverProcessor(BaseLanguageProcessor):
@@ -32,7 +35,7 @@ def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
         if fn is None:
             continue
 
-        _file = ReportFile(fn, ignore=ignored_lines.get(fn))
+        _file = report_builder_session.file_class(name=fn, ignore=ignored_lines.get(fn))
 
         for loc in data["expressions"].get("covered_locs", []):
             start, end = loc["start"], loc["end"]
@@ -41,8 +44,11 @@ def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
                 if start["line"] == end["line"]
                 else None
             )
-            _file[start["line"]] = ReportLine.create(
-                coverage=1, sessions=[[sessionid, 1, None, partials]]
+            _file[start["line"]] = report_builder_session.create_coverage_line(
+                filename=fn,
+                coverage=1,
+                coverage_type=CoverageType.line,
+                partials=partials,
             )
 
         for loc in data["expressions"].get("uncovered_locs", []):
@@ -52,8 +58,11 @@ def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
                 if start["line"] == end["line"]
                 else None
             )
-            _file[start["line"]] = ReportLine.create(
-                coverage=0, sessions=[[sessionid, 0, None, partials]]
+            _file[start["line"]] = report_builder_session.create_coverage_line(
+                filename=fn,
+                coverage=0,
+                coverage_type=CoverageType.line,
+                partials=partials,
             )
 
         report_builder_session.append(_file)
