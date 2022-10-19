@@ -4,13 +4,16 @@ import typing
 from os import path
 from typing import List
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 from timestring import Date, TimestringInvalid
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -77,7 +80,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
 
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
-        _file = ReportFile(filename)
+        _file = report_builder_session.file_class(name=filename)
 
         for line in _class.iter("line"):
             _line = line.attrib
@@ -87,8 +90,8 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
             ln = int(ln)
             if ln > 0:
                 coverage = None
-                _type = None
-                sessions = None
+                _type = CoverageType.line
+                missing_branches = None
 
                 # coverage
                 branch = _line.get("branch", "")
@@ -98,7 +101,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                     and re.search("\(\d+\/\d+\)", condition_coverage) is not None
                 ):
                     coverage = condition_coverage.split(" ", 1)[1][1:-1]  # 1/2
-                    _type = "b"
+                    _type = CoverageType.branch
                 else:
                     coverage = Int(_line.get("hits"))
 
@@ -109,7 +112,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                     if len(conditions) > 1 and set(conditions) == set(("exit",)):
                         # python: "return [...] missed"
                         conditions = ["loop", "exit"]
-                    sessions = [[sessionid, coverage, conditions]]
+                    missing_branches = conditions
 
                 else:
                     # [groovy] embedded conditions
@@ -134,13 +137,14 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                             )
                         )
                     if conditions:
-                        sessions = [[sessionid, coverage, conditions]]
+                        missing_branches = conditions
                 _file.append(
                     ln,
-                    ReportLine.create(
+                    report_builder_session.create_coverage_line(
+                        filename=filename,
                         coverage=coverage,
-                        type=_type,
-                        sessions=sessions or [[sessionid, coverage]],
+                        coverage_type=_type,
+                        missing_branches=missing_branches,
                     ),
                 )
 
@@ -154,15 +158,21 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
             if stmt["branch"] == "true":
                 _file.append(
                     int(stmt["line"]),
-                    ReportLine.create(coverage, "b", [[sessionid, coverage]]),
+                    report_builder_session.create_coverage_line(
+                        filename=filename,
+                        coverage=coverage,
+                        coverage_type=CoverageType.branch,
+                    ),
                 )
             else:
                 _file.append(
                     int(stmt["line"]),
-                    ReportLine.create(
-                        coverage,
-                        "m" if stmt["method"] else None,
-                        [[sessionid, coverage]],
+                    report_builder_session.create_coverage_line(
+                        filename=filename,
+                        coverage=coverage,
+                        coverage_type=CoverageType.method
+                        if stmt["method"]
+                        else CoverageType.line,
                     ),
                 )
         report_builder_session.append(_file)
