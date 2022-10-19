@@ -779,14 +779,15 @@ class TestProcessReport(BaseTestCase):
         func = mocker.patch("services.report.languages.scoverage.from_xml")
         process.process_report(
             report=ParsedUploadedReportFile(
-                filename=None, file_contents=BytesIO(report_xxe_xml.encode())
+                filename="filename", file_contents=BytesIO(report_xxe_xml.encode())
             ),
             report_builder=ReportBuilder(
                 current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
             ),
         )
         assert func.called
-        func.assert_called_with(mocker.ANY, str, {}, 0)
+        # should be from_xml(xml, report_builder_session). Don't have direct ref to builder_session, so using Mocker.ANY
+        func.assert_called_with(mocker.ANY, mocker.ANY)
         expected_xml_string = "<statements><statement>&xxe;</statement></statements>"
         output_xml_string = etree.tostring(func.call_args_list[0][0][0]).decode()
         assert output_xml_string == expected_xml_string
