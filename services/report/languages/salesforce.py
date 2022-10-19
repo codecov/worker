@@ -1,10 +1,13 @@
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class SalesforceProcessor(BaseLanguageProcessor):
@@ -30,10 +33,12 @@ def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
             if fn is None:
                 continue
 
-            _file = ReportFile(fn, ignore=ignored_lines.get(fn))
+            _file = report_builder_session.file_class(
+                name=fn, ignore=ignored_lines.get(fn)
+            )
             for ln, cov in obj["lines"].items():
-                _file[int(ln)] = ReportLine.create(
-                    coverage=cov, sessions=[[sessionid, cov]]
+                _file[int(ln)] = report_builder_session.create_coverage_line(
+                    filename=fn, coverage=cov, coverage_type=CoverageType.line
                 )
 
             report_builder_session.append(_file)
