@@ -1,11 +1,14 @@
 import typing
 
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class SCoverageProcessor(BaseLanguageProcessor):
@@ -56,7 +59,9 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
             _cur_file_name = filename
             _file = files.get(filename)
             if not _file:
-                _file = ReportFile(filename, ignore=ignored_lines.get(filename))
+                _file = report_builder_session.file_class(
+                    name=filename, ignore=ignored_lines.get(filename)
+                )
                 files[filename] = _file
 
         # Add the line
@@ -70,10 +75,18 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
 
         if next(statement.iter("branch")).text == "true":
             cov = "%s/2" % hits
-            _file[ln] = ReportLine.create(cov, "b", [[sessionid, cov]])
+            _file[ln] = report_builder_session.create_coverage_line(
+                filename=filename,
+                coverage=cov,
+                coverage_type=CoverageType.branch,
+            )
         else:
             cov = maxint(hits)
-            _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
+            _file[ln] = report_builder_session.create_coverage_line(
+                filename=filename,
+                coverage=cov,
+                coverage_type=CoverageType.line,
+            )
 
     for v in files.values():
         report_builder_session.append(v)
