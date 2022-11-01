@@ -133,7 +133,7 @@ class Tree:
         :dict: u - Dictionary being merged
         """
         for k, v in u.items():
-            if isinstance(v, collections.Mapping):
+            if isinstance(v, collections.abc.Mapping):
                 r = self.update(d.get(k, {}), v)
                 d[k] = r
             else:
