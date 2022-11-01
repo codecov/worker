@@ -703,7 +703,10 @@ class TestPatchChecksNotifier(object):
     async def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"] = {
+            "codecov_url": "test.example.br",
+            "codecov_dashboard_url": "test.example.br",
+        }
         notifier = PatchChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -1148,7 +1151,10 @@ class TestChangesChecksNotifier(object):
     async def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"] = {
+            "codecov_url": "test.example.br",
+            "codecov_dashboard_url": "test.example.br",
+        }
         notifier = ChangesChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -1313,7 +1319,10 @@ class TestProjectChecksNotifier(object):
     async def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"] = {
+            "codecov_url": "test.example.br",
+            "codecov_dashboard_url": "test.example.br",
+        }
         notifier = ProjectChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",

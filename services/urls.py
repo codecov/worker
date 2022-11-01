@@ -31,10 +31,10 @@ class SiteUrls(Enum):
     pull_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}"
     new_client_pull_url = "https://app.codecov.io/{service_short}/{username}/{project_name}/compare/{pull_id}"
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
-    org_acccount_url = "{base_url}/account/{service_short}/{username}"
-    members_url = "{base_url}/members/{service_short}/{username}"
-    members_url_self_hosted = "{base_url}/internal/users"
-    plan_url = "{base_url}/plan/{service_short}/{username}"
+    org_acccount_url = "{dashboard_base_url}/account/{service_short}/{username}"
+    members_url = "{dashboard_base_url}/members/{service_short}/{username}"
+    members_url_self_hosted = "{dashboard_base_url}/internal/users"
+    plan_url = "{dashboard_base_url}/plan/{service_short}/{username}"
 
     def get_url(self, **kwargs) -> str:
         return self.value.format(**kwargs)
@@ -42,6 +42,12 @@ class SiteUrls(Enum):
 
 def get_base_url() -> str:
     return get_config("setup", "codecov_url")
+
+
+def get_dashboard_base_url() -> str:
+    return get_config(
+        "setup", "codecov_dashboard_url", default="https://app.codecov.io"
+    )
 
 
 def get_commit_url(commit: Commit) -> str:
@@ -140,7 +146,7 @@ def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
 def get_org_account_url(pull: Pull) -> str:
     repository = pull.repository
     return SiteUrls.org_acccount_url.get_url(
-        base_url=get_base_url(),
+        dashboard_base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
     )
@@ -150,20 +156,20 @@ def get_members_url(pull: Pull) -> str:
     repository = pull.repository
     if not requires_license():
         return SiteUrls.members_url.get_url(
-            base_url=get_base_url(),
+            dashboard_base_url=get_dashboard_base_url(),
             service_short=services_short_dict.get(repository.service),
             username=repository.owner.username,
         )
     else:
         return SiteUrls.members_url_self_hosted.get_url(
-            base_url=get_base_url(),
+            dashboard_base_url=get_dashboard_base_url(),
         )
 
 
 def get_plan_url(pull: Pull) -> str:
     repository = pull.repository
     return SiteUrls.plan_url.get_url(
-        base_url=get_base_url(),
+        dashboard_base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
     )

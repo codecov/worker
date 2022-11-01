@@ -384,7 +384,7 @@ class TestCommentNotifierIntegration(object):
     async def test_notify_upgrade(
         self, dbsession, sample_comparison_for_upgrade, codecov_vcr, mock_configuration
     ):
-        mock_configuration._params["setup"] = {"codecov_url": None}
+        mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
         comparison = sample_comparison_for_upgrade
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -422,7 +422,10 @@ class TestCommentNotifierIntegration(object):
         codecov_vcr,
         mock_configuration,
     ):
-        mock_configuration._params["setup"] = {"codecov_url": None}
+        mock_configuration._params["setup"] = {
+            "codecov_url": None,
+            "codecov_dashboard_url": None,
+        }
         comparison = sample_comparison_for_limited_upload
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
