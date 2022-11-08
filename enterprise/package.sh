@@ -33,6 +33,11 @@ print(' --hiddenimport tasks')
 print(' --hiddenimport tornado.curl_httpclient')
 print(' --hiddenimport celery_config')
 print(' --hiddenimport opentelemetry-sdk')
+print(' --hiddenimport asyncore')
+print(' --hiddenimport imaplib')
+print(' --hiddenimport poplib')
+print(' --hiddenimport smtplib')
+print(' --hiddenimport xmlrpc.server')
 ")
 
 mkdir src
@@ -43,6 +48,7 @@ pyinstaller -F \
     --exclude-module pycrypto \
     --exclude-module PyInstaller \
     --exclude-module psycopg2 \
+    --exclude-module tlslite \
     --add-data src:/src \
     --additional-hooks-dir /pyinstaller/hooks \
     ${hiddenimport} \
