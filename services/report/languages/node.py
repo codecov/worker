@@ -33,7 +33,7 @@ def get_line_coverage(location, cov, line_type):
 
     sl, sc, el, ec = get_location(location)
 
-    if not sl or sc + 1 == ec:
+    if not sl or (sc + 1 == ec and sl == el):
         return None, None, None
 
     if line_type != "m" and sl == el and sc != 0:

@@ -49,15 +49,22 @@ class TestNodeProcessor(BaseTestCase):
         return contents
 
     @pytest.mark.parametrize(
-        "location",
+        "location, expected_result",
         [
-            {"skip": True},
-            {"start": {"line": 0}},
-            {"start": {"line": 1, "column": 1}, "end": {"line": 1, "column": 2}},
+            ({"skip": True}, (None, None, None)),
+            ({"start": {"line": 0}}, (None, None, None)),
+            (
+                {"start": {"line": 1, "column": 1}, "end": {"line": 1, "column": 2}},
+                (None, None, None),
+            ),
+            (
+                {"start": {"line": 1, "column": 1}, "end": {"line": 10, "column": 2}},
+                (1, None, None),
+            ),
         ],
     )
-    def test_get_location(self, location):
-        assert node.get_line_coverage(location, None, None) == (None, None, None)
+    def test_get_location(self, location, expected_result):
+        assert node.get_line_coverage(location, None, None) == expected_result
 
     @pytest.mark.parametrize(
         "location, expected",
@@ -94,9 +101,12 @@ class TestNodeProcessor(BaseTestCase):
         report_dict = loads(report_dict)
         archive = report.to_archive()
         expected_result = loads(self.readfile("node/node%s-result.json" % i))
+        print(dumps(report_dict))
         assert expected_result["report"]["files"] == report_dict["files"]
         assert expected_result["report"] == report_dict
+        print(dumps(totals_dict))
         assert expected_result["totals"] == totals_dict
+        print(dumps(archive.split("<<<<< end_of_chunk >>>>>")))
         assert expected_result["archive"] == archive.split("<<<<< end_of_chunk >>>>>")
 
     @pytest.mark.parametrize("name", ["inline", "ifbinary", "ifbinarymb"])
