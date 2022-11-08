@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import sys
 import typing
 
 import click
@@ -8,6 +9,7 @@ from shared.storage.exceptions import BucketAlreadyExistsError
 
 import app
 from celery_config import HEALTH_CHECK_QUEUE
+from helpers.environment import get_external_dependencies_folder
 from helpers.version import get_current_version
 from services.storage import get_storage_client
 
@@ -43,6 +45,13 @@ def web():
 
 def setup_worker():
     print(initialization_text.format(version=get_current_version()))
+
+    if getattr(sys, "frozen", False):
+        # Only for enterprise builds
+        external_deps_folder = get_external_dependencies_folder()
+        log.info(f"External dependencies folder configured to {external_deps_folder}")
+        sys.path.append(external_deps_folder)
+
     storage_client = get_storage_client()
     minio_config = get_config("services", "minio")
     bucket_name = get_config("services", "minio", "bucket", default="archive")

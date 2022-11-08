@@ -42,6 +42,7 @@ echo 'true' > src/is_enterprise
 pyinstaller -F \
     --exclude-module pycrypto \
     --exclude-module PyInstaller \
+    --exclude-module psycopg2 \
     --add-data src:/src \
     --additional-hooks-dir /pyinstaller/hooks \
     ${hiddenimport} \

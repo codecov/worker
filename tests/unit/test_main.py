@@ -1,4 +1,6 @@
 import os
+import sys
+from unittest import mock
 
 from click.testing import CliRunner
 
@@ -23,6 +25,13 @@ def test_run_empty_config(mock_storage, mock_configuration):
     assert res is None
     assert mock_storage.root_storage_created
     assert mock_storage.config == {}
+
+
+def test_sys_path_append_on_enterprise(mock_storage, mock_configuration):
+    sys.frozen = True
+    res = setup_worker()
+    assert res is None
+    assert "./external_deps" in sys.path
 
 
 def test_run_already_existing_root_storage(mock_storage, mock_configuration):

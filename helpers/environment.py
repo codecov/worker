@@ -1,8 +1,11 @@
 import os
+import re
 import sys
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
+
+from shared.config import get_config
 
 
 class Environment(Enum):
@@ -47,3 +50,9 @@ def _calculate_current_env() -> Environment:
     if os.getenv("CURRENT_ENVIRONMENT", "production") == "local":
         return Environment.local
     return Environment.production
+
+
+def get_external_dependencies_folder():
+    return get_config(
+        "services", "external_dependencies_folder", default="./external_deps"
+    )
