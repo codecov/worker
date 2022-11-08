@@ -1,5 +1,7 @@
 import json
+
 import pytest
+
 from database.tests.factories.core import RepositoryFactory
 from database.tests.factories.staticanalysis import (
     StaticAnalysisSingleFileSnapshotFactory,
@@ -7,9 +9,9 @@ from database.tests.factories.staticanalysis import (
     StaticAnalysisSuiteFilepathFactory,
 )
 from services.static_analysis import (
+    SingleFileSnapshotAnalyzer,
     StaticAnalysisComparisonService,
     _get_analysis_content_mapping,
-    SingleFileSnapshotAnalyzer,
 )
 from services.static_analysis.git_diff_parser import DiffChange, DiffChangeType
 
@@ -151,7 +153,20 @@ class TestStaticAnalysisComparisonService(object):
         mock_storage.write_file(
             "archive",
             changed_snapshot_base.content_location,
-            json.dumps({"statements": [(1, {})]}),
+            json.dumps(
+                {
+                    "statements": [
+                        (
+                            30,
+                            {
+                                "len": 1,
+                                "line_surety_ancestorship": 29,
+                                "extra_connected_lines": [35],
+                            },
+                        ),
+                    ]
+                }
+            ),
         )
         mock_storage.write_file(
             "archive",
@@ -209,7 +224,7 @@ class TestStaticAnalysisComparisonService(object):
                     before_filepath="path/changed.py",
                     after_filepath="path/changed.py",
                     change_type=DiffChangeType.modified,
-                    lines_only_on_base=[],
+                    lines_only_on_base=[30],
                     lines_only_on_head=[20],
                 ),
                 DiffChange(
@@ -225,7 +240,7 @@ class TestStaticAnalysisComparisonService(object):
             "all": False,
             "files": {
                 "deleted.py": {"all": True, "lines": None},
-                "path/changed.py": {"all": False, "lines": {8}},
+                "path/changed.py": {"all": False, "lines": {8, 30}},
             },
         }
 
@@ -320,7 +335,7 @@ class TestStaticAnalysisComparisonService(object):
                     lines_only_on_head=[20],
                 ),
                 DiffChange(
-                    before_filepath="path/new.py",
+                    before_filepath=None,
                     after_filepath="path/new.py",
                     change_type=DiffChangeType.new,
                     lines_only_on_base=[],
@@ -415,25 +430,17 @@ class TestStaticAnalysisComparisonService(object):
         dbsession.add(head_static_analysis)
         dbsession.add(base_static_analysis)
         dbsession.flush()
-        service = StaticAnalysisComparisonService(
-            base_static_analysis=base_static_analysis,
-            head_static_analysis=head_static_analysis,
-            git_diff=[
-                DiffChange(
-                    before_filepath="path/changed.py",
-                    after_filepath="path/changed.py",
-                    change_type=DiffChangeType.modified,
-                    lines_only_on_base=[9],
-                    lines_only_on_head=[11],
-                ),
-            ],
-        )
         change = DiffChange(
             before_filepath="path/changed.py",
             after_filepath="path/changed.py",
             change_type=DiffChangeType.modified,
             lines_only_on_base=[9],
             lines_only_on_head=[11],
+        )
+        service = StaticAnalysisComparisonService(
+            base_static_analysis=base_static_analysis,
+            head_static_analysis=head_static_analysis,
+            git_diff=[change],
         )
         assert service._analyze_single_change(
             dbsession,

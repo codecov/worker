@@ -70,7 +70,7 @@ class StaticAnalysisComparisonService(object):
             ],
         )
         base_analysis_content_locations_mapping = _get_analysis_content_mapping(
-            self._head_static_analysis,
+            self._base_static_analysis,
             [
                 change.before_filepath
                 for change in self._git_diff
@@ -80,7 +80,6 @@ class StaticAnalysisComparisonService(object):
         for change in self._git_diff:
             if change.change_type == DiffChangeType.new:
                 return {"all": True}
-            assert change.before_filepath
             final_result["files"][change.before_filepath] = self._analyze_single_change(
                 db_session,
                 change,
