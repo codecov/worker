@@ -384,7 +384,7 @@ class TestCommentNotifierIntegration(object):
     async def test_notify_upgrade(
         self, dbsession, sample_comparison_for_upgrade, codecov_vcr, mock_configuration
     ):
-        mock_configuration._params["setup"] = {"codecov_url": None}
+        mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
         comparison = sample_comparison_for_upgrade
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -400,7 +400,7 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         expected_message = [
             "The author of this PR, 1nf1n1t3l00p, is not an activated member of this organization on Codecov.",
-            "Please [activate this user on Codecov](None/members/gh/1nf1n1t3l00p) to display this PR comment.",
+            "Please [activate this user on Codecov](https://app.codecov.io/members/gh/1nf1n1t3l00p) to display this PR comment.",
             "Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
             "Please don't hesitate to email us at support@codecov.io with any questions.",
         ]
@@ -422,7 +422,10 @@ class TestCommentNotifierIntegration(object):
         codecov_vcr,
         mock_configuration,
     ):
-        mock_configuration._params["setup"] = {"codecov_url": None}
+        mock_configuration._params["setup"] = {
+            "codecov_url": None,
+            "codecov_dashboard_url": "test.example.br",
+        }
         comparison = sample_comparison_for_limited_upload
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -437,10 +440,10 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         expected_message = [
-            f"# [Codecov](None/plan/gh/test-acc9) upload limit reached :warning:",
+            f"# [Codecov](test.example.br/plan/gh/test-acc9) upload limit reached :warning:",
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
-                      upgrade to our [pro plan](None/plan/gh/test-acc9).",
+                      upgrade to our [pro plan](test.example.br/plan/gh/test-acc9).",
             f"",
             f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
