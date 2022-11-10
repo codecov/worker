@@ -118,7 +118,7 @@ jobs:
           name: upload to codecov using python uploader
           command: |
             apk add git
-            codecov --auto-load-params-from circleci do-upload --flag python-uploader-overall
+            codecovcli --auto-load-params-from circleci do-upload --flag python-uploader-overall --use-new-uploader True
 
       - run:
           name: upload to codecov using latest node uploader
