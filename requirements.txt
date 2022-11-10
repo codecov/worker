@@ -61,7 +61,7 @@ click-plugins==1.1.1
     # via celery
 click-repl==0.2.0
     # via celery
-codecov-cli @ git+ssh://git@github.com/codecov/codecov-cli.git@efc302a6444485aa1db04c8d92a8728342c5160a
+codecov-cli @ git+ssh://git@github.com/codecov/codecov-cli.git@af66005d9b31023abe0bc4d22a14aea91a3fd476
     # via -r requirements.in
 codecovopentelem @ git+ssh://git@github.com/codecov/opentelem-python.git@v0.0.4a1
     # via -r requirements.in
