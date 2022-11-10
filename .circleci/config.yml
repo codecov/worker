@@ -115,6 +115,11 @@ jobs:
             make test.unit
             make test.integration    
       - run:
+          name: Save commit info 
+          command: |
+            apk add git
+            codecovcli --auto-load-params-from circleci create-commit
+      - run:
           name: upload to codecov using python uploader
           command: |
             apk add git
