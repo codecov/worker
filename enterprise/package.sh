@@ -31,7 +31,6 @@ print(' --hiddenimport celery.worker.consumer')
 print(' --hiddenimport sqlalchemy.ext.baked')
 print(' --hiddenimport tasks')
 print(' --hiddenimport tornado.curl_httpclient')
-print(' --hiddenimport celery_config')
 print(' --hiddenimport opentelemetry-sdk')
 print(' --hiddenimport asyncore')
 print(' --hiddenimport imaplib')
@@ -49,10 +48,10 @@ pyinstaller -F \
     --exclude-module PyInstaller \
     --exclude-module psycopg2 \
     --exclude-module tlslite \
-    --add-data src:/src \
     --additional-hooks-dir /pyinstaller/hooks \
     ${hiddenimport} \
     ${pyinstaller_args} \
+    --paths /worker \
     /worker/enterprise.py
 
 # cat enterprise.spec
