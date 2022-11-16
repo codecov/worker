@@ -103,6 +103,18 @@ class ComputeComparisonTask(BaseCodecovTask):
                 )
                 .first()
             )
+            if not repositoryflag:
+                log.warning(
+                    "Repository flag not found for flag. Created repository flag.",
+                    extra=dict(repoid=repository_id, flag_name=flag_name),
+                )
+                repositoryflag = RepositoryFlag(
+                    repository_id=repository_id,
+                    flag_name=flag_name,
+                )
+                db_session.add(repositoryflag)
+                db_session.flush()
+
             flag_comparison_entry = (
                 db_session.query(CompareFlag)
                 .filter_by(
