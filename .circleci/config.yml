@@ -100,6 +100,7 @@ jobs:
           command: |-
             make -f Makefile.circle build-requirements
             make -f Makefile.circle build-enterprise VERSION=$CIRCLE_TAG
+            make -f Makefile.circle build-enterprise-runtime VERSION=$CIRCLE_TAG
             make -f Makefile.circle push-enterprise
   test:
     executor: codecov-worker

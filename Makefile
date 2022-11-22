@@ -17,13 +17,24 @@ build:
 	$(MAKE) build.base
 	$(MAKE) build.local
 
+build.enterprise_runtime:
+	$(MAKE) build.enterprise
+	docker build -f dockerscripts/Dockerfile.enterprise_runtime . -t codecov/worker-enterprise-runtime:latest \
+		--build-arg CODECOV_ENTERPRISE_RELEASE=codecov/enterprise-local-worker:${release_version} \
+		--build-arg RELEASE_VERSION="${release_version}" \
+		--label "org.label-schema.build-date"="$(build_date)" \
+		--label "org.label-schema.name"="Self-Hosted Worker (with dependencies)" \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}" \
+		--squash
+
 build.enterprise:
 	$(MAKE) build.base
 	docker build -f dockerscripts/Dockerfile.enterprise . -t codecov/enterprise-local-worker:${release_version} \
 		--build-arg REQUIREMENTS_IMAGE=codecov/baseworker \
 		--build-arg RELEASE_VERSION="${release_version}" \
 		--label "org.label-schema.build-date"="$(build_date)" \
-		--label "org.label-schema.name"="Self-Hosted Worker" \
+		--label "org.label-schema.name"="Self-Hosted Worker (no dependencies)" \
 		--label "org.label-schema.vendor"="Codecov" \
 		--label "org.label-schema.version"="${release_version}" \
 		--squash
