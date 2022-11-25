@@ -1,4 +1,4 @@
-git+ssh://git@github.com/codecov/shared.git@v0.9.5#egg=shared
+git+ssh://git@github.com/codecov/shared.git@v0.9.6#egg=shared
 git+ssh://git@github.com/codecov/opentelem-python.git@v0.0.4a1#egg=codecovopentelem
 git+ssh://git@github.com/codecov/codecov-cli.git@bbbb4ebec1e7cdcf1534deb357b6ef2dc0cada5a#egg=codecov-cli
 boto3

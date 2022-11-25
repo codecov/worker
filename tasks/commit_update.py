@@ -1,5 +1,6 @@
 import logging
 
+from shared.celery_config import commit_update_task_name
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
@@ -21,7 +22,7 @@ log = logging.getLogger(__name__)
 class CommitUpdateTask(BaseCodecovTask):
 
     # TODO add this to shared
-    name = "app.tasks.commit_update.CommitUpdate"
+    name = commit_update_task_name
 
     async def run_async(
         self,
