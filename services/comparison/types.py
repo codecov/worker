@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from typing import Optional
 
 from shared.reports.resources import Report
+from shared.yaml import UserYaml
 
 from database.models import Commit, Pull
 from services.repository import EnrichedPull
@@ -17,6 +19,7 @@ class Comparison(object):
     head: FullCommit
     base: FullCommit
     enriched_pull: EnrichedPull
+    current_yaml: Optional[UserYaml] = None
 
     def has_base_report(self):
         return bool(self.base is not None and self.base.report is not None)

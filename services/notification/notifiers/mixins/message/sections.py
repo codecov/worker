@@ -215,7 +215,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             ) | set(c.path for c in changes or [])
             overlay = comparison.get_overlay(OverlayType.line_execution_count)
             files_in_critical = set(
-                overlay.search_files_for_critical_changes(
+                await overlay.search_files_for_critical_changes(
                     all_potentially_affected_critical_files
                 )
             )
@@ -318,7 +318,7 @@ class HeaderSectionWriter(BaseSectionWriter):
             ) | set(c.path for c in changes or [])
             overlay = comparison.get_overlay(OverlayType.line_execution_count)
             files_in_critical = set(
-                overlay.search_files_for_critical_changes(
+                await overlay.search_files_for_critical_changes(
                     all_potentially_affected_critical_files
                 )
             )
@@ -485,7 +485,7 @@ class FileSectionWriter(BaseSectionWriter):
                 )
                 overlay = comparison.get_overlay(OverlayType.line_execution_count)
                 files_in_critical = set(
-                    overlay.search_files_for_critical_changes(all_files)
+                    await overlay.search_files_for_critical_changes(all_files)
                 )
 
             def tree_cell(typ, path, metrics, _=None):
