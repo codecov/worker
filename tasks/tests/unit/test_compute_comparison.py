@@ -106,21 +106,13 @@ class TestComputeComparisonTask(object):
         unit_repositoryflag = RepositoryFlag(
             repository_id=comparison.compare_commit.repository.repoid, flag_name="unit"
         )
-        integration_repositoryflag = RepositoryFlag(
-            repository_id=comparison.compare_commit.repository.repoid,
-            flag_name="integration",
-        )
         dbsession.add(unit_repositoryflag)
-        dbsession.add(integration_repositoryflag)
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
         compare_flag_records = dbsession.query(CompareFlag).all()
         assert len(compare_flag_records) == 2
         assert compare_flag_records[0].repositoryflag_id == unit_repositoryflag.id_
-        assert (
-            compare_flag_records[1].repositoryflag_id == integration_repositoryflag.id_
-        )
 
         data_in_storage = mock_storage.read_file(
             "archive", comparison.report_storage_path

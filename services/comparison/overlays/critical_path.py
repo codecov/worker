@@ -7,7 +7,8 @@ from shared.ribs import rustify_diff
 from shared.storage.exceptions import FileNotInStorageError
 
 from database.models.profiling import ProfilingCommit
-from services.yaml import get_repo_yaml
+from services.repository import get_repo_provider_service
+from services.yaml import get_current_yaml
 
 sentinel = object()
 
@@ -75,17 +76,22 @@ class CriticalPathOverlay(object):
             self._profiling_analyzer = _load_full_profiling_analyzer(self._comparison)
         return self._profiling_analyzer
 
-    def _get_critical_files_from_yaml(self, filenames_to_search: Sequence[str]):
+    async def _get_critical_files_from_yaml(self, filenames_to_search: Sequence[str]):
         """
         Get list of files in filenames_to_search that match the list of critical_file paths defined by the user in the YAML (under profiling.critical_files_paths)
         """
-        repo = self._comparison.head.commit.repository
-        repo_yaml = get_repo_yaml(repository=repo)
-        if not repo_yaml.get("profiling") or not repo_yaml["profiling"].get(
+        current_yaml = self._comparison.comparison.current_yaml
+        if current_yaml is None:
+            repo = self._comparison.head.commit.repository
+            repo_provider = get_repo_provider_service(repo)
+            current_yaml = await get_current_yaml(
+                self._comparison.head.commit, repo_provider
+            )
+        if not current_yaml.get("profiling") or not current_yaml["profiling"].get(
             "critical_files_paths"
         ):
             return []
-        critical_files_paths = repo_yaml["profiling"]["critical_files_paths"]
+        critical_files_paths = current_yaml["profiling"]["critical_files_paths"]
         compiled_files_paths = [re.compile(path) for path in critical_files_paths]
         user_defined_critical_files = [
             file
@@ -94,7 +100,9 @@ class CriticalPathOverlay(object):
         ]
         return user_defined_critical_files
 
-    def search_files_for_critical_changes(self, filenames_to_search: Sequence[str]):
+    async def search_files_for_critical_changes(
+        self, filenames_to_search: Sequence[str]
+    ):
         """
         Returns list of files considered critical in filenames_to_search.
         Critical files comes from 2 sources:
@@ -107,7 +115,7 @@ class CriticalPathOverlay(object):
                 self._critical_path_report.get_critical_files_filenames()
             )
         critical_files_from_yaml = set(
-            self._get_critical_files_from_yaml(filenames_to_search)
+            await self._get_critical_files_from_yaml(filenames_to_search)
         )
         return list(critical_files_from_profiling | critical_files_from_yaml)
 

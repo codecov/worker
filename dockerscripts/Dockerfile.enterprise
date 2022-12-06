@@ -39,5 +39,7 @@ COPY        --from=build /home/enterprise /home/enterprise
 ARG         RELEASE_VERSION
 ENV         RELEASE_VERSION $RELEASE_VERSION
 
+ENV         SETUPTOOLS_USE_DISTUTILS stdlib
+
 WORKDIR     /home
 ENTRYPOINT  ["./enterprise"]

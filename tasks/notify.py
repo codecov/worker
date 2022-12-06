@@ -273,6 +273,7 @@ class NotifyTask(BaseCodecovTask):
                 head=FullCommit(commit=commit, report=head_report),
                 enriched_pull=enriched_pull,
                 base=FullCommit(commit=base_commit, report=base_report),
+                current_yaml=current_yaml,
             )
         )
 
