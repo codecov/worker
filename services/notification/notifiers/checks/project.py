@@ -31,7 +31,7 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         with metrics.timer(
             "worker.services.notifications.notifiers.checks.project.build_payload"
         ):
-            state, summary = self.get_project_status(comparison)
+            state, summary = await self.get_project_status(comparison)
             codecov_link = self.get_codecov_pr_link(comparison)
 
             title = summary
