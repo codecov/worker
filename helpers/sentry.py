@@ -34,4 +34,5 @@ def initialize_sentry() -> None:
         traces_sample_rate=float(os.environ.get("SERVICES__SENTRY__SAMPLE_RATE", 1)),
         integrations=[CeleryIntegration(), SqlalchemyIntegration(), RedisIntegration()],
         release=version_str,
+        debug=True,
     )

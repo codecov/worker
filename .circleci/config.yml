@@ -255,7 +255,6 @@ workflows:
           context: "circleci google deploy context"
           requires:
             - build
-            - test
           filters:
             branches:
               only:
