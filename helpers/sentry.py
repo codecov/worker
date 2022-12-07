@@ -3,6 +3,7 @@ import os
 import sentry_sdk
 from celery.exceptions import SoftTimeLimitExceeded
 from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from shared.config import get_config
@@ -32,7 +33,12 @@ def initialize_sentry() -> None:
         sample_rate=float(os.getenv("SENTRY_PERCENTAGE", 1.0)),
         environment=os.getenv("DD_ENV", "production"),
         traces_sample_rate=float(os.environ.get("SERVICES__SENTRY__SAMPLE_RATE", 1)),
-        integrations=[CeleryIntegration(), SqlalchemyIntegration(), RedisIntegration()],
+        integrations=[
+            CeleryIntegration(),
+            SqlalchemyIntegration(),
+            RedisIntegration(),
+            HttpxIntegration(),
+        ],
         release=version_str,
         debug=True,
     )
