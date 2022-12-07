@@ -82,6 +82,41 @@ class TestJacoco(BaseTestCase):
 
         assert expected_result_archive == processed_report["archive"]
 
+    def test_report_partials_as_hits(self):
+        def fixes(path):
+            if path == "base/ignore":
+                return None
+            assert path in ("base/source.java", "base/file.java", "base/empty")
+            return path
+
+        report_builder = ReportBuilder(
+            current_yaml={"parsers": {"jacoco": {"partials_as_hits": True}}},
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=fixes,
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "file_name"
+        )
+        report = jacoco.from_xml(
+            etree.fromstring(xml % int(time())), report_builder_session
+        )
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+
+        pprint.pprint(processed_report["archive"])
+        expected_result_archive = {
+            "base/file.java": [(1, 1, None, [[0, 1, None, None, None]], None, None)],
+            "base/source.java": [
+                (1, "2/2", "m", [[0, "2/2", None, None, (1, 4)]], None, (1, 4)),
+                (2, 1, "m", [[0, 1, None, None, (1, 4)]], None, (1, 4)),
+                (3, 0, None, [[0, 0, None, None, None]], None, None),
+                (4, 2, None, [[0, 2, None, None, None]], None, None),
+            ],
+        }
+
+        assert expected_result_archive == processed_report["archive"]
+
     @pytest.mark.parametrize(
         "module, path",
         [("a", "module_a/package/file"), ("b", "module_b/src/main/java/package/file")],
