@@ -1,7 +1,7 @@
 import logging
 import logging.config
 
-from celery import Celery, signals
+from celery import Celery
 
 from helpers.logging_config import get_logging_config_dict
 from helpers.sentry import initialize_sentry, is_sentry_enabled
@@ -13,9 +13,3 @@ logging.config.dictConfig(_config_dict)
 
 celery_app = Celery("tasks")
 celery_app.config_from_object("celery_config:CeleryWorkerConfig")
-
-
-@signals.celeryd_init.connect
-def init_sentry(**_kwargs):
-    if is_sentry_enabled():
-        initialize_sentry()
