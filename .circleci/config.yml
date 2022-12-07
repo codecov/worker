@@ -258,7 +258,9 @@ workflows:
             - test
           filters:
             branches:
-              only: master
+              only:
+                - master
+                - feature/sentry-apm
       - production:
           context: "circleci google deploy context"
           requires:
