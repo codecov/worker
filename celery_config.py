@@ -24,7 +24,6 @@ from helpers.cache import RedisBackend, cache
 from helpers.clock import get_utc_now_as_iso_format
 from helpers.environment import is_enterprise
 from helpers.health_check import get_health_check_interval_seconds
-from helpers.sentry import initialize_sentry, is_sentry_enabled
 from helpers.version import get_current_version
 from services.redis import get_redis_connection
 
@@ -44,13 +43,6 @@ def initialize_cache(**kwargs):
     log.info("Initialized cache")
     redis_cache_backend = RedisBackend(get_redis_connection())
     cache.configure(redis_cache_backend)
-
-
-@signals.worker_process_init.connect
-def initialize_sentry(**kwargs):
-    if is_sentry_enabled():
-        log.info("Initialized sentry")
-        initialize_sentry()
 
 
 @worker_process_init.connect(weak=False)
