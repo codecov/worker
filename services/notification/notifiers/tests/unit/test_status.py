@@ -12,6 +12,7 @@ from shared.torngit.exceptions import (
 from shared.torngit.status import Status
 from shared.yaml.user_yaml import UserYaml
 
+from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.status import (
@@ -642,7 +643,10 @@ class TestProjectStatusNotifier(object):
         notifier = ProjectStatusNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={"target": "57%"},
+            notifier_yaml_settings={
+                "target": "57%",
+                "removed_code_behavior": "removals_only",
+            },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
@@ -1087,6 +1091,120 @@ class TestProjectStatusNotifier(object):
         mocked_send_notification.assert_called_with(
             sample_comparison_matching_flags, expected_result
         )
+
+    @pytest.mark.asyncio
+    async def test_notify_pass_via_removals_only_behavior(
+        self, mock_configuration, sample_comparison, mocker
+    ):
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [[1, "h"], [3, None]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "80%",
+                "removed_code_behavior": "removals_only",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": "60.00% (target 80.00%), passed because this change only removed code",
+            "state": "success",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_removas_only_behavior_fails(
+        self, mock_configuration, sample_comparison, mocker
+    ):
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"]],
+                        "added_diff_coverage": [[2, "h"], [3, "h"]],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [[1, "h"], [3, None]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "80%",
+                "removed_code_behavior": "removals_only",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": "60.00% (target 80.00%)",
+            "state": "failure",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_removed_code_behavior_unknown(
+        self, mock_configuration, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "80%",
+                "removed_code_behavior": "not_valid",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": "60.00% (target 80.00%)",
+            "state": "failure",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
 
 
 class TestPatchStatusNotifier(object):
