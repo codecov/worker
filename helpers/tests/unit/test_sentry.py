@@ -17,5 +17,5 @@ class TestSentry(object):
             traces_sample_rate=1.0,
             environment="production",
             integrations=[mocker.ANY, mocker.ANY, mocker.ANY],
-            debug=True
+            debug=True,
         )
