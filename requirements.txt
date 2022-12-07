@@ -289,7 +289,7 @@ tlslite-ng==0.8.0-alpha39
     # via shared
 tomli==2.0.1
     # via pytest
-urllib3==1.26.5
+urllib3==1.26.13
     # via
     #   botocore
     #   minio
