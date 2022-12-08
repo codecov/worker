@@ -255,11 +255,11 @@ workflows:
           context: "circleci google deploy context"
           requires:
             - build
+            - test
           filters:
             branches:
               only:
                 - master
-                - feature/sentry-apm
       - production:
           context: "circleci google deploy context"
           requires:
