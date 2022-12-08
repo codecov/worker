@@ -40,5 +40,4 @@ def initialize_sentry() -> None:
             HttpxIntegration(),
         ],
         release=version_str,
-        debug=True,
     )
