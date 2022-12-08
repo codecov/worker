@@ -263,7 +263,8 @@ workflows:
             - test
           filters:
             branches:
-              only: master
+              only:
+                - master
       - production:
           context: "circleci google deploy context"
           requires:
