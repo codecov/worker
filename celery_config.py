@@ -20,6 +20,7 @@ from shared.celery_config import (
     profiling_finding_task_name,
 )
 
+from celery_task_router import route_task
 from helpers.cache import RedisBackend, cache
 from helpers.clock import get_utc_now_as_iso_format
 from helpers.environment import is_enterprise
@@ -123,3 +124,5 @@ class CeleryWorkerConfig(BaseCeleryConfig):
             },
         },
     }
+
+    task_routes = route_task
