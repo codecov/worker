@@ -98,8 +98,12 @@ def process_raw_upload(
             path_fixer_to_use = path_fixer.get_relative_path_aware_pathfixer(
                 current_filename
             )
-            report_builder_to_use = ReportBuilder(commit_yaml, sessionid, ignored_lines, path_fixer_to_use)
-            report = process_report(report=report_file, report_builder=report_builder_to_use)
+            report_builder_to_use = ReportBuilder(
+                commit_yaml, sessionid, ignored_lines, path_fixer_to_use
+            )
+            report = process_report(
+                report=report_file, report_builder=report_builder_to_use
+            )
             if report:
                 temporary_report.merge(report, joined=True)
             path_fixer_to_use.log_abnormalities()
