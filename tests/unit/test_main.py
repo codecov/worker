@@ -11,11 +11,11 @@ from main import _get_queues_param_from_queue_input, cli, main, setup_worker, te
 def test_get_queues_param_from_queue_input():
     assert (
         _get_queues_param_from_queue_input(["worker,profiling,notify"])
-        == f"worker,profiling,notify,enterprise_worker,enterprise_profiling,enterprise_notify,{BaseCeleryConfig.health_check_default_queue}"
+        == f"worker,profiling,notify,{BaseCeleryConfig.health_check_default_queue}"
     )
     assert (
         _get_queues_param_from_queue_input(["worker", "profiling", "notify"])
-        == f"worker,profiling,notify,enterprise_worker,enterprise_profiling,enterprise_notify,{BaseCeleryConfig.health_check_default_queue}"
+        == f"worker,profiling,notify,{BaseCeleryConfig.health_check_default_queue}"
     )
 
 
@@ -106,7 +106,7 @@ def test_deal_worker_command_default(mocker, mock_storage):
             "-l",
             "info",
             "-Q",
-            f"celery,enterprise_celery,{BaseCeleryConfig.health_check_default_queue}",
+            f"celery,{BaseCeleryConfig.health_check_default_queue}",
             "-B",
             "-s",
             "/home/codecov/celerybeat-schedule",
@@ -149,7 +149,7 @@ def test_deal_worker_command(mocker, mock_storage):
             "-l",
             "info",
             "-Q",
-            f"simple,one,two,some,enterprise_simple,enterprise_one,enterprise_two,enterprise_some,{BaseCeleryConfig.health_check_default_queue}",
+            f"simple,one,two,some,{BaseCeleryConfig.health_check_default_queue}",
             "-B",
             "-s",
             "/home/codecov/celerybeat-schedule",
