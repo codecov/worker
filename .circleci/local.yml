@@ -37,7 +37,7 @@ jobs:
           make -f Makefile.circle push
   test:
     docker:
-    - image: us-docker.pkg.dev/test6u3411ty6xqh462sri/codecov-devops/codecov-deploy:latest
+    - image: gcr.io/test6u3411ty6xqh462sri/codecov-worker:latest
       user: root
       auth:
         username: _json_key
