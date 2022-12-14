@@ -36,7 +36,10 @@ class HealthCheckTask(CodecovCronTask):
             ]
         )
         queue_names_in_config.add(default_queue_name)
-        return queue_names_in_config
+        enterprise_queues = set(
+            map(lambda queue: "enterprise_" + queue, queue_names_in_config)
+        )
+        return queue_names_in_config | enterprise_queues
 
     def _get_correct_redis_connection(self):
         if get_config("services", "celery_broker"):
