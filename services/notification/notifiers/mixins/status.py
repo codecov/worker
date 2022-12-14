@@ -103,8 +103,7 @@ class StatusChangesMixin(object):
 
 class StatusProjectMixin(object):
 
-    # TODO: The actual default should be "patch" but it's not implemented yet
-    DEFAULT_REMOVED_CODE_BEHAVIOR = "off"
+    DEFAULT_REMOVED_CODE_BEHAVIOR = "fully_covered_patch"
 
     async def _apply_removals_only_behavior(
         self, comparison: Union[ComparisonProxy, FilteredComparison]
@@ -194,6 +193,36 @@ class StatusProjectMixin(object):
             )
         return None
 
+    async def _apply_fully_covered_patch_behavior(
+        self, comparison: ComparisonProxy
+    ) -> Optional[Tuple[str, str]]:
+        """
+        Rule for passing project status on fully_covered_patch behavior:
+        Pass if patch coverage is 100% and there are no unexpected changes
+        """
+        impacted_files_dict = await comparison.get_impacted_files()
+        impacted_files = impacted_files_dict.get("files", [])
+        no_unexpected_changes = all(
+            map(
+                lambda file_dict: file_dict.get("unexpected_line_changes") == [],
+                impacted_files,
+            )
+        )
+        if not no_unexpected_changes:
+            return None
+        diff = await self.get_diff(comparison)
+        patch_totals = comparison.head.report.apply_diff(diff)
+        if patch_totals is None or patch_totals.lines == 0:
+            # Coverage was not changed by patch
+            return ("success", ", passed because coverage was not affected by patch")
+        coverage = Decimal(patch_totals.coverage)
+        if coverage == 100.0:
+            return (
+                "success",
+                ", passed because patch was fully covered by tests with no unexpected coverage changes",
+            )
+        return None
+
     async def get_project_status(
         self, comparison: Union[ComparisonProxy, FilteredComparison]
     ) -> Tuple[str, str]:
@@ -215,6 +244,10 @@ class StatusProjectMixin(object):
                 )
             elif removed_code_behavior == "adjust_base":
                 removed_code_result = await self._apply_adjust_base_behavior(comparison)
+            elif removed_code_behavior == "fully_covered_patch":
+                removed_code_result = await self._apply_fully_covered_patch_behavior(
+                    comparison
+                )
             else:
                 if removed_code_behavior not in [False, "off"]:
                     log.warning(

@@ -184,6 +184,9 @@ class FilteredComparison(object):
         )
         self._changes_lock = asyncio.Lock()
 
+    async def get_impacted_files(self):
+        return await self.real_comparison.get_impacted_files()
+
     async def get_diff(self):
         return await self.real_comparison.get_diff()
 
