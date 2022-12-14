@@ -34,7 +34,6 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 label_analysis_request.head_commit.commitid,
             )
             parsed_git_diff = list(parse_git_diff_json(git_diff))
-            print(parsed_git_diff)
             result = self.calculate_result(label_analysis_request, parsed_git_diff)
         except Exception:
             # temporary general catch while we find possible problems on this
@@ -117,6 +116,17 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         )
         if not base_static_analysis or not head_static_analysis:
             # TODO : Proper handling of this case
+            log.info(
+                "Trying to make prediction where there are no static analyses",
+                extra=dict(
+                    base_static_analysis=base_static_analysis.id_
+                    if base_static_analysis is not None
+                    else None,
+                    head_static_analysis=head_static_analysis.id_
+                    if head_static_analysis is not None
+                    else None,
+                ),
+            )
             return None
         static_analysis_comparison_service = StaticAnalysisComparisonService(
             base_static_analysis,
