@@ -1105,7 +1105,7 @@ class TestProjectStatusNotifier(object):
                         "base_name": "tests/file1.py",
                         "head_name": "tests/file1.py",
                         # Not complete, but we only care about these fields
-                        "removed_diff_coverage": [],
+                        "removed_diff_coverage": [[1, "h"]],
                         "added_diff_coverage": [],
                         "unexpected_line_changes": [],
                     },
@@ -1139,7 +1139,51 @@ class TestProjectStatusNotifier(object):
         mock_get_impacted_files.assert_called()
 
     @pytest.mark.asyncio
-    async def test_notify_removas_only_behavior_fails(
+    async def test_notify_pass_adjust_base_behavior(
+        slef, mock_configuration, sample_comparison_negative_change, mocker
+    ):
+        sample_comparison = sample_comparison_negative_change
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"], [3, "h"], [4, "m"]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [[1, "h"]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"removed_code_behavior": "adjust_base"},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.base.commit.commitid[:7]}, passed because coverage increased by +0.00% when compared to adjusted base (50.0%)",
+            "state": "success",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_removed_code_behavior_fail(
         self, mock_configuration, sample_comparison, mocker
     ):
         mock_get_impacted_files = mocker.patch.object(
@@ -1183,6 +1227,77 @@ class TestProjectStatusNotifier(object):
         result = await notifier.build_payload(sample_comparison)
         assert result == expected_result
         mock_get_impacted_files.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_adjust_base_behavior_fail(
+        slef, mock_configuration, sample_comparison_negative_change, mocker
+    ):
+        sample_comparison = sample_comparison_negative_change
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"], [3, "m"], [4, "m"]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"removed_code_behavior": "adjust_base"},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.base.commit.commitid[:7]}",
+            "state": "failure",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_adjust_base_behavior_skips_if_target_coverage_defined(
+        slef, mock_configuration, sample_comparison_negative_change, mocker
+    ):
+        sample_comparison = sample_comparison_negative_change
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy, "get_impacted_files"
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "removed_code_behavior": "adjust_base",
+                "target": "80%",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": f"50.00% (target 80.00%)",
+            "state": "failure",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_notify_removed_code_behavior_unknown(

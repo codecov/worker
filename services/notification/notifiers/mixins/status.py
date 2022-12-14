@@ -1,6 +1,6 @@
 import logging
 from decimal import Decimal
-from typing import Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.yaml.reader import round_number
@@ -134,6 +134,66 @@ class StatusProjectMixin(object):
             return ("success", f", passed because this change only removed code")
         return None
 
+    async def _apply_adjust_base_behavior(
+        self, comparison: ComparisonProxy
+    ) -> Optional[Tuple[str, str]]:
+        """
+        Rule for passing project status on adjust_base behavior:
+        We adjust the BASE of the comparison by removing from it lines that were removed in HEAD
+        And then re-calculate BASE coverage and compare it to HEAD coverage.
+        """
+        # If the user defined a target value for project coverage
+        # Adjusting the base won't make HEAD change in relation to the target value
+        # So we skip the calculation entirely
+        if self.notifier_yaml_settings.get("target") not in ("auto", None):
+            return None
+
+        impacted_files_dict = await comparison.get_impacted_files()
+        impacted_files = impacted_files_dict.get("files", [])
+
+        def get_sum_from_lists(
+            coverage_diff_info: List[Any], comparison_fn: Callable[[Any], int]
+        ):
+            return sum(map(comparison_fn, coverage_diff_info))
+
+        hits_removed = 0
+        misses_removed = 0
+        partials_removed = 0
+        for file_dict in impacted_files:
+            removed_diff_coverage_list = file_dict.get("removed_diff_coverage", [])
+            hits_removed += get_sum_from_lists(
+                removed_diff_coverage_list, lambda item: 1 if item[1] == "h" else 0
+            )
+            misses_removed += get_sum_from_lists(
+                removed_diff_coverage_list, lambda item: 1 if item[1] == "m" else 0
+            )
+            partials_removed += get_sum_from_lists(
+                removed_diff_coverage_list, lambda item: 1 if item[1] == "p" else 0
+            )
+
+        base_totals = comparison.base.report.totals
+        base_adjusted_hits = base_totals.hits - hits_removed
+        base_adjusted_misses = base_totals.misses - misses_removed
+        base_adjusted_partials = base_totals.partials - partials_removed
+        # The coverage info is in percentage, so multiply by 100
+        base_adjusted_coverage = (
+            Decimal(
+                base_adjusted_hits
+                / (base_adjusted_hits + base_adjusted_misses + base_adjusted_partials)
+            )
+            * 100
+        )
+        head_coverage = Decimal(comparison.head.report.totals.coverage)
+        if base_adjusted_coverage <= head_coverage:
+            rounded_difference = round_number(
+                self.current_yaml, head_coverage - base_adjusted_coverage
+            )
+            return (
+                "success",
+                f", passed because coverage increased by {rounded_difference:+}% when compared to adjusted base ({base_adjusted_coverage}%)",
+            )
+        return None
+
     async def get_project_status(
         self, comparison: Union[ComparisonProxy, FilteredComparison]
     ) -> Tuple[str, str]:
@@ -153,6 +213,8 @@ class StatusProjectMixin(object):
                 removed_code_result = await self._apply_removals_only_behavior(
                     comparison
                 )
+            elif removed_code_behavior == "adjust_base":
+                removed_code_result = await self._apply_adjust_base_behavior(comparison)
             else:
                 if removed_code_behavior not in [False, "off"]:
                     log.warning(
