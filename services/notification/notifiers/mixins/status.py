@@ -112,6 +112,10 @@ class StatusProjectMixin(object):
         Rule for passing project status on removals_only behavior:
         Pass if code was _only removed_ (i.e. no addition, no unexpected changes)
         """
+        log.info(
+            "Applying removals_only behavior to project status",
+            extra=dict(commit_id=comparison.head.commit.commitid),
+        )
         impacted_files_dict = await comparison.get_impacted_files()
         impacted_files = impacted_files_dict.get("files", [])
         no_added_no_unexpected_change = all(
@@ -141,10 +145,18 @@ class StatusProjectMixin(object):
         We adjust the BASE of the comparison by removing from it lines that were removed in HEAD
         And then re-calculate BASE coverage and compare it to HEAD coverage.
         """
+        log.info(
+            "Applying adjust_base behavior to project status",
+            extra=dict(commit_id=comparison.head.commit.commitid),
+        )
         # If the user defined a target value for project coverage
         # Adjusting the base won't make HEAD change in relation to the target value
         # So we skip the calculation entirely
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
+            log.info(
+                "Notifier settings specify target value. Skipping adjust_base.",
+                extra=dict(commit_id=comparison.head.commit.commitid),
+            )
             return None
 
         impacted_files_dict = await comparison.get_impacted_files()
@@ -200,6 +212,10 @@ class StatusProjectMixin(object):
         Rule for passing project status on fully_covered_patch behavior:
         Pass if patch coverage is 100% and there are no unexpected changes
         """
+        log.info(
+            "Applying fully_covered_patch behavior to project status",
+            extra=dict(commit_id=comparison.head.commit.commitid),
+        )
         impacted_files_dict = await comparison.get_impacted_files()
         impacted_files = impacted_files_dict.get("files", [])
         no_unexpected_changes = all(
