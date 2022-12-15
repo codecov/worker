@@ -1,3 +1,4 @@
+import logging
 import typing
 
 from shared.reports.resources import Report, ReportFile
@@ -5,6 +6,8 @@ from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import ReportBuilder
+
+logger = logging.getLogger(__name__)
 
 
 class MonoProcessor(BaseLanguageProcessor):
@@ -14,6 +17,7 @@ class MonoProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
+        logger.info("Received a mono langauage report to process")
         path_fixer, ignored_lines, sessionid, repo_yaml = (
             report_builder.path_fixer,
             report_builder.ignored_lines,
