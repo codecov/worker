@@ -17,7 +17,7 @@ class MonoProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        logger.info("Received a mono langauage report to process")
+        logger.info("Received a mono language report to process")
         path_fixer, ignored_lines, sessionid, repo_yaml = (
             report_builder.path_fixer,
             report_builder.ignored_lines,
