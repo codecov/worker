@@ -1204,7 +1204,7 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": f"50.00% (-10.00%) compared to {sample_comparison.base.commit.commitid[:7]}, passed because coverage increased by +0.00% when compared to adjusted base (50.0%)",
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.base.commit.commitid[:7]}, passed because coverage increased by +0.00% when compared to adjusted base (50.00%)",
             "state": "success",
         }
         result = await notifier.build_payload(sample_comparison)

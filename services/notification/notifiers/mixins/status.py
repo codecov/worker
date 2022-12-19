@@ -114,7 +114,7 @@ class StatusProjectMixin(object):
         """
         log.info(
             "Applying removals_only behavior to project status",
-            extra=dict(commit_id=comparison.head.commit.commitid),
+            extra=dict(commit=comparison.head.commit.commitid),
         )
         impacted_files_dict = await comparison.get_impacted_files()
         impacted_files = impacted_files_dict.get("files", [])
@@ -147,7 +147,7 @@ class StatusProjectMixin(object):
         """
         log.info(
             "Applying adjust_base behavior to project status",
-            extra=dict(commit_id=comparison.head.commit.commitid),
+            extra=dict(commit=comparison.head.commit.commitid),
         )
         # If the user defined a target value for project coverage
         # Adjusting the base won't make HEAD change in relation to the target value
@@ -155,7 +155,7 @@ class StatusProjectMixin(object):
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
             log.info(
                 "Notifier settings specify target value. Skipping adjust_base.",
-                extra=dict(commit_id=comparison.head.commit.commitid),
+                extra=dict(commit=comparison.head.commit.commitid),
             )
             return None
 
@@ -199,9 +199,12 @@ class StatusProjectMixin(object):
             rounded_difference = round_number(
                 self.current_yaml, head_coverage - base_adjusted_coverage
             )
+            rounded_base_adjusted_coverage = round_number(
+                self.current_yaml, base_adjusted_coverage
+            )
             return (
                 "success",
-                f", passed because coverage increased by {rounded_difference:+}% when compared to adjusted base ({base_adjusted_coverage}%)",
+                f", passed because coverage increased by {rounded_difference:+}% when compared to adjusted base ({rounded_base_adjusted_coverage}%)",
             )
         return None
 
@@ -214,7 +217,7 @@ class StatusProjectMixin(object):
         """
         log.info(
             "Applying fully_covered_patch behavior to project status",
-            extra=dict(commit_id=comparison.head.commit.commitid),
+            extra=dict(commit=comparison.head.commit.commitid),
         )
         impacted_files_dict = await comparison.get_impacted_files()
         impacted_files = impacted_files_dict.get("files", [])
@@ -225,6 +228,10 @@ class StatusProjectMixin(object):
             )
         )
         if not no_unexpected_changes:
+            log.info(
+                "Unexpected changes when applying patch_100 behavior",
+                extra=dict(commit=comparison.head.commit.commitid),
+            )
             return None
         diff = await self.get_diff(comparison)
         patch_totals = comparison.head.report.apply_diff(diff)
