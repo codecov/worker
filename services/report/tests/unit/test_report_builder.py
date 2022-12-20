@@ -81,7 +81,13 @@ def test_report_builder_session(mocker):
                     coverage=1,
                     coverage_type=None,
                     labels=["some_label", "other"],
-                )
+                ),
+                CoverageDatapoint(
+                    sessionid=0,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=None,
+                ),
             ],
             complexity=None,
         ),
@@ -132,7 +138,13 @@ def test_report_builder_session(mocker):
                         coverage=1,
                         coverage_type=None,
                         labels=["some_label", "other"],
-                    )
+                    ),
+                    CoverageDatapoint(
+                        sessionid=0,
+                        coverage=1,
+                        coverage_type=None,
+                        labels=None,
+                    ),
                 ],
                 complexity=None,
             ),
