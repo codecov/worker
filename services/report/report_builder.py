@@ -86,8 +86,9 @@ class ReportBuilderSession(object):
             for line_number, line in file.lines:
                 if line.datapoints:
                     for datapoint in line.datapoints:
-                        for label in datapoint.labels:
-                            self._present_labels.add(label)
+                        if datapoint.labels:
+                            for label in datapoint.labels:
+                                self._present_labels.add(label)
         return self._report.append(file)
 
     def output_report(self) -> Report:
@@ -154,7 +155,7 @@ class ReportBuilderSession(object):
         Args:
             datapoint (CoverageDatapoint): The datapoint to convert
         """
-        if any(
+        if datapoint.labels and any(
             label == SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
             for label in datapoint.labels
         ):
