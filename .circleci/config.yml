@@ -134,8 +134,8 @@ jobs:
             curl -o codecov-latest https://uploader.codecov.io/latest/linux/codecov
             chmod +x codecov-latest
             ./codecov-latest -F latest-uploader-overall -Z
-            ./codecov-latest -F unit -f unit.coverage.xml -Z
-            ./codecov-latest -F integration -f integration.coverage.xml -Z
+            ./codecov-latest -F unit -f unit.coverage.json -Z
+            ./codecov-latest -F integration -f integration.coverage.json -Z
 
   staging:
     executor: codecov-deploy
