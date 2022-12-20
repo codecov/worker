@@ -118,12 +118,12 @@ jobs:
       - run:
           name: Save commit info 
           command: |
-            apk add git
+            apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
+            pip install git+ssh://git@github.com/codecov/codecov-cli.git@af66005d9b31023abe0bc4d22a14aea91a3fd476#egg=codecov-cli
             codecovcli --auto-load-params-from circleci create-commit
       - run:
           name: upload to codecov using python uploader
           command: |
-            apk add git
             codecovcli --auto-load-params-from circleci do-upload --flag python-uploader-overall --use-new-uploader True
 
       - run:
