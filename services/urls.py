@@ -49,7 +49,10 @@ def get_dashboard_base_url() -> str:
     configured_base_url = get_base_url()
     # Enterprise users usually configure the base url not the dashboard one,
     # app.codecov.io is for cloud users so we want to prioritize the values correctly
-    return configured_dashboard_url or configured_base_url or "https://app.codecov.io"
+    if requires_license():
+        return configured_dashboard_url or configured_base_url
+    else:
+        return configured_dashboard_url or "https://app.codecov.io"
 
 
 def get_commit_url(commit: Commit) -> str:
