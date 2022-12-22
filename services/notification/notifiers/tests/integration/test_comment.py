@@ -200,35 +200,39 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
 @pytest.fixture
 def sample_comparison_for_upgrade(dbsession, request, sample_report, small_report):
     repository = RepositoryFactory.create(
-        owner__username="1nf1n1t3l00p",
         owner__service="github",
-        name="priv_example",
-        owner__unencrypted_oauth_token="test1p40fvqsw2hoxl55kvhd4sakchhehblihuth",
+        owner__username="codecove2e",
+        name="example-python",
+        owner__unencrypted_oauth_token="ghp_testgkdo1u8jqexy9wabk1n0puoetf9ziam5",
         image_token="abcdefghij",
     )
     dbsession.add(repository)
     dbsession.flush()
     base_commit = CommitFactory.create(
-        repository=repository, commitid="ca084b346c2f1450f011adbd5ec950e3532b57b6"
+        repository=repository, commitid="93189ce50f224296d6412e2884b93dcc3c7c8654"
     )
     head_commit = CommitFactory.create(
         repository=repository,
-        branch="featureA",
-        commitid="6341a94d2bb77a6153cec905363348937d258720",
+        branch="new_branch",
+        commitid="8589c19ce95a2b13cf7b3272cbf275ca9651ae9c",
     )
     pull = PullFactory.create(
         repository=repository,
         base=base_commit.commitid,
         head=head_commit.commitid,
-        pullid=1,
+        pullid=4,
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
     dbsession.add(pull)
     dbsession.flush()
     repository = base_commit.repository
-    base_full_commit = FullCommit(commit=base_commit, report=small_report)
-    head_full_commit = FullCommit(commit=head_commit, report=sample_report)
+    base_full_commit = FullCommit(
+        commit=base_commit, report=ReadOnlyReport.create_from_report(small_report)
+    )
+    head_full_commit = FullCommit(
+        commit=head_commit, report=ReadOnlyReport.create_from_report(sample_report)
+    )
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
@@ -236,19 +240,19 @@ def sample_comparison_for_upgrade(dbsession, request, sample_report, small_repor
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
-                    "author": {"id": "12345", "username": "1nf1n1t3l00p"},
+                    "author": {"id": "12345", "username": "codecove2e"},
                     "base": {
                         "branch": "master",
-                        "commitid": "842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4",
+                        "commitid": "93189ce50f224296d6412e2884b93dcc3c7c8654",
                     },
                     "head": {
-                        "branch": "div",
-                        "commitid": "46ce216948fe8c301fc80d9ba3ba1a582a0ba497",
+                        "branch": "codecove2e-patch-3",
+                        "commitid": "8589c19ce95a2b13cf7b3272cbf275ca9651ae9c",
                     },
                     "state": "open",
-                    "title": "Add div method",
-                    "id": "11",
-                    "number": "11",
+                    "title": "Update __init__.py",
+                    "id": "4",
+                    "number": "4",
                 },
             ),
         )
@@ -399,8 +403,8 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         expected_message = [
-            "The author of this PR, 1nf1n1t3l00p, is not an activated member of this organization on Codecov.",
-            "Please [activate this user on Codecov](https://app.codecov.io/members/gh/1nf1n1t3l00p) to display this PR comment.",
+            "The author of this PR, codecove2e, is not an activated member of this organization on Codecov.",
+            "Please [activate this user on Codecov](https://app.codecov.io/members/gh/codecove2e) to display this PR comment.",
             "Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
             "Please don't hesitate to email us at support@codecov.io with any questions.",
         ]
@@ -410,9 +414,9 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {
             "commentid": None,
             "message": expected_message,
-            "pullid": 1,
+            "pullid": 4,
         }
-        assert result.data_received == {"id": 609479265}
+        assert result.data_received == {"id": 1361234119}
 
     @pytest.mark.asyncio
     async def test_notify_upload_limited(
