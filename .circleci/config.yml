@@ -67,6 +67,30 @@ jobs:
             make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
             make -f Makefile.circle build VERSION=$CIRCLE_TAG
             make -f Makefile.circle push
+  codecovstartup:
+    executor: codecov-worker
+    steps:
+      - run:
+          name: Setup
+          command: |
+            apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
+      - checkout
+      - run:
+          name: Install CLI
+          command: |
+            pip install git+ssh://git@github.com/codecov/codecov-cli.git@264b1598a4d0df28b9cff255b47a3ab6f8866b78#egg=codecov-cli
+      - run:
+          name: Save commit info 
+          command: |
+            codecovcli --auto-load-params-from circleci create-commit --service=github
+      - run:
+          name: Run Static Analysis
+          command: |
+            codecovcli static-analysis --token=$STATIC_TOKEN
+      - run:
+          name: Run Predictor Analysis
+          command: |
+            codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git log -n 1 master --pretty=format:"%H")
   mutations:
     executor: codecov-worker
     steps:
@@ -116,14 +140,10 @@ jobs:
             make test.unit
             make test.integration    
       - run:
-          name: Save commit info 
-          command: |
-            apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
-            pip install git+ssh://git@github.com/codecov/codecov-cli.git@af66005d9b31023abe0bc4d22a14aea91a3fd476#egg=codecov-cli
-            codecovcli --auto-load-params-from circleci create-commit
-      - run:
           name: upload to codecov using python uploader
           command: |
+            apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
+            pip install git+ssh://git@github.com/codecov/codecov-cli.git@264b1598a4d0df28b9cff255b47a3ab6f8866b78#egg=codecov-cli
             codecovcli --auto-load-params-from circleci do-upload --flag python-uploader-overall --use-new-uploader True
 
       - run:
@@ -276,12 +296,13 @@ workflows:
           filters:
             tags:
               only: /.*/
-      # - standards-coverage-comparison:
-      #     context:
-      #       - "DockerHub Push Context"
-      #       - "circleci google deploy context"
-      #     requires:
-      #       - build
+      - codecovstartup:
+          context: "circleci google deploy context"
+          requires:
+            - build
+          filters:
+            tags:
+              only: /.*/
       - staging:
           context: "circleci google deploy context"
           requires:
