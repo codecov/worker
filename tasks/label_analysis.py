@@ -64,6 +64,16 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         current_yaml = get_repo_yaml(base_commit.repository)
         report_service = ReportService(current_yaml)
         report: Report = report_service.get_existing_report_for_commit(base_commit)
+        if report is None:
+            log.warning(
+                "No report found for label analysis",
+                extra=dict(request_id=label_analysis_request.id),
+            )
+            return {
+                "present_report_labels": [],
+                "present_diff_labels": [],
+                "absent_labels": label_analysis_request.requested_labels,
+            }
         all_report_labels = self.get_all_report_labels(report)
         executable_lines = self.get_relevant_executable_lines(
             label_analysis_request, parsed_git_diff
