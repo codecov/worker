@@ -4,9 +4,11 @@ from datetime import datetime
 
 from sqlalchemy import Column, ForeignKey, Index, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref, relationship
 from sqlalchemy.schema import FetchedValue
 
+import database.models
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.enums import Decoration, Notification, NotificationState
 
@@ -152,9 +154,8 @@ class Commit(CodecovBaseModel):
         cascade="all, delete",
         passive_deletes=True,
     )
-    report = relationship(
+    reports_list = relationship(
         "CommitReport",
-        uselist=False,
         back_populates="commit",
         cascade="all, delete",
         passive_deletes=True,
@@ -168,6 +169,15 @@ class Commit(CodecovBaseModel):
         return (
             db_session.query(Commit)
             .filter_by(repoid=self.repoid, commitid=self.parent_commit_id)
+            .first()
+        )
+
+    @hybrid_property
+    def report(self):
+        db_session = self.get_db_session()
+        return (
+            db_session.query(database.models.reports.CommitReport)
+            .filter_by(commit_id=self.id_, code=None)
             .first()
         )
 
