@@ -107,8 +107,8 @@ interactions:
       unit | `100.00% <\u00f8> (?)` | `0.00 <\u00f8> (?)` | |\n\nFlags with carried
       forward coverage won''t be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Amanda+Armstrong#carryforward-flags-in-the-pull-request-comment)
       to find out more.\n\n| [Impacted Files](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)
-      | Coverage \u0394 | Complexity \u0394 | |\n|---|---|---|---|\n| [file\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5)
-      | `50.00% <0.00%> (\u00f8)` | `0.00% <0.00%> (\u00f8%)` | |\n| [file\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv)
+      | Coverage \u0394 | Complexity \u0394 | |\n|---|---|---|---|\n| [file\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8yLnB5)
+      | `50.00% <0.00%> (\u00f8)` | `0.00% <0.00%> (\u00f8%)` | |\n| [file\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8xLmdv)
       | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\n\n</details>\n[:umbrella:
       View full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   \n:loudspeaker:
       Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).\n"}'
@@ -149,8 +149,8 @@ interactions:
       | `?` | `?` | |\\n| unit | `100.00% <\xF8> (?)` | `0.00 <\xF8> (?)` | |\\n\\nFlags
       with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Amanda+Armstrong#carryforward-flags-in-the-pull-request-comment)
       to find out more.\\n\\n| [Impacted Files](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)
-      | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| [file\\\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5)
-      | `50.00% <0.00%> (\xF8)` | `0.00% <0.00%> (\xF8%)` | |\\n| [file\\\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv)
+      | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| [file\\\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8yLnB5)
+      | `50.00% <0.00%> (\xF8)` | `0.00% <0.00%> (\xF8%)` | |\\n| [file\\\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8xLmdv)
       | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\\n\\n</details>\\n[:umbrella:
       View full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).
       \  \\n:loudspeaker: Do you have feedback about the report comment? [Let us know

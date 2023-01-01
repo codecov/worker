@@ -172,8 +172,8 @@ interactions:
       Hits            3        6        +3     \n  Misses          3        3               \n-
       Partials        0        1        +1     \n```\n\n| Flag | Coverage \u0394 |
       |\n|---|---|---|\n| #unit | `100.00% <\u00f8> (?)` | |\n\n| [Impacted Files](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)
-      | Coverage \u0394 | |\n|---|---|---|\n| [file\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5)
-      | `50.00% <0.00%> (\u00f8)` | :arrow_up: |\n| [file\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv)
+      | Coverage \u0394 | |\n|---|---|---|\n| [file\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8yLnB5)
+      | `50.00% <0.00%> (\u00f8)` | :arrow_up: |\n| [file\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8xLmdv)
       | `62.50% <0.00%> (+12.50%)` | :arrow_up: |\n\n------\n\n[Continue to review
       full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).\n>
       **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)\n>
@@ -203,8 +203,8 @@ interactions:
       Hits            3        6        +3     \\n  Misses          3        3               \\n-
       Partials        0        1        +1     \\n```\\n\\n| Flag | Coverage \u0394
       | |\\n|---|---|---|\\n| #unit | `100.00% <\xF8> (?)` | |\\n\\n| [Impacted Files](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)
-      | Coverage \u0394 | |\\n|---|---|---|\\n| [file\\\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5)
-      | `50.00% <0.00%> (\xF8)` | :arrow_up: |\\n| [file\\\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv)
+      | Coverage \u0394 | |\\n|---|---|---|\\n| [file\\\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8yLnB5)
+      | `50.00% <0.00%> (\xF8)` | :arrow_up: |\\n| [file\\\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8xLmdv)
       | `62.50% <0.00%> (+12.50%)` | :arrow_up: |\\n\\n------\\n\\n[Continue to review
       full report at Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).\\n>
       **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)\\n>

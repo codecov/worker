@@ -288,8 +288,8 @@ interactions:
       Partials          0        1        +1     \n```\n\n| Flag | Coverage \u0394
       | Complexity \u0394 | |\n|---|---|---|---|\n| #integration | `?` | `?` | |\n|
       #unit | `100.00% <\u00f8> (?)` | `0.00 <\u00f8> (?)` | |\n\n| [Impacted Files](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree)
-      | Coverage \u0394 | Complexity \u0394 | |\n|---|---|---|---|\n| [file\\_2.py](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5)
-      | `50.00% <0.00%> (\u00f8)` | `0.00% <0.00%> (\u00f8%)` | |\n| [file\\_1.go](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv)
+      | Coverage \u0394 | Complexity \u0394 | |\n|---|---|---|---|\n| [file\\_2.py](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree#diff-ZmlsZV8yLnB5)
+      | `50.00% <0.00%> (\u00f8)` | `0.00% <0.00%> (\u00f8%)` | |\n| [file\\_1.go](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree#diff-ZmlsZV8xLmdv)
       | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\n\n------\n\n[Continue
       to review full report at Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=continue).\n>
       **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)\n>
@@ -323,9 +323,9 @@ interactions:
       Flag | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| #integration
       | `?` | `?` | |\\n| #unit | `100.00% \\u003c\xF8\\u003e (?)` | `0.00 \\u003c\xF8\\u003e
       (?)` | |\\n\\n| [Impacted Files](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\u0026el=tree)
-      | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| [file\\\\_2.py](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr\\u0026el=tree#diff-ZmlsZV8yLnB5)
+      | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| [file\\\\_2.py](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\u0026el=tree#diff-ZmlsZV8yLnB5)
       | `50.00% \\u003c0.00%\\u003e (\xF8)` | `0.00% \\u003c0.00%\\u003e (\xF8%)`
-      | |\\n| [file\\\\_1.go](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/diff?src=pr\\u0026el=tree#diff-ZmlsZV8xLmdv)
+      | |\\n| [file\\\\_1.go](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\u0026el=tree#diff-ZmlsZV8xLmdv)
       | `62.50% \\u003c0.00%\\u003e (+12.50%)` | `10.00% \\u003c0.00%\\u003e (-1.00%)`
       | :arrow_up: |\\n\\n------\\n\\n[Continue to review full report at Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\u0026el=continue).\\n\\u003e
       **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)\\n\\u003e
