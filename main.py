@@ -4,11 +4,11 @@ import sys
 import typing
 
 import click
+from shared.celery_config import BaseCeleryConfig
 from shared.config import get_config
 from shared.storage.exceptions import BucketAlreadyExistsError
 
 import app
-from celery_config import BaseCeleryConfig
 from helpers.environment import get_external_dependencies_folder
 from helpers.version import get_current_version
 from services.storage import get_storage_client
