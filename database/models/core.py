@@ -4,7 +4,6 @@ from datetime import datetime
 
 from sqlalchemy import Column, ForeignKey, Index, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref, relationship
 from sqlalchemy.schema import FetchedValue
 
@@ -172,7 +171,7 @@ class Commit(CodecovBaseModel):
             .first()
         )
 
-    @hybrid_property
+    @property
     def report(self):
         db_session = self.get_db_session()
         return (
