@@ -3951,7 +3951,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| Components | Coverage Δ |",
+            f"| Components | Coverage Δ | |",
             f"|---|---|---|",
             f"| go_files | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
             f"| unit_flags | `100.00% <100.00%> (∅)` | |",
@@ -4146,7 +4146,7 @@ class TestComponentWriterSection(object):
             comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
         )
         expected = [
-            "| Components | Coverage Δ |",
+            "| Components | Coverage Δ | |",
             "|---|---|---|",
             "| go_files | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
             "| py_files | `50.00% <ø> (ø)` | |",
