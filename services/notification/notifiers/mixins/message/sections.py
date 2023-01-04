@@ -696,7 +696,7 @@ class ComponentsSectionWriter(BaseSectionWriter):
         )
 
         # Table header and layout
-        yield "| Components | Coverage \u0394 |"
+        yield "| Components | Coverage \u0394 | |"
         yield "|---|---|---|"
         # The interesting part
         for component_data in component_data_to_show:

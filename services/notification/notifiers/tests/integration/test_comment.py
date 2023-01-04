@@ -662,7 +662,7 @@ class TestCommentNotifierIntegration(object):
             "| [file\\_2.py](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
             "| [file\\_1.go](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |",
             "",
-            "| Components | Coverage Δ |",
+            "| Components | Coverage Δ | |",
             "|---|---|---|",
             "| go_files | `62.50% <ø> (+12.50%)` | :arrow_up: |",
             "",
