@@ -587,3 +587,26 @@ async def test_tun_async_with_error(
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.ERROR.db_id
     assert larf.result is None
+
+
+@pytest.mark.asyncio
+async def test_calculate_result_no_report(
+    dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
+):
+    larf = LabelAnalysisRequestFactory.create(
+        requested_labels=["tangerine", "pear", "banana", "apple"]
+    )
+    dbsession.add(larf)
+    dbsession.flush()
+    mocker.patch.object(
+        ReportService,
+        "get_existing_report_for_commit",
+        return_value=None,
+    )
+    task = LabelAnalysisRequestProcessingTask()
+    res = task.calculate_result(larf, mocker.MagicMock())
+    assert res == {
+        "absent_labels": larf.requested_labels,
+        "present_diff_labels": [],
+        "present_report_labels": [],
+    }
