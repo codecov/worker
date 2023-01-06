@@ -110,13 +110,10 @@ def test_report_builder_session(mocker):
                 sessions=None,
                 datapoints=[
                     CoverageDatapoint(
-                        sessionid=0, coverage=1, coverage_type=None, labels=["other"]
-                    ),
-                    CoverageDatapoint(
                         sessionid=0,
                         coverage=1,
                         coverage_type=None,
-                        labels=["some_label"],
+                        labels=["Th2dMtk4M_codecov_special_all_labels"],
                     ),
                 ],
                 complexity=None,

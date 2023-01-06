@@ -28,7 +28,10 @@ from shared.yaml.user_yaml import UserYaml
 
 
 class SpecialLabelsEnum(Enum):
-    CODECOV_ALL_LABELS_PLACEHOLDER = auto()
+    CODECOV_ALL_LABELS_PLACEHOLDER = "Th2dMtk4M_codecov_special_all_labels"
+
+    def __init__(self, val):
+        self.corresponding_label = val
 
 
 class CoverageType(Enum):
@@ -159,6 +162,9 @@ class ReportBuilderSession(object):
             label == SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
             for label in datapoint.labels
         ):
+            new_label = (
+                SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
+            )
             return [
                 dataclasses.replace(
                     datapoint,
@@ -174,8 +180,6 @@ class ReportBuilderSession(object):
                         )
                     ),
                 )
-                for new_label in self._present_labels
-                if new_label != SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
             ]
         return [datapoint]
 
