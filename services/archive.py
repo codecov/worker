@@ -111,13 +111,15 @@ class ArchiveService(object):
     write_chunks
     """
 
-    def write_file(self, path, data, reduced_redundancy=False, gzipped=False) -> None:
+    def write_file(
+        self, path, data, reduced_redundancy=False, *, is_already_gzipped=False
+    ) -> None:
         self.storage.write_file(
             self.root,
             path,
             data,
             reduced_redundancy=reduced_redundancy,
-            gzipped=gzipped,
+            is_already_gzipped=is_already_gzipped,
         )
 
     """
@@ -125,7 +127,9 @@ class ArchiveService(object):
     Returns the path it writes.
     """
 
-    def write_raw_upload(self, commit_sha, report_id, data, gzipped=False) -> str:
+    def write_raw_upload(
+        self, commit_sha, report_id, data, *, is_already_gzipped=False
+    ) -> str:
         # create a custom report path for a raw upload.
         # write the file.
         path = "/".join(
@@ -138,7 +142,7 @@ class ArchiveService(object):
             )
         )
 
-        self.write_file(path, data, gzipped=gzipped)
+        self.write_file(path, data, is_already_gzipped=is_already_gzipped)
 
         return path
 
