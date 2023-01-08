@@ -171,12 +171,3 @@ class CompareFlag(MixinBaseClass, CodecovBaseModel):
 
     commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
     repositoryflag = relationship(RepositoryFlag, foreign_keys=[repositoryflag_id])
-
-
-class ReportResults(MixinBaseClass, CodecovBaseModel):
-    __tablename__ = "reports_reportresults"
-    state = Column(types.Text)
-    completed_at = Column(types.DateTime(timezone=True), nullable=True)
-    result = Column(postgresql.JSON)
-    report_id = Column(types.Integer, ForeignKey("reports_commitreport.id"))
-    report = relationship("CommitReport", foreign_keys=[report_id])
