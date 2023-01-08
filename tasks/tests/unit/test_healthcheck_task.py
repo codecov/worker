@@ -9,7 +9,7 @@ class TestHealthCheckTask(object):
     def test_get_queue_names_default(self, mock_configuration):
         health_check_task = HealthCheckTask()
         queue_names = health_check_task._get_all_queue_names_from_config()
-        assert queue_names == set(["celery"])
+        assert queue_names == set(["celery", "enterprise_celery"])
 
     def test_get_queue_names_some_config(self, mock_configuration):
         mock_configuration.set_params(
@@ -32,10 +32,15 @@ class TestHealthCheckTask(object):
         assert queue_names == set(
             [
                 "custom_celery",
+                "enterprise_custom_celery",
                 "notify_queue",
+                "enterprise_notify_queue",
                 "pulls_queue",
+                "enterprise_pulls_queue",
                 "synchronize_queue",
+                "enterprise_synchronize_queue",
                 "flush_repo_queue",
+                "enterprise_flush_repo_queue",
             ]
         )
 
@@ -76,7 +81,8 @@ class TestHealthCheckTask(object):
         mock_redis.return_value = MagicMock()
         health_check_task = HealthCheckTask()
         await health_check_task.run_cron_task(dbsession)
-        mock_metrics.assert_called_with("celery.queue.celery.len", 10)
+        mock_metrics.assert_any_call("celery.queue.celery.len", 10)
+        mock_metrics.assert_any_call("celery.queue.enterprise_celery.len", 10)
 
     @pytest.mark.asyncio
     async def test_run_async_with_configs(

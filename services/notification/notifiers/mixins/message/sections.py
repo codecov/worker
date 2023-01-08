@@ -492,7 +492,7 @@ class FileSectionWriter(BaseSectionWriter):
                 if path not in mentioned:
                     # mentioned: for files that are in diff and changes
                     mentioned.append(path)
-                    return "| {rm}[{path}]({compare}/diff?src=pr&el=tree#diff-{hash}){rm}{file_tags} {metrics}".format(
+                    return "| {rm}[{path}]({compare}?src=pr&el=tree#diff-{hash}){rm}{file_tags} {metrics}".format(
                         rm="~~" if typ == "deleted" else "",
                         path=escape_markdown(ellipsis(path, 50, False)),
                         compare=links["pull"],
@@ -533,7 +533,7 @@ class FileSectionWriter(BaseSectionWriter):
             remaining = len(changes or []) - limit
             if remaining > 0:
                 yield (
-                    "| ... and [{n} more]({href}/diff?src=pr&el=tree-more) | |".format(
+                    "| ... and [{n} more]({href}?src=pr&el=tree-more) | |".format(
                         n=remaining, href=links["pull"]
                     )
                 )
@@ -696,7 +696,7 @@ class ComponentsSectionWriter(BaseSectionWriter):
         )
 
         # Table header and layout
-        yield "| Components | Coverage \u0394 |"
+        yield "| Components | Coverage \u0394 | |"
         yield "|---|---|---|"
         # The interesting part
         for component_data in component_data_to_show:

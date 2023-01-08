@@ -4,11 +4,11 @@ import sys
 import typing
 
 import click
+from shared.celery_config import BaseCeleryConfig
 from shared.config import get_config
 from shared.storage.exceptions import BucketAlreadyExistsError
 
 import app
-from celery_config import BaseCeleryConfig
 from helpers.environment import get_external_dependencies_folder
 from helpers.version import get_current_version
 from services.storage import get_storage_client
@@ -101,7 +101,11 @@ def _get_queues_param_from_queue_input(queues: typing.List[str]) -> str:
     # And also to avoid that queue fillign up with no workers to consume from it
     # this should support if one wants to pass comma separated values
     # since in the end all is joined again
-    return ",".join([*queues, BaseCeleryConfig.health_check_default_queue])
+    joined_queues = ",".join(queues)
+    enterprise_queues = ["enterprise_" + q for q in joined_queues.split(",")]
+    return ",".join(
+        [joined_queues, *enterprise_queues, BaseCeleryConfig.health_check_default_queue]
+    )
 
 
 def main():

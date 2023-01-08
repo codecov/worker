@@ -12,7 +12,7 @@ from shared.torngit.exceptions import (
 from shared.torngit.status import Status
 from shared.yaml.user_yaml import UserYaml
 
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.status import (
@@ -79,6 +79,35 @@ def multiple_diff_changes():
             },
         }
     }
+
+
+@pytest.fixture
+def comparison_100_percent_patch(sample_comparison):
+    first_report = Report()
+    second_report = Report()
+    # MODIFIED FILE
+    first_modified_file = ReportFile("modified.py")
+    first_modified_file.append(17, ReportLine.create(coverage=0))
+    first_modified_file.append(18, ReportLine.create(coverage=0))
+    first_modified_file.append(19, ReportLine.create(coverage=1))
+    first_modified_file.append(20, ReportLine.create(coverage=0))
+    first_modified_file.append(21, ReportLine.create(coverage=1))
+    first_modified_file.append(22, ReportLine.create(coverage=1))
+    first_modified_file.append(23, ReportLine.create(coverage=0))
+    first_modified_file.append(24, ReportLine.create(coverage=0))
+    first_report.append(first_modified_file)
+    second_modified_file = ReportFile("modified.py")
+    second_modified_file.append(18, ReportLine.create(coverage=0))
+    second_modified_file.append(19, ReportLine.create(coverage=0))
+    second_modified_file.append(20, ReportLine.create(coverage=0))
+    second_modified_file.append(21, ReportLine.create(coverage=0))
+    second_modified_file.append(22, ReportLine.create(coverage=0))
+    second_modified_file.append(23, ReportLine.create(coverage=1))
+    second_modified_file.append(24, ReportLine.create(coverage=1))
+    second_report.append(second_modified_file)
+    sample_comparison.base.report = ReadOnlyReport.create_from_report(first_report)
+    sample_comparison.head.report = ReadOnlyReport.create_from_report(second_report)
+    return sample_comparison
 
 
 @pytest.fixture
@@ -1139,7 +1168,51 @@ class TestProjectStatusNotifier(object):
         mock_get_impacted_files.assert_called()
 
     @pytest.mark.asyncio
-    async def test_notify_removas_only_behavior_fails(
+    async def test_notify_pass_adjust_base_behavior(
+        slef, mock_configuration, sample_comparison_negative_change, mocker
+    ):
+        sample_comparison = sample_comparison_negative_change
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"], [3, "h"], [4, "m"]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [[1, "h"]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"removed_code_behavior": "adjust_base"},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.base.commit.commitid[:7]}, passed because coverage increased by +0.00% when compared to adjusted base (50.00%)",
+            "state": "success",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_removed_code_behavior_fail(
         self, mock_configuration, sample_comparison, mocker
     ):
         mock_get_impacted_files = mocker.patch.object(
@@ -1185,6 +1258,77 @@ class TestProjectStatusNotifier(object):
         mock_get_impacted_files.assert_called()
 
     @pytest.mark.asyncio
+    async def test_notify_adjust_base_behavior_fail(
+        slef, mock_configuration, sample_comparison_negative_change, mocker
+    ):
+        sample_comparison = sample_comparison_negative_change
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"], [3, "m"], [4, "m"]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"removed_code_behavior": "adjust_base"},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.base.commit.commitid[:7]}",
+            "state": "failure",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_adjust_base_behavior_skips_if_target_coverage_defined(
+        slef, mock_configuration, sample_comparison_negative_change, mocker
+    ):
+        sample_comparison = sample_comparison_negative_change
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy, "get_impacted_files"
+        )
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "removed_code_behavior": "adjust_base",
+                "target": "80%",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": f"50.00% (target 80.00%)",
+            "state": "failure",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_notify_removed_code_behavior_unknown(
         self, mock_configuration, sample_comparison
     ):
@@ -1205,6 +1349,273 @@ class TestProjectStatusNotifier(object):
         }
         result = await notifier.build_payload(sample_comparison)
         assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_notify_fully_covered_patch_behavior_fail(
+        self,
+        comparison_with_multiple_changes,
+        mock_repo_provider,
+        mock_configuration,
+        multiple_diff_changes,
+        mocker,
+    ):
+        json_diff = multiple_diff_changes
+        mock_repo_provider.get_compare.return_value = {"diff": json_diff}
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"]],
+                        "added_diff_coverage": [[2, "h"], [3, "h"]],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [[1, "h"], [3, None]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        notifier = ProjectStatusNotifier(
+            repository=comparison_with_multiple_changes.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "70%",
+                "removed_code_behavior": "fully_covered_patch",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": "50.00% (target 70.00%)",
+            "state": "failure",
+        }
+        result = await notifier.build_payload(comparison_with_multiple_changes)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_fully_covered_patch_behavior_success(
+        self,
+        comparison_100_percent_patch,
+        mock_repo_provider,
+        mock_configuration,
+        multiple_diff_changes,
+        mocker,
+    ):
+        json_diff = multiple_diff_changes
+        mock_repo_provider.get_compare.return_value = {"diff": json_diff}
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"]],
+                        "added_diff_coverage": [[2, "h"], [3, "h"]],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [[1, "h"], [3, None]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        notifier = ProjectStatusNotifier(
+            repository=comparison_100_percent_patch.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "70%",
+                "removed_code_behavior": "fully_covered_patch",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": "28.57% (target 70.00%), passed because patch was fully covered by tests with no unexpected coverage changes",
+            "state": "success",
+        }
+        result = await notifier.build_payload(comparison_100_percent_patch)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_fully_covered_patch_behavior_no_coverage_change(
+        self, mock_configuration, sample_comparison, mocker
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"]],
+                        "added_diff_coverage": [[2, "h"], [3, "h"]],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [[1, "h"], [3, None]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        mocker.patch.object(
+            sample_comparison,
+            "get_diff",
+            return_value={
+                "files": {
+                    "file_1.go": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {
+                                "header": ["105", "8", "105", "9"],
+                                "lines": [
+                                    " Overview",
+                                    " --------",
+                                    " ",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "+",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    " ",
+                                    " .. code-block:: shell-session",
+                                    " ",
+                                ],
+                            },
+                            {
+                                "header": ["1046", "12", "1047", "19"],
+                                "lines": [
+                                    " ",
+                                    " You may need to configure a ``.coveragerc`` file. Learn more",
+                                    " ",
+                                    "-We highly suggest adding `source` to your ``.coveragerc``",
+                                    "+We highly suggest adding ``source`` to your ``.coveragerc`",
+                                    " ",
+                                    " .. code-block:: ini",
+                                    " ",
+                                    "    [run]",
+                                    "    source=your_package_name",
+                                    "+   ",
+                                    "+If there are multiple sources, you instead should add ``include",
+                                    "+",
+                                    "+.. code-block:: ini",
+                                    "+",
+                                    "+   [run]",
+                                    "+   include=your_package_name/*",
+                                    " ",
+                                    " unittests",
+                                    " ---------",
+                                ],
+                            },
+                            {
+                                "header": ["10150", "5", "10158", "4"],
+                                "lines": [
+                                    " * Twitter: `@codecov <https://twitter.com/codecov>`_.",
+                                    " * Email: `hello@codecov.io <hello@codecov.io>`_.",
+                                    " ",
+                                    "-We are happy to help if you have any questions. ",
+                                    "-",
+                                    "+We are happy to help if you have any questions. .",
+                                ],
+                            },
+                        ],
+                        "stats": {"added": 11, "removed": 4},
+                    },
+                    "file_2.py": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {
+                                "header": ["10", "8", "10", "9"],
+                                "lines": [
+                                    " Overview",
+                                    " --------",
+                                    " ",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "-Main website: `Codecov <https://codecov.io/>`_.",
+                                    "+",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    "+website: `Codecov <https://codecov.io/>`_.",
+                                    " ",
+                                    " .. code-block:: shell-session",
+                                    " ",
+                                ],
+                            },
+                            {
+                                "header": ["50", "12", "51", "19"],
+                                "lines": [
+                                    " ",
+                                    " You may need to configure a ``.coveragerc`` file. Learn more `here <http://coverage.readthedocs.org/en/latest/config.html>`_. Start with this `generic .coveragerc <https://gist.github.com/codecov-io/bf15bde2c7db1a011b6e>`_ for example.",
+                                    " ",
+                                    "-We highly suggest adding `source` to your ``.coveragerc`` which solves a number of issues collecting coverage.",
+                                    "+We highly suggest adding ``source`` to your ``.coveragerc``, which solves a number of issues collecting coverage.",
+                                    " ",
+                                    " .. code-block:: ini",
+                                    " ",
+                                    "    [run]",
+                                    "    source=your_package_name",
+                                    "+   ",
+                                    "+If there are multiple sources, you instead should add ``include`` to your ``.coveragerc``",
+                                    "+",
+                                    "+.. code-block:: ini",
+                                    "+",
+                                    "+   [run]",
+                                    "+   include=your_package_name/*",
+                                    " ",
+                                    " unittests",
+                                    " ---------",
+                                ],
+                            },
+                        ],
+                        "stats": {"added": 11, "removed": 4},
+                    },
+                }
+            },
+        )
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "70%",
+                "removed_code_behavior": "fully_covered_patch",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": "60.00% (target 70.00%), passed because coverage was not affected by patch",
+            "state": "success",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
 
 
 class TestPatchStatusNotifier(object):

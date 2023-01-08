@@ -1,26 +1,612 @@
+import json
+
 import pytest
+from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
+from shared.reports.types import CoverageDatapoint
 
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.labelanalysis import LabelAnalysisRequestFactory
+from database.tests.factories.staticanalysis import (
+    StaticAnalysisSingleFileSnapshotFactory,
+    StaticAnalysisSuiteFactory,
+    StaticAnalysisSuiteFilepathFactory,
+)
+from services.report import ReportService
+from services.static_analysis import StaticAnalysisComparisonService
 from tasks.label_analysis import (
     LabelAnalysisRequestProcessingTask,
     LabelAnalysisRequestState,
 )
 
+sample_head_static_analysis_dict = {
+    "empty_lines": [2, 3, 11],
+    "warnings": [],
+    "filename": "source.py",
+    "functions": [
+        {
+            "identifier": "some_function",
+            "start_line": 6,
+            "end_line": 10,
+            "code_hash": "e69c18eff7d24f8bad3370db87f64333",
+            "complexity_metrics": {
+                "conditions": 1,
+                "mccabe_cyclomatic_complexity": 2,
+                "returns": 1,
+                "max_nested_conditional": 1,
+            },
+        }
+    ],
+    "hash": "84d371ab1c57d2349038ac3671428803",
+    "language": "python",
+    "number_lines": 11,
+    "statements": [
+        (
+            1,
+            {
+                "line_surety_ancestorship": None,
+                "start_column": 0,
+                "line_hash": "55c30cf01e202728b6952e9cba304798",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            5,
+            {
+                "line_surety_ancestorship": None,
+                "start_column": 4,
+                "line_hash": "1d7be9f2145760a59513a4049fcd0d1c",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            6,
+            {
+                "line_surety_ancestorship": 5,
+                "start_column": 4,
+                "line_hash": "f802087a854c26782ee8d4ece7214425",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            7,
+            {
+                "line_surety_ancestorship": None,
+                "start_column": 8,
+                "line_hash": "6ae3393fa7880fe8a844c03256cac37b",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            8,
+            {
+                "line_surety_ancestorship": 6,
+                "start_column": 4,
+                "line_hash": "5b099d1822e9236c540a5701a657225e",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            9,
+            {
+                "line_surety_ancestorship": 8,
+                "start_column": 4,
+                "line_hash": "e5d4915bb7dddeb18f53dc9fde9a3064",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            10,
+            {
+                "line_surety_ancestorship": 9,
+                "start_column": 4,
+                "line_hash": "e70ce43136171575ee525375b10f91a1",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+    ],
+    "definition_lines": [(4, 6)],
+    "import_lines": [],
+}
+
+sample_base_static_analysis_dict = {
+    "empty_lines": [2, 3, 11],
+    "warnings": [],
+    "filename": "source.py",
+    "functions": [
+        {
+            "identifier": "some_function",
+            "start_line": 6,
+            "end_line": 10,
+            "code_hash": "e4b52b6da12184142fcd7ff2c8412662",
+            "complexity_metrics": {
+                "conditions": 1,
+                "mccabe_cyclomatic_complexity": 2,
+                "returns": 1,
+                "max_nested_conditional": 1,
+            },
+        }
+    ],
+    "hash": "811d0016249a5b1400a685164e5295de",
+    "language": "python",
+    "number_lines": 11,
+    "statements": [
+        (
+            1,
+            {
+                "line_surety_ancestorship": None,
+                "start_column": 0,
+                "line_hash": "55c30cf01e202728b6952e9cba304798",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            5,
+            {
+                "line_surety_ancestorship": None,
+                "start_column": 4,
+                "line_hash": "1d7be9f2145760a59513a4049fcd0d1c",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            6,
+            {
+                "line_surety_ancestorship": 5,
+                "start_column": 4,
+                "line_hash": "52f98812dca4687f18373b87433df695",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            7,
+            {
+                "line_surety_ancestorship": None,
+                "start_column": 8,
+                "line_hash": "6ae3393fa7880fe8a844c03256cac37b",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            8,
+            {
+                "line_surety_ancestorship": 7,
+                "start_column": 8,
+                "line_hash": "5b099d1822e9236c540a5701a657225e",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            9,
+            {
+                "line_surety_ancestorship": 6,
+                "start_column": 4,
+                "line_hash": "e5d4915bb7dddeb18f53dc9fde9a3064",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+        (
+            10,
+            {
+                "line_surety_ancestorship": 9,
+                "start_column": 4,
+                "line_hash": "e70ce43136171575ee525375b10f91a1",
+                "len": 0,
+                "extra_connected_lines": (),
+            },
+        ),
+    ],
+    "definition_lines": [(4, 6)],
+    "import_lines": [],
+}
+
+
+@pytest.fixture
+def sample_report_with_labels():
+    r = Report()
+    first_rf = ReportFile("source.py")
+    first_rf.append(
+        5,
+        ReportLine.create(
+            coverage=1,
+            type=None,
+            sessions=[
+                (
+                    LineSession(
+                        id=1,
+                        coverage=1,
+                    )
+                )
+            ],
+            datapoints=[
+                CoverageDatapoint(
+                    sessionid=1,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=["apple", "label_one", "pineapple", "banana"],
+                )
+            ],
+            complexity=None,
+        ),
+    )
+    first_rf.append(
+        6,
+        ReportLine.create(
+            coverage=1,
+            type=None,
+            sessions=[
+                (
+                    LineSession(
+                        id=1,
+                        coverage=1,
+                    )
+                )
+            ],
+            datapoints=[
+                CoverageDatapoint(
+                    sessionid=1,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=["label_one", "pineapple", "banana"],
+                )
+            ],
+            complexity=None,
+        ),
+    )
+    first_rf.append(
+        7,
+        ReportLine.create(
+            coverage=1,
+            type=None,
+            sessions=[
+                (
+                    LineSession(
+                        id=1,
+                        coverage=1,
+                    )
+                )
+            ],
+            datapoints=[
+                CoverageDatapoint(
+                    sessionid=1,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=["banana"],
+                )
+            ],
+            complexity=None,
+        ),
+    )
+    first_rf.append(
+        8,
+        ReportLine.create(
+            coverage=1,
+            type=None,
+            sessions=[
+                (
+                    LineSession(
+                        id=1,
+                        coverage=1,
+                    )
+                )
+            ],
+            datapoints=[
+                CoverageDatapoint(
+                    sessionid=1,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=["banana"],
+                )
+            ],
+            complexity=None,
+        ),
+    )
+    first_rf.append(
+        8,
+        ReportLine.create(
+            coverage=1,
+            type=None,
+            sessions=[
+                (
+                    LineSession(
+                        id=1,
+                        coverage=1,
+                    )
+                )
+            ],
+            datapoints=[
+                CoverageDatapoint(
+                    sessionid=1,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=["label_one", "pineapple", "banana"],
+                )
+            ],
+            complexity=None,
+        ),
+    )
+    second_rf = ReportFile("path/from/additionsonly.py")
+    second_rf.append(
+        6,
+        ReportLine.create(
+            coverage=1,
+            type=None,
+            sessions=[
+                (
+                    LineSession(
+                        id=1,
+                        coverage=1,
+                    )
+                )
+            ],
+            datapoints=[
+                CoverageDatapoint(
+                    sessionid=1,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=["whatever", "here"],
+                )
+            ],
+            complexity=None,
+        ),
+    )
+    r.append(first_rf)
+    r.append(second_rf)
+    return r
+
 
 @pytest.mark.asyncio
-async def test_simple_label_request_call(dbsession):
+async def test_simple_call_without_requested_labels(
+    dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
+):
+    mocker.patch.object(
+        LabelAnalysisRequestProcessingTask,
+        "get_relevant_executable_lines",
+        return_value={
+            "all": False,
+            "files": {"source.py": {"all": False, "lines": {8, 6}}},
+        },
+    )
+    mocker.patch.object(
+        ReportService,
+        "get_existing_report_for_commit",
+        return_value=sample_report_with_labels,
+    )
     repository = RepositoryFactory.create()
     larf = LabelAnalysisRequestFactory.create(
         base_commit__repository=repository, head_commit__repository=repository
     )
     dbsession.add(larf)
     dbsession.flush()
+    base_sasf = StaticAnalysisSuiteFactory.create(commit=larf.base_commit)
+    head_sasf = StaticAnalysisSuiteFactory.create(commit=larf.head_commit)
+    dbsession.add(base_sasf)
+    dbsession.add(head_sasf)
+    dbsession.flush()
+    first_path = "abdkasdauchudh.txt"
+    second_path = "0diao9u3qdsdu.txt"
+    mock_storage.write_file(
+        "archive",
+        first_path,
+        json.dumps(sample_base_static_analysis_dict),
+    )
+    mock_storage.write_file(
+        "archive",
+        second_path,
+        json.dumps(sample_head_static_analysis_dict),
+    )
+    first_snapshot = StaticAnalysisSingleFileSnapshotFactory.create(
+        repository=repository, content_location=first_path
+    )
+    second_snapshot = StaticAnalysisSingleFileSnapshotFactory.create(
+        repository=repository, content_location=second_path
+    )
+    dbsession.add(first_snapshot)
+    dbsession.add(second_snapshot)
+    dbsession.flush()
+    first_base_file = StaticAnalysisSuiteFilepathFactory.create(
+        file_snapshot=first_snapshot,
+        analysis_suite=base_sasf,
+        filepath="source.py",
+    )
+    first_head_file = StaticAnalysisSuiteFilepathFactory.create(
+        file_snapshot=second_snapshot,
+        analysis_suite=head_sasf,
+        filepath="source.py",
+    )
+    dbsession.add(first_base_file)
+    dbsession.add(first_head_file)
+    dbsession.flush()
+
     task = LabelAnalysisRequestProcessingTask()
     res = await task.run_async(dbsession, larf.id)
-    expected_result = {"success": True}
+    expected_present_report_labels = [
+        "apple",
+        "banana",
+        "here",
+        "label_one",
+        "pineapple",
+        "whatever",
+    ]
+    expected_present_diff_labels = sorted(["label_one", "pineapple", "banana"])
+    expected_result = {
+        "absent_labels": [],
+        "present_diff_labels": expected_present_diff_labels,
+        "present_report_labels": expected_present_report_labels,
+        "success": True,
+    }
     assert res == expected_result
     dbsession.flush()
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id
-    assert larf.result == {"not": "ready"}
+    assert larf.result == {
+        "absent_labels": [],
+        "present_diff_labels": expected_present_diff_labels,
+        "present_report_labels": expected_present_report_labels,
+    }
+
+
+@pytest.mark.asyncio
+async def test_simple_call_with_requested_labels(
+    dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
+):
+    mocker.patch.object(
+        LabelAnalysisRequestProcessingTask,
+        "get_relevant_executable_lines",
+        return_value={
+            "all": False,
+            "files": {"source.py": {"all": False, "lines": {8, 6}}},
+        },
+    )
+    mocker.patch.object(
+        ReportService,
+        "get_existing_report_for_commit",
+        return_value=sample_report_with_labels,
+    )
+    larf = LabelAnalysisRequestFactory.create(
+        requested_labels=["tangerine", "pear", "banana", "apple"]
+    )
+    dbsession.add(larf)
+    dbsession.flush()
+    task = LabelAnalysisRequestProcessingTask()
+    res = await task.run_async(dbsession, larf.id)
+    expected_present_diff_labels = ["banana"]
+    expected_present_report_labels = ["apple", "banana"]
+    expected_absent_labels = ["pear", "tangerine"]
+    expected_result = {
+        "absent_labels": expected_absent_labels,
+        "present_diff_labels": expected_present_diff_labels,
+        "present_report_labels": expected_present_report_labels,
+        "success": True,
+    }
+    assert res == expected_result
+    dbsession.flush()
+    dbsession.refresh(larf)
+    assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id
+    assert larf.result == {
+        "absent_labels": expected_absent_labels,
+        "present_diff_labels": expected_present_diff_labels,
+        "present_report_labels": expected_present_report_labels,
+    }
+
+
+def test_get_executable_lines_labels_all_labels(sample_report_with_labels):
+    executable_lines = {"all": True}
+    task = LabelAnalysisRequestProcessingTask()
+    assert task.get_executable_lines_labels(
+        sample_report_with_labels, executable_lines
+    ) == {"apple", "banana", "here", "label_one", "pineapple", "whatever"}
+    assert task.get_executable_lines_labels(
+        sample_report_with_labels, executable_lines
+    ) == task.get_all_report_labels(sample_report_with_labels)
+
+
+def test_get_executable_lines_labels_all_labels_in_one_file(sample_report_with_labels):
+    executable_lines = {"all": False, "files": {"source.py": {"all": True}}}
+    task = LabelAnalysisRequestProcessingTask()
+    assert task.get_executable_lines_labels(
+        sample_report_with_labels, executable_lines
+    ) == {"banana", "label_one", "pineapple", "apple"}
+
+
+def test_get_relevant_executable_lines_nothing_found(dbsession, mocker):
+    repository = RepositoryFactory.create()
+    dbsession.add(repository)
+    dbsession.flush()
+    larf = LabelAnalysisRequestFactory.create(
+        base_commit__repository=repository, head_commit__repository=repository
+    )
+    dbsession.add(larf)
+    dbsession.flush()
+    task = LabelAnalysisRequestProcessingTask()
+    parsed_git_diff = []
+    assert task.get_relevant_executable_lines(larf, parsed_git_diff) is None
+
+
+def test_get_relevant_executable_lines_with_static_analyses(dbsession, mocker):
+    repository = RepositoryFactory.create()
+    dbsession.add(repository)
+    dbsession.flush()
+    larf = LabelAnalysisRequestFactory.create(
+        base_commit__repository=repository, head_commit__repository=repository
+    )
+    dbsession.add(larf)
+    dbsession.flush()
+    base_sasf = StaticAnalysisSuiteFactory.create(commit=larf.base_commit)
+    head_sasf = StaticAnalysisSuiteFactory.create(commit=larf.head_commit)
+    dbsession.add(base_sasf)
+    dbsession.add(head_sasf)
+    dbsession.flush()
+    task = LabelAnalysisRequestProcessingTask()
+    parsed_git_diff = []
+    mocked_res = mocker.patch.object(
+        StaticAnalysisComparisonService, "get_base_lines_relevant_to_change"
+    )
+    assert (
+        task.get_relevant_executable_lines(larf, parsed_git_diff)
+        == mocked_res.return_value
+    )
+
+
+@pytest.mark.asyncio
+async def test_tun_async_with_error(
+    dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
+):
+    mocker.patch.object(
+        LabelAnalysisRequestProcessingTask,
+        "calculate_result",
+        side_effect=Exception("Oh no"),
+    )
+    larf = LabelAnalysisRequestFactory.create(
+        requested_labels=["tangerine", "pear", "banana", "apple"]
+    )
+    dbsession.add(larf)
+    dbsession.flush()
+    task = LabelAnalysisRequestProcessingTask()
+    res = await task.run_async(dbsession, larf.id)
+    expected_result = {
+        "absent_labels": None,
+        "present_diff_labels": None,
+        "present_report_labels": None,
+        "success": False,
+    }
+    assert res == expected_result
+    dbsession.flush()
+    dbsession.refresh(larf)
+    assert larf.state_id == LabelAnalysisRequestState.ERROR.db_id
+    assert larf.result is None
+
+
+@pytest.mark.asyncio
+async def test_calculate_result_no_report(
+    dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
+):
+    larf = LabelAnalysisRequestFactory.create(
+        requested_labels=["tangerine", "pear", "banana", "apple"]
+    )
+    dbsession.add(larf)
+    dbsession.flush()
+    mocker.patch.object(
+        ReportService,
+        "get_existing_report_for_commit",
+        return_value=None,
+    )
+    task = LabelAnalysisRequestProcessingTask()
+    res = task.calculate_result(larf, mocker.MagicMock())
+    assert res == {
+        "absent_labels": larf.requested_labels,
+        "present_diff_labels": [],
+        "present_report_labels": [],
+    }

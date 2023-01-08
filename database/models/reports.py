@@ -25,7 +25,7 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
     commit = relationship(
         "Commit",
         foreign_keys=[commit_id],
-        back_populates="report",
+        back_populates="reports_list",
         cascade="all, delete",
     )
     details = relationship(
@@ -45,6 +45,13 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
     uploads = relationship(
         "Upload", back_populates="report", cascade="all, delete", passive_deletes=True
     )
+    patch_results = relationship(
+        "ReportResults",
+        uselist=False,
+        back_populates="report",
+        cascade="all, delete",
+        passive_deletes=True,
+    )
 
 
 association_table = Table(
@@ -53,6 +60,15 @@ association_table = Table(
     Column("upload_id", types.Integer, ForeignKey("reports_upload.id")),
     Column("flag_id", types.Integer, ForeignKey("reports_repositoryflag.id")),
 )
+
+
+class ReportResults(MixinBaseClass, CodecovBaseModel):
+    __tablename__ = "reports_reportresults"
+    state = Column(types.Text)
+    completed_at = Column(types.DateTime(timezone=True), nullable=True)
+    result = Column(postgresql.JSON)
+    report_id = Column(types.Integer, ForeignKey("reports_commitreport.id"))
+    report = relationship("CommitReport", foreign_keys=[report_id])
 
 
 class Upload(CodecovBaseModel, MixinBaseClass):

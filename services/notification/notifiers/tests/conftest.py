@@ -627,8 +627,10 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
 
 @pytest.fixture
 def sample_comparison_matching_flags(dbsession, request, sample_report):
+    base_report = ReadOnlyReport.create_from_report(get_small_report(flags=["unit"]))
+    head_report = ReadOnlyReport.create_from_report(sample_report)
     return generate_sample_comparison(
-        request.node.name, dbsession, get_small_report(flags=["unit"]), sample_report
+        request.node.name, dbsession, base_report, head_report
     )
 
 
