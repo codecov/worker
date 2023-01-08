@@ -14,6 +14,7 @@ from shared.yaml import UserYaml
 from database.models import Upload
 from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
+from database.tests.factories.core import ReportFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -144,6 +145,7 @@ class TestUploadTaskIntegration(object):
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+                report_code=None,
             )
         )
         mocked_1.assert_called_with(t1, t2)
@@ -411,6 +413,7 @@ class TestUploadTaskIntegration(object):
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+                report_code=None,
             )
         )
         mocked_1.assert_called_with(t1, t2, t3, t_final)
@@ -530,6 +533,7 @@ class TestUploadTaskIntegration(object):
                 {"build": "part1", "url": "url1", "upload_pk": mocker.ANY},
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
+            commit.report,
         )
         assert not mocked_fetch_yaml.called
 
@@ -582,6 +586,7 @@ class TestUploadTaskIntegration(object):
                 {"build": "part1", "url": "url1", "upload_pk": mocker.ANY},
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
+            commit.report,
         )
         assert not mocked_fetch_yaml.called
 
@@ -623,7 +628,7 @@ class TestUploadTaskIntegration(object):
             f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
         result = await UploadTask().run_async_within_lock(
-            dbsession, mock_redis, commit.repoid, commit.commitid
+            dbsession, mock_redis, commit.repoid, commit.commitid, None
         )
         assert {"was_setup": False, "was_updated": False} == result
         assert commit.message == ""
@@ -649,6 +654,7 @@ class TestUploadTaskIntegration(object):
                 {"build": "part1", "url": "url1", "upload_pk": first_session.id},
                 {"build": "part2", "url": "url2", "upload_pk": second_session.id},
             ],
+            commit.report,
         )
 
     @pytest.mark.asyncio
@@ -714,7 +720,7 @@ class TestUploadTaskIntegration(object):
             f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
         result = await UploadTask().run_async_within_lock(
-            dbsession, mock_redis, commit.repoid, commit.commitid
+            dbsession, mock_redis, commit.repoid, commit.commitid, None
         )
         assert {"was_setup": True, "was_updated": True} == result
         assert commit.message == ""
@@ -732,6 +738,7 @@ class TestUploadTaskIntegration(object):
                     "upload_id": upload.id_,
                 }
             ],
+            report,
         )
 
 
@@ -820,7 +827,9 @@ class TestUploadTaskUnit(object):
         argument_list = []
         dbsession.add(commit)
         dbsession.flush()
-        result = UploadTask().schedule_task(commit, commit_yaml, argument_list)
+        result = UploadTask().schedule_task(
+            commit, commit_yaml, argument_list, ReportFactory.create()
+        )
         assert result is None
 
     def test_schedule_task_with_one_task(self, dbsession, mocker):
@@ -831,7 +840,9 @@ class TestUploadTaskUnit(object):
         argument_list = [argument_dict]
         dbsession.add(commit)
         dbsession.flush()
-        result = UploadTask().schedule_task(commit, commit_yaml, argument_list)
+        result = UploadTask().schedule_task(
+            commit, commit_yaml, argument_list, ReportFactory.create()
+        )
         assert result == mocked_chain.return_value.apply_async.return_value
         t1 = upload_processor_task.signature(
             args=({},),
@@ -847,6 +858,7 @@ class TestUploadTaskUnit(object):
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml.to_dict(),
+                report_code=None,
             )
         )
         mocked_chain.assert_called_with(t1, t2)
@@ -1173,5 +1185,5 @@ class TestUploadTaskUnit(object):
         )
         with pytest.raises(Retry):
             await task.run_async_within_lock(
-                dbsession, mock_redis, commit.repoid, commit.commitid
+                dbsession, mock_redis, commit.repoid, commit.commitid, None
             )

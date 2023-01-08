@@ -240,7 +240,24 @@ class TestUploadFinisherTask(object):
             "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
         }
         assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results
+            commit, commit_yaml, processing_results, None
+        )
+
+    @pytest.mark.asyncio
+    async def test_should_call_notifications_local_upload(self, dbsession):
+        commit_yaml = {"codecov": {"max_report_age": "1y ago"}}
+        commit = CommitFactory.create(
+            message="dsidsahdsahdsa",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
+            repository__owner__username="ThiagoCodecov",
+            repository__yaml=commit_yaml,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        processing_results = {}
+        assert not UploadFinisherTask().should_call_notifications(
+            commit, commit_yaml, processing_results, "local_report1"
         )
 
     @pytest.mark.asyncio
@@ -260,7 +277,7 @@ class TestUploadFinisherTask(object):
             * [{"arguments": {"url": "url"}, "successful": False}]
         }
         assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results
+            commit, commit_yaml, processing_results, None
         )
 
     @pytest.mark.asyncio
@@ -283,7 +300,7 @@ class TestUploadFinisherTask(object):
             * [{"arguments": {"url": "url"}, "successful": True}]
         }
         assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results
+            commit, commit_yaml, processing_results, None
         )
 
     @pytest.mark.asyncio
@@ -306,7 +323,7 @@ class TestUploadFinisherTask(object):
             * [{"arguments": {"url": "url"}, "successful": True}]
         }
         assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results
+            commit, commit_yaml, processing_results, None
         )
 
     @pytest.mark.asyncio
@@ -324,7 +341,7 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, UserYaml(commit_yaml), processing_results
+            dbsession, commit, UserYaml(commit_yaml), processing_results, None
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
@@ -368,7 +385,7 @@ class TestUploadFinisherTask(object):
         dbsession.add(pull)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, UserYaml(commit_yaml), processing_results
+            dbsession, commit, UserYaml(commit_yaml), processing_results, None
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
@@ -404,7 +421,7 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, UserYaml(commit_yaml), processing_results
+            dbsession, commit, UserYaml(commit_yaml), processing_results, None
         )
         assert res == {"notifications_called": False}
         assert mocked_app.send_task.call_count == 0
