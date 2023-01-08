@@ -41,7 +41,15 @@ class UploadFinisherTask(BaseCodecovTask):
     name = upload_finisher_task_name
 
     async def run_async(
-        self, db_session, processing_results, *, repoid, commitid, commit_yaml, **kwargs
+        self,
+        db_session,
+        processing_results,
+        *,
+        repoid,
+        commitid,
+        commit_yaml,
+        report_code,
+        **kwargs,
     ):
         log.info(
             "Received upload_finisher task",
@@ -63,7 +71,7 @@ class UploadFinisherTask(BaseCodecovTask):
             commit.notified = False
             db_session.commit()
             result = await self.finish_reports_processing(
-                db_session, commit, commit_yaml, processing_results
+                db_session, commit, commit_yaml, processing_results, report_code
             )
             save_commit_measurements(commit)
             self.invalidate_caches(redis_connection, commit)
@@ -93,7 +101,7 @@ class UploadFinisherTask(BaseCodecovTask):
         return result
 
     async def finish_reports_processing(
-        self, db_session, commit, commit_yaml: UserYaml, processing_results
+        self, db_session, commit, commit_yaml: UserYaml, processing_results, report_code
     ):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
@@ -102,7 +110,9 @@ class UploadFinisherTask(BaseCodecovTask):
         # always notify, let the notify handle if it should submit
         notifications_called = False
         if not regexp_ci_skip.search(commit.message or ""):
-            if self.should_call_notifications(commit, commit_yaml, processing_results):
+            if self.should_call_notifications(
+                commit, commit_yaml, processing_results, report_code
+            ):
                 notifications_called = True
                 log.info(
                     "Scheduling notify task",
@@ -164,7 +174,22 @@ class UploadFinisherTask(BaseCodecovTask):
             commit.state = "skipped"
         return {"notifications_called": notifications_called}
 
-    def should_call_notifications(self, commit, commit_yaml, processing_results):
+    def should_call_notifications(
+        self, commit, commit_yaml, processing_results, report_code
+    ):
+        # Notifications should be off in case of local uploads, and report code wouldn't be null in that case
+        if report_code is not None:
+            log.info(
+                "Not scheduling notify because it's a local upload",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    commit_yaml=commit_yaml,
+                    processing_results=processing_results,
+                    report_code=report_code,
+                ),
+            )
+            return False
         if not any(
             x["successful"] for x in processing_results.get("processings_so_far", [])
         ):
