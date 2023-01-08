@@ -207,6 +207,18 @@ class TestSaveReportResultsTaskHelpers(object):
             commit, enriched_pull
         ) == enriched_pull.database_pull.base
 
+    def test_fetch_base_and_head_reports(self, dbsession, enriched_pull, mocker):
+        mocked_reports = mocker.patch.object(
+            ReportService, "get_existing_report_for_commit", return_value=Report()
+        )
+        task = SaveReportResultsTask()
+        base_report, head_report = task.fetch_base_and_head_reports(
+            {}, enriched_pull.database_pull.head, enriched_pull.database_pull.base
+        )
+        mocked_reports.assert_called()
+        assert base_report is not None
+        assert head_report is not None
+
     @pytest.mark.asyncio
     async def test_fetch_yaml_dict(self, dbsession, mocker, mock_repo_provider):
         task = SaveReportResultsTask()
