@@ -66,6 +66,7 @@ class UploadProcessorTask(BaseCodecovTask):
         commitid,
         commit_yaml,
         arguments_list,
+        report_code=None,
         **kwargs,
     ):
         repoid = int(repoid)
@@ -86,6 +87,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     commitid=commitid,
                     commit_yaml=commit_yaml,
                     arguments_list=actual_arguments_list,
+                    report_code=report_code,
                     **kwargs,
                 )
         except LockError:
@@ -109,6 +111,7 @@ class UploadProcessorTask(BaseCodecovTask):
         commitid,
         commit_yaml,
         arguments_list,
+        report_code,
         **kwargs,
     ):
         commit_yaml = UserYaml(commit_yaml)
@@ -128,7 +131,9 @@ class UploadProcessorTask(BaseCodecovTask):
         report_service = ReportService(commit_yaml)
 
         with metrics.timer(f"{self.metrics_prefix}.build_original_report"):
-            report = report_service.get_existing_report_for_commit(commit)
+            report = report_service.get_existing_report_for_commit(
+                commit, report_code=report_code
+            )
             if report is None:
                 report = Report()
         try:
@@ -193,7 +198,13 @@ class UploadProcessorTask(BaseCodecovTask):
             )
             with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
                 results_dict = await self.save_report_results(
-                    db_session, report_service, repository, commit, report, pr
+                    db_session,
+                    report_service,
+                    repository,
+                    commit,
+                    report,
+                    pr,
+                    report_code,
                 )
             log.info(
                 "Processed %d reports",
@@ -273,7 +284,7 @@ class UploadProcessorTask(BaseCodecovTask):
         )
 
     async def save_report_results(
-        self, db_session, report_service, repository, commit, report, pr
+        self, db_session, report_service, repository, commit, report, pr, report_code
     ):
         """Saves the result of `report` to the commit database and chunks archive
 
@@ -322,7 +333,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         repoid=commit.repoid, commit=commit.commitid, pr_value=pr
                     ),
                 )
-        res = report_service.save_report(commit, report)
+        res = report_service.save_report(commit, report, report_code)
         db_session.commit()
         return res
 

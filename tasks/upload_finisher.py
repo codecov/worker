@@ -48,7 +48,7 @@ class UploadFinisherTask(BaseCodecovTask):
         repoid,
         commitid,
         commit_yaml,
-        report_code,
+        report_code=None,
         **kwargs,
     ):
         log.info(

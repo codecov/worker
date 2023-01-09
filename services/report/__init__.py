@@ -89,7 +89,9 @@ class ReportService(object):
         """
         return commit.report_json is not None
 
-    def initialize_and_save_report(self, commit: Commit) -> CommitReport:
+    def initialize_and_save_report(
+        self, commit: Commit, report_code: str
+    ) -> CommitReport:
         """
             Initializes the commit report
 
@@ -111,12 +113,14 @@ class ReportService(object):
         """
         db_session = commit.get_db_session()
         current_report_row = (
-            db_session.query(CommitReport).filter_by(commit_id=commit.id_).first()
+            db_session.query(CommitReport)
+            .filter_by(commit_id=commit.id_, code=report_code)
+            .first()
         )
         if not current_report_row:
             # This happens if the commit report is being created for the first time
             # or backfilled
-            current_report_row = CommitReport(commit_id=commit.id_)
+            current_report_row = CommitReport(commit_id=commit.id_, code=report_code)
             db_session.add(current_report_row)
             db_session.flush()
             report_details = (
@@ -130,7 +134,9 @@ class ReportService(object):
                 )
                 db_session.add(report_details)
                 db_session.flush()
-            actual_report = self.get_existing_report_for_commit(commit)
+            actual_report = self.get_existing_report_for_commit(
+                commit, report_code=report_code
+            )
             if actual_report is not None:
                 # This case means the report exists in our system, it was just not saved
                 #   yet into the new models therefore it needs backfilling
@@ -149,7 +155,7 @@ class ReportService(object):
             report = self.create_new_report_for_commit(commit)
             if not report.is_empty():
                 # This means there is a report to carryforward
-                self.save_full_report(commit, report)
+                self.save_full_report(commit, report, report_code)
         return current_report_row
 
     def fetch_report_upload(
@@ -267,18 +273,20 @@ class ReportService(object):
         return self._do_build_report_from_commit(commit)
 
     def get_existing_report_for_commit(
-        self, commit, report_class=None
+        self, commit, report_class=None, *, report_code=None
     ) -> Optional[Report]:
         commitid = commit.commitid
         if commit.report_json is None:
             return None
         try:
             archive_service = self.get_archive_service(commit.repository)
-            chunks = archive_service.read_chunks(commitid)
+            chunks = archive_service.read_chunks(commitid, report_code)
         except FileNotInStorageError:
             log.warning(
                 "File for chunks not found in storage",
-                extra=dict(commit=commitid, repo=commit.repoid),
+                extra=dict(
+                    commit=commitid, repo=commit.repoid, report_code=report_code
+                ),
             )
             return None
         if chunks is None:
@@ -552,7 +560,7 @@ class ReportService(object):
             db_session.add(error_obj)
             db_session.flush()
 
-    def save_report(self, commit: Commit, report: Report):
+    def save_report(self, commit: Commit, report: Report, report_code):
         if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:
             report.repack()
         archive_service = self.get_archive_service(commit.repository)
@@ -560,7 +568,7 @@ class ReportService(object):
         totals, network_json_str = report.to_database()
         network = loads(network_json_str)
         archive_data = report.to_archive().encode()
-        url = archive_service.write_chunks(commit.commitid, archive_data)
+        url = archive_service.write_chunks(commit.commitid, archive_data, report_code)
         commit.state = "complete" if report else "error"
         commit.totals = totals
         if (
@@ -603,7 +611,7 @@ class ReportService(object):
         )
         return {"url": url}
 
-    def save_full_report(self, commit: Commit, report: Report):
+    def save_full_report(self, commit: Commit, report: Report, report_code):
         """
             Saves the report (into database and storage) AND takes care of backfilling its sessions
                 like they were never in the database (useful for backfilling and carryforward cases)
@@ -615,7 +623,7 @@ class ReportService(object):
         Returns:
             TYPE: Description
         """
-        res = self.save_report(commit, report)
+        res = self.save_report(commit, report, report_code)
         db_session = commit.get_db_session()
         for sess_id, session in report.sessions.items():
             upload = Upload(
