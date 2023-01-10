@@ -1,6 +1,7 @@
 import logging
 
 from shared.staticanalysis import StaticAnalysisSingleFileSnapshotState
+from shared.storage.exceptions import FileNotInStorageError
 
 from app import celery_app
 from database.models.staticanalysis import (
@@ -8,6 +9,7 @@ from database.models.staticanalysis import (
     StaticAnalysisSuite,
     StaticAnalysisSuiteFilepath,
 )
+from services.archive import ArchiveService
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -30,7 +32,10 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask):
             return {"successful": False, "changed_count": None}
         log.info("Checking static analysis suite", extra=dict(suite_id=suite_id))
         query = (
-            db_session.query(StaticAnalysisSingleFileSnapshot)
+            db_session.query(
+                StaticAnalysisSingleFileSnapshot,
+                StaticAnalysisSingleFileSnapshot.content_location,
+            )
             .join(
                 StaticAnalysisSuiteFilepath,
                 StaticAnalysisSuiteFilepath.file_snapshot_id
@@ -42,13 +47,22 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask):
                 == StaticAnalysisSingleFileSnapshotState.CREATED.db_id,
             )
         )
-
+        archive_service = ArchiveService(suite.commit.repository)
+        StaticAnalysisSingleFileSnapshot.content_location
         # purposefully iteration when an update would suffice,
         # because we actually want to validate different stuff
         changed_count = 0
-        for elem in query:
-            elem.state_id = StaticAnalysisSingleFileSnapshotState.VALID.db_id
-            changed_count += 1
+        for elem, content_location in query:
+            try:
+                _ = archive_service.read_file(content_location)
+                elem.state_id = StaticAnalysisSingleFileSnapshotState.VALID.db_id
+                changed_count += 1
+            except FileNotInStorageError:
+                log.warning(
+                    "File not found to be analyzed",
+                    extra=dict(filepath_id=elem.id, suite_id=suite_id),
+                )
+
         db_session.commit()
         return {"successful": True, "changed_count": changed_count}
 
