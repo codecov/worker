@@ -469,14 +469,48 @@ class TestStaticAnalysisComparisonService(object):
         mock_storage.write_file(
             "archive",
             changed_snapshot_base.content_location,
-            json.dumps({"statements": [(1, {})]}),
+            json.dumps(
+                {
+                    "functions": [
+                        {
+                            "identifier": "banana_function",
+                            "start_line": 3,
+                            "end_line": 8,
+                        }
+                    ],
+                    "statements": [
+                        (
+                            1,
+                            {
+                                "len": 0,
+                                "line_surety_ancestorship": None,
+                                "extra_connected_lines": [],
+                            },
+                        ),
+                        (
+                            2,
+                            {
+                                "len": 0,
+                                "line_surety_ancestorship": 1,
+                                "extra_connected_lines": [],
+                            },
+                        ),
+                    ]
+                }
+            ),
         )
         mock_storage.write_file(
             "archive",
             changed_snapshot_head.content_location,
             json.dumps(
                 {
-                    "functions": [],
+                    "functions": [
+                        {
+                            "identifier": "banana_function",
+                            "start_line": 3,
+                            "end_line": 8,
+                        }
+                    ],
                     "statements": [
                         (
                             10,
@@ -528,19 +562,30 @@ class TestStaticAnalysisComparisonService(object):
                 ),
             ],
         )
-        change = DiffChange(
-            before_filepath="path/changed.py",
-            after_filepath="path/changed.py",
-            change_type=DiffChangeType.modified,
-            lines_only_on_base=[],
-            lines_only_on_head=[20],
-        )
         assert service._analyze_single_change(
             dbsession,
-            change,
+            DiffChange(
+                before_filepath="path/changed.py",
+                after_filepath="path/changed.py",
+                change_type=DiffChangeType.modified,
+                lines_only_on_base=[],
+                lines_only_on_head=[20],
+            ),
             changed_snapshot_base.content_location,
             changed_snapshot_head.content_location,
         ) == {"all": True, "lines": None}
+        assert service._analyze_single_change(
+            dbsession,
+            DiffChange(
+                before_filepath="path/changed.py",
+                after_filepath="path/changed.py",
+                change_type=DiffChangeType.modified,
+                lines_only_on_base=[],
+                lines_only_on_head=[99, 100],
+            ),
+            changed_snapshot_base.content_location,
+            changed_snapshot_head.content_location,
+        ) == {"all": False, "lines": set()}
 
     def test_analyze_single_change_function_based(self, dbsession, mock_storage):
         repository = RepositoryFactory.create()
