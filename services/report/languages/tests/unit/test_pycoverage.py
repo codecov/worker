@@ -156,15 +156,8 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (
-                                0,
-                                1,
-                                None,
-                                [
-                                    "test_another.py::test_fib_simple_case",
-                                    "test_another.py::test_fib_bigger_cases",
-                                ],
-                            )
+                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
+                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
                         ],
                     ),
                     (
@@ -175,15 +168,8 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (
-                                0,
-                                1,
-                                None,
-                                [
-                                    "test_another.py::test_fib_simple_case",
-                                    "test_another.py::test_fib_bigger_cases",
-                                ],
-                            )
+                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
+                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
                         ],
                     ),
                     (
