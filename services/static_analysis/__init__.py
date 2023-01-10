@@ -127,14 +127,18 @@ class StaticAnalysisComparisonService(object):
             if not head_analysis_file_data and not base_analysis_file_data:
                 return None
             for base_line in change.lines_only_on_base:
-                result_so_far["lines"].add(
+                corresponding_exec_line = (
                     base_analysis_file_data.get_corresponding_executable_line(base_line)
                 )
+                if corresponding_exec_line is not None:
+                    result_so_far["lines"].add(corresponding_exec_line)
             affected_statement_lines = set(
-                [
+                x
+                for x in (
                     head_analysis_file_data.get_corresponding_executable_line(li)
                     for li in change.lines_only_on_head
-                ]
+                )
+                if x is not None
             )
             for head_line in affected_statement_lines:
                 (
