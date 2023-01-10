@@ -284,7 +284,14 @@ class UploadProcessorTask(BaseCodecovTask):
         )
 
     async def save_report_results(
-        self, db_session, report_service, repository, commit, report, pr, report_code
+        self,
+        db_session,
+        report_service,
+        repository,
+        commit,
+        report,
+        pr,
+        report_code=None,
     ):
         """Saves the result of `report` to the commit database and chunks archive
 

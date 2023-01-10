@@ -90,7 +90,7 @@ class ReportService(object):
         return commit.report_json is not None
 
     def initialize_and_save_report(
-        self, commit: Commit, report_code: str
+        self, commit: Commit, report_code: str = None
     ) -> CommitReport:
         """
             Initializes the commit report
@@ -560,7 +560,7 @@ class ReportService(object):
             db_session.add(error_obj)
             db_session.flush()
 
-    def save_report(self, commit: Commit, report: Report, report_code):
+    def save_report(self, commit: Commit, report: Report, report_code=None):
         if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:
             report.repack()
         archive_service = self.get_archive_service(commit.repository)
@@ -611,7 +611,7 @@ class ReportService(object):
         )
         return {"url": url}
 
-    def save_full_report(self, commit: Commit, report: Report, report_code):
+    def save_full_report(self, commit: Commit, report: Report, report_code=None):
         """
             Saves the report (into database and storage) AND takes care of backfilling its sessions
                 like they were never in the database (useful for backfilling and carryforward cases)

@@ -138,6 +138,7 @@ class TestUploadTaskIntegration(object):
                         "upload_pk": first_session.id,
                     }
                 ],
+                report_code=None,
             ),
         )
         t2 = upload_finisher_task.signature(
@@ -381,6 +382,7 @@ class TestUploadTaskIntegration(object):
                     {"build": "part2", "url": "someurl2", "upload_pk": mocker.ANY},
                     {"build": "part3", "url": "someurl3", "upload_pk": mocker.ANY},
                 ],
+                report_code=None,
             ),
         )
         t2 = upload_processor_task.signature(
@@ -394,6 +396,7 @@ class TestUploadTaskIntegration(object):
                     {"build": "part5", "url": "someurl5", "upload_pk": mocker.ANY},
                     {"build": "part6", "url": "someurl6", "upload_pk": mocker.ANY},
                 ],
+                report_code=None,
             ),
         )
         t3 = upload_processor_task.signature(
@@ -406,6 +409,7 @@ class TestUploadTaskIntegration(object):
                     {"build": "part7", "url": "someurl7", "upload_pk": mocker.ANY},
                     {"build": "part8", "url": "someurl8", "upload_pk": mocker.ANY},
                 ],
+                report_code=None,
             ),
         )
         t_final = upload_finisher_task.signature(
@@ -851,6 +855,7 @@ class TestUploadTaskUnit(object):
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml.to_dict(),
                 arguments_list=argument_list,
+                report_code=None,
             ),
         )
         t2 = upload_finisher_task.signature(
