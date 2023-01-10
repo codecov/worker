@@ -28,7 +28,7 @@ from shared.yaml.user_yaml import UserYaml
 
 
 class SpecialLabelsEnum(Enum):
-    CODECOV_ALL_LABELS_PLACEHOLDER = "Th2dMtk4M_codecov_special_all_labels"
+    CODECOV_ALL_LABELS_PLACEHOLDER = "Th2dMtk4M_codecov"
 
     def __init__(self, val):
         self.corresponding_label = val

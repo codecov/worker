@@ -113,7 +113,7 @@ def test_report_builder_session(mocker):
                         sessionid=0,
                         coverage=1,
                         coverage_type=None,
-                        labels=["Th2dMtk4M_codecov_special_all_labels"],
+                        labels=["Th2dMtk4M_codecov"],
                     ),
                 ],
                 complexity=None,
