@@ -171,7 +171,7 @@ def test_report_builder_session_create_line(mocker):
             )
         ],
         datapoints=[
-            CoverageDatapoint(sessionid=45, coverage=1, coverage_type="b", labels=None)
+            CoverageDatapoint(sessionid=45, coverage=1, coverage_type="b", labels=[])
         ],
         complexity=None,
     )

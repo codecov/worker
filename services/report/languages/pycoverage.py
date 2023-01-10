@@ -39,18 +39,19 @@ class PyCoverageProcessor(BaseLanguageProcessor):
                     (COVERAGE_HIT, ln) for ln in file_coverage["executed_lines"]
                 ] + [(COVERAGE_MISS, ln) for ln in file_coverage["missing_lines"]]
                 for cov, ln in lines_and_coverage:
+                    label_list_of_lists = [
+                        [self._convert_testname_to_label(testname)]
+                        for testname in file_coverage.get("contexts", {}).get(
+                            str(ln), []
+                        )
+                    ]
                     report_file.append(
                         ln,
                         report_builder_session.create_coverage_line(
                             fixed_filename,
                             cov,
                             coverage_type=CoverageType.line,
-                            labels=[
-                                self._convert_testname_to_label(testname)
-                                for testname in file_coverage.get("contexts", {}).get(
-                                    str(ln), []
-                                )
-                            ],
+                            labels_list_of_lists=label_list_of_lists,
                         ),
                     )
                 report_builder_session.append(report_file)

@@ -189,12 +189,25 @@ class ReportBuilderSession(object):
         coverage,
         *,
         coverage_type: CoverageType,
-        labels: typing.List[typing.Union[str, SpecialLabelsEnum]] = None,
+        labels_list_of_lists: typing.List[typing.Union[str, SpecialLabelsEnum]] = None,
         partials=None,
         missing_branches=None,
         complexity=None
     ) -> ReportLine:
         coverage_type_str = coverage_type.map_to_string()
+        datapoints = (
+            [
+                CoverageDatapoint(
+                    sessionid=self.sessionid,
+                    coverage=coverage,
+                    coverage_type=coverage_type_str,
+                    labels=labels,
+                )
+                for labels in (labels_list_of_lists or [[]])
+            ]
+            if self._report_builder.supports_labels()
+            else None
+        )
         return ReportLine.create(
             coverage=coverage,
             type=coverage_type_str,
@@ -209,16 +222,7 @@ class ReportBuilderSession(object):
                     )
                 )
             ],
-            datapoints=[
-                CoverageDatapoint(
-                    sessionid=self.sessionid,
-                    coverage=coverage,
-                    coverage_type=coverage_type_str,
-                    labels=labels,
-                )
-            ]
-            if self._report_builder.supports_labels()
-            else None,
+            datapoints=datapoints,
             complexity=complexity,
         )
 
