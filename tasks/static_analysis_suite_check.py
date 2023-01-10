@@ -48,7 +48,6 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask):
             )
         )
         archive_service = ArchiveService(suite.commit.repository)
-        StaticAnalysisSingleFileSnapshot.content_location
         # purposefully iteration when an update would suffice,
         # because we actually want to validate different stuff
         changed_count = 0
