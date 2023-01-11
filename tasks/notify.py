@@ -66,11 +66,13 @@ class NotifyTask(BaseCodecovTask):
             }
         notify_lock_name = f"notify_lock_{repoid}_{commitid}"
         try:
+            lock_acquired = False
             with redis_connection.lock(
                 notify_lock_name,
                 timeout=max(80, self.hard_time_limit_task),
                 blocking_timeout=10,
             ):
+                lock_acquired = True
                 return await self.run_async_within_lock(
                     db_session,
                     repoid=repoid,
@@ -78,11 +80,16 @@ class NotifyTask(BaseCodecovTask):
                     current_yaml=current_yaml,
                     **kwargs,
                 )
-        except LockError:
+        except LockError as err:
             log.info(
                 "Not notifying because there is another notification already happening",
-                extra=dict(repoid=repoid, commitid=commitid),
-            )
+                extra=dict(
+                    repoid=repoid,
+                    commitid=commitid,
+                    error_type=type(err),
+                    lock_acquired=lock_acquired,
+                ),
+            ),
             return {
                 "notified": False,
                 "notifications": None,
