@@ -495,7 +495,7 @@ class TestStaticAnalysisComparisonService(object):
                                 "extra_connected_lines": [],
                             },
                         ),
-                    ]
+                    ],
                 }
             ),
         )
