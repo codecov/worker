@@ -36,15 +36,15 @@ input_data = b"""{
 def test_version_one_parser():
     subject = VersionOneReportParser()
     res = subject.parse_raw_report_from_bytes(input_data)
-    assert res.env is None
-    assert res.path_fixes == ""
-    assert res.toc == [
+    assert res.get_env() is None
+    assert res.get_path_fixes() == ""
+    assert res.get_toc() == [
         "path/to/file1.c",
         "path/from/another.cpp",
         "path/from/aaaaaa.cpp",
     ]
-    assert len(res.uploaded_files) == 2
-    first_file, second_file = res.uploaded_files
+    assert len(res.get_uploaded_files()) == 2
+    first_file, second_file = res.get_uploaded_files()
     assert isinstance(first_file, ParsedUploadedReportFile)
     assert first_file.filename == "coverage.xml"
     assert (

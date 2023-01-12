@@ -9,9 +9,8 @@ from shared.utils.sessions import Session
 
 from helpers.exceptions import ReportEmptyError
 from services.path_fixer import PathFixer
-from services.path_fixer.fixpaths import clean_toc
 from services.report.fixes import get_fixes_from_raw
-from services.report.parser.types import ParsedUploadedReportFile
+from services.report.parser.types import ParsedRawReport
 from services.report.report_builder import ReportBuilder
 from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
@@ -27,7 +26,7 @@ def invert_pattern(string: str) -> str:
 
 
 def process_raw_upload(
-    commit_yaml, original_report, reports: ParsedUploadedReportFile, flags, session=None
+    commit_yaml, original_report, reports: ParsedRawReport, flags, session=None
 ) -> Any:
     toc, env = None, None
 
@@ -35,10 +34,9 @@ def process_raw_upload(
     # Extract `git ls-files`
     # ----------------------
     if reports.has_toc():
-        toc = reports.toc.read().decode(errors="replace").strip()
-        toc = clean_toc(toc)
+        toc = reports.get_toc()
     if reports.has_env():
-        env = reports.env.read().decode(errors="replace")
+        env = reports.get_env()
 
     # --------------------
     # Create Master Report
@@ -54,9 +52,7 @@ def process_raw_upload(
     # Extract bash fixes
     # ------------------
     if reports.has_path_fixes():
-        ignored_file_lines = get_fixes_from_raw(
-            reports.path_fixes.read().decode(errors="replace"), path_fixer
-        )
+        ignored_file_lines = get_fixes_from_raw(reports.get_path_fixes(), path_fixer)
     else:
         ignored_file_lines = None
 
@@ -74,7 +70,7 @@ def process_raw_upload(
     skip_files = set()
 
     # [javascript] check for both coverage.json and coverage/coverage.lcov
-    for report_file in reports.uploaded_files:
+    for report_file in reports.get_uploaded_files():
         if report_file.filename == "coverage/coverage.json":
             skip_files.add("coverage/coverage.lcov")
     temporary_report = Report()
@@ -89,7 +85,7 @@ def process_raw_upload(
     # Process reports
     # ---------------
     ignored_lines = ignored_file_lines or {}
-    for report_file in reports.uploaded_files:
+    for report_file in reports.get_uploaded_files():
         current_filename = report_file.filename
         if report_file.contents:
             if current_filename in skip_files:

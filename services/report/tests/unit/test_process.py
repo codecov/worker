@@ -13,7 +13,7 @@ from shared.yaml import UserYaml
 from helpers.exceptions import CorruptRawReportError, ReportEmptyError
 from services.report import raw_upload_processor as process
 from services.report.parser import LegacyReportParser
-from services.report.parser.types import ParsedRawReport, ParsedUploadedReportFile
+from services.report.parser.types import LegacyParcedRawReport, ParsedUploadedReportFile
 from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
@@ -901,7 +901,7 @@ class TestProcessReport(BaseTestCase):
         )
         third_banana.append(5, ReportLine.create(0, sessions=[LineSession(1, 0)]))
         third_raw_report_result.append(third_banana)
-        uploaded_reports = ParsedRawReport(
+        uploaded_reports = LegacyParcedRawReport(
             toc=None,
             env=None,
             path_fixes=None,
