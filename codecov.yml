@@ -9,6 +9,25 @@ ignore:
   - "database/tests/factories/**"
 comment:
   show_critical_paths: true
-  layout: "reach,diff,flags,tree,betaprofiling"
+  layout: "reach,diff,flags,components,tree,betaprofiling"
 beta_groups:
   - "labels"
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+  individual_components:
+    - component_id: actual_code
+      name: NonTestCode
+      paths:
+          - "!conftest.py"
+          - "!**/conftest.py"
+          - "!**tests**/test_*.py"
+          - "!database/tests/factories/**"
+    - component_id: no_tasks
+      name: OutsideTasks
+      paths:
+          - "!tasks/**"
+      flag_regexes:
+          - "unit"
