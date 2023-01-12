@@ -6,6 +6,7 @@ from app import celery_app
 from database.models.labelanalysis import LabelAnalysisRequest
 from database.models.staticanalysis import StaticAnalysisSuite
 from services.report import Report, ReportService
+from services.report.report_builder import SpecialLabelsEnum
 from services.repository import get_repo_provider_service
 from services.static_analysis import StaticAnalysisComparisonService
 from services.static_analysis.git_diff_parser import parse_git_diff_json
@@ -13,6 +14,11 @@ from services.yaml import get_repo_yaml
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
+
+
+GLOBAL_LEVEL_LABEL = (
+    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
+)
 
 
 class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
@@ -47,6 +53,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 "present_report_labels": None,
                 "present_diff_labels": None,
                 "absent_labels": None,
+                "global_level_labels": None,
             }
         label_analysis_request.result = result
         label_analysis_request.state_id = LabelAnalysisRequestState.FINISHED.db_id
@@ -55,6 +62,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             "present_report_labels": result["present_report_labels"],
             "present_diff_labels": result["present_diff_labels"],
             "absent_labels": result["absent_labels"],
+            "global_level_labels": result["global_level_labels"],
         }
 
     def calculate_result(
@@ -73,12 +81,13 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 "present_report_labels": [],
                 "present_diff_labels": [],
                 "absent_labels": label_analysis_request.requested_labels,
+                "global_level_labels": [],
             }
         all_report_labels = self.get_all_report_labels(report)
         executable_lines = self.get_relevant_executable_lines(
             label_analysis_request, parsed_git_diff
         )
-        executable_lines_labels = self.get_executable_lines_labels(
+        executable_lines_labels, global_level_labels = self.get_executable_lines_labels(
             report, executable_lines
         )
         log.info(
@@ -88,6 +97,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 executable_lines_labels=sorted(executable_lines_labels),
                 all_report_labels=all_report_labels,
                 requested_labels=label_analysis_request.requested_labels,
+                global_level_labels=sorted(global_level_labels),
             ),
         )
         if label_analysis_request.requested_labels is not None:
@@ -99,11 +109,13 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                     executable_lines_labels & requested_labels
                 ),
                 "absent_labels": sorted(requested_labels - all_report_labels),
+                "global_level_labels": sorted(global_level_labels & requested_labels),
             }
         return {
             "present_report_labels": sorted(all_report_labels),
             "present_diff_labels": sorted(executable_lines_labels),
             "absent_labels": [],
+            "global_level_labels": sorted(global_level_labels),
         }
 
     def get_relevant_executable_lines(
@@ -148,7 +160,9 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
     def get_executable_lines_labels(self, report: Report, executable_lines) -> set:
         if executable_lines["all"]:
             return self.get_all_report_labels(report)
+        full_sessions = set()
         labels = set()
+        global_level_labels = set()
         for name, file_executable_lines in executable_lines["files"].items():
             rf = report.get(name)
             if rf:
@@ -156,14 +170,32 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                     for line_number, line in rf.lines:
                         if line and line.datapoints:
                             for datapoint in line.datapoints:
-                                labels.update(datapoint.labels or [])
+                                dp_labels = datapoint.labels or []
+                                labels.update(dp_labels)
+                                if GLOBAL_LEVEL_LABEL in dp_labels:
+                                    full_sessions.add(datapoint.sessionid)
                 else:
                     for line_number in file_executable_lines["lines"]:
                         line = rf.get(line_number)
                         if line and line.datapoints:
                             for datapoint in line.datapoints:
-                                labels.update(datapoint.labels or [])
-        return labels
+                                dp_labels = datapoint.labels or []
+                                labels.update(dp_labels)
+                                if GLOBAL_LEVEL_LABEL in dp_labels:
+                                    full_sessions.add(datapoint.sessionid)
+        for sess_id in full_sessions:
+            global_level_labels.update(self.get_labels_per_session(report, sess_id))
+        return (labels - set([GLOBAL_LEVEL_LABEL]), global_level_labels)
+
+    def get_labels_per_session(self, report: Report, sess_id: int):
+        all_labels = set()
+        for rf in report:
+            for _, line in rf.lines:
+                if line.datapoints:
+                    for datapoint in line.datapoints:
+                        if datapoint.sessionid == sess_id:
+                            all_labels.update(datapoint.labels or [])
+        return all_labels - set([GLOBAL_LEVEL_LABEL])
 
     def get_all_report_labels(self, report: Report) -> set:
         all_labels = set()
@@ -172,7 +204,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 if line.datapoints:
                     for datapoint in line.datapoints:
                         all_labels.update(datapoint.labels or [])
-        return all_labels
+        return all_labels - set([GLOBAL_LEVEL_LABEL])
 
 
 RegisteredLabelAnalysisRequestProcessingTask = celery_app.register_task(
