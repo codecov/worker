@@ -114,6 +114,10 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             if base_report and head_report
             else Decimal(0)
         )
+        rounded_change = str(round_number(yaml, change))
+        absolute_rounded_change = (
+            rounded_change[1:] if rounded_change[0] == "-" else rounded_change
+        )
 
         if base_report and head_report:
             yield (
@@ -133,7 +137,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     ),
                     coverage=(
                         " by **`{sign}{cov}%`**".format(
-                            cov=round_number(yaml, abs(change)),
+                            cov=absolute_rounded_change,
                             sign="+" if change > 0 else "-" if change < 0 else "",
                         )
                         if change != 0
@@ -246,6 +250,10 @@ class HeaderSectionWriter(BaseSectionWriter):
             if base_report and head_report
             else Decimal(0)
         )
+        rounded_change = str(round_number(yaml, change))
+        absolute_rounded_change = (
+            rounded_change[1:] if rounded_change[0] == "-" else rounded_change
+        )
 
         if head_report and base_report:
             yield (
@@ -259,7 +267,7 @@ class HeaderSectionWriter(BaseSectionWriter):
                         (change > 0) if change != 0 else "na"
                     ],
                     coverage={
-                        True: " by `{0}%`".format(round_number(yaml, abs(change))),
+                        True: " by `{0}%`".format(absolute_rounded_change),
                         False: "",
                     }[(change != 0)],
                     links=links,

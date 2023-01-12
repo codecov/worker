@@ -1460,6 +1460,128 @@ class TestCommentNotifier(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_build_message_negative_change_tricky_rounding(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_negative_change,
+    ):
+        # This example was taken from a real PR in which we had issues with rounding
+        # That's why the numbers will be.... dramatic
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_negative_change
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "diff"},
+            notifier_site_settings=True,
+            current_yaml={"coverage": {"precision": 2, "round": "down"}},
+        )
+        repository = comparison.head.commit.repository
+        # Change the reports
+        new_base_report = Report()
+        new_base_file = ReportFile("file.py")
+        # Produce numbers that we know can be tricky for rounding
+        for i in range(1, 6760):
+            new_base_file.append(i, ReportLine.create(coverage=1))
+        for i in range(6760, 7631):
+            new_base_file.append(i, ReportLine.create(coverage=0))
+        new_base_report.append(new_base_file)
+        comparison.base.report = ReadOnlyReport.create_from_report(new_base_report)
+        new_head_report = Report()
+        new_head_file = ReportFile("file.py")
+        for i in range(1, 6758):
+            new_head_file.append(i, ReportLine.create(coverage=1))
+        for i in range(6758, 7632):
+            new_head_file.append(i, ReportLine.create(coverage=0))
+        new_head_report.append(new_head_file)
+        comparison.head.report = ReadOnlyReport.create_from_report(new_head_report)
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **decrease** coverage by `0.04%`.",
+            f"> The diff coverage is `n/a`.",
+            f"",
+            f"```diff",
+            f"@@            Coverage Diff             @@",
+            f"##           master      #{pull.pullid}      +/-   ##",
+            f"==========================================",
+            f"- Coverage   88.58%   88.54%   -0.04%     ",
+            f"==========================================",
+            f"  Files           1        1              ",
+            f"  Lines        7630     7631       +1     ",
+            f"==========================================",
+            f"- Hits         6759     6757       -2     ",
+            f"- Misses        871      874       +3     ",
+            f"```",
+            f"",
+        ]
+        print(result)
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_negative_change_tricky_rounding_newheader(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_negative_change,
+    ):
+        # This example was taken from a real PR in which we had issues with rounding
+        # That's why the numbers will be.... dramatic
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_negative_change
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "newheader"},
+            notifier_site_settings=True,
+            current_yaml={"coverage": {"precision": 2, "round": "down"}},
+        )
+        repository = comparison.head.commit.repository
+        # Change the reports
+        new_base_report = Report()
+        new_base_file = ReportFile("file.py")
+        # Produce numbers that we know can be tricky for rounding
+        for i in range(1, 6760):
+            new_base_file.append(i, ReportLine.create(coverage=1))
+        for i in range(6760, 7631):
+            new_base_file.append(i, ReportLine.create(coverage=0))
+        new_base_report.append(new_base_file)
+        comparison.base.report = ReadOnlyReport.create_from_report(new_base_report)
+        new_head_report = Report()
+        new_head_file = ReportFile("file.py")
+        for i in range(1, 6758):
+            new_head_file.append(i, ReportLine.create(coverage=1))
+        for i in range(6758, 7632):
+            new_head_file.append(i, ReportLine.create(coverage=0))
+        new_head_report.append(new_head_file)
+        comparison.head.report = ReadOnlyReport.create_from_report(new_head_report)
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"Base: **88.58**% // Head: **88.54**% // Decreases project coverage by **`-0.04%`** :warning:",
+            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
+            f"> Patch has no changes to coverable lines.",
+            f"",
+        ]
+        print(result)
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
     async def test_build_message_show_carriedforward_flags_no_cf_coverage(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
