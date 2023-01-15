@@ -1,7 +1,8 @@
 from io import BytesIO
-from typing import BinaryIO, List, Optional
+from typing import Any, BinaryIO, Dict, List, Optional
 
 from services.path_fixer.fixpaths import clean_toc
+from services.report.fixes import get_fixes_from_raw
 
 
 class ParsedUploadedReportFile(object):
@@ -61,7 +62,7 @@ class VersionOneRawReport(ParsedRawReport):
     def get_uploaded_files(self):
         return self.uploaded_files
 
-    def get_path_fixes(self):
+    def get_path_fixes(self, path_fixer) -> Dict[str, Dict[str, Any]]:
         return self.path_fixes
 
 
@@ -77,5 +78,6 @@ class LegacyParcedRawReport(ParsedRawReport):
     def get_uploaded_files(self):
         return self.uploaded_files
 
-    def get_path_fixes(self):
-        return self.path_fixes.read().decode(errors="replace")
+    def get_path_fixes(self, path_fixer) -> Dict[str, Dict[str, Any]]:
+        path_fixes = self.path_fixes.read().decode(errors="replace")
+        return get_fixes_from_raw(path_fixes, path_fixer)
