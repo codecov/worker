@@ -308,7 +308,37 @@ def sample_report_with_labels():
                     coverage=1,
                     coverage_type=None,
                     labels=["banana"],
+                ),
+                CoverageDatapoint(
+                    sessionid=5,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=["orangejuice"],
+                ),
+            ],
+            complexity=None,
+        ),
+    )
+    first_rf.append(
+        99,
+        ReportLine.create(
+            coverage=1,
+            type=None,
+            sessions=[
+                (
+                    LineSession(
+                        id=5,
+                        coverage=1,
+                    )
                 )
+            ],
+            datapoints=[
+                CoverageDatapoint(
+                    sessionid=5,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=["justjuice"],
+                ),
             ],
             complexity=None,
         ),
@@ -332,7 +362,13 @@ def sample_report_with_labels():
                     coverage=1,
                     coverage_type=None,
                     labels=["label_one", "pineapple", "banana"],
-                )
+                ),
+                CoverageDatapoint(
+                    sessionid=5,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=["Th2dMtk4M_codecov", "applejuice"],
+                ),
             ],
             complexity=None,
         ),
@@ -434,17 +470,23 @@ async def test_simple_call_without_requested_labels(
     res = await task.run_async(dbsession, larf.id)
     expected_present_report_labels = [
         "apple",
+        "applejuice",
         "banana",
         "here",
+        "justjuice",
         "label_one",
+        "orangejuice",
         "pineapple",
         "whatever",
     ]
-    expected_present_diff_labels = sorted(["label_one", "pineapple", "banana"])
+    expected_present_diff_labels = sorted(
+        ["applejuice", "banana", "label_one", "orangejuice", "pineapple"]
+    )
     expected_result = {
         "absent_labels": [],
         "present_diff_labels": expected_present_diff_labels,
         "present_report_labels": expected_present_report_labels,
+        "global_level_labels": ["applejuice", "justjuice", "orangejuice"],
         "success": True,
     }
     assert res == expected_result
@@ -455,6 +497,7 @@ async def test_simple_call_without_requested_labels(
         "absent_labels": [],
         "present_diff_labels": expected_present_diff_labels,
         "present_report_labels": expected_present_report_labels,
+        "global_level_labels": ["applejuice", "justjuice", "orangejuice"],
     }
 
 
@@ -485,13 +528,13 @@ async def test_simple_call_with_requested_labels(
     expected_present_diff_labels = ["banana"]
     expected_present_report_labels = ["apple", "banana"]
     expected_absent_labels = ["pear", "tangerine"]
-    expected_result = {
+    assert res == {
         "absent_labels": expected_absent_labels,
         "present_diff_labels": expected_present_diff_labels,
         "present_report_labels": expected_present_report_labels,
         "success": True,
+        "global_level_labels": [],
     }
-    assert res == expected_result
     dbsession.flush()
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id
@@ -499,6 +542,7 @@ async def test_simple_call_with_requested_labels(
         "absent_labels": expected_absent_labels,
         "present_diff_labels": expected_present_diff_labels,
         "present_report_labels": expected_present_report_labels,
+        "global_level_labels": [],
     }
 
 
@@ -507,7 +551,17 @@ def test_get_executable_lines_labels_all_labels(sample_report_with_labels):
     task = LabelAnalysisRequestProcessingTask()
     assert task.get_executable_lines_labels(
         sample_report_with_labels, executable_lines
-    ) == {"apple", "banana", "here", "label_one", "pineapple", "whatever"}
+    ) == {
+        "banana",
+        "justjuice",
+        "here",
+        "pineapple",
+        "applejuice",
+        "apple",
+        "whatever",
+        "label_one",
+        "orangejuice",
+    }
     assert task.get_executable_lines_labels(
         sample_report_with_labels, executable_lines
     ) == task.get_all_report_labels(sample_report_with_labels)
@@ -518,7 +572,36 @@ def test_get_executable_lines_labels_all_labels_in_one_file(sample_report_with_l
     task = LabelAnalysisRequestProcessingTask()
     assert task.get_executable_lines_labels(
         sample_report_with_labels, executable_lines
-    ) == {"banana", "label_one", "pineapple", "apple"}
+    ) == (
+        {
+            "apple",
+            "justjuice",
+            "applejuice",
+            "label_one",
+            "banana",
+            "orangejuice",
+            "pineapple",
+        },
+        {"orangejuice", "justjuice", "applejuice"},
+    )
+
+
+def test_get_all_labels_one_session(sample_report_with_labels):
+    task = LabelAnalysisRequestProcessingTask()
+    assert task.get_labels_per_session(sample_report_with_labels, 1) == {
+        "apple",
+        "banana",
+        "here",
+        "label_one",
+        "pineapple",
+        "whatever",
+    }
+    assert task.get_labels_per_session(sample_report_with_labels, 2) == set()
+    assert task.get_labels_per_session(sample_report_with_labels, 5) == {
+        "orangejuice",
+        "justjuice",
+        "applejuice",
+    }
 
 
 def test_get_relevant_executable_lines_nothing_found(dbsession, mocker):
@@ -581,6 +664,7 @@ async def test_tun_async_with_error(
         "present_diff_labels": None,
         "present_report_labels": None,
         "success": False,
+        "global_level_labels": None,
     }
     assert res == expected_result
     dbsession.flush()
@@ -609,4 +693,5 @@ async def test_calculate_result_no_report(
         "absent_labels": larf.requested_labels,
         "present_diff_labels": [],
         "present_report_labels": [],
+        "global_level_labels": [],
     }
