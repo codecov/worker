@@ -5,6 +5,7 @@ from shared.labelanalysis import LabelAnalysisRequestState
 from app import celery_app
 from database.models.labelanalysis import LabelAnalysisRequest
 from database.models.staticanalysis import StaticAnalysisSuite
+from helpers.labels import get_all_report_labels, get_labels_per_session
 from services.report import Report, ReportService
 from services.report.report_builder import SpecialLabelsEnum
 from services.repository import get_repo_provider_service
@@ -188,23 +189,10 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         return (labels - set([GLOBAL_LEVEL_LABEL]), global_level_labels)
 
     def get_labels_per_session(self, report: Report, sess_id: int):
-        all_labels = set()
-        for rf in report:
-            for _, line in rf.lines:
-                if line.datapoints:
-                    for datapoint in line.datapoints:
-                        if datapoint.sessionid == sess_id:
-                            all_labels.update(datapoint.labels or [])
-        return all_labels - set([GLOBAL_LEVEL_LABEL])
+        return get_labels_per_session(report, sess_id)
 
     def get_all_report_labels(self, report: Report) -> set:
-        all_labels = set()
-        for rf in report:
-            for _, line in rf.lines:
-                if line.datapoints:
-                    for datapoint in line.datapoints:
-                        all_labels.update(datapoint.labels or [])
-        return all_labels - set([GLOBAL_LEVEL_LABEL])
+        return get_all_report_labels(report)
 
 
 RegisteredLabelAnalysisRequestProcessingTask = celery_app.register_task(
