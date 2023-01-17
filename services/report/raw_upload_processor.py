@@ -2,21 +2,27 @@
 
 import logging
 import random
-from typing import Any
+import typing
+from dataclasses import dataclass
 
 from shared.reports.resources import Report
-from shared.utils.sessions import Session
+from shared.utils.sessions import Session, SessionType
 
 from helpers.exceptions import ReportEmptyError
+from helpers.labels import get_all_report_labels, get_labels_per_session
 from services.path_fixer import PathFixer
 from services.path_fixer.fixpaths import clean_toc
 from services.report.fixes import get_fixes_from_raw
 from services.report.parser.types import ParsedUploadedReportFile
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilder, SpecialLabelsEnum
 from services.report.report_processor import process_report
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
+
+GLOBAL_LEVEL_LABEL = (
+    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
+)
 
 
 def invert_pattern(string: str) -> str:
@@ -26,9 +32,15 @@ def invert_pattern(string: str) -> str:
         return "!%s" % string
 
 
+@dataclass
+class UploadProcessingResult(object):
+    __slots__ = ("report",)
+    report: Report
+
+
 def process_raw_upload(
     commit_yaml, original_report, reports: ParsedUploadedReportFile, flags, session=None
-) -> Any:
+) -> UploadProcessingResult:
     toc, env = None, None
 
     # ----------------------
@@ -107,6 +119,17 @@ def process_raw_upload(
             if report:
                 temporary_report.merge(report, joined=True)
             path_fixer_to_use.log_abnormalities()
+    _possibly_log_pathfixer_unusual_results(path_fixer, sessionid)
+    if not temporary_report:
+        raise ReportEmptyError("No files found in report.")
+    original_report.merge(temporary_report, joined=joined)
+    session.totals = temporary_report.totals
+    return UploadProcessingResult(
+        report=original_report,
+    )
+
+
+def _possibly_log_pathfixer_unusual_results(path_fixer, sessionid):
     if path_fixer.calculated_paths.get(None):
         ignored_files = sorted(path_fixer.calculated_paths.pop(None))
         log.info(
@@ -117,13 +140,6 @@ def process_raw_upload(
                 session=sessionid,
             ),
         )
-
-    if temporary_report:
-        original_report.merge(temporary_report, joined=joined)
-        session.totals = temporary_report.totals
-    else:
-        raise ReportEmptyError("No files found in report.")
-
     path_with_same_results = [
         (key, len(value), list(value)[:10])
         for key, value in path_fixer.calculated_paths.items()
@@ -138,5 +154,3 @@ def process_raw_upload(
                 session=sessionid,
             ),
         )
-
-    return original_report

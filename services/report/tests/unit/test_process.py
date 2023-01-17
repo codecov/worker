@@ -66,9 +66,10 @@ class TestProcessRawUpload(BaseTestCase):
         parsed_report = LegacyReportParser().parse_raw_report_from_io(
             BytesIO("\n".join(report).encode())
         )
-        master = process.process_raw_upload(
+        result = process.process_raw_upload(
             commit_yaml=None, original_report=master, reports=parsed_report, flags=[]
         )
+        master = result.report
 
         if "e" in keys:
             assert master.sessions[0].env == {"A": "b"}
@@ -144,7 +145,7 @@ class TestProcessRawUpload(BaseTestCase):
         report.append("# path=coverage/coverage.json")
         report.extend(json_section)
 
-        master = process.process_raw_upload(
+        result = process.process_raw_upload(
             commit_yaml={},
             original_report=None,
             reports=LegacyReportParser().parse_raw_report_from_io(
@@ -152,6 +153,7 @@ class TestProcessRawUpload(BaseTestCase):
             ),
             flags=[],
         )
+        master = result.report
         assert master.files == ["source", "file"]
 
     def test_process_raw_upload_empty_report(self):
@@ -316,7 +318,7 @@ class TestProcessRawUploadFixed(BaseTestCase):
                 "",
             )
         )
-        report = process.process_raw_upload(
+        result = process.process_raw_upload(
             commit_yaml={},
             original_report=None,
             reports=LegacyReportParser().parse_raw_report_from_io(
@@ -325,6 +327,7 @@ class TestProcessRawUploadFixed(BaseTestCase):
             flags=[],
             session={},
         )
+        report = result.report
         assert 2 not in report["file.go"], "2 never existed"
         assert report["file.go"][7].coverage == 1
         assert 8 not in report["file.go"], "8 should have been removed"
@@ -375,7 +378,7 @@ class TestProcessRawUploadFlags(BaseTestCase):
         [{"paths": ["!tests/.*"]}, {"ignore": ["tests/.*"]}, {"paths": ["folder/"]}],
     )
     def test_flags(self, flag):
-        master = process.process_raw_upload(
+        result = process.process_raw_upload(
             commit_yaml=UserYaml({"flags": {"docker": flag}}),
             original_report={},
             session={},
@@ -386,13 +389,14 @@ class TestProcessRawUploadFlags(BaseTestCase):
             ),
             flags=["docker"],
         )
+        master = result.report
         assert master.files == ["folder/file.py"]
         assert master.sessions[0].flags == ["docker"]
 
 
 class TestProcessSessions(BaseTestCase):
     def test_sessions(self):
-        master = process.process_raw_upload(
+        result = process.process_raw_upload(
             commit_yaml={},
             original_report={},
             session={},
@@ -403,7 +407,8 @@ class TestProcessSessions(BaseTestCase):
             ),
             flags=None,
         )
-        master = process.process_raw_upload(
+        master = result.report
+        result = process.process_raw_upload(
             commit_yaml={},
             original_report=master,
             session={},
@@ -414,6 +419,7 @@ class TestProcessSessions(BaseTestCase):
             ),
             flags=None,
         )
+        master = result.report
         print(master.totals)
         assert master.totals.sessions == 2
 
@@ -447,7 +453,7 @@ class TestProcessReport(BaseTestCase):
 
     def test_path_fixes_same_final_result(self):
         commit_yaml = {"fixes": ["arroba::prefix", "bingo::prefix"]}
-        master = process.process_raw_upload(
+        result = process.process_raw_upload(
             commit_yaml=UserYaml(commit_yaml),
             original_report=None,
             session={},
@@ -458,6 +464,7 @@ class TestProcessReport(BaseTestCase):
             ),
             flags=None,
         )
+        master = result.report
         assert len(master.files) == 1
         assert master.files[0] == "prefix/test.py"
 
@@ -930,13 +937,14 @@ class TestProcessReport(BaseTestCase):
             ],
         )
         session = Session()
-        res = process.process_raw_upload(
+        result = process.process_raw_upload(
             UserYaml({}),
             original_report,
             uploaded_reports,
             ["flag_one", "flag_two"],
             session=session,
         )
+        res = result.report
         assert session.totals == ReportTotals(
             files=2,
             lines=6,
