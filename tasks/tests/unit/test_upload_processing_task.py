@@ -425,6 +425,8 @@ class TestUploadProcessorTask(object):
         mocked_2.side_effect = [
             UploadProcessingResult(
                 report=false_report,
+                fully_deleted_sessions=[],
+                partially_deleted_sessions=[],
             ),
             ReportExpiredException(),
         ]
@@ -611,6 +613,8 @@ class TestUploadProcessorTask(object):
         mocked_2.side_effect = [
             UploadProcessingResult(
                 report=false_report,
+                fully_deleted_sessions=[],
+                partially_deleted_sessions=[],
             ),
             ReportEmptyError(),
         ]
