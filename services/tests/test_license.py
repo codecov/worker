@@ -78,7 +78,9 @@ class TestLicenseService(object):
         self, dbsession, mock_configuration
     ):
         for i in range(11):
-            owner = OwnerFactory.create(service="github")
+            owner = OwnerFactory.create(
+                service="github", username=f"test_calculate_reason_{i}"
+            )
             dbsession.add(owner)
         dbsession.flush()
         encrypted_license = "0dRbhbzp8TVFQp7P4e2ES9lSfyQlTo8J7LQ/N51yeAE/KcRBCnU+QsVvVMDuLL4xNGXGGk9p4ZTmIl0II3cMr0tIoPHe9Re2UjommalyFYuP8JjjnNR/Ql2DnjOzEnTzsE2Poq9xlNHcIU4F9gC2WOYPnazR6U+t4CelcvIAbEpbOMOiw34nVyd3OEmWusquMNrwkNkk/lwjwCJmj6bTXQ=="

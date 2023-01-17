@@ -120,12 +120,69 @@ def process_raw_upload(
     _possibly_log_pathfixer_unusual_results(path_fixer, sessionid)
     if not temporary_report:
         raise ReportEmptyError("No files found in report.")
+    session_manipulation_result = _adjust_sessions(
+        original_report, temporary_report, session, commit_yaml
+    )
     original_report.merge(temporary_report, joined=joined)
     session.totals = temporary_report.totals
     return UploadProcessingResult(
         report=original_report,
-        partially_deleted_sessions=[],
-        fully_deleted_sessions=[],
+        fully_deleted_sessions=session_manipulation_result.fully_deleted_sessions,
+        partially_deleted_sessions=session_manipulation_result.partially_deleted_sessions,
+    )
+
+
+@dataclass
+class SessionAdjustmentResult(object):
+    fully_deleted_sessions: set
+    partially_deleted_sessions: set
+
+
+def _adjust_sessions(original_report, to_merge_report, to_merge_session, current_yaml):
+    session_ids_to_fully_delete = []
+    session_ids_to_partially_delete = []
+    to_merge_flags = to_merge_session.flags or []
+    flags_under_carryforward_rules = [
+        f for f in to_merge_flags if current_yaml.flag_has_carryfoward(f)
+    ]
+    to_partially_overwrite_flags = [
+        f
+        for f in flags_under_carryforward_rules
+        if current_yaml.get_flag_configuration(f).get("carryforward_mode") == "label"
+    ]
+    to_fully_overwrite_flags = [
+        f
+        for f in flags_under_carryforward_rules
+        if f not in to_partially_overwrite_flags
+    ]
+    if to_fully_overwrite_flags or to_partially_overwrite_flags:
+        for sess_id, curr_sess in original_report.sessions.items():
+            if curr_sess.session_type == SessionType.carriedforward:
+                if curr_sess.flags:
+                    if any(f in to_fully_overwrite_flags for f in curr_sess.flags):
+                        session_ids_to_fully_delete.append(sess_id)
+                    if any(f in to_partially_overwrite_flags for f in curr_sess.flags):
+                        session_ids_to_partially_delete.append(sess_id)
+    actually_fully_deleted_sessions = set()
+    if session_ids_to_fully_delete:
+        log.info(
+            "Deleted multiple sessions due to carriedforward overwrite",
+            extra=dict(deleted_sessions=session_ids_to_fully_delete),
+        )
+        original_report.delete_multiple_sessions(session_ids_to_fully_delete)
+        actually_fully_deleted_sessions.update(session_ids_to_fully_delete)
+    if session_ids_to_partially_delete:
+        all_labels = get_all_report_labels(to_merge_report)
+        original_report.delete_labels(session_ids_to_partially_delete, all_labels)
+        for s in session_ids_to_partially_delete:
+            labels_now = get_labels_per_session(original_report, s)
+            if not labels_now:
+                log.info("Session has now no new labels, deleting whole session")
+                actually_fully_deleted_sessions.add(s)
+                original_report.delete_session(s)
+    return SessionAdjustmentResult(
+        sorted(actually_fully_deleted_sessions),
+        sorted(set(session_ids_to_partially_delete) - actually_fully_deleted_sessions),
     )
 
 
