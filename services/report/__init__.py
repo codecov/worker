@@ -475,9 +475,10 @@ class ReportService(object):
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
             with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
-                report = process_raw_upload(
+                result = process_raw_upload(
                     self.current_yaml, master, raw_uploaded_report, flags, session
                 )
+                report = result.report
             log.info(
                 "Successfully processed report",
                 extra=dict(
