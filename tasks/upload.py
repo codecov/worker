@@ -133,8 +133,13 @@ class UploadTask(BaseCodecovTask):
             return True
         return False
 
-    async def run_async(self, db_session, repoid, commitid, *args, **kwargs):
-        log.info("Received upload task", extra=dict(repoid=repoid, commit=commitid))
+    async def run_async(
+        self, db_session, repoid, commitid, report_code=None, *args, **kwargs
+    ):
+        log.info(
+            "Received upload task",
+            extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
+        )
         repoid = int(repoid)
         lock_name = f"upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
@@ -160,7 +165,13 @@ class UploadTask(BaseCodecovTask):
                 blocking_timeout=5,
             ):
                 return await self.run_async_within_lock(
-                    db_session, redis_connection, repoid, commitid, *args, **kwargs
+                    db_session,
+                    redis_connection,
+                    repoid,
+                    commitid,
+                    report_code,
+                    *args,
+                    **kwargs,
                 )
         except LockError:
             log.warning(
@@ -192,10 +203,18 @@ class UploadTask(BaseCodecovTask):
             self.retry(max_retries=3, countdown=20 * 2**self.request.retries)
 
     async def run_async_within_lock(
-        self, db_session, redis_connection, repoid, commitid, *args, **kwargs
+        self,
+        db_session,
+        redis_connection,
+        repoid,
+        commitid,
+        report_code,
+        *args,
+        **kwargs,
     ):
         log.info(
-            "Starting processing of report", extra=dict(repoid=repoid, commit=commitid)
+            "Starting processing of report",
+            extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
         )
         if not self.has_pending_jobs(redis_connection, repoid, commitid):
             return {
@@ -294,7 +313,7 @@ class UploadTask(BaseCodecovTask):
             argument_list.append(normalized_arguments)
         if argument_list:
             db_session.commit()
-            self.schedule_task(commit, commit_yaml, argument_list)
+            self.schedule_task(commit, commit_yaml, argument_list, commit_report)
         else:
             log.info(
                 "Not scheduling task because there were no arguments were found on redis",
@@ -347,7 +366,7 @@ class UploadTask(BaseCodecovTask):
             ownerid=repository.owner.ownerid,
         )
 
-    def schedule_task(self, commit, commit_yaml, argument_list):
+    def schedule_task(self, commit, commit_yaml, argument_list, commit_report):
         commit_yaml = commit_yaml.to_dict()
         chain_to_call = []
         for i in range(0, len(argument_list), CHUNK_SIZE):
@@ -369,6 +388,7 @@ class UploadTask(BaseCodecovTask):
                     repoid=commit.repoid,
                     commitid=commit.commitid,
                     commit_yaml=commit_yaml,
+                    report_code=commit_report.code,
                 )
             )
             chain_to_call.append(finish_sig)
