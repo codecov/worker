@@ -3652,6 +3652,8 @@ class TestReportService(BaseTestCase):
             report=None,
             session=mocker.MagicMock(),
             error=ProcessingError(code="abclkj", params={"banana": "value"}),
+            fully_deleted_sessions=[],
+            partially_deleted_sessions=[],
         )
         assert (
             ReportService({}).update_upload_with_processing_result(
@@ -3673,7 +3675,11 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         assert len(upload_obj.errors) == 0
         processing_result = ProcessingResult(
-            report=Report(), session=Session(), error=None
+            report=Report(),
+            session=Session(),
+            error=None,
+            fully_deleted_sessions=[],
+            partially_deleted_sessions=[],
         )
         assert (
             ReportService({}).update_upload_with_processing_result(
