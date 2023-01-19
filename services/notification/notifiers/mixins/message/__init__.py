@@ -1,12 +1,12 @@
 import logging
-from decimal import Decimal
+from typing import Callable
 
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
 
+from helpers.environment import is_enterprise
 from helpers.metrics import metrics
 from services.comparison import ComparisonProxy
-from services.comparison.overlays import OverlayType
 from services.notification.notifiers.mixins.message.helpers import (
     should_message_be_compact,
 )
@@ -15,7 +15,7 @@ from services.notification.notifiers.mixins.message.sections import (
     get_section_class_from_layout_name,
 )
 from services.urls import get_commit_url, get_pull_url
-from services.yaml.reader import read_yaml_field, round_number
+from services.yaml.reader import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -89,6 +89,10 @@ class MessageMixin(object):
         if base_report is None:
             base_report = Report()
 
+        # Announcement section specific for the GitHub App Login changes
+        # This might be removed eventually
+        await self._possibly_write_gh_app_login_announcement(comparison, write)
+
         if head_report:
             if is_compact_message:
                 write(
@@ -141,6 +145,20 @@ class MessageMixin(object):
                     )
 
         return [m for m in message if m is not None]
+
+    async def _possibly_write_gh_app_login_announcement(
+        self, comparison: ComparisonProxy, write: Callable
+    ) -> None:
+        repo = comparison.head.commit.repository
+        owner = repo.owner
+        if (
+            owner.service == "github"
+            and not owner.integration_id
+            and not is_enterprise()
+        ):
+            message_to_display = "This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)"
+            write(f":mega: {message_to_display}")
+            write("")
 
     async def write_section_to_msg(
         self, comparison, changes, diff, links, write, section_writer

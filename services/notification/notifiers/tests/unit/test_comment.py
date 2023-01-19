@@ -12,6 +12,7 @@ from shared.torngit.exceptions import (
 )
 from shared.utils.sessions import Session
 
+import services.notification.notifiers.mixins.message.sections as sections
 from database.tests.factories import RepositoryFactory
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.decoration import Decoration
@@ -35,7 +36,7 @@ from services.yaml.reader import get_components_from_yaml
 
 
 @pytest.fixture
-def sample_comparison_bunch_empty_flags(request, dbsession):
+def sample_comparison_bunch_empty_flags(request, dbsession, mocker):
     """
     This is what this fixture has regarding to flags
     - first is on both reports, both with 100% coverage (the common already existing result)
@@ -88,6 +89,10 @@ def sample_comparison_bunch_empty_flags(request, dbsession):
         ReportLine.create(coverage=1, sessions=[LineSession(5, 1), LineSession(2, 1)]),
     )
     base_report.append(file_2)
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     return generate_sample_comparison(
         request.node.name,
         dbsession,
@@ -395,6 +400,97 @@ class TestCommentNotifierHelpers(object):
         base_title, base_totals, head_title, head_totals, expected_result = case
         diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
         assert diff == expected_result
+
+    @pytest.mark.asyncio
+    async def test__possibly_write_gh_app_login_announcement_should_add_announcement(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__integration_id=None
+        )  # Not using integration
+        dbsession.add(repository)
+        dbsession.flush()
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.is_enterprise",
+            return_value=False,
+        )
+        mock_write = mocker.MagicMock()
+
+        notifier = CommentNotifier(
+            repository=repository,
+            title="some_title",
+            notifier_yaml_settings=False,
+            notifier_site_settings=None,
+            current_yaml={},
+        )
+        fake_comparison = mocker.MagicMock()
+        fake_comparison.head.commit.repository = repository
+        await notifier._possibly_write_gh_app_login_announcement(
+            fake_comparison, mock_write
+        )
+        mock_write.assert_any_call(
+            ":mega: This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)"
+        )
+        assert mock_write.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test__possibly_write_gh_app_login_announcement_already_using_integration(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__integration_id="10000"
+        )  # Using integration
+        dbsession.add(repository)
+        dbsession.flush()
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.is_enterprise",
+            return_value=False,
+        )
+        mock_write = mocker.MagicMock()
+
+        notifier = CommentNotifier(
+            repository=repository,
+            title="some_title",
+            notifier_yaml_settings=False,
+            notifier_site_settings=None,
+            current_yaml={},
+        )
+        fake_comparison = mocker.MagicMock()
+        fake_comparison.head.commit.repository = repository
+        await notifier._possibly_write_gh_app_login_announcement(
+            fake_comparison, mock_write
+        )
+        assert mock_write.call_count == 0
+
+    @pytest.mark.asyncio
+    async def test__possibly_write_gh_app_login_announcement_enterprise(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__integration_id=None
+        )  # Not using integration
+        dbsession.add(repository)
+        dbsession.flush()
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.is_enterprise",
+            return_value=True,
+        )  # Enterprise
+
+        mock_write = mocker.MagicMock()
+
+        notifier = CommentNotifier(
+            repository=repository,
+            title="some_title",
+            notifier_yaml_settings=False,
+            notifier_site_settings=None,
+            current_yaml={},
+        )
+        fake_comparison = mocker.MagicMock()
+        fake_comparison.head.commit.repository = repository
+        await notifier._possibly_write_gh_app_login_announcement(
+            fake_comparison, mock_write
+        )
+        assert mock_write.call_count == 0
 
 
 class TestCommentNotifier(object):
