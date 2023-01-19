@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Iterable, List, Tuple
@@ -72,9 +73,21 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
             deliveries = current_filter(deliveries)
         return list(deliveries)
 
-    def request_redeliveries(self, deliveries_to_request: List[object]):
-        # TODO: complete me
-        pass
+    async def request_redeliveries(
+        self, gh_handler: Github, deliveries_to_request: List[object]
+    ) -> int:
+        """
+        Requests re-delivery of failed webhooks to GitHub.
+        Returns the number of successful redelivery requests.
+        """
+        if len(deliveries_to_request) == 0:
+            return 0
+        redelivery_coroutines = map(
+            lambda item: gh_handler.request_webhook_redelivery(item["id"]),
+            deliveries_to_request,
+        )
+        results = await asyncio.gather(*redelivery_coroutines)
+        return sum(results)
 
     async def run_cron_task(self, db_session, *args, **kwargs):
         if is_enterprise():
@@ -91,6 +104,7 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
             ),
         )
         redeliveries_requested = 0
+        successful_redeliveries = 0
         all_deliveries = 0
         pages_processed = 0
         try:
@@ -98,8 +112,9 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
                 all_deliveries += len(deliveries)
                 pages_processed += 1
                 deliveries_to_request = self.apply_filters_to_deliveries(deliveries)
-                # TODO: Request redelivery of those deliveries
-                self.request_redeliveries(deliveries_to_request)
+                successful_redeliveries += await self.request_redeliveries(
+                    gh_handler, deliveries_to_request
+                )
                 redeliveries_requested += len(deliveries_to_request)
         except (
             TorngitUnauthorizedError,
@@ -121,6 +136,7 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
                 reason="Failed with exception. Ending task immediately",
                 exception=str(exp),
                 redeliveries_requested=redeliveries_requested,
+                successful_redeliveries=successful_redeliveries,
                 deliveries_processed=all_deliveries,
                 pages_processed=pages_processed,
             )
@@ -129,6 +145,7 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
             redeliveries_requested=redeliveries_requested,
             deliveries_processed=all_deliveries,
             pages_processed=pages_processed,
+            successful_redeliveries=successful_redeliveries,
         )
 
 

@@ -158,6 +158,17 @@ class TestGHAppWebhooksTask(object):
         assert filtered_deliveries[0] == sample_deliveries[2]
 
     @pytest.mark.asyncio
+    async def test_request_redeliveries_return_early(self, mocker):
+        fake_redelivery = mocker.patch.object(
+            Github,
+            "request_webhook_redelivery",
+            return_value=True,
+        )
+        task = GitHubAppWebhooksCheckTask()
+        assert await task.request_redeliveries(mocker.MagicMock(), []) == 0
+        fake_redelivery.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_skip_check_if_enterprise(self, dbsession, mocker):
         mock_is_enterprise = mocker.patch(
             "tasks.github_app_webhooks_check.is_enterprise", return_value=True
@@ -179,6 +190,12 @@ class TestGHAppWebhooksTask(object):
             "list_webhook_deliveries",
             side_effect=throw_exception,
         )
+        fake_redelivery = mocker.patch.object(
+            Github,
+            "request_webhook_redelivery",
+            return_value=True,
+        )
+
         fake_get_token = mocker.patch(
             "tasks.github_app_webhooks_check.get_github_integration_token",
             return_value="integration_jwt_token",
@@ -195,10 +212,12 @@ class TestGHAppWebhooksTask(object):
             ),
             redeliveries_requested=0,
             deliveries_processed=0,
+            successful_redeliveries=0,
             pages_processed=0,
         )
         fake_list_deliveries.assert_called()
         fake_get_token.assert_called()
+        fake_redelivery.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_successful_run(self, dbsession, mocker, sample_deliveries):
@@ -214,13 +233,20 @@ class TestGHAppWebhooksTask(object):
             "tasks.github_app_webhooks_check.get_github_integration_token",
             return_value="integration_jwt_token",
         )
+        fake_redelivery = mocker.patch.object(
+            Github,
+            "request_webhook_redelivery",
+            return_value=True,
+        )
         task = GitHubAppWebhooksCheckTask()
         ans = await task.run_cron_task(dbsession)
         assert ans == dict(
             checked=True,
             redeliveries_requested=1,
             deliveries_processed=6,
+            successful_redeliveries=1,
             pages_processed=1,
         )
         fake_list_deliveries.assert_called()
         fake_get_token.assert_called()
+        fake_redelivery.assert_called()
