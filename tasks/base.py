@@ -53,12 +53,14 @@ class BaseCodecovTask(celery_app.Task):
                 log.exception(
                     "Deadlock while talking to database",
                     extra=dict(task_args=args, task_kwargs=kwargs),
+                    exc_info=True,
                 )
                 return
             elif isinstance(exception.orig, psycopg2.OperationalError):
                 log.warning(
                     "Database seems to be unavailable",
                     extra=dict(task_args=args, task_kwargs=kwargs),
+                    exc_info=True,
                 )
                 return
         except ImportError:
@@ -66,6 +68,7 @@ class BaseCodecovTask(celery_app.Task):
         log.exception(
             "An error talking to the database occurred",
             extra=dict(task_args=args, task_kwargs=kwargs),
+            exc_info=True,
         )
 
     def run(self, *args, **kwargs):

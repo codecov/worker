@@ -17,6 +17,7 @@ from helpers.exceptions import (
 )
 from services.archive import ArchiveService
 from services.report import ReportService
+from services.report.raw_upload_processor import UploadProcessingResult
 from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
@@ -421,7 +422,14 @@ class TestUploadProcessorTask(object):
         false_report_file = ReportFile("file.c")
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
-        mocked_2.side_effect = [false_report, ReportExpiredException()]
+        mocked_2.side_effect = [
+            UploadProcessingResult(
+                report=false_report,
+                fully_deleted_sessions=[],
+                partially_deleted_sessions=[],
+            ),
+            ReportExpiredException(),
+        ]
         # Mocking retry to also raise the exception so we can see how it is called
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
@@ -602,7 +610,14 @@ class TestUploadProcessorTask(object):
         false_report_file = ReportFile("file.c")
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
-        mocked_2.side_effect = [false_report, ReportEmptyError()]
+        mocked_2.side_effect = [
+            UploadProcessingResult(
+                report=false_report,
+                fully_deleted_sessions=[],
+                partially_deleted_sessions=[],
+            ),
+            ReportEmptyError(),
+        ]
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
             message="",
