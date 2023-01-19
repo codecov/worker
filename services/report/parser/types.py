@@ -52,7 +52,7 @@ class ParsedRawReport(object):
         return sum(f.size for f in self.uploaded_files)
 
 
-class VersionOneRawReport(ParsedRawReport):
+class VersionOneParsedRawReport(ParsedRawReport):
     def get_toc(self) -> List[str]:
         return self.toc
 
@@ -66,7 +66,7 @@ class VersionOneRawReport(ParsedRawReport):
         return self.path_fixes
 
 
-class LegacyParcedRawReport(ParsedRawReport):
+class LegacyParsedRawReport(ParsedRawReport):
     def get_toc(self) -> List[str]:
         toc = self.toc.read().decode(errors="replace").strip()
         toc = clean_toc(toc)
