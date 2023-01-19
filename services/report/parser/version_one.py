@@ -4,7 +4,10 @@ import logging
 import zlib
 from io import BytesIO
 
-from services.report.parser.types import ParsedRawReport, ParsedUploadedReportFile
+from services.report.parser.types import (
+    ParsedUploadedReportFile,
+    VersionOneParsedRawReport,
+)
 
 log = logging.getLogger(__name__)
 
@@ -12,7 +15,7 @@ log = logging.getLogger(__name__)
 class VersionOneReportParser(object):
     def parse_raw_report_from_bytes(self, raw_report: bytes):
         data = json.loads(raw_report)
-        return ParsedRawReport(
+        return VersionOneParsedRawReport(
             toc=data["network_files"],
             env=None,
             uploaded_files=[

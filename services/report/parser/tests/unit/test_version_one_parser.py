@@ -8,7 +8,19 @@ from services.report.parser.version_one import (
 )
 
 input_data = b"""{
-    "path_fixes": {"format": "legacy", "value": ""},
+    "path_fixes": {
+        "format": "legacy",
+        "value": {
+            "SwiftExample/AppDelegate.swift": {
+                "eof": 15,
+                "lines": [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13]
+            },
+            "SwiftExample/Hello.swift": {
+                "eof": 30,
+                "lines": [1, 17, 3, 22, 7, 9, 12, 14]
+            }
+        }
+    },
     "network_files": [
         "path/to/file1.c",
         "path/from/another.cpp",
@@ -36,15 +48,24 @@ input_data = b"""{
 def test_version_one_parser():
     subject = VersionOneReportParser()
     res = subject.parse_raw_report_from_bytes(input_data)
-    assert res.env is None
-    assert res.path_fixes == ""
-    assert res.toc == [
+    assert res.get_env() is None
+    assert res.get_path_fixes(None) == {
+        "SwiftExample/AppDelegate.swift": {
+            "eof": 15,
+            "lines": [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13],
+        },
+        "SwiftExample/Hello.swift": {
+            "eof": 30,
+            "lines": [1, 17, 3, 22, 7, 9, 12, 14],
+        },
+    }
+    assert res.get_toc() == [
         "path/to/file1.c",
         "path/from/another.cpp",
         "path/from/aaaaaa.cpp",
     ]
-    assert len(res.uploaded_files) == 2
-    first_file, second_file = res.uploaded_files
+    assert len(res.get_uploaded_files()) == 2
+    first_file, second_file = res.get_uploaded_files()
     assert isinstance(first_file, ParsedUploadedReportFile)
     assert first_file.filename == "coverage.xml"
     assert (
