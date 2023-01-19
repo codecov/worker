@@ -2,6 +2,7 @@ import typing
 from collections import defaultdict
 
 from shared.reports.resources import Report
+from shared.utils.merge import LineType, branch_type
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
@@ -51,6 +52,8 @@ def from_xml(xml, report_builder_session: ReportBuilderSession):
 
     project = xml.attrib.get("name", "")
     project = "" if " " in project else project.strip("/")
+
+    jacoco_parser_settings = read_yaml_field(yaml, ("parsers", "jacoco")) or {}
 
     def try_to_fix_path(path):
         if project:
@@ -113,6 +116,13 @@ def from_xml(xml, report_builder_session: ReportBuilderSession):
                 else:
                     cov = int(line["ci"])
                     coverage_type = CoverageType.line
+
+                if (
+                    coverage_type == CoverageType.branch
+                    and branch_type(cov) == LineType.partial
+                    and jacoco_parser_settings.get("partials_as_hits", False)
+                ):
+                    cov = 1
 
                 ln = int(line["nr"])
                 complexity = method_complixity.get(ln)

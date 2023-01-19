@@ -2,7 +2,7 @@ version: 2.1
 executors:
   codecov-deploy:
     docker:
-      - image: gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
+      - image: us-docker.pkg.dev/test6u3411ty6xqh462sri/codecov-devops/codecov-deploy:latest
         user: root
         auth:
           username: _json_key
@@ -67,6 +67,30 @@ jobs:
             make -f Makefile.circle build-requirements GH_ACCESS_TOKEN=$GH_ACCESS_TOKEN
             make -f Makefile.circle build VERSION=$CIRCLE_TAG
             make -f Makefile.circle push
+  codecovstartup:
+    executor: codecov-worker
+    steps:
+      - run:
+          name: Setup
+          command: |
+            apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
+      - checkout
+      - run:
+          name: Install CLI
+          command: |
+            pip install git+ssh://git@github.com/codecov/codecov-cli.git@9370e1cd750579a6438fa3f7884e02e9f8f6d010#egg=codecov-cli
+      - run:
+          name: Save commit info 
+          command: |
+            codecovcli --auto-load-params-from circleci create-commit --service=github
+      - run:
+          name: Run Static Analysis
+          command: |
+            codecovcli static-analysis --token=$STATIC_TOKEN
+      - run:
+          name: Run Predictor Analysis
+          command: |
+            codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git log -n 1 master --pretty=format:"%H")
   mutations:
     executor: codecov-worker
     steps:
@@ -100,6 +124,7 @@ jobs:
           command: |-
             make -f Makefile.circle build-requirements
             make -f Makefile.circle build-enterprise VERSION=$CIRCLE_TAG
+            make -f Makefile.circle build-enterprise-runtime VERSION=$CIRCLE_TAG
             make -f Makefile.circle push-enterprise
   test:
     executor: codecov-worker
@@ -117,8 +142,9 @@ jobs:
       - run:
           name: upload to codecov using python uploader
           command: |
-            apk add git
-            codecov --auto-load-params-from circleci do-upload --flag python-uploader-overall
+            apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
+            pip install git+ssh://git@github.com/codecov/codecov-cli.git@9370e1cd750579a6438fa3f7884e02e9f8f6d010#egg=codecov-cli
+            codecovcli --auto-load-params-from circleci do-upload --flag python-uploader-overall --use-new-uploader True
 
       - run:
           name: upload to codecov using latest node uploader
@@ -128,11 +154,15 @@ jobs:
             curl -o codecov-latest https://uploader.codecov.io/latest/linux/codecov
             chmod +x codecov-latest
             ./codecov-latest -F latest-uploader-overall -Z
-            ./codecov-latest -F unit -f unit.coverage.xml -Z
-            ./codecov-latest -F integration -f integration.coverage.xml -Z
+            ./codecov-latest -F unit -f unit.coverage.json -Z
+            ./codecov-latest -F integration -f integration.coverage.json -Z
 
   staging:
     executor: codecov-deploy
+    environment:
+      SENTRY_ORG: codecov
+      SENTRY_PROJECT: python-3x-worker
+      SENTRY_ENVIRONMENT: staging
     steps:
       - checkout
       - setup_remote_docker:
@@ -143,9 +173,22 @@ jobs:
           name: docker build, tag, and upload to staging
           command: |
             make -f Makefile.circle staging
+      - run:
+          name: Create release and notify Sentry of deploy
+          command: |
+            curl -sL https://sentry.io/get-cli/ | bash
+            export SENTRY_RELEASE=$SENTRY_ENVIRONMENT-release-$(git rev-parse --short=7 HEAD)
+            sentry-cli releases new -p $SENTRY_PROJECT $SENTRY_RELEASE
+            sentry-cli releases set-commits $SENTRY_RELEASE --auto
+            sentry-cli releases finalize $SENTRY_RELEASE
+            sentry-cli releases deploys $SENTRY_RELEASE new -e $SENTRY_ENVIRONMENT 
 
   production:
     executor: codecov-deploy
+    environment:
+      SENTRY_ORG: codecov
+      SENTRY_PROJECT: python-3x-worker
+      SENTRY_ENVIRONMENT: production
     steps:
       - checkout
       - setup_remote_docker:
@@ -156,6 +199,15 @@ jobs:
           name: docker build, tag, and upload to production
           command: |
             make -f Makefile.circle production
+      - run:
+          name: Create release and notify Sentry of deploy
+          command: |
+            curl -sL https://sentry.io/get-cli/ | bash
+            export SENTRY_RELEASE=$SENTRY_ENVIRONMENT-release-$(git rev-parse --short=7 HEAD)
+            sentry-cli releases new -p $SENTRY_PROJECT $SENTRY_RELEASE
+            sentry-cli releases set-commits $SENTRY_RELEASE --auto
+            sentry-cli releases finalize $SENTRY_RELEASE
+            sentry-cli releases deploys $SENTRY_RELEASE new -e $SENTRY_ENVIRONMENT 
   enterprise:
     executor: codecov-deploy
     steps:
@@ -244,12 +296,13 @@ workflows:
           filters:
             tags:
               only: /.*/
-      # - standards-coverage-comparison:
-      #     context:
-      #       - "DockerHub Push Context"
-      #       - "circleci google deploy context"
-      #     requires:
-      #       - build
+      - codecovstartup:
+          context: "circleci google deploy context"
+          requires:
+            - build
+          filters:
+            tags:
+              only: /.*/
       - staging:
           context: "circleci google deploy context"
           requires:
@@ -257,7 +310,8 @@ workflows:
             - test
           filters:
             branches:
-              only: master
+              only:
+                - master
       - production:
           context: "circleci google deploy context"
           requires:

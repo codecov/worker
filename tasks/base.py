@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-import psycopg2
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
 from sqlalchemy.exc import (
@@ -46,6 +45,32 @@ class BaseCodecovTask(celery_app.Task):
             return self.time_limit
         return self.app.conf.task_time_limit or 0
 
+    def _analyse_error(self, exception: SQLAlchemyError, *args, **kwargs):
+        try:
+            import psycopg2
+
+            if isinstance(exception.orig, psycopg2.errors.DeadlockDetected):
+                log.exception(
+                    "Deadlock while talking to database",
+                    extra=dict(task_args=args, task_kwargs=kwargs),
+                    exc_info=True,
+                )
+                return
+            elif isinstance(exception.orig, psycopg2.OperationalError):
+                log.warning(
+                    "Database seems to be unavailable",
+                    extra=dict(task_args=args, task_kwargs=kwargs),
+                    exc_info=True,
+                )
+                return
+        except ImportError:
+            pass
+        log.exception(
+            "An error talking to the database occurred",
+            extra=dict(task_args=args, task_kwargs=kwargs),
+            exc_info=True,
+        )
+
     def run(self, *args, **kwargs):
         with metrics.timer(f"{self.metrics_prefix}.full"):
             db_session = get_db_session()
@@ -60,21 +85,7 @@ class BaseCodecovTask(celery_app.Task):
                 db_session.rollback()
                 self.retry()
             except SQLAlchemyError as ex:
-                if isinstance(ex.orig, psycopg2.errors.DeadlockDetected):
-                    log.exception(
-                        "Deadlock while talking to database",
-                        extra=dict(task_args=args, task_kwargs=kwargs),
-                    )
-                elif isinstance(ex.orig, psycopg2.OperationalError):
-                    log.warning(
-                        "Database seems to be unavailable",
-                        extra=dict(task_args=args, task_kwargs=kwargs),
-                    )
-                else:
-                    log.exception(
-                        "An error talking to the database occurred",
-                        extra=dict(task_args=args, task_kwargs=kwargs),
-                    )
+                self._analyse_error(ex, args, kwargs)
                 db_session.rollback()
                 self.retry()
             finally:

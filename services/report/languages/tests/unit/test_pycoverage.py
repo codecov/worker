@@ -134,11 +134,7 @@ class TestPyCoverageProcessor(BaseTestCase):
             [[0, 1, None, None, None]],
             None,
             None,
-            [
-                (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                (0, 1, None, ["test_source.py::test_some_code"]),
-            ],
+            [(0, 1, None, ["Th2dMtk4M_codecov"])],
         )
         assert processed_report == {
             "archive": {
@@ -150,11 +146,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_source.py::test_some_code"]),
-                        ],
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
                     ),
                     (
                         2,
@@ -164,15 +156,8 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (
-                                0,
-                                1,
-                                None,
-                                [
-                                    "test_another.py::test_fib_simple_case",
-                                    "test_another.py::test_fib_bigger_cases",
-                                ],
-                            )
+                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
+                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
                         ],
                     ),
                     (
@@ -183,15 +168,8 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (
-                                0,
-                                1,
-                                None,
-                                [
-                                    "test_another.py::test_fib_simple_case",
-                                    "test_another.py::test_fib_bigger_cases",
-                                ],
-                            )
+                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
+                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
                         ],
                     ),
                     (
@@ -212,11 +190,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_source.py::test_some_code"]),
-                        ],
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
                     ),
                     (
                         3,
@@ -225,11 +199,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_source.py::test_some_code"]),
-                        ],
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
                     ),
                     (
                         4,
@@ -265,11 +235,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_source.py::test_some_code"]),
-                        ],
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
                     ),
                     (
                         10,
@@ -289,11 +255,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_source.py::test_some_code"]),
-                        ],
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
                     ),
                     (
                         3,
@@ -302,11 +264,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_source.py::test_some_code"]),
-                        ],
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
                     ),
                     (
                         4,
@@ -333,11 +291,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_source.py::test_some_code"]),
-                        ],
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
                     ),
                     (
                         8,
@@ -357,11 +311,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_source.py::test_some_code"]),
-                        ],
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
                     ),
                     (
                         4,
@@ -370,11 +320,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_source.py::test_some_code"]),
-                        ],
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
                     ),
                     (
                         5,

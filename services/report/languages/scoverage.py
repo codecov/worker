@@ -1,11 +1,14 @@
 import typing
 
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class SCoverageProcessor(BaseLanguageProcessor):
@@ -15,17 +18,17 @@ class SCoverageProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_xml(content, path_fixer, ignored_lines, sessionid)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_xml(content, report_builder_session)
 
 
-def from_xml(xml, fix, ignored_lines, sessionid):
-    report = Report()
+def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
+
     ignore = []
     cache_fixes = {}
     _cur_file_name = None
@@ -42,7 +45,7 @@ def from_xml(xml, fix, ignored_lines, sessionid):
 
         else:
             # fix path
-            filename = fix(unfixed_path)
+            filename = path_fixer(unfixed_path)
             if filename is None:
                 # add unfixed to list of ignored
                 ignore.append(unfixed_path)
@@ -56,7 +59,9 @@ def from_xml(xml, fix, ignored_lines, sessionid):
             _cur_file_name = filename
             _file = files.get(filename)
             if not _file:
-                _file = ReportFile(filename, ignore=ignored_lines.get(filename))
+                _file = report_builder_session.file_class(
+                    name=filename, ignore=ignored_lines.get(filename)
+                )
                 files[filename] = _file
 
         # Add the line
@@ -70,12 +75,20 @@ def from_xml(xml, fix, ignored_lines, sessionid):
 
         if next(statement.iter("branch")).text == "true":
             cov = "%s/2" % hits
-            _file[ln] = ReportLine.create(cov, "b", [[sessionid, cov]])
+            _file[ln] = report_builder_session.create_coverage_line(
+                filename=filename,
+                coverage=cov,
+                coverage_type=CoverageType.branch,
+            )
         else:
             cov = maxint(hits)
-            _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
+            _file[ln] = report_builder_session.create_coverage_line(
+                filename=filename,
+                coverage=cov,
+                coverage_type=CoverageType.line,
+            )
 
     for v in files.values():
-        report.append(v)
+        report_builder_session.append(v)
 
-    return report
+    return report_builder_session.output_report()

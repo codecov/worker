@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import logging
+import sys
 import typing
 
 import click
+from shared.celery_config import BaseCeleryConfig
 from shared.config import get_config
 from shared.storage.exceptions import BucketAlreadyExistsError
 
 import app
-from celery_config import HEALTH_CHECK_QUEUE
+from helpers.environment import get_external_dependencies_folder
 from helpers.version import get_current_version
 from services.storage import get_storage_client
 
@@ -43,6 +45,13 @@ def web():
 
 def setup_worker():
     print(initialization_text.format(version=get_current_version()))
+
+    if getattr(sys, "frozen", False):
+        # Only for enterprise builds
+        external_deps_folder = get_external_dependencies_folder()
+        log.info(f"External dependencies folder configured to {external_deps_folder}")
+        sys.path.append(external_deps_folder)
+
     storage_client = get_storage_client()
     minio_config = get_config("services", "minio")
     bucket_name = get_config("services", "minio", "bucket", default="archive")
@@ -92,7 +101,11 @@ def _get_queues_param_from_queue_input(queues: typing.List[str]) -> str:
     # And also to avoid that queue fillign up with no workers to consume from it
     # this should support if one wants to pass comma separated values
     # since in the end all is joined again
-    return ",".join([*queues, HEALTH_CHECK_QUEUE])
+    joined_queues = ",".join(queues)
+    enterprise_queues = ["enterprise_" + q for q in joined_queues.split(",")]
+    return ",".join(
+        [joined_queues, *enterprise_queues, BaseCeleryConfig.health_check_default_queue]
+    )
 
 
 def main():

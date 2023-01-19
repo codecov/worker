@@ -81,7 +81,13 @@ def test_report_builder_session(mocker):
                     coverage=1,
                     coverage_type=None,
                     labels=["some_label", "other"],
-                )
+                ),
+                CoverageDatapoint(
+                    sessionid=0,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=None,
+                ),
             ],
             complexity=None,
         ),
@@ -104,13 +110,10 @@ def test_report_builder_session(mocker):
                 sessions=None,
                 datapoints=[
                     CoverageDatapoint(
-                        sessionid=0, coverage=1, coverage_type=None, labels=["other"]
-                    ),
-                    CoverageDatapoint(
                         sessionid=0,
                         coverage=1,
                         coverage_type=None,
-                        labels=["some_label"],
+                        labels=["Th2dMtk4M_codecov"],
                     ),
                 ],
                 complexity=None,
@@ -132,7 +135,13 @@ def test_report_builder_session(mocker):
                         coverage=1,
                         coverage_type=None,
                         labels=["some_label", "other"],
-                    )
+                    ),
+                    CoverageDatapoint(
+                        sessionid=0,
+                        coverage=1,
+                        coverage_type=None,
+                        labels=None,
+                    ),
                 ],
                 complexity=None,
             ),
@@ -162,7 +171,7 @@ def test_report_builder_session_create_line(mocker):
             )
         ],
         datapoints=[
-            CoverageDatapoint(sessionid=45, coverage=1, coverage_type="b", labels=None)
+            CoverageDatapoint(sessionid=45, coverage=1, coverage_type="b", labels=[])
         ],
         complexity=None,
     )

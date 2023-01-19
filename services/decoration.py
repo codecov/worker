@@ -8,6 +8,7 @@ from database.enums import Decoration
 from database.models import Commit, Owner, Repository
 from database.models.reports import CommitReport, Upload
 from services.billing import BillingPlan, is_pr_billing_plan
+from services.license import requires_license
 from services.repository import EnrichedPull
 
 log = logging.getLogger(__name__)
@@ -116,6 +117,7 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
         if (
             org.plan == BillingPlan.users_basic.value
             and uploads_used >= USER_BASIC_LIMIT_UPLOAD
+            and not requires_license()
         ):
             return DecorationDetails(
                 decoration_type=Decoration.upload_limit,

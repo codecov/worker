@@ -16,11 +16,7 @@ RUN         apk --update --no-cache add \
             && pip install --upgrade pip
 
 # Build bootloader for alpine
-RUN git clone --depth 1 --single-branch --branch v4.1 https://github.com/pyinstaller/pyinstaller.git /tmp/pyinstaller \
-    && cd /tmp/pyinstaller/bootloader \
-    && CFLAGS="-Wno-stringop-overflow" python ./waf configure --no-lsb all \
-    && pip install .. \
-    && rm -Rf /tmp/pyinstaller
+RUN         pip install pyinstaller==5.5
 
 COPY        . /worker
 
@@ -34,7 +30,7 @@ RUN         chmod a+x /pyinstaller/*
 
 RUN         ["/pyinstaller/package.sh"]
 
-FROM        alpine:3.13
+FROM        alpine:3.16
 
 RUN         addgroup -S application && adduser -S codecov -G application
 USER        codecov
@@ -42,6 +38,8 @@ COPY        --from=build /home/enterprise /home/enterprise
 
 ARG         RELEASE_VERSION
 ENV         RELEASE_VERSION $RELEASE_VERSION
+
+ENV         SETUPTOOLS_USE_DISTUTILS stdlib
 
 WORKDIR     /home
 ENTRYPOINT  ["./enterprise"]

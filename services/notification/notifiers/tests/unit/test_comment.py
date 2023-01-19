@@ -12,6 +12,7 @@ from shared.torngit.exceptions import (
 )
 from shared.utils.sessions import Session
 
+import services.notification.notifiers.mixins.message.sections as sections
 from database.tests.factories import RepositoryFactory
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.decoration import Decoration
@@ -24,16 +25,18 @@ from services.notification.notifiers.mixins.message.helpers import (
 )
 from services.notification.notifiers.mixins.message.sections import (
     AnnouncementSectionWriter,
+    ComponentsSectionWriter,
     FeedbackSectionWriter,
     FileSectionWriter,
     ImpactedEntrypointsSectionWriter,
     NewFooterSectionWriter,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
+from services.yaml.reader import get_components_from_yaml
 
 
 @pytest.fixture
-def sample_comparison_bunch_empty_flags(request, dbsession):
+def sample_comparison_bunch_empty_flags(request, dbsession, mocker):
     """
     This is what this fixture has regarding to flags
     - first is on both reports, both with 100% coverage (the common already existing result)
@@ -86,6 +89,10 @@ def sample_comparison_bunch_empty_flags(request, dbsession):
         ReportLine.create(coverage=1, sessions=[LineSession(5, 1), LineSession(2, 1)]),
     )
     base_report.append(file_2)
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     return generate_sample_comparison(
         request.node.name,
         dbsession,
@@ -394,6 +401,97 @@ class TestCommentNotifierHelpers(object):
         diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
         assert diff == expected_result
 
+    @pytest.mark.asyncio
+    async def test__possibly_write_gh_app_login_announcement_should_add_announcement(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__integration_id=None
+        )  # Not using integration
+        dbsession.add(repository)
+        dbsession.flush()
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.is_enterprise",
+            return_value=False,
+        )
+        mock_write = mocker.MagicMock()
+
+        notifier = CommentNotifier(
+            repository=repository,
+            title="some_title",
+            notifier_yaml_settings=False,
+            notifier_site_settings=None,
+            current_yaml={},
+        )
+        fake_comparison = mocker.MagicMock()
+        fake_comparison.head.commit.repository = repository
+        await notifier._possibly_write_gh_app_login_announcement(
+            fake_comparison, mock_write
+        )
+        mock_write.assert_any_call(
+            ":mega: This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)"
+        )
+        assert mock_write.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test__possibly_write_gh_app_login_announcement_already_using_integration(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__integration_id="10000"
+        )  # Using integration
+        dbsession.add(repository)
+        dbsession.flush()
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.is_enterprise",
+            return_value=False,
+        )
+        mock_write = mocker.MagicMock()
+
+        notifier = CommentNotifier(
+            repository=repository,
+            title="some_title",
+            notifier_yaml_settings=False,
+            notifier_site_settings=None,
+            current_yaml={},
+        )
+        fake_comparison = mocker.MagicMock()
+        fake_comparison.head.commit.repository = repository
+        await notifier._possibly_write_gh_app_login_announcement(
+            fake_comparison, mock_write
+        )
+        assert mock_write.call_count == 0
+
+    @pytest.mark.asyncio
+    async def test__possibly_write_gh_app_login_announcement_enterprise(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__integration_id=None
+        )  # Not using integration
+        dbsession.add(repository)
+        dbsession.flush()
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.is_enterprise",
+            return_value=True,
+        )  # Enterprise
+
+        mock_write = mocker.MagicMock()
+
+        notifier = CommentNotifier(
+            repository=repository,
+            title="some_title",
+            notifier_yaml_settings=False,
+            notifier_site_settings=None,
+            current_yaml={},
+        )
+        fake_comparison = mocker.MagicMock()
+        fake_comparison.head.commit.repository = repository
+        await notifier._possibly_write_gh_app_login_announcement(
+            fake_comparison, mock_write
+        )
+        assert mock_write.call_count == 0
+
 
 class TestCommentNotifier(object):
     @pytest.mark.asyncio
@@ -594,8 +692,8 @@ class TestCommentNotifier(object):
             f"",
             f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
         ]
         res = await notifier.create_message(comparison, pull_dict, {"layout": "files"})
@@ -753,8 +851,8 @@ class TestCommentNotifier(object):
             "",
             f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
             "",
         ]
@@ -813,8 +911,8 @@ class TestCommentNotifier(object):
             f"",
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
             f"",
             f"------",
             f"",
@@ -942,8 +1040,8 @@ class TestCommentNotifier(object):
             f"",
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
             f"",
             f"------",
             f"",
@@ -982,7 +1080,7 @@ class TestCommentNotifier(object):
         with_sql_functions,
         sample_comparison,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         mocker.patch("services.license.is_enterprise", return_value=False)
         comparison = sample_comparison
         pull = comparison.enriched_pull.database_pull
@@ -999,7 +1097,7 @@ class TestCommentNotifier(object):
         provider_pull = comparison.enriched_pull.provider_pull
         expected_result = [
             f"The author of this PR, {provider_pull['author']['username']}, is not an activated member of this organization on Codecov.",
-            f"Please [activate this user on Codecov](test.example.br/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
+            f"Please [activate this user on Codecov](test.example.br/members/gh/{pull.repository.owner.username}) to display this PR comment.",
             f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
             f"Please don't hesitate to email us at support@codecov.io with any questions.",
         ]
@@ -1019,7 +1117,10 @@ class TestCommentNotifier(object):
         with_sql_functions,
         sample_comparison,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"] = {
+            "codecov_url": "test.example.br",
+            "codecov_dashboard_url": "test.example.br",
+        }
         comparison = sample_comparison
         pull = comparison.enriched_pull.database_pull
         repository = sample_comparison.head.commit.repository
@@ -1033,10 +1134,10 @@ class TestCommentNotifier(object):
         )
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"# [Codecov](test.example.br/account/gh/{pull.repository.owner.username}/billing) upload limit reached :warning:",
+            f"# [Codecov](test.example.br/plan/gh/{pull.repository.owner.username}) upload limit reached :warning:",
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
-                      upgrade to our [pro plan](test.example.br/account/gh/{pull.repository.owner.username}/billing).",
+                      upgrade to our [pro plan](test.example.br/plan/gh/{pull.repository.owner.username}).",
             f"",
             f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
@@ -1060,7 +1161,9 @@ class TestCommentNotifier(object):
 
         encrypted_license = "wxWEJyYgIcFpi6nBSyKQZQeaQ9Eqpo3SXyUomAqQOzOFjdYB3A8fFM1rm+kOt2ehy9w95AzrQqrqfxi9HJIb2zLOMOB9tSy52OykVCzFtKPBNsXU/y5pQKOfV7iI3w9CHFh3tDwSwgjg8UsMXwQPOhrpvl2GdHpwEhFdaM2O3vY7iElFgZfk5D9E7qEnp+WysQwHKxDeKLI7jWCnBCBJLDjBJRSz0H7AfU55RQDqtTrnR+rsLDHOzJ80/VxwVYhb"
         mock_configuration.params["setup"]["enterprise_license"] = encrypted_license
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.mysite.com"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.mysite.com"
 
         comparison = sample_comparison
         pull = comparison.enriched_pull.database_pull
@@ -1077,7 +1180,7 @@ class TestCommentNotifier(object):
         provider_pull = comparison.enriched_pull.provider_pull
         expected_result = [
             f"The author of this PR, {provider_pull['author']['username']}, is not activated in your Codecov Self-Hosted installation.",
-            f"Please [activate this user](https://codecov.mysite.com/account/gh/{pull.repository.owner.username}/users) to display this PR comment.",
+            f"Please [activate this user](https://codecov.mysite.com/internal/users) to display this PR comment.",
             f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
             f"Please contact your Codecov On-Premises installation administrator with any questions.",
         ]
@@ -1135,8 +1238,8 @@ class TestCommentNotifier(object):
             f"",
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | |",
             f"|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
+            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
             f"",
             f"------",
             f"",
@@ -1210,7 +1313,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
+            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"------",
             f"",
@@ -1351,7 +1454,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (ø)` | |",
             f"",
             f"------",
             f"",
@@ -1427,8 +1530,8 @@ class TestCommentNotifier(object):
             f"",
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `50.00% <ø> (-12.50%)` | `11.00 <0.00> (+1.00)` | :arrow_down: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `50.00% <ø> (-12.50%)` | `11.00 <0.00> (+1.00)` | :arrow_down: |",
+            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
             f"",
             f"------",
             f"",
@@ -1442,6 +1545,128 @@ class TestCommentNotifier(object):
             f"Last update "
             f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            f"",
+        ]
+        print(result)
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_negative_change_tricky_rounding(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_negative_change,
+    ):
+        # This example was taken from a real PR in which we had issues with rounding
+        # That's why the numbers will be.... dramatic
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_negative_change
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "diff"},
+            notifier_site_settings=True,
+            current_yaml={"coverage": {"precision": 2, "round": "down"}},
+        )
+        repository = comparison.head.commit.repository
+        # Change the reports
+        new_base_report = Report()
+        new_base_file = ReportFile("file.py")
+        # Produce numbers that we know can be tricky for rounding
+        for i in range(1, 6760):
+            new_base_file.append(i, ReportLine.create(coverage=1))
+        for i in range(6760, 7631):
+            new_base_file.append(i, ReportLine.create(coverage=0))
+        new_base_report.append(new_base_file)
+        comparison.base.report = ReadOnlyReport.create_from_report(new_base_report)
+        new_head_report = Report()
+        new_head_file = ReportFile("file.py")
+        for i in range(1, 6758):
+            new_head_file.append(i, ReportLine.create(coverage=1))
+        for i in range(6758, 7632):
+            new_head_file.append(i, ReportLine.create(coverage=0))
+        new_head_report.append(new_head_file)
+        comparison.head.report = ReadOnlyReport.create_from_report(new_head_report)
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **decrease** coverage by `0.04%`.",
+            f"> The diff coverage is `n/a`.",
+            f"",
+            f"```diff",
+            f"@@            Coverage Diff             @@",
+            f"##           master      #{pull.pullid}      +/-   ##",
+            f"==========================================",
+            f"- Coverage   88.58%   88.54%   -0.04%     ",
+            f"==========================================",
+            f"  Files           1        1              ",
+            f"  Lines        7630     7631       +1     ",
+            f"==========================================",
+            f"- Hits         6759     6757       -2     ",
+            f"- Misses        871      874       +3     ",
+            f"```",
+            f"",
+        ]
+        print(result)
+        li = 0
+        for exp, res in zip(expected_result, result):
+            li += 1
+            print(li)
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_negative_change_tricky_rounding_newheader(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_negative_change,
+    ):
+        # This example was taken from a real PR in which we had issues with rounding
+        # That's why the numbers will be.... dramatic
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_negative_change
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "newheader"},
+            notifier_site_settings=True,
+            current_yaml={"coverage": {"precision": 2, "round": "down"}},
+        )
+        repository = comparison.head.commit.repository
+        # Change the reports
+        new_base_report = Report()
+        new_base_file = ReportFile("file.py")
+        # Produce numbers that we know can be tricky for rounding
+        for i in range(1, 6760):
+            new_base_file.append(i, ReportLine.create(coverage=1))
+        for i in range(6760, 7631):
+            new_base_file.append(i, ReportLine.create(coverage=0))
+        new_base_report.append(new_base_file)
+        comparison.base.report = ReadOnlyReport.create_from_report(new_base_report)
+        new_head_report = Report()
+        new_head_file = ReportFile("file.py")
+        for i in range(1, 6758):
+            new_head_file.append(i, ReportLine.create(coverage=1))
+        for i in range(6758, 7632):
+            new_head_file.append(i, ReportLine.create(coverage=0))
+        new_head_report.append(new_head_file)
+        comparison.head.report = ReadOnlyReport.create_from_report(new_head_report)
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"Base: **88.58**% // Head: **88.54**% // Decreases project coverage by **`-0.04%`** :warning:",
+            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
+            f"> Patch has no changes to coverable lines.",
             f"",
         ]
         print(result)
@@ -1501,8 +1726,8 @@ class TestCommentNotifier(object):
             f"",
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
             f"",
             f"------",
             f"",
@@ -1894,8 +2119,8 @@ class TestCommentNotifier(object):
             f"",
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
             f"",
             f"------",
             f"",
@@ -3118,10 +3343,10 @@ class TestFileSectionWriter(object):
         assert lines == [
             "| [Impacted Files](pull.link?src=pr&el=tree) | Coverage Δ | |",
             "|---|---|---|",
-            "| [file\\_1.go](pull.link/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
-            "| [unrelated.py](pull.link/diff?src=pr&el=tree#diff-dW5yZWxhdGVkLnB5) | | |",
-            "| [file\\_2.py](pull.link/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
-            "| [added.py](pull.link/diff?src=pr&el=tree#diff-YWRkZWQucHk=) | | |",
+            "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
+            "| [unrelated.py](pull.link?src=pr&el=tree#diff-dW5yZWxhdGVkLnB5) | | |",
+            "| [file\\_2.py](pull.link?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
+            "| [added.py](pull.link?src=pr&el=tree#diff-YWRkZWQucHk=) | | |",
         ]
 
     @pytest.mark.asyncio
@@ -3213,10 +3438,10 @@ class TestFileSectionWriter(object):
         assert lines == [
             "| [Impacted Files](pull.link?src=pr&el=tree) | Coverage Δ | |",
             "|---|---|---|",
-            "| [file\\_1.go](pull.link/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) **Critical** | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
-            "| [unrelated.py](pull.link/diff?src=pr&el=tree#diff-dW5yZWxhdGVkLnB5) | | |",
-            "| [file\\_2.py](pull.link/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
-            "| [added.py](pull.link/diff?src=pr&el=tree#diff-YWRkZWQucHk=) **Critical** | | |",
+            "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) **Critical** | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
+            "| [unrelated.py](pull.link?src=pr&el=tree#diff-dW5yZWxhdGVkLnB5) | | |",
+            "| [file\\_2.py](pull.link?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
+            "| [added.py](pull.link?src=pr&el=tree#diff-YWRkZWQucHk=) **Critical** | | |",
         ]
 
 
@@ -3665,8 +3890,8 @@ class TestCommentNotifierInNewLayout(object):
             "",
             f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
             "",
         ]
@@ -3797,7 +4022,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/diff?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
+            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"</details>",
             f"",
@@ -3877,3 +4102,271 @@ class TestCommentNotifierInNewLayout(object):
         for exp, res in zip(expected_result, result):
             assert exp == res
         assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_head_and_pull_head_differ_with_components(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_head_and_pull_head_differ,
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison_head_and_pull_head_differ
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "newheader, reach, diff, flags, components, newfooter",
+                "hide_comment_details": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "unit_flags", "flag_regexes": [r"unit.*"]},
+                    ]
+                }
+            },
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"# [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
+            f"> Coverage data is based on head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) compared to base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc).",
+            f"> Patch coverage: 66.67% of modified lines in pull request are covered.",
+            f"",
+            f"> :exclamation: Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}. Consider uploading reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results",
+            f"",
+            f"<details><summary>Additional details and impacted files</summary>\n",
+            f"",
+            f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
+            f"",
+            f"```diff",
+            f"@@              Coverage Diff              @@",
+            f"##             master      #{pull.pullid}       +/-   ##",
+            f"=============================================",
+            f"+ Coverage     50.00%   60.00%   +10.00%     ",
+            f"+ Complexity       11       10        -1     ",
+            f"=============================================",
+            f"  Files             2        2               ",
+            f"  Lines             6       10        +4     ",
+            f"  Branches          0        1        +1     ",
+            f"=============================================",
+            f"+ Hits              3        6        +3     ",
+            f"  Misses            3        3               ",
+            f"- Partials          0        1        +1     ",
+            f"```",
+            f"",
+            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| integration | `?` | `?` | |",
+            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"",
+            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            f"",
+            f"| Components | Coverage Δ | |",
+            f"|---|---|---|",
+            f"| go_files | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
+            f"| unit_flags | `100.00% <100.00%> (∅)` | |",
+            f"",
+            f"</details>",
+            f"",
+            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f"",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+
+class TestComponentWriterSection(object):
+    @pytest.mark.asyncio
+    async def test_write_message_component_section_empty(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        comparison = sample_comparison
+        section_writer = ComponentsSectionWriter(
+            repository=comparison.head.commit.repository,
+            layout="layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={},
+        )
+        message = await section_writer.write_section(
+            comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
+        )
+        expected = []
+        assert message == expected
+
+    @pytest.mark.asyncio
+    async def test_get_component_data_for_table(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        comparison = sample_comparison
+        section_writer = ComponentsSectionWriter(
+            repository=comparison.head.commit.repository,
+            layout="layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "py_files", "paths": [r".*\.py"]},
+                    ]
+                }
+            },
+        )
+        all_components = get_components_from_yaml(section_writer.current_yaml)
+        comparison = sample_comparison
+        component_data = await section_writer._get_table_data_for_components(
+            all_components, comparison
+        )
+        print(component_data)
+        expected_result = [
+            {
+                "name": "go_files",
+                "before": ReportTotals(
+                    files=1,
+                    lines=4,
+                    hits=2,
+                    misses=2,
+                    partials=0,
+                    coverage="50.00000",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=11,
+                    complexity_total=20,
+                    diff=0,
+                ),
+                "after": ReportTotals(
+                    files=1,
+                    lines=8,
+                    hits=5,
+                    misses=3,
+                    partials=0,
+                    coverage="62.50000",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=10,
+                    complexity_total=2,
+                    diff=0,
+                ),
+                "diff": ReportTotals(
+                    files=1,
+                    lines=3,
+                    hits=2,
+                    misses=1,
+                    partials=0,
+                    coverage="66.66667",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            },
+            {
+                "name": "py_files",
+                "before": ReportTotals(
+                    files=1,
+                    lines=2,
+                    hits=1,
+                    misses=1,
+                    partials=0,
+                    coverage="50.00000",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+                "after": ReportTotals(
+                    files=1,
+                    lines=2,
+                    hits=1,
+                    misses=0,
+                    partials=1,
+                    coverage="50.00000",
+                    branches=1,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+                "diff": ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=0,
+                    misses=0,
+                    partials=0,
+                    coverage=None,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=None,
+                    complexity_total=None,
+                    diff=0,
+                ),
+            },
+        ]
+        assert component_data == expected_result
+
+    @pytest.mark.asyncio
+    async def test_write_message_component_section(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        comparison = sample_comparison
+        section_writer = ComponentsSectionWriter(
+            repository=comparison.head.commit.repository,
+            layout="layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "py_files", "paths": [r".*\.py"]},
+                    ]
+                }
+            },
+        )
+        message = await section_writer.write_section(
+            comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
+        )
+        expected = [
+            "| Components | Coverage Δ | |",
+            "|---|---|---|",
+            "| go_files | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
+            "| py_files | `50.00% <ø> (ø)` | |",
+        ]
+        assert message == expected

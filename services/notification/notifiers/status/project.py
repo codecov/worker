@@ -33,7 +33,7 @@ class ProjectStatusNotifier(StatusProjectMixin, StatusNotifier):
         return Notification.status_project
 
     async def build_payload(self, comparison: Comparison):
-        state, message = self.get_project_status(comparison)
+        state, message = await self.get_project_status(comparison)
         if self.should_use_upgrade_decoration():
             message = self.get_upgrade_message()
         return {"state": state, "message": message}

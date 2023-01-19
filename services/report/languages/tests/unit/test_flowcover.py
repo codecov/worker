@@ -1,4 +1,5 @@
 from services.report.languages import flowcover
+from services.report.report_builder import ReportBuilder
 from tests.base import BaseTestCase
 
 json = {
@@ -19,7 +20,13 @@ json = {
 
 class TestFlowCover(BaseTestCase):
     def test_report(self):
-        report = flowcover.from_json(json, str, {}, 0)
+        report_builder = ReportBuilder(
+            current_yaml={}, sessionid=0, path_fixer=str, ignored_lines={}
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            filepath="filename"
+        )
+        report = flowcover.from_json(json, report_builder_session)
         processed_report = self.convert_report_to_better_readable(report)
         # import pprint
         # pprint.pprint(processed_report['archive'])

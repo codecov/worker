@@ -33,7 +33,7 @@ def get_line_coverage(location, cov, line_type):
 
     sl, sc, el, ec = get_location(location)
 
-    if not sl or sc + 1 == ec:
+    if not sl or (sc + 1 == ec and sl == el):
         return None, None, None
 
     if line_type != "m" and sl == el and sc != 0:
@@ -389,40 +389,43 @@ def from_json(report_dict, report_builder_session: ReportBuilderSession) -> Repo
         for sid, statement in must_be_dict(data.get("statementMap")).items():
             if statement.get("skip") is not True:
                 location_int = _location_to_int(statement)
-                _file.append(
-                    location_int,
-                    report_builder_session.create_coverage_line(
-                        filename=name,
-                        coverage=data["s"][sid],
-                        coverage_type=CoverageType.line,
-                    ),
-                )
+                if location_int:
+                    _file.append(
+                        location_int,
+                        report_builder_session.create_coverage_line(
+                            filename=name,
+                            coverage=data["s"][sid],
+                            coverage_type=CoverageType.line,
+                        ),
+                    )
 
         for bid, branch in must_be_dict(data.get("branchMap")).items():
             if branch.get("skip") is not True:
                 # [FUTURE] we can record branch positions in the session
                 for lid, location in enumerate(branch["locations"]):
                     location_int = _location_to_int(location)
-                    _file.append(
-                        location_int,
-                        report_builder_session.create_coverage_line(
-                            filename=name,
-                            coverage=data["b"][bid][lid],
-                            coverage_type=CoverageType.branch,
-                        ),
-                    )
+                    if location_int:
+                        _file.append(
+                            location_int,
+                            report_builder_session.create_coverage_line(
+                                filename=name,
+                                coverage=data["b"][bid][lid],
+                                coverage_type=CoverageType.branch,
+                            ),
+                        )
 
         for fid, func in must_be_dict(data.get("fnMap")).items():
             if func.get("skip") is not True:
                 location_int = _location_to_int(func["loc"])
-                _file.append(
-                    location_int,
-                    report_builder_session.create_coverage_line(
-                        filename=name,
-                        coverage=data["f"][fid],
-                        coverage_type=CoverageType.method,
-                    ),
-                )
+                if location_int:
+                    _file.append(
+                        location_int,
+                        report_builder_session.create_coverage_line(
+                            filename=name,
+                            coverage=data["f"][fid],
+                            coverage_type=CoverageType.method,
+                        ),
+                    )
 
         report_builder_session.append(_file)
 

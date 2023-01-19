@@ -3,7 +3,7 @@ from io import BytesIO
 from typing import BinaryIO
 
 from helpers.metrics import metrics
-from services.report.parser.types import ParsedRawReport, ParsedUploadedReportFile
+from services.report.parser.types import LegacyParsedRawReport, ParsedUploadedReportFile
 
 
 class LegacyReportParser(object):
@@ -106,7 +106,7 @@ class LegacyReportParser(object):
                 }
 
     @metrics.timer("services.report.parser.parse_raw_report_from_bytes")
-    def parse_raw_report_from_bytes(self, raw_report: bytes) -> ParsedRawReport:
+    def parse_raw_report_from_bytes(self, raw_report: bytes) -> LegacyParsedRawReport:
         raw_report, _, compat_report_str = raw_report.partition(
             self.ignore_from_now_on_marker
         )
@@ -122,7 +122,7 @@ class LegacyReportParser(object):
     def compare_compat_and_main_reports(self, actual_result, compat_result):
         pass
 
-    def parse_raw_report_from_io(self, raw_report: BinaryIO) -> ParsedRawReport:
+    def parse_raw_report_from_io(self, raw_report: BinaryIO) -> LegacyParsedRawReport:
         return self.parse_raw_report_from_bytes(raw_report.getvalue())
 
     def _generate_parsed_report_from_sections(self, sections):
@@ -145,7 +145,7 @@ class LegacyReportParser(object):
                             file_contents=sect["contents"],
                         )
                     )
-        return ParsedRawReport(
+        return LegacyParsedRawReport(
             toc=toc_section,
             env=env_section,
             uploaded_files=uploaded_files,

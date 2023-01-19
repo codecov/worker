@@ -1,34 +1,12 @@
 import dataclasses
 import typing
-from enum import Enum, auto
+from enum import Enum
 
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
 from shared.yaml.user_yaml import UserYaml
 
-# The SpecialLabelsEnum enum is place to hold sentinels for labels with special
-#     meanings
-# One example is CODECOV_ALL_LABELS_PLACEHOLDER: it's a sentinel for
-#     "all the labels from this report apply here"
-# Imagine a suite, with many tests, that import a particular file
-# The imports all happen before any of the tests is executed
-# So on this imported file, there might be some global code
-# Because it's global, it runs during this import phase
-# So it's not attached directly to any test, because it ran
-#     outside of any tests
-# But it is responsible for those tests in a way, since this global variable
-# is used in the functions themselves (which run during the tests). At least
-#     there is no simple way to guarantee the global variable didn't affect
-#     anything that imported that file
-# So, from the coverage perspective, this global-level line was an indirect
-#     part of every test. So, in the end, if we see this constant in the report
-#     datapoints, we will replace it with all the labels (tests) that we saw in
-#     that report
-# This is what CODECOV_ALL_LABELS_PLACEHOLDER is
-
-
-class SpecialLabelsEnum(Enum):
-    CODECOV_ALL_LABELS_PLACEHOLDER = auto()
+from helpers.labels import SpecialLabelsEnum
 
 
 class CoverageType(Enum):
@@ -89,8 +67,9 @@ class ReportBuilderSession(object):
             for line_number, line in file.lines:
                 if line.datapoints:
                     for datapoint in line.datapoints:
-                        for label in datapoint.labels:
-                            self._present_labels.add(label)
+                        if datapoint.labels:
+                            for label in datapoint.labels:
+                                self._present_labels.add(label)
         return self._report.append(file)
 
     def output_report(self) -> Report:
@@ -157,10 +136,13 @@ class ReportBuilderSession(object):
         Args:
             datapoint (CoverageDatapoint): The datapoint to convert
         """
-        if any(
+        if datapoint.labels and any(
             label == SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
             for label in datapoint.labels
         ):
+            new_label = (
+                SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
+            )
             return [
                 dataclasses.replace(
                     datapoint,
@@ -176,8 +158,6 @@ class ReportBuilderSession(object):
                         )
                     ),
                 )
-                for new_label in self._present_labels
-                if new_label != SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
             ]
         return [datapoint]
 
@@ -187,12 +167,25 @@ class ReportBuilderSession(object):
         coverage,
         *,
         coverage_type: CoverageType,
-        labels: typing.List[typing.Union[str, SpecialLabelsEnum]] = None,
+        labels_list_of_lists: typing.List[typing.Union[str, SpecialLabelsEnum]] = None,
         partials=None,
         missing_branches=None,
         complexity=None
     ) -> ReportLine:
         coverage_type_str = coverage_type.map_to_string()
+        datapoints = (
+            [
+                CoverageDatapoint(
+                    sessionid=self.sessionid,
+                    coverage=coverage,
+                    coverage_type=coverage_type_str,
+                    labels=labels,
+                )
+                for labels in (labels_list_of_lists or [[]])
+            ]
+            if self._report_builder.supports_labels()
+            else None
+        )
         return ReportLine.create(
             coverage=coverage,
             type=coverage_type_str,
@@ -207,16 +200,7 @@ class ReportBuilderSession(object):
                     )
                 )
             ],
-            datapoints=[
-                CoverageDatapoint(
-                    sessionid=self.sessionid,
-                    coverage=coverage,
-                    coverage_type=coverage_type_str,
-                    labels=labels,
-                )
-            ]
-            if self._report_builder.supports_labels()
-            else None,
+            datapoints=datapoints,
             complexity=complexity,
         )
 

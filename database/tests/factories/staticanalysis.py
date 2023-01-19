@@ -23,7 +23,7 @@ class StaticAnalysisSingleFileSnapshotFactory(factory.Factory):
 
     repository = factory.SubFactory(RepositoryFactory)
     file_hash = factory.LazyFunction(lambda: uuid4().hex)
-    content_location = "a/b/c.txt"
+    content_location = factory.Faker("file_path", depth=3)
 
 
 class StaticAnalysisSuiteFilepathFactory(factory.Factory):

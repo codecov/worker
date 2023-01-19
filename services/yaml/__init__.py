@@ -1,21 +1,15 @@
 import logging
 
-from shared.analytics_tracking import (
-    track_betaprofiling_added_in_YAML,
-    track_betaprofiling_removed_from_YAML,
-    track_show_critical_paths_added_in_YAML,
-    track_show_critical_paths_removed_from_YAML,
-)
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 
 from database.enums import CommitErrorTypes
 from database.models import Commit
-from helpers.environment import is_enterprise
 from helpers.save_commit_error import save_commit_error
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.reader import read_yaml_field
+from services.yaml.tracking import tracking_yaml_fields_changes
 
 log = logging.getLogger(__name__)
 
@@ -126,68 +120,3 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
             repository.yaml = new_yaml
             return True
     return False
-
-
-def tracking_yaml_fields_changes(existing_yaml, new_yaml, repository):
-    track_betaprofiling(existing_yaml, new_yaml, repository)
-    track_show_critical_paths(existing_yaml, new_yaml, repository)
-
-
-def track_betaprofiling(existing_yaml, new_yaml, repository):
-    existing_comment_layout_field = read_yaml_field(
-        existing_yaml, ("comment", "layout")
-    )
-    new_comment_layout_field = read_yaml_field(new_yaml, ("comment", "layout"))
-
-    existing_comment_sections = list(
-        map(lambda l: l.strip(), (existing_comment_layout_field or "").split(","))
-    )
-    new_comment_sections = list(
-        map(lambda l: l.strip(), (new_comment_layout_field or "").split(","))
-    )
-
-    if was_betaprofiling_added_in_yaml(existing_comment_sections, new_comment_sections):
-        track_betaprofiling_added_in_YAML(
-            repository.repoid, repository.ownerid, is_enterprise()
-        )
-
-    if was_betaprofiling_removed_from_yaml(
-        existing_comment_sections, new_comment_sections
-    ):
-        track_betaprofiling_removed_from_YAML(
-            repository.repoid, repository.ownerid, is_enterprise()
-        )
-
-
-def was_betaprofiling_added_in_yaml(existing_comment_sections, new_comment_sections):
-    return (
-        "betaprofiling" not in existing_comment_sections
-        and "betaprofiling" in new_comment_sections
-    )
-
-
-def was_betaprofiling_removed_from_yaml(
-    existing_comment_sections, new_comment_sections
-):
-    return (
-        "betaprofiling" in existing_comment_sections
-        and "betaprofiling" not in new_comment_sections
-    )
-
-
-def track_show_critical_paths(existing_yaml, new_yaml, repository):
-    existing_show_critical_paths = read_yaml_field(
-        existing_yaml, ("comment", "show_critical_paths")
-    )
-    new_show_critical_paths = read_yaml_field(
-        new_yaml, ("comment", "show_critical_paths")
-    )
-
-    if not existing_show_critical_paths and new_show_critical_paths:
-        track_show_critical_paths_added_in_YAML(
-            repository.repoid, repository.ownerid, is_enterprise()
-        )
-    if existing_show_critical_paths and not new_show_critical_paths:
-        track_show_critical_paths_removed_from_YAML(
-            repository.repoid, repository.ownerid, is_enterprise()
-        )

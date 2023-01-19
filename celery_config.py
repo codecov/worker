@@ -14,12 +14,17 @@ from codecovopentelem import (
     UnableToStartProcessorException,
     get_codecov_opentelemetry_instances,
 )
-from shared.celery_config import BaseCeleryConfig, profiling_finding_task_name
-from shared.config import get_config
+from shared.celery_config import (
+    BaseCeleryConfig,
+    health_check_task_name,
+    profiling_finding_task_name,
+)
 
+from celery_task_router import route_task
 from helpers.cache import RedisBackend, cache
 from helpers.clock import get_utc_now_as_iso_format
 from helpers.environment import is_enterprise
+from helpers.health_check import get_health_check_interval_seconds
 from helpers.version import get_current_version
 from services.redis import get_redis_connection
 
@@ -86,7 +91,6 @@ def init_celery_tracing(*args, **kwargs):
 
 hourly_check_task_name = "app.cron.hourly_check.HourlyCheckTask"
 daily_plan_manager_task_name = "app.cron.daily.PlanManagerTask"
-health_check_task_name = "app.cron.health_check.HealthCheckTask"
 
 
 class CeleryWorkerConfig(BaseCeleryConfig):
@@ -114,41 +118,11 @@ class CeleryWorkerConfig(BaseCeleryConfig):
         },
         "health_check_task": {
             "task": health_check_task_name,
-            "schedule": timedelta(seconds=10),
+            "schedule": timedelta(get_health_check_interval_seconds()),
             "kwargs": {
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },
         },
     }
 
-
-# TODO: move this to `shared`
-timeseries_queue = get_config(
-    "setup",
-    "tasks",
-    "timeseries",
-    "queue",
-    default=CeleryWorkerConfig.task_default_queue,
-)
-CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill"] = {
-    "queue": timeseries_queue,
-}
-CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_commits"] = {
-    "queue": timeseries_queue,
-}
-CeleryWorkerConfig.task_routes["app.tasks.timeseries.backfill_dataset"] = {
-    "queue": timeseries_queue,
-}
-CeleryWorkerConfig.task_annotations["app.tasks.timeseries.backfill_commits"] = {
-    "soft_time_limit": get_config(
-        "setup", "tasks", "timeseries", "soft_timelimit", default=400
-    ),
-    "time_limit": get_config(
-        "setup", "tasks", "timeseries", "hard_timelimit", default=480
-    ),
-}
-
-HEALTH_CHECK_QUEUE = "healthcheck"
-CeleryWorkerConfig.task_routes[health_check_task_name] = {
-    "queue": HEALTH_CHECK_QUEUE,
-}
+    task_routes = route_task

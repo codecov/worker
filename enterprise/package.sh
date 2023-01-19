@@ -31,8 +31,12 @@ print(' --hiddenimport celery.worker.consumer')
 print(' --hiddenimport sqlalchemy.ext.baked')
 print(' --hiddenimport tasks')
 print(' --hiddenimport tornado.curl_httpclient')
-print(' --hiddenimport celery_config')
 print(' --hiddenimport opentelemetry-sdk')
+print(' --hiddenimport asyncore')
+print(' --hiddenimport imaplib')
+print(' --hiddenimport poplib')
+print(' --hiddenimport smtplib')
+print(' --hiddenimport xmlrpc.server')
 ")
 
 mkdir src
@@ -42,10 +46,12 @@ echo 'true' > src/is_enterprise
 pyinstaller -F \
     --exclude-module pycrypto \
     --exclude-module PyInstaller \
-    --add-data src:/src \
+    --exclude-module psycopg2 \
+    --exclude-module tlslite \
     --additional-hooks-dir /pyinstaller/hooks \
     ${hiddenimport} \
     ${pyinstaller_args} \
+    --paths /worker \
     /worker/enterprise.py
 
 # cat enterprise.spec

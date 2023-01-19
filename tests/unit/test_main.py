@@ -1,19 +1,21 @@
 import os
+import sys
+from unittest import mock
 
 from click.testing import CliRunner
+from shared.celery_config import BaseCeleryConfig
 
-from celery_config import HEALTH_CHECK_QUEUE
 from main import _get_queues_param_from_queue_input, cli, main, setup_worker, test, web
 
 
 def test_get_queues_param_from_queue_input():
     assert (
         _get_queues_param_from_queue_input(["worker,profiling,notify"])
-        == f"worker,profiling,notify,{HEALTH_CHECK_QUEUE}"
+        == f"worker,profiling,notify,enterprise_worker,enterprise_profiling,enterprise_notify,{BaseCeleryConfig.health_check_default_queue}"
     )
     assert (
         _get_queues_param_from_queue_input(["worker", "profiling", "notify"])
-        == f"worker,profiling,notify,{HEALTH_CHECK_QUEUE}"
+        == f"worker,profiling,notify,enterprise_worker,enterprise_profiling,enterprise_notify,{BaseCeleryConfig.health_check_default_queue}"
     )
 
 
@@ -23,6 +25,13 @@ def test_run_empty_config(mock_storage, mock_configuration):
     assert res is None
     assert mock_storage.root_storage_created
     assert mock_storage.config == {}
+
+
+def test_sys_path_append_on_enterprise(mock_storage, mock_configuration):
+    sys.frozen = True
+    res = setup_worker()
+    assert res is None
+    assert "./external_deps" in sys.path
 
 
 def test_run_already_existing_root_storage(mock_storage, mock_configuration):
@@ -97,7 +106,7 @@ def test_deal_worker_command_default(mocker, mock_storage):
             "-l",
             "info",
             "-Q",
-            f"celery,{HEALTH_CHECK_QUEUE}",
+            f"celery,enterprise_celery,{BaseCeleryConfig.health_check_default_queue}",
             "-B",
             "-s",
             "/home/codecov/celerybeat-schedule",
@@ -140,7 +149,7 @@ def test_deal_worker_command(mocker, mock_storage):
             "-l",
             "info",
             "-Q",
-            f"simple,one,two,some,{HEALTH_CHECK_QUEUE}",
+            f"simple,one,two,some,enterprise_simple,enterprise_one,enterprise_two,enterprise_some,{BaseCeleryConfig.health_check_default_queue}",
             "-B",
             "-s",
             "/home/codecov/celerybeat-schedule",

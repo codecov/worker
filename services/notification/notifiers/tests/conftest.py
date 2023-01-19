@@ -242,6 +242,8 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
     commit = CommitFactory.create(
         report_json={"sessions": sessions_dict, "files": file_headers},
         repository__owner__service="github",
+        repository__owner__integration_id="10000",
+        repository__using_integration=True,
     )
     dbsession.add(commit)
     dbsession.flush()
@@ -254,10 +256,19 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
 
 
 @pytest.fixture
-def create_sample_comparison(dbsession, request, sample_report):
+def create_sample_comparison(dbsession, request, sample_report, mocker):
+
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
+
     def _comparison(service="github", username="codecov-test"):
         repository = RepositoryFactory.create(
-            owner__username=username, owner__service=service
+            owner__username=username,
+            owner__service=service,
+            owner__integration_id="10000",
+            using_integration=True,
         )
         dbsession.add(repository)
         dbsession.flush()
@@ -285,9 +296,16 @@ def create_sample_comparison(dbsession, request, sample_report):
 
 
 @pytest.fixture
-def sample_comparison(dbsession, request, sample_report):
+def sample_comparison(dbsession, request, sample_report, mocker):
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     repository = RepositoryFactory.create(
-        owner__username=request.node.name, owner__service="github"
+        owner__username=request.node.name,
+        owner__service="github",
+        owner__integration_id="10000",
+        using_integration=True,
     )
     dbsession.add(repository)
     dbsession.flush()
@@ -334,8 +352,12 @@ def sample_comparison(dbsession, request, sample_report):
 
 @pytest.fixture
 def sample_comparison_coverage_carriedforward(
-    dbsession, request, sample_commit_with_report_already_carriedforward
+    dbsession, request, sample_commit_with_report_already_carriedforward, mocker
 ):
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     head_commit = sample_commit_with_report_already_carriedforward
     base_commit = CommitFactory.create(repository=head_commit.repository)
 
@@ -386,9 +408,16 @@ def sample_comparison_coverage_carriedforward(
 
 
 @pytest.fixture
-def sample_comparison_negative_change(dbsession, request, sample_report):
+def sample_comparison_negative_change(dbsession, request, sample_report, mocker):
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     repository = RepositoryFactory.create(
-        owner__username=request.node.name, owner__service="github"
+        owner__username=request.node.name,
+        owner__service="github",
+        owner__integration_id="10000",
+        using_integration=True,
     )
     dbsession.add(repository)
     dbsession.flush()
@@ -432,9 +461,16 @@ def sample_comparison_negative_change(dbsession, request, sample_report):
 
 
 @pytest.fixture
-def sample_comparison_no_change(dbsession, request, sample_report):
+def sample_comparison_no_change(dbsession, request, sample_report, mocker):
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     repository = RepositoryFactory.create(
-        owner__username=request.node.name, owner__service="github"
+        owner__username=request.node.name,
+        owner__service="github",
+        owner__integration_id="10000",
+        using_integration=True,
     )
     dbsession.add(repository)
     dbsession.flush()
@@ -478,9 +514,16 @@ def sample_comparison_no_change(dbsession, request, sample_report):
 
 
 @pytest.fixture
-def sample_comparison_without_pull(dbsession, request, sample_report):
+def sample_comparison_without_pull(dbsession, request, sample_report, mocker):
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     repository = RepositoryFactory.create(
-        owner__username=request.node.name, owner__service="github"
+        owner__username=request.node.name,
+        owner__service="github",
+        owner__integration_id="10000",
+        using_integration=True,
     )
     dbsession.add(repository)
     dbsession.flush()
@@ -508,8 +551,18 @@ def sample_comparison_without_pull(dbsession, request, sample_report):
 
 
 @pytest.fixture
-def sample_comparison_database_pull_without_provider(dbsession, request, sample_report):
-    repository = RepositoryFactory.create(owner__username=request.node.name)
+def sample_comparison_database_pull_without_provider(
+    dbsession, request, sample_report, mocker
+):
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
+    repository = RepositoryFactory.create(
+        owner__username=request.node.name,
+        owner__integration_id="10000",
+        using_integration=True,
+    )
     dbsession.add(repository)
     dbsession.flush()
     base_commit = CommitFactory.create(repository=repository)
@@ -539,7 +592,10 @@ def sample_comparison_database_pull_without_provider(dbsession, request, sample_
 
 def generate_sample_comparison(username, dbsession, base_report, head_report):
     repository = RepositoryFactory.create(
-        owner__username=username, owner__service="github"
+        owner__username=username,
+        owner__service="github",
+        owner__integration_id="10000",
+        using_integration=True,
     )
     dbsession.add(repository)
     dbsession.flush()
@@ -581,9 +637,16 @@ def generate_sample_comparison(username, dbsession, base_report, head_report):
 
 
 @pytest.fixture
-def sample_comparison_without_base_report(dbsession, request, sample_report):
+def sample_comparison_without_base_report(dbsession, request, sample_report, mocker):
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     repository = RepositoryFactory.create(
-        owner__username=request.node.name, owner__service="github"
+        owner__username=request.node.name,
+        owner__service="github",
+        owner__integration_id="10000",
+        using_integration=True,
     )
     dbsession.add(repository)
     dbsession.flush()
@@ -627,15 +690,24 @@ def sample_comparison_without_base_report(dbsession, request, sample_report):
 
 @pytest.fixture
 def sample_comparison_matching_flags(dbsession, request, sample_report):
+    base_report = ReadOnlyReport.create_from_report(get_small_report(flags=["unit"]))
+    head_report = ReadOnlyReport.create_from_report(sample_report)
     return generate_sample_comparison(
-        request.node.name, dbsession, get_small_report(flags=["unit"]), sample_report
+        request.node.name, dbsession, base_report, head_report
     )
 
 
 @pytest.fixture
-def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
+def sample_comparison_without_base_with_pull(dbsession, request, sample_report, mocker):
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     repository = RepositoryFactory.create(
-        owner__username=request.node.name, owner__service="github"
+        owner__username=request.node.name,
+        owner__service="github",
+        owner__integration_id="10000",
+        using_integration=True,
     )
     dbsession.add(repository)
     dbsession.flush()
@@ -677,13 +749,21 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report):
 
 
 @pytest.fixture
-def sample_comparison_head_and_pull_head_differ(dbsession, request, sample_report):
+def sample_comparison_head_and_pull_head_differ(
+    dbsession, request, sample_report, mocker
+):
+    mocker.patch(
+        "services.bots.get_github_integration_token",
+        return_value="github-integration-token",
+    )
     repository = RepositoryFactory.create(
         owner__service="github",
         owner__username="ThiagoCodecov",
         name="example-python",
         owner__unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
         image_token="abcdefghij",
+        owner__integration_id="10000",
+        using_integration=True,
     )
     dbsession.add(repository)
     dbsession.flush()

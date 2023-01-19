@@ -1,10 +1,13 @@
 import typing
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class SalesforceProcessor(BaseLanguageProcessor):
@@ -14,29 +17,30 @@ class SalesforceProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_json(content, path_fixer, ignored_lines, sessionid)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_json(content, report_builder_session)
 
 
-def from_json(json, fix, ignored_lines, sessionid):
-    report = Report()
+def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+    )
     for obj in json:
         if obj and obj.get("name") and obj.get("lines"):
-            fn = fix(obj["name"] + (".cls" if "." not in obj["name"] else ""))
+            fn = path_fixer(obj["name"] + (".cls" if "." not in obj["name"] else ""))
             if fn is None:
                 continue
 
-            _file = ReportFile(fn, ignore=ignored_lines.get(fn))
+            _file = report_builder_session.file_class(
+                name=fn, ignore=ignored_lines.get(fn)
+            )
             for ln, cov in obj["lines"].items():
-                _file[int(ln)] = ReportLine.create(
-                    coverage=cov, sessions=[[sessionid, cov]]
+                _file[int(ln)] = report_builder_session.create_coverage_line(
+                    filename=fn, coverage=cov, coverage_type=CoverageType.line
                 )
 
-            report.append(_file)
+            report_builder_session.append(_file)
 
-    return report
+    return report_builder_session.output_report()

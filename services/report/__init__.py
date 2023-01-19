@@ -1,5 +1,6 @@
 import itertools
 import logging
+import typing
 import uuid
 from dataclasses import dataclass
 from json import loads
@@ -44,6 +45,8 @@ class ProcessingResult(object):
     report: Optional[Report]
     session: Session
     error: Optional[ProcessingError]
+    fully_deleted_sessions: typing.List[int]
+    partially_deleted_sessions: typing.List[int]
 
     def as_dict(self):
         # Weird flow for now in order to keep things compatible with previous logging
@@ -471,13 +474,16 @@ class ReportService(object):
                     params={"location": archive_url},
                     is_retryable=True,
                 ),
+                fully_deleted_sessions=None,
+                partially_deleted_sessions=None,
             )
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
             with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
-                report = process_raw_upload(
+                result = process_raw_upload(
                     self.current_yaml, master, raw_uploaded_report, flags, session
                 )
+                report = result.report
             log.info(
                 "Successfully processed report",
                 extra=dict(
@@ -491,7 +497,13 @@ class ReportService(object):
                     content_len=raw_uploaded_report.size,
                 ),
             )
-            return ProcessingResult(report=report, session=session, error=None)
+            return ProcessingResult(
+                report=result.report,
+                session=session,
+                error=None,
+                fully_deleted_sessions=result.fully_deleted_sessions,
+                partially_deleted_sessions=result.partially_deleted_sessions,
+            )
         except ReportExpiredException:
             log.info(
                 "Report %s is expired",
@@ -502,6 +514,8 @@ class ReportService(object):
                 report=None,
                 session=session,
                 error=ProcessingError(code="report_expired", params={}),
+                fully_deleted_sessions=None,
+                partially_deleted_sessions=None,
             )
         except ReportEmptyError:
             log.info(
@@ -513,6 +527,8 @@ class ReportService(object):
                 report=None,
                 session=session,
                 error=ProcessingError(code="report_empty", params={}),
+                fully_deleted_sessions=None,
+                partially_deleted_sessions=None,
             )
 
     def update_upload_with_processing_result(

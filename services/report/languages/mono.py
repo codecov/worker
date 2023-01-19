@@ -1,3 +1,4 @@
+import logging
 import typing
 
 from shared.reports.resources import Report, ReportFile

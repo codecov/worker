@@ -3,6 +3,7 @@ import random
 from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
+from typing import List
 
 from shared.analytics_tracking import (
     track_critical_files_sent,
@@ -13,6 +14,7 @@ from shared.reports.resources import Report
 
 from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
+from services.comparison import ComparisonProxy
 from services.comparison.overlays import OverlayType
 from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
@@ -22,7 +24,7 @@ from services.notification.notifiers.mixins.message.helpers import (
     sort_by_importance,
 )
 from services.urls import get_commit_url_from_commit_sha, get_pull_graph_url
-from services.yaml.reader import round_number
+from services.yaml.reader import get_components_from_yaml, round_number
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +52,8 @@ def get_section_class_from_layout_name(layout_name):
         return NewFooterSectionWriter
     if layout_name == "feedback":
         return FeedbackSectionWriter
+    if layout_name.startswith("component"):
+        return ComponentsSectionWriter
 
 
 class BaseSectionWriter(object):
@@ -110,6 +114,10 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             if base_report and head_report
             else Decimal(0)
         )
+        rounded_change = str(round_number(yaml, change))
+        absolute_rounded_change = (
+            rounded_change[1:] if rounded_change[0] == "-" else rounded_change
+        )
 
         if base_report and head_report:
             yield (
@@ -129,7 +137,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     ),
                     coverage=(
                         " by **`{sign}{cov}%`**".format(
-                            cov=round_number(yaml, abs(change)),
+                            cov=absolute_rounded_change,
                             sign="+" if change > 0 else "-" if change < 0 else "",
                         )
                         if change != 0
@@ -211,7 +219,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             ) | set(c.path for c in changes or [])
             overlay = comparison.get_overlay(OverlayType.line_execution_count)
             files_in_critical = set(
-                overlay.search_files_for_critical_changes(
+                await overlay.search_files_for_critical_changes(
                     all_potentially_affected_critical_files
                 )
             )
@@ -242,6 +250,10 @@ class HeaderSectionWriter(BaseSectionWriter):
             if base_report and head_report
             else Decimal(0)
         )
+        rounded_change = str(round_number(yaml, change))
+        absolute_rounded_change = (
+            rounded_change[1:] if rounded_change[0] == "-" else rounded_change
+        )
 
         if head_report and base_report:
             yield (
@@ -255,7 +267,7 @@ class HeaderSectionWriter(BaseSectionWriter):
                         (change > 0) if change != 0 else "na"
                     ],
                     coverage={
-                        True: " by `{0}%`".format(round_number(yaml, abs(change))),
+                        True: " by `{0}%`".format(absolute_rounded_change),
                         False: "",
                     }[(change != 0)],
                     links=links,
@@ -314,7 +326,7 @@ class HeaderSectionWriter(BaseSectionWriter):
             ) | set(c.path for c in changes or [])
             overlay = comparison.get_overlay(OverlayType.line_execution_count)
             files_in_critical = set(
-                overlay.search_files_for_critical_changes(
+                await overlay.search_files_for_critical_changes(
                     all_potentially_affected_critical_files
                 )
             )
@@ -481,14 +493,14 @@ class FileSectionWriter(BaseSectionWriter):
                 )
                 overlay = comparison.get_overlay(OverlayType.line_execution_count)
                 files_in_critical = set(
-                    overlay.search_files_for_critical_changes(all_files)
+                    await overlay.search_files_for_critical_changes(all_files)
                 )
 
             def tree_cell(typ, path, metrics, _=None):
                 if path not in mentioned:
                     # mentioned: for files that are in diff and changes
                     mentioned.append(path)
-                    return "| {rm}[{path}]({compare}/diff?src=pr&el=tree#diff-{hash}){rm}{file_tags} {metrics}".format(
+                    return "| {rm}[{path}]({compare}?src=pr&el=tree#diff-{hash}){rm}{file_tags} {metrics}".format(
                         rm="~~" if typ == "deleted" else "",
                         path=escape_markdown(ellipsis(path, 50, False)),
                         compare=links["pull"],
@@ -529,7 +541,7 @@ class FileSectionWriter(BaseSectionWriter):
             remaining = len(changes or []) - limit
             if remaining > 0:
                 yield (
-                    "| ... and [{n} more]({href}/diff?src=pr&el=tree-more) | |".format(
+                    "| ... and [{n} more]({href}?src=pr&el=tree-more) | |".format(
                         n=remaining, href=links["pull"]
                     )
                 )
@@ -657,3 +669,54 @@ class FlagSectionWriter(BaseSectionWriter):
                 yield (
                     "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
                 )
+
+
+class ComponentsSectionWriter(BaseSectionWriter):
+    async def _get_table_data_for_components(
+        self, all_components, comparison: ComparisonProxy
+    ) -> List[dict]:
+        component_data = []
+        for component in all_components:
+            flags = component.get_matching_flags(comparison.head.report.flags.keys())
+            filtered_comparison = comparison.get_filtered_comparison(
+                flags, component.paths
+            )
+            diff = await filtered_comparison.get_diff()
+            component_data.append(
+                {
+                    "name": component.get_display_name(),
+                    "before": filtered_comparison.base.report.totals,
+                    "after": filtered_comparison.head.report.totals,
+                    "diff": filtered_comparison.head.report.apply_diff(
+                        diff, _save=False
+                    ),
+                }
+            )
+        return component_data
+
+    async def do_write_section(self, comparison: ComparisonProxy, diff, changes, links):
+        all_components = get_components_from_yaml(self.current_yaml)
+        if all_components == []:
+            return  # fast return if there's noting to process
+
+        component_data_to_show = await self._get_table_data_for_components(
+            all_components, comparison
+        )
+
+        # Table header and layout
+        yield "| Components | Coverage \u0394 | |"
+        yield "|---|---|---|"
+        # The interesting part
+        for component_data in component_data_to_show:
+            yield (
+                "| {name} {metrics}".format(
+                    name=component_data["name"],
+                    metrics=make_metrics(
+                        component_data["before"],
+                        component_data["after"],
+                        component_data["diff"],
+                        show_complexity=False,
+                        yaml=self.current_yaml,
+                    ),
+                )
+            )

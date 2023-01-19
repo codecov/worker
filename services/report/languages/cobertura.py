@@ -4,13 +4,16 @@ import typing
 from os import path
 from typing import List
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 from timestring import Date, TimestringInvalid
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -25,13 +28,8 @@ class CoberturaProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.current_yaml,
-        )
-        return from_xml(content, path_fixer, ignored_lines, sessionid, repo_yaml)
+        report_builder_session = report_builder.create_report_builder_session(name)
+        return from_xml(content, report_builder_session)
 
 
 def Int(value):
@@ -46,9 +44,16 @@ def get_sources_to_attempt(xml) -> List[str]:
     return [s for s in sources if isinstance(s, str) and s.startswith("/")]
 
 
-def from_xml(xml, fix, ignored_lines, sessionid, yaml):
+def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, sessionid, repo_yaml = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+        report_builder_session.sessionid,
+        report_builder_session.current_yaml,
+    )
+
     # # process timestamp
-    if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
+    if read_yaml_field(repo_yaml, ("codecov", "max_report_age"), "12h ago"):
         try:
             timestamp = next(xml.iter("coverage")).get("timestamp")
         except StopIteration:
@@ -68,16 +73,14 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             timestamp
             and is_valid_timestamp
             and parsed_datetime
-            < read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago")
+            < read_yaml_field(repo_yaml, ("codecov", "max_report_age"), "12h ago")
         ):
             # report expired over 12 hours ago
             raise ReportExpiredException("Cobertura report expired " + timestamp)
 
-    report = Report()
-
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
-        _file = ReportFile(filename)
+        _file = report_builder_session.file_class(name=filename)
 
         for line in _class.iter("line"):
             _line = line.attrib
@@ -87,8 +90,8 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             ln = int(ln)
             if ln > 0:
                 coverage = None
-                _type = None
-                sessions = None
+                _type = CoverageType.line
+                missing_branches = None
 
                 # coverage
                 branch = _line.get("branch", "")
@@ -98,7 +101,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                     and re.search("\(\d+\/\d+\)", condition_coverage) is not None
                 ):
                     coverage = condition_coverage.split(" ", 1)[1][1:-1]  # 1/2
-                    _type = "b"
+                    _type = CoverageType.branch
                 else:
                     coverage = Int(_line.get("hits"))
 
@@ -109,7 +112,7 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                     if len(conditions) > 1 and set(conditions) == set(("exit",)):
                         # python: "return [...] missed"
                         conditions = ["loop", "exit"]
-                    sessions = [[sessionid, coverage, conditions]]
+                    missing_branches = conditions
 
                 else:
                     # [groovy] embedded conditions
@@ -134,13 +137,14 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
                             )
                         )
                     if conditions:
-                        sessions = [[sessionid, coverage, conditions]]
+                        missing_branches = conditions
                 _file.append(
                     ln,
-                    ReportLine.create(
+                    report_builder_session.create_coverage_line(
+                        filename=filename,
                         coverage=coverage,
-                        type=_type,
-                        sessions=sessions or [[sessionid, coverage]],
+                        coverage_type=_type,
+                        missing_branches=missing_branches,
                     ),
                 )
 
@@ -154,31 +158,37 @@ def from_xml(xml, fix, ignored_lines, sessionid, yaml):
             if stmt["branch"] == "true":
                 _file.append(
                     int(stmt["line"]),
-                    ReportLine.create(coverage, "b", [[sessionid, coverage]]),
+                    report_builder_session.create_coverage_line(
+                        filename=filename,
+                        coverage=coverage,
+                        coverage_type=CoverageType.branch,
+                    ),
                 )
             else:
                 _file.append(
                     int(stmt["line"]),
-                    ReportLine.create(
-                        coverage,
-                        "m" if stmt["method"] else None,
-                        [[sessionid, coverage]],
+                    report_builder_session.create_coverage_line(
+                        filename=filename,
+                        coverage=coverage,
+                        coverage_type=CoverageType.method
+                        if stmt["method"]
+                        else CoverageType.line,
                     ),
                 )
-        report.append(_file)
+        report_builder_session.append(_file)
 
     # path rename
     path_name_fixing = []
     source_path_list = get_sources_to_attempt(xml)
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
-        fixed_name = fix(filename, bases_to_try=source_path_list)
+        fixed_name = path_fixer(filename, bases_to_try=source_path_list)
         path_name_fixing.append((filename, fixed_name))
 
     _set = set(("dist-packages", "site-packages"))
-    report.resolve_paths(
+    report_builder_session.resolve_paths(
         sorted(path_name_fixing, key=lambda a: _set & set(a[0].split("/")))
     )
 
-    report.ignore_lines(ignored_lines)
-    return report
+    report_builder_session.ignore_lines(ignored_lines)
+    return report_builder_session.output_report()
