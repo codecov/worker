@@ -23,7 +23,12 @@ def get_repo_appropriate_bot_token(repo: Repository) -> Tuple[Dict, Optional[Own
     if not repo.private or (
         is_enterprise() and get_config(repo.service, "bot") is not None
     ):
-        public_bot_dict = get_config(repo.service, "bot")
+
+        public_bot_dict = (
+            get_config(repo.service, "bot")
+            if is_enterprise()
+            else get_config(repo.service, "bots", "tokenless")
+        )
         if public_bot_dict and public_bot_dict.get("key"):
             log.info(
                 "Using default bot",
@@ -59,6 +64,7 @@ def get_token_type_mapping(repo: Repository):
         TokenType.admin: admin_bot,
         TokenType.comment: get_config(repo.service, "bots", "comment"),
         TokenType.status: admin_bot or get_config(repo.service, "bots", "status"),
+        TokenType.tokenless: admin_bot or get_config(repo.service, "bots", "tokenless"),
     }
 
 
