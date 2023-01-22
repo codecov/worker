@@ -289,7 +289,9 @@ class UploadTask(BaseCodecovTask):
             )
         report_service = ReportService(commit_yaml)
         try:
-            commit_report = report_service.initialize_and_save_report(commit)
+            commit_report = report_service.initialize_and_save_report(
+                commit, report_code
+            )
         except NotReadyToBuildReportYetError:
             log.warning(
                 "Commit not yet ready to build its initial report",
@@ -379,6 +381,7 @@ class UploadTask(BaseCodecovTask):
                         commitid=commit.commitid,
                         commit_yaml=commit_yaml,
                         arguments_list=chunk,
+                        report_code=commit_report.code,
                     ),
                 )
                 chain_to_call.append(sig)

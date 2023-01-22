@@ -133,7 +133,7 @@ class TestUploadProcessorTask(object):
             == expected_generated_report["sessions"]["0"]
         )
         assert commit.report_json == expected_generated_report
-        mocked_1.assert_called_with(commit.commitid)
+        mocked_1.assert_called_with(commit.commitid, None)
         # mocked_3.send_task.assert_called_with(
         #     'app.tasks.notify.Notify',
         #     args=None,
@@ -189,6 +189,7 @@ class TestUploadProcessorTask(object):
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
+            report_code=None,
         )
         expected_result = {
             "processings_so_far": [
@@ -244,7 +245,7 @@ class TestUploadProcessorTask(object):
         assert commit.report_json["files"] == expected_generated_report["files"]
         assert commit.report_json["sessions"] == expected_generated_report["sessions"]
         assert commit.report_json == expected_generated_report
-        mocked_1.assert_called_with(commit.commitid)
+        mocked_1.assert_called_with(commit.commitid, None)
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -305,7 +306,7 @@ class TestUploadProcessorTask(object):
         }
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
-        mocked_1.assert_called_with(commit.commitid)
+        mocked_1.assert_called_with(commit.commitid, None)
         mock_redis.lock.assert_called_with(
             f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,

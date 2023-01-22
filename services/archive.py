@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class MinioEndpoints(Enum):
-    chunks = "{version}/repos/{repo_hash}/commits/{commitid}/chunks.txt"
+    chunks = "{version}/repos/{repo_hash}/commits/{commitid}/{chunks_file_name}.txt"
     profiling_summary = "{version}/repos/{repo_hash}/profilingsummaries/{profiling_commit_id}/{location}"
     raw = "v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt"
     profiling_collection = "{version}/repos/{repo_hash}/profilingcollections/{profiling_commit_id}/{location}"
@@ -192,9 +192,13 @@ class ArchiveService(object):
     Convenience method to write a chunks.txt file to storage.
     """
 
-    def write_chunks(self, commit_sha, data) -> str:
+    def write_chunks(self, commit_sha, data, report_code=None) -> str:
+        chunks_file_name = report_code if report_code is not None else "chunks"
         path = MinioEndpoints.chunks.get_path(
-            version="v4", repo_hash=self.storage_hash, commitid=commit_sha
+            version="v4",
+            repo_hash=self.storage_hash,
+            commitid=commit_sha,
+            chunks_file_name=chunks_file_name,
         )
 
         self.write_file(path, data)
@@ -233,9 +237,13 @@ class ArchiveService(object):
     Convenience method to read a chunks file from the archive.
     """
 
-    def read_chunks(self, commit_sha) -> str:
+    def read_chunks(self, commit_sha, report_code=None) -> str:
+        chunks_file_name = report_code if report_code is not None else "chunks"
         path = MinioEndpoints.chunks.get_path(
-            version="v4", repo_hash=self.storage_hash, commitid=commit_sha
+            version="v4",
+            repo_hash=self.storage_hash,
+            commitid=commit_sha,
+            chunks_file_name=chunks_file_name,
         )
 
         return self.read_file(path).decode(errors="replace")
@@ -244,7 +252,12 @@ class ArchiveService(object):
     Delete a chunk file from the archive
     """
 
-    def delete_chunk_from_archive(self, commit_sha) -> None:
-        path = "v4/repos/{}/commits/{}/chunks.txt".format(self.storage_hash, commit_sha)
-
+    def delete_chunk_from_archive(self, commit_sha, report_code=None) -> None:
+        chunks_file_name = report_code if report_code is not None else "chunks"
+        path = MinioEndpoints.chunks.get_path(
+            version="v4",
+            repo_hash=self.storage_hash,
+            commitid=commit_sha,
+            chunks_file_name=chunks_file_name,
+        )
         self.delete_file(path)
