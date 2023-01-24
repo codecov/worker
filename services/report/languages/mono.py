@@ -5,7 +5,11 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class MonoProcessor(BaseLanguageProcessor):
@@ -34,7 +38,9 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
 
         _file = report_builder_session.get_file(filename)
         if not _file:
-            _file = ReportFile(filename, ignore=ignored_lines.get(filename))
+            _file = report_builder_session.file_class(
+                name=filename, ignore=ignored_lines.get(filename)
+            )
 
         # loop through statements
         for line in method.iter("statement"):
@@ -43,7 +49,11 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
 
             _file.append(
                 int(line["line"]),
-                ReportLine.create(coverage=coverage, sessions=[[sessionid, coverage]]),
+                report_builder_session.create_coverage_line(
+                    filename=filename,
+                    coverage=coverage,
+                    coverage_type=CoverageType.line,
+                ),
             )
 
         report_builder_session.append(_file)
