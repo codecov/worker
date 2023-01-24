@@ -59,6 +59,9 @@ class ReportBuilderSession(object):
     def resolve_paths(self, paths):
         return self._report.resolve_paths(paths)
 
+    def get_file(self, filename):
+        return self._report.get(filename)
+
     def append(self, file):
         if file is not None:
             for line_number, line in file.lines:
