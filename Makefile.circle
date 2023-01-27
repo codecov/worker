@@ -172,7 +172,7 @@ enterprise:
 # deploys tagged version of the public enterprise-api
 release-enterprise:
 	docker pull ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}
-	docker push ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies
+	docker pull ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies
 	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION} codecov/enterprise-worker:${SEMANTIC_VERSION}
 	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION} codecov/enterprise-worker:latest-stable
 	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies codecov/enterprise-worker:${SEMANTIC_VERSION}_no_dependencies
