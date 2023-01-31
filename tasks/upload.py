@@ -289,7 +289,7 @@ class UploadTask(BaseCodecovTask):
             )
         report_service = ReportService(commit_yaml)
         try:
-            commit_report = report_service.initialize_and_save_report(
+            commit_report = await report_service.initialize_and_save_report(
                 commit, report_code
             )
         except NotReadyToBuildReportYetError:

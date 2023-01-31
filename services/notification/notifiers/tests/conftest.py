@@ -351,7 +351,7 @@ def sample_comparison(dbsession, request, sample_report, mocker):
 
 
 @pytest.fixture
-def sample_comparison_coverage_carriedforward(
+async def sample_comparison_coverage_carriedforward(
     dbsession, request, sample_commit_with_report_already_carriedforward, mocker
 ):
     mocker.patch(
@@ -373,7 +373,7 @@ def sample_comparison_coverage_carriedforward(
     dbsession.flush()
 
     yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-    report = ReportService(yaml_dict).build_report_from_commit(head_commit)
+    report = await ReportService(yaml_dict).build_report_from_commit(head_commit)
     report._totals = (
         None  # need to reset the report to get it to recalculate totals correctly
     )

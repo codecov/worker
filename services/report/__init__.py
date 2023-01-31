@@ -7,12 +7,14 @@ from json import loads
 from time import time
 from typing import Any, Dict, Mapping, Optional, Sequence
 
+from celery.exceptions import SoftTimeLimitExceeded
 from shared.metrics import metrics
 from shared.reports.carryforward import generate_carryforward_report
 from shared.reports.editable import EditableReport
 from shared.reports.enums import UploadState, UploadType
 from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
+from shared.torngit.exceptions import TorngitError
 from shared.utils.sessions import Session, SessionType
 
 from database.models import Commit, Repository, Upload, UploadError
@@ -23,10 +25,16 @@ from database.models.reports import (
     RepositoryFlag,
     UploadLevelTotals,
 )
-from helpers.exceptions import ReportEmptyError, ReportExpiredException
+from helpers.exceptions import (
+    OwnerWithoutValidBotError,
+    ReportEmptyError,
+    ReportExpiredException,
+    RepositoryWithoutValidBotError,
+)
 from services.archive import ArchiveService
 from services.report.parser import get_proper_parser
 from services.report.raw_upload_processor import process_raw_upload
+from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags
 
 
@@ -92,7 +100,7 @@ class ReportService(object):
         """
         return commit.report_json is not None
 
-    def initialize_and_save_report(
+    async def initialize_and_save_report(
         self, commit: Commit, report_code: str = None
     ) -> CommitReport:
         """
@@ -155,7 +163,7 @@ class ReportService(object):
             db_session.add(report_details)
             db_session.flush()
         if not self.has_initialized_report(commit):
-            report = self.create_new_report_for_commit(commit)
+            report = await self.create_new_report_for_commit(commit)
             if not report.is_empty():
                 # This means there is a report to carryforward
                 self.save_full_report(commit, report, report_code)
@@ -272,8 +280,8 @@ class ReportService(object):
     def get_archive_service(self, repository: Repository) -> ArchiveService:
         return ArchiveService(repository)
 
-    def build_report_from_commit(self, commit) -> Report:
-        return self._do_build_report_from_commit(commit)
+    async def build_report_from_commit(self, commit) -> Report:
+        return await self._do_build_report_from_commit(commit)
 
     def get_existing_report_for_commit(
         self, commit, report_class=None, *, report_code=None
@@ -302,11 +310,11 @@ class ReportService(object):
         )
         return res
 
-    def _do_build_report_from_commit(self, commit) -> Report:
+    async def _do_build_report_from_commit(self, commit) -> Report:
         report = self.get_existing_report_for_commit(commit)
         if report is not None:
             return report
-        return self.create_new_report_for_commit(commit)
+        return await self.create_new_report_for_commit(commit)
 
     @metrics.timer(
         f"services.report.ReportService.get_appropriate_commit_to_carryforward_from"
@@ -374,61 +382,115 @@ class ReportService(object):
             return None
         return parent_commit
 
-    @metrics.timer(f"services.report.ReportService.create_new_report_for_commit")
-    def create_new_report_for_commit(self, commit: Commit) -> Report:
-        log.info(
-            "Creating new report for commit",
-            extra=dict(commit=commit.commitid, repoid=commit.repoid),
-        )
-        if not self.current_yaml:
-            return Report()
-        if not self.current_yaml.has_any_carryforward():
-            return Report()
-        parent_commit = self.get_appropriate_commit_to_carryforward_from(commit)
-        if parent_commit is None:
-            log.warning(
-                "Could not find parent for possible carryforward",
+    async def _possibly_shift_carryforward_report(
+        self, carryforward_report: Report, base_commit: Commit, head_commit: Commit
+    ) -> Report:
+        with metrics.timer(
+            "services.report.ReportService.possibly_shift_carryforward_report"
+        ):
+            try:
+                provider_service = get_repo_provider_service(
+                    repository=head_commit.repository
+                )
+                diff = provider_service.get_compare(base=base_commit, head=head_commit)[
+                    "diff"
+                ]
+                # Volitile function, alters carryforward_report
+                carryforward_report.shift_lines_by_diff(diff)
+            except (RepositoryWithoutValidBotError, OwnerWithoutValidBotError) as exp:
+                log.error(
+                    "Failed to shift carryforward report lines",
+                    extra=dict(
+                        reason="Can't get provider_service",
+                        commit=head_commit.commitid,
+                        error=str(exp),
+                    ),
+                )
+            except TorngitError as exp:
+                log.error(
+                    "Failed to shift carryforward report lines.",
+                    extra=dict(
+                        reason="Can't get diff",
+                        commit=head_commit.commitid,
+                        error=str(exp),
+                        error_type=type(exp),
+                    ),
+                )
+            except SoftTimeLimitExceeded:
+                raise
+            except Exception as exp:
+                log.error(
+                    "Failed to shift carryforward report lines.",
+                    extra=dict(
+                        reason="Unknown",
+                        commit=head_commit.commitid,
+                        error=str(exp),
+                        error_type=type(exp),
+                    ),
+                )
+            return carryforward_report
+
+    async def create_new_report_for_commit(self, commit: Commit) -> Report:
+        with metrics.timer(
+            f"services.report.ReportService.create_new_report_for_commit"
+        ):
+            log.info(
+                "Creating new report for commit",
                 extra=dict(commit=commit.commitid, repoid=commit.repoid),
             )
-            return Report()
-        parent_report = self.get_existing_report_for_commit(parent_commit)
-        if parent_report is None:
-            log.warning(
-                "Could not carryforward report from another commit because parent has no report",
+            if not self.current_yaml:
+                return Report()
+            if not self.current_yaml.has_any_carryforward():
+                return Report()
+            parent_commit = self.get_appropriate_commit_to_carryforward_from(commit)
+            if parent_commit is None:
+                log.warning(
+                    "Could not find parent for possible carryforward",
+                    extra=dict(commit=commit.commitid, repoid=commit.repoid),
+                )
+                return Report()
+            parent_report = self.get_existing_report_for_commit(parent_commit)
+            if parent_report is None:
+                log.warning(
+                    "Could not carryforward report from another commit because parent has no report",
+                    extra=dict(
+                        commit=commit.commitid,
+                        repoid=commit.repoid,
+                        parent_commit=parent_commit.commitid,
+                    ),
+                )
+                return Report()
+            flags_to_carryforward = []
+            report_flags = parent_report.get_flag_names()
+            for flag_name in report_flags:
+                if self.current_yaml.flag_has_carryfoward(flag_name):
+                    flags_to_carryforward.append(flag_name)
+            if not flags_to_carryforward:
+                return Report()
+            paths_to_carryforward = get_paths_from_flags(
+                self.current_yaml, flags_to_carryforward
+            )
+            log.info(
+                "Generating carriedforward report",
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
                     parent_commit=parent_commit.commitid,
+                    flags_to_carryforward=flags_to_carryforward,
+                    paths_to_carryforward=paths_to_carryforward,
+                    parent_sessions=parent_report.sessions,
                 ),
             )
-            return Report()
-        flags_to_carryforward = []
-        report_flags = parent_report.get_flag_names()
-        for flag_name in report_flags:
-            if self.current_yaml.flag_has_carryfoward(flag_name):
-                flags_to_carryforward.append(flag_name)
-        if not flags_to_carryforward:
-            return Report()
-        paths_to_carryforward = get_paths_from_flags(
-            self.current_yaml, flags_to_carryforward
-        )
-        log.info(
-            "Generating carriedforward report",
-            extra=dict(
-                commit=commit.commitid,
-                repoid=commit.repoid,
-                parent_commit=parent_commit.commitid,
-                flags_to_carryforward=flags_to_carryforward,
-                paths_to_carryforward=paths_to_carryforward,
-                parent_sessions=parent_report.sessions,
-            ),
-        )
-        return generate_carryforward_report(
-            parent_report,
-            flags_to_carryforward,
-            paths_to_carryforward,
-            session_extras=dict(carriedforward_from=parent_commit.commitid),
-        )
+            carryforward_report = generate_carryforward_report(
+                parent_report,
+                flags_to_carryforward,
+                paths_to_carryforward,
+                session_extras=dict(carriedforward_from=parent_commit.commitid),
+            )
+            await self._possibly_shift_carryforward_report(
+                carryforward_report, parent_commit, commit
+            )
+            return carryforward_report
 
     def build_report_from_raw_content(
         self, master: Optional[Report], upload: Upload
