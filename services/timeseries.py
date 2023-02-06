@@ -185,3 +185,12 @@ def backfill_batch_size(repository: Repository) -> int:
     flag_count = max(flag_count, 1)
     batch_size = int(backfill_max_batch_size() / flag_count)
     return max(batch_size, 1)
+
+
+def delete_repository_data(repository: Repository):
+    db_session = repository.get_db_session()
+    db_session.query(Dataset).filter_by(repository_id=repository.repoid).delete()
+    db_session.query(Measurement).filter_by(
+        owner_id=repository.ownerid,
+        repo_id=repository.repoid,
+    ).delete()
