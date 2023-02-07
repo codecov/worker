@@ -392,9 +392,11 @@ class ReportService(object):
                 provider_service = get_repo_provider_service(
                     repository=head_commit.repository
                 )
-                diff = provider_service.get_compare(base=base_commit, head=head_commit)[
-                    "diff"
-                ]
+                diff = (
+                    await provider_service.get_compare(
+                        base=base_commit, head=head_commit
+                    )
+                )["diff"]
                 # Volitile function, alters carryforward_report
                 carryforward_report.shift_lines_by_diff(diff)
             except (RepositoryWithoutValidBotError, OwnerWithoutValidBotError) as exp:
@@ -418,14 +420,12 @@ class ReportService(object):
                 )
             except SoftTimeLimitExceeded:
                 raise
-            except Exception as exp:
-                log.error(
+            except Exception:
+                log.exception(
                     "Failed to shift carryforward report lines.",
                     extra=dict(
                         reason="Unknown",
                         commit=head_commit.commitid,
-                        error=str(exp),
-                        error_type=type(exp),
                     ),
                 )
             return carryforward_report
