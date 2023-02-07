@@ -78,7 +78,7 @@ jobs:
       - run:
           name: Install CLI
           command: |
-            pip install git+ssh://git@github.com/codecov/codecov-cli.git@20cca6a403b547419801c6b9b3eabea4ef342523#egg=codecov-cli
+            pip install git+ssh://git@github.com/codecov/codecov-cli.git@c597195af05a6f8357774aaa271abc5d026ea579#egg=codecov-cli
       - run:
           name: Save commit info 
           command: |
@@ -87,14 +87,14 @@ jobs:
           name: Create report
           command: |
             codecovcli --auto-load-params-from circleci create-report --service=github
-      # - run:
-      #     name: Run Static Analysis
-      #     command: |
-      #       codecovcli static-analysis --token=$STATIC_TOKEN
-      # - run:
-      #     name: Run Predictor Analysis
-      #     command: |
-      #       codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git log -n 1 master --pretty=format:"%H")
+      - run:
+          name: Run Static Analysis
+          command: |
+            codecovcli static-analysis --token=$STATIC_TOKEN
+      - run:
+          name: Run Predictor Analysis
+          command: |
+            codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git log -n 1 master --pretty=format:"%H")
   mutations:
     executor: codecov-worker
     steps:
@@ -147,7 +147,7 @@ jobs:
           name: upload to codecov using python uploader
           command: |
             apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
-            pip install git+ssh://git@github.com/codecov/codecov-cli.git@9370e1cd750579a6438fa3f7884e02e9f8f6d010#egg=codecov-cli
+            pip install git+ssh://git@github.com/codecov/codecov-cli.git@c597195af05a6f8357774aaa271abc5d026ea579#egg=codecov-cli
             codecovcli --auto-load-params-from circleci do-upload --flag integration --flag unit --flag latest-uploader-overall --use-new-uploader True
 
       - run:
