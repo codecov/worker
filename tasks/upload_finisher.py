@@ -97,6 +97,14 @@ class UploadFinisherTask(BaseCodecovTask):
                 }
                 new_cache = deepcopy(commit.repository.cache_do_not_use) or {}
                 new_cache["commit"] = commit_dict
+                log.info(
+                    "Updating repo cache",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        value=commit_dict,
+                    ),
+                )
                 commit.repository.cache_do_not_use = new_cache
         return result
 
