@@ -78,19 +78,23 @@ jobs:
       - run:
           name: Install CLI
           command: |
-            pip install git+ssh://git@github.com/codecov/codecov-cli.git@9370e1cd750579a6438fa3f7884e02e9f8f6d010#egg=codecov-cli
+            pip install git+ssh://git@github.com/codecov/codecov-cli.git@20cca6a403b547419801c6b9b3eabea4ef342523#egg=codecov-cli
       - run:
           name: Save commit info 
           command: |
             codecovcli --auto-load-params-from circleci create-commit --service=github
-      - run:
-          name: Run Static Analysis
+      - run: 
+          name: Create report
           command: |
-            codecovcli static-analysis --token=$STATIC_TOKEN
-      - run:
-          name: Run Predictor Analysis
-          command: |
-            codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git log -n 1 master --pretty=format:"%H")
+            codecovcli --auto-load-params-from circleci create-report --service=github
+      # - run:
+      #     name: Run Static Analysis
+      #     command: |
+      #       codecovcli static-analysis --token=$STATIC_TOKEN
+      # - run:
+      #     name: Run Predictor Analysis
+      #     command: |
+      #       codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git log -n 1 master --pretty=format:"%H")
   mutations:
     executor: codecov-worker
     steps:
@@ -144,7 +148,7 @@ jobs:
           command: |
             apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
             pip install git+ssh://git@github.com/codecov/codecov-cli.git@9370e1cd750579a6438fa3f7884e02e9f8f6d010#egg=codecov-cli
-            codecovcli --auto-load-params-from circleci do-upload --flag python-uploader-overall --use-new-uploader True
+            codecovcli --auto-load-params-from circleci do-upload --flag integration --flag unit --flag latest-uploader-overall --use-new-uploader True
 
       - run:
           name: upload to codecov using latest node uploader
@@ -153,9 +157,9 @@ jobs:
             apk add git
             curl -o codecov-latest https://uploader.codecov.io/latest/linux/codecov
             chmod +x codecov-latest
-            ./codecov-latest -F latest-uploader-overall -Z
-            ./codecov-latest -F unit -f unit.coverage.json -Z
-            ./codecov-latest -F integration -f integration.coverage.json -Z
+            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F latest-uploader-overall -Z
+            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F unit -f unit.coverage.json -Z
+            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F integration -f integration.coverage.json -Z
 
   staging:
     executor: codecov-deploy
