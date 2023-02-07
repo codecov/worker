@@ -3,6 +3,7 @@ from asyncio import Future
 from decimal import Decimal
 from itertools import chain, combinations
 
+import mock
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.reports.enums import UploadState
@@ -3796,7 +3797,9 @@ class TestReportService(BaseTestCase):
         assert len(upload_obj.errors) == 0
 
     @pytest.mark.asyncio
-    async def test_shift_carryforward_report(self, dbsession, sample_report, mocker):
+    async def test_shift_carryforward_report(
+        self, dbsession, sample_report, mocker, mock_repo_provider
+    ):
         parent_commit = CommitFactory()
         commit = CommitFactory(parent_commit_id=parent_commit.commitid)
         dbsession.add(parent_commit)
@@ -3840,11 +3843,7 @@ class TestReportService(BaseTestCase):
             assert head == commit
             return fake_diff
 
-        fake_provider = mocker.Mock()
-        fake_provider.get_compare = fake_get_compare
-        mock_provider_service = mocker.patch(
-            "services.report.get_repo_provider_service", return_value=fake_provider
-        )
+        mock_repo_provider.get_compare = mock.AsyncMock(side_effect=fake_get_compare)
         result = await ReportService({})._possibly_shift_carryforward_report(
             sample_report, parent_commit, commit
         )
@@ -3881,11 +3880,10 @@ class TestReportService(BaseTestCase):
                 (51, "1/2", "b", [[0, 1, None, None, None]], None, None),
             ],
         }
-        mock_provider_service.assert_called_with(repository=commit.repository)
 
     @pytest.mark.asyncio
     async def test_create_new_report_for_commit_and_shift(
-        self, dbsession, sample_report, mocker
+        self, dbsession, sample_report, mocker, mock_repo_provider
     ):
         parent_commit = CommitFactory()
         parent_commit_report = CommitReport(commit_id=parent_commit.id_)
@@ -3949,11 +3947,7 @@ class TestReportService(BaseTestCase):
             assert head == commit
             return fake_diff
 
-        fake_provider = mocker.Mock()
-        fake_provider.get_compare = fake_get_compare
-        mock_provider_service = mocker.patch(
-            "services.report.get_repo_provider_service", return_value=fake_provider
-        )
+        mock_repo_provider.get_compare = mock.AsyncMock(side_effect=fake_get_compare)
 
         mock_get_report = mocker.patch.object(
             ReportService, "get_existing_report_for_commit", return_value=sample_report
@@ -3995,7 +3989,6 @@ class TestReportService(BaseTestCase):
                 (51, "1/2", "b", [[0, 1, None, None, None]], None, None),
             ],
         }
-        mock_provider_service.assert_called_with(repository=commit.repository)
 
     @pytest.mark.asyncio
     async def test_possibly_shift_carryforward_report_cant_get_diff(
@@ -4068,7 +4061,7 @@ class TestReportService(BaseTestCase):
 
     @pytest.mark.asyncio
     async def test_possibly_shift_carryforward_report_random_processing_error(
-        self, dbsession, mocker
+        self, dbsession, mocker, mock_repo_provider
     ):
         parent_commit = CommitFactory()
         commit = CommitFactory(parent_commit_id=parent_commit.commitid)
@@ -4080,10 +4073,8 @@ class TestReportService(BaseTestCase):
         def raise_error(*args, **kwargs):
             raise Exception("Very random and hard to get exception")
 
-        fake_provider = mocker.Mock()
-        fake_provider.get_compare = lambda *args, **kwargs: dict(diff={})
-        mock_provider_service = mocker.patch(
-            "services.report.get_repo_provider_service", return_value=fake_provider
+        mock_repo_provider.get_compare = mock.AsyncMock(
+            side_effect=lambda *args, **kwargs: dict(diff={})
         )
         mock_report = mocker.Mock()
         mock_report.shift_lines_by_diff = raise_error
@@ -4091,20 +4082,18 @@ class TestReportService(BaseTestCase):
             mock_report, parent_commit, commit
         )
         assert result == mock_report
-        mock_provider_service.assert_called()
         mock_log_error.assert_called_with(
             "Failed to shift carryforward report lines.",
+            exc_info=True,
             extra=dict(
                 reason="Unknown",
                 commit=commit.commitid,
-                error=str(Exception("Very random and hard to get exception")),
-                error_type=type(Exception()),
             ),
         )
 
     @pytest.mark.asyncio
     async def test_possibly_shift_carryforward_report_softtimelimit_reraised(
-        self, dbsession, mocker
+        self, dbsession, mocker, mock_repo_provider
     ):
         parent_commit = CommitFactory()
         commit = CommitFactory(parent_commit_id=parent_commit.commitid)
@@ -4115,15 +4104,9 @@ class TestReportService(BaseTestCase):
         def raise_error(*args, **kwargs):
             raise SoftTimeLimitExceeded()
 
-        fake_provider = mocker.Mock()
-        fake_provider.get_compare = lambda *args, **kwargs: dict(diff={})
-        mock_provider_service = mocker.patch(
-            "services.report.get_repo_provider_service", return_value=fake_provider
-        )
         mock_report = mocker.Mock()
         mock_report.shift_lines_by_diff = raise_error
         with pytest.raises(SoftTimeLimitExceeded):
             await ReportService({})._possibly_shift_carryforward_report(
                 mock_report, parent_commit, commit
             )
-        mock_provider_service.assert_called()
