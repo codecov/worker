@@ -1096,6 +1096,8 @@ class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
             session=session,
         )
         report = result.report
+        assert result.fully_deleted_sessions == []
+        assert result.partially_deleted_sessions == []
         assert sorted(report.sessions.keys()) == [0, session.id]
         assert session.id == 1
         assert report.sessions[session.id] == session

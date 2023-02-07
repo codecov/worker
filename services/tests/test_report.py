@@ -22,13 +22,8 @@ from services.report import (
     ReportService,
 )
 from services.report import log as report_log
+from services.report.raw_upload_processor import _adjust_sessions
 from tests.base import BaseTestCase
-
-
-def powerset(iterable):
-    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
-    s = list(iterable)
-    return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
 
 
 @pytest.fixture
@@ -1523,7 +1518,11 @@ class TestReportService(BaseTestCase):
         assert report is not None
         assert len(report.files) == 15
         mock_possibly_shift.assert_called()
-        report.add_session(Session(flags=["enterprise"]))
+        to_merge_session = Session(flags=["enterprise"])
+        report.add_session(to_merge_session)
+        assert sorted(report.sessions.keys()) == [0]
+        _adjust_sessions(report, Report(), to_merge_session, UserYaml(yaml_dict))
+        assert sorted(report.sessions.keys()) == [0]
         readable_report = self.convert_report_to_better_readable(report)
         expected_results = {
             "archive": {},
@@ -1565,8 +1564,8 @@ class TestReportService(BaseTestCase):
         }
         pprint.pprint(readable_report)
         assert (
-            readable_report["report"]["sessions"]["0"]
-            == expected_results["report"]["sessions"]["0"]
+            readable_report["report"]["sessions"]
+            == expected_results["report"]["sessions"]
         )
         assert (
             readable_report["report"]["sessions"]
@@ -1588,9 +1587,14 @@ class TestReportService(BaseTestCase):
         )
         assert report is not None
         assert len(report.files) == 15
-        report.add_session(Session(flags=["enterprise"]))
+        assert sorted(report.sessions.keys()) == [0, 1, 2, 3]
+        first_to_merge_session = Session(flags=["enterprise"])
+        report.add_session(first_to_merge_session)
+        assert sorted(report.sessions.keys()) == [0, 1, 2]
+        _adjust_sessions(report, Report(), first_to_merge_session, UserYaml(yaml_dict))
+        assert sorted(report.sessions.keys()) == [0, 1, 2]
         readable_report = self.convert_report_to_better_readable(report)
-        sessions_dict = {
+        expected_sessions_dict = {
             "0": {
                 "N": None,
                 "a": None,
@@ -1637,11 +1641,10 @@ class TestReportService(BaseTestCase):
                 "u": None,
             },
         }
-
-        assert readable_report["report"]["sessions"]["0"] == sessions_dict["0"]
-        assert readable_report["report"]["sessions"]["1"] == sessions_dict["1"]
-        assert readable_report["report"]["sessions"]["2"] == sessions_dict["2"]
-        assert readable_report["report"]["sessions"] == sessions_dict
+        assert readable_report["report"]["sessions"]["0"] == expected_sessions_dict["0"]
+        assert readable_report["report"]["sessions"]["1"] == expected_sessions_dict["1"]
+        assert readable_report["report"]["sessions"]["2"] == expected_sessions_dict["2"]
+        assert readable_report["report"]["sessions"] == expected_sessions_dict
         newly_added_session = {
             "N": None,
             "a": None,
@@ -1657,12 +1660,24 @@ class TestReportService(BaseTestCase):
             "t": None,
             "u": None,
         }
-        report.add_session(Session(flags=["unit"]))
+        second_to_merge_session = Session(flags=["unit"])
+        report.add_session(second_to_merge_session)
+        assert sorted(report.sessions.keys()) == [0, 1, 2, 3]
+        _adjust_sessions(report, Report(), second_to_merge_session, UserYaml(yaml_dict))
         new_readable_report = self.convert_report_to_better_readable(report)
         assert len(new_readable_report["report"]["sessions"]) == 4
-        assert new_readable_report["report"]["sessions"]["0"] == sessions_dict["0"]
-        assert new_readable_report["report"]["sessions"]["1"] == sessions_dict["1"]
-        assert new_readable_report["report"]["sessions"]["2"] == sessions_dict["2"]
+        assert (
+            new_readable_report["report"]["sessions"]["0"]
+            == expected_sessions_dict["0"]
+        )
+        assert (
+            new_readable_report["report"]["sessions"]["1"]
+            == expected_sessions_dict["1"]
+        )
+        assert (
+            new_readable_report["report"]["sessions"]["2"]
+            == expected_sessions_dict["2"]
+        )
         assert new_readable_report["report"]["sessions"]["3"] == newly_added_session
 
     @pytest.mark.asyncio
