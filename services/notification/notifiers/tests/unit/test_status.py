@@ -1,5 +1,3 @@
-from random import sample
-
 import pytest
 from mock import patch
 from shared.reports.readonly import ReadOnlyReport
@@ -12,7 +10,8 @@ from shared.torngit.exceptions import (
 from shared.torngit.status import Status
 from shared.yaml.user_yaml import UserYaml
 
-from services.comparison import ComparisonProxy, FilteredComparison
+from database.enums import Notification
+from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.status import (
@@ -21,6 +20,29 @@ from services.notification.notifiers.status import (
     ProjectStatusNotifier,
 )
 from services.notification.notifiers.status.base import StatusNotifier
+
+
+def test_notification_type(mocker):
+    assert (
+        ProjectStatusNotifier(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        ).notification_type
+        == Notification.status_project
+    )
+    assert (
+        ChangesStatusNotifier(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        ).notification_type
+        == Notification.status_changes
+    )
 
 
 @pytest.fixture
