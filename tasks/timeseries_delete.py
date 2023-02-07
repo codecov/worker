@@ -1,5 +1,6 @@
 import logging
 
+from shared.celery_config import timeseries_delete_task_name
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
@@ -13,7 +14,7 @@ log = logging.getLogger(__name__)
 
 class TimeseriesDeleteTask(BaseCodecovTask):
 
-    name = "app.tasks.timeseries.delete"
+    name = timeseries_delete_task_name
 
     async def run_async(
         self,
