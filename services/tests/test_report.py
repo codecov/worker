@@ -3839,8 +3839,8 @@ class TestReportService(BaseTestCase):
         }
 
         def fake_get_compare(base, head):
-            assert base == parent_commit
-            assert head == commit
+            assert base == parent_commit.commitid
+            assert head == commit.commitid
             return fake_diff
 
         mock_repo_provider.get_compare = mock.AsyncMock(side_effect=fake_get_compare)
@@ -3943,8 +3943,8 @@ class TestReportService(BaseTestCase):
         }
 
         def fake_get_compare(base, head):
-            assert base == parent_commit
-            assert head == commit
+            assert base == parent_commit.commitid
+            assert head == commit.commitid
             return fake_diff
 
         mock_repo_provider.get_compare = mock.AsyncMock(side_effect=fake_get_compare)
