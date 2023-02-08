@@ -394,7 +394,7 @@ class ReportService(object):
                 )
                 diff = (
                     await provider_service.get_compare(
-                        base=base_commit, head=head_commit
+                        base=base_commit.commitid, head=head_commit.commitid
                     )
                 )["diff"]
                 # Volitile function, alters carryforward_report
