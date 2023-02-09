@@ -23,7 +23,10 @@ from services.report import (
     ReportService,
 )
 from services.report import log as report_log
-from services.report.raw_upload_processor import _adjust_sessions
+from services.report.raw_upload_processor import (
+    SessionAdjustmentResult,
+    _adjust_sessions,
+)
 from tests.base import BaseTestCase
 
 
@@ -1521,16 +1524,20 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift.assert_called()
         to_merge_session = Session(flags=["enterprise"])
         report.add_session(to_merge_session)
-        assert sorted(report.sessions.keys()) == [0]
-        _adjust_sessions(report, Report(), to_merge_session, UserYaml(yaml_dict))
-        assert sorted(report.sessions.keys()) == [0]
+        assert sorted(report.sessions.keys()) == [2, 3, 4]
+        assert _adjust_sessions(
+            report, Report(), to_merge_session, UserYaml(yaml_dict)
+        ) == SessionAdjustmentResult(
+            fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
+        )
+        assert sorted(report.sessions.keys()) == [4]
         readable_report = self.convert_report_to_better_readable(report)
         expected_results = {
             "archive": {},
             "report": {
                 "files": {},
                 "sessions": {
-                    "0": {
+                    "4": {
                         "N": None,
                         "a": None,
                         "c": None,
@@ -1591,9 +1598,13 @@ class TestReportService(BaseTestCase):
         assert sorted(report.sessions.keys()) == [0, 1, 2, 3]
         first_to_merge_session = Session(flags=["enterprise"])
         report.add_session(first_to_merge_session)
-        assert sorted(report.sessions.keys()) == [0, 1, 2]
-        _adjust_sessions(report, Report(), first_to_merge_session, UserYaml(yaml_dict))
-        assert sorted(report.sessions.keys()) == [0, 1, 2]
+        assert sorted(report.sessions.keys()) == [0, 1, 2, 3, 4]
+        assert _adjust_sessions(
+            report, Report(), first_to_merge_session, UserYaml(yaml_dict)
+        ) == SessionAdjustmentResult(
+            fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
+        )
+        assert sorted(report.sessions.keys()) == [0, 1, 4]
         readable_report = self.convert_report_to_better_readable(report)
         expected_sessions_dict = {
             "0": {
@@ -1626,7 +1637,7 @@ class TestReportService(BaseTestCase):
                 "t": None,
                 "u": None,
             },
-            "2": {
+            "4": {
                 "N": None,
                 "a": None,
                 "c": None,
@@ -1644,7 +1655,7 @@ class TestReportService(BaseTestCase):
         }
         assert readable_report["report"]["sessions"]["0"] == expected_sessions_dict["0"]
         assert readable_report["report"]["sessions"]["1"] == expected_sessions_dict["1"]
-        assert readable_report["report"]["sessions"]["2"] == expected_sessions_dict["2"]
+        assert readable_report["report"]["sessions"]["4"] == expected_sessions_dict["4"]
         assert readable_report["report"]["sessions"] == expected_sessions_dict
         newly_added_session = {
             "N": None,
@@ -1663,8 +1674,13 @@ class TestReportService(BaseTestCase):
         }
         second_to_merge_session = Session(flags=["unit"])
         report.add_session(second_to_merge_session)
-        assert sorted(report.sessions.keys()) == [0, 1, 2, 3]
-        _adjust_sessions(report, Report(), second_to_merge_session, UserYaml(yaml_dict))
+        assert sorted(report.sessions.keys()) == [0, 1, 3, 4]
+        assert _adjust_sessions(
+            report, Report(), second_to_merge_session, UserYaml(yaml_dict)
+        ) == SessionAdjustmentResult(
+            fully_deleted_sessions=[], partially_deleted_sessions=[]
+        )
+        assert sorted(report.sessions.keys()) == [0, 1, 3, 4]
         new_readable_report = self.convert_report_to_better_readable(report)
         assert len(new_readable_report["report"]["sessions"]) == 4
         assert (
@@ -1676,8 +1692,8 @@ class TestReportService(BaseTestCase):
             == expected_sessions_dict["1"]
         )
         assert (
-            new_readable_report["report"]["sessions"]["2"]
-            == expected_sessions_dict["2"]
+            new_readable_report["report"]["sessions"]["4"]
+            == expected_sessions_dict["4"]
         )
         assert new_readable_report["report"]["sessions"]["3"] == newly_added_session
 
