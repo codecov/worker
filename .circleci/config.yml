@@ -78,7 +78,13 @@ jobs:
       - run:
           name: Install CLI
           command: |
-            pip install git+ssh://git@github.com/codecov/codecov-cli.git@c597195af05a6f8357774aaa271abc5d026ea579#egg=codecov-cli
+            mkdir workspace
+            pip wheel git+ssh://git@github.com/codecov/codecov-cli.git@266fb575697f5e35ad36d25d6dd66cefe61dc669#egg=codecov-cli --wheel-dir workspace
+            pip install workspace/*
+      - persist_to_workspace:
+          root: workspace
+          paths:
+            - "*.whl"
       - run:
           name: Save commit info 
           command: |
@@ -87,6 +93,16 @@ jobs:
           name: Create report
           command: |
             codecovcli --auto-load-params-from circleci create-report --service=github
+  iterativetesting:
+    executor: codecov-worker
+    steps:
+      - attach_workspace:
+          at: workspace
+      - run:
+          name: Setup
+          command: |
+            apk add git
+            pip install workspace/*
       - run:
           name: Run Static Analysis
           command: |
@@ -95,6 +111,8 @@ jobs:
           name: Run Predictor Analysis
           command: |
             codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git log -n 1 master --pretty=format:"%H")
+            coverage json --show-contexts -o label.coverage.json
+            codecovcli --auto-load-params-from circleci do-upload --flag onlysomelabels --file=label.coverage.json
   mutations:
     executor: codecov-worker
     steps:
@@ -143,12 +161,16 @@ jobs:
           command: |
             make test.unit
             make test.integration    
+      - attach_workspace:
+          at: workspace
       - run:
           name: upload to codecov using python uploader
           command: |
-            apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
-            pip install git+ssh://git@github.com/codecov/codecov-cli.git@c597195af05a6f8357774aaa271abc5d026ea579#egg=codecov-cli
-            codecovcli --auto-load-params-from circleci do-upload --flag integration --flag unit --flag latest-uploader-overall --use-new-uploader True
+            apk add git
+            pip install workspace/*
+            codecovcli --auto-load-params-from circleci do-upload --flag latest-uploader-overall --use-new-uploader True
+            codecovcli --auto-load-params-from circleci do-upload --flag unit --file unit.coverage.xml
+            codecovcli --auto-load-params-from circleci do-upload --flag integration --file integration.coverage.xml
 
       - run:
           name: upload to codecov using latest node uploader
@@ -158,8 +180,8 @@ jobs:
             curl -o codecov-latest https://uploader.codecov.io/latest/linux/codecov
             chmod +x codecov-latest
             ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F latest-uploader-overall -Z
-            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F unit -f unit.coverage.json -Z
-            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F integration -f integration.coverage.json -Z
+            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F unit -f unit.coverage.xml -Z
+            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F integration -f integration.coverage.xml -Z
 
   staging:
     executor: codecov-deploy
@@ -297,6 +319,15 @@ workflows:
           context: "circleci google deploy context"
           requires:
             - build
+            - codecovstartup
+          filters:
+            tags:
+              only: /.*/
+      - iterativetesting:
+          context: "circleci google deploy context"
+          requires:
+            - build
+            - codecovstartup
           filters:
             tags:
               only: /.*/
