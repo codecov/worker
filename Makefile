@@ -75,12 +75,10 @@ test:
 	python -m pytest --cov=./
 
 test.unit:
-	python -m pytest --cov=./ -m "not integration" --cov-context=test
-	coverage json --show-contexts -o unit.coverage.json
+	python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml
 
 test.integration:
-	python -m pytest --cov=./ -m "integration" --cov-context=test
-	coverage json --show-contexts -o integration.coverage.json
+	python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml
 
 push.worker-new:
 	docker tag codecov/worker ${_gcr}-worker:${release_version}-${sha}
