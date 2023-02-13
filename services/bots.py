@@ -20,22 +20,20 @@ def get_repo_appropriate_bot_token(repo: Repository) -> Tuple[Dict, Optional[Own
         )
         # The token is not owned by an Owner object, so 2nd arg is None
         return dict(key=github_token), None
-    if not repo.private or (
-        is_enterprise() and get_config(repo.service, "bot") is not None
-    ):
-
-        public_bot_dict = (
-            get_config(repo.service, "bot")
-            if is_enterprise()
-            else get_config(repo.service, "bots", "tokenless")
-        )
-        if public_bot_dict and public_bot_dict.get("key"):
+    public_bot_dict = get_config(repo.service, "bot")
+    tokenless_bot_dict = get_config(
+        repo.service, "bots", "tokenless", default=public_bot_dict
+    )
+    if not repo.private or is_enterprise():
+        if tokenless_bot_dict and tokenless_bot_dict.get("key"):
             log.info(
-                "Using default bot",
-                extra=dict(repoid=repo.repoid, botname=public_bot_dict.get("username")),
+                "Using tokenless bot as bot fallback",
+                extra=dict(
+                    repoid=repo.repoid, botname=tokenless_bot_dict.get("username")
+                ),
             )
             # Once again token not owned by an Owner.
-            return public_bot_dict, None
+            return tokenless_bot_dict, None
     return get_repo_particular_bot_token(repo)
 
 
