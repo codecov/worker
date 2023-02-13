@@ -97,6 +97,7 @@ class TestNotifyTask(object):
             branch="test-branch-1",
             commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
             repository=repository,
+            parent_commit_id="17a71a9a2f5335ed4d00496c7bbc6405f547a527",
         )
         dbsession.add(commit)
         dbsession.add(master_commit)

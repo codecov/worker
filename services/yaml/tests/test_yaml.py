@@ -50,7 +50,7 @@ class TestYamlService(BaseTestCase):
             "coverage": {
                 "precision": 2,
                 "round": "down",
-                "range": [70.0, 100.0],
+                "range": [60.0, 80.0],
                 "status": {
                     "project": True,
                     "patch": True,

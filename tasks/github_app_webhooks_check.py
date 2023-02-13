@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Iterable, List, Tuple
 
+from shared.celery_config import gh_app_webhook_check_task_name
 from shared.config import get_config
 from shared.torngit import Github
 from shared.torngit.exceptions import (
@@ -24,7 +25,7 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
     def get_min_seconds_interval_between_executions(cls):
         return 86100  # 1 day - 5 minutes
 
-    name = "app.cron.daily.GitHubAppWebhooksCheckTask"
+    name = gh_app_webhook_check_task_name
 
     def _apply_time_filter(self, deliveries: List[object]) -> Iterable[object]:
         """
@@ -152,4 +153,4 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
 RegisteredGitHubAppWebhooksCheckTask = celery_app.register_task(
     GitHubAppWebhooksCheckTask()
 )
-hourly_check_task = celery_app.tasks[RegisteredGitHubAppWebhooksCheckTask.name]
+gh_webhook_check_task = celery_app.tasks[RegisteredGitHubAppWebhooksCheckTask.name]

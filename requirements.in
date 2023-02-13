@@ -1,4 +1,4 @@
-git+ssh://git@github.com/codecov/shared.git@6afb9b76ffe1d88e8de07e292d91ff5407473f01#egg=shared
+git+ssh://git@github.com/codecov/shared.git@v0.9.13#egg=shared
 git+ssh://git@github.com/codecov/opentelem-python.git@v0.0.4a1#egg=codecovopentelem
 boto3
 celery

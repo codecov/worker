@@ -1,13 +1,14 @@
 from io import BytesIO
-from json import loads
+from json import dumps, loads
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 from lxml import etree
+from shared.reports.editable import EditableReport, EditableReportFile
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import ReportTotals
-from shared.utils.sessions import Session
+from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
 from helpers.exceptions import CorruptRawReportError, ReportEmptyError
@@ -1008,3 +1009,220 @@ class TestProcessReport(BaseTestCase):
         )
         assert sorted(res.sessions.keys()) == [0, 1]
         assert res.sessions[1] == session
+
+
+class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
+    def test_process_raw_upload_with_carryforwarded_flags(self):
+        original_report = EditableReport()
+        upload_flags = ["somethingold", "flag_two"]
+        first_file = EditableReportFile("banana.py")
+        first_file.append(100, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        first_file.append(200, ReportLine.create(0, sessions=[LineSession(0, 0)]))
+        first_file.append(300, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        first_file.append(400, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        first_file.append(
+            401, ReportLine.create("1/2", sessions=[LineSession(0, "1/2")])
+        )
+        second_file = EditableReportFile("another.c")
+        second_file.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        second_file.append(5, ReportLine.create(1, sessions=[LineSession(1, 1)]))
+        second_file.append(7, ReportLine.create(1, sessions=[LineSession(0, 2)]))
+        second_file.append(7, ReportLine.create(1, sessions=[LineSession(1, 2)]))
+        third_file = EditableReportFile("third.c")
+        third_file.append(2, ReportLine.create(1, sessions=[LineSession(1, 1)]))
+        original_report.append(first_file)
+        original_report.append(second_file)
+        original_report.append(third_file)
+        original_report.add_session(Session(flags=["super"]))  # session with id 0
+        original_report.add_session(
+            Session(flags=["somethingold"], session_type=SessionType.carriedforward)
+        )  # session with id 1
+        assert self.convert_report_to_better_readable(original_report)["archive"] == {
+            "banana.py": [
+                (100, 1, None, [[0, 1, None, None, None]], None, None),
+                (200, 0, None, [[0, 0, None, None, None]], None, None),
+                (300, 1, None, [[0, 1, None, None, None]], None, None),
+                (400, 1, None, [[0, 1, None, None, None]], None, None),
+                (401, "1/2", None, [[0, "1/2", None, None, None]], None, None),
+            ],
+            "another.c": [
+                (2, 1, None, [[0, 1, None, None, None]], None, None),
+                (5, 1, None, [[1, 1, None, None, None]], None, None),
+                (
+                    7,
+                    2,
+                    None,
+                    [[0, 2, None, None, None], [1, 2, None, None, None]],
+                    None,
+                    None,
+                ),
+            ],
+            "third.c": [(2, 1, None, [[1, 1, None, None, None]], None, None)],
+        }
+        raw_content = dumps(
+            {
+                "coverage": {
+                    "another.c": [None, 3, "1/2"],
+                    "tests/test.py": [None, 0],
+                    "folder/file.py": [None, 1],
+                }
+            }
+        )
+        uploaded_reports = LegacyParsedRawReport(
+            toc=None,
+            env=None,
+            path_fixes=None,
+            uploaded_files=[
+                ParsedUploadedReportFile(
+                    filename="/Users/path/to/app.coverage.json",
+                    file_contents=BytesIO(raw_content.encode()),
+                ),
+            ],
+        )
+        session = Session(flags=upload_flags)
+        result = process.process_raw_upload(
+            UserYaml(
+                {
+                    "flag_management": {
+                        "individual_flags": [
+                            {"name": "somethingold", "carryforward": True}
+                        ]
+                    }
+                }
+            ),
+            original_report,
+            uploaded_reports,
+            ["somethingold", "flag_two"],
+            session=session,
+        )
+        report = result.report
+        assert result.fully_deleted_sessions == [1]
+        assert result.partially_deleted_sessions == []
+        assert sorted(report.sessions.keys()) == [0, session.id]
+        assert session.id == 2
+        assert report.sessions[session.id] == session
+        assert session.totals == ReportTotals(
+            files=3,
+            lines=4,
+            hits=2,
+            misses=1,
+            partials=1,
+            coverage="50.00000",
+            branches=1,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert report.totals == ReportTotals(
+            files=4,
+            lines=10,
+            hits=7,
+            misses=2,
+            partials=1,
+            coverage="70.00000",
+            branches=1,
+            methods=0,
+            messages=0,
+            sessions=2,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert sorted(report.files) == [
+            "another.c",
+            "banana.py",
+            "folder/file.py",
+            "tests/test.py",
+        ]
+        assert "third.c" not in report.files
+        assert report.get("tests/test.py").totals == ReportTotals(
+            files=0,
+            lines=1,
+            hits=0,
+            misses=1,
+            partials=0,
+            coverage="0",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert report.get("folder/file.py").totals == ReportTotals(
+            files=0,
+            lines=1,
+            hits=1,
+            misses=0,
+            partials=0,
+            coverage="100",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+
+        assert report.get("banana.py").totals == ReportTotals(
+            files=0,
+            lines=5,
+            hits=3,
+            misses=1,
+            partials=1,
+            coverage="60.00000",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert report.get("another.c").totals == ReportTotals(
+            files=0,
+            lines=3,
+            hits=3,
+            misses=0,
+            partials=0,
+            coverage="100",
+            branches=1,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        assert self.convert_report_to_better_readable(report)["archive"] == {
+            "banana.py": [
+                (100, 1, None, [[0, 1, None, None, None]], None, None),
+                (200, 0, None, [[0, 0, None, None, None]], None, None),
+                (300, 1, None, [[0, 1, None, None, None]], None, None),
+                (400, 1, None, [[0, 1, None, None, None]], None, None),
+                (401, "1/2", None, [[0, "1/2", None, None, None]], None, None),
+            ],
+            "another.c": [
+                (1, 3, None, [[session.id, 3, None, None, None]], None, None),
+                (
+                    2,
+                    "2/2",
+                    "b",
+                    [[0, 1, None, None, None], [session.id, "1/2", None, None, None]],
+                    None,
+                    None,
+                ),
+                (7, 2, None, [[0, 2, None, None, None]], None, None),
+            ],
+            "tests/test.py": [
+                (1, 0, None, [[session.id, 0, None, None, None]], None, None)
+            ],
+            "folder/file.py": [
+                (1, 1, None, [[session.id, 1, None, None, None]], None, None)
+            ],
+        }
