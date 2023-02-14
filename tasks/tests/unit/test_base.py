@@ -227,6 +227,9 @@ class TestBaseCodecovRequest(object):
         )
 
     def test_sample_task_timeout(self, celery_app, mocker):
+        class SampleTask(BaseCodecovTask):
+            name = "test.SampleTask"
+
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
@@ -234,6 +237,9 @@ class TestBaseCodecovRequest(object):
         mock_metrics.assert_called_with("worker.task.test.SampleTask.timeout")
 
     def test_sample_task_hard_timeout(self, celery_app, mocker):
+        class SampleTask(BaseCodecovTask):
+            name = "test.SampleTask"
+
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
