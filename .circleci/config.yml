@@ -110,7 +110,7 @@ jobs:
       - run:
           name: Run Predictor Analysis
           command: |
-            codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git log -n 1 master --pretty=format:"%H")
+            codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ master)
             coverage json --show-contexts -o label.coverage.json
             codecovcli --auto-load-params-from circleci do-upload --flag onlysomelabels --file=label.coverage.json
   mutations:
