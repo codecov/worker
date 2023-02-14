@@ -328,6 +328,31 @@ class TestBotsService(BaseTestCase):
     def test_get_token_type_mapping_public_repo_no_configuration_no_particular_bot(
         self, mock_configuration, dbsession
     ):
+        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
+        repo = RepositoryFactory.create(
+            private=False,
+            using_integration=False,
+            bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            owner=OwnerFactory.create(
+                service="github",
+                unencrypted_oauth_token=None,
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+        expected_result = {
+            TokenType.admin: None,
+            TokenType.read: None,
+            TokenType.comment: None,
+            TokenType.status: None,
+            TokenType.tokenless: None,
+        }
+        assert expected_result == get_token_type_mapping(repo)
+
+    def test_get_token_type_mapping_public_repo_only_tokenless_configuration_no_particular_bot(
+        self, mock_configuration, dbsession
+    ):
         mock_configuration.set_params(
             {
                 "github": {
@@ -341,6 +366,7 @@ class TestBotsService(BaseTestCase):
             using_integration=False,
             bot=OwnerFactory.create(unencrypted_oauth_token=None),
             owner=OwnerFactory.create(
+                service="github",
                 unencrypted_oauth_token=None,
                 bot=OwnerFactory.create(unencrypted_oauth_token=None),
             ),
@@ -352,7 +378,7 @@ class TestBotsService(BaseTestCase):
             TokenType.read: None,
             TokenType.comment: None,
             TokenType.status: None,
-            TokenType.tokenless: None,
+            TokenType.tokenless: {"key": "sometokenlesskey"},
         }
         assert expected_result == get_token_type_mapping(repo)
 
