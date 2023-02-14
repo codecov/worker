@@ -25,6 +25,8 @@ class PyCoverageProcessor(BaseLanguageProcessor):
     def _convert_testname_to_label(self, testname):
         if testname == "":
             return SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
+        if "[" in testname:
+            testname = testname.rsplit("[", 1)[0]
         return testname.split("|", 1)[0]
 
     def process(

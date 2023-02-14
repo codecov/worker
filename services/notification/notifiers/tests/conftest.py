@@ -309,12 +309,22 @@ def sample_comparison(dbsession, request, sample_report, mocker):
     )
     dbsession.add(repository)
     dbsession.flush()
-    base_commit = CommitFactory.create(repository=repository, author__service="github")
+    base_commit = CommitFactory.create(
+        author__username=f"{request.node.name}base",
+        repository=repository,
+        author__service="github",
+    )
     head_commit = CommitFactory.create(
-        repository=repository, branch="new_branch", author__service="github"
+        author__username=f"{request.node.name}head",
+        repository=repository,
+        branch="new_branch",
+        author__service="github",
     )
     pull = PullFactory.create(
-        repository=repository, base=base_commit.commitid, head=head_commit.commitid
+        author__username=f"{request.node.name}pull",
+        repository=repository,
+        base=base_commit.commitid,
+        head=head_commit.commitid,
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
