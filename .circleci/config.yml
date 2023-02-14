@@ -93,6 +93,10 @@ jobs:
           name: Create report
           command: |
             codecovcli --auto-load-params-from circleci create-report --service=github
+      - run:
+          name: Run Static Analysis
+          command: |
+            codecovcli static-analysis --token=$STATIC_TOKEN
   iterativetesting:
     executor: codecov-worker
     steps:
@@ -104,12 +108,9 @@ jobs:
             apk add git
             pip install workspace/*
       - run:
-          name: Run Static Analysis
-          command: |
-            codecovcli static-analysis --token=$STATIC_TOKEN
-      - run:
           name: Run Predictor Analysis
           command: |
+            echo $(git merge-base HEAD^ master)
             codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ master)
             coverage json --show-contexts -o label.coverage.json
             codecovcli --auto-load-params-from circleci do-upload --flag onlysomelabels --file=label.coverage.json
