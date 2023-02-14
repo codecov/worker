@@ -179,9 +179,9 @@ jobs:
             apk add git
             curl -o codecov-latest https://uploader.codecov.io/latest/linux/codecov
             chmod +x codecov-latest
-            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F latest-uploader-overall -Z
-            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F unit -f unit.coverage.xml -Z
-            ./codecov-latest --url https://stage-web.codecov.dev -t $CODECOV_STAGING_TOKEN -F integration -f integration.coverage.xml -Z
+            ./codecov-latest -F node-uploader-latest-uploader-overall -Z
+            ./codecov-latest -F node-uploader-unit -f unit.coverage.xml -Z
+            ./codecov-latest -F node-uploader-integration -f integration.coverage.xml -Z
 
   staging:
     executor: codecov-deploy
