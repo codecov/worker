@@ -32,7 +32,14 @@ C/tY+lZIEO1Gg/FxSMB+hwwhwfSuE3WohZfEcSy+R48=
 
 class TestBotsService(BaseTestCase):
     def test_get_repo_appropriate_bot_token_public_bot(self, mock_configuration):
-        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
+        mock_configuration.set_params(
+            {
+                "github": {
+                    "bot": {"key": "somekey"},
+                    "bots": {"tokenless": {"key": "sometokenlesskey"}},
+                }
+            }
+        )
         repo = RepositoryFactory.create(
             private=False,
             using_integration=False,
@@ -46,7 +53,7 @@ class TestBotsService(BaseTestCase):
             ),
         )
         # It returns the owner, but in this case it's None
-        expected_result = ({"key": "somekey"}, None)
+        expected_result = ({"key": "sometokenlesskey"}, None)
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_enterprise_yes_bot(
@@ -321,7 +328,14 @@ class TestBotsService(BaseTestCase):
     def test_get_token_type_mapping_public_repo_no_configuration_no_particular_bot(
         self, mock_configuration, dbsession
     ):
-        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
+        mock_configuration.set_params(
+            {
+                "github": {
+                    "bot": {"key": "somekey"},
+                    "bots": {"tokenless": {"key": "sometokenlesskey"}},
+                }
+            }
+        )
         repo = RepositoryFactory.create(
             private=False,
             using_integration=False,
@@ -338,6 +352,7 @@ class TestBotsService(BaseTestCase):
             TokenType.read: None,
             TokenType.comment: None,
             TokenType.status: None,
+            TokenType.tokenless: None,
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -375,7 +390,13 @@ class TestBotsService(BaseTestCase):
                 "secret": None,
                 "username": repo.bot.username,
             },
+            TokenType.tokenless: {
+                "key": "simple_code",
+                "secret": None,
+                "username": repo.bot.username,
+            },
         }
+
         assert expected_result == get_token_type_mapping(repo)
 
     def test_get_token_type_mapping_public_repo_some_configuration(
@@ -424,6 +445,11 @@ class TestBotsService(BaseTestCase):
                 "username": repo.bot.username,
             },
             TokenType.comment: {"key": "nada"},
+            TokenType.tokenless: {
+                "key": "simple_code",
+                "secret": None,
+                "username": repo.bot.username,
+            },
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -438,6 +464,7 @@ class TestBotsService(BaseTestCase):
                         "read": {"key": "aaaa", "username": "aaaa"},
                         "status": {"key": "status", "username": "status"},
                         "comment": {"key": "nada"},
+                        "tokenless": {"key": "tokenlessKey"},
                     },
                 }
             }
@@ -459,6 +486,7 @@ class TestBotsService(BaseTestCase):
             TokenType.read: {"key": "aaaa", "username": "aaaa"},
             TokenType.status: {"key": "status", "username": "status"},
             TokenType.comment: {"key": "nada"},
+            TokenType.tokenless: {"key": "tokenlessKey"},
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -480,6 +508,7 @@ class TestBotsService(BaseTestCase):
                     "bots": {
                         "read": {"key": "bucket", "username": "bb"},
                         "comment": {"key": "bibu", "username": "cket"},
+                        "tokenless": {"key": "tokenlessKey", "username": "aa"},
                     },
                 },
             }
@@ -501,6 +530,7 @@ class TestBotsService(BaseTestCase):
             TokenType.read: {"key": "bucket", "username": "bb"},
             TokenType.comment: {"key": "bibu", "username": "cket"},
             TokenType.status: None,
+            TokenType.tokenless: {"key": "tokenlessKey", "username": "aa"},
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -522,6 +552,7 @@ class TestBotsService(BaseTestCase):
                     "bots": {
                         "read": {"key": "bucket", "username": "bb"},
                         "comment": {"key": "bibu", "username": "cket"},
+                        "tokenless": {"key": "tokenlessKey", "username": "username"},
                     },
                 },
             }
@@ -553,6 +584,11 @@ class TestBotsService(BaseTestCase):
             },
             TokenType.comment: {"key": "bibu", "username": "cket"},
             TokenType.status: {
+                "key": "simple_code",
+                "secret": None,
+                "username": repo.bot.username,
+            },
+            TokenType.tokenless: {
                 "key": "simple_code",
                 "secret": None,
                 "username": repo.bot.username,
@@ -628,4 +664,5 @@ class TestBotsService(BaseTestCase):
             TokenType.admin: None,
             TokenType.comment: None,
             TokenType.status: None,
+            TokenType.tokenless: None,
         }
