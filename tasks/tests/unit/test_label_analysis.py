@@ -551,20 +551,23 @@ def test_get_executable_lines_labels_all_labels(sample_report_with_labels):
     task = LabelAnalysisRequestProcessingTask()
     assert task.get_executable_lines_labels(
         sample_report_with_labels, executable_lines
-    ) == {
-        "banana",
-        "justjuice",
-        "here",
-        "pineapple",
-        "applejuice",
-        "apple",
-        "whatever",
-        "label_one",
-        "orangejuice",
-    }
+    ) == (
+        {
+            "banana",
+            "justjuice",
+            "here",
+            "pineapple",
+            "applejuice",
+            "apple",
+            "whatever",
+            "label_one",
+            "orangejuice",
+        },
+        set(),
+    )
     assert task.get_executable_lines_labels(
         sample_report_with_labels, executable_lines
-    ) == task.get_all_report_labels(sample_report_with_labels)
+    ) == (task.get_all_report_labels(sample_report_with_labels), set())
 
 
 def test_get_executable_lines_labels_all_labels_in_one_file(sample_report_with_labels):
