@@ -25,12 +25,12 @@ class TimeseriesDeleteTask(BaseCodecovTask):
     ):
         if not timeseries_enabled():
             log.warning("Timeseries not enabled")
-            return {"successful": False}
+            return {"successful": False, "reason": "Timeseries not enabled"}
 
         repo = db_session.query(Repository).filter_by(repoid=repository_id).first()
         if not repo:
             log.warning("Repository not found")
-            return {"successful": False}
+            return {"successful": False, "reason": "Repository not found"}
 
         delete_repository_data(repo)
         return {"successful": True}

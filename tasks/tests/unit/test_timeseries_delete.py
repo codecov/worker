@@ -34,7 +34,7 @@ async def test_timeseries_delete_run_async_invalid_repository(dbsession, mocker)
         dbsession,
         repository_id=9999,
     )
-    assert res == {"successful": False}
+    assert res == {"successful": False, "reason": "Repository not found"}
 
 
 @pytest.mark.asyncio
@@ -50,4 +50,4 @@ async def test_timeseries_delete_run_async_timeseries_not_enabled(dbsession, moc
         dbsession,
         repository_id=repository.repoid,
     )
-    assert res == {"successful": False}
+    assert res == {"successful": False, "reason": "Timeseries not enabled"}
