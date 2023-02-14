@@ -20,6 +20,7 @@ def get_repo_appropriate_bot_token(repo: Repository) -> Tuple[Dict, Optional[Own
         )
         # The token is not owned by an Owner object, so 2nd arg is None
         return dict(key=github_token), None
+    log.info("This aint right")
     public_bot_dict = get_config(repo.service, "bot")
     tokenless_bot_dict = get_config(
         repo.service, "bots", "tokenless", default=public_bot_dict

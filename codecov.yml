@@ -4,6 +4,7 @@ codecov:
     wait_for_ci: false
 comment:
   show_critical_paths: true
+  show_carryforward_flags: true
   layout: "reach,diff,flags,components,tree,betaprofiling"
 beta_groups:
   - "labels"
