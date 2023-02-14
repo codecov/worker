@@ -1,11 +1,11 @@
 import logging
-from typing import List, Mapping
+import typing
+from dataclasses import dataclass
 
 from shared.celery_config import compute_comparison_task_name
 from shared.helpers.flag import Flag
 from shared.reports.readonly import ReadOnlyReport
-from shared.torngit.exceptions import TorngitRateLimitError
-from shared.yaml import UserYaml
+from shared.torngit.exceptions import TorngitError, TorngitRateLimitError
 
 from app import celery_app
 from database.enums import CompareCommitError, CompareCommitState
@@ -22,6 +22,14 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
+@dataclass
+class ComparisonResult(object):
+    __slots__ = ("error", "impacted_files", "is_temporary_error")
+    error: typing.Optional[CompareCommitError]
+    impacted_files: typing.Optional[typing.Dict]
+    is_temporary_error: bool
+
+
 class ComputeComparisonTask(BaseCodecovTask):
     name = compute_comparison_task_name
 
@@ -31,45 +39,96 @@ class ComputeComparisonTask(BaseCodecovTask):
         log_extra = dict(comparison_id=comparison_id, repoid=repo.repoid)
         log.info("Computing comparison", extra=log_extra)
         current_yaml = self.get_yaml_commit(comparison.compare_commit)
-
         with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
             comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
-        if not comparison_proxy.has_base_report():
-            comparison.error = CompareCommitError.missing_base_report.value
-        elif not comparison_proxy.has_head_report():
-            comparison.error = CompareCommitError.missing_head_report.value
-        else:
-            comparison.error = None
+        res = await self.calculate_result(comparison, comparison_proxy, current_yaml)
+        stored_data = self.store_calculation_result(comparison, res)
+        db_session.commit()
+        if res.error is None:
+            await self.compute_flag_comparison(db_session, comparison, comparison_proxy)
+        log.info("Computing comparison successful", extra=log_extra)
+        return {"successful": res.error is None, "result": stored_data}
 
-        if comparison.error:
-            comparison.state = CompareCommitState.error.value
-            log.warn("Compute comparison failed, %s", comparison.error, extra=log_extra)
-            return {"successful": False}
+    async def calculate_result(
+        self, comparison: CompareCommit, comparison_proxy: ComparisonProxy, current_yaml
+    ):
+        comparison_id = comparison.id_
+        repo = comparison.compare_commit.repository
+        if not comparison_proxy.has_base_report():
+            return ComparisonResult(
+                error=CompareCommitError.missing_base_report,
+                impacted_files=None,
+                is_temporary_error=False,
+            )
+        if not comparison_proxy.has_head_report():
+            return ComparisonResult(
+                error=CompareCommitError.missing_head_report,
+                impacted_files=None,
+                is_temporary_error=False,
+            )
         try:
             with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files") as tm:
                 impacted_files = await self.serialize_impacted_files(comparison_proxy)
         except TorngitRateLimitError:
             log.warning(
                 "Unable to compute comparison due to rate limit error",
-                extra=dict(
-                    comparison_id=comparison_id, repoid=comparison.compare_commit.repoid
-                ),
+                extra=dict(comparison_id=comparison_id, repoid=repo.repoid),
             )
-            return {"successful": False}
-        log.info("Files impact calculated", extra=dict(timing_ms=tm.ms, **log_extra))
-        with metrics.timer(f"{self.metrics_prefix}.store_results"):
-            path = self.store_results(comparison, impacted_files)
-
-        comparison.report_storage_path = path
-        comparison.patch_totals = impacted_files.get("changes_summary").get(
-            "patch_totals"
+            return ComparisonResult(
+                error=CompareCommitError.provider_client_error,
+                impacted_files=None,
+                is_temporary_error=True,
+            )
+        except TorngitError:
+            log.warning(
+                "Unable to compute comparison due to torngit problem",
+                extra=dict(comparison_id=comparison_id, repoid=repo.repoid),
+                exc_info=True,
+            )
+            return ComparisonResult(
+                error=CompareCommitError.unexpected_error,
+                impacted_files=None,
+                is_temporary_error=False,
+            )
+        except Exception:
+            log.error(
+                "Unable to compute comparison due to unexpected error",
+                extra=dict(comparison_id=comparison_id, repoid=repo.repoid),
+                exc_info=True,
+            )
+            return ComparisonResult(
+                error=CompareCommitError.unexpected_error,
+                impacted_files=None,
+                is_temporary_error=False,
+            )
+        log.info(
+            "Files impact calculated",
+            extra=dict(
+                timing_ms=tm.ms, comparison_id=comparison_id, repoid=repo.repoid
+            ),
         )
-        comparison.state = CompareCommitState.processed.value
-        log.info("Computing comparison successful", extra=log_extra)
-        db_session.commit()
+        return ComparisonResult(
+            error=None, impacted_files=impacted_files, is_temporary_error=False
+        )
 
-        await self.compute_flag_comparison(db_session, comparison, comparison_proxy)
-        return {"successful": True}
+    def store_calculation_result(
+        self, comparison_obj, comparison_result: ComparisonResult
+    ):
+        if comparison_result.error:
+            if not comparison_result.is_temporary_error:
+                comparison_obj.state = CompareCommitState.error.value
+                comparison_obj.error = comparison_result.error.value
+                comparison_obj.patch_totals = None
+                comparison_obj.report_storage_path = None
+            return {"error": comparison_result.error.value}
+        impacted_files = comparison_result.impacted_files
+        with metrics.timer(f"{self.metrics_prefix}.store_results_in_storage"):
+            path = self.store_results_in_storage(comparison_obj, impacted_files)
+        patch_totals = impacted_files.get("changes_summary").get("patch_totals")
+        comparison_obj.report_storage_path = path
+        comparison_obj.patch_totals = patch_totals
+        comparison_obj.state = CompareCommitState.processed.value
+        return {"path": path, "patch_totals": patch_totals}
 
     async def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
         log_extra = dict(comparison_id=comparison.id)
@@ -88,7 +147,7 @@ class ComputeComparisonTask(BaseCodecovTask):
     async def create_or_update_flag_comparisons(
         self,
         db_session,
-        head_report_flags: List[Flag],
+        head_report_flags: typing.List[Flag],
         comparison: CompareCommit,
         comparison_proxy: ComparisonProxy,
     ):
@@ -205,7 +264,7 @@ class ComputeComparisonTask(BaseCodecovTask):
     async def serialize_impacted_files(self, comparison_proxy):
         return await comparison_proxy.get_impacted_files()
 
-    def store_results(self, comparison, impacted_files):
+    def store_results_in_storage(self, comparison, impacted_files):
         repository = comparison.compare_commit.repository
         storage_service = ArchiveService(repository)
         return storage_service.write_computed_comparison(comparison, impacted_files)

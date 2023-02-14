@@ -359,7 +359,10 @@ class TestComputeComparisonTask(object):
             return_value=ReadOnlyReport.create_from_report(sample_report),
         )
         res = await task.run_async(dbsession, comparison.id)
-        assert res == {"successful": False}
+        assert res == {
+            "result": {"error": "provider_client_error"},
+            "successful": False,
+        }
         dbsession.flush()
         assert comparison.state == CompareCommitState.pending.value
         assert comparison.error is None

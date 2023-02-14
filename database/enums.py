@@ -38,6 +38,7 @@ class CompareCommitError(Enum):
     missing_base_report = "missing_base_report"
     missing_head_report = "missing_head_report"
     provider_client_error = "provider_client_error"
+    unexpected_error = "unexpected_error"
 
 
 class CommitErrorTypes(Enum):
