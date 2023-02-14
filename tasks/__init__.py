@@ -27,6 +27,7 @@ from tasks.timeseries_backfill import (
     timeseries_backfill_commits_task,
     timeseries_backfill_dataset_task,
 )
+from tasks.timeseries_delete import timeseries_delete_task
 from tasks.upload import upload_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task

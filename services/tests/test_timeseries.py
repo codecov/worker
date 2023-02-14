@@ -6,12 +6,13 @@ from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.utils.sessions import Session
 
-from database.models.timeseries import Measurement, MeasurementName
+from database.models.timeseries import Dataset, Measurement, MeasurementName
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.reports import RepositoryFlagFactory
 from database.tests.factories.timeseries import DatasetFactory, MeasurementFactory
 from services.timeseries import (
     backfill_batch_size,
+    delete_repository_data,
     repository_commits_query,
     repository_datasets_query,
     save_commit_measurements,
@@ -442,3 +443,40 @@ class TestTimeseriesService(object):
 
         batch_size = backfill_batch_size(repository)
         assert batch_size == 50
+
+    def test_delete_repository_data(self, dbsession, sample_report, repository, mocker):
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch(
+            "services.report.ReportService.get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(sample_report),
+        )
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+        save_commit_measurements(commit)
+        commit = CommitFactory.create(branch="bar", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+        save_commit_measurements(commit)
+
+        assert (
+            dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count()
+            == 2
+        )
+        # repo coverage + 2x flag coverage for each commit
+        assert (
+            dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
+            == 6
+        )
+
+        delete_repository_data(repository)
+
+        assert (
+            dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count()
+            == 0
+        )
+        assert (
+            dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
+            == 0
+        )
