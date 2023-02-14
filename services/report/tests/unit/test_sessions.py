@@ -423,7 +423,7 @@ class TestAdjustSession(BaseTestCase):
                     "individual_flags": [
                         {
                             "name": "enterprise",
-                            "carryforward_mode": "label",
+                            "carryforward_mode": "labels",
                             "carryforward": True,
                         }
                     ]
@@ -448,7 +448,7 @@ class TestAdjustSession(BaseTestCase):
                     "individual_flags": [
                         {
                             "name": "enterprise",
-                            "carryforward_mode": "label",
+                            "carryforward_mode": "labels",
                             "carryforward": True,
                         }
                     ]
@@ -679,7 +679,7 @@ class TestAdjustSession(BaseTestCase):
                     "individual_flags": [
                         {
                             "name": "enterprise",
-                            "carryforward_mode": "label",
+                            "carryforward_mode": "labels",
                             "carryforward": True,
                         }
                     ]

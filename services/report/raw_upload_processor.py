@@ -148,7 +148,7 @@ def _adjust_sessions(original_report, to_merge_report, to_merge_session, current
     to_partially_overwrite_flags = [
         f
         for f in flags_under_carryforward_rules
-        if current_yaml.get_flag_configuration(f).get("carryforward_mode") == "label"
+        if current_yaml.get_flag_configuration(f).get("carryforward_mode") == "labels"
     ]
     to_fully_overwrite_flags = [
         f
@@ -172,6 +172,10 @@ def _adjust_sessions(original_report, to_merge_report, to_merge_session, current
         original_report.delete_multiple_sessions(session_ids_to_fully_delete)
         actually_fully_deleted_sessions.update(session_ids_to_fully_delete)
     if session_ids_to_partially_delete:
+        log.info(
+            "Partially deleting sessions due to label carryforward overwrite",
+            extra=dict(deleted_sessions=session_ids_to_partially_delete),
+        )
         all_labels = get_all_report_labels(to_merge_report)
         original_report.delete_labels(session_ids_to_partially_delete, all_labels)
         for s in session_ids_to_partially_delete:
