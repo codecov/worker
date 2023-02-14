@@ -17,9 +17,6 @@ class SampleTask(BaseCodecovTask):
     async def run_async(self, dbsession):
         return {"unusual": "return", "value": ["There"]}
 
-    def write_to_db(self):
-        return False
-
 
 class SampleTaskWithArbitraryError(BaseCodecovTask):
     def __init__(self, error):
@@ -27,9 +24,6 @@ class SampleTaskWithArbitraryError(BaseCodecovTask):
 
     async def run_async(self, dbsession):
         raise self.error
-
-    def write_to_db(self):
-        return False
 
     def retry(self):
         # Fake retry method
@@ -42,9 +36,6 @@ class SampleTaskWithArbitraryPostgresError(BaseCodecovTask):
 
     async def run_async(self, dbsession):
         raise DBAPIError("statement", "params", self.error)
-
-    def write_to_db(self):
-        return False
 
     def retry(self):
         # Fake retry method
@@ -168,6 +159,11 @@ class TestBaseCodecovTask(object):
 
 class TestBaseCodecovTaskHooks(object):
     def test_sample_task_success(self, celery_app, mocker):
+        class SampleTask(BaseCodecovTask):
+            name = "test.SampleTask"
+
+            async def run_async(self, dbsession):
+                return {"unusual": "return", "value": ["There"]}
 
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
@@ -178,6 +174,12 @@ class TestBaseCodecovTaskHooks(object):
         mock_metrics.assert_called_with("worker.task.test.SampleTask.successes")
 
     def test_sample_task_failure(self, celery_app, mocker):
+        class FailureSampleTask(BaseCodecovTask):
+            name = "test.FailureSampleTask"
+
+            async def run_async(self, *args, **kwargs):
+                raise Exception("Whhhhyyyyyyy")
+
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(FailureSampleTask())
         task = celery_app.tasks[DTask.name]
