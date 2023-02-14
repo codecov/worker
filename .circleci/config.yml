@@ -79,7 +79,7 @@ jobs:
           name: Install CLI
           command: |
             mkdir workspace
-            pip wheel git+ssh://git@github.com/codecov/codecov-cli.git@266fb575697f5e35ad36d25d6dd66cefe61dc669#egg=codecov-cli --wheel-dir workspace
+            pip wheel git+ssh://git@github.com/codecov/codecov-cli.git@9a8498ab43772d6508a703c1d5360387ec525974#egg=codecov-cli --wheel-dir workspace
             pip install workspace/*
       - persist_to_workspace:
           root: workspace

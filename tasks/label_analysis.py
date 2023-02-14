@@ -160,7 +160,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
 
     def get_executable_lines_labels(self, report: Report, executable_lines) -> set:
         if executable_lines["all"]:
-            return self.get_all_report_labels(report)
+            return (self.get_all_report_labels(report), set())
         full_sessions = set()
         labels = set()
         global_level_labels = set()
