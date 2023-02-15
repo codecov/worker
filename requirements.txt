@@ -128,7 +128,7 @@ kombu==5.2.4
     # via celery
 lxml==4.9.1
     # via -r requirements.in
-minio==6.0.2
+minio==7.1.10
     # via shared
 mock==4.0.3
     # via -r requirements.in
