@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 class GitHubAppWebhooksCheckTask(CodecovCronTask):
     @classmethod
     def get_min_seconds_interval_between_executions(cls):
-        return 86100  # 1 day - 5 minutes
+        return 18000  # 5h
 
     name = gh_app_webhook_check_task_name
 
@@ -33,12 +33,12 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
         So that we skip deliveries that we probably already analysed in the past.
         """
         now = datetime.now()
-        yesterday_plus_hour = now - timedelta(hours=25)
+        eight_hours_ago = now - timedelta(hours=8)
 
         def time_filter(item: object) -> bool:
             return (
                 datetime.strptime(item["delivered_at"], "%Y-%m-%dT%H:%M:%SZ")
-                >= yesterday_plus_hour
+                >= eight_hours_ago
             )
 
         return filter(time_filter, deliveries)
@@ -113,10 +113,20 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
                 all_deliveries += len(deliveries)
                 pages_processed += 1
                 deliveries_to_request = self.apply_filters_to_deliveries(deliveries)
-                successful_redeliveries += await self.request_redeliveries(
+                curr_successful_redeliveries = await self.request_redeliveries(
                     gh_handler, deliveries_to_request
                 )
+                successful_redeliveries += curr_successful_redeliveries
                 redeliveries_requested += len(deliveries_to_request)
+                log.info(
+                    "Processed page of webhook redelivery requests",
+                    extra=dict(
+                        deliveries_to_request=len(deliveries_to_request),
+                        successful_redeliveries=curr_successful_redeliveries,
+                        acc_successful_redeliveries=successful_redeliveries,
+                        acc_redeliveries_requested=redeliveries_requested,
+                    ),
+                )
         except (
             TorngitUnauthorizedError,
             TorngitServer5xxCodeError,

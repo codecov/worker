@@ -126,7 +126,7 @@ class CeleryWorkerConfig(BaseCeleryConfig):
         },
         "github_app_webhooks_task": {
             "task": gh_app_webhook_check_task_name,
-            "schedule": crontab(hour="0"),
+            "schedule": crontab(hour="0,6,12,18"),
             "kwargs": {
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },

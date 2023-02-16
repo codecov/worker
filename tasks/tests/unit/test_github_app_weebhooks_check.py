@@ -95,7 +95,7 @@ def sample_deliveries():
         },
     ]
     now = datetime.now()
-    few_hours_ago = now - timedelta(hours=8)
+    few_hours_ago = now - timedelta(hours=6)
     sample_deliveries[0]["delivered_at"] = few_hours_ago.strftime("%Y-%m-%dT%H:%M:%SZ")
     sample_deliveries[2]["delivered_at"] = few_hours_ago.strftime("%Y-%m-%dT%H:%M:%SZ")
     sample_deliveries[4]["delivered_at"] = few_hours_ago.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -111,15 +111,15 @@ class TestGHAppWebhooksTask(object):
         )
         assert (
             GitHubAppWebhooksCheckTask.get_min_seconds_interval_between_executions()
-            > 86000
+            > 17000
         )
 
     def test_apply_time_filter(self, sample_deliveries):
         deliveries_to_test_with = sample_deliveries[0:3]
         # Fix time so the test doesn't break eventually
         now = datetime.now()
-        few_hours_ago = now - timedelta(hours=8)
-        many_hours_ago_in_range = now - timedelta(hours=24)
+        few_hours_ago = now - timedelta(hours=6)
+        many_hours_ago_in_range = now - timedelta(hours=7, minutes=50)
         many_hours_ago = now - timedelta(days=2)
         deliveries_to_test_with[0]["delivered_at"] = few_hours_ago.strftime(
             "%Y-%m-%dT%H:%M:%SZ"
