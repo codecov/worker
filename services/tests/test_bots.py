@@ -7,6 +7,7 @@ from services.bots import (
     TokenType,
     get_owner_appropriate_bot_token,
     get_repo_appropriate_bot_token,
+    get_repo_particular_bot_token,
     get_token_type_mapping,
 )
 from tests.base import BaseTestCase
@@ -36,24 +37,30 @@ class TestBotsService(BaseTestCase):
             {
                 "github": {
                     "bot": {"key": "somekey"},
-                    "bots": {"tokenless": {"key": "sometokenlesskey"}},
+                    "bots": {
+                        "tokenless": {"key": "sometokenlesskey", "username": "username"}
+                    },
                 }
             }
         )
         repo = RepositoryFactory.create(
             private=False,
             using_integration=False,
-            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
+            bot=None,
             owner=OwnerFactory.create(
                 service="github",
-                unencrypted_oauth_token="not_so_simple_code",
-                bot=OwnerFactory.create(
-                    service="github", unencrypted_oauth_token="now_that_code_is_complex"
-                ),
+                unencrypted_oauth_token=None,
+                bot=OwnerFactory.create(service="github", unencrypted_oauth_token=None),
             ),
         )
         # It returns the owner, but in this case it's None
-        expected_result = ({"key": "sometokenlesskey"}, None)
+        expected_result = (
+            {
+                "key": "sometokenlesskey",
+                "username": "username",
+            },
+            None,
+        )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_enterprise_yes_bot(
@@ -263,7 +270,7 @@ class TestBotsService(BaseTestCase):
             owner=OwnerFactory.create(
                 service="github",
                 integration_id=1654873,  # 'ThiagoCodecov' integration id, for testing,
-                unencrypted_oauth_token="not_so_simple_code",
+                unencrypted_oauth_token=None,
                 bot=OwnerFactory.create(unencrypted_oauth_token=None),
             ),
         )
