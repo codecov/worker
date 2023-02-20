@@ -45,7 +45,7 @@ class SaveReportResultsTask(BaseCodecovTask):
         )
         base_commit = self.fetch_base_commit(commit, enriched_pull)
         base_report, head_report = self.fetch_base_and_head_reports(
-            current_yaml, commit, base_commit
+            current_yaml, commit, base_commit, report_code
         )
 
         if head_report is None:
@@ -79,7 +79,9 @@ class SaveReportResultsTask(BaseCodecovTask):
         self.save_results_into_db(result, report)
         return {"report_results_saved": True, "reason": "success"}
 
-    def fetch_base_and_head_reports(self, current_yaml, commit, base_commit):
+    def fetch_base_and_head_reports(
+        self, current_yaml, commit, base_commit, report_code
+    ):
         report_service = ReportService(current_yaml)
         if base_commit is not None:
             base_report = report_service.get_existing_report_for_commit(
@@ -88,7 +90,7 @@ class SaveReportResultsTask(BaseCodecovTask):
         else:
             base_report = None
         head_report = report_service.get_existing_report_for_commit(
-            commit, report_class=ReadOnlyReport
+            commit, report_class=ReadOnlyReport, report_code=report_code
         )
 
         return base_report, head_report
@@ -118,9 +120,13 @@ class SaveReportResultsTask(BaseCodecovTask):
 
     def save_results_into_db(self, result, report):
         db_session = report.get_db_session()
-        report_results = ReportResults(
-            state=result["state"], result=result, report=report
+        report_results = (
+            db_session.query(ReportResults)
+            .filter(ReportResults.report == report)
+            .first()
         )
+        report_results.state = "Completed"
+        report_results.result = result
         db_session.add(report_results)
         db_session.flush()
 
