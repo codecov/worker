@@ -1,5 +1,5 @@
 import json
-import pathlib
+import pytest
 
 from services.report.languages.pycoverage import PyCoverageProcessor
 from services.report.report_processor import ReportBuilder
@@ -110,6 +110,63 @@ SAMPLE = {
 
 
 class TestPyCoverageProcessor(BaseTestCase):
+    @pytest.mark.parametrize(
+        "user_input, expected_result",
+        [
+            (
+                "services/comparison/tests/unit/test_changes.py::test_get_segment_offsets[segments9-result9]",
+                "services/comparison/tests/unit/test_changes.py::test_get_segment_offsets",
+            ),
+            (
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc[a\\\\",
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc",
+            ),
+            (
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc[./a\\\\b-result1]",
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc",
+            ),
+            (
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc[./a\\n./b-result2]",
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc",
+            ),
+            (
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc[path/target/delombok/a\\n./b-result3]",
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc",
+            ),
+            (
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc[comma,txt\\nb-result4]",
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc",
+            ),
+            (
+                'services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc[a\\n"\\\\360\\\\237\\\\215\\\\255.txt"\\nb-result5]',
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_clean_toc",
+            ),
+            (
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path[boring.txt-boring.txt]",
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path",
+            ),
+            (
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path[back\\\\\\\\slash.txt-back\\\\slash.txt]",
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path",
+            ),
+            (
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path[\\\\360\\\\237\\\\215\\\\255.txt-\\U0001f36d.txt]",
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path",
+            ),
+            (
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path[users/crovercraft/bootstrap/Icon\\\\r-users/crovercraft/bootstrap/Icon]",
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path",
+            ),
+            (
+                'services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path[test/fixture/vcr_cassettes/clickhouse/get_breakdown_values_escaped_\\\\".json-test/fixture/vcr_cassettes/clickhouse/get_breakdown_values_escaped_".json]',
+                "services/path_fixer/tests/unit/test_fixpaths.py::TestFixpaths::test_unquote_git_path",
+            ),
+        ],
+    )
+    def test_convert_testname_to_label(self, user_input, expected_result):
+        processor = PyCoverageProcessor()
+        assert processor._convert_testname_to_label(user_input) == expected_result
+
     def test_matches_content_pycoverage(self):
         p = PyCoverageProcessor()
         assert p.matches_content(SAMPLE, "", "coverage.json")
