@@ -114,50 +114,45 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             if base_report and head_report
             else Decimal(0)
         )
-        rounded_change = str(round_number(yaml, change))
-        absolute_rounded_change = (
-            rounded_change[1:] if rounded_change[0] == "-" else rounded_change
-        )
+        rounded_change = Decimal(round_number(yaml, change))
+        diff_totals = head_report.apply_diff(diff)
+        if diff_totals and diff_totals.coverage is not None:
+            patch_cov = round_number(yaml, Decimal(diff_totals.coverage))
+        else:
+            patch_cov = None
 
         if base_report and head_report:
-            yield (
-                "Base: **{base_coverage_rounded}**% // Head: **{head_coverage_rounded}**% // {message}{coverage}{emoji}".format(
-                    base_coverage_rounded=round_number(
-                        yaml, Decimal(base_report.totals.coverage)
-                    ),
-                    head_coverage_rounded=round_number(
-                        yaml, Decimal(head_report.totals.coverage)
-                    ),
-                    message=(
-                        "Increases project coverage"
-                        if change > 0
-                        else "No change to project coverage"
-                        if change == 0
-                        else "Decreases project coverage"
-                    ),
-                    coverage=(
-                        " by **`{sign}{cov}%`**".format(
-                            cov=absolute_rounded_change,
-                            sign="+" if change > 0 else "-" if change < 0 else "",
-                        )
-                        if change != 0
-                        else ""
-                    ),
-                    emoji=" :tada:"
-                    if change > 0
-                    else " :thumbsup:"
-                    if change == 0
-                    else " :warning:",
-                )
+            patch_cov_msg = (
+                f"Patch coverage: **`{patch_cov}`**%"
+                if patch_cov
+                else "No patch coverage"
             )
 
+            if rounded_change > 0:
+                project_cov_change_msg = (
+                    f"project coverage change: **`+{rounded_change}`** :tada:"
+                )
+            elif rounded_change < 0:
+                project_cov_change_msg = (
+                    f"project coverage change: **`{rounded_change}`** :warning:"
+                )
+            else:
+                project_cov_change_msg = "no project coverage change"
+
+            if not patch_cov and rounded_change == 0:
+                yield (f"Patch and project coverage have no change.")
+            else:
+                yield (f"{patch_cov_msg} and {project_cov_change_msg}")
+
             yield (
-                "> Coverage data is based on head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) compared to base [(`{commitid_base}`)]({links[base]}?el=desc).".format(
+                "> Comparison is base [(`{commitid_base}`)]({links[base]}?el=desc) {base_cov}% compared to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) {head_cov}%.".format(
                     pull=pull.pullid,
                     base=pull_dict["base"]["branch"],
                     commitid_head=comparison.head.commit.commitid[:7],
                     commitid_base=comparison.base.commit.commitid[:7],
                     links=links,
+                    base_cov=round_number(yaml, Decimal(base_report.totals.coverage)),
+                    head_cov=round_number(yaml, Decimal(head_report.totals.coverage)),
                 )
             )
         else:
@@ -174,18 +169,18 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 )
             )
 
-        diff_totals = head_report.apply_diff(diff)
-        if diff_totals and diff_totals.coverage is not None:
-            yield (
-                "> Patch coverage: {percentage}% of modified lines in {request_type} are covered.".format(
-                    percentage=round_number(yaml, Decimal(diff_totals.coverage)),
-                    request_type="merge request"
-                    if repo_service == "gitlab"
-                    else "pull request",
+            diff_totals = head_report.apply_diff(diff)
+            if diff_totals and diff_totals.coverage is not None:
+                yield (
+                    "> Patch coverage: {percentage}% of modified lines in {request_type} are covered.".format(
+                        percentage=round_number(yaml, Decimal(diff_totals.coverage)),
+                        request_type="merge request"
+                        if repo_service == "gitlab"
+                        else "pull request",
+                    )
                 )
-            )
-        else:
-            yield "> Patch has no changes to coverable lines."
+            else:
+                yield "> Patch has no changes to coverable lines."
 
         if (
             comparison.enriched_pull.provider_pull is not None
