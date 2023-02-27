@@ -125,7 +125,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             patch_cov_msg = (
                 f"Patch coverage: **`{patch_cov}`**%"
                 if patch_cov
-                else "No patch coverage"
+                else "Patch coverage has no change"
             )
 
             if rounded_change > 0:
