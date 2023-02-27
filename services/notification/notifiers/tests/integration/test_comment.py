@@ -551,9 +551,8 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "# [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
-            "Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            "> Coverage data is based on head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) compared to base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc).",
-            "> Patch has no changes to coverable lines.",
+            "Patch coverage has no change and project coverage change: **`+10.00`** :tada:",
+            "> Comparison is base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) 50.00% compared to head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) 60.00%.",
             "",
             ":mega: This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)",
             "",
@@ -630,9 +629,8 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "# [Codecov](None/gh/codecove2e/example-python/pull/4?src=pr&el=h1) Report",
-            "Base: **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`** :tada:",
-            "> Coverage data is based on head [(`8589c19`)](None/gh/codecove2e/example-python/pull/4?src=pr&el=desc) compared to base [(`93189ce`)](None/gh/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654?el=desc).",
-            "> Patch has no changes to coverable lines.",
+            "Patch coverage has no change and project coverage change: **`+10.00`** :tada:",
+            "> Comparison is base [(`93189ce`)](None/gh/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654?el=desc) 50.00% compared to head [(`8589c19`)](None/gh/codecove2e/example-python/pull/4?src=pr&el=desc) 60.00%.",
             "",
             ":mega: This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)",
             "",
