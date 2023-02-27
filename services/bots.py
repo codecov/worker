@@ -14,27 +14,35 @@ log = logging.getLogger(__name__)
 
 
 def get_repo_appropriate_bot_token(repo: Repository) -> Tuple[Dict, Optional[Owner]]:
+    if is_enterprise() and get_config(repo.service, "bot"):
+        return get_public_bot_token(repo)
     if repo.using_integration and repo.owner.integration_id:
         github_token = get_github_integration_token(
             repo.owner.service, repo.owner.integration_id
         )
         # The token is not owned by an Owner object, so 2nd arg is None
         return dict(key=github_token), None
+    try:
+        token_dict, appropriate_bot = get_repo_particular_bot_token(repo)
+        return token_dict, appropriate_bot
+    except RepositoryWithoutValidBotError as e:
+        if not repo.private:
+            return get_public_bot_token(repo)
+        raise e
+
+
+def get_public_bot_token(repo):
     public_bot_dict = get_config(repo.service, "bot")
     tokenless_bot_dict = get_config(
         repo.service, "bots", "tokenless", default=public_bot_dict
     )
-    if not repo.private or is_enterprise():
-        if tokenless_bot_dict and tokenless_bot_dict.get("key"):
-            log.info(
-                "Using tokenless bot as bot fallback",
-                extra=dict(
-                    repoid=repo.repoid, botname=tokenless_bot_dict.get("username")
-                ),
-            )
-            # Once again token not owned by an Owner.
-            return tokenless_bot_dict, None
-    return get_repo_particular_bot_token(repo)
+    if tokenless_bot_dict and tokenless_bot_dict.get("key"):
+        log.info(
+            "Using tokenless bot as bot fallback",
+            extra=dict(repoid=repo.repoid, botname=tokenless_bot_dict.get("username")),
+        )
+        # Once again token not owned by an Owner.
+        return tokenless_bot_dict, None
 
 
 def get_repo_particular_bot_token(repo) -> Tuple[Dict, Owner]:

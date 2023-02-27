@@ -93,12 +93,7 @@ class TestRepositoryServiceTestCase(object):
             "secret": None,
         }
 
-    def test_get_repo_provider_service_no_refresh_callback_default_bot(
-        self, dbsession, mock_configuration
-    ):
-        mock_configuration._params["gitlab"] = {
-            "bot": {"username": "some-default-bot", "key": "some-default-key"}
-        }
+    def test_get_repo_provider_service_repo_bot(self, dbsession, mock_configuration):
         repo = RepositoryFactory.create(
             owner__unencrypted_oauth_token="testyftq3ovzkb3zmt823u3t04lkrt9w",
             owner__service="gitlab",
@@ -123,10 +118,11 @@ class TestRepositoryServiceTestCase(object):
         }
         assert res.data == expected_data
         assert res.token == {
-            "username": "some-default-bot",
-            "key": "some-default-key",
+            "username": repo.owner.username,
+            "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
+            "secret": None,
         }
-        assert res._on_token_refresh is None  # We don't refresh this token
+        assert res._on_token_refresh is not None
 
     @pytest.mark.asyncio
     async def test_token_refresh_callback(self, dbsession):
