@@ -1,15 +1,15 @@
 import pytest
 from shared.reports.resources import Report
 
-from database.models.reports import ReportResults
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
     PullFactory,
     RepositoryFactory,
 )
-from database.tests.factories.core import ReportFactory
+from database.tests.factories.core import ReportFactory, ReportResultsFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
+from services.notification.notifiers.status.patch import PatchStatusNotifier
 from services.report import ReportService
 from services.repository import EnrichedPull
 from tasks.save_report_results import SaveReportResultsTask
@@ -213,7 +213,10 @@ class TestSaveReportResultsTaskHelpers(object):
         )
         task = SaveReportResultsTask()
         base_report, head_report = task.fetch_base_and_head_reports(
-            {}, enriched_pull.database_pull.head, enriched_pull.database_pull.base
+            {},
+            enriched_pull.database_pull.head,
+            enriched_pull.database_pull.base,
+            "report_code",
         )
         mocked_reports.assert_called()
         assert base_report is not None
@@ -238,7 +241,9 @@ class TestSaveReportResultsTaskHelpers(object):
 
     def test_save_report_results_into_db(self, dbsession):
         report = ReportFactory.create()
+        report_results = ReportResultsFactory.create(report=report)
         dbsession.add(report)
+        dbsession.add(report_results)
         dbsession.flush()
         result = {
             "state": "completed",
@@ -246,9 +251,6 @@ class TestSaveReportResultsTaskHelpers(object):
         }
         task = SaveReportResultsTask()
         task.save_results_into_db(result, report)
-        report_results = (
-            dbsession.query(ReportResults).filter_by(report_id=report.id_).first()
-        )
         assert report_results
         assert report_results.result == result
 
@@ -263,12 +265,19 @@ class TestSaveReportResultsTask(object):
             commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
         )
         report = ReportFactory.create(commit=commit, code="report1")
+        report_results = ReportResultsFactory.create(report=report)
         dbsession.add(report)
+        dbsession.add(report_results)
         dbsession.add(commit)
         dbsession.flush()
 
         mocked_fetch_pull = mocker.patch(
             "tasks.save_report_results.fetch_and_update_pull_request_information_from_commit"
+        )
+        mocker.patch.object(
+            PatchStatusNotifier,
+            "build_payload",
+            return_value={"state": "success", "message": "somemessage"},
         )
         mocker.patch.object(
             ReportService, "get_existing_report_for_commit", return_value=Report()
