@@ -137,7 +137,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     f"project coverage change: **`{rounded_change}`** :warning:"
                 )
             else:
-                project_cov_change_msg = "no project coverage change"
+                project_cov_change_msg = "no project coverage change."
 
             if not patch_cov and rounded_change == 0:
                 yield (f"Patch and project coverage have no change.")
