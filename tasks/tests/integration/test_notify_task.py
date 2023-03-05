@@ -688,7 +688,7 @@ class TestNotifyTask(object):
                                 "",
                                 "------",
                                 "",
-                                "[Continue to review full report at Codecov](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=continue).",
+                                "[Continue to review full report in Codecov by Sentry](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=continue).",
                                 "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
                                 "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
                                 "> Powered by [Codecov](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=footer). Last update [ef6edf5...a2d3e3c](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",

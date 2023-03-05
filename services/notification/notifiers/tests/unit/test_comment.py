@@ -916,8 +916,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1045,8 +1045,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1243,8 +1243,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1317,8 +1317,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1385,8 +1385,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1458,8 +1458,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1535,8 +1535,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1730,8 +1730,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1798,8 +1798,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1867,8 +1867,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -1943,8 +1943,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -2017,8 +2017,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -2123,8 +2123,8 @@ class TestCommentNotifier(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
@@ -3671,7 +3671,7 @@ class TestNewFooterSectionWriter(object):
         )
         assert res == [
             "",
-            "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
 
@@ -3693,7 +3693,7 @@ class TestNewFooterSectionWriter(object):
         )
         assert res == [
             "",
-            "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
 
@@ -3715,7 +3715,7 @@ class TestNewFooterSectionWriter(object):
         )
         assert res == [
             "",
-            "[:umbrella: View full report at Codecov](pull.link?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
 
@@ -3954,7 +3954,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"",
             f"",
-            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
@@ -4024,7 +4024,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"</details>",
             f"",
-            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
@@ -4092,7 +4092,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"</details>",
             f"",
-            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
@@ -4172,7 +4172,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"</details>",
             f"",
-            f"[:umbrella: View full report at Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
@@ -4233,8 +4233,8 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"------",
             f"",
-            f"[Continue to review full report at "
-            f"Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
+            f"[Continue to review full report in "
+            f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).",
             f"> **Legend** - [Click here to learn "
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",

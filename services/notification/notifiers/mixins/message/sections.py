@@ -82,7 +82,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
         repo_service = comparison.repository_service.service
         yield ("")
         yield (
-            "[:umbrella: View full report at Codecov]({0}?src=pr&el=continue).   ".format(
+            "[:umbrella: View full report in Codecov by Sentry]({0}?src=pr&el=continue).   ".format(
                 links["pull"]
             )
         )
@@ -379,7 +379,7 @@ class FooterSectionWriter(BaseSectionWriter):
         yield ("------")
         yield ("")
         yield (
-            "[Continue to review full report at Codecov]({0}?src=pr&el=continue).".format(
+            "[Continue to review full report in Codecov by Sentry]({0}?src=pr&el=continue).".format(
                 links["pull"]
             )
         )
