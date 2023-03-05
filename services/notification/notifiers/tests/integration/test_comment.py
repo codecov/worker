@@ -336,7 +336,7 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "# [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
+            "## [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
             "> Merging [#15](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) (2e2600a) into [master](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) (4535be1) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
@@ -446,7 +446,7 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         expected_message = [
-            f"# [Codecov](test.example.br/plan/gh/test-acc9) upload limit reached :warning:",
+            f"## [Codecov](test.example.br/plan/gh/test-acc9) upload limit reached :warning:",
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan](test.example.br/plan/gh/test-acc9).",
@@ -481,7 +481,7 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "# [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1) Report",
+            "## [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1) Report",
             "> Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc) (46ce216) into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4?el=desc) (842f7c8) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
@@ -550,7 +550,7 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "# [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
+            "## [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
             "Patch coverage has no change and project coverage change: **`+10.00`** :tada:",
             "> Comparison is base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) 50.00% compared to head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) 60.00%.",
             "",
@@ -628,7 +628,7 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "# [Codecov](None/gh/codecove2e/example-python/pull/4?src=pr&el=h1) Report",
+            "## [Codecov](None/gh/codecove2e/example-python/pull/4?src=pr&el=h1) Report",
             "Patch coverage has no change and project coverage change: **`+10.00`** :tada:",
             "> Comparison is base [(`93189ce`)](None/gh/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654?el=desc) 50.00% compared to head [(`8589c19`)](None/gh/codecove2e/example-python/pull/4?src=pr&el=desc) 60.00%.",
             "",

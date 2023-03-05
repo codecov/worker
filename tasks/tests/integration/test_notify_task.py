@@ -655,7 +655,7 @@ class TestNotifyTask(object):
                         "explanation": None,
                         "data_sent": {
                             "message": [
-                                "# [Codecov](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=h1) Report",
+                                "## [Codecov](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=h1) Report",
                                 "> Merging [#1](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=desc) (610ada9) into [main](https://myexamplewebsite.io/gh/test-acc9/test_example/commit/ef6edf5ae6643d53a7971fb8823d3f7b2ac65619?el=desc) (ef6edf5) will **not change** coverage.",
                                 "> The diff coverage is `n/a`.",
                                 "",

@@ -277,7 +277,7 @@ interactions:
     status_code: 200
     url: https://gitlab.com/api/v4/projects/11087339/repository/commits/77b456d6209583d9674546970948fcc24305f5dc
 - request:
-    body: '{"body": "# [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1)
+    body: '{"body": "## [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1)
       Report\n> Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc)
       into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4&el=desc)
       will **increase** coverage by `10.00%`.\n> The diff coverage is `n/a`.\n\n[![Impacted
@@ -307,7 +307,7 @@ interactions:
     method: POST
     uri: https://gitlab.com/api/v4/projects/11087339/merge_requests/11/notes
   response:
-    content: "{\"id\":305215656,\"type\":null,\"body\":\"# [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\u0026el=h1)
+    content: "{\"id\":305215656,\"type\":null,\"body\":\"## [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\u0026el=h1)
       Report\\n\\u003e Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr\\u0026el=desc)
       into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4\\u0026el=desc)
       will **increase** coverage by `10.00%`.\\n\\u003e The diff coverage is `n/a`.\\n\\n[![Impacted
