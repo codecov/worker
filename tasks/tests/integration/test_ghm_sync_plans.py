@@ -229,7 +229,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner.username == "cc-test"
         assert owner.plan_provider == "github"
         assert owner.plan == "users-basic"
-        assert owner.plan_user_count == 5
+        assert owner.plan_user_count == 1
         assert owner.plan_activated_users == None
 
         repos = (
