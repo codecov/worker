@@ -365,7 +365,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         db_pull = comparison.enriched_pull.database_pull
         links = {"plan_url": get_plan_url(db_pull)}
         return [
-            f"# [Codecov]({links['plan_url']}) upload limit reached :warning:",
+            f"## [Codecov]({links['plan_url']}) upload limit reached :warning:",
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan]({links['plan_url']}).",

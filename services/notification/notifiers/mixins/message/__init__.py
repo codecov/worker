@@ -65,7 +65,7 @@ class MessageMixin(object):
             )
 
         message = [
-            f'# [Codecov]({links["pull"]}?src=pr&el=h1) Report',
+            f'## [Codecov]({links["pull"]}?src=pr&el=h1) Report',
         ]
 
         write = message.append

@@ -162,7 +162,7 @@ interactions:
     status_code: 200
     url: https://api.github.com/repos/ThiagoCodecov/example-python/pulls/15
 - request:
-    body: '{"body": "# [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1)
+    body: '{"body": "## [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1)
       Report\n> Merging [#15](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc)
       into [master](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6&el=desc)
       will **increase** coverage by `10.00%`.\n> The diff coverage is `n/a`.\n\n[![Impacted
