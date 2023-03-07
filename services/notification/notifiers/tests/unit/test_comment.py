@@ -912,7 +912,8 @@ class TestCommentNotifier(object):
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"",
+            f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
             f"------",
             f"",
@@ -928,10 +929,7 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -1041,7 +1039,8 @@ class TestCommentNotifier(object):
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"",
+            f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
             f"------",
             f"",
@@ -1063,10 +1062,7 @@ class TestCommentNotifier(object):
             f"",
             f"",
         ]
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -1239,7 +1235,8 @@ class TestCommentNotifier(object):
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | |",
             f"|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
+            f"",
+            f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
             f"------",
             f"",
@@ -1255,10 +1252,7 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -1531,7 +1525,8 @@ class TestCommentNotifier(object):
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `50.00% <ø> (-12.50%)` | `11.00 <0.00> (+1.00)` | :arrow_down: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"",
+            f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
             f"------",
             f"",
@@ -1548,10 +1543,7 @@ class TestCommentNotifier(object):
             f"",
         ]
         print(result)
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -1726,7 +1718,8 @@ class TestCommentNotifier(object):
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"",
+            f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
             f"------",
             f"",
@@ -1742,11 +1735,7 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        print(result)
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -2119,7 +2108,8 @@ class TestCommentNotifier(object):
             f"| [Impacted Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
+            f"",
+            f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
             f"------",
             f"",
@@ -2135,10 +2125,7 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -3343,9 +3330,8 @@ class TestFileSectionWriter(object):
             "| [Impacted Files](pull.link?src=pr&el=tree) | Coverage Δ | |",
             "|---|---|---|",
             "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
-            "| [unrelated.py](pull.link?src=pr&el=tree#diff-dW5yZWxhdGVkLnB5) | | |",
-            "| [file\\_2.py](pull.link?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
-            "| [added.py](pull.link?src=pr&el=tree#diff-YWRkZWQucHk=) | | |",
+            f"",
+            "... and [3 files with indirect coverage changes](pull.link/indirect-changes?src=pr&el=tree-more)",
         ]
 
     @pytest.mark.asyncio
@@ -3438,9 +3424,8 @@ class TestFileSectionWriter(object):
             "| [Impacted Files](pull.link?src=pr&el=tree) | Coverage Δ | |",
             "|---|---|---|",
             "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) **Critical** | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
-            "| [unrelated.py](pull.link?src=pr&el=tree#diff-dW5yZWxhdGVkLnB5) | | |",
-            "| [file\\_2.py](pull.link?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | |",
-            "| [added.py](pull.link?src=pr&el=tree#diff-YWRkZWQucHk=) **Critical** | | |",
+            "",
+            "... and [3 files with indirect coverage changes](pull.link/indirect-changes?src=pr&el=tree-more)",
         ]
 
 

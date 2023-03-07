@@ -463,7 +463,11 @@ class FileSectionWriter(BaseSectionWriter):
             for path, _diff in (diff["files"] if diff else {}).items()
             if _diff.get("totals")
         ]
-        if files_in_diff or changes:
+
+        all_files = set(f[1] for f in files_in_diff or []) | set(
+            c.path for c in changes or []
+        )
+        if files_in_diff:
             table_header = (
                 "| Coverage \u0394 |"
                 + (" Complexity \u0394 |" if self.show_complexity else "")
@@ -483,9 +487,6 @@ class FileSectionWriter(BaseSectionWriter):
             mentioned = []
             files_in_critical = set()
             if self.settings.get("show_critical_paths", False):
-                all_files = set(f[1] for f in files_in_diff or []) | set(
-                    c.path for c in changes or []
-                )
                 overlay = comparison.get_overlay(OverlayType.line_execution_count)
                 files_in_critical = set(
                     await overlay.search_files_for_critical_changes(all_files)
@@ -511,33 +512,31 @@ class FileSectionWriter(BaseSectionWriter):
             ):
                 yield (line)
 
-            # reduce limit
-            limit = limit - len(files_in_diff)
-
-            # append changes
-            if limit > 0 and changes:
-                most_important_changes = sort_by_importance(changes)[:limit]
-                for change in most_important_changes:
-                    celled = tree_cell(
-                        "changed",
-                        change.path,
-                        make_metrics(
-                            get_totals_from_file_in_reports(base_report, change.path)
-                            or False,
-                            get_totals_from_file_in_reports(head_report, change.path)
-                            or False,
-                            None,
-                            self.show_complexity,
-                            self.current_yaml,
-                        ),
-                    )
-                    yield (celled)
-
-            remaining = len(changes or []) - limit
+            remaining = len(files_in_diff) - limit
             if remaining > 0:
                 yield (
                     "| ... and [{n} more]({href}?src=pr&el=tree-more) | |".format(
                         n=remaining, href=links["pull"]
+                    )
+                )
+
+        if changes:
+            len_changes_not_in_diff = len(all_files or []) - len(files_in_diff or [])
+            if files_in_diff and len_changes_not_in_diff > 0:
+                yield ("")
+                yield (
+                    "... and [{n} file{s} with indirect coverage changes]({href}/indirect-changes?src=pr&el=tree-more)".format(
+                        n=len_changes_not_in_diff,
+                        href=links["pull"],
+                        s="s" if len_changes_not_in_diff > 1 else "",
+                    )
+                )
+            elif len_changes_not_in_diff > 0:
+                yield (
+                    "[see {n} file{s} with indirect coverage changes]({href}/indirect-changes?src=pr&el=tree-more)".format(
+                        n=len_changes_not_in_diff,
+                        href=links["pull"],
+                        s="s" if len_changes_not_in_diff > 1 else "",
                     )
                 )
 
