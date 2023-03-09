@@ -1,0 +1,50 @@
+interactions:
+- request:
+    body: '{"testing": 123}'
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '16'
+      content-type:
+      - application/json
+      host:
+      - mockbin.org
+      user-agent:
+      - Codecov
+    method: POST
+    uri: http://mockbin.org/bin/c0052243-3391-4a30-bed7-066e4cd04074?foo=bar&foo=baz
+  response:
+    content: server error
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 7a545c78ec752a78-ORD
+      Connection:
+      - keep-alive
+      Content-Type:
+      - text/html; charset=utf-8
+      Date:
+      - Thu, 09 Mar 2023 15:30:47 GMT
+      NEL:
+      - '{"success_fraction":0,"report_to":"cf-nel","max_age":604800}'
+      Report-To:
+      - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=B7w04pQyMSLh7hb7HL5vdqe2ksEZLYq6k6yAbNYCM4JzBi2m%2F7PFsJg7jAZbxRFMiwM38zlkcc3qlyMiwvDkG1lVxIWR0U5mHqtZxeQjZ%2BV%2Baq4kqtbpa1dd9A8f%2BA%3D%3D"}],"group":"cf-nel","max_age":604800}'
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - X-HTTP-Method-Override, Accept-Encoding
+      Via:
+      - 1.1 vegur
+      alt-svc:
+      - h3=":443"; ma=86400, h3-29=":443"; ma=86400
+    http_version: HTTP/1.1
+    status_code: 500
+version: 1
