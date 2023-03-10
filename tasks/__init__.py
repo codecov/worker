@@ -8,6 +8,7 @@ from tasks.github_app_webhooks_check import gh_webhook_check_task
 from tasks.github_marketplace import ghm_sync_plans_task
 from tasks.health_check import health_check_task
 from tasks.hourly_check import hourly_check_task
+from tasks.http_request import http_request_task
 from tasks.label_analysis import label_analysis_task
 from tasks.mutation_test_upload import mutation_test_upload_task
 from tasks.new_user_activated import new_user_activated_task
