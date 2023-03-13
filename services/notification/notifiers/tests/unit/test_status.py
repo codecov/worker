@@ -357,6 +357,73 @@ class TestBaseStatusNotifier(object):
         assert not exclude_branch_notifier.can_we_set_this_status(comparison)
 
     @pytest.mark.asyncio
+    async def test_notify_after_n_builds_flags(self, sample_comparison, mocker):
+        comparison = sample_comparison
+        no_settings_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"flags": ["unit"]},
+            notifier_site_settings=True,
+            current_yaml=UserYaml(
+                {
+                    "coverage": {
+                        "status": {"project": True, "patch": True, "changes": True}
+                    },
+                    "flag_management": {
+                        "default_rules": {"carryforward": False},
+                        "individual_flags": [
+                            {
+                                "name": "unit",
+                                "statuses": [{"type": "patch"}],
+                                "after_n_builds": 3,
+                            },
+                        ],
+                    },
+                }
+            ),
+        )
+        mocker.patch.object(StatusNotifier, "can_we_set_this_status", return_value=True)
+        result = await no_settings_notifier.notify(comparison)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "Need more builds"
+        assert result.data_sent is None
+        assert result.data_received is None
+
+    @pytest.mark.asyncio
+    async def test_notify_after_n_builds_flags2(self, sample_comparison, mocker):
+        comparison = sample_comparison
+        no_settings_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"flags": ["unit"]},
+            notifier_site_settings=True,
+            current_yaml=UserYaml(
+                {
+                    "coverage": {
+                        "status": {
+                            "project": True,
+                            "patch": {"default": False, "unit": {"flags": ["unit"]}},
+                            "changes": True,
+                        }
+                    },
+                    "flags": {
+                        "unit": {
+                            "after_n_builds": 3,
+                        }
+                    },
+                }
+            ),
+        )
+        mocker.patch.object(StatusNotifier, "can_we_set_this_status", return_value=True)
+        result = await no_settings_notifier.notify(comparison)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "Need more builds"
+        assert result.data_sent is None
+        assert result.data_received is None
+
+    @pytest.mark.asyncio
     async def test_notify_cannot_set_status(self, sample_comparison, mocker):
         comparison = sample_comparison
         no_settings_notifier = StatusNotifier(
