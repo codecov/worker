@@ -386,7 +386,7 @@ class TestBaseStatusNotifier(object):
         result = await no_settings_notifier.notify(comparison)
         assert not result.notification_attempted
         assert result.notification_successful is None
-        assert result.explanation == "Need more builds"
+        assert result.explanation == "need_more_builds"
         assert result.data_sent is None
         assert result.data_received is None
 
@@ -419,7 +419,7 @@ class TestBaseStatusNotifier(object):
         result = await no_settings_notifier.notify(comparison)
         assert not result.notification_attempted
         assert result.notification_successful is None
-        assert result.explanation == "Need more builds"
+        assert result.explanation == "need_more_builds"
         assert result.data_sent is None
         assert result.data_received is None
 

@@ -153,7 +153,7 @@ class StatusNotifier(AbstractBaseNotifier):
             return NotificationResult(
                 notification_attempted=False,
                 notification_successful=None,
-                explanation="Need more builds",
+                explanation="need_more_builds",
                 data_sent=None,
             )
         # Filter the coverage report based on fields in this notification's YAML settings
