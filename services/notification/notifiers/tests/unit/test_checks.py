@@ -1122,6 +1122,40 @@ class TestPatchChecksNotifier(object):
         assert result.data_sent is None
         assert result.data_received is None
 
+    @pytest.mark.asyncio
+    async def test_checks_with_after_n_builds(self, sample_comparison, mocker):
+        notifier = ChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"flags": ["unit"]},
+            notifier_site_settings=True,
+            current_yaml=UserYaml(
+                {
+                    "coverage": {
+                        "status": {"project": True, "patch": True, "changes": True}
+                    },
+                    "flag_management": {
+                        "default_rules": {"carryforward": False},
+                        "individual_flags": [
+                            {
+                                "name": "unit",
+                                "statuses": [{"type": "patch"}],
+                                "after_n_builds": 3,
+                            },
+                        ],
+                    },
+                }
+            ),
+        )
+
+        mocker.patch.object(ChecksNotifier, "can_we_set_this_status", return_value=True)
+        result = await notifier.notify(sample_comparison)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "need_more_builds"
+        assert result.data_sent is None
+        assert result.data_received is None
+
 
 class TestChangesChecksNotifier(object):
     @pytest.mark.asyncio

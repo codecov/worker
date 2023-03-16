@@ -135,6 +135,14 @@ class ChecksNotifier(StatusNotifier):
                 explanation="not_fit_criteria",
                 data_sent=None,
             )
+        if not self.required_builds(comparison):
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="need_more_builds",
+                data_sent=None,
+                data_received=None,
+            )
         payload = None
         try:
             with nullcontext():

@@ -116,6 +116,30 @@ class StatusNotifier(AbstractBaseNotifier):
             flags=flag_list,
         )
 
+    def required_builds(self, comparison: Comparison) -> bool:
+        flags = self.notifier_yaml_settings.get("flags") or []
+        head_report = comparison.head.report
+
+        for flag in flags:
+            flag_configuration = self.current_yaml.get_flag_configuration(flag)
+            if flag_configuration and head_report and head_report.sessions:
+                number_of_occ = 0
+                for sid, session in head_report.sessions.items():
+                    if session.flags and flag in session.flags:
+                        number_of_occ += 1
+                needed_builds = flag_configuration.get("after_n_builds", 0)
+                if number_of_occ < needed_builds:
+                    log.info(
+                        "Flag needs more builds to send status check",
+                        extra=dict(
+                            flag=flag,
+                            needed_builds=needed_builds,
+                            number_of_occ=number_of_occ,
+                        ),
+                    )
+                    return False
+        return True
+
     async def notify(self, comparison: Comparison):
         payload = None
         if not self.can_we_set_this_status(comparison):
@@ -123,6 +147,13 @@ class StatusNotifier(AbstractBaseNotifier):
                 notification_attempted=False,
                 notification_successful=None,
                 explanation="not_fit_criteria",
+                data_sent=None,
+            )
+        if not self.required_builds(comparison):
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="need_more_builds",
                 data_sent=None,
             )
         # Filter the coverage report based on fields in this notification's YAML settings
