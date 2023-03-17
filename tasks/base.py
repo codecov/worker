@@ -3,6 +3,7 @@ import logging
 
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
+from shared.celery_router import route_tasks_based_on_user_plan
 from sqlalchemy.exc import (
     DataError,
     IntegrityError,
@@ -11,6 +12,7 @@ from sqlalchemy.exc import (
 )
 
 from app import celery_app
+from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
 from helpers.metrics import metrics
 
@@ -44,6 +46,18 @@ class BaseCodecovTask(celery_app.Task):
         if self.time_limit is not None:
             return self.time_limit
         return self.app.conf.task_time_limit or 0
+
+    def apply_async(self, args=None, kwargs=None, **options):
+        db_session = get_db_session()
+        user_plan = _get_user_plan_from_task(db_session, self.name, kwargs)
+        route_with_extra_config = route_tasks_based_on_user_plan(self.name, user_plan)
+        extra_config = route_with_extra_config.get("extra_config", {})
+        celery_compatible_config = {
+            "time_limit": extra_config.get("hard_timelimit", None),
+            "soft_time_limit": extra_config.get("soft_timelimit", None),
+        }
+        options = {**options, **celery_compatible_config}
+        return super().apply_async(args=args, kwargs=kwargs, **options)
 
     def _analyse_error(self, exception: SQLAlchemyError, *args, **kwargs):
         try:

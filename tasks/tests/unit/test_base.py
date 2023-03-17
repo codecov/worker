@@ -2,11 +2,16 @@ from pathlib import Path
 
 import psycopg2
 import pytest
+from celery import chain
 from celery.contrib.testing.mocks import TaskMessage
 from celery.exceptions import Retry, SoftTimeLimitExceeded
+from shared.billing import BillingPlan
+from shared.celery_config import sync_repos_task_name, upload_task_name
 from sqlalchemy.exc import DBAPIError, IntegrityError, InvalidRequestError
 
+from database.tests.factories.core import OwnerFactory, RepositoryFactory
 from tasks.base import BaseCodecovRequest, BaseCodecovTask
+from tasks.base import celery_app as base_celery_app
 
 here = Path(__file__)
 
@@ -248,3 +253,210 @@ class TestBaseCodecovRequest(object):
         request.on_timeout(False, 10)
         mock_metrics.assert_any_call("worker.task.test.SampleTask.hardtimeout")
         mock_metrics.assert_any_call("worker.task.test.SampleTask.timeout")
+
+
+class TestBaseCodecovTaskApplyAsyncOverride(object):
+    @pytest.fixture
+    def fake_owners(self, dbsession):
+        owner = OwnerFactory.create(plan=BillingPlan.pr_monthly.db_name)
+        owner_enterprise_cloud = OwnerFactory.create(
+            plan=BillingPlan.enterprise_cloud_yearly.db_name
+        )
+        dbsession.add(owner)
+        dbsession.add(owner_enterprise_cloud)
+        dbsession.flush()
+        return (owner, owner_enterprise_cloud)
+
+    @pytest.fixture
+    def fake_repos(self, dbsession, fake_owners):
+        (owner, owner_enterprise_cloud) = fake_owners
+        repo = RepositoryFactory.create(owner=owner)
+        repo_enterprise_cloud = RepositoryFactory.create(owner=owner_enterprise_cloud)
+        dbsession.add(repo)
+        dbsession.add(repo_enterprise_cloud)
+        dbsession.flush()
+        return (repo, repo_enterprise_cloud)
+
+    def test_apply_async_override(self, mocker):
+
+        mock_get_db_session = mocker.patch("tasks.base.get_db_session")
+        mock_celery_task_router = mocker.patch("tasks.base._get_user_plan_from_task")
+        mock_route_tasks = mocker.patch(
+            "tasks.base.route_tasks_based_on_user_plan",
+            return_value=dict(
+                queue="some_queue",
+                extra_config=dict(soft_timelimit=200, hard_timelimit=400),
+            ),
+        )
+
+        task = BaseCodecovTask()
+        task.name = "app.tasks.upload.FakeTask"
+        mocked_apply_async = mocker.patch.object(base_celery_app.Task, "apply_async")
+
+        kwargs = dict(n=10)
+        task.apply_async(kwargs=kwargs)
+        assert mock_get_db_session.call_count == 1
+        assert mock_celery_task_router.call_count == 1
+        assert mock_route_tasks.call_count == 1
+        mocked_apply_async.assert_called_with(
+            args=None,
+            kwargs=kwargs,
+            time_limit=400,
+            soft_time_limit=200,
+        )
+
+    def test_apply_async_override_with_chain(self, mocker):
+
+        mock_get_db_session = mocker.patch("tasks.base.get_db_session")
+        mock_celery_task_router = mocker.patch("tasks.base._get_user_plan_from_task")
+        mock_route_tasks = mocker.patch(
+            "tasks.base.route_tasks_based_on_user_plan",
+            return_value=dict(
+                queue="some_queue",
+                extra_config=dict(soft_timelimit=200, hard_timelimit=400),
+            ),
+        )
+
+        task = BaseCodecovTask()
+        task.name = "app.tasks.upload.FakeTask"
+        mocked_apply_async = mocker.patch.object(base_celery_app.Task, "apply_async")
+
+        chain(
+            [task.signature(kwargs=dict(n=1)), task.signature(kwargs=dict(n=10))]
+        ).apply_async()
+        assert mock_get_db_session.call_count == 1
+        assert mock_celery_task_router.call_count == 1
+        assert mock_route_tasks.call_count == 1
+        assert mocked_apply_async.call_count == 1
+        _, kwargs = mocked_apply_async.call_args
+        assert "soft_time_limit" in kwargs and kwargs.get("soft_time_limit") == 200
+        assert "time_limit" in kwargs and kwargs.get("time_limit") == 400
+        assert "kwargs" in kwargs and kwargs.get("kwargs") == {"n": 1}
+        assert "chain" in kwargs and len(kwargs.get("chain")) == 1
+        assert "task_id" in kwargs
+
+    def test_real_example_no_override(
+        self, mocker, dbsession, mock_configuration, fake_repos
+    ):
+        mock_configuration.set_params(
+            {
+                "setup": {
+                    "tasks": {
+                        "celery": {
+                            "enterprise": {
+                                "soft_timelimit": 500,
+                                "hard_timelimit": 600,
+                            },
+                        },
+                        "upload": {
+                            "enterprise": {"soft_timelimit": 400, "hard_timelimit": 450}
+                        },
+                    }
+                }
+            }
+        )
+        mock_get_db_session = mocker.patch(
+            "tasks.base.get_db_session", return_value=dbsession
+        )
+        task = BaseCodecovTask()
+        mocker.patch.object(task, "run", return_value="success")
+        task.name = sync_repos_task_name
+
+        mocked_super_apply_async = mocker.patch.object(
+            base_celery_app.Task, "apply_async"
+        )
+        repo, _ = fake_repos
+
+        kwargs = dict(ownerid=repo.ownerid)
+        task.apply_async(kwargs=kwargs)
+        assert mock_get_db_session.call_count == 1
+        mocked_super_apply_async.assert_called_with(
+            args=None,
+            kwargs=kwargs,
+            soft_time_limit=None,
+            time_limit=None,
+        )
+
+    def test_real_example_override_from_celery(
+        self, mocker, dbsession, mock_configuration, fake_repos
+    ):
+        mock_configuration.set_params(
+            {
+                "setup": {
+                    "tasks": {
+                        "celery": {
+                            "enterprise": {
+                                "soft_timelimit": 500,
+                                "hard_timelimit": 600,
+                            },
+                        },
+                        "upload": {
+                            "enterprise": {"soft_timelimit": 400, "hard_timelimit": 450}
+                        },
+                    }
+                }
+            }
+        )
+        mock_get_db_session = mocker.patch(
+            "tasks.base.get_db_session", return_value=dbsession
+        )
+        task = BaseCodecovTask()
+        mocker.patch.object(task, "run", return_value="success")
+        task.name = sync_repos_task_name
+
+        mocked_super_apply_async = mocker.patch.object(
+            base_celery_app.Task, "apply_async"
+        )
+        _, repo_enterprise_cloud = fake_repos
+
+        kwargs = dict(ownerid=repo_enterprise_cloud.ownerid)
+        task.apply_async(kwargs=kwargs)
+        assert mock_get_db_session.call_count == 1
+        mocked_super_apply_async.assert_called_with(
+            args=None,
+            kwargs=kwargs,
+            soft_time_limit=500,
+            time_limit=600,
+        )
+
+    def test_real_example_override_from_upload(
+        self, mocker, dbsession, mock_configuration, fake_repos
+    ):
+        mock_configuration.set_params(
+            {
+                "setup": {
+                    "tasks": {
+                        "celery": {
+                            "enterprise": {
+                                "soft_timelimit": 500,
+                                "hard_timelimit": 600,
+                            },
+                        },
+                        "upload": {
+                            "enterprise": {"soft_timelimit": 400, "hard_timelimit": 450}
+                        },
+                    }
+                }
+            }
+        )
+        mock_get_db_session = mocker.patch(
+            "tasks.base.get_db_session", return_value=dbsession
+        )
+        task = BaseCodecovTask()
+        mocker.patch.object(task, "run", return_value="success")
+        task.name = upload_task_name
+
+        mocked_super_apply_async = mocker.patch.object(
+            base_celery_app.Task, "apply_async"
+        )
+        _, repo_enterprise_cloud = fake_repos
+
+        kwargs = dict(repoid=repo_enterprise_cloud.repoid)
+        task.apply_async(kwargs=kwargs)
+        assert mock_get_db_session.call_count == 1
+        mocked_super_apply_async.assert_called_with(
+            args=None,
+            kwargs=kwargs,
+            soft_time_limit=400,
+            time_limit=450,
+        )
