@@ -168,6 +168,29 @@ class ReportFactory(Factory):
     commit = factory.SubFactory(CommitFactory)
 
 
+class ReportLevelTotalsFactory(Factory):
+    class Meta:
+        model = models.ReportLevelTotals
+
+    report = factory.SubFactory(ReportFactory)
+    branches = 0
+    coverage = 0.00
+    hits = 0
+    lines = 0
+    methods = 0
+    misses = 0
+    partials = 0
+    files = 0
+
+
+class ReportDetailsFactory(Factory):
+    class Meta:
+        model = models.ReportDetails
+
+    report = factory.SubFactory(ReportFactory)
+    files_array = factory.LazyFunction(list)
+
+
 class ReportResultsFactory(Factory):
     class Meta:
         model = models.ReportResults
@@ -186,6 +209,29 @@ class UploadFactory(Factory):
     upload_extras = {}
     upload_type = "uploaded"
     storage_path = "storage/path.txt"
+
+
+class UploadLevelTotalsFactory(Factory):
+    class Meta:
+        model = models.UploadLevelTotals
+
+    upload = factory.SubFactory(UploadFactory)
+    branches = 0
+    coverage = 0.00
+    hits = 0
+    lines = 0
+    methods = 0
+    misses = 0
+    partials = 0
+    files = 0
+
+
+class RepositoryFlagFactory(Factory):
+    class Meta:
+        model = models.RepositoryFlag
+
+    repository = factory.SubFactory(RepositoryFactory)
+    flag_name = "test_flag"
 
 
 class CommitNotificationFactory(Factory):

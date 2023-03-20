@@ -14,6 +14,7 @@ from app import celery_app
 from database.models import Commit, Pull
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
+from services.report import ReportService
 from services.timeseries import save_commit_measurements
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -203,8 +204,8 @@ class UploadFinisherTask(BaseCodecovTask):
         ):
             return False
         number_sessions = 0
-        if commit.report_json:
-            number_sessions = len(commit.report_json.get("sessions", {}))
+        sessions = ReportService({}).build_sessions(commit)
+        number_sessions = len(sessions)
         after_n_builds = (
             read_yaml_field(commit_yaml, ("codecov", "notify", "after_n_builds")) or 0
         )

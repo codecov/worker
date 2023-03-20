@@ -4,7 +4,13 @@ from pathlib import Path
 import pytest
 from shared.yaml import UserYaml
 
-from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
+from database.tests.factories import (
+    CommitFactory,
+    PullFactory,
+    ReportFactory,
+    RepositoryFactory,
+    UploadFactory,
+)
 from tasks.upload_finisher import UploadFinisherTask
 
 here = Path(__file__)
@@ -289,11 +295,13 @@ class TestUploadFinisherTask(object):
             repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
             repository__owner__username="ThiagoCodecov",
             repository__yaml=commit_yaml,
-            report_json={
-                "sessions": {str(n): {"a": str(f"http://{n}")} for n in range(8)}
-            },
         )
         dbsession.add(commit)
+        report = ReportFactory(commit=commit)
+        dbsession.add(report)
+        for n in range(8):
+            upload = UploadFactory(report=report)
+            dbsession.add(upload)
         dbsession.flush()
         processing_results = {
             "processings_so_far": 9
@@ -312,11 +320,14 @@ class TestUploadFinisherTask(object):
             repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
             repository__owner__username="ThiagoCodecov",
             repository__yaml=commit_yaml,
-            report_json={
-                "sessions": {str(n): {"a": str(f"http://{n}")} for n in range(10)}
-            },
         )
         dbsession.add(commit)
+        report = ReportFactory(commit=commit)
+        dbsession.add(report)
+        for n in range(10):
+            upload = UploadFactory(report=report, order_number=n)
+            dbsession.add(upload)
+            dbsession.flush()
         dbsession.flush()
         processing_results = {
             "processings_so_far": 2

@@ -1,5 +1,6 @@
 import dataclasses
 import json
+from decimal import Decimal
 from json import JSONEncoder
 
 from shared.config import get_config
@@ -20,6 +21,8 @@ class DatabaseEncoder(JSONEncoder):
     def default(self, obj):
         if dataclasses.is_dataclass(obj):
             return dataclasses.astuple(obj)
+        if isinstance(obj, Decimal):
+            return str(obj)
         return super().default(self, obj)
 
 
