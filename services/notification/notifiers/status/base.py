@@ -135,6 +135,8 @@ class StatusNotifier(AbstractBaseNotifier):
                             flag=flag,
                             needed_builds=needed_builds,
                             number_of_occ=number_of_occ,
+                            repoid=comparison.head.commit.repoid,
+                            commit=comparison.head.commit.commitid,
                         ),
                     )
                     return False
