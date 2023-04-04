@@ -348,6 +348,7 @@ workflows:
             branches:
               only:
                 - master
+                - staging
       - production:
           context: "circleci google deploy context"
           requires:
