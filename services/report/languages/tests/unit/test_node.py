@@ -102,11 +102,14 @@ class TestNodeProcessor(BaseTestCase):
         archive = report.to_archive()
         expected_result = loads(self.readfile("node/node%s-result.json" % i))
         print(dumps(report_dict))
+        print("\n")
         assert expected_result["report"]["files"] == report_dict["files"]
         assert expected_result["report"] == report_dict
         print(dumps(totals_dict))
+        print("\n")
         assert expected_result["totals"] == totals_dict
         print(dumps(archive.split("<<<<< end_of_chunk >>>>>")))
+        print("\n")
         assert expected_result["archive"] == archive.split("<<<<< end_of_chunk >>>>>")
 
     @pytest.mark.parametrize("name", ["inline", "ifbinary", "ifbinarymb"])
