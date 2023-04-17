@@ -21,7 +21,7 @@ pytest
 python-dateutil
 python-json-logger
 PyYAML
-redis
+redis>=4.4.4
 requests
 sentry-sdk
 SQLAlchemy-Utils
