@@ -26,7 +26,6 @@ from services.notification.notifiers.mixins.message.helpers import (
 from services.notification.notifiers.mixins.message.sections import (
     AnnouncementSectionWriter,
     ComponentsSectionWriter,
-    FeedbackSectionWriter,
     FileSectionWriter,
     ImpactedEntrypointsSectionWriter,
     NewFooterSectionWriter,
@@ -3187,35 +3186,6 @@ class TestCommentNotifier(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
-    async def test_message_feedback_only(
-        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
-    ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
-        comparison = sample_comparison
-        comparison.repository_service.service = "github"
-        pull = comparison.pull
-        notifier = CommentNotifier(
-            repository=sample_comparison.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={"layout": "feedback"},
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        repository = sample_comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
-        expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
-            "> The diff coverage is `66.67%`.",
-            "",
-            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps). Have a feature suggestion? [Share it here.](https://app.codecov.io/gh/feedback/)",
-            "",
-        ]
-        for exp, res in zip(expected_result, result):
-            assert exp == res
-        assert result == expected_result
-
-    @pytest.mark.asyncio
     async def test_message_hide_details_bitbucket(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -3702,22 +3672,6 @@ class TestNewFooterSectionWriter(object):
             "",
             "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
-        ]
-
-
-class TestFeedbackSectionWriter(object):
-    @pytest.mark.asyncio
-    async def test_feedback_section_writer(self, mocker):
-        writer = FeedbackSectionWriter(
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-        )
-        res = list(await writer.write_section())
-        assert res == [
-            "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps). Have a feature suggestion? [Share it here.](https://app.codecov.io/gh/feedback/)"
         ]
 
 
