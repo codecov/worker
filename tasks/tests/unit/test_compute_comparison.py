@@ -4,9 +4,10 @@ import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report
 from shared.torngit.exceptions import TorngitRateLimitError
+from shared.yaml import UserYaml
 
 from database.enums import CompareCommitError, CompareCommitState
-from database.models import CompareFlag, RepositoryFlag
+from database.models import CompareComponent, CompareFlag, RepositoryFlag
 from database.tests.factories import CompareCommitFactory
 from services.report import ReportService
 from tasks.compute_comparison import ComputeComparisonTask
@@ -42,6 +43,9 @@ class TestComputeComparisonTask(object):
                 }
             }
         }
+        get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
+        get_current_yaml.return_value = UserYaml({"coverage": {"status": None}})
+
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
@@ -102,6 +106,8 @@ class TestComputeComparisonTask(object):
                 }
             }
         }
+        get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
+        get_current_yaml.return_value = UserYaml({"coverage": {"status": None}})
 
         unit_repositoryflag = RepositoryFlag(
             repository_id=comparison.compare_commit.repository.repoid, flag_name="unit"
@@ -200,6 +206,9 @@ class TestComputeComparisonTask(object):
                 }
             }
         }
+        get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
+        get_current_yaml.return_value = UserYaml({"coverage": {"status": None}})
+
         await task.run_async(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
@@ -284,6 +293,9 @@ class TestComputeComparisonTask(object):
                 }
             }
         }
+        get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
+        get_current_yaml.return_value = UserYaml({"coverage": {"status": None}})
+
         repositoryflag = RepositoryFlag(
             repository_id=comparison.compare_commit.repository.repoid, flag_name="unit"
         )
@@ -363,3 +375,151 @@ class TestComputeComparisonTask(object):
         dbsession.flush()
         assert comparison.state == CompareCommitState.pending.value
         assert comparison.error is None
+
+    @pytest.mark.asyncio
+    async def test_compute_component_comparisons(
+        self, dbsession, mocker, mock_repo_provider, mock_storage, sample_report
+    ):
+        mocker.patch.object(
+            ReadOnlyReport, "should_load_rust_version", return_value=True
+        )
+        mocker.patch.object(
+            ReportService,
+            "get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(sample_report),
+        )
+        mock_repo_provider.get_compare.return_value = {
+            "diff": {
+                "files": {
+                    "file_2.py": {
+                        "type": "modified",
+                        "before": None,
+                        "segments": [
+                            {"header": ["2", "5", "2", "5"], "lines": ["+", "-", "-"]}
+                        ],
+                    }
+                }
+            }
+        }
+        get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
+        get_current_yaml.return_value = UserYaml(
+            {
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "unit_flags", "flag_regexes": [r"unit.*"]},
+                    ]
+                }
+            }
+        )
+
+        comparison = CompareCommitFactory.create()
+        dbsession.add(comparison)
+        dbsession.flush()
+
+        task = ComputeComparisonTask()
+        res = await task.run_async(dbsession, comparison.id)
+        assert res == {"successful": True}
+
+        component_comparisons = (
+            dbsession.query(CompareComponent)
+            .filter_by(commit_comparison_id=comparison.id)
+            .all()
+        )
+        assert len(component_comparisons) == 2
+
+        go_comparison = component_comparisons[0]
+        assert go_comparison.component_id == "go_files"
+        assert go_comparison.base_totals == {
+            "files": 1,
+            "lines": 8,
+            "hits": 5,
+            "misses": 3,
+            "partials": 0,
+            "coverage": "62.50000",
+            "branches": 0,
+            "methods": 0,
+            "messages": 0,
+            "sessions": 1,
+            "complexity": 10,
+            "complexity_total": 2,
+            "diff": 0,
+        }
+        assert go_comparison.head_totals == {
+            "files": 1,
+            "lines": 8,
+            "hits": 5,
+            "misses": 3,
+            "partials": 0,
+            "coverage": "62.50000",
+            "branches": 0,
+            "methods": 0,
+            "messages": 0,
+            "sessions": 1,
+            "complexity": 10,
+            "complexity_total": 2,
+            "diff": 0,
+        }
+        assert go_comparison.patch_totals == {
+            "files": 0,
+            "lines": 0,
+            "hits": 0,
+            "misses": 0,
+            "partials": 0,
+            "coverage": None,
+            "branches": 0,
+            "methods": 0,
+            "messages": 0,
+            "sessions": 0,
+            "complexity": None,
+            "complexity_total": None,
+            "diff": 0,
+        }
+
+        unit_comparison = component_comparisons[1]
+        assert unit_comparison.component_id == "unit_flags"
+        assert unit_comparison.base_totals == {
+            "files": 2,
+            "lines": 10,
+            "hits": 10,
+            "misses": 0,
+            "partials": 0,
+            "coverage": "100",
+            "branches": 1,
+            "methods": 0,
+            "messages": 0,
+            "sessions": 1,
+            "complexity": 0,
+            "complexity_total": 0,
+            "diff": 0,
+        }
+        assert unit_comparison.head_totals == {
+            "files": 2,
+            "lines": 10,
+            "hits": 10,
+            "misses": 0,
+            "partials": 0,
+            "coverage": "100",
+            "branches": 1,
+            "methods": 0,
+            "messages": 0,
+            "sessions": 1,
+            "complexity": 0,
+            "complexity_total": 0,
+            "diff": 0,
+        }
+        assert unit_comparison.patch_totals == {
+            "files": 1,
+            "lines": 0,
+            "hits": 0,
+            "misses": 0,
+            "partials": 0,
+            "coverage": None,
+            "branches": 0,
+            "methods": 0,
+            "messages": 0,
+            "sessions": 0,
+            "complexity": None,
+            "complexity_total": None,
+            "diff": 0,
+        }
