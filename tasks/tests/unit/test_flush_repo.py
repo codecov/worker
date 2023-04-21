@@ -6,9 +6,11 @@ from database.models import Repository
 from database.tests.factories import (
     BranchFactory,
     CommitFactory,
+    CompareCommitFactory,
     PullFactory,
     RepositoryFactory,
 )
+from database.tests.factories.reports import CompareFlagFactory, RepositoryFlagFactory
 from services.archive import ArchiveService
 from tasks.flush_repo import FlushRepoTask
 
@@ -36,9 +38,25 @@ class TestFlushRepo(object):
         repo = RepositoryFactory.create()
         dbsession.add(repo)
         dbsession.flush()
+        flag = RepositoryFlagFactory.create(repository=repo)
+        dbsession.add(flag)
         for i in range(8):
             commit = CommitFactory.create(repository=repo)
             dbsession.add(commit)
+        for i in range(4):
+            base_commit = CommitFactory.create(repository=repo)
+            head_commit = CommitFactory.create(repository=repo)
+            comparison = CompareCommitFactory.create(
+                base_commit=base_commit, compare_commit=head_commit
+            )
+            dbsession.add(base_commit)
+            dbsession.add(head_commit)
+            dbsession.add(comparison)
+
+            flag_comparison = CompareFlagFactory.create(
+                commit_comparison=comparison, repositoryflag=flag
+            )
+            dbsession.add(flag_comparison)
         for i in range(17):
             pull = PullFactory.create(repository=repo, pullid=i + 100)
             dbsession.add(pull)
@@ -50,7 +68,7 @@ class TestFlushRepo(object):
         assert res == {
             "delete_branches_count": 23,
             "deleted_archives": 0,
-            "deleted_commits_count": 8,
+            "deleted_commits_count": 16,
             "deleted_pulls_count": 17,
         }
 
