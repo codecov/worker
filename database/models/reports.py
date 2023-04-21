@@ -54,7 +54,7 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
     )
 
 
-association_table = Table(
+uploadflagmembership = Table(
     "reports_uploadflagmembership",
     CodecovBaseModel.metadata,
     Column("upload_id", types.Integer, ForeignKey("reports_upload.id")),
@@ -86,7 +86,7 @@ class Upload(CodecovBaseModel, MixinBaseClass):
     state = Column(types.String(100), nullable=False)
     storage_path = Column(types.Text, nullable=False)
     order_number = Column(types.Integer)
-    flags = relationship(RepositoryFlag, secondary=association_table)
+    flags = relationship(RepositoryFlag, secondary=uploadflagmembership)
     totals = relationship(
         "UploadLevelTotals",
         back_populates="upload",
