@@ -6,11 +6,13 @@ from shared.billing import BillingPlan
 
 from celery_task_router import (
     _get_user_plan_from_comparison_id,
+    _get_user_plan_from_label_request_id,
     _get_user_plan_from_org_ownerid,
     _get_user_plan_from_ownerid,
     _get_user_plan_from_profiling_commit,
     _get_user_plan_from_profiling_upload,
     _get_user_plan_from_repoid,
+    _get_user_plan_from_suite_id,
     _get_user_plan_from_task,
     route_task,
 )
@@ -20,10 +22,12 @@ from database.tests.factories.core import (
     OwnerFactory,
     RepositoryFactory,
 )
+from database.tests.factories.labelanalysis import LabelAnalysisRequestFactory
 from database.tests.factories.profiling import (
     ProfilingCommitFactory,
     ProfilingUploadFactory,
 )
+from database.tests.factories.staticanalysis import StaticAnalysisSuiteFactory
 
 
 @pytest.fixture
@@ -91,6 +95,44 @@ def fake_comparison_commit(dbsession, fake_repos):
     dbsession.add(compare_commit_enterprise)
     dbsession.flush()
     return (compare_commit, compare_commit_enterprise)
+
+
+@pytest.fixture
+def fake_label_analysis_request(dbsession, fake_repos):
+    (repo, repo_enterprise_cloud) = fake_repos
+
+    commmit = CommitFactory.create(repository=repo)
+    commmit_enterprise = CommitFactory.create(repository=repo_enterprise_cloud)
+    dbsession.add(commmit)
+    dbsession.add(commmit_enterprise)
+    dbsession.flush()
+    label_analysis_request = LabelAnalysisRequestFactory(head_commit=commmit)
+    label_analysis_request_enterprise = LabelAnalysisRequestFactory(
+        head_commit=commmit_enterprise
+    )
+    dbsession.add(label_analysis_request)
+    dbsession.add(label_analysis_request_enterprise)
+    dbsession.flush()
+    return (label_analysis_request, label_analysis_request_enterprise)
+
+
+@pytest.fixture
+def fake_static_analysis_suite(dbsession, fake_repos):
+    (repo, repo_enterprise_cloud) = fake_repos
+
+    commmit = CommitFactory.create(repository=repo)
+    commmit_enterprise = CommitFactory.create(repository=repo_enterprise_cloud)
+    dbsession.add(commmit)
+    dbsession.add(commmit_enterprise)
+    dbsession.flush()
+    static_analysis_suite = StaticAnalysisSuiteFactory(commit=commmit)
+    static_analysis_suite_enterprise = StaticAnalysisSuiteFactory(
+        commit=commmit_enterprise
+    )
+    dbsession.add(static_analysis_suite)
+    dbsession.add(static_analysis_suite_enterprise)
+    dbsession.flush()
+    return (static_analysis_suite, static_analysis_suite_enterprise)
 
 
 def test_get_owner_plan_from_id(dbsession, fake_owners):
@@ -183,6 +225,52 @@ def test_get_user_plan_from_comparison_id(dbsession, fake_comparison_commit):
     )
     assert (
         _get_user_plan_from_comparison_id(dbsession, 10000000)
+        == BillingPlan.users_basic.db_name
+    )
+
+
+def test_get_user_plan_from_label_request_id(dbsession, fake_label_analysis_request):
+    (
+        label_analysis_request,
+        label_analysis_request_enterprise,
+    ) = fake_label_analysis_request
+    assert (
+        _get_user_plan_from_label_request_id(
+            dbsession, request_id=label_analysis_request.id
+        )
+        == BillingPlan.pr_monthly.db_name
+    )
+    assert (
+        _get_user_plan_from_label_request_id(
+            dbsession, request_id=label_analysis_request_enterprise.id
+        )
+        == BillingPlan.enterprise_cloud_yearly.db_name
+    )
+    assert (
+        _get_user_plan_from_label_request_id(dbsession, 10000000)
+        == BillingPlan.users_basic.db_name
+    )
+
+
+def test_get_user_plan_from_static_analysis_suite(
+    dbsession, fake_static_analysis_suite
+):
+    (
+        static_analysis_suite,
+        static_analysis_suite_enterprise,
+    ) = fake_static_analysis_suite
+    assert (
+        _get_user_plan_from_suite_id(dbsession, suite_id=static_analysis_suite.id)
+        == BillingPlan.pr_monthly.db_name
+    )
+    assert (
+        _get_user_plan_from_suite_id(
+            dbsession, suite_id=static_analysis_suite_enterprise.id
+        )
+        == BillingPlan.enterprise_cloud_yearly.db_name
+    )
+    assert (
+        _get_user_plan_from_suite_id(dbsession, 10000000)
         == BillingPlan.users_basic.db_name
     )
 

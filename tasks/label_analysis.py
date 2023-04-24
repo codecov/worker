@@ -1,5 +1,6 @@
 import logging
 
+from shared.celery_config import label_analysis_task_name
 from shared.labelanalysis import LabelAnalysisRequestState
 
 from app import celery_app
@@ -23,7 +24,7 @@ GLOBAL_LEVEL_LABEL = (
 
 
 class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
-    name = "app.tasks.label_analysis.process"
+    name = label_analysis_task_name
 
     async def run_async(self, db_session, request_id, *args, **kwargs):
         label_analysis_request = (
