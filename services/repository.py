@@ -104,7 +104,13 @@ async def fetch_appropriate_parent_for_commit(
             ~Commit.message.is_(None),
             ~Commit.deleted.is_(True),
         )
-        possible_commit = possible_commit_query.first()
+        if possible_commit_query.count() <= 1:
+            possible_commit = possible_commit_query.first()
+        else:
+            possible_commit = possible_commit_query.filter(
+                Commit.branch == commit.branch,
+            )
+            possible_commit = possible_commit_query.first()
         if possible_commit:
             return possible_commit.commitid
     ancestors_tree = await repository_service.get_ancestors_tree(commitid)
@@ -112,28 +118,32 @@ async def fetch_appropriate_parent_for_commit(
     while elements:
         parents = [k for el in elements for k in el["parents"]]
         parent_commits = [p["commitid"] for p in parents]
-        closest_parent = (
-            db_session.query(Commit)
-            .filter(
-                Commit.commitid.in_(parent_commits),
-                Commit.repoid == commit.repoid,
-                ~Commit.message.is_(None),
-                ~Commit.deleted.is_(True),
-            )
-            .first()
+        closest_parent_query = db_session.query(Commit).filter(
+            Commit.commitid.in_(parent_commits),
+            Commit.repoid == commit.repoid,
+            ~Commit.message.is_(None),
+            ~Commit.deleted.is_(True),
         )
+        if closest_parent_query.count() <= 1:
+            closest_parent = closest_parent_query.first()
+        else:
+            closest_parent = closest_parent_query.filter(
+                Commit.branch == commit.branch,
+            ).first()
         if closest_parent:
             return closest_parent.commitid
         if closest_parent_without_message is None:
-            res = (
-                db_session.query(Commit.commitid)
-                .filter(
-                    Commit.commitid.in_(parent_commits),
-                    Commit.repoid == commit.repoid,
-                    ~Commit.deleted.is_(True),
-                )
-                .first()
+            res = db_session.query(Commit.commitid).filter(
+                Commit.commitid.in_(parent_commits),
+                Commit.repoid == commit.repoid,
+                ~Commit.deleted.is_(True),
             )
+            if res.count() <= 1:
+                res = res.first()
+            else:
+                res = res.filter(
+                    Commit.branch == commit.branch,
+                ).first()
             if res:
                 closest_parent_without_message = res[0]
         elements = parents
@@ -251,6 +261,18 @@ def get_or_create_author(
         )
         db_session.add(author)
         db_session.commit()
+        if service == "bitbucket":
+            # temporary log line to investigate issue of owners with null username in bb users. Ticket: https://codecovio.atlassian.net/browse/CODE-699
+            log.info(
+                "Saving author in the database",
+                extra=dict(
+                    service=service,
+                    service_id=str(service_id),
+                    username=username,
+                    users_name=name,
+                    email=email,
+                ),
+            )
         return author
     except IntegrityError:
         log.warning(

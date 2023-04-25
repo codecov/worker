@@ -4389,6 +4389,81 @@ class TestComponentWriterSection(object):
         assert component_data == expected_result
 
     @pytest.mark.asyncio
+    async def test_get_component_data_for_table_no_base(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        comparison = sample_comparison
+        comparison.base.report = None
+        comparison.base.commit = None
+        section_writer = ComponentsSectionWriter(
+            repository=comparison.head.commit.repository,
+            layout="layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "py_files", "paths": [r".*\.py"]},
+                    ]
+                }
+            },
+        )
+        all_components = get_components_from_yaml(section_writer.current_yaml)
+        comparison = sample_comparison
+        component_data = await section_writer._get_table_data_for_components(
+            all_components, comparison
+        )
+        print(component_data)
+        expected_result = [
+            {
+                "name": "go_files",
+                "before": None,
+                "after": ReportTotals(
+                    files=1,
+                    lines=8,
+                    hits=5,
+                    misses=3,
+                    partials=0,
+                    coverage="62.50000",
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=10,
+                    complexity_total=2,
+                    diff=0,
+                ),
+                "diff": None,
+            },
+            {
+                "name": "py_files",
+                "before": None,
+                "after": ReportTotals(
+                    files=1,
+                    lines=2,
+                    hits=1,
+                    misses=0,
+                    partials=1,
+                    coverage="50.00000",
+                    branches=1,
+                    methods=0,
+                    messages=0,
+                    sessions=1,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+                "diff": None,
+            },
+        ]
+        assert component_data == expected_result
+
+    @pytest.mark.asyncio
     async def test_write_message_component_section(
         self,
         dbsession,
@@ -4419,5 +4494,41 @@ class TestComponentWriterSection(object):
             "|---|---|---|",
             "| go_files | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
             "| py_files | `50.00% <ø> (ø)` | |",
+        ]
+        assert message == expected
+
+    @pytest.mark.asyncio
+    async def test_write_message_component_section_no_base(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        comparison = sample_comparison
+        comparison.base.report = None
+        comparison.base.commit = None
+        section_writer = ComponentsSectionWriter(
+            repository=comparison.head.commit.repository,
+            layout="layout",
+            show_complexity=False,
+            settings={},
+            current_yaml={
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "py_files", "paths": [r".*\.py"]},
+                    ]
+                }
+            },
+        )
+        message = await section_writer.write_section(
+            comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
+        )
+        expected = [
+            "| Components | Coverage Δ | |",
+            "|---|---|---|",
+            "| go_files | `62.50% <0.00%> (?)` | |",
+            "| py_files | `50.00% <0.00%> (?)` | |",
         ]
         assert message == expected

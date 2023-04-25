@@ -4,7 +4,9 @@ from shared.celery_router import route_tasks_based_on_user_plan
 
 from database.engine import get_db_session
 from database.models.core import Commit, CompareCommit, Owner, Repository
+from database.models.labelanalysis import LabelAnalysisRequest
 from database.models.profiling import ProfilingCommit, ProfilingUpload
+from database.models.staticanalysis import StaticAnalysisSuite
 
 
 def _get_user_plan_from_ownerid(db_session, ownerid, *args, **kwargs) -> str:
@@ -75,6 +77,34 @@ def _get_user_plan_from_comparison_id(dbsession, comparison_id, *args, **kwargs)
     return BillingPlan.users_basic.db_name
 
 
+def _get_user_plan_from_label_request_id(dbsession, request_id, *args, **kwargs) -> str:
+    result = (
+        dbsession.query(Owner.plan)
+        .join(LabelAnalysisRequest.head_commit)
+        .join(Commit.repository)
+        .join(Repository.owner)
+        .filter(LabelAnalysisRequest.id_ == request_id)
+        .first()
+    )
+    if result:
+        return result.plan
+    return BillingPlan.users_basic.db_name
+
+
+def _get_user_plan_from_suite_id(dbsession, suite_id, *args, **kwargs) -> str:
+    result = (
+        dbsession.query(Owner.plan)
+        .join(StaticAnalysisSuite.commit)
+        .join(Commit.repository)
+        .join(Repository.owner)
+        .filter(StaticAnalysisSuite.id_ == suite_id)
+        .first()
+    )
+    if result:
+        return result.plan
+    return BillingPlan.users_basic.db_name
+
+
 def _get_user_plan_from_task(dbsession, task_name: str, task_kwargs: dict) -> str:
     owner_plan_lookup_funcs = {
         # from ownerid
@@ -102,6 +132,10 @@ def _get_user_plan_from_task(dbsession, task_name: str, task_kwargs: dict) -> st
         shared_celery_config.profiling_normalization_task_name: _get_user_plan_from_profiling_upload,
         # from comparison_id
         shared_celery_config.compute_comparison_task_name: _get_user_plan_from_comparison_id,
+        # from label_request_id
+        shared_celery_config.label_analysis_task_name: _get_user_plan_from_label_request_id,
+        # from suite_id
+        shared_celery_config.static_analysis_task_name: _get_user_plan_from_suite_id,
     }
     func_to_use = owner_plan_lookup_funcs.get(
         task_name, lambda *args, **kwargs: BillingPlan.users_basic.db_name

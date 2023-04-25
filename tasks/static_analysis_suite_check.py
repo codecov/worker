@@ -1,5 +1,6 @@
 import logging
 
+from shared.celery_config import static_analysis_task_name
 from shared.staticanalysis import StaticAnalysisSingleFileSnapshotState
 from shared.storage.exceptions import FileNotInStorageError
 
@@ -16,8 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class StaticAnalysisSuiteCheckTask(BaseCodecovTask):
-    # TODO: Move to shared
-    name = "app.tasks.staticanalysis.check_suite"
+    name = static_analysis_task_name
 
     async def run_async(
         self,

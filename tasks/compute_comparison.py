@@ -2,6 +2,7 @@ import logging
 from typing import List, Mapping
 
 from shared.celery_config import compute_comparison_task_name
+from shared.components import Component
 from shared.helpers.flag import Flag
 from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.exceptions import TorngitRateLimitError
@@ -9,14 +10,15 @@ from shared.yaml import UserYaml
 
 from app import celery_app
 from database.enums import CompareCommitError, CompareCommitState
-from database.models import CompareCommit, CompareFlag
+from database.models import CompareCommit, CompareComponent, CompareFlag
 from database.models.reports import ReportLevelTotals, RepositoryFlag
 from helpers.metrics import metrics
 from services.archive import ArchiveService
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.comparison.types import Comparison, FullCommit
 from services.report import ReportService
-from services.yaml import get_repo_yaml
+from services.repository import get_repo_provider_service
+from services.yaml import get_current_yaml, get_repo_yaml
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -69,6 +71,9 @@ class ComputeComparisonTask(BaseCodecovTask):
         db_session.commit()
 
         await self.compute_flag_comparison(db_session, comparison, comparison_proxy)
+        await self.compute_component_comparisons(
+            db_session, comparison, comparison_proxy
+        )
         return {"successful": True}
 
     async def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
@@ -179,6 +184,66 @@ class ComputeComparisonTask(BaseCodecovTask):
             base_totals=totals["base_totals"],
         )
         db_session.add(flag_comparison)
+        db_session.flush()
+
+    async def compute_component_comparisons(
+        self, db_session, comparison: CompareCommit, comparison_proxy: ComparisonProxy
+    ):
+        head_commit = comparison_proxy.comparison.head.commit
+        yaml: UserYaml = await get_current_yaml(
+            head_commit, comparison_proxy.repository_service
+        )
+        components = yaml.get_components()
+        log.info(
+            "Computing component comparisons",
+            extra=dict(
+                comparison_id=comparison.id,
+                component_count=len(components),
+            ),
+        )
+        for component in components:
+            await self.compute_component_comparison(
+                db_session, comparison, comparison_proxy, component
+            )
+
+    async def compute_component_comparison(
+        self,
+        db_session,
+        comparison: CompareCommit,
+        comparison_proxy: ComparisonProxy,
+        component: Component,
+    ):
+        component_comparison = (
+            db_session.query(CompareComponent)
+            .filter_by(
+                commit_comparison_id=comparison.id,
+                component_id=component.component_id,
+            )
+            .first()
+        )
+        if not component_comparison:
+            component_comparison = CompareComponent(
+                commit_comparison=comparison,
+                component_id=component.component_id,
+            )
+
+        # filter comparison by component
+        head_report = comparison_proxy.comparison.head.report
+        flags = component.get_matching_flags(head_report.flags.keys())
+        filtered: FilteredComparison = comparison_proxy.get_filtered_comparison(
+            flags=flags, path_patterns=component.paths
+        )
+
+        # component comparison totals
+        component_comparison.base_totals = filtered.base.report.totals.asdict()
+        component_comparison.head_totals = filtered.head.report.totals.asdict()
+        diff = await comparison_proxy.get_diff()
+        if diff:
+            component_comparison.patch_totals = filtered.head.report.apply_diff(
+                diff
+            ).asdict()
+
+        db_session.add(component_comparison)
         db_session.flush()
 
     def get_yaml_commit(self, commit):

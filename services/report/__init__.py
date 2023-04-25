@@ -1,5 +1,6 @@
 import itertools
 import logging
+import sys
 import typing
 import uuid
 from dataclasses import dataclass
@@ -794,6 +795,15 @@ class ReportService(object):
         ):
             # temporary measure until we ensure the API and frontend don't expect not-null coverages
             commit.totals["c"] = 0
+        log.info(
+            "Calling update to Commit.Report",
+            extra=dict(
+                size=sys.getsizeof(network),
+                ownerid=commit.repository.ownerid,
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+            ),
+        )
         commit.report_json = network
         files_array = [
             {
@@ -806,6 +816,15 @@ class ReportService(object):
             for k, v in report._files.items()
         ]
         if commit.report:
+            log.info(
+                "Calling update to reports_reportdetails.files_array",
+                extra=dict(
+                    size=sys.getsizeof(files_array),
+                    ownerid=commit.repository.ownerid,
+                    repoid=commit.repoid,
+                    commitid=commit.commitid,
+                ),
+            )
             commit.report.details.files_array = files_array
             report_totals = commit.report.totals
             if report_totals is None:

@@ -679,7 +679,9 @@ class ComponentsSectionWriter(BaseSectionWriter):
             component_data.append(
                 {
                     "name": component.get_display_name(),
-                    "before": filtered_comparison.base.report.totals,
+                    "before": filtered_comparison.base.report.totals
+                    if filtered_comparison.base.report is not None
+                    else None,
                     "after": filtered_comparison.head.report.totals,
                     "diff": filtered_comparison.head.report.apply_diff(
                         diff, _save=False

@@ -1,9 +1,9 @@
 import dataclasses
 import json
 from decimal import Decimal
-from json import JSONEncoder
 
 from shared.config import get_config
+from shared.utils.ReportEncoder import ReportEncoder
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
@@ -17,13 +17,13 @@ def create_all(engine):
     Base.metadata.create_all(engine)
 
 
-class DatabaseEncoder(JSONEncoder):
+class DatabaseEncoder(ReportEncoder):
     def default(self, obj):
         if dataclasses.is_dataclass(obj):
             return dataclasses.astuple(obj)
         if isinstance(obj, Decimal):
             return str(obj)
-        return super().default(self, obj)
+        return super().default(obj)
 
 
 def json_dumps(d):

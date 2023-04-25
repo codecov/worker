@@ -8,7 +8,7 @@ import pytest
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, Session, SessionType
-from shared.reports.types import ReportLine, ReportTotals
+from shared.reports.types import ReportLine, ReportTotals, SessionTotalsArray
 from shared.torngit.exceptions import TorngitRateLimitError
 from shared.yaml import UserYaml
 
@@ -1522,91 +1522,136 @@ class TestReportService(BaseTestCase):
                     "file_00.py": [
                         0,
                         [0, 14, 4, 5, 5, "28.57143", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 14, 12, 0, 2, "85.71429"],
+                        },
                         None,
                     ],
                     "file_01.py": [
                         1,
                         [0, 10, 3, 0, 7, "30.00000", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 11, 8, 0, 3, "72.72727"],
+                        },
                         None,
                     ],
                     "file_02.py": [
                         2,
                         [0, 11, 5, 0, 6, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 13, 9, 0, 4, "69.23077"],
+                        },
                         None,
                     ],
                     "file_03.py": [
                         3,
                         [0, 15, 4, 2, 9, "26.66667", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 16, 8, 0, 8, "50.00000"],
+                        },
                         None,
                     ],
                     "file_04.py": [
                         4,
                         [0, 10, 3, 1, 6, "30.00000", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 10, 6, 0, 4, "60.00000"],
+                        },
                         None,
                     ],
                     "file_05.py": [
                         5,
                         [0, 13, 3, 2, 8, "23.07692", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 14, 10, 0, 4, "71.42857"],
+                        },
                         None,
                     ],
                     "file_06.py": [
                         6,
                         [0, 7, 5, 0, 2, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 9, 7, 1, 1, "77.77778"],
+                        },
                         None,
                     ],
                     "file_07.py": [
                         7,
                         [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 11, 9, 0, 2, "81.81818"],
+                        },
                         None,
                     ],
                     "file_08.py": [
                         8,
                         [0, 11, 2, 4, 5, "18.18182", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 11, 6, 0, 5, "54.54545"],
+                        },
                         None,
                     ],
                     "file_09.py": [
                         9,
                         [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 14, 10, 1, 3, "71.42857"],
+                        },
                         None,
                     ],
                     "file_10.py": [
                         10,
                         [0, 8, 3, 0, 5, "37.50000", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 10, 6, 1, 3, "60.00000"],
+                        },
                         None,
                     ],
                     "file_11.py": [
                         11,
                         [0, 22, 8, 5, 9, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 23, 15, 1, 7, "65.21739"],
+                        },
                         None,
                     ],
                     "file_12.py": [
                         12,
                         [0, 12, 4, 3, 5, "33.33333", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 14, 8, 0, 6, "57.14286"],
+                        },
                         None,
                     ],
                     "file_13.py": [
                         13,
                         [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 15, 9, 0, 6, "60.00000"],
+                        },
                         None,
                     ],
                     "file_14.py": [
                         14,
                         [0, 22, 8, 2, 12, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 23, 13, 0, 10, "56.52174"],
+                        },
                         None,
                     ],
                 },
@@ -2308,31 +2353,46 @@ class TestReportService(BaseTestCase):
                     "file_10.py": [
                         10,
                         [0, 8, 3, 0, 5, "37.50000", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 10, 6, 1, 3, "60.00000"],
+                        },
                         None,
                     ],
                     "file_11.py": [
                         11,
                         [0, 22, 8, 5, 9, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 23, 15, 1, 7, "65.21739"],
+                        },
                         None,
                     ],
                     "file_12.py": [
                         12,
                         [0, 12, 4, 3, 5, "33.33333", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 14, 8, 0, 6, "57.14286"],
+                        },
                         None,
                     ],
                     "file_13.py": [
                         13,
                         [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 15, 9, 0, 6, "60.00000"],
+                        },
                         None,
                     ],
                     "file_14.py": [
                         14,
                         [0, 22, 8, 2, 12, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                        [None, [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0]],
+                        {
+                            "meta": {"session_count": 4},
+                            "3": [0, 23, 13, 0, 10, "56.52174"],
+                        },
                         None,
                     ],
                 },
@@ -2607,91 +2667,91 @@ class TestReportService(BaseTestCase):
                 "file_00.py": [
                     0,
                     [0, 14, 4, 5, 5, "28.57143", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 14, 12, 0, 2, "85.71429"]},
                     None,
                 ],
                 "file_01.py": [
                     1,
                     [0, 10, 3, 0, 7, "30.00000", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 11, 8, 0, 3, "72.72727"]},
                     None,
                 ],
                 "file_02.py": [
                     2,
                     [0, 11, 5, 0, 6, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 13, 9, 0, 4, "69.23077"]},
                     None,
                 ],
                 "file_03.py": [
                     3,
                     [0, 15, 4, 2, 9, "26.66667", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 16, 8, 0, 8, "50.00000"]},
                     None,
                 ],
                 "file_04.py": [
                     4,
                     [0, 10, 3, 1, 6, "30.00000", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 10, 6, 0, 4, "60.00000"]},
                     None,
                 ],
                 "file_05.py": [
                     5,
                     [0, 13, 3, 2, 8, "23.07692", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 14, 10, 0, 4, "71.42857"]},
                     None,
                 ],
                 "file_06.py": [
                     6,
                     [0, 7, 5, 0, 2, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 9, 7, 1, 1, "77.77778"]},
                     None,
                 ],
                 "file_07.py": [
                     7,
                     [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 11, 9, 0, 2, "81.81818"]},
                     None,
                 ],
                 "file_08.py": [
                     8,
                     [0, 11, 2, 4, 5, "18.18182", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 11, 6, 0, 5, "54.54545"]},
                     None,
                 ],
                 "file_09.py": [
                     9,
                     [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 14, 10, 1, 3, "71.42857"]},
                     None,
                 ],
                 "file_10.py": [
                     10,
                     [0, 8, 3, 0, 5, "37.50000", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 10, 6, 1, 3, "60.00000"]},
                     None,
                 ],
                 "file_11.py": [
                     11,
                     [0, 22, 8, 5, 9, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 23, 15, 1, 7, "65.21739"]},
                     None,
                 ],
                 "file_12.py": [
                     12,
                     [0, 12, 4, 3, 5, "33.33333", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 14, 8, 0, 6, "57.14286"]},
                     None,
                 ],
                 "file_13.py": [
                     13,
                     [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 15, 9, 0, 6, "60.00000"]},
                     None,
                 ],
                 "file_14.py": [
                     14,
                     [0, 22, 8, 2, 12, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 4}, "3": [0, 23, 13, 0, 10, "56.52174"]},
                     None,
                 ],
             },
@@ -3046,23 +3106,25 @@ class TestReportService(BaseTestCase):
                     complexity_total=2,
                     diff=0,
                 ),
-                "session_totals": [
-                    ReportTotals(
-                        files=0,
-                        lines=8,
-                        hits=5,
-                        misses=3,
-                        partials=0,
-                        coverage="62.50000",
-                        branches=0,
-                        methods=0,
-                        messages=0,
-                        sessions=0,
-                        complexity=10,
-                        complexity_total=2,
-                        diff=0,
-                    )
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        ReportTotals(
+                            files=0,
+                            lines=8,
+                            hits=5,
+                            misses=3,
+                            partials=0,
+                            coverage="62.50000",
+                            branches=0,
+                            methods=0,
+                            messages=0,
+                            sessions=0,
+                            complexity=10,
+                            complexity_total=2,
+                            diff=0,
+                        )
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
@@ -3083,23 +3145,25 @@ class TestReportService(BaseTestCase):
                     complexity_total=0,
                     diff=0,
                 ),
-                "session_totals": [
-                    ReportTotals(
-                        files=0,
-                        lines=2,
-                        hits=1,
-                        misses=0,
-                        partials=1,
-                        coverage="50.00000",
-                        branches=1,
-                        methods=0,
-                        messages=0,
-                        sessions=0,
-                        complexity=0,
-                        complexity_total=0,
-                        diff=0,
-                    )
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        ReportTotals(
+                            files=0,
+                            lines=2,
+                            hits=1,
+                            misses=0,
+                            partials=1,
+                            coverage="50.00000",
+                            branches=1,
+                            methods=0,
+                            messages=0,
+                            sessions=0,
+                            complexity=0,
+                            complexity_total=0,
+                            diff=0,
+                        )
+                    ]
+                ),
                 "diff_totals": None,
             },
         ]
@@ -3180,23 +3244,25 @@ class TestReportService(BaseTestCase):
                     complexity_total=2,
                     diff=0,
                 ),
-                "session_totals": [
-                    ReportTotals(
-                        files=0,
-                        lines=8,
-                        hits=5,
-                        misses=3,
-                        partials=0,
-                        coverage="62.50000",
-                        branches=0,
-                        methods=0,
-                        messages=0,
-                        sessions=0,
-                        complexity=10,
-                        complexity_total=2,
-                        diff=0,
-                    )
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        ReportTotals(
+                            files=0,
+                            lines=8,
+                            hits=5,
+                            misses=3,
+                            partials=0,
+                            coverage="62.50000",
+                            branches=0,
+                            methods=0,
+                            messages=0,
+                            sessions=0,
+                            complexity=10,
+                            complexity_total=2,
+                            diff=0,
+                        )
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
@@ -3217,23 +3283,25 @@ class TestReportService(BaseTestCase):
                     complexity_total=0,
                     diff=0,
                 ),
-                "session_totals": [
-                    ReportTotals(
-                        files=0,
-                        lines=2,
-                        hits=1,
-                        misses=0,
-                        partials=1,
-                        coverage="50.00000",
-                        branches=1,
-                        methods=0,
-                        messages=0,
-                        sessions=0,
-                        complexity=0,
-                        complexity_total=0,
-                        diff=0,
-                    )
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        ReportTotals(
+                            files=0,
+                            lines=2,
+                            hits=1,
+                            misses=0,
+                            partials=1,
+                            coverage="50.00000",
+                            branches=1,
+                            methods=0,
+                            messages=0,
+                            sessions=0,
+                            complexity=0,
+                            complexity_total=0,
+                            diff=0,
+                        )
+                    ]
+                ),
                 "diff_totals": None,
             },
         ]
@@ -3242,13 +3310,16 @@ class TestReportService(BaseTestCase):
                 "file_1.go": [
                     0,
                     [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                    [[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]],
+                    {
+                        "meta": {"session_count": 1},
+                        "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
+                    },
                     None,
                 ],
                 "file_2.py": [
                     1,
                     [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                    [[0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 1}, "0": [0, 2, 1, 0, 1, "50.00000", 1]},
                     None,
                 ],
             },
@@ -3417,23 +3488,25 @@ class TestReportService(BaseTestCase):
                     complexity_total=2,
                     diff=0,
                 ),
-                "session_totals": [
-                    ReportTotals(
-                        files=0,
-                        lines=8,
-                        hits=5,
-                        misses=3,
-                        partials=0,
-                        coverage="62.50000",
-                        branches=0,
-                        methods=0,
-                        messages=0,
-                        sessions=0,
-                        complexity=10,
-                        complexity_total=2,
-                        diff=0,
-                    )
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        ReportTotals(
+                            files=0,
+                            lines=8,
+                            hits=5,
+                            misses=3,
+                            partials=0,
+                            coverage="62.50000",
+                            branches=0,
+                            methods=0,
+                            messages=0,
+                            sessions=0,
+                            complexity=10,
+                            complexity_total=2,
+                            diff=0,
+                        )
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
@@ -3454,24 +3527,26 @@ class TestReportService(BaseTestCase):
                     complexity_total=0,
                     diff=0,
                 ),
-                "session_totals": [
-                    None,
-                    ReportTotals(
-                        files=0,
-                        lines=1,
-                        hits=1,
-                        misses=0,
-                        partials=0,
-                        coverage="100",
-                        branches=0,
-                        methods=0,
-                        messages=0,
-                        sessions=0,
-                        complexity=0,
-                        complexity_total=0,
-                        diff=0,
-                    ),
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        ReportTotals(
+                            files=0,
+                            lines=1,
+                            hits=1,
+                            misses=0,
+                            partials=0,
+                            coverage="100",
+                            branches=0,
+                            methods=0,
+                            messages=0,
+                            sessions=0,
+                            complexity=0,
+                            complexity_total=0,
+                            diff=0,
+                        ),
+                    ]
+                ),
                 "diff_totals": None,
             },
         ]
@@ -3480,13 +3555,16 @@ class TestReportService(BaseTestCase):
                 "file_1.go": [
                     0,
                     [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                    [[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]],
+                    {
+                        "meta": {"session_count": 1},
+                        "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
+                    },
                     None,
                 ],
                 "poultry.c": [
                     1,
                     [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                    [None, [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
+                    {"meta": {"session_count": 2}, "1": [0, 1, 1, 0, 0, "100"]},
                     None,
                 ],
             },
@@ -3705,180 +3783,210 @@ class TestReportService(BaseTestCase):
                 "filename": "file_00.py",
                 "file_index": 0,
                 "file_totals": [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_01.py",
                 "file_index": 1,
                 "file_totals": [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_10.py",
                 "file_index": 10,
                 "file_totals": [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_11.py",
                 "file_index": 11,
                 "file_totals": [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_12.py",
                 "file_index": 12,
                 "file_totals": [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_13.py",
                 "file_index": 13,
                 "file_totals": [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_14.py",
                 "file_index": 14,
                 "file_totals": [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_02.py",
                 "file_index": 2,
                 "file_totals": [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_03.py",
                 "file_index": 3,
                 "file_totals": [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_04.py",
                 "file_index": 4,
                 "file_totals": [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_05.py",
                 "file_index": 5,
                 "file_totals": [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_06.py",
                 "file_index": 6,
                 "file_totals": [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_07.py",
                 "file_index": 7,
                 "file_totals": [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_08.py",
                 "file_index": 8,
                 "file_totals": [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
             {
                 "filename": "file_09.py",
                 "file_index": 9,
                 "file_totals": [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": [
-                    None,
-                    None,
-                    None,
-                    [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                ],
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    [
+                        None,
+                        None,
+                        None,
+                        [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+                    ]
+                ),
                 "diff_totals": None,
             },
         ]

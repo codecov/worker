@@ -54,7 +54,7 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
     )
 
 
-association_table = Table(
+uploadflagmembership = Table(
     "reports_uploadflagmembership",
     CodecovBaseModel.metadata,
     Column("upload_id", types.Integer, ForeignKey("reports_upload.id")),
@@ -86,7 +86,7 @@ class Upload(CodecovBaseModel, MixinBaseClass):
     state = Column(types.String(100), nullable=False)
     storage_path = Column(types.Text, nullable=False)
     order_number = Column(types.Integer)
-    flags = relationship(RepositoryFlag, secondary=association_table)
+    flags = relationship(RepositoryFlag, secondary=uploadflagmembership)
     totals = relationship(
         "UploadLevelTotals",
         back_populates="upload",
@@ -171,3 +171,17 @@ class CompareFlag(MixinBaseClass, CodecovBaseModel):
 
     commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
     repositoryflag = relationship(RepositoryFlag, foreign_keys=[repositoryflag_id])
+
+
+class CompareComponent(MixinBaseClass, CodecovBaseModel):
+    __tablename__ = "compare_componentcomparison"
+
+    commit_comparison_id = Column(
+        types.BigInteger, ForeignKey("compare_commitcomparison.id")
+    )
+    component_id = Column(types.String(100), nullable=False)
+    head_totals = Column(postgresql.JSON)
+    base_totals = Column(postgresql.JSON)
+    patch_totals = Column(postgresql.JSON)
+
+    commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
