@@ -153,6 +153,10 @@ class ReportService(object):
                 commit, report_code=report_code
             )
             if actual_report is not None:
+                log.info(
+                    "Backfilling reports tables from commits.report",
+                    extra=dict(commitid=commit.commitid),
+                )
                 # This case means the report exists in our system, it was just not saved
                 #   yet into the new models therefore it needs backfilling
                 self.save_full_report(commit, actual_report)
@@ -338,11 +342,12 @@ class ReportService(object):
         if not commit_report:
             return sessions
 
-        for upload in commit_report.uploads:
-            # TODO: make this condition part of the uplodas query
-            if upload.state != "processed" and upload.state != "complete":
-                continue
-
+        db_session = commit.get_db_session()
+        report_uploads = db_session.query(Upload).filter(
+            (Upload.report_id == commit_report.id_)
+            & ((Upload.state == "processed") | (Upload.state == "complete"))
+        )
+        for upload in report_uploads:
             session = self.build_session(upload)
             if session.session_type == SessionType.carriedforward:
                 carryforward_sessions[upload.order_number] = session
@@ -419,6 +424,10 @@ class ReportService(object):
     ) -> Optional[Report]:
         commit_report = commit.report
         if commit_report is None:
+            log.warning(
+                "Building report from legacy data",
+                extra=dict(commitid=commit.commitid),
+            )
             return self.get_existing_report_for_commit_from_legacy_data(
                 commit, report_class=report_class, report_code=report_code
             )
