@@ -1,20 +1,4 @@
-import os
-
-from database.tests.factories import OwnerFactory, PullFactory, RepositoryFactory
-from services.urls import append_tracking_params_to_urls, get_pull_url
-
-
-def test_get_pull_url_returns_new_compare_url_for_whitelisted_owners():
-    owner = OwnerFactory.create(ownerid=10, service="github")
-
-    os.environ["NEW_COMPARE_WHITELISTED_OWNERS"] = f"{owner.ownerid}, 55, 34"
-
-    repo = RepositoryFactory.create(owner=owner)
-    pull = PullFactory.create(repository=repo)
-    assert (
-        get_pull_url(pull)
-        == f"https://app.codecov.io/gh/{owner.username}/{repo.name}/compare/{pull.pullid}"
-    )
+from services.urls import append_tracking_params_to_urls
 
 
 def test_append_tracking_params_to_urls():

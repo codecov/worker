@@ -7,7 +7,7 @@ class TestGitterkNotifier(object):
     def test_build_payload_without_special_config(
         self, dbsession, mock_configuration, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         notifier = GitterNotifier(
             repository=sample_comparison.head.commit.repository,

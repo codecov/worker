@@ -6,7 +6,7 @@ class TestHipchatkNotifier(object):
         self, dbsession, mock_configuration, sample_comparison
     ):
         url = "test.example.br"
-        mock_configuration.params["setup"]["codecov_url"] = url
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = url
         comparison = sample_comparison
         notifier = HipchatNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -35,7 +35,7 @@ class TestHipchatkNotifier(object):
     ):
         sample_comparison.base.report = None
         url = "test.example.br"
-        mock_configuration.params["setup"]["codecov_url"] = url
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = url
         comparison = sample_comparison
         notifier = HipchatNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -61,7 +61,7 @@ class TestHipchatkNotifier(object):
 
     def test_build_payload_with_card(self, sample_comparison, mock_configuration):
         url = "test.example.br"
-        mock_configuration.params["setup"]["codecov_url"] = url
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = url
         notifier = HipchatNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
