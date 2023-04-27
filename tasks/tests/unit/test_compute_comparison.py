@@ -523,3 +523,58 @@ class TestComputeComparisonTask(object):
             "complexity_total": None,
             "diff": 0,
         }
+
+    @pytest.mark.asyncio
+    async def test_compute_component_comparisons_empty_diff(
+        self,
+        dbsession,
+        mocker,
+        mock_repo_provider,
+        mock_storage,
+        sample_report_with_multiple_flags,
+    ):
+        mocker.patch.object(
+            ReadOnlyReport, "should_load_rust_version", return_value=True
+        )
+        mocker.patch.object(
+            ReportService,
+            "get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(
+                sample_report_with_multiple_flags
+            ),
+        )
+        mock_repo_provider.get_compare.return_value = {"diff": {"files": {}}}
+
+        get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
+        get_current_yaml.return_value = UserYaml(
+            {
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "unit_flags", "flag_regexes": [r"unit.*"]},
+                    ]
+                }
+            }
+        )
+
+        comparison = CompareCommitFactory.create()
+        dbsession.add(comparison)
+        dbsession.flush()
+
+        task = ComputeComparisonTask()
+        res = await task.run_async(dbsession, comparison.id)
+        assert res == {"successful": True}
+
+        component_comparisons = (
+            dbsession.query(CompareComponent)
+            .filter_by(commit_comparison_id=comparison.id)
+            .all()
+        )
+        assert len(component_comparisons) == 2
+        for comparison in component_comparisons:
+            assert comparison.patch_totals == None
+
+        flag_comparisons = dbsession.query(CompareFlag).all()
+        assert len(flag_comparisons) == 2
+        for comparison in flag_comparisons:
+            assert comparison.patch_totals == None
