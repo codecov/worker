@@ -9,7 +9,7 @@ class TestWebhookNotifier(object):
     def test_build_commit_payload(
         self, dbsession, mock_configuration, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         repository = RepositoryFactory.create(
             owner__username="TestWebhookNotifier", name="test_build_payload"
         )
@@ -74,7 +74,7 @@ class TestWebhookNotifier(object):
             username=username_in_db, service="gitlab"
         )
 
-        mock_configuration.params["setup"]["codecov_url"] = "codecov.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "codecov.io"
         base_commit = sample_comparison.base.commit
         head_commit = sample_comparison.head.commit
         pull = sample_comparison.pull
@@ -137,7 +137,7 @@ class TestWebhookNotifier(object):
             repository=repository, branch="new_branch", author=None
         )
         head_full_commit = FullCommit(commit=head_commit, report=sample_report)
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         dbsession.add(head_commit)
         dbsession.flush()
         notifier = WebhookNotifier(
@@ -175,7 +175,7 @@ class TestWebhookNotifier(object):
         assert result == expected_result
 
     def test_build_payload(self, dbsession, mock_configuration, sample_comparison):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         repository = RepositoryFactory.create(
             owner__username="TestWebhookNotifier", name="test_build_payload"
         )
@@ -298,7 +298,7 @@ class TestWebhookNotifier(object):
     def test_build_payload_higher_precision(
         self, dbsession, mock_configuration, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         repository = RepositoryFactory.create(
             owner__username="TestWebhookNotifier", name="test_build_payload"
         )
@@ -421,7 +421,7 @@ class TestWebhookNotifier(object):
     def test_build_payload_without_pull(
         self, sample_comparison_without_pull, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_pull
         commit = sample_comparison_without_pull.head.commit
         base_commit = comparison.base.commit
@@ -528,7 +528,7 @@ class TestWebhookNotifier(object):
     def test_build_payload_without_base_report(
         self, sample_comparison_without_base_report, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_report
         commit = comparison.head.commit
         repository = commit.repository
@@ -629,7 +629,7 @@ class TestWebhookNotifier(object):
     def test_build_payload_without_base(
         self, sample_comparison_without_base_with_pull, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_with_pull
         commit = comparison.head.commit
         repository = commit.repository

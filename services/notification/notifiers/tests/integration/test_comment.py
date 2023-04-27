@@ -322,7 +322,10 @@ def sample_comparison_for_limited_upload(
 class TestCommentNotifierIntegration(object):
     @pytest.mark.asyncio
     async def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
-        mock_configuration._params["setup"] = {"codecov_url": None}
+        mock_configuration._params["setup"] = {
+            "codecov_url": None,
+            "codecov_dashboard_url": None,
+        }
         comparison = sample_comparison
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -336,13 +339,13 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
-            "> Merging [#15](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) (2e2600a) into [master](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) (4535be1) will **increase** coverage by `10.00%`.",
+            "## [Codecov](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
+            "> Merging [#15](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) (2e2600a) into [master](https://app.codecov.io/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) (4535be1) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
             ":mega: This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)",
             "",
-            "[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)",
+            "[![Impacted file tree graph](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)",
             "",
             "```diff",
             "@@              Coverage Diff              @@",
@@ -367,14 +370,14 @@ class TestCommentNotifierIntegration(object):
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            "[see 2 files with indirect coverage changes](None/gh/ThiagoCodecov/example-python/pull/15/indirect-changes?src=pr&el=tree-more)",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/indirect-changes?src=pr&el=tree-more)",
             "",
             "------",
             "",
-            "[Continue to review full report in Codecov by Sentry](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).",
+            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).",
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-            "> Powered by [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=footer). Last update [30cc1ed...2e2600a](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "> Powered by [Codecov](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=footer). Last update [30cc1ed...2e2600a](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
@@ -464,7 +467,10 @@ class TestCommentNotifierIntegration(object):
     async def test_notify_gitlab(
         self, sample_comparison_gitlab, codecov_vcr, mock_configuration
     ):
-        mock_configuration._params["setup"] = {"codecov_url": None}
+        mock_configuration._params["setup"] = {
+            "codecov_url": None,
+            "codecov_dashboard_url": None,
+        }
         comparison = sample_comparison_gitlab
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -478,11 +484,11 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1) Report",
-            "> Merging [#11](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc) (46ce216) into [master](None/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4?el=desc) (842f7c8) will **increase** coverage by `10.00%`.",
+            "## [Codecov](https://app.codecov.io/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=h1) Report",
+            "> Merging [#11](https://app.codecov.io/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=desc) (46ce216) into [master](https://app.codecov.io/gl/l00p_group_1:subgroup1/proj-b/commit/842f7c86a5d383fee0ece8cf2a97a1d8cdfeb7d4?el=desc) (842f7c8) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
-            "[![Impacted file tree graph](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree)",
+            "[![Impacted file tree graph](https://app.codecov.io/gl/l00p_group_1:subgroup1/proj-b/pull/11/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=tree)",
             "",
             "```diff",
             "@@              Coverage Diff              @@",
@@ -507,14 +513,14 @@ class TestCommentNotifierIntegration(object):
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            "[see 2 files with indirect coverage changes](None/gl/l00p_group_1:subgroup1/proj-b/pull/11/indirect-changes?src=pr&el=tree-more)",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gl/l00p_group_1:subgroup1/proj-b/pull/11/indirect-changes?src=pr&el=tree-more)",
             "",
             "------",
             "",
-            "[Continue to review full report in Codecov by Sentry](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=continue).",
+            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=continue).",
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-            "> Powered by [Codecov](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=footer). Last update [842f7c8...46ce216](None/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "> Powered by [Codecov](https://app.codecov.io/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=footer). Last update [842f7c8...46ce216](https://app.codecov.io/gl/l00p_group_1:subgroup1/proj-b/pull/11?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
@@ -527,7 +533,7 @@ class TestCommentNotifierIntegration(object):
     async def test_notify_new_layout(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
-        mock_configuration._params["setup"] = {"codecov_url": None}
+        mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
         comparison = sample_comparison
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -544,15 +550,15 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
+            "## [Codecov](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
             "Patch coverage has no change and project coverage change: **`+10.00`** :tada:",
-            "> Comparison is base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) 50.00% compared to head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) 60.00%.",
+            "> Comparison is base [(`4535be1`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) 50.00% compared to head [(`2e2600a`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) 60.00%.",
             "",
             ":mega: This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)",
             "",
             "<details><summary>Additional details and impacted files</summary>\n",
             "",
-            "[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)",
+            "[![Impacted file tree graph](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)",
             "",
             "```diff",
             "@@              Coverage Diff              @@",
@@ -577,11 +583,11 @@ class TestCommentNotifierIntegration(object):
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            "[see 2 files with indirect coverage changes](None/gh/ThiagoCodecov/example-python/pull/15/indirect-changes?src=pr&el=tree-more)",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/indirect-changes?src=pr&el=tree-more)",
             "",
             "</details>",
             "",
-            "[:umbrella: View full report in Codecov by Sentry](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
@@ -596,7 +602,7 @@ class TestCommentNotifierIntegration(object):
     async def test_notify_with_components(
         self, codecove2e_comparison, codecov_vcr, mock_configuration
     ):
-        mock_configuration._params["setup"] = {"codecov_url": None}
+        mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
         comparison = codecove2e_comparison
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
@@ -619,15 +625,15 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](None/gh/codecove2e/example-python/pull/4?src=pr&el=h1) Report",
+            "## [Codecov](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=h1) Report",
             "Patch coverage has no change and project coverage change: **`+10.00`** :tada:",
-            "> Comparison is base [(`93189ce`)](None/gh/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654?el=desc) 50.00% compared to head [(`8589c19`)](None/gh/codecove2e/example-python/pull/4?src=pr&el=desc) 60.00%.",
+            "> Comparison is base [(`93189ce`)](https://app.codecov.io/gh/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654?el=desc) 50.00% compared to head [(`8589c19`)](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=desc) 60.00%.",
             "",
             ":mega: This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)",
             "",
             "<details><summary>Additional details and impacted files</summary>\n",
             "",
-            "[![Impacted file tree graph](None/gh/codecove2e/example-python/pull/4/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree)",
+            "[![Impacted file tree graph](https://app.codecov.io/gh/codecove2e/example-python/pull/4/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=tree)",
             "",
             "```diff",
             "@@              Coverage Diff              @@",
@@ -652,7 +658,7 @@ class TestCommentNotifierIntegration(object):
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            "[see 2 files with indirect coverage changes](None/gh/codecove2e/example-python/pull/4/indirect-changes?src=pr&el=tree-more)",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/codecove2e/example-python/pull/4/indirect-changes?src=pr&el=tree-more)",
             "",
             "| Components | Coverage Δ | |",
             "|---|---|---|",
@@ -660,7 +666,7 @@ class TestCommentNotifierIntegration(object):
             "",
             "</details>",
             "",
-            "[:umbrella: View full report in Codecov by Sentry](None/gh/codecove2e/example-python/pull/4?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=continue).   ",
             ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]

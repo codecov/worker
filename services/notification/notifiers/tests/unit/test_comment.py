@@ -685,14 +685,14 @@ class TestCommentNotifier(object):
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
         expected_result = [
-            f"## [Codecov](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             f"> The diff coverage is `n/a`.",
             f"",
-            f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Impacted Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
         ]
         res = await notifier.create_message(comparison, pull_dict, {"layout": "files"})
@@ -842,16 +842,16 @@ class TestCommentNotifier(object):
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
         expected_result = [
-            f"## [Codecov](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"> Merging [#{pull.pullid}](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"> Merging [#{pull.pullid}](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             "> The diff coverage is `n/a`.",
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
-            f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Impacted Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
             "",
         ]
@@ -866,7 +866,7 @@ class TestCommentNotifier(object):
     async def test_build_message(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -940,7 +940,7 @@ class TestCommentNotifier(object):
         mock_repo_provider,
         sample_comparison_bunch_empty_flags,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_bunch_empty_flags
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -983,7 +983,7 @@ class TestCommentNotifier(object):
     async def test_build_message_more_sections(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         pull = comparison.pull
         all_sections = [
@@ -1189,7 +1189,7 @@ class TestCommentNotifier(object):
     async def test_build_message_hide_complexity(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1263,7 +1263,7 @@ class TestCommentNotifier(object):
         mock_repo_provider,
         sample_comparison_without_base_report,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_report
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1334,7 +1334,7 @@ class TestCommentNotifier(object):
         mock_repo_provider,
         sample_comparison_without_base_with_pull,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_with_pull
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1402,7 +1402,7 @@ class TestCommentNotifier(object):
         mock_repo_provider,
         sample_comparison_no_change,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_no_change
         pull = comparison.pull
 
@@ -1479,7 +1479,7 @@ class TestCommentNotifier(object):
         mock_repo_provider,
         sample_comparison_negative_change,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_negative_change
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1556,7 +1556,7 @@ class TestCommentNotifier(object):
     ):
         # This example was taken from a real PR in which we had issues with rounding
         # That's why the numbers will be.... dramatic
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_negative_change
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1623,7 +1623,7 @@ class TestCommentNotifier(object):
     ):
         # This example was taken from a real PR in which we had issues with rounding
         # That's why the numbers will be.... dramatic
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_negative_change
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1671,7 +1671,7 @@ class TestCommentNotifier(object):
     async def test_build_message_show_carriedforward_flags_no_cf_coverage(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1747,7 +1747,7 @@ class TestCommentNotifier(object):
         sample_comparison_coverage_carriedforward,
     ):
         # Without flags table
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_coverage_carriedforward
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1807,7 +1807,7 @@ class TestCommentNotifier(object):
         assert result == expected_result
 
         # With flags table
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_coverage_carriedforward
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1883,7 +1883,7 @@ class TestCommentNotifier(object):
         mock_repo_provider,
         sample_comparison_coverage_carriedforward,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_coverage_carriedforward
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -1959,7 +1959,7 @@ class TestCommentNotifier(object):
         mock_repo_provider,
         sample_comparison_coverage_carriedforward,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_coverage_carriedforward
         pull = comparison.pull
         notifier = CommentNotifier(
@@ -2060,7 +2060,7 @@ class TestCommentNotifier(object):
         sample_report_without_flags,
         sample_comparison,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         pull = sample_comparison.pull
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -3117,7 +3117,7 @@ class TestCommentNotifier(object):
     async def test_message_hide_details_github(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         comparison.repository_service.service = "github"
         pull = comparison.pull
@@ -3152,7 +3152,7 @@ class TestCommentNotifier(object):
     async def test_message_announcements_only(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         comparison.repository_service.service = "github"
         pull = comparison.pull
@@ -3189,7 +3189,7 @@ class TestCommentNotifier(object):
     async def test_message_hide_details_bitbucket(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         comparison.repository_service.service = "bitbucket"
         pull = comparison.pull
@@ -3819,16 +3819,16 @@ class TestCommentNotifierInNewLayout(object):
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
         expected_result = [
-            f"## [Codecov](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"Patch coverage has no change and project coverage change: **`+10.00`** :tada:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
-            f"| [Impacted Files](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Impacted Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](https://codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
             "",
         ]
@@ -3847,7 +3847,7 @@ class TestCommentNotifierInNewLayout(object):
         mock_repo_provider,
         sample_comparison_without_base_with_pull,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_with_pull
         comparison.repository_service.service = "github"
         pull = comparison.pull
@@ -3910,7 +3910,7 @@ class TestCommentNotifierInNewLayout(object):
         mock_repo_provider,
         sample_comparison_without_base_report,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_report
         comparison.repository_service.service = "github"
         pull = comparison.pull
@@ -3979,7 +3979,7 @@ class TestCommentNotifierInNewLayout(object):
         mock_repo_provider,
         sample_comparison_head_and_pull_head_differ,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_head_and_pull_head_differ
         comparison.repository_service.service = "github"
         pull = comparison.pull
@@ -4047,7 +4047,7 @@ class TestCommentNotifierInNewLayout(object):
         mock_repo_provider,
         sample_comparison_head_and_pull_head_differ,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_head_and_pull_head_differ
         comparison.repository_service.service = "github"
         pull = comparison.pull
@@ -4127,7 +4127,7 @@ class TestCommentNotifierInNewLayout(object):
         mock_repo_provider,
         sample_comparison_coverage_carriedforward,
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_coverage_carriedforward
         pull = comparison.pull
         notifier = CommentNotifier(
