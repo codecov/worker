@@ -5,6 +5,7 @@ import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.utils.sessions import Session
+from shared.yaml import UserYaml
 
 from database.models.timeseries import Dataset, Measurement, MeasurementName
 from database.tests.factories import CommitFactory, RepositoryFactory
@@ -45,6 +46,29 @@ def sample_report():
 
 
 @pytest.fixture
+def sample_report_for_components():
+    report = Report()
+    first_file = ReportFile("poker.py")
+    first_file.append(1, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+    first_file.append(2, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+    second_file = ReportFile("folder/poker2.py")
+    second_file.append(3, ReportLine.create(coverage=0, sessions=[[0, 0]]))
+    second_file.append(4, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+    third_file = ReportFile("random.go")
+    third_file.append(5, ReportLine.create(coverage=0, sessions=[[0, 0]]))
+    third_file.append(6, ReportLine.create(coverage=0, sessions=[[0, 0]]))
+    third_file.append(8, ReportLine.create(coverage=0, sessions=[[0, 1]]))
+    third_file.append(7, ReportLine.create(coverage=1, sessions=[[0, 0]]))
+    report.append(first_file)
+    report.append(second_file)
+    report.append(third_file)
+    report.add_session(
+        Session(flags=["test-flag-123", "test-flag-456", "random-flago-987"])
+    )
+    return report
+
+
+@pytest.fixture
 def repository(dbsession):
     repository = RepositoryFactory.create()
     dbsession.add(repository)
@@ -62,6 +86,12 @@ def repository(dbsession):
         backfilled=False,
     )
     dbsession.add(flag_coverage_dataset)
+    component_coverage_dataset = DatasetFactory.create(
+        repository_id=repository.repoid,
+        name=MeasurementName.component_coverage.value,
+        backfilled=False,
+    )
+    dbsession.add(component_coverage_dataset)
     dbsession.flush()
 
     return repository
@@ -148,6 +178,7 @@ class TestTimeseriesService(object):
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
             flag_id=None,
+            measurable_id=commit.repoid,
             commit_sha=commit.commitid,
             timestamp=commit.timestamp,
             branch="testing",
@@ -284,6 +315,7 @@ class TestTimeseriesService(object):
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
             flag_id=repository_flag1.id,
+            measurable_id=repository_flag1.id,
             commit_sha=commit.commitid,
             timestamp=commit.timestamp,
             branch="testing",
@@ -297,6 +329,7 @@ class TestTimeseriesService(object):
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
             flag_id=repository_flag2.id,
+            measurable_id=repository_flag2.id,
             commit_sha=commit.commitid,
             timestamp=commit.timestamp,
             branch="testing",
@@ -313,7 +346,7 @@ class TestTimeseriesService(object):
                 name=MeasurementName.flag_coverage.value,
                 commit_sha=commit.commitid,
                 timestamp=commit.timestamp,
-                flag_id=repository_flag1.id,
+                measurable_id=f"{repository_flag1.id}",
             )
             .one_or_none()
         )
@@ -336,7 +369,7 @@ class TestTimeseriesService(object):
                 name=MeasurementName.flag_coverage.value,
                 commit_sha=commit.commitid,
                 timestamp=commit.timestamp,
-                flag_id=repository_flag2.id,
+                measurable_id=f"{repository_flag2.id}",
             )
             .one_or_none()
         )
@@ -352,6 +385,255 @@ class TestTimeseriesService(object):
         ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert measurement.branch == "foo"
         assert measurement.value == 100.0
+
+    def test_commit_measurement_insert_components(
+        self, dbsession, sample_report_for_components, repository, mocker
+    ):
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch(
+            "services.report.ReportService.get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(
+                sample_report_for_components
+            ),
+        )
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+
+        get_repo_yaml = mocker.patch("services.timeseries.get_repo_yaml")
+        yaml_dict = {
+            "component_management": {
+                "default_rules": {
+                    "paths": [r".*\.go"],
+                    "flag_regexes": [r"test-flag-*"],
+                },
+                "individual_components": [
+                    {"component_id": "python_files", "paths": [r".*\.py"]},
+                    {"component_id": "rules_from_default"},
+                    {
+                        "component_id": "i_have_flags",
+                        "flag_regexes": [r"random-.*"],
+                    },
+                    {
+                        "component_id": "all_settings",
+                        "name": "all settings",
+                        "flag_regexes": [],
+                        "paths": [r"folder/*"],
+                    },
+                    {
+                        "component_id": "path_not_found",
+                        "name": "no expected covarage",
+                        "flag_regexes": [],
+                        "paths": ["asdfasdf"],
+                    },
+                    {
+                        "component_id": "empty_path",
+                        "name": "no expected covarage",
+                        "flag_regexes": [],
+                        "paths": [],
+                    },
+                ],
+            }
+        }
+        get_repo_yaml.return_value = UserYaml(yaml_dict)
+        save_commit_measurements(commit)
+
+        # 1 for coverage, 3 for flags, 4 for valid components
+        assert len(dbsession.query(Measurement).all()) == 8
+
+        python_file_measurement = (
+            dbsession.query(Measurement)
+            .filter_by(
+                name=MeasurementName.component_coverage.value,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+                measurable_id="python_files",
+            )
+            .one_or_none()
+        )
+        assert python_file_measurement
+        assert python_file_measurement.name == MeasurementName.component_coverage.value
+        assert python_file_measurement.owner_id == commit.repository.ownerid
+        assert python_file_measurement.repo_id == commit.repoid
+        assert python_file_measurement.measurable_id == "python_files"
+        assert python_file_measurement.commit_sha == commit.commitid
+        assert python_file_measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert python_file_measurement.branch == "foo"
+        assert python_file_measurement.value == 75.0
+
+        default_component_settings_measurement = (
+            dbsession.query(Measurement)
+            .filter_by(
+                name=MeasurementName.component_coverage.value,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+                measurable_id="rules_from_default",
+            )
+            .one_or_none()
+        )
+        assert default_component_settings_measurement
+        assert (
+            default_component_settings_measurement.name
+            == MeasurementName.component_coverage.value
+        )
+        assert (
+            default_component_settings_measurement.owner_id == commit.repository.ownerid
+        )
+        assert default_component_settings_measurement.repo_id == commit.repoid
+        assert (
+            default_component_settings_measurement.measurable_id == "rules_from_default"
+        )
+        assert default_component_settings_measurement.commit_sha == commit.commitid
+        assert default_component_settings_measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert default_component_settings_measurement.branch == "foo"
+        assert default_component_settings_measurement.value == 25.0
+
+        manual_flags_measurements = (
+            dbsession.query(Measurement)
+            .filter_by(
+                name=MeasurementName.component_coverage.value,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+                measurable_id="i_have_flags",
+            )
+            .one_or_none()
+        )
+        assert manual_flags_measurements
+        assert (
+            manual_flags_measurements.name == MeasurementName.component_coverage.value
+        )
+        assert manual_flags_measurements.owner_id == commit.repository.ownerid
+        assert manual_flags_measurements.repo_id == commit.repoid
+        assert manual_flags_measurements.measurable_id == "i_have_flags"
+        assert manual_flags_measurements.commit_sha == commit.commitid
+        assert manual_flags_measurements.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert manual_flags_measurements.branch == "foo"
+        assert manual_flags_measurements.value == 25.0
+
+        all_settings_measurements = (
+            dbsession.query(Measurement)
+            .filter_by(
+                name=MeasurementName.component_coverage.value,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+                measurable_id="all_settings",
+            )
+            .one_or_none()
+        )
+        assert all_settings_measurements
+        assert (
+            all_settings_measurements.name == MeasurementName.component_coverage.value
+        )
+        assert all_settings_measurements.owner_id == commit.repository.ownerid
+        assert all_settings_measurements.repo_id == commit.repoid
+        assert all_settings_measurements.measurable_id == "all_settings"
+        assert all_settings_measurements.commit_sha == commit.commitid
+        assert all_settings_measurements.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert all_settings_measurements.branch == "foo"
+        assert all_settings_measurements.value == 50.0
+
+        path_not_found_measurements = (
+            dbsession.query(Measurement)
+            .filter_by(
+                name=MeasurementName.component_coverage.value,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+                measurable_id="path_not_found",
+            )
+            .one_or_none()
+        )
+        assert path_not_found_measurements == None
+
+        empty_path_measurements = (
+            dbsession.query(Measurement)
+            .filter_by(
+                name=MeasurementName.component_coverage.value,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+                measurable_id="empty_path",
+            )
+            .one_or_none()
+        )
+        assert empty_path_measurements == None
+
+    def test_commit_measurement_update_component(
+        self, dbsession, sample_report_for_components, repository, mocker
+    ):
+        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch(
+            "services.report.ReportService.get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(
+                sample_report_for_components
+            ),
+        )
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+
+        get_repo_yaml = mocker.patch("services.timeseries.get_repo_yaml")
+        yaml_dict = {
+            "component_management": {
+                "individual_components": [
+                    {
+                        "component_id": "test-component-123",
+                        "name": "test component",
+                        "flag_regexes": ["random-flago-987"],
+                        "paths": [r"folder/*"],
+                    },
+                ],
+            }
+        }
+        get_repo_yaml.return_value = UserYaml(yaml_dict)
+
+        measurement = MeasurementFactory.create(
+            name=MeasurementName.component_coverage.value,
+            owner_id=commit.repository.ownerid,
+            repo_id=commit.repoid,
+            flag_id=None,
+            measurable_id="test-component-123",
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            branch="testing",
+            value=0,
+        )
+        dbsession.add(measurement)
+        dbsession.flush()
+
+        save_commit_measurements(commit)
+
+        measurements = (
+            dbsession.query(Measurement)
+            .filter_by(
+                name=MeasurementName.component_coverage.value,
+                commit_sha=commit.commitid,
+                timestamp=commit.timestamp,
+                measurable_id="test-component-123",
+            )
+            .all()
+        )
+
+        assert len(measurements) == 1
+        measurement = measurements[0]
+        assert measurement.name == MeasurementName.component_coverage.value
+        assert measurement.owner_id == commit.repository.ownerid
+        assert measurement.repo_id == commit.repoid
+        assert measurement.flag_id == None
+        assert measurement.commit_sha == commit.commitid
+        assert measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert measurement.branch == "foo"
+        assert measurement.value == 50.0
 
     def test_commit_measurement_no_datasets(self, dbsession, mocker):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
@@ -405,6 +687,7 @@ class TestTimeseriesService(object):
         assert [dataset.name for dataset in datasets] == [
             MeasurementName.coverage.value,
             MeasurementName.flag_coverage.value,
+            MeasurementName.component_coverage.value,
         ]
 
         datasets = repository_datasets_query(repository, backfilled=True)
@@ -415,6 +698,7 @@ class TestTimeseriesService(object):
         datasets = repository_datasets_query(repository, backfilled=False)
         assert [dataset.name for dataset in datasets] == [
             MeasurementName.flag_coverage.value,
+            MeasurementName.component_coverage.value,
         ]
 
     def test_backfill_batch_size(self, repository):
@@ -462,7 +746,7 @@ class TestTimeseriesService(object):
 
         assert (
             dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count()
-            == 2
+            == 3
         )
         # repo coverage + 2x flag coverage for each commit
         assert (
