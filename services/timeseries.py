@@ -138,7 +138,7 @@ def save_commit_measurements(
             measurements = []
 
             for component in components:
-                if component.paths:
+                if component.paths or component.flag_regexes:
                     report_and_component_matching_flags = component.get_matching_flags(
                         report.flags.keys()
                     )
