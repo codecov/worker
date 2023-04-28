@@ -43,6 +43,16 @@ class Measurement(TimeseriesBaseModel):
 
     __table_args__ = (
         Index(
+            "timeseries_measurement_noflag_unique",
+            timestamp,
+            owner_id,
+            repo_id,
+            commit_sha,
+            name,
+            unique=True,
+            postgresql_where=flag_id.is_(None),
+        ),
+        Index(
             "timeseries_measurement_flag_unique",
             timestamp,
             owner_id,
@@ -53,26 +63,6 @@ class Measurement(TimeseriesBaseModel):
             unique=True,
             postgresql_where=flag_id.isnot(None),
         ),
-        Index(
-            "timeseries_measurement_measurable_unique",
-            timestamp,
-            owner_id,
-            repo_id,
-            measurable_id,
-            commit_sha,
-            name,
-            unique=True,
-        ),
-        Index(
-            "timeseries_measurement_noflag_unique",
-            timestamp,
-            owner_id,
-            repo_id,
-            commit_sha,
-            name,
-            unique=True,
-            postgresql_where=flag_id.is_(None),
-        ),
     )
 
     __mapper_args__ = {
@@ -81,6 +71,7 @@ class Measurement(TimeseriesBaseModel):
             owner_id,
             repo_id,
             flag_id,
+            measurable_id,
             commit_sha,
             name,
         ]
