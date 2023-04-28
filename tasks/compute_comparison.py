@@ -159,15 +159,15 @@ class ComputeComparisonTask(BaseCodecovTask):
         flag_base_report = comparison_proxy.comparison.base.report.flags.get(flag_name)
         head_totals = None if not flag_head_report else flag_head_report.totals.asdict()
         base_totals = None if not flag_base_report else flag_base_report.totals.asdict()
-        comparison_diff = await comparison_proxy.get_diff()
-        patch_totals = (
-            None
-            if not comparison_diff
-            else flag_head_report.apply_diff(comparison_diff).asdict()
+        totals = dict(
+            head_totals=head_totals, base_totals=base_totals, patch_totals=None
         )
-        return dict(
-            head_totals=head_totals, base_totals=base_totals, patch_totals=patch_totals
-        )
+        diff = await comparison_proxy.get_diff()
+        if diff:
+            patch_totals = flag_head_report.apply_diff(diff)
+            if patch_totals:
+                totals["patch_totals"] = patch_totals.asdict()
+        return totals
 
     def store_flag_comparison(
         self,
@@ -239,9 +239,9 @@ class ComputeComparisonTask(BaseCodecovTask):
         component_comparison.head_totals = filtered.head.report.totals.asdict()
         diff = await comparison_proxy.get_diff()
         if diff:
-            component_comparison.patch_totals = filtered.head.report.apply_diff(
-                diff
-            ).asdict()
+            patch_totals = filtered.head.report.apply_diff(diff)
+            if patch_totals:
+                component_comparison.patch_totals = patch_totals.asdict()
 
         db_session.add(component_comparison)
         db_session.flush()
