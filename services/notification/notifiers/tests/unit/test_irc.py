@@ -5,7 +5,7 @@ from services.notification.notifiers.irc import IRCNotifier
 
 class TestIRCNotifier(object):
     def test_build_payload(self, dbsession, mock_configuration, sample_comparison):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         notifier = IRCNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -47,7 +47,7 @@ class TestIRCNotifier(object):
             socket.timeout,
             socket.timeout,
         ]
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         notifier = IRCNotifier(
             repository=sample_comparison.head.commit.repository,

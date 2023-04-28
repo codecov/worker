@@ -47,8 +47,7 @@ build-enterprise:
 		--label "org.label-schema.build-date"="$(BUILD_DATE)" \
 		--label "org.label-schema.name"="Self-Hosted Worker (no dependencies)" \
 		--label "org.label-schema.vendor"="Codecov" \
-		--label "org.label-schema.version"="${IMAGE_VERSION}" \
-		--squash
+		--label "org.label-schema.version"="${IMAGE_VERSION}"
 
 # CIRCLECI
 # job: enterprise-runtime
@@ -64,8 +63,7 @@ build-enterprise-runtime:
 		--label "org.label-schema.build-date"="$(BUILD_DATE)" \
 		--label "org.label-schema.name"="Self-Hosted Worker" \
 		--label "org.label-schema.vendor"="Codecov" \
-		--label "org.label-schema.version"="${IMAGE_VERSION}" \
-		--squash
+		--label "org.label-schema.version"="${IMAGE_VERSION}"
 
 # CIRCLECI
 # job: test

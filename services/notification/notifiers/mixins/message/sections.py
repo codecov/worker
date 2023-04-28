@@ -50,8 +50,6 @@ def get_section_class_from_layout_name(layout_name):
         return NewHeaderSectionWriter
     if layout_name == "newfooter":
         return NewFooterSectionWriter
-    if layout_name == "feedback":
-        return FeedbackSectionWriter
     if layout_name.startswith("component"):
         return ComponentsSectionWriter
 
@@ -93,11 +91,6 @@ class NewFooterSectionWriter(BaseSectionWriter):
                 else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
             )
         )
-
-
-class FeedbackSectionWriter(BaseSectionWriter):
-    async def do_write_section(*args, **kwargs):
-        yield "Help us with your feedback. Take ten seconds to tell us [how you rate us](https://about.codecov.io/nps). Have a feature suggestion? [Share it here.](https://app.codecov.io/gh/feedback/)"
 
 
 class NewHeaderSectionWriter(BaseSectionWriter):

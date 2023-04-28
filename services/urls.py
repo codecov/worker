@@ -57,7 +57,7 @@ def get_dashboard_base_url() -> str:
 
 def get_commit_url(commit: Commit) -> str:
     return SiteUrls.commit_url.get_url(
-        base_url=get_base_url(),
+        base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(commit.repository.service),
         username=commit.repository.owner.username,
         project_name=commit.repository.name,
@@ -67,7 +67,7 @@ def get_commit_url(commit: Commit) -> str:
 
 def get_commit_url_from_commit_sha(repository, commit_sha) -> str:
     return SiteUrls.commit_url.get_url(
-        base_url=get_base_url(),
+        base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
         project_name=repository.name,
@@ -77,7 +77,7 @@ def get_commit_url_from_commit_sha(repository, commit_sha) -> str:
 
 def get_graph_url(commit: Commit, graph_filename: str, **kwargs) -> str:
     url = SiteUrls.graph_url.get_url(
-        base_url=get_base_url(),
+        base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(commit.repository.service),
         username=commit.repository.owner.username,
         project_name=commit.repository.name,
@@ -104,7 +104,7 @@ def get_compare_url(base_commit: Commit, head_commit: Commit) -> str:
 
 def get_repository_url(repository: Repository) -> str:
     return SiteUrls.repository_url.get_url(
-        base_url=get_base_url(),
+        base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
         project_name=repository.name,
@@ -113,20 +113,8 @@ def get_repository_url(repository: Repository) -> str:
 
 def get_pull_url(pull: Pull) -> str:
     repository = pull.repository
-    new_compare_whitelisted_ownerids = [
-        int(ownerid.strip())
-        for ownerid in os.getenv("NEW_COMPARE_WHITELISTED_OWNERS", "").split(",")
-        if ownerid != ""
-    ]
-    if repository.owner.ownerid in new_compare_whitelisted_ownerids:
-        return SiteUrls.new_client_pull_url.get_url(
-            service_short=services_short_dict.get(repository.service),
-            username=repository.owner.username,
-            project_name=repository.name,
-            pull_id=pull.pullid,
-        )
     return SiteUrls.pull_url.get_url(
-        base_url=get_base_url(),
+        base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
         project_name=repository.name,
@@ -137,7 +125,7 @@ def get_pull_url(pull: Pull) -> str:
 def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
     repository = pull.repository
     url = SiteUrls.pull_graph_url.get_url(
-        base_url=get_base_url(),
+        base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
         project_name=repository.name,
