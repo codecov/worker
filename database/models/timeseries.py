@@ -54,7 +54,7 @@ class Measurement(TimeseriesBaseModel):
             postgresql_where=flag_id.isnot(None),
         ),
         Index(
-            "timeseries_measurement_component_unique",
+            "timeseries_measurement_measurable_unique",
             timestamp,
             owner_id,
             repo_id,
@@ -62,17 +62,16 @@ class Measurement(TimeseriesBaseModel):
             commit_sha,
             name,
             unique=True,
-            postgresql_where=measurable_id.isnot(None),
         ),
         Index(
-            "timeseries_measurement_nomeasurable_unique",
+            "timeseries_measurement_noflag_unique",
             timestamp,
             owner_id,
             repo_id,
             commit_sha,
             name,
             unique=True,
-            postgresql_where=measurable_id.is_(None),
+            postgresql_where=flag_id.is_(None),
         ),
     )
 
