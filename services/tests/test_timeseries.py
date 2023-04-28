@@ -46,29 +46,6 @@ def sample_report():
 
 
 @pytest.fixture
-def sample_report_for_components():
-    report = Report()
-    first_file = ReportFile("poker.py")
-    first_file.append(1, ReportLine.create(coverage=1, sessions=[[0, 1]]))
-    first_file.append(2, ReportLine.create(coverage=1, sessions=[[0, 1]]))
-    second_file = ReportFile("folder/poker2.py")
-    second_file.append(3, ReportLine.create(coverage=0, sessions=[[0, 0]]))
-    second_file.append(4, ReportLine.create(coverage=1, sessions=[[0, 1]]))
-    third_file = ReportFile("random.go")
-    third_file.append(5, ReportLine.create(coverage=0, sessions=[[0, 0]]))
-    third_file.append(6, ReportLine.create(coverage=0, sessions=[[0, 0]]))
-    third_file.append(8, ReportLine.create(coverage=0, sessions=[[0, 1]]))
-    third_file.append(7, ReportLine.create(coverage=1, sessions=[[0, 0]]))
-    report.append(first_file)
-    report.append(second_file)
-    report.append(third_file)
-    report.add_session(
-        Session(flags=["test-flag-123", "test-flag-456", "random-flago-987"])
-    )
-    return report
-
-
-@pytest.fixture
 def repository(dbsession):
     repository = RepositoryFactory.create()
     dbsession.add(repository)
