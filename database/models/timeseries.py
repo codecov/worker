@@ -81,7 +81,6 @@ class Measurement(TimeseriesBaseModel):
             owner_id,
             repo_id,
             flag_id,
-            measurable_id,
             commit_sha,
             name,
         ]
