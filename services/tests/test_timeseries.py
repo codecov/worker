@@ -24,7 +24,9 @@ from services.timeseries import (
 def sample_report():
     report = Report()
     first_file = ReportFile("file_1.go")
-    first_file.append(1, ReportLine.create(coverage=1, sessions=[[0, 1]], complexity=(10, 2)))
+    first_file.append(
+        1, ReportLine.create(coverage=1, sessions=[[0, 1]], complexity=(10, 2))
+    )
     first_file.append(2, ReportLine.create(coverage=0, sessions=[[0, 1]]))
     first_file.append(3, ReportLine.create(coverage=1, sessions=[[0, 1]]))
     first_file.append(5, ReportLine.create(coverage=1, sessions=[[0, 1]]))
@@ -34,7 +36,9 @@ def sample_report():
     first_file.append(10, ReportLine.create(coverage=0, sessions=[[0, 1]]))
     second_file = ReportFile("file_2.py")
     second_file.append(12, ReportLine.create(coverage=1, sessions=[[0, 1]]))
-    second_file.append(51, ReportLine.create(coverage="1/2", type="b", sessions=[[0, 1]]))
+    second_file.append(
+        51, ReportLine.create(coverage="1/2", type="b", sessions=[[0, 1]])
+    )
     report.append(first_file)
     report.append(second_file)
     report.add_session(Session(flags=["flag1", "flag2"]))
@@ -58,7 +62,9 @@ def sample_report_for_components():
     report.append(first_file)
     report.append(second_file)
     report.append(third_file)
-    report.add_session(Session(flags=["test-flag-123", "test-flag-456", "random-flago-987"]))
+    report.add_session(
+        Session(flags=["test-flag-123", "test-flag-456", "random-flago-987"])
+    )
     return report
 
 
@@ -92,7 +98,9 @@ def repository(dbsession):
 
 
 class TestTimeseriesService(object):
-    def test_insert_commit_measurement(self, dbsession, sample_report, repository, mocker):
+    def test_insert_commit_measurement(
+        self, dbsession, sample_report, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
@@ -122,7 +130,9 @@ class TestTimeseriesService(object):
         assert measurement.measurable_id == f"{commit.repoid}"
         assert measurement.flag_id == None
         assert measurement.commit_sha == commit.commitid
-        assert measurement.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert measurement.branch == "foo"
         assert measurement.value == 60.0
 
@@ -151,7 +161,9 @@ class TestTimeseriesService(object):
 
         assert measurement is None
 
-    def test_update_commit_measurement(self, dbsession, sample_report, repository, mocker):
+    def test_update_commit_measurement(
+        self, dbsession, sample_report, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
@@ -195,11 +207,15 @@ class TestTimeseriesService(object):
         assert measurement.measurable_id == f"{commit.repoid}"
         assert measurement.flag_id == None
         assert measurement.commit_sha == commit.commitid
-        assert measurement.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert measurement.branch == "foo"
         assert measurement.value == 60.0
 
-    def test_commit_measurement_insert_flags(self, dbsession, sample_report, repository, mocker):
+    def test_commit_measurement_insert_flags(
+        self, dbsession, sample_report, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
@@ -210,11 +226,15 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        repository_flag1 = RepositoryFlagFactory(repository=commit.repository, flag_name="flag1")
+        repository_flag1 = RepositoryFlagFactory(
+            repository=commit.repository, flag_name="flag1"
+        )
         dbsession.add(repository_flag1)
         dbsession.flush()
 
-        repository_flag2 = RepositoryFlagFactory(repository=commit.repository, flag_name="flag2")
+        repository_flag2 = RepositoryFlagFactory(
+            repository=commit.repository, flag_name="flag2"
+        )
         dbsession.add(repository_flag2)
         dbsession.flush()
 
@@ -238,7 +258,9 @@ class TestTimeseriesService(object):
         assert measurement.flag_id == None
         assert measurement.measurable_id == f"{repository_flag1.id}"
         assert measurement.commit_sha == commit.commitid
-        assert measurement.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert measurement.branch == "foo"
         assert measurement.value == 100.0
 
@@ -260,11 +282,15 @@ class TestTimeseriesService(object):
         assert measurement.flag_id == None
         assert measurement.measurable_id == f"{repository_flag2.id}"
         assert measurement.commit_sha == commit.commitid
-        assert measurement.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert measurement.branch == "foo"
         assert measurement.value == 100.0
 
-    def test_commit_measurement_update_flags(self, dbsession, sample_report, repository, mocker):
+    def test_commit_measurement_update_flags(
+        self, dbsession, sample_report, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
@@ -275,11 +301,15 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        repository_flag1 = RepositoryFlagFactory(repository=commit.repository, flag_name="flag1")
+        repository_flag1 = RepositoryFlagFactory(
+            repository=commit.repository, flag_name="flag1"
+        )
         dbsession.add(repository_flag1)
         dbsession.flush()
 
-        repository_flag2 = RepositoryFlagFactory(repository=commit.repository, flag_name="flag2")
+        repository_flag2 = RepositoryFlagFactory(
+            repository=commit.repository, flag_name="flag2"
+        )
         dbsession.add(repository_flag2)
         dbsession.flush()
 
@@ -329,7 +359,9 @@ class TestTimeseriesService(object):
         assert measurement.flag_id == None
         assert measurement.measurable_id == f"{repository_flag1.id}"
         assert measurement.commit_sha == commit.commitid
-        assert measurement.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert measurement.branch == "foo"
         assert measurement.value == 100.0
 
@@ -351,15 +383,21 @@ class TestTimeseriesService(object):
         assert measurement.flag_id == None
         assert measurement.measurable_id == f"{repository_flag2.id}"
         assert measurement.commit_sha == commit.commitid
-        assert measurement.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert measurement.branch == "foo"
         assert measurement.value == 100.0
 
-    def test_commit_measurement_insert_components(self, dbsession, sample_report_for_components, repository, mocker):
+    def test_commit_measurement_insert_components(
+        self, dbsession, sample_report_for_components, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
-            return_value=ReadOnlyReport.create_from_report(sample_report_for_components),
+            return_value=ReadOnlyReport.create_from_report(
+                sample_report_for_components
+            ),
         )
 
         commit = CommitFactory.create(branch="foo", repository=repository)
@@ -423,9 +461,9 @@ class TestTimeseriesService(object):
         assert python_file_measurement.repo_id == commit.repoid
         assert python_file_measurement.measurable_id == "python_files"
         assert python_file_measurement.commit_sha == commit.commitid
-        assert python_file_measurement.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(
+        assert python_file_measurement.timestamp.replace(
             tzinfo=timezone.utc
-        )
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert python_file_measurement.branch == "foo"
         assert python_file_measurement.value == 75.0
 
@@ -440,10 +478,17 @@ class TestTimeseriesService(object):
             .one_or_none()
         )
         assert default_component_settings_measurement
-        assert default_component_settings_measurement.name == MeasurementName.component_coverage.value
-        assert default_component_settings_measurement.owner_id == commit.repository.ownerid
+        assert (
+            default_component_settings_measurement.name
+            == MeasurementName.component_coverage.value
+        )
+        assert (
+            default_component_settings_measurement.owner_id == commit.repository.ownerid
+        )
         assert default_component_settings_measurement.repo_id == commit.repoid
-        assert default_component_settings_measurement.measurable_id == "rules_from_default"
+        assert (
+            default_component_settings_measurement.measurable_id == "rules_from_default"
+        )
         assert default_component_settings_measurement.commit_sha == commit.commitid
         assert default_component_settings_measurement.timestamp.replace(
             tzinfo=timezone.utc
@@ -462,14 +507,16 @@ class TestTimeseriesService(object):
             .one_or_none()
         )
         assert manual_flags_measurements
-        assert manual_flags_measurements.name == MeasurementName.component_coverage.value
+        assert (
+            manual_flags_measurements.name == MeasurementName.component_coverage.value
+        )
         assert manual_flags_measurements.owner_id == commit.repository.ownerid
         assert manual_flags_measurements.repo_id == commit.repoid
         assert manual_flags_measurements.measurable_id == "i_have_flags"
         assert manual_flags_measurements.commit_sha == commit.commitid
-        assert manual_flags_measurements.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(
+        assert manual_flags_measurements.timestamp.replace(
             tzinfo=timezone.utc
-        )
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert manual_flags_measurements.branch == "foo"
         assert manual_flags_measurements.value == 25.0
 
@@ -484,14 +531,16 @@ class TestTimeseriesService(object):
             .one_or_none()
         )
         assert all_settings_measurements
-        assert all_settings_measurements.name == MeasurementName.component_coverage.value
+        assert (
+            all_settings_measurements.name == MeasurementName.component_coverage.value
+        )
         assert all_settings_measurements.owner_id == commit.repository.ownerid
         assert all_settings_measurements.repo_id == commit.repoid
         assert all_settings_measurements.measurable_id == "all_settings"
         assert all_settings_measurements.commit_sha == commit.commitid
-        assert all_settings_measurements.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(
+        assert all_settings_measurements.timestamp.replace(
             tzinfo=timezone.utc
-        )
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert all_settings_measurements.branch == "foo"
         assert all_settings_measurements.value == 50.0
 
@@ -519,11 +568,15 @@ class TestTimeseriesService(object):
         )
         assert empty_path_measurements == None
 
-    def test_commit_measurement_update_component(self, dbsession, sample_report_for_components, repository, mocker):
+    def test_commit_measurement_update_component(
+        self, dbsession, sample_report_for_components, repository, mocker
+    ):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
-            return_value=ReadOnlyReport.create_from_report(sample_report_for_components),
+            return_value=ReadOnlyReport.create_from_report(
+                sample_report_for_components
+            ),
         )
 
         commit = CommitFactory.create(branch="foo", repository=repository)
@@ -578,7 +631,9 @@ class TestTimeseriesService(object):
         assert measurement.repo_id == commit.repoid
         assert measurement.flag_id == None
         assert measurement.commit_sha == commit.commitid
-        assert measurement.timestamp.replace(tzinfo=timezone.utc) == commit.timestamp.replace(tzinfo=timezone.utc)
+        assert measurement.timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
         assert measurement.branch == "foo"
         assert measurement.value == 50.0
 
@@ -613,7 +668,9 @@ class TestTimeseriesService(object):
             timestamp=datetime(2022, 6, 17, 0, 0, 0).replace(tzinfo=timezone.utc),
         )
         dbsession.add(commit3)
-        commit4 = CommitFactory.create(timestamp=datetime(2022, 6, 10, 0, 0, 0).replace(tzinfo=timezone.utc))
+        commit4 = CommitFactory.create(
+            timestamp=datetime(2022, 6, 10, 0, 0, 0).replace(tzinfo=timezone.utc)
+        )
         dbsession.add(commit4)
         dbsession.flush()
 
@@ -689,11 +746,23 @@ class TestTimeseriesService(object):
         dbsession.flush()
         save_commit_measurements(commit)
 
-        assert dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count() == 3
+        assert (
+            dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count()
+            == 3
+        )
         # repo coverage + 2x flag coverage for each commit
-        assert dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count() == 6
+        assert (
+            dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
+            == 6
+        )
 
         delete_repository_data(repository)
 
-        assert dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count() == 0
-        assert dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count() == 0
+        assert (
+            dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count()
+            == 0
+        )
+        assert (
+            dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
+            == 0
+        )

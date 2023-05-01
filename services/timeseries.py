@@ -15,18 +15,24 @@ from services.yaml import get_repo_yaml
 log = logging.getLogger(__name__)
 
 
-def save_commit_measurements(commit: Commit, dataset_names: Iterable[str] = None) -> None:
+def save_commit_measurements(
+    commit: Commit, dataset_names: Iterable[str] = None
+) -> None:
     if not timeseries_enabled():
         return
 
     if dataset_names is None:
-        dataset_names = [dataset.name for dataset in repository_datasets_query(commit.repository)]
+        dataset_names = [
+            dataset.name for dataset in repository_datasets_query(commit.repository)
+        ]
     if len(dataset_names) == 0:
         return
 
     current_yaml = get_repo_yaml(commit.repository)
     report_service = ReportService(current_yaml)
-    report = report_service.get_existing_report_for_commit(commit, report_class=ReadOnlyReport)
+    report = report_service.get_existing_report_for_commit(
+        commit, report_class=ReadOnlyReport
+    )
 
     if report is None:
         return
@@ -129,8 +135,12 @@ def save_commit_measurements(commit: Commit, dataset_names: Iterable[str] = None
 
             for component in components:
                 if component.paths or component.flag_regexes:
-                    report_and_component_matching_flags = component.get_matching_flags(report.flags.keys())
-                    filtered_report = report.filter(flags=report_and_component_matching_flags, paths=component.paths)
+                    report_and_component_matching_flags = component.get_matching_flags(
+                        report.flags.keys()
+                    )
+                    filtered_report = report.filter(
+                        flags=report_and_component_matching_flags, paths=component.paths
+                    )
 
                     if filtered_report.totals.coverage is not None:
                         measurements.append(
@@ -195,7 +205,9 @@ def repository_commits_query(
     return commits
 
 
-def repository_datasets_query(repository: Repository, backfilled: Optional[bool] = None) -> Iterable[Dataset]:
+def repository_datasets_query(
+    repository: Repository, backfilled: Optional[bool] = None
+) -> Iterable[Dataset]:
     db_session = repository.get_db_session()
 
     datasets = db_session.query(Dataset.name).filter_by(repository_id=repository.repoid)
@@ -208,7 +220,9 @@ def repository_datasets_query(repository: Repository, backfilled: Optional[bool]
 def repository_flag_ids(repository: Repository) -> Mapping[str, int]:
     db_session = repository.get_db_session()
 
-    repo_flags = db_session.query(RepositoryFlag).filter_by(repository=repository).yield_per(100)
+    repo_flags = (
+        db_session.query(RepositoryFlag).filter_by(repository=repository).yield_per(100)
+    )
 
     return {repo_flag.flag_name: repo_flag.id for repo_flag in repo_flags}
 
@@ -216,7 +230,11 @@ def repository_flag_ids(repository: Repository) -> Mapping[str, int]:
 def backfill_batch_size(repository: Repository) -> int:
     db_session = repository.get_db_session()
 
-    flag_count = db_session.query(RepositoryFlag).filter_by(repository_id=repository.repoid).count()
+    flag_count = (
+        db_session.query(RepositoryFlag)
+        .filter_by(repository_id=repository.repoid)
+        .count()
+    )
 
     flag_count = max(flag_count, 1)
     batch_size = int(backfill_max_batch_size() / flag_count)
