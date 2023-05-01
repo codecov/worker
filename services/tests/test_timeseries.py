@@ -5,6 +5,7 @@ import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.utils.sessions import Session
+from shared.yaml import UserYaml
 
 from database.models.timeseries import Dataset, Measurement, MeasurementName
 from database.tests.factories import CommitFactory, RepositoryFactory
@@ -62,6 +63,12 @@ def repository(dbsession):
         backfilled=False,
     )
     dbsession.add(flag_coverage_dataset)
+    component_coverage_dataset = DatasetFactory.create(
+        repository_id=repository.repoid,
+        name=MeasurementName.component_coverage.value,
+        backfilled=False,
+    )
+    dbsession.add(component_coverage_dataset)
     dbsession.flush()
 
     return repository
@@ -97,6 +104,7 @@ class TestTimeseriesService(object):
         assert measurement.name == MeasurementName.coverage.value
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
+        assert measurement.measurable_id == f"{commit.repoid}"
         assert measurement.flag_id == None
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
@@ -148,6 +156,7 @@ class TestTimeseriesService(object):
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
             flag_id=None,
+            measurable_id=commit.repoid,
             commit_sha=commit.commitid,
             timestamp=commit.timestamp,
             branch="testing",
@@ -173,6 +182,7 @@ class TestTimeseriesService(object):
         assert measurement.name == MeasurementName.coverage.value
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
+        assert measurement.measurable_id == f"{commit.repoid}"
         assert measurement.flag_id == None
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
@@ -224,6 +234,7 @@ class TestTimeseriesService(object):
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
         assert measurement.flag_id == repository_flag1.id
+        assert measurement.measurable_id == f"{repository_flag1.id}"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
             tzinfo=timezone.utc
@@ -247,6 +258,7 @@ class TestTimeseriesService(object):
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
         assert measurement.flag_id == repository_flag2.id
+        assert measurement.measurable_id == f"{repository_flag2.id}"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
             tzinfo=timezone.utc
@@ -284,6 +296,7 @@ class TestTimeseriesService(object):
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
             flag_id=repository_flag1.id,
+            measurable_id=repository_flag1.id,
             commit_sha=commit.commitid,
             timestamp=commit.timestamp,
             branch="testing",
@@ -297,6 +310,7 @@ class TestTimeseriesService(object):
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
             flag_id=repository_flag2.id,
+            measurable_id=repository_flag2.id,
             commit_sha=commit.commitid,
             timestamp=commit.timestamp,
             branch="testing",
@@ -313,7 +327,7 @@ class TestTimeseriesService(object):
                 name=MeasurementName.flag_coverage.value,
                 commit_sha=commit.commitid,
                 timestamp=commit.timestamp,
-                flag_id=repository_flag1.id,
+                measurable_id=f"{repository_flag1.id}",
             )
             .one_or_none()
         )
@@ -323,6 +337,7 @@ class TestTimeseriesService(object):
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
         assert measurement.flag_id == repository_flag1.id
+        assert measurement.measurable_id == f"{repository_flag1.id}"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
             tzinfo=timezone.utc
@@ -336,7 +351,7 @@ class TestTimeseriesService(object):
                 name=MeasurementName.flag_coverage.value,
                 commit_sha=commit.commitid,
                 timestamp=commit.timestamp,
-                flag_id=repository_flag2.id,
+                measurable_id=f"{repository_flag2.id}",
             )
             .one_or_none()
         )
@@ -346,6 +361,7 @@ class TestTimeseriesService(object):
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
         assert measurement.flag_id == repository_flag2.id
+        assert measurement.measurable_id == f"{repository_flag2.id}"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
             tzinfo=timezone.utc
@@ -405,6 +421,7 @@ class TestTimeseriesService(object):
         assert [dataset.name for dataset in datasets] == [
             MeasurementName.coverage.value,
             MeasurementName.flag_coverage.value,
+            MeasurementName.component_coverage.value,
         ]
 
         datasets = repository_datasets_query(repository, backfilled=True)
@@ -415,6 +432,7 @@ class TestTimeseriesService(object):
         datasets = repository_datasets_query(repository, backfilled=False)
         assert [dataset.name for dataset in datasets] == [
             MeasurementName.flag_coverage.value,
+            MeasurementName.component_coverage.value,
         ]
 
     def test_backfill_batch_size(self, repository):
@@ -462,7 +480,7 @@ class TestTimeseriesService(object):
 
         assert (
             dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count()
-            == 2
+            == 3
         )
         # repo coverage + 2x flag coverage for each commit
         assert (

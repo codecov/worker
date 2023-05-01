@@ -46,6 +46,7 @@ def save_commit_measurements(
                 owner_id=commit.repository.ownerid,
                 repo_id=commit.repoid,
                 flag_id=None,
+                measurable_id=f"{commit.repoid}",
                 branch=commit.branch,
                 commit_sha=commit.commitid,
                 timestamp=commit.timestamp,
@@ -63,6 +64,7 @@ def save_commit_measurements(
                 set_=dict(
                     branch=command.excluded.branch,
                     value=command.excluded.value,
+                    measurable_id=command.excluded.measurable_id,
                 ),
             )
             db_session.execute(command)
@@ -94,6 +96,7 @@ def save_commit_measurements(
                         owner_id=commit.repository.ownerid,
                         repo_id=commit.repoid,
                         flag_id=flag_id,
+                        measurable_id=f"{flag_id}",
                         branch=commit.branch,
                         commit_sha=commit.commitid,
                         timestamp=commit.timestamp,
@@ -124,6 +127,7 @@ def save_commit_measurements(
                 set_=dict(
                     branch=command.excluded.branch,
                     value=command.excluded.value,
+                    measurable_id=command.excluded.measurable_id,
                 ),
             )
             db_session.execute(command)
