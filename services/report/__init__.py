@@ -18,6 +18,7 @@ from shared.reports.types import ReportFileSummary, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitError
 from shared.utils.sessions import Session, SessionType
+from shared.yaml import UserYaml
 
 from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
@@ -34,6 +35,7 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
+from helpers.labels import get_all_report_labels, get_labels_per_session
 from services.archive import ArchiveService
 from services.report.parser import get_proper_parser
 from services.report.raw_upload_processor import process_raw_upload
@@ -89,7 +91,9 @@ class ReportService(object):
             It's always the user yaml, but might have different uses on different places
     """
 
-    def __init__(self, current_yaml: Mapping[str, Any]):
+    def __init__(self, current_yaml: UserYaml):
+        if isinstance(current_yaml, dict):
+            current_yaml = UserYaml(current_yaml)
         self.current_yaml = current_yaml
 
     def has_initialized_report(self, commit: Commit) -> bool:
@@ -356,12 +360,21 @@ class ReportService(object):
                 uploaded_flags |= set(session.flags)
 
         for sid, session in carryforward_sessions.items():
-            # we only ever expect 1 flag for CF sessions
             overlapping_flags = uploaded_flags & set(session.flags)
 
-            if len(overlapping_flags) == 0:
+            labels_flag = all(
+                [
+                    (self.current_yaml.get_flag_configuration(flag) or {}).get(
+                        "carryforward_mode"
+                    )
+                    == "labels"
+                    for flag in overlapping_flags
+                ]
+            )
+
+            if len(overlapping_flags) == 0 or labels_flag:
                 # we can include this CF session since there are no direct uploads
-                # with the same flag name
+                # with the same flag name OR we're carrying forward labels
                 sessions[sid] = session
 
         return sessions
@@ -453,10 +466,30 @@ class ReportService(object):
             return None
         if chunks is None:
             return None
-        res = self.build_report(
+
+        report = self.build_report(
             chunks, files, sessions, totals, report_class=report_class
         )
-        return res
+        for sid, session in report.sessions.items():
+            labels_flag = any(
+                [
+                    (self.current_yaml.get_flag_configuration(flag) or {}).get(
+                        "carryforward_mode"
+                    )
+                    == "labels"
+                    for flag in session.flags
+                ]
+            )
+            if labels_flag:
+                labels = get_labels_per_session(report, session)
+                if not labels:
+                    del sessions[sid]
+
+        # rebuild the report since we may have deleted some sessions above
+        report = self.build_report(
+            chunks, files, sessions, totals, report_class=report_class
+        )
+        return report
 
     async def _do_build_report_from_commit(self, commit) -> Report:
         report = self.get_existing_report_for_commit(commit)
