@@ -361,18 +361,7 @@ class ReportService(object):
 
         for sid, session in carryforward_sessions.items():
             overlapping_flags = uploaded_flags & set(session.flags)
-
-            labels_flag = all(
-                [
-                    (self.current_yaml.get_flag_configuration(flag) or {}).get(
-                        "carryforward_mode"
-                    )
-                    == "labels"
-                    for flag in overlapping_flags
-                ]
-            )
-
-            if len(overlapping_flags) == 0 or labels_flag:
+            if len(overlapping_flags) == 0 or self._is_labels_flags(overlapping_flags):
                 # we can include this CF session since there are no direct uploads
                 # with the same flag name OR we're carrying forward labels
                 sessions[sid] = session
@@ -432,6 +421,17 @@ class ReportService(object):
         )
         return res
 
+    def _is_labels_flags(self, flags: Sequence[str]) -> bool:
+        return all(
+            [
+                (self.current_yaml.get_flag_configuration(flag) or {}).get(
+                    "carryforward_mode"
+                )
+                == "labels"
+                for flag in flags
+            ]
+        )
+
     def get_existing_report_for_commit(
         self, commit: Commit, report_class=None, *, report_code=None
     ) -> Optional[Report]:
@@ -471,17 +471,14 @@ class ReportService(object):
             chunks, files, sessions, totals, report_class=report_class
         )
         for sid, session in report.sessions.items():
-            labels_flag = any(
-                [
-                    (self.current_yaml.get_flag_configuration(flag) or {}).get(
-                        "carryforward_mode"
-                    )
-                    == "labels"
-                    for flag in session.flags
-                ]
-            )
-            if labels_flag:
-                labels = get_labels_per_session(report, session)
+            # this mimics behavior in the `adjust_sessions` function from
+            # `services/report/raw_upload_processor.py` - we need to delete
+            # label sessions for which there are no labels
+            # TODO: ultimately use `reports_upload.state` once the
+            # `PARTIALLY_OVERWRITTEN` and `FULLY_OVERWRITTEN` states are being saved
+            labels_session = self._is_labels_flags(session.flags)
+            if labels_session:
+                labels = get_labels_per_session(report, sid)
                 if not labels:
                     del sessions[sid]
 

@@ -481,6 +481,11 @@ class TestReportService(BaseTestCase):
             flag_name="integration",
         )
         dbsession.add(flag2)
+        flag3 = RepositoryFlagFactory(
+            repository=commit.repository,
+            flag_name="labels-flag",
+        )
+        dbsession.add(flag3)
 
         upload1 = UploadFactory(
             report=report, flags=[flag1], order_number=0, upload_type="upload"
@@ -537,13 +542,43 @@ class TestReportService(BaseTestCase):
         dbsession.commit()
         dbsession.flush()
 
+        upload4 = UploadFactory(
+            report=report, flags=[flag3], order_number=3, upload_type="upload"
+        )
+        dbsession.add(upload4)
+        upload_totals4 = UploadLevelTotalsFactory(
+            upload=upload4,
+            files=3,
+            lines=20,
+            hits=20,
+            misses=0,
+            partials=0,
+            coverage=100.0,
+            branches=0,
+            methods=0,
+        )
+        dbsession.add(upload_totals4)
+        dbsession.commit()
+        dbsession.flush()
+
         with open("tasks/tests/samples/sample_chunks_1.txt") as f:
             content = f.read().encode()
             archive_hash = ArchiveService.get_archive_hash(commit.repository)
             chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
             mock_storage.write_file("archive", chunks_url, content)
 
-        report = await ReportService({}).build_report_from_commit(commit)
+        yaml = {
+            "flag_management": {
+                "individual_flags": [
+                    {
+                        "name": "labels-flag",
+                        "carryforward": True,
+                        "carryforward_mode": "labels",
+                    }
+                ]
+            }
+        }
+        report = await ReportService(yaml).build_report_from_commit(commit)
         assert report is not None
         assert report.files == [
             "awesome/__init__.py",
@@ -567,6 +602,7 @@ class TestReportService(BaseTestCase):
         )
 
         assert len(report.sessions) == 2
+        print("HERE", report.sessions)
         assert report.sessions[0].flags == ["unit"]
         assert report.sessions[0].session_type == SessionType.uploaded
         assert report.sessions[0].totals == ReportTotals(
@@ -584,6 +620,7 @@ class TestReportService(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
+        assert 1 not in report.sessions  # CF w/ equivalent direct upload
         assert report.sessions[2].flags == ["integration"]
         assert report.sessions[2].session_type == SessionType.carriedforward
         assert report.sessions[2].totals == ReportTotals(
@@ -601,6 +638,7 @@ class TestReportService(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
+        assert 3 not in report.sessions  # labels flag w/ empty label set
 
         # make sure report is still serializable
         ReportService({}).save_report(commit, report)
