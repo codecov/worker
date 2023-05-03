@@ -11,7 +11,7 @@ from database.tests.factories import (
     RepositoryFactory,
     UploadFactory,
 )
-from tasks.upload_finisher import UploadFinisherTask
+from tasks.upload_finisher import ReportService, UploadFinisherTask
 
 here = Path(__file__)
 
@@ -287,7 +287,7 @@ class TestUploadFinisherTask(object):
         )
 
     @pytest.mark.asyncio
-    async def test_should_call_notifications_not_enough_builds(self, dbsession):
+    async def test_should_call_notifications_not_enough_builds(self, dbsession, mocker):
         commit_yaml = {"codecov": {"notify": {"after_n_builds": 9}}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -297,12 +297,14 @@ class TestUploadFinisherTask(object):
             repository__yaml=commit_yaml,
         )
         dbsession.add(commit)
-        report = ReportFactory(commit=commit)
-        dbsession.add(report)
-        for n in range(8):
-            upload = UploadFactory(report=report)
-            dbsession.add(upload)
-        dbsession.flush()
+
+        mocked_report = mocker.patch.object(
+            ReportService, "get_existing_report_for_commit"
+        )
+        mocked_report.return_value = mocker.MagicMock(
+            sessions=[mocker.MagicMock()] * 8
+        )  # 8 sessions
+
         processing_results = {
             "processings_so_far": 9
             * [{"arguments": {"url": "url"}, "successful": True}]
@@ -312,7 +314,9 @@ class TestUploadFinisherTask(object):
         )
 
     @pytest.mark.asyncio
-    async def test_should_call_notifications_more_than_enough_builds(self, dbsession):
+    async def test_should_call_notifications_more_than_enough_builds(
+        self, dbsession, mocker
+    ):
         commit_yaml = {"codecov": {"notify": {"after_n_builds": 9}}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -322,13 +326,14 @@ class TestUploadFinisherTask(object):
             repository__yaml=commit_yaml,
         )
         dbsession.add(commit)
-        report = ReportFactory(commit=commit)
-        dbsession.add(report)
-        for n in range(10):
-            upload = UploadFactory(report=report, order_number=n)
-            dbsession.add(upload)
-            dbsession.flush()
-        dbsession.flush()
+
+        mocked_report = mocker.patch.object(
+            ReportService, "get_existing_report_for_commit"
+        )
+        mocked_report.return_value = mocker.MagicMock(
+            sessions=[mocker.MagicMock()] * 10
+        )  # 10 sessions
+
         processing_results = {
             "processings_so_far": 2
             * [{"arguments": {"url": "url"}, "successful": True}]

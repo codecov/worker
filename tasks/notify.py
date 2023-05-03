@@ -326,8 +326,8 @@ class NotifyTask(BaseCodecovTask):
         )
         if after_n_builds:
             number_sessions = 0
-            sessions = ReportService({}).build_sessions(commit)
-            number_sessions = len(sessions)
+            report = ReportService(current_yaml).get_existing_report_for_commit(commit)
+            number_sessions = len(report.sessions)
             if after_n_builds > number_sessions:
                 log.info(
                     "Not sending notifications because there arent enough builds",

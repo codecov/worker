@@ -203,25 +203,29 @@ class UploadFinisherTask(BaseCodecovTask):
             x["successful"] for x in processing_results.get("processings_so_far", [])
         ):
             return False
-        number_sessions = 0
-        sessions = ReportService({}).build_sessions(commit)
-        number_sessions = len(sessions)
+
         after_n_builds = (
             read_yaml_field(commit_yaml, ("codecov", "notify", "after_n_builds")) or 0
         )
-        if after_n_builds > number_sessions:
-            log.info(
-                "Not scheduling notify because `after_n_builds` is %s and we only found %s builds",
-                after_n_builds,
-                number_sessions,
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    processing_results=processing_results,
-                ),
-            )
-            return False
+        if after_n_builds > 0:
+            number_sessions = 0
+            report = ReportService(commit_yaml).get_existing_report_for_commit(commit)
+            number_sessions = len(report.sessions)
+            if after_n_builds > number_sessions:
+                log.info(
+                    "Not scheduling notify because `after_n_builds` is %s and we only found %s builds",
+                    after_n_builds,
+                    number_sessions,
+                    extra=dict(
+                        repoid=commit.repoid,
+                        commit=commit.commitid,
+                        commit_yaml=commit_yaml,
+                        processing_results=processing_results,
+                    ),
+                )
+                return False
+            else:
+                return True
         return True
 
     def invalidate_caches(self, redis_connection, commit: Commit):

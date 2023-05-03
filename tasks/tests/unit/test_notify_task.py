@@ -566,6 +566,23 @@ class TestNotifyTask(object):
             ),
         )
 
+    def test_should_send_notifications_after_n_builds(self, dbsession, mocker):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+
+        mocked_report = mocker.patch.object(
+            ReportService, "get_existing_report_for_commit"
+        )
+        mocked_report.return_value = mocker.MagicMock(
+            sessions=[mocker.MagicMock()]
+        )  # 1 session
+
+        task = NotifyTask()
+        current_yaml = {"codecov": {"notify": {"after_n_builds": 2}}}
+        res = task.should_send_notifications(current_yaml, commit, True)
+        assert not res
+
     @pytest.mark.asyncio
     async def test_notify_task_no_bot(self, dbsession, mocker):
         get_repo_provider_service = mocker.patch(
