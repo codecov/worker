@@ -602,7 +602,6 @@ class TestReportService(BaseTestCase):
         )
 
         assert len(report.sessions) == 2
-        print("HERE", report.sessions)
         assert report.sessions[0].flags == ["unit"]
         assert report.sessions[0].session_type == SessionType.uploaded
         assert report.sessions[0].totals == ReportTotals(
