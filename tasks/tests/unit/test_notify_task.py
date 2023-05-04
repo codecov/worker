@@ -251,7 +251,7 @@ class TestNotifyTask(object):
         )
         assert result == {"notified": False, "notifications": None}
         mocked_should_send_notifications.assert_called_with(
-            UserYaml({}), commit, fetch_and_update_whether_ci_passed_result
+            UserYaml({}), commit, fetch_and_update_whether_ci_passed_result, None
         )
 
     @pytest.mark.asyncio
@@ -287,7 +287,7 @@ class TestNotifyTask(object):
         )
         assert result == {"notified": False, "notifications": None}
         mocked_should_send_notifications.assert_called_with(
-            UserYaml({}), commit, fetch_and_update_whether_ci_passed_result
+            UserYaml({}), commit, fetch_and_update_whether_ci_passed_result, None
         )
         mocked_fetch_yaml.assert_called_with(commit, mock_repo_provider)
 
@@ -555,9 +555,12 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         ci_passed = False
+        mock_report = mocker.MagicMock(sessions=[mocker.MagicMock()])  # 1 session
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
-        res = task.should_send_notifications(current_yaml, commit, ci_passed)
+        res = task.should_send_notifications(
+            current_yaml, commit, ci_passed, mock_report
+        )
         assert not res
         set_error_task_caller.apply_async.assert_called_with(
             args=None,
@@ -571,16 +574,11 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        mocked_report = mocker.patch.object(
-            ReportService, "get_existing_report_for_commit"
-        )
-        mocked_report.return_value = mocker.MagicMock(
-            sessions=[mocker.MagicMock()]
-        )  # 1 session
+        mock_report = mocker.MagicMock(sessions=[mocker.MagicMock()])  # 1 session
 
         task = NotifyTask()
         current_yaml = {"codecov": {"notify": {"after_n_builds": 2}}}
-        res = task.should_send_notifications(current_yaml, commit, True)
+        res = task.should_send_notifications(current_yaml, commit, True, mock_report)
         assert not res
 
     @pytest.mark.asyncio

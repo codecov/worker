@@ -181,7 +181,13 @@ class NotifyTask(BaseCodecovTask):
                     "notifications": None,
                     "reason": "too_many_retries",
                 }
-        if self.should_send_notifications(current_yaml, commit, ci_results):
+        report_service = ReportService(current_yaml)
+        head_report = report_service.get_existing_report_for_commit(
+            commit, report_class=ReadOnlyReport
+        )
+        if self.should_send_notifications(
+            current_yaml, commit, ci_results, head_report
+        ):
             log.info(
                 "We are going to be sending notifications",
                 extra=dict(
@@ -200,22 +206,19 @@ class NotifyTask(BaseCodecovTask):
                 pull = None
                 base_commit = self.fetch_parent(commit)
 
-            report_service = ReportService(current_yaml)
             if base_commit is not None:
                 base_report = report_service.get_existing_report_for_commit(
                     base_commit, report_class=ReadOnlyReport
                 )
             else:
                 base_report = None
-            head_report = report_service.get_existing_report_for_commit(
-                commit, report_class=ReadOnlyReport
-            )
             if head_report is None:
                 return {
                     "notified": False,
                     "notifications": None,
                     "reason": "no_head_report",
                 }
+
             notifications = await self.submit_third_party_notifications(
                 current_yaml,
                 base_commit,
@@ -302,7 +305,7 @@ class NotifyTask(BaseCodecovTask):
             .first()
         )
 
-    def should_send_notifications(self, current_yaml, commit, ci_passed):
+    def should_send_notifications(self, current_yaml, commit, ci_passed, report):
         if (
             read_yaml_field(current_yaml, ("codecov", "require_ci_to_pass"), True)
             and ci_passed is False
@@ -325,9 +328,7 @@ class NotifyTask(BaseCodecovTask):
             current_yaml, ("codecov", "notify", "after_n_builds")
         )
         if after_n_builds:
-            number_sessions = 0
-            report = ReportService(current_yaml).get_existing_report_for_commit(commit)
-            number_sessions = len(report.sessions)
+            number_sessions = len(report.sessions) if report is not None else 0
             if after_n_builds > number_sessions:
                 log.info(
                     "Not sending notifications because there arent enough builds",
