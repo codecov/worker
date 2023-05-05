@@ -25,8 +25,7 @@ build.enterprise_runtime:
 		--label "org.label-schema.build-date"="$(build_date)" \
 		--label "org.label-schema.name"="Self-Hosted Worker (with dependencies)" \
 		--label "org.label-schema.vendor"="Codecov" \
-		--label "org.label-schema.version"="${release_version}" \
-		--squash
+		--label "org.label-schema.version"="${release_version}"
 
 build.enterprise:
 	$(MAKE) build.base
@@ -36,8 +35,7 @@ build.enterprise:
 		--label "org.label-schema.build-date"="$(build_date)" \
 		--label "org.label-schema.name"="Self-Hosted Worker (no dependencies)" \
 		--label "org.label-schema.vendor"="Codecov" \
-		--label "org.label-schema.version"="${release_version}" \
-		--squash
+		--label "org.label-schema.version"="${release_version}"
 
 # for building and pushing private images to dockerhub. This is useful if you 
 # need to push a test image for enterprise to test in sandbox deployments.
@@ -49,8 +47,7 @@ build.enterprise-private:
 		--label "org.label-schema.name"="Self-Hosted Worker Private" \
 		--label "org.label-schema.vendor"="Codecov" \
 		--label "org.label-schema.version"="${release_version}-${sha}" \
-		--label "org.vcs-branch"="$(branch)" \
-		--squash
+		--label "org.vcs-branch"="$(branch)"
 
 # for portable builds to dockerhub, for use with local development and
 # acceptance testing.

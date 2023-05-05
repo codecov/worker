@@ -5,7 +5,7 @@ class TestSlackNotifier(object):
     def test_build_payload_without_attachments(
         self, dbsession, mock_configuration, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         notifier = SlackNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -31,7 +31,7 @@ class TestSlackNotifier(object):
     def test_build_payload_with_attachments(
         self, dbsession, mock_configuration, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         notifier = SlackNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -65,7 +65,7 @@ class TestSlackNotifier(object):
     def test_build_payload_with_message(
         self, dbsession, mock_configuration, sample_comparison
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         notifier = SlackNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -88,7 +88,7 @@ class TestSlackNotifier(object):
     def test_build_payload_without_pull(
         self, sample_comparison_without_pull, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_pull
         commit = sample_comparison_without_pull.head.commit
         base_commit = comparison.base.commit
@@ -114,7 +114,7 @@ class TestSlackNotifier(object):
     def test_build_payload_without_base(
         self, sample_comparison_without_base_report, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_report
         commit = comparison.head.commit
         repository = commit.repository

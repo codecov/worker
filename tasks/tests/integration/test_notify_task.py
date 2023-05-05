@@ -24,7 +24,9 @@ class TestNotifyTask(object):
         mock_redis,
     ):
         mock_redis.get.return_value = False
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -73,7 +75,9 @@ class TestNotifyTask(object):
     async def test_simple_call_only_status_notifiers(
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -151,7 +155,7 @@ class TestNotifyTask(object):
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
     ):
         mock_configuration.params["setup"][
-            "codecov_url"
+            "codecov_dashboard_url"
         ] = "https://myexamplewebsite.io"
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -271,7 +275,7 @@ class TestNotifyTask(object):
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
     ):
         mock_configuration.params["setup"][
-            "codecov_url"
+            "codecov_dashboard_url"
         ] = "https://myexamplewebsite.io"
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
@@ -381,7 +385,7 @@ class TestNotifyTask(object):
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
     ):
         mock_configuration.params["setup"][
-            "codecov_url"
+            "codecov_dashboard_url"
         ] = "https://myexamplewebsite.io"
         mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
@@ -738,7 +742,9 @@ class TestNotifyTask(object):
     async def test_notifier_call_no_head_commit_report(
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,

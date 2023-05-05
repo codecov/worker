@@ -226,7 +226,9 @@ class TestNotifyTask(object):
     async def test_simple_call_no_notifications(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
         mocked_should_send_notifications = mocker.patch.object(
             NotifyTask, "should_send_notifications", return_value=False
@@ -258,7 +260,9 @@ class TestNotifyTask(object):
     async def test_simple_call_no_notifications_no_yaml_given(
         self, dbsession, mocker, mock_storage, mock_configuration, mock_repo_provider
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
         mocked_should_send_notifications = mocker.patch.object(
             NotifyTask, "should_send_notifications", return_value=False
@@ -312,7 +316,9 @@ class TestNotifyTask(object):
         mocker.patch.object(
             NotificationService, "get_notifiers_instances", return_value=[fake_notifier]
         )
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
         mocker.patch.object(NotifyTask, "should_send_notifications", return_value=True)
         fetch_and_update_whether_ci_passed_result = {}
@@ -370,7 +376,9 @@ class TestNotifyTask(object):
         mocked_submit_third_party_notifications = mocker.patch.object(
             NotifyTask, "submit_third_party_notifications"
         )
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
         mocker.patch.object(NotifyTask, "should_send_notifications", return_value=True)
         fetch_and_update_whether_ci_passed_result = {}
@@ -408,7 +416,9 @@ class TestNotifyTask(object):
     async def test_simple_call_should_delay(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
         mocked_should_wait_longer = mocker.patch.object(
             NotifyTask, "should_wait_longer", return_value=True
@@ -445,7 +455,9 @@ class TestNotifyTask(object):
     async def test_simple_call_should_delay_using_integration(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
         mocked_should_wait_longer = mocker.patch.object(
             NotifyTask, "should_wait_longer", return_value=True
@@ -483,7 +495,9 @@ class TestNotifyTask(object):
     async def test_simple_call_not_able_fetch_ci(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
         mocker.patch.object(
             NotifyTask,
@@ -514,7 +528,9 @@ class TestNotifyTask(object):
     async def test_simple_call_not_able_fetch_ci_server_issues(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.io"
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
         mocker.patch.object(NotifyTask, "app")
         mocker.patch.object(
             NotifyTask,
