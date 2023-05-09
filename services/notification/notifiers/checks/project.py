@@ -31,6 +31,15 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         with metrics.timer(
             "worker.services.notifications.notifiers.checks.project.build_payload"
         ):
+            if self.is_empty_upload():
+                state, message = self.get_status_check_for_empty_upload()
+                return {
+                    "state": state,
+                    "output": {
+                        "title": "Empty Upload",
+                        "summary": message,
+                    },
+                }
             state, summary = await self.get_project_status(comparison)
             codecov_link = self.get_codecov_pr_link(comparison)
 

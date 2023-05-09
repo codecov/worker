@@ -29,7 +29,9 @@ class DecorationDetails(object):
     activation_author_ownerid: int = None
 
 
-def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
+def determine_decoration_details(
+    enriched_pull: EnrichedPull, empty_upload=None
+) -> dict:
     """
     Determine the decoration details from pull information. We also check if the pull author needs to be activated
 
@@ -44,6 +46,17 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
             return DecorationDetails(
                 decoration_type=Decoration.standard,
                 reason="Can't determine PR author - no pull info from provider",
+            )
+        if empty_upload == "pass":
+            return DecorationDetails(
+                decoration_type=Decoration.passing_empty_upload,
+                reason="Non testable files got changed.",
+            )
+
+        if empty_upload == "fail":
+            return DecorationDetails(
+                decoration_type=Decoration.failing_empty_upload,
+                reason="Testable files got changed.",
             )
 
         if db_pull.repository.private is False:

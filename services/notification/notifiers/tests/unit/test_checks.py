@@ -1073,6 +1073,62 @@ class TestPatchChecksNotifier(object):
         }
 
     @pytest.mark.asyncio
+    async def test_notify_passing_empty_upload(
+        self, sample_comparison, mocker, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = PatchChecksNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"paths": ["pathone"]},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            decoration_type=Decoration.passing_empty_upload,
+        )
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == True
+        assert result.explanation is None
+        assert result.data_sent == {
+            "state": "success",
+            "output": {
+                "title": "Empty Upload",
+                "summary": "Non-testable files changed.",
+            },
+            "url": f"test.example.br/gh/test_notify_passing_empty_upload/{sample_comparison.head.commit.repository.name}/pull/{comparison.pull.pullid}",
+        }
+
+    @pytest.mark.asyncio
+    async def test_notify_failing_empty_upload(
+        self, sample_comparison, mocker, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        comparison = sample_comparison
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        notifier = PatchChecksNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"paths": ["pathone"]},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            decoration_type=Decoration.failing_empty_upload,
+        )
+        result = await notifier.notify(sample_comparison)
+        assert result.notification_successful == True
+        assert result.explanation is None
+        assert result.data_sent == {
+            "state": "failure",
+            "output": {
+                "title": "Empty Upload",
+                "summary": "Testable files changed",
+            },
+            "url": f"test.example.br/gh/test_notify_failing_empty_upload/{sample_comparison.head.commit.repository.name}/pull/{comparison.pull.pullid}",
+        }
+
+    @pytest.mark.asyncio
     async def test_notification_exception(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):

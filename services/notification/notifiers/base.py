@@ -82,3 +82,15 @@ class AbstractBaseNotifier(object):
 
     def should_use_upload_limit_decoration(self) -> bool:
         return self.decoration_type == Decoration.upload_limit
+
+    def is_passing_empty_upload(self) -> bool:
+        return self.decoration_type == Decoration.passing_empty_upload
+
+    def is_failing_empty_upload(self) -> bool:
+        return self.decoration_type == Decoration.failing_empty_upload
+
+    def is_empty_upload(self) -> bool:
+        return (
+            self.decoration_type == Decoration.failing_empty_upload
+            or self.decoration_type == Decoration.passing_empty_upload
+        )

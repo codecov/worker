@@ -137,7 +137,7 @@ class TestNotifyTaskHelpers(object):
         task = NotifyTask()
         res = task.determine_decoration_type_from_pull(enriched_pull)
         assert res == Decoration.standard
-        mock_determine_decoration_details.assert_called_with(enriched_pull)
+        mock_determine_decoration_details.assert_called_with(enriched_pull, None)
         assert not mock_activate_user.called
 
     def test_determine_decoration_type_from_pull_auto_activation_fails(
@@ -168,7 +168,7 @@ class TestNotifyTaskHelpers(object):
         task = NotifyTask()
         res = task.determine_decoration_type_from_pull(enriched_pull)
         assert res == Decoration.upgrade
-        mock_determine_decoration_details.assert_called_with(enriched_pull)
+        mock_determine_decoration_details.assert_called_with(enriched_pull, None)
         mock_activate_user.assert_called_with(
             dbsession,
             enriched_pull.database_pull.repository.owner.ownerid,
@@ -204,7 +204,7 @@ class TestNotifyTaskHelpers(object):
         task = NotifyTask()
         res = task.determine_decoration_type_from_pull(enriched_pull)
         assert res == Decoration.standard
-        mock_determine_decoration_details.assert_called_with(enriched_pull)
+        mock_determine_decoration_details.assert_called_with(enriched_pull, None)
         mock_activate_user.assert_called_with(
             dbsession,
             enriched_pull.database_pull.repository.owner.ownerid,
@@ -786,4 +786,5 @@ class TestNotifyTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             current_yaml=current_yaml,
+            empty_upload=None,
         )

@@ -1,4 +1,4 @@
-from database.enums import Notification
+from database.enums import Decoration, Notification
 from helpers.metrics import metrics
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.checks.base import ChecksNotifier
@@ -24,6 +24,16 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
         with metrics.timer(
             "worker.services.notifications.notifiers.checks.patch.build_payload"
         ):
+            if self.is_empty_upload():
+                state, message = self.get_status_check_for_empty_upload()
+                return {
+                    "state": state,
+                    "output": {
+                        "title": "Empty Upload",
+                        "summary": message,
+                    },
+                }
+
             state, message = await self.get_patch_status(comparison)
             codecov_link = self.get_codecov_pr_link(comparison)
 

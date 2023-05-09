@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Tuple
 
-from database.enums import Notification
+from database.enums import Decoration, Notification
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.mixins.status import StatusProjectMixin
 from services.notification.notifiers.status.base import StatusNotifier
@@ -33,6 +33,10 @@ class ProjectStatusNotifier(StatusProjectMixin, StatusNotifier):
         return Notification.status_project
 
     async def build_payload(self, comparison: Comparison):
+        if self.is_empty_upload():
+            state, message = self.get_status_check_for_empty_upload()
+            return {"state": state, "message": message}
+
         state, message = await self.get_project_status(comparison)
         if self.should_use_upgrade_decoration():
             message = self.get_upgrade_message()

@@ -49,6 +49,7 @@ class NotifyTask(BaseCodecovTask):
         repoid: int,
         commitid: str,
         current_yaml=None,
+        empty_upload=None,
         **kwargs,
     ):
         redis_connection = get_redis_connection()
@@ -78,6 +79,7 @@ class NotifyTask(BaseCodecovTask):
                     repoid=repoid,
                     commitid=commitid,
                     current_yaml=current_yaml,
+                    empty_upload=empty_upload,
                     **kwargs,
                 )
         except LockError as err:
@@ -103,6 +105,7 @@ class NotifyTask(BaseCodecovTask):
         repoid: int,
         commitid: str,
         current_yaml=None,
+        empty_upload=None,
         **kwargs,
     ):
         log.info("Starting notifications", extra=dict(commit=commitid, repoid=repoid))
@@ -210,7 +213,7 @@ class NotifyTask(BaseCodecovTask):
             head_report = report_service.get_existing_report_for_commit(
                 commit, report_class=ReadOnlyReport
             )
-            if head_report is None:
+            if head_report is None and empty_upload is None:
                 return {
                     "notified": False,
                     "notifications": None,
@@ -223,6 +226,7 @@ class NotifyTask(BaseCodecovTask):
                 base_report,
                 head_report,
                 enriched_pull,
+                empty_upload,
             )
             log.info(
                 "Notifications done",
@@ -274,6 +278,7 @@ class NotifyTask(BaseCodecovTask):
         base_report,
         head_report,
         enriched_pull: EnrichedPull,
+        empty_upload=None,
     ):
         comparison = ComparisonProxy(
             Comparison(
@@ -284,7 +289,9 @@ class NotifyTask(BaseCodecovTask):
             )
         )
 
-        decoration_type = self.determine_decoration_type_from_pull(enriched_pull)
+        decoration_type = self.determine_decoration_type_from_pull(
+            enriched_pull, empty_upload
+        )
 
         notifications_service = NotificationService(
             commit.repository, current_yaml, decoration_type
@@ -348,12 +355,14 @@ class NotifyTask(BaseCodecovTask):
         )
 
     def determine_decoration_type_from_pull(
-        self, enriched_pull: EnrichedPull
+        self,
+        enriched_pull: EnrichedPull,
+        empty_upload=None,
     ) -> Decoration:
         """
         Get and process decoration details and attempt auto activation if necessary
         """
-        decoration_details = determine_decoration_details(enriched_pull)
+        decoration_details = determine_decoration_details(enriched_pull, empty_upload)
         decoration_type = decoration_details.decoration_type
 
         if decoration_details.should_attempt_author_auto_activation:
