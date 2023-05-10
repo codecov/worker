@@ -227,11 +227,11 @@ def get_or_create_comparison(db_session, base_commit, compare_commit):
         )
         db_session.add(comparison)
         db_session.flush()
-    # We've been seeing stale commit comparisons surface in the recent past and this log line will help us debug the source
-    log.info(
-        "Commit comparison successfully created",
-        extra=dict(
-            comparison_id=comparison.id,
-        ),
-    )
+        # We've been seeing stale commit comparisons surface in the recent past and this log line will help us debug the source
+        log.info(
+            "Commit comparison successfully created",
+            extra=dict(
+                comparison_id=comparison.id,
+            ),
+        )
     return comparison
