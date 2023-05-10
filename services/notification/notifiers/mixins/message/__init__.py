@@ -156,8 +156,8 @@ class MessageMixin(object):
             and not owner.integration_id
             and not is_enterprise()
         ):
-            message_to_display = "This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)"
-            write(f":mega: {message_to_display}")
+            message_to_display = "Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the Github App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/)."
+            write(f":exclamation: {message_to_display}")
             write("")
 
     async def write_section_to_msg(
