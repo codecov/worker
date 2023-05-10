@@ -93,10 +93,6 @@ jobs:
           name: Create report
           command: |
             codecovcli --auto-load-params-from circleci create-report --service=github
-      - run:
-          name: Run Static Analysis
-          command: |
-            codecovcli static-analysis --token=$STATIC_TOKEN
   iterativetesting:
     executor: codecov-worker
     steps:
@@ -113,7 +109,6 @@ jobs:
             echo $(git merge-base HEAD^ master)
             codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ master)
             coverage json --show-contexts -o label.coverage.json
-            codecovcli --auto-load-params-from circleci do-upload --flag onlysomelabels --file=label.coverage.json
   mutations:
     executor: codecov-worker
     steps:
@@ -164,25 +159,6 @@ jobs:
             make test.integration    
       - attach_workspace:
           at: workspace
-      - run:
-          name: upload to codecov using python uploader
-          command: |
-            apk add git
-            pip install workspace/*
-            codecovcli --auto-load-params-from circleci do-upload --flag latest-uploader-overall --use-new-uploader True
-            codecovcli --auto-load-params-from circleci do-upload --flag unit --file unit.coverage.xml
-            codecovcli --auto-load-params-from circleci do-upload --flag integration --file integration.coverage.xml
-
-      - run:
-          name: upload to codecov using latest node uploader
-          command: |
-            apk add curl
-            apk add git
-            curl -o codecov-latest https://uploader.codecov.io/latest/linux/codecov
-            chmod +x codecov-latest
-            ./codecov-latest -F node-uploader-latest-uploader-overall -Z
-            ./codecov-latest -F node-uploader-unit -f unit.coverage.xml -Z
-            ./codecov-latest -F node-uploader-integration -f integration.coverage.xml -Z
 
   staging:
     executor: codecov-deploy
