@@ -370,7 +370,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan]({links['plan_url']}).",
             f"",
-            f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
+            f"**Do you have questions or need help??** Connect with our sales team today at ` sales@codecov.io `",
         ]
 
     def _create_upgrade_message(self, comparison):
