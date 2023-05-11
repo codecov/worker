@@ -1171,7 +1171,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             "## Codecov Report",
-            "Files changed are non-testable or are ignored by Codecov; therefore there is no coverage data to report :heavy_check_mark:.",
+            ":heavy_check_mark: **No coverage data to report**, because files changed do not require tests or are set to [ignore](https://docs.codecov.com/docs/ignoring-paths#:~:text=You%20can%20use%20the%20top,will%20be%20skipped%20during%20processing.) ",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res

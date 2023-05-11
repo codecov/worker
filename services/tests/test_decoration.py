@@ -420,7 +420,9 @@ class TestDecorationServiceTestCase(object):
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
         )
 
-    def test_get_decoration_type_empty_upload(self, dbsession, mocker, enriched_pull):
+    def test_get_decoration_type_passing_empty_upload(
+        self, dbsession, mocker, enriched_pull
+    ):
         enriched_pull.database_pull.repository.private = False
         dbsession.flush()
 
@@ -430,7 +432,9 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "Non testable files got changed."
         assert decoration_details.should_attempt_author_auto_activation is False
 
-    def test_get_decoration_type_empty_upload(self, dbsession, mocker, enriched_pull):
+    def test_get_decoration_type_failing_empty_upload(
+        self, dbsession, mocker, enriched_pull
+    ):
         enriched_pull.database_pull.repository.private = False
         dbsession.flush()
 

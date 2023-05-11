@@ -1318,6 +1318,32 @@ class TestChangesChecksNotifier(object):
         result = await notifier.build_payload(comparison)
         assert expected_result == result
 
+    @pytest.mark.asyncio
+    async def test_build_failing_empty_upload_payload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"] = {
+            "codecov_url": "test.example.br",
+            "codecov_dashboard_url": "test.example.br",
+        }
+        notifier = ChangesChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            decoration_type=Decoration.failing_empty_upload,
+        )
+        expected_result = {
+            "state": "failure",
+            "output": {
+                "title": "Empty Upload",
+                "summary": "Testable files changed",
+            },
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
 
 class TestProjectChecksNotifier(object):
     @pytest.mark.asyncio
@@ -1426,6 +1452,32 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": "Codecov Report",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nThe author of this PR, codecov-test-user, is not an activated member of this organization on Codecov.\nPlease [activate this user on Codecov](test.example.br/members/gh/test_build_upgrade_payload) to display a detailed status check.\nCoverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.\nPlease don't hesitate to email us at support@codecov.io with any questions.",
+            },
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_passing_empty_upload_payload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"] = {
+            "codecov_url": "test.example.br",
+            "codecov_dashboard_url": "test.example.br",
+        }
+        notifier = ProjectChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            decoration_type=Decoration.passing_empty_upload,
+        )
+        expected_result = {
+            "state": "success",
+            "output": {
+                "title": "Empty Upload",
+                "summary": "Non-testable files changed.",
             },
         }
         result = await notifier.build_payload(sample_comparison)
