@@ -5,7 +5,7 @@ from services.yaml.tracking import (
     _was_betaprofiling_removed_from_yaml,
     tracking_yaml_fields_changes,
 )
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 
 class TestYamlTrackingService(BaseTestCase):

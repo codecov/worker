@@ -3,7 +3,7 @@ import os
 import pytest
 
 from services.path_fixer import fixpaths
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 # Hand-written TOCs.
 paths = [

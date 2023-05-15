@@ -3,7 +3,7 @@ import pathlib
 
 from services.report.languages.pycoverage import PyCoverageProcessor
 from services.report.report_processor import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 SAMPLE = {
     "meta": {

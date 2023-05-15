@@ -2,7 +2,7 @@ import xml.etree.cElementTree as etree
 from json import dumps
 
 from services.report.languages import vb2
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 txt = """<?xml version="1.0" standalone="yes"?>
 <CoverageDSPriv>

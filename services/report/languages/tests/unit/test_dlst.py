@@ -2,7 +2,7 @@ import pytest
 
 from services.report.languages import dlst
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 RAW = b"""       |empty
       1|coverage

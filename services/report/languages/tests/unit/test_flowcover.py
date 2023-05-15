@@ -1,6 +1,6 @@
 from services.report.languages import flowcover
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 json = {
     "files": {

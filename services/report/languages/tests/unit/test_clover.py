@@ -6,7 +6,7 @@ import pytest
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import clover
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="UTF-8"?>
 <coverage generated="%s">

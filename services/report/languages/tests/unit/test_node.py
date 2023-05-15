@@ -7,7 +7,7 @@ import pytest
 
 from services.report.languages import node
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 here = Path(__file__)
 folder = here.parent

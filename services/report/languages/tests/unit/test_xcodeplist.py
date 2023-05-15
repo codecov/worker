@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from services.report.languages import xcodeplist
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 here = Path(__file__)
 folder = here.parent

@@ -2,7 +2,7 @@ import xml.etree.cElementTree as etree
 
 from services.report.languages import csharp
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="utf-8"?>
 <CoverageSession xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">

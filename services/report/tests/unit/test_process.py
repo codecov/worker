@@ -16,7 +16,7 @@ from services.report import raw_upload_processor as process
 from services.report.parser import LegacyReportParser
 from services.report.parser.types import LegacyParsedRawReport, ParsedUploadedReportFile
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 here = Path(__file__)
 folder = here.parent

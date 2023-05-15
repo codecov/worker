@@ -27,7 +27,7 @@ from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
     _adjust_sessions,
 )
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 
 @pytest.fixture

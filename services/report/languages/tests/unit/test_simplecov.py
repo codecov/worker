@@ -4,7 +4,7 @@ from platform import processor
 
 from services.report.languages import simplecov
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 txt_v17 = """
 {

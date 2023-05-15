@@ -1,6 +1,6 @@
 from services.report.languages.salesforce import SalesforceProcessor
 from services.report.report_processor import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 
 class TestSalesforce(BaseTestCase):

@@ -7,7 +7,7 @@ from shared.yaml import UserYaml
 
 from database.tests.factories import CommitFactory
 from services.yaml import get_current_yaml
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 
 class TestYamlService(BaseTestCase):

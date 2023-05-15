@@ -1,6 +1,6 @@
 from services.report.languages import xcode
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 txt = b"""/source:
        |   1|line

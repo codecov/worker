@@ -1,5 +1,5 @@
 from services.redis import get_redis_connection
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 
 class TestRedis(BaseTestCase):
