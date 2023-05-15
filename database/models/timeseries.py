@@ -34,8 +34,6 @@ class Measurement(TimeseriesBaseModel):
     owner_id = Column(types.BigInteger, nullable=False)
     repo_id = Column(types.BigInteger, nullable=False)
     measurable_id = Column(types.String(256))
-    # TODO: run a migration to backpopulate measureable_id w/ info from the flag_id, component_id + repo_id to deprecate flag_id
-    flag_id = Column(types.BigInteger)
     branch = Column(types.String(256))
     commit_sha = Column(types.String(256), nullable=False)
     name = Column(types.String(256), nullable=False)
