@@ -128,61 +128,6 @@ def save_commit_measurements(
             db_session.execute(command)
             db_session.flush()
 
-    if MeasurementName.component_coverage.value in dataset_names:
-        components = current_yaml.get_components()
-        if components:
-            measurements = []
-
-            for component in components:
-                if component.paths or component.flag_regexes:
-                    report_and_component_matching_flags = component.get_matching_flags(
-                        report.flags.keys()
-                    )
-                    filtered_report = report.filter(
-                        flags=report_and_component_matching_flags, paths=component.paths
-                    )
-
-                    if filtered_report.totals.coverage is not None:
-                        measurements.append(
-                            dict(
-                                name=MeasurementName.component_coverage.value,
-                                owner_id=commit.repository.ownerid,
-                                repo_id=commit.repoid,
-                                branch=commit.branch,
-                                commit_sha=commit.commitid,
-                                timestamp=commit.timestamp,
-                                measurable_id=f"{component.component_id}",
-                                value=float(filtered_report.totals.coverage),
-                            )
-                        )
-
-            if len(measurements) > 0:
-                log.info(
-                    "Upserting component coverage measurements",
-                    extra=dict(
-                        repoid=commit.repoid,
-                        commit_id=commit.id_,
-                        count=len(measurements),
-                    ),
-                )
-                command = insert(Measurement.__table__).values(measurements)
-                command = command.on_conflict_do_update(
-                    index_elements=[
-                        Measurement.name,
-                        Measurement.owner_id,
-                        Measurement.repo_id,
-                        Measurement.measurable_id,
-                        Measurement.commit_sha,
-                        Measurement.timestamp,
-                    ],
-                    set_=dict(
-                        branch=command.excluded.branch,
-                        value=command.excluded.value,
-                    ),
-                )
-                db_session.execute(command)
-                db_session.flush()
-
 
 def repository_commits_query(
     repository: Repository,
