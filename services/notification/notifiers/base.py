@@ -90,7 +90,4 @@ class AbstractBaseNotifier(object):
         return self.decoration_type == Decoration.failing_empty_upload
 
     def is_empty_upload(self) -> bool:
-        return (
-            self.decoration_type == Decoration.failing_empty_upload
-            or self.decoration_type == Decoration.passing_empty_upload
-        )
+        return self.is_passing_empty_upload() or self.is_failing_empty_upload()

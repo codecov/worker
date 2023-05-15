@@ -21,19 +21,18 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
         We only add annotaions to the top-level patch check of a project.
         We do not add annotations on checks that are used with paths/flags
         """
+        if self.is_empty_upload():
+            state, message = self.get_status_check_for_empty_upload()
+            return {
+                "state": state,
+                "output": {
+                    "title": "Empty Upload",
+                    "summary": message,
+                },
+            }
         with metrics.timer(
             "worker.services.notifications.notifiers.checks.patch.build_payload"
         ):
-            if self.is_empty_upload():
-                state, message = self.get_status_check_for_empty_upload()
-                return {
-                    "state": state,
-                    "output": {
-                        "title": "Empty Upload",
-                        "summary": message,
-                    },
-                }
-
             state, message = await self.get_patch_status(comparison)
             codecov_link = self.get_codecov_pr_link(comparison)
 
