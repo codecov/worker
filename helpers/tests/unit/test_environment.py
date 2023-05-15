@@ -35,3 +35,15 @@ class TestEnvironment(object):
             {"services": {"external_dependencies_folder": "some/folder"}}
         )
         assert get_external_dependencies_folder() == "some/folder"
+
+    def test_get_current_env_run_env(self, mocker):
+        mocker.patch.dict(os.environ, {"RUN_ENV": "ENTERPRISE"})
+        assert _calculate_current_env() == Environment.enterprise
+        mocker.patch.dict(os.environ, {"RUN_ENV": "DEV"})
+        assert _calculate_current_env() == Environment.local
+        mocker.patch.dict(os.environ, {"RUN_ENV": "STAGING"})
+        assert _calculate_current_env() == Environment.production
+        mocker.patch.dict(os.environ, {"RUN_ENV": "TESTING"})
+        assert _calculate_current_env() == Environment.production
+        mocker.patch.dict(os.environ, {"RUN_ENV": "PRODUCTION"})
+        assert _calculate_current_env() == Environment.production

@@ -42,6 +42,14 @@ def _get_current_folder() -> str:
 
 
 def _calculate_current_env() -> Environment:
+    run_env = os.getenv("RUN_ENV")
+    if run_env is not None:
+        if run_env == "ENTERPRISE":
+            return Environment.enterprise
+        elif run_env == "DEV":
+            return Environment.local
+        else:
+            return Environment.production
     os.environ["CODECOV_HOME"] = _get_current_folder()
     some_dir = Path(os.getenv("CODECOV_HOME"))
     if os.path.exists(some_dir / "src/is_enterprise"):
