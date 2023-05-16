@@ -105,7 +105,6 @@ class TestTimeseriesService(object):
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
         assert measurement.measurable_id == f"{commit.repoid}"
-        assert measurement.flag_id == None
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
             tzinfo=timezone.utc
@@ -155,7 +154,6 @@ class TestTimeseriesService(object):
             name=MeasurementName.coverage.value,
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
-            flag_id=None,
             measurable_id=commit.repoid,
             commit_sha=commit.commitid,
             timestamp=commit.timestamp,
@@ -183,7 +181,6 @@ class TestTimeseriesService(object):
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
         assert measurement.measurable_id == f"{commit.repoid}"
-        assert measurement.flag_id == None
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
             tzinfo=timezone.utc
@@ -224,7 +221,7 @@ class TestTimeseriesService(object):
                 name=MeasurementName.flag_coverage.value,
                 commit_sha=commit.commitid,
                 timestamp=commit.timestamp,
-                flag_id=repository_flag1.id,
+                measurable_id=f"{repository_flag1.id}",
             )
             .one_or_none()
         )
@@ -233,7 +230,6 @@ class TestTimeseriesService(object):
         assert measurement.name == MeasurementName.flag_coverage.value
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
-        assert measurement.flag_id == repository_flag1.id
         assert measurement.measurable_id == f"{repository_flag1.id}"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
@@ -248,7 +244,7 @@ class TestTimeseriesService(object):
                 name=MeasurementName.flag_coverage.value,
                 commit_sha=commit.commitid,
                 timestamp=commit.timestamp,
-                flag_id=repository_flag2.id,
+                measurable_id=f"{repository_flag2.id}",
             )
             .one_or_none()
         )
@@ -257,7 +253,6 @@ class TestTimeseriesService(object):
         assert measurement.name == MeasurementName.flag_coverage.value
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
-        assert measurement.flag_id == repository_flag2.id
         assert measurement.measurable_id == f"{repository_flag2.id}"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
@@ -295,7 +290,6 @@ class TestTimeseriesService(object):
             name=MeasurementName.flag_coverage.value,
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
-            flag_id=repository_flag1.id,
             measurable_id=repository_flag1.id,
             commit_sha=commit.commitid,
             timestamp=commit.timestamp,
@@ -309,7 +303,6 @@ class TestTimeseriesService(object):
             name=MeasurementName.flag_coverage.value,
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
-            flag_id=repository_flag2.id,
             measurable_id=repository_flag2.id,
             commit_sha=commit.commitid,
             timestamp=commit.timestamp,
@@ -336,7 +329,6 @@ class TestTimeseriesService(object):
         assert measurement.name == MeasurementName.flag_coverage.value
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
-        assert measurement.flag_id == repository_flag1.id
         assert measurement.measurable_id == f"{repository_flag1.id}"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
@@ -360,7 +352,6 @@ class TestTimeseriesService(object):
         assert measurement.name == MeasurementName.flag_coverage.value
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
-        assert measurement.flag_id == repository_flag2.id
         assert measurement.measurable_id == f"{repository_flag2.id}"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(

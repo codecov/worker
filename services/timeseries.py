@@ -45,7 +45,6 @@ def save_commit_measurements(
                 name=MeasurementName.coverage.value,
                 owner_id=commit.repository.ownerid,
                 repo_id=commit.repoid,
-                flag_id=None,
                 measurable_id=f"{commit.repoid}",
                 branch=commit.branch,
                 commit_sha=commit.commitid,
@@ -57,14 +56,13 @@ def save_commit_measurements(
                     Measurement.name,
                     Measurement.owner_id,
                     Measurement.repo_id,
+                    Measurement.measurable_id,
                     Measurement.commit_sha,
                     Measurement.timestamp,
                 ],
-                index_where=(Measurement.flag_id.is_(None)),
                 set_=dict(
                     branch=command.excluded.branch,
                     value=command.excluded.value,
-                    measurable_id=command.excluded.measurable_id,
                 ),
             )
             db_session.execute(command)
@@ -95,7 +93,6 @@ def save_commit_measurements(
                         name=MeasurementName.flag_coverage.value,
                         owner_id=commit.repository.ownerid,
                         repo_id=commit.repoid,
-                        flag_id=flag_id,
                         measurable_id=f"{flag_id}",
                         branch=commit.branch,
                         commit_sha=commit.commitid,
@@ -119,15 +116,13 @@ def save_commit_measurements(
                     Measurement.name,
                     Measurement.owner_id,
                     Measurement.repo_id,
-                    Measurement.flag_id,
+                    Measurement.measurable_id,
                     Measurement.commit_sha,
                     Measurement.timestamp,
                 ],
-                index_where=(Measurement.flag_id.isnot(None)),
                 set_=dict(
                     branch=command.excluded.branch,
                     value=command.excluded.value,
-                    measurable_id=command.excluded.measurable_id,
                 ),
             )
             db_session.execute(command)

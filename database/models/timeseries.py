@@ -34,8 +34,6 @@ class Measurement(TimeseriesBaseModel):
     owner_id = Column(types.BigInteger, nullable=False)
     repo_id = Column(types.BigInteger, nullable=False)
     measurable_id = Column(types.String(256))
-    # TODO: run a migration to backpopulate measureable_id w/ info from the flag_id, component_id + repo_id to deprecate flag_id
-    flag_id = Column(types.BigInteger)
     branch = Column(types.String(256))
     commit_sha = Column(types.String(256), nullable=False)
     name = Column(types.String(256), nullable=False)
@@ -43,25 +41,14 @@ class Measurement(TimeseriesBaseModel):
 
     __table_args__ = (
         Index(
-            "timeseries_measurement_noflag_unique",
+            "timeseries_measurement_measurable_unique",
             timestamp,
             owner_id,
             repo_id,
+            measurable_id,
             commit_sha,
             name,
             unique=True,
-            postgresql_where=flag_id.is_(None),
-        ),
-        Index(
-            "timeseries_measurement_flag_unique",
-            timestamp,
-            owner_id,
-            repo_id,
-            flag_id,
-            commit_sha,
-            name,
-            unique=True,
-            postgresql_where=flag_id.isnot(None),
         ),
     )
 
@@ -70,7 +57,6 @@ class Measurement(TimeseriesBaseModel):
             timestamp,
             owner_id,
             repo_id,
-            flag_id,
             measurable_id,
             commit_sha,
             name,
