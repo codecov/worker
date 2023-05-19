@@ -152,7 +152,9 @@ class ChecksNotifier(StatusNotifier):
                         comparison, "flag_coverage_not_uploaded_behavior"
                     )
                 )
-                if (
+                if not comparison.has_head_report():
+                    payload = await self.build_payload(comparison)
+                elif (
                     flag_coverage_not_uploaded_behavior == "exclude"
                     and not self.flag_coverage_was_uploaded(comparison)
                 ):

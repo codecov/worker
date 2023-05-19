@@ -422,6 +422,30 @@ class TestDecorationServiceTestCase(object):
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
         )
 
+    def test_get_decoration_type_passing_empty_upload(
+        self, dbsession, mocker, enriched_pull
+    ):
+        enriched_pull.database_pull.repository.private = False
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull, "pass")
+
+        assert decoration_details.decoration_type == Decoration.passing_empty_upload
+        assert decoration_details.reason == "Non testable files got changed."
+        assert decoration_details.should_attempt_author_auto_activation is False
+
+    def test_get_decoration_type_failing_empty_upload(
+        self, dbsession, mocker, enriched_pull
+    ):
+        enriched_pull.database_pull.repository.private = False
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull, "fail")
+
+        assert decoration_details.decoration_type == Decoration.failing_empty_upload
+        assert decoration_details.reason == "Testable files got changed."
+        assert decoration_details.should_attempt_author_auto_activation is False
+
 
 class TestDecorationServiceGitLabTestCase(object):
     def test_get_decoration_type_not_pr_plan_gitlab_subgroup(

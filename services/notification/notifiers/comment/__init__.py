@@ -354,12 +354,27 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     async def build_message(self, comparison: Comparison) -> List[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
+        if self.is_empty_upload():
+            return self._create_empty_upload_message()
         if self.should_use_upload_limit_decoration():
             return self._create_reached_upload_limit_message(comparison)
         pull_dict = comparison.enriched_pull.provider_pull
         return await self.create_message(
             comparison, pull_dict, self.notifier_yaml_settings
         )
+
+    def _create_empty_upload_message(self):
+        if self.is_passing_empty_upload():
+            return [
+                "## Codecov Report",
+                ":heavy_check_mark: **No coverage data to report**, because files changed do not require tests or are set to [ignore](https://docs.codecov.com/docs/ignoring-paths#:~:text=You%20can%20use%20the%20top,will%20be%20skipped%20during%20processing.) ",
+            ]
+        if self.is_failing_empty_upload():
+            return [
+                "## Codecov Report",
+                "This is an empty upload",
+                "Files changed in this PR are testable or aren't ignored by Codecov, please run your tests and upload coverage. If you wish to ignore these files, please visit our [ignoring paths docs](https://docs.codecov.com/docs/ignoring-paths).",
+            ]
 
     def _create_reached_upload_limit_message(self, comparison):
         db_pull = comparison.enriched_pull.database_pull

@@ -28,6 +28,15 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
         We only show/add the comment message to the top-level check of a project.
         We do not show/add the message on checks that are used with paths/flags.
         """
+        if self.is_empty_upload():
+            state, message = self.get_status_check_for_empty_upload()
+            return {
+                "state": state,
+                "output": {
+                    "title": "Empty Upload",
+                    "summary": message,
+                },
+            }
         with metrics.timer(
             "worker.services.notifications.notifiers.checks.project.build_payload"
         ):

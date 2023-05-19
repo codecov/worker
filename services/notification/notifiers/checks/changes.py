@@ -13,6 +13,15 @@ class ChangesChecksNotifier(StatusChangesMixin, ChecksNotifier):
         return Notification.checks_changes
 
     async def build_payload(self, comparison) -> Dict[str, str]:
+        if self.is_empty_upload():
+            state, message = self.get_status_check_for_empty_upload()
+            return {
+                "state": state,
+                "output": {
+                    "title": "Empty Upload",
+                    "summary": message,
+                },
+            }
         state, message = await self.get_changes_status(comparison)
         codecov_link = self.get_codecov_pr_link(comparison)
 
