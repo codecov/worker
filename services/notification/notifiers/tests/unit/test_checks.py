@@ -1076,7 +1076,7 @@ class TestPatchChecksNotifier(object):
     async def test_notify_passing_empty_upload(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1104,7 +1104,7 @@ class TestPatchChecksNotifier(object):
     async def test_notify_failing_empty_upload(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
-        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
