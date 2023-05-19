@@ -9,6 +9,8 @@ import dataclasses
 import logging
 from typing import Iterator, List
 
+from services.notification.notifiers.codecov_slack_app import CodecovSlackAppNotifier
+
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.config import get_config
 from shared.helpers.yaml import default_if_true
@@ -105,6 +107,15 @@ class NotificationService(object):
                     current_yaml=self.current_yaml,
                     decoration_type=self.decoration_type,
                 )
+            
+        yield CodecovSlackAppNotifier(
+            repository=self.repository, 
+            title="codecov-slack-app",
+            notifier_yaml_settings={},
+            notifier_site_settings={},
+            current_yaml=self.current_yaml,
+            decoration_type=self.decoration_type,
+        )
 
         comment_yaml_field = read_yaml_field(self.current_yaml, ("comment",))
         if comment_yaml_field:
@@ -177,7 +188,7 @@ class NotificationService(object):
             if notifier.is_enabled():
                 notification_instances.append(notifier)
         results = []
-        chunk_size = 3
+        chunk_size = 3 # what is this for?
         for i in range(0, len(notification_instances), chunk_size):
             notification_instances_chunk = notification_instances[i : i + chunk_size]
             task_chunk = [

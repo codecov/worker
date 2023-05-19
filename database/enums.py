@@ -20,6 +20,7 @@ class Notification(Enum):
     gitter = "gitter"
     irc = "irc"
     hipchat = "hipchat"
+    codecov_slack_app = "codecov_slack_app"
 
 
 class NotificationState(Enum):
