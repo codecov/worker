@@ -1,4 +1,5 @@
 import base64
+import zipfile
 import zlib
 from io import BytesIO
 
@@ -81,6 +82,19 @@ def test_version_one_parser():
     )
     assert second_file.size == 3415
     assert second_file.labels == ["simple", "a.py::fileclass::test_simple"]
+
+    bytes = res.zipped()
+    assert zipfile.is_zipfile(bytes)
+
+    with zipfile.ZipFile(bytes) as zip:
+        assert len(zip.filelist) == 2
+
+        file1 = zip.filelist[0]
+        assert file1.filename == first_file.filename
+        assert zip.read(file1.filename) == first_file.contents
+        file2 = zip.filelist[1]
+        assert file2.filename == second_file.filename
+        assert zip.read(file2.filename) == second_file.contents
 
 
 def test_version_one_parser_parse_coverage_file_contents_bad_format():

@@ -34,6 +34,7 @@ from helpers.exceptions import (
 )
 from services.archive import ArchiveService
 from services.report.parser import get_proper_parser
+from services.report.parser.types import ParsedRawReport
 from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags
@@ -56,6 +57,7 @@ class ProcessingResult(object):
     error: Optional[ProcessingError]
     fully_deleted_sessions: typing.List[int]
     partially_deleted_sessions: typing.List[int]
+    raw_report: ParsedRawReport
 
     def as_dict(self):
         # Weird flow for now in order to keep things compatible with previous logging
@@ -547,6 +549,7 @@ class ReportService(object):
                 ),
                 fully_deleted_sessions=None,
                 partially_deleted_sessions=None,
+                raw_report=None,
             )
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
@@ -574,6 +577,7 @@ class ReportService(object):
                 error=None,
                 fully_deleted_sessions=result.fully_deleted_sessions,
                 partially_deleted_sessions=result.partially_deleted_sessions,
+                raw_report=result.raw_report,
             )
         except ReportExpiredException:
             log.info(
@@ -587,6 +591,7 @@ class ReportService(object):
                 error=ProcessingError(code="report_expired", params={}),
                 fully_deleted_sessions=None,
                 partially_deleted_sessions=None,
+                raw_report=None,
             )
         except ReportEmptyError:
             log.info(
@@ -600,6 +605,7 @@ class ReportService(object):
                 error=ProcessingError(code="report_empty", params={}),
                 fully_deleted_sessions=None,
                 partially_deleted_sessions=None,
+                raw_report=None,
             )
 
     def update_upload_with_processing_result(

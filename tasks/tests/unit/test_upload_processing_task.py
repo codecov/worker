@@ -1,3 +1,4 @@
+import zipfile
 from pathlib import Path
 
 import celery
@@ -247,6 +248,10 @@ class TestUploadProcessorTask(object):
         assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid, None)
 
+        # storage is overwritten with zipfile
+        data = mock_storage.read_file("archive", url)
+        assert zipfile.is_zipfile(data)
+
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_upload_task_call_existing_chunks(
@@ -428,6 +433,7 @@ class TestUploadProcessorTask(object):
                 report=false_report,
                 fully_deleted_sessions=[],
                 partially_deleted_sessions=[],
+                raw_report=None,
             ),
             ReportExpiredException(),
         ]
@@ -616,6 +622,7 @@ class TestUploadProcessorTask(object):
                 report=false_report,
                 fully_deleted_sessions=[],
                 partially_deleted_sessions=[],
+                raw_report=None,
             ),
             ReportEmptyError(),
         ]

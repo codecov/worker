@@ -33,10 +33,16 @@ def invert_pattern(string: str) -> str:
 
 @dataclass
 class UploadProcessingResult(object):
-    __slots__ = ("report", "fully_deleted_sessions", "partially_deleted_sessions")
+    __slots__ = (
+        "report",
+        "fully_deleted_sessions",
+        "partially_deleted_sessions",
+        "raw_report",
+    )
     report: Report
     fully_deleted_sessions: typing.List[int]
     partially_deleted_sessions: typing.List[int]
+    raw_report: ParsedRawReport
 
 
 def process_raw_upload(
@@ -129,6 +135,7 @@ def process_raw_upload(
         report=original_report,
         fully_deleted_sessions=session_manipulation_result.fully_deleted_sessions,
         partially_deleted_sessions=session_manipulation_result.partially_deleted_sessions,
+        raw_report=reports,
     )
 
 

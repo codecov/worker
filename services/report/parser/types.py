@@ -1,3 +1,4 @@
+import zipfile
 from io import BytesIO
 from typing import Any, BinaryIO, Dict, List, Optional
 
@@ -50,6 +51,15 @@ class ParsedRawReport(object):
     @property
     def size(self):
         return sum(f.size for f in self.uploaded_files)
+
+    def zipped(self) -> BytesIO:
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip:
+            for uploaded_file in self.uploaded_files:
+                zip.writestr(
+                    uploaded_file.filename, uploaded_file.file_contents.getvalue()
+                )
+        return buffer
 
 
 class VersionOneParsedRawReport(ParsedRawReport):
