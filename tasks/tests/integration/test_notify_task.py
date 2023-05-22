@@ -68,7 +68,16 @@ class TestNotifyTask(object):
         result = await task.run_async(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
-        expected_result = {"notified": True, "notifications": []}
+        expected_result = {
+            "notified": True,
+            "notifications": [
+                {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": None,
+                }
+            ],
+        }  # we always call codecov slack app notifier
         assert result == expected_result
 
     @pytest.mark.asyncio
@@ -128,18 +137,23 @@ class TestNotifyTask(object):
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": dict(
-                        notification_attempted=False,
-                        notification_successful=None,
-                        explanation="already_done",
-                        data_sent={
+                    "result": {
+                        "notification_attempted": False,
+                        "notification_successful": None,
+                        "explanation": "already_done",
+                        "data_sent": {
                             "title": "codecov/project",
                             "state": "success",
                             "message": "85.00% (+0.00%) compared to 17a71a9",
                         },
-                        data_received=None,
-                    ),
-                }
+                        "data_received": None,
+                    },
+                },
+                {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": None,
+                },
             ],
         }
         assert (
@@ -211,48 +225,53 @@ class TestNotifyTask(object):
             "notifications": [
                 {
                     "notifier": "status-project",
-                    "result": dict(
-                        notification_attempted=True,
-                        notification_successful=True,
-                        explanation=None,
-                        data_sent={
+                    "title": "default",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
                             "title": "codecov/project",
                             "state": "success",
-                            "message": f"85.00% (+0.00%) compared to {parent_commit_id[:7]}",
+                            "message": "85.00% (+0.00%) compared to 081d919",
                         },
-                        data_received={"id": 9333281614},
-                    ),
-                    "title": "default",
+                        "data_received": {"id": 9333281614},
+                    },
                 },
                 {
                     "notifier": "status-patch",
-                    "result": dict(
-                        notification_attempted=True,
-                        notification_successful=True,
-                        explanation=None,
-                        data_sent={
+                    "title": "default",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
                             "title": "codecov/patch",
                             "state": "success",
-                            "message": f"Coverage not affected when comparing {parent_commit_id[:7]}...{commitid[:7]}",
+                            "message": "Coverage not affected when comparing 081d919...f089529",
                         },
-                        data_received={"id": 9333281697},
-                    ),
-                    "title": "default",
+                        "data_received": {"id": 9333281697},
+                    },
                 },
                 {
                     "notifier": "status-changes",
-                    "result": dict(
-                        notification_attempted=True,
-                        notification_successful=True,
-                        explanation=None,
-                        data_sent={
+                    "title": "default",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
                             "title": "codecov/changes",
                             "state": "failure",
                             "message": "1 file has unexpected coverage changes not visible in diff",
                         },
-                        data_received={"id": 9333281703},
-                    ),
-                    "title": "default",
+                        "data_received": {"id": 9333281703},
+                    },
+                },
+                {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": None,
                 },
             ],
         }
@@ -328,56 +347,60 @@ class TestNotifyTask(object):
             },
         )
         expected_result = {
+            "notified": True,
             "notifications": [
                 {
                     "notifier": "status-project",
+                    "title": "default",
                     "result": {
-                        "data_received": {"id": 9333363767},
-                        "data_sent": {
-                            "message": f"85.00% (+0.00%) compared to {master_sha[:7]}",
-                            "state": "success",
-                            "title": "codecov/project",
-                        },
-                        "explanation": None,
                         "notification_attempted": True,
                         "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
+                            "title": "codecov/project",
+                            "state": "success",
+                            "message": "85.00% (+0.00%) compared to f089529",
+                        },
+                        "data_received": {"id": 9333363767},
                     },
-                    "title": "default",
                 },
                 {
                     "notifier": "status-patch",
+                    "title": "default",
                     "result": {
-                        "data_received": {"id": 9333363778},
-                        "data_sent": {
-                            "message": f"Coverage not affected when comparing {master_sha[:7]}...{head_commitid[:7]}",
-                            "state": "success",
-                            "title": "codecov/patch",
-                        },
-                        "explanation": None,
                         "notification_attempted": True,
                         "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
+                            "title": "codecov/patch",
+                            "state": "success",
+                            "message": "Coverage not affected when comparing f089529...11daa27",
+                        },
+                        "data_received": {"id": 9333363778},
                     },
-                    "title": "default",
                 },
                 {
                     "notifier": "status-changes",
+                    "title": "default",
                     "result": {
-                        "data_received": {"id": 9333363801},
-                        "data_sent": {
-                            "message": "No unexpected coverage changes found",
-                            "state": "success",
-                            "title": "codecov/changes",
-                        },
-                        "explanation": None,
                         "notification_attempted": True,
                         "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
+                            "title": "codecov/changes",
+                            "state": "success",
+                            "message": "No unexpected coverage changes found",
+                        },
+                        "data_received": {"id": 9333363801},
                     },
-                    "title": "default",
+                },
+                {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": None,
                 },
             ],
-            "notified": True,
         }
-        print(result)
         assert result == expected_result
 
     @pytest.mark.asyncio
@@ -651,6 +674,11 @@ class TestNotifyTask(object):
                     },
                 },
                 {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": None,
+                },
+                {
                     "notifier": "comment",
                     "title": "comment",
                     "result": {
@@ -715,6 +743,8 @@ class TestNotifyTask(object):
             sorted(result["notifications"], key=lambda x: x["notifier"]),
             sorted(expected_result["notifications"], key=lambda x: x["notifier"]),
         ):
+            if expected["notifier"] == "codecov-slack-app":
+                continue
             assert (
                 expected["result"]["notification_attempted"]
                 == actual["result"]["notification_attempted"]
