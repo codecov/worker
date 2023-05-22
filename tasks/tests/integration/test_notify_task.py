@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 
@@ -13,9 +14,11 @@ sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
 
 @pytest.mark.integration
 class TestNotifyTask(object):
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_no_notifiers(
         self,
+        mock_requests_post,
         dbsession,
         mocker,
         codecov_vcr,
@@ -23,6 +26,7 @@ class TestNotifyTask(object):
         mock_configuration,
         mock_redis,
     ):
+        mock_requests_post.return_value.status_code = 200
         mock_redis.get.return_value = False
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
@@ -74,16 +78,39 @@ class TestNotifyTask(object):
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": None,
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "example-python",
+                            "owner": "ThiagoCodecov",
+                            "comparison": {
+                                "url": None,
+                                "message": "unknown",
+                                "coverage": "None",
+                                "notation": "",
+                            },
+                        },
+                        "data_received": None,
+                    },
                 }
             ],
-        }  # we always call codecov slack app notifier
+        }
         assert result == expected_result
 
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_only_status_notifiers(
-        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
     ):
+        mock_post_request.return_value.status_code = 200
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
         ] = "https://codecov.io"
@@ -152,7 +179,22 @@ class TestNotifyTask(object):
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": None,
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "example-python",
+                            "owner": "ThiagoCodecov",
+                            "comparison": {
+                                "url": "https://codecov.io/gh/ThiagoCodecov/example-python/commit/649eaaf2924e92dc7fd8d370ddb857033231e67a",
+                                "message": "no change",
+                                "coverage": "0.00",
+                                "notation": "",
+                            },
+                        },
+                        "data_received": None,
+                    },
                 },
             ],
         }
@@ -164,10 +206,18 @@ class TestNotifyTask(object):
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
 
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_only_status_notifiers_no_pull_request(
-        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
     ):
+        mock_post_request.return_value.status_code = 200
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
         ] = "https://myexamplewebsite.io"
@@ -271,7 +321,22 @@ class TestNotifyTask(object):
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": None,
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "example-python",
+                            "owner": "ThiagoCodecov",
+                            "comparison": {
+                                "url": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775",
+                                "message": "no change",
+                                "coverage": "0.00",
+                                "notation": "",
+                            },
+                        },
+                        "data_received": None,
+                    },
                 },
             ],
         }
@@ -289,10 +354,18 @@ class TestNotifyTask(object):
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
 
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_only_status_notifiers_with_pull_request(
-        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
     ):
+        mock_post_request.return_value.status_code = 200
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
         ] = "https://myexamplewebsite.io"
@@ -397,16 +470,39 @@ class TestNotifyTask(object):
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": None,
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "example-python",
+                            "owner": "ThiagoCodecov",
+                            "comparison": {
+                                "url": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/11daa27b1b74fd181836a64106f936a16404089c",
+                                "message": "no change",
+                                "coverage": "0.00",
+                                "notation": "",
+                            },
+                        },
+                        "data_received": None,
+                    },
                 },
             ],
         }
         assert result == expected_result
 
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_status_and_notifiers(
-        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
     ):
+        mock_post_request.return_value.status_code = 200
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
         ] = "https://myexamplewebsite.io"
@@ -676,7 +772,22 @@ class TestNotifyTask(object):
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": None,
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "test_example",
+                            "owner": "test-acc9",
+                            "comparison": {
+                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1",
+                                "message": "no change",
+                                "coverage": "0.00",
+                                "notation": "",
+                            },
+                        },
+                        "data_received": None,
+                    },
                 },
                 {
                     "notifier": "comment",
@@ -743,8 +854,6 @@ class TestNotifyTask(object):
             sorted(result["notifications"], key=lambda x: x["notifier"]),
             sorted(expected_result["notifications"], key=lambda x: x["notifier"]),
         ):
-            if expected["notifier"] == "codecov-slack-app":
-                continue
             assert (
                 expected["result"]["notification_attempted"]
                 == actual["result"]["notification_attempted"]
