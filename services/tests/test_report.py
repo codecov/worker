@@ -3552,6 +3552,88 @@ class TestReportService(BaseTestCase):
         ]
 
     @pytest.mark.asyncio
+    async def test_initialize_and_save_report_report_but_no_details_carryforward_needed(
+        self, dbsession, sample_commit_with_report_big, mock_storage
+    ):
+        parent_commit = sample_commit_with_report_big
+        commit = CommitFactory.create(
+            report_json=None,
+            parent_commit_id=parent_commit.commitid,
+            repository=parent_commit.repository,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(report_row)
+        dbsession.flush()
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
+        report_service = ReportService(UserYaml(yaml_dict))
+        r = await report_service.initialize_and_save_report(commit)
+        assert len(r.uploads) == 2
+        first_upload = dbsession.query(Upload).filter_by(
+            report_id=r.id_, order_number=2
+        )[0]
+        second_upload = dbsession.query(Upload).filter_by(
+            report_id=r.id_, order_number=3
+        )[0]
+        assert first_upload.build_code is None
+        assert first_upload.build_url is None
+        assert first_upload.env is None
+        assert first_upload.job_code is None
+        assert first_upload.name == "Carriedforward"
+        assert first_upload.provider is None
+        assert first_upload.report_id == r.id_
+        assert first_upload.state == "complete"
+        assert first_upload.storage_path == ""
+        assert first_upload.order_number == 2
+        assert len(first_upload.flags) == 1
+        assert first_upload.flags[0].repository == commit.repository
+        assert first_upload.flags[0].flag_name == "enterprise"
+        assert first_upload.totals is None
+        assert first_upload.upload_extras == {
+            "carriedforward_from": parent_commit.commitid
+        }
+        assert first_upload.upload_type == "carriedforward"
+        assert second_upload.build_code is None
+        assert second_upload.build_url is None
+        assert second_upload.env is None
+        assert second_upload.job_code is None
+        assert second_upload.name == "Carriedforward"
+        assert second_upload.provider is None
+        assert second_upload.report_id == r.id_
+        assert second_upload.state == "complete"
+        assert second_upload.storage_path == ""
+        assert second_upload.order_number == 3
+        assert len(second_upload.flags) == 2
+        assert sorted([f.flag_name for f in second_upload.flags]) == [
+            "enterprise",
+            "unit",
+        ]
+        assert second_upload.totals is None
+        assert second_upload.upload_extras == {
+            "carriedforward_from": parent_commit.commitid
+        }
+        assert second_upload.upload_type == "carriedforward"
+        assert r.details is not None
+        assert sorted(f["filename"] for f in r.details.files_array) == [
+            "file_00.py",
+            "file_01.py",
+            "file_02.py",
+            "file_03.py",
+            "file_04.py",
+            "file_05.py",
+            "file_06.py",
+            "file_07.py",
+            "file_08.py",
+            "file_09.py",
+            "file_10.py",
+            "file_11.py",
+            "file_12.py",
+            "file_13.py",
+            "file_14.py",
+        ]
+
+    @pytest.mark.asyncio
     async def test_initialize_and_save_report_needs_backporting(
         self, dbsession, sample_commit_with_report_big, mock_storage
     ):
