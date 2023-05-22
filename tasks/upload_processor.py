@@ -275,10 +275,10 @@ class UploadProcessorTask(BaseCodecovTask):
             archive_service.delete_file(archive_url)
             archive_url = None
         elif res.raw_report is not None:
-            # store zip file containing raw reports (for download via the dashboard)
+            # store raw coverage report (in parsed format)
             # Note that this overwrites the original upload (but we shouldn't need it again in the future)
             archive_service = report_service.get_archive_service(commit.repository)
-            archive_service.write_file(archive_url, res.raw_report.zipped())
+            archive_service.write_file(archive_url, res.raw_report.content().getvalue())
         return res
 
     def should_delete_archive(self, commit_yaml):
