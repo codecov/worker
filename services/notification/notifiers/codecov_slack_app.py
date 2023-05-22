@@ -32,7 +32,7 @@ class CodecovSlackAppNotifier(StandardNotifier):
 
         data = {
             "repository": self.repository.name,
-            "owner": self.repository.owner.name,
+            "owner": self.repository.owner.username,
             "comparison": compare_dict,
         }
         response = requests.post(request_url, headers=headers, data=json.dumps(data))
