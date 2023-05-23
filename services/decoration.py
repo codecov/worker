@@ -17,7 +17,11 @@ log = logging.getLogger(__name__)
 # https://codecovio.atlassian.net/wiki/spaces/ENG/pages/34603058/PR+based+Billing+Refactor
 
 
-BOT_USER_EMAILS = ["dependabot[bot]@users.noreply.github.com"]
+BOT_USER_EMAILS = [
+    "dependabot[bot]@users.noreply.github.com",
+    "29139614+renovate[bot]@users.noreply.github.com",
+]
+BOT_USER_IDS = ["29139614"]  # renovate[bot] github
 
 
 @dataclass
@@ -27,6 +31,10 @@ class DecorationDetails(object):
     should_attempt_author_auto_activation: bool = False
     activation_org_ownerid: int = None
     activation_author_ownerid: int = None
+
+
+def _is_bot_account(author: Owner) -> bool:
+    return author.email in BOT_USER_EMAILS or author.service_id in BOT_USER_IDS
 
 
 def determine_decoration_details(
@@ -146,7 +154,7 @@ def determine_decoration_details(
                 reason="User is currently activated",
             )
 
-        if pr_author.email in BOT_USER_EMAILS:
+        if _is_bot_account(pr_author):
             return DecorationDetails(
                 decoration_type=Decoration.standard,
                 reason="Bot user detected (does not need to be activated)",
