@@ -3964,6 +3964,7 @@ class TestReportService(BaseTestCase):
             error=ProcessingError(code="abclkj", params={"banana": "value"}),
             fully_deleted_sessions=[],
             partially_deleted_sessions=[],
+            raw_report=None,
         )
         assert (
             ReportService({}).update_upload_with_processing_result(
@@ -3990,6 +3991,7 @@ class TestReportService(BaseTestCase):
             error=None,
             fully_deleted_sessions=[],
             partially_deleted_sessions=[],
+            raw_report=None,
         )
         assert (
             ReportService({}).update_upload_with_processing_result(

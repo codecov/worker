@@ -17,6 +17,7 @@ from helpers.exceptions import (
 )
 from services.archive import ArchiveService
 from services.report import ReportService
+from services.report.parser.legacy import LegacyReportParser
 from services.report.raw_upload_processor import UploadProcessingResult
 from tasks.upload_processor import UploadProcessorTask
 
@@ -247,6 +248,13 @@ class TestUploadProcessorTask(object):
         assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid, None)
 
+        # storage is overwritten with parsed contents
+        data = mock_storage.read_file("archive", url)
+        parsed = LegacyReportParser().parse_raw_report_from_bytes(
+            content.encode("utf-8")
+        )
+        assert data == parsed.content().getvalue()
+
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_upload_task_call_existing_chunks(
@@ -428,6 +436,7 @@ class TestUploadProcessorTask(object):
                 report=false_report,
                 fully_deleted_sessions=[],
                 partially_deleted_sessions=[],
+                raw_report=None,
             ),
             ReportExpiredException(),
         ]
@@ -616,6 +625,7 @@ class TestUploadProcessorTask(object):
                 report=false_report,
                 fully_deleted_sessions=[],
                 partially_deleted_sessions=[],
+                raw_report=None,
             ),
             ReportEmptyError(),
         ]
