@@ -88,7 +88,7 @@ class TestNotifyTask(object):
                             "comparison": {
                                 "url": None,
                                 "message": "unknown",
-                                "coverage": "None",
+                                "coverage": None,
                                 "notation": "",
                             },
                         },
