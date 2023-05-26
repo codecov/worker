@@ -1,8 +1,8 @@
 import json
+import os
 from decimal import Decimal
 
 import requests
-from shared.config import get_config
 
 from database.enums import Notification
 from services.notification.notifiers.base import (
@@ -13,9 +13,7 @@ from services.notification.notifiers.generics import Comparison
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import round_number
 
-CODECOV_INTERNAL_TOKEN = get_config(
-    "services", "slack", "codecov_internal_token", default=None
-)
+CODECOV_INTERNAL_TOKEN = os.environ.get("CODECOV_INTERNAL_TOKEN")
 
 
 class CodecovSlackAppNotifier(AbstractBaseNotifier):
