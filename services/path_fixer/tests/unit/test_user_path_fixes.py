@@ -1,5 +1,5 @@
 from services.path_fixer.user_path_fixes import UserPathFixes
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 
 class TestUserPathFixes(BaseTestCase):

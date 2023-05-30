@@ -51,6 +51,15 @@ class ParsedRawReport(object):
     def size(self):
         return sum(f.size for f in self.uploaded_files)
 
+    def content(self) -> BytesIO:
+        buffer = BytesIO()
+        for file in self.uploaded_files:
+            buffer.write(f"# path={file.filename}\n".encode("utf-8"))
+            buffer.write(file.contents)
+            buffer.write("\n<<<<<< EOF\n\n".encode("utf-8"))
+        buffer.seek(0)
+        return buffer
+
 
 class VersionOneParsedRawReport(ParsedRawReport):
     def get_toc(self) -> List[str]:

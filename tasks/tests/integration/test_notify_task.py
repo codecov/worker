@@ -665,7 +665,7 @@ class TestNotifyTask(object):
                                 "",
                                 "> :exclamation: Current head 610ada9 differs from pull request most recent head a2d3e3c. Consider uploading reports for the commit a2d3e3c to get more accurate results",
                                 "",
-                                ":mega: This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)",
+                                ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the Github App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
                                 "",
                                 "[![Impacted file tree graph](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=tree)",
                                 "",

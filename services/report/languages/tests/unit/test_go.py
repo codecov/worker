@@ -4,7 +4,7 @@ from shared.reports.types import ReportTotals
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages import go
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 txt = b"""mode: atomic
 source:1.1,1.10 1 1

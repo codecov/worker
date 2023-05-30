@@ -73,26 +73,20 @@ jobs:
       - run:
           name: Setup
           command: |
-            apk add git openssh musl-dev gcc build-base python3-dev libffi-dev
+            apk add git build-base
       - checkout
       - run:
           name: Install CLI
           command: |
-            mkdir workspace
-            pip wheel git+ssh://git@github.com/codecov/codecov-cli.git@9a8498ab43772d6508a703c1d5360387ec525974#egg=codecov-cli --wheel-dir workspace
-            pip install workspace/*
-      - persist_to_workspace:
-          root: workspace
-          paths:
-            - "*.whl"
+            pip install codecov-cli
       - run:
           name: Save commit info 
           command: |
-            codecovcli --auto-load-params-from circleci create-commit --service=github
+            codecovcli create-commit 
       - run: 
           name: Create report
           command: |
-            codecovcli --auto-load-params-from circleci create-report --service=github
+            codecovcli create-report 
       - run:
           name: Run Static Analysis
           command: |
@@ -100,20 +94,15 @@ jobs:
   iterativetesting:
     executor: codecov-worker
     steps:
-      - attach_workspace:
-          at: workspace
-      - run:
-          name: Setup
-          command: |
-            apk add git
-            pip install workspace/*
       - run:
           name: Run Predictor Analysis
           command: |
+            apk add git build-base
+            pip install codecov-cli
             echo $(git merge-base HEAD^ master)
             codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ master)
             coverage json --show-contexts -o label.coverage.json
-            codecovcli --auto-load-params-from circleci do-upload --flag onlysomelabels --file=label.coverage.json
+            codecovcli do-upload --flag onlysomelabels --file=label.coverage.json
   mutations:
     executor: codecov-worker
     steps:
@@ -135,11 +124,6 @@ jobs:
       - checkout
       - setup_remote_docker:
           version: 20.10.7
-      - run: |
-          ssh remote-docker \<<EOF
-            sudo bash -c 'echo "{\"experimental\": true}" > /etc/docker/daemon.json'
-            sudo systemctl restart docker
-          EOF
       - run:
           <<: *gcloud_auth_enterprise
       - run:
@@ -162,27 +146,14 @@ jobs:
           command: |
             make test.unit
             make test.integration    
-      - attach_workspace:
-          at: workspace
       - run:
           name: upload to codecov using python uploader
           command: |
-            apk add git
-            pip install workspace/*
-            codecovcli --auto-load-params-from circleci do-upload --flag latest-uploader-overall --use-new-uploader True
-            codecovcli --auto-load-params-from circleci do-upload --flag unit --file unit.coverage.xml
-            codecovcli --auto-load-params-from circleci do-upload --flag integration --file integration.coverage.xml
-
-      - run:
-          name: upload to codecov using latest node uploader
-          command: |
-            apk add curl
-            apk add git
-            curl -o codecov-latest https://uploader.codecov.io/latest/linux/codecov
-            chmod +x codecov-latest
-            ./codecov-latest -F node-uploader-latest-uploader-overall -Z
-            ./codecov-latest -F node-uploader-unit -f unit.coverage.xml -Z
-            ./codecov-latest -F node-uploader-integration -f integration.coverage.xml -Z
+            apk add git build-base
+            pip install codecov-cli
+            codecovcli do-upload --flag latest-uploader-overall 
+            codecovcli do-upload --flag unit --file unit.coverage.xml
+            codecovcli do-upload --flag integration --file integration.coverage.xml
 
   staging:
     executor: codecov-deploy

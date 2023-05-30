@@ -13,6 +13,7 @@ from database.tests.factories import (
 from services.decoration import (
     BOT_USER_EMAILS,
     Decoration,
+    _is_bot_account,
     determine_decoration_details,
 )
 from services.repository import EnrichedPull
@@ -313,6 +314,27 @@ class TestDecorationServiceTestCase(object):
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
         )
 
+    @pytest.mark.parametrize(
+        "is_bot,param,value",
+        [
+            (True, "email", "dependabot[bot]@users.noreply.github.com"),
+            (True, "email", "29139614+renovate[bot]@users.noreply.github.com"),
+            (True, "service_id", "29139614"),
+            (False, None, None),
+        ],
+    )
+    def test_is_bot_account(self, is_bot, param, value):
+        pr_author = OwnerFactory.create(
+            service="github",
+        )
+        if is_bot and param == "email":
+            pr_author.email = value
+        elif is_bot and param == "service_id":
+            pr_author.service_id = value
+        print(pr_author.email)
+        print(pr_author.service_id)
+        assert _is_bot_account(pr_author) == is_bot
+
     def test_get_decoration_type_bot(self, dbsession, mocker, enriched_pull):
         pr_author = OwnerFactory.create(
             service="github",
@@ -421,6 +443,30 @@ class TestDecorationServiceTestCase(object):
             pr_author.ownerid
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
         )
+
+    def test_get_decoration_type_passing_empty_upload(
+        self, dbsession, mocker, enriched_pull
+    ):
+        enriched_pull.database_pull.repository.private = False
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull, "pass")
+
+        assert decoration_details.decoration_type == Decoration.passing_empty_upload
+        assert decoration_details.reason == "Non testable files got changed."
+        assert decoration_details.should_attempt_author_auto_activation is False
+
+    def test_get_decoration_type_failing_empty_upload(
+        self, dbsession, mocker, enriched_pull
+    ):
+        enriched_pull.database_pull.repository.private = False
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull, "fail")
+
+        assert decoration_details.decoration_type == Decoration.failing_empty_upload
+        assert decoration_details.reason == "Testable files got changed."
+        assert decoration_details.should_attempt_author_auto_activation is False
 
 
 class TestDecorationServiceGitLabTestCase(object):

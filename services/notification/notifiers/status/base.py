@@ -45,6 +45,13 @@ class StatusNotifier(AbstractBaseNotifier):
         # TODO: this is the message in the PR author billing spec but maybe we should add the actual username?
         return "Please activate this user to display a detailed status check"
 
+    def get_status_check_for_empty_upload(self):
+        if self.is_passing_empty_upload():
+            return ("success", "Non-testable files changed.")
+
+        if self.is_failing_empty_upload():
+            return ("failure", "Testable files changed")
+
     def can_we_set_this_status(self, comparison) -> bool:
         head = comparison.head.commit
         pull = comparison.pull
@@ -167,7 +174,9 @@ class StatusNotifier(AbstractBaseNotifier):
                     comparison, "flag_coverage_not_uploaded_behavior"
                 )
             )
-            if (
+            if not comparison.has_head_report():
+                payload = await self.build_payload(comparison)
+            elif (
                 flag_coverage_not_uploaded_behavior == "exclude"
                 and not self.flag_coverage_was_uploaded(comparison)
             ):
@@ -290,7 +299,9 @@ class StatusNotifier(AbstractBaseNotifier):
                         commit=head.commitid,
                         status=state,
                         context=title,
-                        coverage=float(head_report.totals.coverage),
+                        coverage=float(head_report.totals.coverage)
+                        if head_report
+                        else 0,
                         description=message,
                         url=url,
                     )

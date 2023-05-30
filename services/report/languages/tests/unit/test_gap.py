@@ -1,6 +1,6 @@
 from services.report.languages import gap
 from services.report.report_processor import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 RAW = b"""{"Type":"S","File":"lib/error.g","FileId":37}
 {"Type":"R","Line":1,"FileId":37}

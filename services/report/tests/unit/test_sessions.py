@@ -16,7 +16,7 @@ from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
     _adjust_sessions,
 )
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 # Not calling add_sessions here on purpose, so it doesnt
 #   interfere with this logic

@@ -3,7 +3,7 @@ import pytest
 
 from database.tests.factories import CommitFactory
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 sample_yaml = """
 codecov:

@@ -29,6 +29,9 @@ class ChangesStatusNotifier(StatusChangesMixin, StatusNotifier):
         return Notification.status_changes
 
     async def build_payload(self, comparison) -> Dict[str, str]:
+        if self.is_empty_upload():
+            state, message = self.get_status_check_for_empty_upload()
+            return {"state": state, "message": message}
         state, message = await self.get_changes_status(comparison)
         if self.should_use_upgrade_decoration():
             message = self.get_upgrade_message()

@@ -733,6 +733,46 @@ class TestProjectStatusNotifier(object):
         assert expected_result == result
 
     @pytest.mark.asyncio
+    async def test_build_payload_passing_empty_upload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            decoration_type=Decoration.passing_empty_upload,
+        )
+        expected_result = {
+            "state": "success",
+            "message": "Non-testable files changed.",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_build_payload_failing_empty_upload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            decoration_type=Decoration.failing_empty_upload,
+        )
+        expected_result = {
+            "state": "failure",
+            "message": "Testable files changed",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
     async def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
@@ -2072,3 +2112,20 @@ class TestChangesStatusNotifier(object):
         result = await notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
         mocked_send_notification.assert_called_with(sample_comparison, expected_result)
+
+    @pytest.mark.asyncio
+    async def test_build_passing_empty_upload_payload(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
+        notifier = ChangesStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            decoration_type=Decoration.passing_empty_upload,
+        )
+        expected_result = {"state": "success", "message": "Non-testable files changed."}
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result

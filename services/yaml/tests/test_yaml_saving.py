@@ -1,6 +1,6 @@
 from database.tests.factories import CommitFactory
 from services.yaml import save_repo_yaml_to_database_if_needed
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 
 class TestYamlSavingService(BaseTestCase):

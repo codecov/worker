@@ -1,4 +1,4 @@
-from database.enums import Notification
+from database.enums import Decoration, Notification
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.mixins.status import StatusPatchMixin
 from services.notification.notifiers.status.base import StatusNotifier
@@ -24,6 +24,10 @@ class PatchStatusNotifier(StatusPatchMixin, StatusNotifier):
         return Notification.status_patch
 
     async def build_payload(self, comparison: Comparison):
+        if self.is_empty_upload():
+            state, message = self.get_status_check_for_empty_upload()
+            return {"state": state, "message": message}
+
         state, message = await self.get_patch_status(comparison)
         if self.should_use_upgrade_decoration():
             message = self.get_upgrade_message()

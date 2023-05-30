@@ -10,7 +10,7 @@ from services.bots import (
     get_repo_particular_bot_token,
     get_token_type_mapping,
 )
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
 # one on which the code ran

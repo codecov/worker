@@ -3,7 +3,7 @@ import pathlib
 
 from services.report.languages.pycoverage import PyCoverageProcessor
 from services.report.report_processor import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 SAMPLE = {
     "meta": {
@@ -105,6 +105,65 @@ SAMPLE = {
         "percent_covered_display": "90",
         "missing_lines": 2,
         "excluded_lines": 0,
+    },
+}
+
+COMPRESSED_SAMPLE = {
+    "meta": {
+        "version": "6.5.0",
+        "timestamp": "2023-05-15T18:35:30.641570",
+        "branch_coverage": False,
+        "show_contexts": True,
+    },
+    "totals": {
+        "covered_lines": 4,
+        "num_statements": 9,
+        "percent_covered": "44.44444",
+        "percent_covered_display": "44",
+        "missing_lines": 5,
+        "excluded_lines": 0,
+    },
+    "files": {
+        "awesome.py": {
+            "executed_lines": [1, 2, 3, 5],
+            "summary": {
+                "covered_lines": 4,
+                "num_statements": 5,
+                "percent_covered": "80.0",
+                "percent_covered_display": "80",
+                "missing_lines": 1,
+                "excluded_lines": 0,
+            },
+            "missing_lines": [4],
+            "excluded_lines": [],
+            "contexts": {
+                "1": [0],
+                "2": [1, 2],
+                "3": [2, 3],
+                "5": [4],
+            },
+        },
+        "__init__.py": {
+            "executed_lines": [],
+            "summary": {
+                "covered_lines": 0,
+                "num_statements": 4,
+                "percent_covered": "0.0",
+                "percent_covered_display": "0",
+                "missing_lines": 4,
+                "excluded_lines": 0,
+            },
+            "missing_lines": [1, 3, 4, 5],
+            "excluded_lines": [],
+            "contexts": {},
+        },
+    },
+    "labels_table": {
+        "0": "",
+        "1": "label_1",
+        "2": "label_2",
+        "3": "label_3",
+        "4": "label_5",
     },
 }
 
@@ -372,6 +431,149 @@ class TestPyCoverageProcessor(BaseTestCase):
                 "m": 2,
                 "p": 0,
                 "c": "90.00000",
+                "b": 0,
+                "d": 0,
+                "M": 0,
+                "s": 0,
+                "C": 0,
+                "N": 0,
+                "diff": None,
+            },
+        }
+
+    def test_process_compressed_report(self):
+        content = COMPRESSED_SAMPLE
+        p = PyCoverageProcessor()
+        report_builder = ReportBuilder(
+            current_yaml={"beta_groups": ["labels"]},
+            sessionid=0,
+            ignored_lines={},
+            path_fixer=str,
+        )
+        report = p.process("name", content, report_builder)
+        processed_report = self.convert_report_to_better_readable(report)
+        print(processed_report)
+        assert processed_report == {
+            "archive": {
+                "awesome.py": [
+                    (
+                        1,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                    ),
+                    (
+                        2,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [
+                            (0, 1, None, ["label_1"]),
+                            (0, 1, None, ["label_2"]),
+                        ],
+                    ),
+                    (
+                        3,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [
+                            (0, 1, None, ["label_2"]),
+                            (0, 1, None, ["label_3"]),
+                        ],
+                    ),
+                    (
+                        4,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                    (
+                        5,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, ["label_5"])],
+                    ),
+                ],
+                "__init__.py": [
+                    (
+                        1,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                    (
+                        3,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                    (
+                        4,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                    (
+                        5,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                ],
+            },
+            "report": {
+                "files": {
+                    "awesome.py": [
+                        0,
+                        [0, 5, 4, 1, 0, "80.00000", 0, 0, 0, 0, 0, 0, 0],
+                        {
+                            "0": [0, 5, 4, 1, 0, "80.00000"],
+                            "meta": {"session_count": 1},
+                        },
+                        None,
+                    ],
+                    "__init__.py": [
+                        1,
+                        [0, 4, 0, 4, 0, "0", 0, 0, 0, 0, 0, 0, 0],
+                        {"0": [0, 4, 0, 4], "meta": {"session_count": 1}},
+                        None,
+                    ],
+                },
+                "sessions": {},
+            },
+            "totals": {
+                "f": 2,
+                "n": 9,
+                "h": 4,
+                "m": 5,
+                "p": 0,
+                "c": "44.44444",
                 "b": 0,
                 "d": 0,
                 "M": 0,

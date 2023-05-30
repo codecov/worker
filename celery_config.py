@@ -119,7 +119,7 @@ class CeleryWorkerConfig(BaseCeleryConfig):
         },
         "health_check_task": {
             "task": health_check_task_name,
-            "schedule": timedelta(get_health_check_interval_seconds()),
+            "schedule": timedelta(seconds=get_health_check_interval_seconds()),
             "kwargs": {
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },

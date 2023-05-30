@@ -428,7 +428,7 @@ class TestCommentNotifierHelpers(object):
             fake_comparison, mock_write
         )
         mock_write.assert_any_call(
-            ":mega: This organization is not using Codecov’s [GitHub App Integration](https://github.com/apps/codecov). We recommend you install it so Codecov can continue to function properly for your repositories. [Learn more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=prcomment)"
+            ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the Github App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
         )
         assert mock_write.call_count == 2
 
@@ -1139,6 +1139,75 @@ class TestCommentNotifier(object):
         li = 0
         for exp, res in zip(expected_result, result):
             li += 1
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_passing_empty_upload(
+        self,
+        request,
+        dbsession,
+        mocker,
+        mock_configuration,
+        with_sql_functions,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"] = {
+            "codecov_url": "test.example.br",
+            "codecov_dashboard_url": "test.example.br",
+        }
+        comparison = sample_comparison
+        pull = comparison.enriched_pull.database_pull
+        repository = sample_comparison.head.commit.repository
+        notifier = CommentNotifier(
+            repository=repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.passing_empty_upload,
+        )
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            "## Codecov Report",
+            ":heavy_check_mark: **No coverage data to report**, because files changed do not require tests or are set to [ignore](https://docs.codecov.com/docs/ignoring-paths#:~:text=You%20can%20use%20the%20top,will%20be%20skipped%20during%20processing.) ",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_failing_empty_upload(
+        self,
+        request,
+        dbsession,
+        mocker,
+        mock_configuration,
+        with_sql_functions,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"] = {
+            "codecov_url": "test.example.br",
+            "codecov_dashboard_url": "test.example.br",
+        }
+        comparison = sample_comparison
+        pull = comparison.enriched_pull.database_pull
+        repository = sample_comparison.head.commit.repository
+        notifier = CommentNotifier(
+            repository=repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.failing_empty_upload,
+        )
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            "## Codecov Report",
+            "This is an empty upload",
+            "Files changed in this PR are testable or aren't ignored by Codecov, please run your tests and upload coverage. If you wish to ignore these files, please visit our [ignoring paths docs](https://docs.codecov.com/docs/ignoring-paths).",
+        ]
+        for exp, res in zip(expected_result, result):
             assert exp == res
         assert result == expected_result
 

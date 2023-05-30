@@ -17,7 +17,11 @@ log = logging.getLogger(__name__)
 # https://codecovio.atlassian.net/wiki/spaces/ENG/pages/34603058/PR+based+Billing+Refactor
 
 
-BOT_USER_EMAILS = ["dependabot[bot]@users.noreply.github.com"]
+BOT_USER_EMAILS = [
+    "dependabot[bot]@users.noreply.github.com",
+    "29139614+renovate[bot]@users.noreply.github.com",
+]
+BOT_USER_IDS = ["29139614"]  # renovate[bot] github
 
 
 @dataclass
@@ -29,7 +33,13 @@ class DecorationDetails(object):
     activation_author_ownerid: int = None
 
 
-def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
+def _is_bot_account(author: Owner) -> bool:
+    return author.email in BOT_USER_EMAILS or author.service_id in BOT_USER_IDS
+
+
+def determine_decoration_details(
+    enriched_pull: EnrichedPull, empty_upload=None
+) -> dict:
     """
     Determine the decoration details from pull information. We also check if the pull author needs to be activated
 
@@ -44,6 +54,17 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
             return DecorationDetails(
                 decoration_type=Decoration.standard,
                 reason="Can't determine PR author - no pull info from provider",
+            )
+        if empty_upload == "pass":
+            return DecorationDetails(
+                decoration_type=Decoration.passing_empty_upload,
+                reason="Non testable files got changed.",
+            )
+
+        if empty_upload == "fail":
+            return DecorationDetails(
+                decoration_type=Decoration.failing_empty_upload,
+                reason="Testable files got changed.",
             )
 
         if db_pull.repository.private is False:
@@ -133,7 +154,7 @@ def determine_decoration_details(enriched_pull: EnrichedPull) -> dict:
                 reason="User is currently activated",
             )
 
-        if pr_author.email in BOT_USER_EMAILS:
+        if _is_bot_account(pr_author):
             return DecorationDetails(
                 decoration_type=Decoration.standard,
                 reason="Bot user detected (does not need to be activated)",

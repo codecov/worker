@@ -2,7 +2,7 @@ from json import dumps
 
 from services.report.languages import lcov
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 txt = b"""TN:
 SF:file.js

@@ -123,6 +123,13 @@ class UploadFinisherTask(BaseCodecovTask):
                 commit, commit_yaml, processing_results, report_code
             ):
                 notifications_called = True
+                task = self.app.tasks[notify_task_name].apply_async(
+                    kwargs=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        current_yaml=commit_yaml.to_dict(),
+                    )
+                )
                 log.info(
                     "Scheduling notify task",
                     extra=dict(
@@ -130,14 +137,8 @@ class UploadFinisherTask(BaseCodecovTask):
                         commit=commitid,
                         commit_yaml=commit_yaml.to_dict(),
                         processing_results=processing_results,
+                        notify_task_id=task.id,
                     ),
-                )
-                self.app.tasks[notify_task_name].apply_async(
-                    kwargs=dict(
-                        repoid=repoid,
-                        commitid=commitid,
-                        current_yaml=commit_yaml.to_dict(),
-                    )
                 )
                 if commit.pullid:
                     pull = (

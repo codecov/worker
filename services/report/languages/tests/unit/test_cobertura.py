@@ -8,7 +8,7 @@ from helpers.exceptions import ReportExpiredException
 from services.path_fixer import PathFixer
 from services.report.languages import cobertura
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 xml = """<?xml version="1.0" ?>
 <!DOCTYPE coverage

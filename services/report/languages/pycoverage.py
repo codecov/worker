@@ -22,7 +22,12 @@ class PyCoverageProcessor(BaseLanguageProcessor):
             and "files" in content
         )
 
-    def _convert_testname_to_label(self, testname):
+    def _convert_testname_to_label(self, testname, labels_table):
+        if type(testname) == int or type(testname) == float:
+            # This is from a compressed report.
+            # Pull label from the labels_table
+            # But the labels_table keys are strings, because of JSON format
+            testname = labels_table[str(testname)]
         if testname == "":
             return SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
         return testname.split("|", 1)[0]
@@ -31,6 +36,9 @@ class PyCoverageProcessor(BaseLanguageProcessor):
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
+        labels_table = None
+        if "labels_table" in content:
+            labels_table = content["labels_table"]
         for filename, file_coverage in content["files"].items():
             fixed_filename = report_builder.path_fixer(filename)
             if fixed_filename:
@@ -40,7 +48,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
                 ] + [(COVERAGE_MISS, ln) for ln in file_coverage["missing_lines"]]
                 for cov, ln in lines_and_coverage:
                     label_list_of_lists = [
-                        [self._convert_testname_to_label(testname)]
+                        [self._convert_testname_to_label(testname, labels_table)]
                         for testname in file_coverage.get("contexts", {}).get(
                             str(ln), []
                         )

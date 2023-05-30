@@ -82,6 +82,11 @@ def test_version_one_parser():
     assert second_file.size == 3415
     assert second_file.labels == ["simple", "a.py::fileclass::test_simple"]
 
+    assert (
+        res.content().getvalue().decode("utf-8")
+        == f"# path=coverage.xml\n{first_file.contents.decode('utf-8')}\n<<<<<< EOF\n\n# path=another.coverage.json\n{second_file.contents.decode('utf-8')}\n<<<<<< EOF\n\n"
+    )
+
 
 def test_version_one_parser_parse_coverage_file_contents_bad_format():
     subject = VersionOneReportParser()

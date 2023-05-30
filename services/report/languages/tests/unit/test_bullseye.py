@@ -7,7 +7,7 @@ from lxml import etree
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import bullseye
 from services.report.report_builder import ReportBuilder
-from tests.base import BaseTestCase
+from test_utils.base import BaseTestCase
 
 xml = """<?xml version="1.0" encoding="UTF-8"?>
 <!-- BullseyeCoverage XML 8.23.15 Windows x64 -->
