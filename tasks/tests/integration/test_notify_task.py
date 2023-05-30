@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 
@@ -13,9 +14,11 @@ sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
 
 @pytest.mark.integration
 class TestNotifyTask(object):
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_no_notifiers(
         self,
+        mock_requests_post,
         dbsession,
         mocker,
         codecov_vcr,
@@ -23,6 +26,7 @@ class TestNotifyTask(object):
         mock_configuration,
         mock_redis,
     ):
+        mock_requests_post.return_value.status_code = 200
         mock_redis.get.return_value = False
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
@@ -68,13 +72,45 @@ class TestNotifyTask(object):
         result = await task.run_async(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
-        expected_result = {"notified": True, "notifications": []}
+        expected_result = {
+            "notified": True,
+            "notifications": [
+                {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "example-python",
+                            "owner": "ThiagoCodecov",
+                            "comparison": {
+                                "url": None,
+                                "message": "unknown",
+                                "coverage": None,
+                                "notation": "",
+                            },
+                        },
+                        "data_received": None,
+                    },
+                }
+            ],
+        }
         assert result == expected_result
 
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_only_status_notifiers(
-        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
     ):
+        mock_post_request.return_value.status_code = 200
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
         ] = "https://codecov.io"
@@ -128,18 +164,38 @@ class TestNotifyTask(object):
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": dict(
-                        notification_attempted=False,
-                        notification_successful=None,
-                        explanation="already_done",
-                        data_sent={
+                    "result": {
+                        "notification_attempted": False,
+                        "notification_successful": None,
+                        "explanation": "already_done",
+                        "data_sent": {
                             "title": "codecov/project",
                             "state": "success",
                             "message": "85.00% (+0.00%) compared to 17a71a9",
                         },
-                        data_received=None,
-                    ),
-                }
+                        "data_received": None,
+                    },
+                },
+                {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "example-python",
+                            "owner": "ThiagoCodecov",
+                            "comparison": {
+                                "url": "https://codecov.io/gh/ThiagoCodecov/example-python/commit/649eaaf2924e92dc7fd8d370ddb857033231e67a",
+                                "message": "no change",
+                                "coverage": "0.00",
+                                "notation": "",
+                            },
+                        },
+                        "data_received": None,
+                    },
+                },
             ],
         }
         assert (
@@ -150,10 +206,18 @@ class TestNotifyTask(object):
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
 
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_only_status_notifiers_no_pull_request(
-        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
     ):
+        mock_post_request.return_value.status_code = 200
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
         ] = "https://myexamplewebsite.io"
@@ -211,48 +275,68 @@ class TestNotifyTask(object):
             "notifications": [
                 {
                     "notifier": "status-project",
-                    "result": dict(
-                        notification_attempted=True,
-                        notification_successful=True,
-                        explanation=None,
-                        data_sent={
+                    "title": "default",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
                             "title": "codecov/project",
                             "state": "success",
-                            "message": f"85.00% (+0.00%) compared to {parent_commit_id[:7]}",
+                            "message": "85.00% (+0.00%) compared to 081d919",
                         },
-                        data_received={"id": 9333281614},
-                    ),
-                    "title": "default",
+                        "data_received": {"id": 9333281614},
+                    },
                 },
                 {
                     "notifier": "status-patch",
-                    "result": dict(
-                        notification_attempted=True,
-                        notification_successful=True,
-                        explanation=None,
-                        data_sent={
+                    "title": "default",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
                             "title": "codecov/patch",
                             "state": "success",
-                            "message": f"Coverage not affected when comparing {parent_commit_id[:7]}...{commitid[:7]}",
+                            "message": "Coverage not affected when comparing 081d919...f089529",
                         },
-                        data_received={"id": 9333281697},
-                    ),
-                    "title": "default",
+                        "data_received": {"id": 9333281697},
+                    },
                 },
                 {
                     "notifier": "status-changes",
-                    "result": dict(
-                        notification_attempted=True,
-                        notification_successful=True,
-                        explanation=None,
-                        data_sent={
+                    "title": "default",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
                             "title": "codecov/changes",
                             "state": "failure",
                             "message": "1 file has unexpected coverage changes not visible in diff",
                         },
-                        data_received={"id": 9333281703},
-                    ),
-                    "title": "default",
+                        "data_received": {"id": 9333281703},
+                    },
+                },
+                {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "example-python",
+                            "owner": "ThiagoCodecov",
+                            "comparison": {
+                                "url": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/f0895290dc26668faeeb20ee5ccd4cc995925775",
+                                "message": "no change",
+                                "coverage": "0.00",
+                                "notation": "",
+                            },
+                        },
+                        "data_received": None,
+                    },
                 },
             ],
         }
@@ -270,10 +354,18 @@ class TestNotifyTask(object):
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
 
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_only_status_notifiers_with_pull_request(
-        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
     ):
+        mock_post_request.return_value.status_code = 200
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
         ] = "https://myexamplewebsite.io"
@@ -328,62 +420,89 @@ class TestNotifyTask(object):
             },
         )
         expected_result = {
+            "notified": True,
             "notifications": [
                 {
                     "notifier": "status-project",
+                    "title": "default",
                     "result": {
-                        "data_received": {"id": 9333363767},
-                        "data_sent": {
-                            "message": f"85.00% (+0.00%) compared to {master_sha[:7]}",
-                            "state": "success",
-                            "title": "codecov/project",
-                        },
-                        "explanation": None,
                         "notification_attempted": True,
                         "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
+                            "title": "codecov/project",
+                            "state": "success",
+                            "message": "85.00% (+0.00%) compared to f089529",
+                        },
+                        "data_received": {"id": 9333363767},
                     },
-                    "title": "default",
                 },
                 {
                     "notifier": "status-patch",
+                    "title": "default",
                     "result": {
-                        "data_received": {"id": 9333363778},
-                        "data_sent": {
-                            "message": f"Coverage not affected when comparing {master_sha[:7]}...{head_commitid[:7]}",
-                            "state": "success",
-                            "title": "codecov/patch",
-                        },
-                        "explanation": None,
                         "notification_attempted": True,
                         "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
+                            "title": "codecov/patch",
+                            "state": "success",
+                            "message": "Coverage not affected when comparing f089529...11daa27",
+                        },
+                        "data_received": {"id": 9333363778},
                     },
-                    "title": "default",
                 },
                 {
                     "notifier": "status-changes",
+                    "title": "default",
                     "result": {
-                        "data_received": {"id": 9333363801},
-                        "data_sent": {
-                            "message": "No unexpected coverage changes found",
-                            "state": "success",
-                            "title": "codecov/changes",
-                        },
-                        "explanation": None,
                         "notification_attempted": True,
                         "notification_successful": True,
+                        "explanation": None,
+                        "data_sent": {
+                            "title": "codecov/changes",
+                            "state": "success",
+                            "message": "No unexpected coverage changes found",
+                        },
+                        "data_received": {"id": 9333363801},
                     },
-                    "title": "default",
+                },
+                {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "example-python",
+                            "owner": "ThiagoCodecov",
+                            "comparison": {
+                                "url": "https://myexamplewebsite.io/gh/ThiagoCodecov/example-python/commit/11daa27b1b74fd181836a64106f936a16404089c",
+                                "message": "no change",
+                                "coverage": "0.00",
+                                "notation": "",
+                            },
+                        },
+                        "data_received": None,
+                    },
                 },
             ],
-            "notified": True,
         }
-        print(result)
         assert result == expected_result
 
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_simple_call_status_and_notifiers(
-        self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
     ):
+        mock_post_request.return_value.status_code = 200
         mock_configuration.params["setup"][
             "codecov_dashboard_url"
         ] = "https://myexamplewebsite.io"
@@ -646,6 +765,26 @@ class TestNotifyTask(object):
                             "title": "codecov/changes",
                             "state": "success",
                             "message": "No unexpected coverage changes found",
+                        },
+                        "data_received": None,
+                    },
+                },
+                {
+                    "notifier": "codecov-slack-app",
+                    "title": "codecov-slack-app",
+                    "result": {
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": "Successfully notified slack app",
+                        "data_sent": {
+                            "repository": "test_example",
+                            "owner": "test-acc9",
+                            "comparison": {
+                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1",
+                                "message": "no change",
+                                "coverage": "0.00",
+                                "notation": "",
+                            },
                         },
                         "data_received": None,
                     },

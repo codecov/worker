@@ -65,7 +65,7 @@ class TestNotificationService(object):
         }
         service = NotificationService(repository, current_yaml)
         instances = list(service.get_notifiers_instances())
-        assert len(instances) == 1
+        assert len(instances) == 2
         instance = instances[0]
         assert instance.repository == repository
         assert instance.title == "default"
@@ -99,6 +99,7 @@ class TestNotificationService(object):
             "checks-changes-with-fallback",
             "checks-patch-with-fallback",
             "checks-project-with-fallback",
+            "codecov-slack-app",
         ]
 
     def test_get_notifiers_instances_checks_percentage_whitelist(
@@ -126,7 +127,12 @@ class TestNotificationService(object):
         )
         service = NotificationService(repository, current_yaml)
         instances = list(service.get_notifiers_instances())
-        names = [instance._checks_notifier.name for instance in instances]
+        # we don't need that for slack-app notifier
+        names = [
+            instance._checks_notifier.name
+            for instance in instances
+            if instance.name != "codecov-slack-app"
+        ]
         assert names == ["checks-project", "checks-patch", "checks-changes"]
 
     @pytest.mark.asyncio
