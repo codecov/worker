@@ -43,7 +43,11 @@ def get_github_integration_token(service, integration_id=None):
         if res.status_code in (404, 403):
             log.warning(
                 "Integration could not be found to fetch token from or unauthorized",
-                extra=dict(git_service=service, integration_id=integration_id),
+                extra=dict(
+                    git_service=service,
+                    integration_id=integration_id,
+                    api_endpoint=api_endpoint,
+                ),
             )
             raise RepositoryWithoutValidBotError()
         try:
