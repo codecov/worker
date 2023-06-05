@@ -87,6 +87,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
 
     async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
         request_url = f"{CODECOV_SLACK_APP}/notify"
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {CODECOV_INTERNAL_TOKEN}",
