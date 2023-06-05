@@ -15,6 +15,7 @@ from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import round_number
 
 CODECOV_INTERNAL_TOKEN = os.environ.get("CODECOV_INTERNAL_TOKEN")
+CODECOV_SLACK_APP_URL = os.environ.get("CODECOV_SLACK_APP_URL")
 
 
 class CodecovSlackAppNotifier(AbstractBaseNotifier):
@@ -86,7 +87,8 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
         }
 
     async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
-        request_url = "https://slack.codecov.io/notify"
+        request_url = f"{CODECOV_SLACK_APP_URL}/notify"
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {CODECOV_INTERNAL_TOKEN}",
