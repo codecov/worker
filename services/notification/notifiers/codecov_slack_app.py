@@ -17,6 +17,7 @@ from services.yaml.reader import round_number
 CODECOV_INTERNAL_TOKEN = os.environ.get("CODECOV_INTERNAL_TOKEN")
 CODECOV_SLACK_APP = os.environ.get("CODECOV_SLACK_APP")
 
+
 class CodecovSlackAppNotifier(AbstractBaseNotifier):
     name = "codecov-slack-app"
 
