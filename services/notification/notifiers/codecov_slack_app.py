@@ -5,6 +5,7 @@ from decimal import Decimal
 import requests
 
 from database.enums import Notification
+from database.models import Commit
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
@@ -14,6 +15,7 @@ from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import round_number
 
 CODECOV_INTERNAL_TOKEN = os.environ.get("CODECOV_INTERNAL_TOKEN")
+CODECOV_SLACK_APP_URL = os.environ.get("CODECOV_SLACK_APP_URL")
 
 
 class CodecovSlackAppNotifier(AbstractBaseNotifier):
@@ -28,6 +30,20 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
 
     def store_results(self, comparison: Comparison, result: NotificationResult):
         pass
+
+    def serialize_commit(self, commit: Commit):
+        if not commit:
+            return None
+        return {
+            "commitid": commit.commitid,
+            "branch": commit.branch,
+            "message": commit.message,
+            "author": commit.author.username if commit.author else None,
+            "timestamp": commit.timestamp.isoformat() if commit.timestamp else None,
+            "ci_passed": commit.ci_passed,
+            "totals": commit.totals,
+            "pull": commit.pullid,
+        }
 
     def build_payload(self, comparison: Comparison):
         head_full_commit = comparison.head
@@ -61,10 +77,18 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             if difference is not None
             else None,
             "notation": notation,
+            "head_commit": self.serialize_commit(
+                comparison.head.commit if comparison.head else None
+            ),
+            "base_commit": self.serialize_commit(
+                comparison.base.commit if comparison.base else None
+            ),
+            "head_totals_c": comparison.head.report.totals.coverage,
         }
 
     async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
-        request_url = "https://slack.codecov.io/notify/"
+        request_url = f"{CODECOV_SLACK_APP_URL}/notify"
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer {CODECOV_INTERNAL_TOKEN}",

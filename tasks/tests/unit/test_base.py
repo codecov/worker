@@ -1,10 +1,13 @@
+import signal
 from pathlib import Path
+from unittest.mock import patch
 
 import psycopg2
 import pytest
 from celery import chain
 from celery.contrib.testing.mocks import TaskMessage
 from celery.exceptions import Retry, SoftTimeLimitExceeded
+from mock import MagicMock
 from shared.billing import BillingPlan
 from shared.celery_config import sync_repos_task_name, upload_task_name
 from sqlalchemy.exc import DBAPIError, IntegrityError, InvalidRequestError
@@ -203,6 +206,31 @@ class TestBaseCodecovTaskHooks(object):
         task = RetrySampleTask()
         task.on_retry("exc", "task_id", "args", "kwargs", "einfo")
         mock_metrics.assert_called_with("worker.task.test.RetrySampleTask.retries")
+
+    def test_signal_handler(self, mocker):
+        # Simulate a signal
+        signum = signal.SIGINT
+        frame = None
+        task = BaseCodecovTask()
+
+        # Assert that the log method was called with the expected arguments
+        mock_log = mocker.patch("tasks.base.log")
+        mock_request = mocker.patch.object(BaseCodecovTask, "request")
+        mock_request.id = 1234
+        # Call the signal handler
+        with pytest.raises(Exception) as context:
+            task._signal_handler(signum, frame)
+
+        mock_log.fatal.assert_called_once_with(
+            f"Received {signal.Signals(signum).name}. Terminating.",
+            extra=dict(
+                signum=signum, frame=frame, task_name=None, task_id=mock_request.id
+            ),
+            exc_info=True,
+        )
+
+        # Assert that an exception was raised
+        assert str(context.value) == "Aborted"
 
 
 class TestBaseCodecovRequest(object):

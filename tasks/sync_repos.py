@@ -163,7 +163,7 @@ class SyncReposTask(BaseCodecovTask):
                     private_project_ids.append(int(_repoid))
             if repo["repo"]["private"]:
                 private_project_ids.append(int(repoid))
-            if count % 10 == 0:
+            if count % 5 == 0:
                 db_session.commit()
 
         log.info(
