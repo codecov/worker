@@ -3,6 +3,7 @@ import os
 from decimal import Decimal
 
 import requests
+from generics import EnhancedJSONEncoder
 
 from database.enums import Notification
 from database.models import Commit
@@ -49,7 +50,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
         head_full_commit = comparison.head
         base_full_commit = comparison.base
         if comparison.has_base_report():
-            difference = 0
+            difference = None
             head_report_coverage = head_full_commit.report.totals.coverage
             base_report_coverage = base_full_commit.report.totals.coverage
             if head_report_coverage is not None and base_report_coverage is not None:
@@ -105,7 +106,9 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             "owner": self.repository.owner.username,
             "comparison": compare_dict,
         }
-        response = requests.post(request_url, headers=headers, data=json.dumps(data))
+        response = requests.post(
+            request_url, headers=headers, data=json.dumps(data, cls=EnhancedJSONEncoder)
+        )
 
         if response.status_code == 200:
             return NotificationResult(
