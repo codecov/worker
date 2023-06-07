@@ -3,7 +3,6 @@ import os
 from decimal import Decimal
 
 import requests
-from generics import EnhancedJSONEncoder
 
 from database.enums import Notification
 from database.models import Commit
@@ -11,7 +10,7 @@ from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
-from services.notification.notifiers.generics import Comparison
+from services.notification.notifiers.generics import Comparison, EnhancedJSONEncoder
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import round_number
 
