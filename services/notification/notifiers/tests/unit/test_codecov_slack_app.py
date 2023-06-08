@@ -65,6 +65,7 @@ class TestCodecovSlackAppNotifier(object):
             == "Failed to notify slack app\nError 500: Internal Server Error."
         )
 
+    @patch("requests.post")
     @pytest.mark.asyncio
     async def test_notify_request_being_called(
         self, mock_requests_post, dbsession, mock_configuration, sample_comparison
