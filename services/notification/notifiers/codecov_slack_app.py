@@ -95,7 +95,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer {CODECOV_INTERNAL_TOKEN}",
+            "Authorization": f"Bearer {CODECOV_INTERNAL_TOKEN}",
         }
 
         compare_dict = self.build_payload(comparison)
