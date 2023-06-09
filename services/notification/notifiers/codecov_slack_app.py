@@ -10,7 +10,7 @@ from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
-from services.notification.notifiers.generics import Comparison
+from services.notification.notifiers.generics import Comparison, EnhancedJSONEncoder
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import round_number
 
@@ -49,9 +49,13 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
         head_full_commit = comparison.head
         base_full_commit = comparison.base
         if comparison.has_base_report():
-            difference = Decimal(head_full_commit.report.totals.coverage) - Decimal(
-                base_full_commit.report.totals.coverage
-            )
+            difference = None
+            head_report_coverage = head_full_commit.report.totals.coverage
+            base_report_coverage = base_full_commit.report.totals.coverage
+            if head_report_coverage is not None and base_report_coverage is not None:
+                difference = Decimal(head_full_commit.report.totals.coverage) - Decimal(
+                    base_full_commit.report.totals.coverage
+                )
             message = (
                 "no change"
                 if difference == 0
@@ -83,7 +87,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             "base_commit": self.serialize_commit(
                 comparison.base.commit if comparison.base else None
             ),
-            "head_totals_c": comparison.head.report.totals.coverage,
+            "head_totals_c": str(comparison.head.report.totals.coverage),
         }
 
     async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
@@ -101,7 +105,9 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             "owner": self.repository.owner.username,
             "comparison": compare_dict,
         }
-        response = requests.post(request_url, headers=headers, data=json.dumps(data))
+        response = requests.post(
+            request_url, headers=headers, data=json.dumps(data, cls=EnhancedJSONEncoder)
+        )
 
         if response.status_code == 200:
             return NotificationResult(
