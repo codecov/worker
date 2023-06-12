@@ -99,7 +99,6 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
         }
 
         compare_dict = self.build_payload(comparison)
-
         data = {
             "repository": self.repository.name,
             "owner": self.repository.owner.username,
