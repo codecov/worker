@@ -70,14 +70,11 @@ jobs:
   codecovstartup:
     executor: codecov-worker
     steps:
-      - run:
-          name: Setup
-          command: |
-            apk add git build-base
       - checkout
       - run:
           name: Install CLI
           command: |
+            apk add git build-base
             pip install codecov-cli
       - run:
           name: Save commit info 
@@ -87,6 +84,15 @@ jobs:
           name: Create report
           command: |
             codecovcli create-report 
+  staticanalysis:
+    executor: codecov-worker
+    steps:
+      - checkout
+      - run:
+          name: Install CLI
+          command: |
+            apk add git build-base
+            pip install codecov-cli
       - run:
           name: Run Static Analysis
           command: |
@@ -94,15 +100,21 @@ jobs:
   iterativetesting:
     executor: codecov-worker
     steps:
+      - checkout
       - run:
-          name: Run Predictor Analysis
+          name: Install CLI
           command: |
             apk add git build-base
             pip install codecov-cli
+      - run:
+          name: Run Predictor Analysis
+          command: |
             echo $(git merge-base HEAD^ master)
             codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ master)
-            coverage json --show-contexts -o label.coverage.json
-            codecovcli do-upload --flag onlysomelabels --file=label.coverage.json
+      - run:
+          name: Upload onlysomelabels
+          command: |
+            codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
   mutations:
     executor: codecov-worker
     steps:
@@ -295,11 +307,17 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - staticanalysis:
+          context: "circleci google deploy context"
+          requires:
+            - codecovstartup
+          filters:
+            tags:
+              only: /.*/
       - iterativetesting:
           context: "circleci google deploy context"
           requires:
-            - build
-            - codecovstartup
+            - staticanalysis
           filters:
             tags:
               only: /.*/
