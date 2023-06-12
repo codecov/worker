@@ -17,6 +17,7 @@ RUN         apk --update --no-cache add \
 
 # Build bootloader for alpine
 RUN         pip install pyinstaller==5.5
+RUN         pip uninstall -y typing
 
 COPY        . /worker
 
@@ -27,6 +28,7 @@ COPY        enterprise/hooks /pyinstaller/hooks
 COPY        enterprise/package.sh /pyinstaller/package.sh
 COPY        main.py /worker/enterprise.py
 RUN         chmod a+x /pyinstaller/*
+
 
 RUN         ["/pyinstaller/package.sh"]
 
