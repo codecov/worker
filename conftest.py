@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import mock
@@ -22,6 +23,7 @@ def pytest_configure(config):
     This hook is called for every plugin and initial conftest
     file after command line options have been parsed.
     """
+    os.environ["RUN_ENV"] = "DEV"
     initialize_logging()
 
 
