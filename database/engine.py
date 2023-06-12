@@ -1,5 +1,6 @@
 import dataclasses
 import json
+from decimal import Decimal
 
 from shared.config import get_config
 from shared.utils.ReportEncoder import ReportEncoder
@@ -20,6 +21,8 @@ class DatabaseEncoder(ReportEncoder):
     def default(self, obj):
         if dataclasses.is_dataclass(obj):
             return dataclasses.astuple(obj)
+        if isinstance(obj, Decimal):
+            return str(obj)
         return super().default(obj)
 
 

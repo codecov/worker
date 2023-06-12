@@ -11,7 +11,8 @@ from helpers.environment import (
 
 
 class TestEnvironment(object):
-    def test_get_current_env(self):
+    def test_get_current_env(self, mocker):
+        mocker.patch.dict(os.environ, {"CURRENT_ENVIRONMENT": ""})
         assert _calculate_current_env() == Environment.production
 
     def test_get_current_env_local(sel, mocker):

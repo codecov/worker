@@ -1,3 +1,6 @@
+import os
+
+from helpers.environment import Environment
 from helpers.logging_config import (
     CustomLocalJsonFormatter,
     config_dict,
@@ -22,7 +25,9 @@ class TestLoggingConfig(object):
         res = cljf.jsonify_log_record(log_record)
         assert "weird_level: This is a message --- {}\nLine\nWith\nbreaks" == res
 
-    def test_get_logging_config_dict(self):
+    def test_get_logging_config_dict(self, mocker):
+        get_current_env = mocker.patch("helpers.logging_config.get_current_env")
+        get_current_env.return_value = Environment.production
         assert get_logging_config_dict() == config_dict
 
     def test_add_fields_no_task(self, mocker):

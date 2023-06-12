@@ -4,8 +4,14 @@ from pathlib import Path
 import pytest
 from shared.yaml import UserYaml
 
-from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from tasks.upload_finisher import UploadFinisherTask
+from database.tests.factories import (
+    CommitFactory,
+    PullFactory,
+    ReportFactory,
+    RepositoryFactory,
+    UploadFactory,
+)
+from tasks.upload_finisher import ReportService, UploadFinisherTask
 
 here = Path(__file__)
 
@@ -281,7 +287,7 @@ class TestUploadFinisherTask(object):
         )
 
     @pytest.mark.asyncio
-    async def test_should_call_notifications_not_enough_builds(self, dbsession):
+    async def test_should_call_notifications_not_enough_builds(self, dbsession, mocker):
         commit_yaml = {"codecov": {"notify": {"after_n_builds": 9}}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -289,12 +295,16 @@ class TestUploadFinisherTask(object):
             repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
             repository__owner__username="ThiagoCodecov",
             repository__yaml=commit_yaml,
-            report_json={
-                "sessions": {str(n): {"a": str(f"http://{n}")} for n in range(8)}
-            },
         )
         dbsession.add(commit)
-        dbsession.flush()
+
+        mocked_report = mocker.patch.object(
+            ReportService, "get_existing_report_for_commit"
+        )
+        mocked_report.return_value = mocker.MagicMock(
+            sessions=[mocker.MagicMock()] * 8
+        )  # 8 sessions
+
         processing_results = {
             "processings_so_far": 9
             * [{"arguments": {"url": "url"}, "successful": True}]
@@ -304,7 +314,9 @@ class TestUploadFinisherTask(object):
         )
 
     @pytest.mark.asyncio
-    async def test_should_call_notifications_more_than_enough_builds(self, dbsession):
+    async def test_should_call_notifications_more_than_enough_builds(
+        self, dbsession, mocker
+    ):
         commit_yaml = {"codecov": {"notify": {"after_n_builds": 9}}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -312,12 +324,16 @@ class TestUploadFinisherTask(object):
             repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
             repository__owner__username="ThiagoCodecov",
             repository__yaml=commit_yaml,
-            report_json={
-                "sessions": {str(n): {"a": str(f"http://{n}")} for n in range(10)}
-            },
         )
         dbsession.add(commit)
-        dbsession.flush()
+
+        mocked_report = mocker.patch.object(
+            ReportService, "get_existing_report_for_commit"
+        )
+        mocked_report.return_value = mocker.MagicMock(
+            sessions=[mocker.MagicMock()] * 10
+        )  # 10 sessions
+
         processing_results = {
             "processings_so_far": 2
             * [{"arguments": {"url": "url"}, "successful": True}]

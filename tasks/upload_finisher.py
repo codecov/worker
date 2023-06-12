@@ -14,6 +14,7 @@ from app import celery_app
 from database.models import Commit, Pull
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
+from services.report import ReportService
 from services.timeseries import save_commit_measurements
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -203,25 +204,29 @@ class UploadFinisherTask(BaseCodecovTask):
             x["successful"] for x in processing_results.get("processings_so_far", [])
         ):
             return False
-        number_sessions = 0
-        if commit.report_json:
-            number_sessions = len(commit.report_json.get("sessions", {}))
+
         after_n_builds = (
             read_yaml_field(commit_yaml, ("codecov", "notify", "after_n_builds")) or 0
         )
-        if after_n_builds > number_sessions:
-            log.info(
-                "Not scheduling notify because `after_n_builds` is %s and we only found %s builds",
-                after_n_builds,
-                number_sessions,
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    processing_results=processing_results,
-                ),
-            )
-            return False
+        if after_n_builds > 0:
+            number_sessions = 0
+            report = ReportService(commit_yaml).get_existing_report_for_commit(commit)
+            number_sessions = len(report.sessions)
+            if after_n_builds > number_sessions:
+                log.info(
+                    "Not scheduling notify because `after_n_builds` is %s and we only found %s builds",
+                    after_n_builds,
+                    number_sessions,
+                    extra=dict(
+                        repoid=commit.repoid,
+                        commit=commit.commitid,
+                        commit_yaml=commit_yaml,
+                        processing_results=processing_results,
+                    ),
+                )
+                return False
+            else:
+                return True
         return True
 
     def invalidate_caches(self, redis_connection, commit: Commit):
