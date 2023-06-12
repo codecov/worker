@@ -126,9 +126,7 @@ class SyncReposTask(BaseCodecovTask):
             return
         owners_by_id = {}
 
-        count = 0
         for repo in repos:
-            count += 1
             _ownerid = owners_by_id.get(
                 (service, repo["owner"]["service_id"], repo["owner"]["username"])
             )
@@ -163,8 +161,7 @@ class SyncReposTask(BaseCodecovTask):
                     private_project_ids.append(int(_repoid))
             if repo["repo"]["private"]:
                 private_project_ids.append(int(repoid))
-            if count % 5 == 0:
-                db_session.commit()
+            db_session.commit()
 
         log.info(
             "Updating permissions",
