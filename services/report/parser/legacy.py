@@ -2,6 +2,8 @@ import string
 from io import BytesIO
 from typing import BinaryIO
 
+import sentry_sdk
+
 from helpers.metrics import metrics
 from services.report.parser.types import LegacyParsedRawReport, ParsedUploadedReportFile
 
@@ -105,6 +107,7 @@ class LegacyReportParser(object):
                     "footer": separator,
                 }
 
+    @sentry_sdk.trace
     @metrics.timer("services.report.parser.parse_raw_report_from_bytes")
     def parse_raw_report_from_bytes(self, raw_report: bytes) -> LegacyParsedRawReport:
         raw_report, _, compat_report_str = raw_report.partition(

@@ -4,6 +4,8 @@ import logging
 import zlib
 from io import BytesIO
 
+import sentry_sdk
+
 from services.report.parser.types import (
     ParsedUploadedReportFile,
     VersionOneParsedRawReport,
@@ -13,6 +15,7 @@ log = logging.getLogger(__name__)
 
 
 class VersionOneReportParser(object):
+    @sentry_sdk.trace
     def parse_raw_report_from_bytes(self, raw_report: bytes):
         data = json.loads(raw_report)
         return VersionOneParsedRawReport(

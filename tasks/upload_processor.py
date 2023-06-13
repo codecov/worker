@@ -4,6 +4,7 @@ import re
 from copy import deepcopy
 from typing import Optional
 
+import sentry_sdk
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.celery_config import upload_processor_task_name
@@ -227,6 +228,7 @@ class UploadProcessorTask(BaseCodecovTask):
             )
             raise
 
+    @sentry_sdk.trace
     def process_individual_report(
         self, report_service, commit, report, upload_obj, should_delete_archive
     ):
