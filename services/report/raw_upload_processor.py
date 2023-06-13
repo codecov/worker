@@ -5,6 +5,7 @@ import random
 import typing
 from dataclasses import dataclass
 
+import sentry_sdk
 from shared.reports.resources import Report
 from shared.utils.sessions import Session, SessionType
 
@@ -45,6 +46,7 @@ class UploadProcessingResult(object):
     raw_report: ParsedRawReport
 
 
+@sentry_sdk.trace
 def process_raw_upload(
     commit_yaml, original_report, reports: ParsedRawReport, flags, session=None
 ) -> UploadProcessingResult:

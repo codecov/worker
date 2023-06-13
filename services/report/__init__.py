@@ -8,6 +8,7 @@ from json import loads
 from time import time
 from typing import Any, Dict, Mapping, Optional, Sequence
 
+import sentry_sdk
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.config import get_config
 from shared.metrics import metrics
@@ -374,6 +375,7 @@ class ReportService(object):
 
         return sessions
 
+    @sentry_sdk.trace
     def build_report(
         self, chunks, files, sessions, totals, report_class=None
     ) -> Report:
@@ -438,6 +440,7 @@ class ReportService(object):
             ]
         )
 
+    @sentry_sdk.trace
     def get_existing_report_for_commit(
         self, commit: Commit, report_class=None, *, report_code=None
     ) -> Optional[Report]:
@@ -689,6 +692,7 @@ class ReportService(object):
             )
             return carryforward_report
 
+    @sentry_sdk.trace
     def build_report_from_raw_content(
         self, master: Optional[Report], upload: Upload
     ) -> ProcessingResult:
