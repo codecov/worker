@@ -188,7 +188,7 @@ class ReportDetailsFactory(Factory):
         model = models.ReportDetails
 
     report = factory.SubFactory(ReportFactory)
-    files_array = factory.LazyFunction(list)
+    _files_array = factory.LazyFunction(list)
 
 
 class ReportResultsFactory(Factory):

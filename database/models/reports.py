@@ -1,12 +1,16 @@
+import json
 import logging
-from functools import cached_property
+from functools import cached_property, lru_cache
 
+from shared.config import get_config
+from shared.storage.exceptions import FileNotInStorageError
 from sqlalchemy import Column, ForeignKey, Table, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import backref, relationship
 
 from database.base import CodecovBaseModel, MixinBaseClass
-from database.models.core import CompareCommit, Repository
+from database.models.core import Commit, CompareCommit, Repository
+from services.archive import ArchiveService
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +26,7 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_commitreport"
     commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
     code = Column(types.String(100), nullable=True)
-    commit = relationship(
+    commit: Commit = relationship(
         "Commit",
         foreign_keys=[commit_id],
         back_populates="reports_list",
@@ -115,10 +119,77 @@ class UploadError(CodecovBaseModel, MixinBaseClass):
 class ReportDetails(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_reportdetails"
     report_id = Column(types.Integer, ForeignKey("reports_commitreport.id"))
-    report = relationship(
+    report: CommitReport = relationship(
         "CommitReport", foreign_keys=[report_id], back_populates="details"
     )
-    files_array = Column(postgresql.ARRAY(postgresql.JSONB))
+    _files_array = Column("files_array", postgresql.ARRAY(postgresql.JSONB))
+    _files_array_storage_path = Column(
+        "files_array_storage_path", types.Text, nullable=True
+    )
+
+    @lru_cache(maxsize=1)
+    def _get_files_array(self):
+        # Get files_array from the proper source
+        if self._files_array is not None:
+            return self._files_array
+        repository = self.report.commit.repository
+        archive_service = ArchiveService(repository=repository)
+        try:
+            file_str = archive_service.read_file(self._files_array_storage_path)
+            return json.loads(file_str)
+        except FileNotInStorageError:
+            log.error(
+                "files_array not in storage",
+                extra=dict(
+                    storage_path=self._files_array_storage_path,
+                    report_details=self.id,
+                    commit=self.report.commit,
+                ),
+            )
+            # Return empty array to be consistent with current behavior
+            # (instead of raising error)
+            return []
+
+    def _should_write_to_storage(self):
+        report_builder_repo_ids = get_config(
+            "setup", "save_report_data_in_storage", "repo_ids", default=[]
+        )
+        return get_config(
+            "setup",
+            "save_report_data_in_storage",
+            "report_details_files_array",
+            default=False,
+        ) and (
+            not get_config(
+                "setup",
+                "save_report_data_in_storage",
+                "only_codecov",
+                default=True,
+            )
+            or self.report.commit.repository.slug.startswith("codecov/")
+            or self.report.commit.repository.repoid in report_builder_repo_ids
+        )
+
+    def _set_files_array(self, files_array: dict):
+        # Invalidate the cache for the getter method
+        self._get_files_array.cache_clear()
+        # Set the new value
+        if self._should_write_to_storage():
+            repository = self.report.commit.repository
+            archive_service = ArchiveService(repository=repository)
+            path = archive_service.write_json_data_to_storage(
+                commit_id=self.report.commit.commitid,
+                model="ReportDetails",
+                field="files_array",
+                external_id=self.external_id,
+                data=files_array,
+            )
+            self._files_array_storage_path = path
+            self._files_array = None
+        else:
+            self._files_array = files_array
+
+    files_array = property(fget=_get_files_array, fset=_set_files_array)
 
 
 class AbstractTotals(MixinBaseClass):

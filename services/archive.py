@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from shared.config import get_config
 from shared.storage.base import BaseStorageService
+from shared.utils.ReportEncoder import ReportEncoder
 
 from helpers.metrics import metrics
 from services.storage import get_storage_client
@@ -18,6 +19,7 @@ log = logging.getLogger(__name__)
 
 class MinioEndpoints(Enum):
     chunks = "{version}/repos/{repo_hash}/commits/{commitid}/{chunks_file_name}.txt"
+    json_data = "{version}/repos/{repo_hash}/commits/{commitid}/json_data/{model}/{field}/{external_id}.json"
     profiling_summary = "{version}/repos/{repo_hash}/profilingsummaries/{profiling_commit_id}/{location}"
     raw = "v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt"
     profiling_collection = "{version}/repos/{repo_hash}/profilingcollections/{profiling_commit_id}/{location}"
@@ -186,6 +188,28 @@ class ArchiveService(object):
             location=location,
         )
         self.write_file(path, data)
+        return path
+
+    def write_json_data_to_storage(
+        self,
+        commit_id,
+        model: str,
+        field: str,
+        external_id: str,
+        data: dict,
+        *,
+        encoder=ReportEncoder,
+    ):
+        path = MinioEndpoints.json_data.get_path(
+            version="v4",
+            repo_hash=self.storage_hash,
+            commitid=commit_id,
+            model=model,
+            field=field,
+            external_id=external_id,
+        )
+        stringified_data = json.dumps(data, cls=encoder)
+        self.write_file(path, stringified_data)
         return path
 
     """
