@@ -83,6 +83,8 @@ factory-boy==3.2.0
     # via -r requirements.in
 faker==8.8.2
     # via factory-boy
+freezegun==1.2.2
+    # via pytest-freezegun
 google-api-core==1.26.1
     # via google-cloud-core
 google-auth==1.27.1
@@ -192,6 +194,7 @@ pytest==7.2.0
     #   -r requirements.in
     #   pytest-asyncio
     #   pytest-cov
+    #   pytest-freezegun
     #   pytest-mock
     #   pytest-sqlalchemy
 pytest-asyncio==0.14.0
@@ -199,6 +202,8 @@ pytest-asyncio==0.14.0
 pytest-celery==0.0.0
     # via -r requirements.in
 pytest-cov==2.11.1
+    # via -r requirements.in
+pytest-freezegun==0.4.2
     # via -r requirements.in
 pytest-mock==1.13.0
     # via -r requirements.in
@@ -210,6 +215,7 @@ python-dateutil==2.8.1
     #   analytics-python
     #   botocore
     #   faker
+    #   freezegun
 python-json-logger==0.1.11
     # via -r requirements.in
 pytz==2022.1

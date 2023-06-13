@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import signal
+from datetime import datetime
 
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
@@ -58,7 +59,14 @@ class BaseCodecovTask(celery_app.Task):
             "soft_time_limit": extra_config.get("soft_timelimit", None),
         }
         options = {**options, **celery_compatible_config}
-        return super().apply_async(args=args, kwargs=kwargs, **options)
+        # Pass current time in task headers so we can emit a metric of
+        # how long the task was in the queue for
+        current_time = datetime.now()
+        headers = {
+            **options.get("headers", {}),
+            "created_timestamp": current_time.isoformat(),
+        }
+        return super().apply_async(args=args, kwargs=kwargs, headers=headers, **options)
 
     def _analyse_error(self, exception: SQLAlchemyError, *args, **kwargs):
         try:
@@ -86,11 +94,26 @@ class BaseCodecovTask(celery_app.Task):
             exc_info=True,
         )
 
+    def _emit_queue_metrics(self):
+        created_timestamp = self.request.get("created_timestamp", None)
+        if created_timestamp:
+            enqueued_time = datetime.fromisoformat(created_timestamp)
+            now = datetime.now()
+            delta = now - enqueued_time
+            metrics.timing(f"{self.metrics_prefix}.time_in_queue", delta)
+            queue_name = self.request.get("delivery_info", {}).get("routing_key", None)
+            if queue_name:
+                metrics.timing(f"worker.queues.{queue_name}.time_in_queue", delta)
+                metrics.timing(
+                    f"{self.metrics_prefix}.{queue_name}.time_in_queue", delta
+                )
+
     def run(self, *args, **kwargs):
         # Setup signal handlers if something fails catastrophically
         signal.signal(signal.SIGTERM, self._signal_handler)
         signal.signal(signal.SIGABRT, self._signal_handler)
         signal.signal(signal.SIGSEGV, self._signal_handler)
+        self._emit_queue_metrics()
         with metrics.timer(f"{self.metrics_prefix}.full"):
             db_session = get_db_session()
             try:

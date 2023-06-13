@@ -17,6 +17,7 @@ pytest-cov
 pytest-celery
 pytest-mock
 pytest-sqlalchemy
+pytest-freezegun
 pytest
 python-dateutil
 python-json-logger

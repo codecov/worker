@@ -1,4 +1,5 @@
 import signal
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -7,7 +8,7 @@ import pytest
 from celery import chain
 from celery.contrib.testing.mocks import TaskMessage
 from celery.exceptions import Retry, SoftTimeLimitExceeded
-from mock import MagicMock
+from mock import call
 from shared.billing import BillingPlan
 from shared.celery_config import sync_repos_task_name, upload_task_name
 from sqlalchemy.exc import DBAPIError, IntegrityError, InvalidRequestError
@@ -82,12 +83,41 @@ class TestBaseCodecovTask(object):
         r = SampleTask()
         assert r.hard_time_limit_task == 480
 
+    @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_sample_run(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
+        mocked_metrics = mocker.patch("tasks.base.metrics")
+        mock_task_request = mocker.patch("tasks.base.BaseCodecovTask.request")
+        fake_request_values = dict(
+            created_timestamp="2023-06-13 10:00:00.000000",
+            delivery_info={"routing_key": "my-queue"},
+        )
+        mock_task_request.get.side_effect = (
+            lambda key, default: fake_request_values.get(key, default)
+        )
         mocked_get_db_session.return_value = dbsession
-        result = SampleTask().run()
+        task_instance = SampleTask()
+        result = task_instance.run()
         assert result == {"unusual": "return", "value": ["There"]}
+        assert mocked_metrics.timing.call_count == 3
+        mocked_metrics.timing.assert_has_calls(
+            [
+                call(
+                    "worker.task.test.SampleTask.time_in_queue",
+                    timedelta(seconds=61, microseconds=123),
+                ),
+                call(
+                    "worker.queues.my-queue.time_in_queue",
+                    timedelta(seconds=61, microseconds=123),
+                ),
+                call(
+                    "worker.task.test.SampleTask.my-queue.time_in_queue",
+                    timedelta(seconds=61, microseconds=123),
+                ),
+            ]
+        )
 
+    @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")
     def test_sample_run_db_exception(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_get_db_session.return_value = dbsession
@@ -96,6 +126,7 @@ class TestBaseCodecovTask(object):
                 DBAPIError("statement", "params", "orig")
             ).run()
 
+    @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")
     def test_sample_run_integrity_error(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_get_db_session.return_value = dbsession
@@ -104,6 +135,7 @@ class TestBaseCodecovTask(object):
                 IntegrityError("statement", "params", "orig")
             ).run()
 
+    @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")
     def test_sample_run_deadlock_exception(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_get_db_session.return_value = dbsession
@@ -112,12 +144,14 @@ class TestBaseCodecovTask(object):
                 psycopg2.errors.DeadlockDetected()
             ).run()
 
+    @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")
     def test_sample_run_operationalerror_exception(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_get_db_session.return_value = dbsession
         with pytest.raises(Retry):
             SampleTaskWithArbitraryPostgresError(psycopg2.OperationalError()).run()
 
+    @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")
     def test_sample_run_softimeout(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_get_db_session.return_value = dbsession
@@ -305,6 +339,7 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         dbsession.flush()
         return (repo, repo_enterprise_cloud)
 
+    @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_apply_async_override(self, mocker):
 
         mock_get_db_session = mocker.patch("tasks.base.get_db_session")
@@ -329,10 +364,12 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         mocked_apply_async.assert_called_with(
             args=None,
             kwargs=kwargs,
+            headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=400,
             soft_time_limit=200,
         )
 
+    @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_apply_async_override_with_chain(self, mocker):
 
         mock_get_db_session = mocker.patch("tasks.base.get_db_session")
@@ -362,7 +399,12 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         assert "kwargs" in kwargs and kwargs.get("kwargs") == {"n": 1}
         assert "chain" in kwargs and len(kwargs.get("chain")) == 1
         assert "task_id" in kwargs
+        assert "headers" in kwargs
+        assert kwargs.get("headers") == dict(
+            created_timestamp="2023-06-13T10:01:01.000123"
+        )
 
+    @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_real_example_no_override(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
@@ -402,9 +444,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             args=None,
             kwargs=kwargs,
             soft_time_limit=None,
+            headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=None,
         )
 
+    @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_real_example_override_from_celery(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
@@ -444,9 +488,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             args=None,
             kwargs=kwargs,
             soft_time_limit=500,
+            headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=600,
         )
 
+    @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_real_example_override_from_upload(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
@@ -486,5 +532,6 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             args=None,
             kwargs=kwargs,
             soft_time_limit=400,
+            headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=450,
         )
