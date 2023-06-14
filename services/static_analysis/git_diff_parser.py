@@ -2,6 +2,8 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 
+import sentry_sdk
+
 from services.comparison.changes import get_segment_offsets
 
 
@@ -60,6 +62,8 @@ class DiffChange(object):
         return current_point
 
 
+# NOTE: Computationally intensive.
+@sentry_sdk.trace
 def parse_git_diff_json(diff_json) -> typing.List[DiffChange]:
     for key, value in diff_json["diff"]["files"].items():
         change_type = DiffChangeType.get_from_string(value["type"])

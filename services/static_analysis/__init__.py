@@ -2,6 +2,7 @@ import json
 import logging
 import typing
 
+import sentry_sdk
 from shared.storage.exceptions import FileNotInStorageError
 
 from database.models.staticanalysis import (
@@ -58,6 +59,7 @@ class StaticAnalysisComparisonService(object):
             )
         return self._archive_service
 
+    @sentry_sdk.trace
     def get_base_lines_relevant_to_change(self) -> typing.List[typing.Dict]:
         final_result = {"all": False, "files": {}}
         db_session = self._base_static_analysis.get_db_session()
@@ -77,7 +79,11 @@ class StaticAnalysisComparisonService(object):
                 if change.before_filepath
             ],
         )
+        # @giovanni-guidini 2023-06-14
+        # NOTE: Maybe we can paralelize this bit.
+        # There's some level of IO involved.
         for change in self._git_diff:
+            # This check should happen way earlier
             if change.change_type == DiffChangeType.new:
                 return {"all": True}
             final_result["files"][change.before_filepath] = self._analyze_single_change(
@@ -164,3 +170,8 @@ class StaticAnalysisComparisonService(object):
                 elif matching_type == AntecessorFindingResult.line:
                     result_so_far["lines"].add(antecessor_head_line)
             return result_so_far
+        log.warning(
+            "Unknown type of change. Fallback to all lines",
+            extra=dict(change_type=change.change_type),
+        )
+        return {"all": True, "lines": None}

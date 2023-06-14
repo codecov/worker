@@ -1,5 +1,6 @@
 import logging
 
+import sentry_sdk
 from shared.celery_config import label_analysis_task_name
 from shared.labelanalysis import LabelAnalysisRequestState
 
@@ -71,6 +72,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         self, label_analysis_request: LabelAnalysisRequest, parsed_git_diff
     ):
         base_commit = label_analysis_request.base_commit
+        # NOTE: we can get the existing report ahead of time
         current_yaml = get_repo_yaml(base_commit.repository)
         report_service = ReportService(current_yaml)
         report: Report = report_service.get_existing_report_for_commit(base_commit)
@@ -86,6 +88,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 "global_level_labels": [],
             }
         all_report_labels = self.get_all_report_labels(report)
+        # When can group this with parsing the diff
         executable_lines = self.get_relevant_executable_lines(
             label_analysis_request, parsed_git_diff
         )
@@ -120,6 +123,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             "global_level_labels": sorted(global_level_labels),
         }
 
+    @sentry_sdk.trace
     def get_relevant_executable_lines(
         self, label_analysis_request: LabelAnalysisRequest, parsed_git_diff
     ):
@@ -159,12 +163,14 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         )
         return static_analysis_comparison_service.get_base_lines_relevant_to_change()
 
+    @sentry_sdk.trace
     def get_executable_lines_labels(self, report: Report, executable_lines) -> set:
         if executable_lines["all"]:
             return (self.get_all_report_labels(report), set())
         full_sessions = set()
         labels = set()
         global_level_labels = set()
+        # Prime piece of code to be rust-ifyied
         for name, file_executable_lines in executable_lines["files"].items():
             rf = report.get(name)
             if rf:

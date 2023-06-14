@@ -1,5 +1,6 @@
 from enum import Enum
 
+import sentry_sdk
 from shared.reports.resources import Report
 
 # The SpecialLabelsEnum enum is place to hold sentinels for labels with special
@@ -30,6 +31,7 @@ class SpecialLabelsEnum(Enum):
         self.corresponding_label = val
 
 
+@sentry_sdk.trace
 def get_labels_per_session(report: Report, sess_id: int):
     all_labels = set()
     for rf in report:
@@ -43,6 +45,7 @@ def get_labels_per_session(report: Report, sess_id: int):
     )
 
 
+@sentry_sdk.trace
 def get_all_report_labels(report: Report) -> set:
     all_labels = set()
     for rf in report:
