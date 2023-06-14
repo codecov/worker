@@ -63,7 +63,7 @@ class BaseCodecovTask(celery_app.Task):
         # how long the task was in the queue for
         current_time = datetime.now()
         headers = {
-            **options.get("headers", {}),
+            **options.pop("headers", {}),
             "created_timestamp": current_time.isoformat(),
         }
         return super().apply_async(args=args, kwargs=kwargs, headers=headers, **options)
