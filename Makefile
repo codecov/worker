@@ -1,6 +1,7 @@
 sha := $(shell git rev-parse --short=7 HEAD)
 release_version = `cat VERSION`
-_gcr := gcr.io/test6u3411ty6xqh462sri/codecov
+_gcr := ${CODECOV_WORKER_GCR_REPO_BASE}
+
 build_date ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
 name ?= worker
 branch = $(shell git branch | grep \* | cut -f2 -d' ')

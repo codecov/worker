@@ -2,7 +2,7 @@ version: 2.1
 executors:
   codecov-deploy:
     docker:
-      - image: us-docker.pkg.dev/test6u3411ty6xqh462sri/codecov-devops/codecov-deploy:latest
+      - image: $CODECOV_DEPLOY_IMAGE_LATEST
         user: root
         auth:
           username: _json_key
@@ -10,7 +10,7 @@ executors:
     working_directory: /work
   codecov-worker:
     docker:
-      - image: gcr.io/test6u3411ty6xqh462sri/codecov-worker:latest
+      - image: $CODECOV_WORKER_IMAGE_LATEST
         user: root
         auth:
           username: _json_key
@@ -265,7 +265,7 @@ jobs:
       - run:
           name: Pull Latest Worker Image and Deploy to DockerHub
           command: |
-            docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" https://gcr.io/test6u3411ty6xqh462sri/codecov-deploy:latest
+            docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" "$CODECOV_DEPLOY_IMAGE_LATEST"
             make -f Makefile.circle pull-latest
             echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
             make -f Makefile.circle dockerhub-deploy-master
