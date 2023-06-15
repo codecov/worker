@@ -209,9 +209,8 @@ class UploadFinisherTask(BaseCodecovTask):
             read_yaml_field(commit_yaml, ("codecov", "notify", "after_n_builds")) or 0
         )
         if after_n_builds > 0:
-            number_sessions = 0
             report = ReportService(commit_yaml).get_existing_report_for_commit(commit)
-            number_sessions = len(report.sessions)
+            number_sessions = len(report.sessions) if report is not None else 0
             if after_n_builds > number_sessions:
                 log.info(
                     "Not scheduling notify because `after_n_builds` is %s and we only found %s builds",
