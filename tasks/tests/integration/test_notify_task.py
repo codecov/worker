@@ -1,5 +1,6 @@
 from decimal import Decimal
 from unittest.mock import patch
+import os
 
 import pytest
 
@@ -140,6 +141,7 @@ class TestNotifyTask(object):
             ],
         }
         assert result == expected_result
+
 
     @patch("requests.post")
     @pytest.mark.asyncio
@@ -1287,4 +1289,69 @@ class TestNotifyTask(object):
             "notifications": None,
             "reason": "no_head_report",
         }
+        assert result == expected_result
+    
+    @patch("requests.post")
+    @pytest.mark.asyncio
+    async def test_slack_notifier_disabled(
+        self,
+        mock_requests_post,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
+        mock_redis,
+    ):
+        os.environ["IS_SLACK_APP_ENABLED"] = "False"
+        mock_requests_post.return_value.status_code = 200
+        mock_redis.get.return_value = False
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
+        mocked_app = mocker.patch.object(NotifyTask, "app")
+        repository = RepositoryFactory.create(
+            owner__unencrypted_oauth_token=sample_token,
+            owner__username="ThiagoCodecov",
+            owner__service_id="44376991",
+            owner__service="github",
+            yaml={"codecov": {"max_report_age": "1y ago"}},
+            name="example-python",
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        master_commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="master",
+            commitid="17a71a9a2f5335ed4d00496c7bbc6405f547a527",
+            repository=repository,
+            author__username="christina84",
+        )
+        commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+            repository=repository,
+            author__username="christina84",
+        )
+        dbsession.add(commit)
+        dbsession.add(master_commit)
+        dbsession.flush()
+        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
+            mock_storage.write_file("archive", chunks_url, content)
+            master_chunks_url = (
+                f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
+            )
+            mock_storage.write_file("archive", master_chunks_url, content)
+        task = NotifyTask()
+        result = await task.run_async(
+            dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
+        )
+        del os.environ["IS_SLACK_APP_ENABLED"] # reset var
+        expected_result = {'notified': False, 'notifications': None, 'reason': 'not_able_fetch_ci_result'}
         assert result == expected_result
