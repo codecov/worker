@@ -31,6 +31,10 @@ To install the dependencies, run
 pip install -r requirements.txt
 ```
 
+### Environment variables
+
+In order to successfully run `make push`, you'll need to define the `CODECOV_WORKER_GCR_REPO_BASE` variable. See its use in [`Makefile`](Makefile) to understand what it's used for. An example is `gcr.io/your-project-here/codecov`. Codecov internal users, see [the env setup documentation](https://www.notion.so/sentry/Environment-variables-for-building-pushing-Docker-images-locally-3159e90c5e6f4db4bfbde8800cdad2c0?pvs=4) for our canonical defaults.
+
 ### Running Tests
 
 Then, try to run tests to see if the code is working. First get some postgres database running. Anything is fine. I like to spin a `postgres` docker (`docker run -d -p 5432:5432 postgres:9.6.16`). Then do
