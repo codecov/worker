@@ -7,6 +7,7 @@ This packages uses the following services:
 import asyncio
 import dataclasses
 import logging
+import os
 from typing import Iterator, List
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
@@ -36,7 +37,6 @@ from services.notification.notifiers.checks.checks_with_fallback import (
 from services.notification.notifiers.codecov_slack_app import CodecovSlackAppNotifier
 from services.yaml import read_yaml_field
 from services.yaml.reader import get_components_from_yaml
-import os
 
 log = logging.getLogger(__name__)
 
@@ -108,7 +108,12 @@ class NotificationService(object):
                     decoration_type=self.decoration_type,
                 )
 
-        if os.environ.get("IS_SLACK_APP_ENABLED", "t").lower() in ["true", "yes", "1", "t"]:
+        if os.environ.get("IS_SLACK_APP_ENABLED", "t").lower() in [
+            "true",
+            "yes",
+            "1",
+            "t",
+        ]:
             yield CodecovSlackAppNotifier(
                 repository=self.repository,
                 title="codecov-slack-app",

@@ -1,6 +1,6 @@
+import os
 from decimal import Decimal
 from unittest.mock import patch
-import os
 
 import pytest
 
@@ -141,7 +141,6 @@ class TestNotifyTask(object):
             ],
         }
         assert result == expected_result
-
 
     @patch("requests.post")
     @pytest.mark.asyncio
@@ -1290,7 +1289,7 @@ class TestNotifyTask(object):
             "reason": "no_head_report",
         }
         assert result == expected_result
-    
+
     @patch("requests.post")
     @pytest.mark.asyncio
     async def test_slack_notifier_disabled(
@@ -1352,6 +1351,10 @@ class TestNotifyTask(object):
         result = await task.run_async(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
-        del os.environ["IS_SLACK_APP_ENABLED"] # reset var
-        expected_result = {'notified': False, 'notifications': None, 'reason': 'not_able_fetch_ci_result'}
+        del os.environ["IS_SLACK_APP_ENABLED"]  # reset var
+        expected_result = {
+            "notified": False,
+            "notifications": None,
+            "reason": "not_able_fetch_ci_result",
+        }
         assert result == expected_result
