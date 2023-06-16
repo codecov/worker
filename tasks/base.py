@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import signal
 from datetime import datetime
 
 from celery.exceptions import SoftTimeLimitExceeded
@@ -109,10 +108,6 @@ class BaseCodecovTask(celery_app.Task):
                 )
 
     def run(self, *args, **kwargs):
-        # Setup signal handlers if something fails catastrophically
-        signal.signal(signal.SIGTERM, self._signal_handler)
-        signal.signal(signal.SIGABRT, self._signal_handler)
-        signal.signal(signal.SIGSEGV, self._signal_handler)
         self._emit_queue_metrics()
         with metrics.timer(f"{self.metrics_prefix}.full"):
             db_session = get_db_session()
@@ -171,18 +166,6 @@ class BaseCodecovTask(celery_app.Task):
                 exc_info=True,
             )
             get_db_session.remove()
-
-    def _signal_handler(self, signum, frame):
-        signame = signal.Signals(signum).name
-        log.fatal(
-            f"Received {signame}. Terminating.",
-            extra=dict(
-                signum=signum, frame=frame, task_name=self.name, task_id=self.request.id
-            ),
-            exc_info=True,
-        )
-        # We don't want to handle signals. Just log that we received them and fail.
-        raise Exception("Aborted")
 
     def on_retry(self, *args, **kwargs):
         res = super().on_retry(*args, **kwargs)
