@@ -4554,3 +4554,130 @@ class TestReportService(BaseTestCase):
             await ReportService({})._possibly_shift_carryforward_report(
                 mock_report, parent_commit, commit
             )
+
+    @pytest.mark.asyncio
+    async def test_save_report_crashed_save_report(
+        self, dbsession, mocker, sample_report, mock_storage
+    ):
+        """
+        The objective of this test is to simulate what would happen
+        if the upload processing task fails after saving the chunks, but before commiting the changes
+        to the DB.
+        By fail we mean a atastrophic failure that crashes the worker
+        """
+        commit = CommitFactory.create(state="pending", report_json=None)
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_)
+        dbsession.add(report_details)
+        dbsession.flush()
+        dbsession.commit()
+        report_service = ReportService({})
+        assert commit.state == "pending"
+        assert commit.report_json is None
+
+        res = report_service.save_report(commit, sample_report)
+        assert commit.state == "complete"
+        assert commit.report_json is not None
+        storage_hash = report_service.get_archive_service(
+            commit.repository
+        ).storage_hash
+        expected_result = {
+            "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
+        }
+        expected_content = "\n".join(
+            [
+                "{}",
+                "[1, null, [[0, 1]], null, [10, 2]]",
+                "[0, null, [[0, 1]]]",
+                "[1, null, [[0, 1]]]",
+                "",
+                "[1, null, [[0, 1], [1, 1]]]",
+                "[0, null, [[0, 1]]]",
+                "",
+                "[1, null, [[0, 1], [1, 0]]]",
+                "[1, null, [[0, 1]]]",
+                "[0, null, [[0, 1]]]",
+                "<<<<< end_of_chunk >>>>>",
+                "{}",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "[1, null, [[0, 1]]]",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                '["1/2", "b", [[0, 1]]]',
+            ]
+        )
+        print(mock_storage.storage["archive"][res["url"]].decode())
+        assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
+        assert expected_result == res
+        # Now we refresh the important attributes of the session
+        # And we pretend that the task ran again successfully
+        # So it saves again the changes
+
+        # Rollback transaction so far, pretending it never happened
+        dbsession.rollback()
+        dbsession.refresh(commit)
+        dbsession.refresh(current_report_row)
+        dbsession.refresh(report_details)
+        assert commit.state == "pending"
+        assert commit.report_json is None
+        res = report_service.save_report(
+            commit, sample_report
+        )  # This by itself doesn't persist the changes to the DB
+        storage_hash = report_service.get_archive_service(
+            commit.repository
+        ).storage_hash
+        expected_result = {
+            "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
+        }
+        assert expected_result == res
+        assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
