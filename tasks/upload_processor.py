@@ -21,7 +21,7 @@ from helpers.metrics import metrics
 from helpers.save_commit_error import save_commit_error
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
-from services.report import Report, ReportService
+from services.report import ProcessingResult, Report, ReportService
 from services.repository import get_repo_provider_service
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -207,6 +207,13 @@ class UploadProcessorTask(BaseCodecovTask):
                     pr,
                     report_code,
                 )
+            for processed_individual_report in processings_so_far:
+                self._delete_archive(
+                    processed_individual_report, report_service, commit
+                )
+                self._rewrite_raw_report_readable(
+                    processed_individual_report, report_service, commit
+                )
             log.info(
                 "Processed %d reports",
                 n_processed,
@@ -233,7 +240,7 @@ class UploadProcessorTask(BaseCodecovTask):
         self, report_service, commit, report, upload_obj, should_delete_archive
     ):
         processing_result = self.do_process_individual_report(
-            report_service, commit, report, should_delete_archive, upload=upload_obj
+            report_service, report, should_delete_archive, upload=upload_obj
         )
         if (
             processing_result.error is not None
@@ -241,7 +248,7 @@ class UploadProcessorTask(BaseCodecovTask):
             and self.request.retries == 0
         ):
             log.info(
-                "Scheduling a retry in %d due to retryable error",
+                "Scheduling a retry in %d due to retryable error",  # TODO: check if we have this in the logs
                 FIRST_RETRY_DELAY,
                 extra=dict(
                     repoid=commit.repoid,
@@ -260,27 +267,15 @@ class UploadProcessorTask(BaseCodecovTask):
     def do_process_individual_report(
         self,
         report_service: ReportService,
-        commit: Commit,
         current_report: Optional[Report],
         should_delete_archive: bool,
         *,
         upload: Upload,
     ):
-        res = report_service.build_report_from_raw_content(current_report, upload)
-        archive_url = upload.storage_path
-        if should_delete_archive and archive_url and not archive_url.startswith("http"):
-            log.info(
-                "Deleting uploaded file as requested",
-                extra=dict(archive_url=archive_url),
-            )
-            archive_service = report_service.get_archive_service(commit.repository)
-            archive_service.delete_file(archive_url)
-            archive_url = None
-        elif res.raw_report is not None:
-            # store raw coverage report (in parsed format)
-            # Note that this overwrites the original upload (but we shouldn't need it again in the future)
-            archive_service = report_service.get_archive_service(commit.repository)
-            archive_service.write_file(archive_url, res.raw_report.content().getvalue())
+        res: ProcessingResult = report_service.build_report_from_raw_content(
+            current_report, upload
+        )
+        res.should_delete_archive = should_delete_archive
         return res
 
     def should_delete_archive(self, commit_yaml):
@@ -289,6 +284,31 @@ class UploadProcessorTask(BaseCodecovTask):
         return not read_yaml_field(
             commit_yaml, ("codecov", "archive", "uploads"), _else=True
         )
+
+    def _delete_archive(
+        self, processing_result: dict, report_service: ReportService, commit: Commit
+    ):
+        if processing_result["should_delete_archive"]:
+            upload = processing_result.get("upload_obj")
+            archive_url = upload.storage_path
+            if archive_url and not archive_url.startswith("http"):
+                log.info(
+                    "Deleting uploaded file as requested",
+                    extra=dict(archive_url=archive_url),
+                )
+                archive_service = report_service.get_archive_service(commit.repository)
+                archive_service.delete_file(archive_url)
+                upload.storage_path = None
+
+    def _rewrite_raw_report_readable(
+        self, processing_result: dict, report_service: ReportService, commit: Commit
+    ):
+        raw_report = processing_result.get("raw_report")
+        if raw_report:
+            upload = processing_result.get("upload_obj")
+            archive_url = upload.storage_path
+            archive_service = report_service.get_archive_service(commit.repository)
+            archive_service.write_file(archive_url, raw_report.content().getvalue())
 
     async def save_report_results(
         self,

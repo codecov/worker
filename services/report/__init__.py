@@ -65,6 +65,8 @@ class ProcessingResult(object):
     fully_deleted_sessions: typing.List[int]
     partially_deleted_sessions: typing.List[int]
     raw_report: ParsedRawReport
+    upload_obj: Upload
+    should_delete_archive: bool = False
 
     def as_dict(self):
         # Weird flow for now in order to keep things compatible with previous logging
@@ -74,8 +76,15 @@ class ProcessingResult(object):
                 "error": self.error.as_dict(),
                 "report": self.report,
                 "should_retry": False,
+                "should_delete_archive": self.should_delete_archive,
             }
-        return {"successful": True, "report": self.report}
+        return {
+            "successful": True,
+            "report": self.report,
+            "should_delete_archive": self.should_delete_archive,
+            "raw_report": self.raw_report,
+            "upload_obj": self.upload_obj,
+        }
 
 
 log = logging.getLogger(__name__)
@@ -748,6 +757,7 @@ class ReportService(object):
                 fully_deleted_sessions=None,
                 partially_deleted_sessions=None,
                 raw_report=None,
+                upload_obj=upload,
             )
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
@@ -776,6 +786,7 @@ class ReportService(object):
                 fully_deleted_sessions=result.fully_deleted_sessions,
                 partially_deleted_sessions=result.partially_deleted_sessions,
                 raw_report=result.raw_report,
+                upload_obj=upload,
             )
         except ReportExpiredException:
             log.info(
@@ -790,6 +801,7 @@ class ReportService(object):
                 fully_deleted_sessions=None,
                 partially_deleted_sessions=None,
                 raw_report=None,
+                upload_obj=upload,
             )
         except ReportEmptyError:
             log.info(
@@ -804,6 +816,7 @@ class ReportService(object):
                 fully_deleted_sessions=None,
                 partially_deleted_sessions=None,
                 raw_report=None,
+                upload_obj=upload,
             )
 
     def update_upload_with_processing_result(

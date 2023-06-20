@@ -18,6 +18,7 @@ from helpers.exceptions import (
 from services.archive import ArchiveService
 from services.report import ReportService
 from services.report.parser.legacy import LegacyReportParser
+from services.report.parser.types import LegacyParsedRawReport
 from services.report.raw_upload_processor import UploadProcessingResult
 from tasks.upload_processor import UploadProcessorTask
 
@@ -85,9 +86,20 @@ class TestUploadProcessorTask(object):
         )
         expected_result = {
             "processings_so_far": [
-                {"arguments": {"upload_pk": upload.id_, "url": url}, "successful": True}
+                {
+                    "arguments": {"upload_pk": upload.id_, "url": url},
+                    "successful": True,
+                    "should_delete_archive": False,
+                    "upload_obj": upload,
+                }
             ]
         }
+        # We can't compare the raw_report in this test, so we pop it from the result
+        individual_result = result["processings_so_far"][0]
+        assert "raw_report" in individual_result and isinstance(
+            individual_result["raw_report"], LegacyParsedRawReport
+        )
+        individual_result.pop("raw_report")
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         expected_generated_report = {
@@ -97,6 +109,135 @@ class TestUploadProcessorTask(object):
                     [0, 14, 10, 4, 0, "71.42857", 0, 0, 0, 0, 0, 0, 0],
                     {"meta": {"session_count": 1}, "0": [0, 14, 10, 4, 0, "71.42857"]},
                     [0, 4, 4, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
+                ],
+                "tests/__init__.py": [
+                    1,
+                    [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0],
+                    {"meta": {"session_count": 1}, "0": [0, 3, 2, 1, 0, "66.66667"]},
+                    None,
+                ],
+                "tests/test_sample.py": [
+                    2,
+                    [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
+                    {"meta": {"session_count": 1}, "0": [0, 7, 7, 0, 0, "100"]},
+                    None,
+                ],
+            },
+            "sessions": {
+                "0": {
+                    "N": None,
+                    "a": url,
+                    "c": None,
+                    "e": None,
+                    "f": [],
+                    "j": None,
+                    "n": None,
+                    "p": None,
+                    "t": [3, 24, 19, 5, 0, "79.16667", 0, 0, 0, 0, 0, 0, 0],
+                    "u": None,
+                    "d": commit.report_json["sessions"]["0"]["d"],
+                    "st": "uploaded",
+                    "se": {},
+                }
+            },
+        }
+        assert (
+            commit.report_json["sessions"]["0"]
+            == expected_generated_report["sessions"]["0"]
+        )
+        assert commit.report_json == expected_generated_report
+        mocked_1.assert_called_with(commit.commitid, None)
+        # mocked_3.send_task.assert_called_with(
+        #     'app.tasks.notify.Notify',
+        #     args=None,
+        #     kwargs={'repoid': commit.repository.repoid, 'commitid': commit.commitid}
+        # )
+        # mock_redis.assert_called_with(None)
+        mock_redis.lock.assert_called_with(
+            f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
+            blocking_timeout=5,
+            timeout=300,
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_upload_processor_task_call_should_delete(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+    ):
+        mock_configuration.set_params(
+            {"services": {"minio": {"expire_raw_after_n_days": True}}}
+        )
+        mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
+        mock_delete_file = mocker.patch.object(ArchiveService, "delete_file")
+        mocked_1.return_value = None
+        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7F/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        with open(here.parent.parent / "samples" / "sample_uploaded_report_1.txt") as f:
+            content = f.read()
+            mock_storage.write_file("archive", url, content)
+        upload = UploadFactory.create(storage_path=url)
+        dbsession.add(upload)
+        dbsession.flush()
+        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        mocker.patch.object(UploadProcessorTask, "app", celery_app)
+
+        commit = CommitFactory.create(
+            message="dsidsahdsahdsa",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
+            repository__owner__username="ThiagoCodecov",
+            repository__owner__service="github",
+            repository__name="example-python",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        dbsession.add(report_details)
+        dbsession.flush()
+        result = await UploadProcessorTask().run_async(
+            dbsession,
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+            arguments_list=redis_queue,
+        )
+        expected_result = {
+            "processings_so_far": [
+                {
+                    "arguments": {"upload_pk": upload.id_, "url": url},
+                    "successful": True,
+                    "should_delete_archive": True,
+                    "upload_obj": upload,
+                }
+            ]
+        }
+        mock_delete_file.assert_called()
+        assert upload.storage_path is None
+        # We can't compare the raw_report in this test, so we pop it from the result
+        individual_result = result["processings_so_far"][0]
+        assert "raw_report" in individual_result and isinstance(
+            individual_result["raw_report"], LegacyParsedRawReport
+        )
+        individual_result.pop("raw_report")
+        assert expected_result == result
+        assert commit.message == "dsidsahdsahdsa"
+        expected_generated_report = {
+            "files": {
+                "awesome/__init__.py": [
+                    0,
+                    [0, 14, 10, 4, 0, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+                    {"meta": {"session_count": 1}, "0": [0, 14, 10, 4, 0, "71.42857"]},
+                    None,
                 ],
                 "tests/__init__.py": [
                     1,
@@ -194,9 +335,20 @@ class TestUploadProcessorTask(object):
         )
         expected_result = {
             "processings_so_far": [
-                {"arguments": {"url": url, "upload_pk": upload.id_}, "successful": True}
+                {
+                    "arguments": {"url": url, "upload_pk": upload.id_},
+                    "successful": True,
+                    "upload_obj": upload,
+                    "should_delete_archive": False,
+                }
             ]
         }
+        # We can't compare the raw_report in this test, so we pop it from the result
+        individual_result = result["processings_so_far"][0]
+        assert "raw_report" in individual_result and isinstance(
+            individual_result["raw_report"], LegacyParsedRawReport
+        )
+        individual_result.pop("raw_report")
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         assert upload.state == "processed"
@@ -309,9 +461,20 @@ class TestUploadProcessorTask(object):
         )
         expected_result = {
             "processings_so_far": [
-                {"arguments": {"upload_pk": upload.id_, "url": url}, "successful": True}
+                {
+                    "arguments": {"upload_pk": upload.id_, "url": url},
+                    "successful": True,
+                    "upload_obj": upload,
+                    "should_delete_archive": False,
+                }
             ]
         }
+        # We can't compare the raw_report in this test, so we pop it from the result
+        individual_result = result["processings_so_far"][0]
+        assert "raw_report" in individual_result and isinstance(
+            individual_result["raw_report"], LegacyParsedRawReport
+        )
+        individual_result.pop("raw_report")
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         mocked_1.assert_called_with(commit.commitid, None)
@@ -367,9 +530,7 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         assert exc.value.args == ("first", "aruba", "digimon")
-        mocked_2.assert_called_with(
-            mocker.ANY, commit, mocker.ANY, False, upload=upload
-        )
+        mocked_2.assert_called_with(mocker.ANY, mocker.ANY, False, upload=upload)
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
         assert not mocked_3.called
@@ -488,6 +649,9 @@ class TestUploadProcessorTask(object):
                         "what": "huh",
                         "upload_pk": upload_1.id_,
                     },
+                    "upload_obj": upload_1,
+                    "raw_report": None,
+                    "should_delete_archive": False,
                     "successful": True,
                 },
                 {
@@ -499,6 +663,7 @@ class TestUploadProcessorTask(object):
                     "error": {"code": "report_expired", "params": {}},
                     "report": None,
                     "should_retry": False,
+                    "should_delete_archive": False,
                     "successful": False,
                 },
             ]
@@ -554,6 +719,7 @@ class TestUploadProcessorTask(object):
             "report": None,
             "should_retry": False,
             "successful": False,
+            "should_delete_archive": False,
         }
         assert expected_result == result
         assert commit.state == "complete"
@@ -676,7 +842,10 @@ class TestUploadProcessorTask(object):
                         "what": "huh",
                         "upload_pk": upload_1.id_,
                     },
+                    "raw_report": None,
                     "successful": True,
+                    "should_delete_archive": False,
+                    "upload_obj": upload_1,
                 },
                 {
                     "arguments": {
@@ -687,6 +856,7 @@ class TestUploadProcessorTask(object):
                     "error": {"code": "report_empty", "params": {}},
                     "report": None,
                     "should_retry": False,
+                    "should_delete_archive": False,
                     "successful": False,
                 },
             ]
@@ -767,6 +937,7 @@ class TestUploadProcessorTask(object):
                     "report": None,
                     "should_retry": False,
                     "successful": False,
+                    "should_delete_archive": False,
                 },
                 {
                     "arguments": {
@@ -778,6 +949,7 @@ class TestUploadProcessorTask(object):
                     "report": None,
                     "should_retry": False,
                     "successful": False,
+                    "should_delete_archive": False,
                 },
             ]
         }

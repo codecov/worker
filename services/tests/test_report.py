@@ -4201,6 +4201,7 @@ class TestReportService(BaseTestCase):
             fully_deleted_sessions=[],
             partially_deleted_sessions=[],
             raw_report=None,
+            upload_obj=upload_obj,
         )
         assert (
             ReportService({}).update_upload_with_processing_result(
@@ -4228,6 +4229,7 @@ class TestReportService(BaseTestCase):
             fully_deleted_sessions=[],
             partially_deleted_sessions=[],
             raw_report=None,
+            upload_obj=upload_obj,
         )
         assert (
             ReportService({}).update_upload_with_processing_result(
