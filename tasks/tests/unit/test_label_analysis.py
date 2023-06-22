@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from mock import patch
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
 
@@ -409,7 +410,7 @@ async def test_simple_call_without_requested_labels(
 ):
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
-        "get_relevant_executable_lines",
+        "_get_lines_relevant_to_diff",
         return_value={
             "all": False,
             "files": {"source.py": {"all": False, "lines": {8, 6}}},
@@ -507,7 +508,7 @@ async def test_simple_call_with_requested_labels(
 ):
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
-        "get_relevant_executable_lines",
+        "_get_lines_relevant_to_diff",
         return_value={
             "all": False,
             "files": {"source.py": {"all": False, "lines": {8, 6}}},
@@ -543,6 +544,19 @@ async def test_simple_call_with_requested_labels(
         "present_diff_labels": expected_present_diff_labels,
         "present_report_labels": expected_present_report_labels,
         "global_level_labels": [],
+    }
+
+
+@pytest.mark.asyncio
+async def test_call_label_analysis_no_request_object(dbsession):
+    task = LabelAnalysisRequestProcessingTask()
+    res = await task.run_async(db_session=dbsession, request_id=-1)
+    assert res == {
+        "success": False,
+        "present_report_labels": None,
+        "present_diff_labels": None,
+        "absent_labels": None,
+        "global_level_labels": None,
     }
 
 
@@ -647,12 +661,12 @@ def test_get_relevant_executable_lines_with_static_analyses(dbsession, mocker):
 
 
 @pytest.mark.asyncio
-async def test_tun_async_with_error(
+async def test_run_async_with_error(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
-        "calculate_result",
+        "_get_lines_relevant_to_diff",
         side_effect=Exception("Oh no"),
     )
     larf = LabelAnalysisRequestFactory.create(
@@ -681,6 +695,8 @@ async def test_calculate_result_no_report(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     larf = LabelAnalysisRequestFactory.create(
+        # This being not-ordered is important in the test
+        # TO make sure we go through the warning at the bottom of run_async
         requested_labels=["tangerine", "pear", "banana", "apple"]
     )
     dbsession.add(larf)
@@ -690,11 +706,114 @@ async def test_calculate_result_no_report(
         "get_existing_report_for_commit",
         return_value=None,
     )
+    mocker.patch.object(
+        LabelAnalysisRequestProcessingTask,
+        "_get_lines_relevant_to_diff",
+        return_value=(set(), set(), set()),
+    )
     task = LabelAnalysisRequestProcessingTask()
-    res = task.calculate_result(larf, mocker.MagicMock())
+    res = await task.run_async(dbsession, larf.id)
     assert res == {
+        "success": True,
         "absent_labels": larf.requested_labels,
-        "present_diff_labels": [],
-        "present_report_labels": [],
-        "global_level_labels": [],
+        "present_diff_labels": None,
+        "present_report_labels": None,
+        "global_level_labels": None,
     }
+
+
+@pytest.mark.asyncio
+@patch("tasks.label_analysis.parse_git_diff_json", return_value=["parsed_git_diff"])
+async def test__get_parsed_git_diff(mock_parse_diff, dbsession, mock_repo_provider):
+    repository = RepositoryFactory.create()
+    dbsession.add(repository)
+    dbsession.flush()
+    larq = LabelAnalysisRequestFactory.create(
+        base_commit__repository=repository, head_commit__repository=repository
+    )
+    dbsession.add(larq)
+    dbsession.flush()
+    mock_repo_provider.get_compare.return_value = {"diff": "json"}
+    task = LabelAnalysisRequestProcessingTask()
+    parsed_diff = await task._get_parsed_git_diff(larq)
+    assert parsed_diff == ["parsed_git_diff"]
+    mock_parse_diff.assert_called_with({"diff": "json"})
+    mock_repo_provider.get_compare.assert_called_with(
+        larq.base_commit.commitid, larq.head_commit.commitid
+    )
+
+
+@pytest.mark.asyncio
+@patch("tasks.label_analysis.parse_git_diff_json", return_value=["parsed_git_diff"])
+async def test__get_parsed_git_diff_error(
+    mock_parse_diff, dbsession, mock_repo_provider
+):
+    repository = RepositoryFactory.create()
+    dbsession.add(repository)
+    dbsession.flush()
+    larq = LabelAnalysisRequestFactory.create(
+        base_commit__repository=repository, head_commit__repository=repository
+    )
+    dbsession.add(larq)
+    dbsession.flush()
+    mock_repo_provider.get_compare.side_effect = Exception("Oh no")
+    task = LabelAnalysisRequestProcessingTask()
+    parsed_diff = await task._get_parsed_git_diff(larq)
+    assert parsed_diff == None
+    mock_parse_diff.assert_not_called()
+    mock_repo_provider.get_compare.assert_called_with(
+        larq.base_commit.commitid, larq.head_commit.commitid
+    )
+
+
+@pytest.mark.asyncio
+@patch(
+    "tasks.label_analysis.LabelAnalysisRequestProcessingTask.get_relevant_executable_lines",
+    return_value=[{"all": False, "files": {}}],
+)
+@patch(
+    "tasks.label_analysis.LabelAnalysisRequestProcessingTask._get_parsed_git_diff",
+    return_value=["parsed_git_diff"],
+)
+async def test__get_lines_relevant_to_diff(
+    mock_parse_diff, mock_get_relevant_lines, dbsession
+):
+    repository = RepositoryFactory.create()
+    dbsession.add(repository)
+    dbsession.flush()
+    larq = LabelAnalysisRequestFactory.create(
+        base_commit__repository=repository, head_commit__repository=repository
+    )
+    dbsession.add(larq)
+    dbsession.flush()
+    task = LabelAnalysisRequestProcessingTask()
+    lines = await task._get_lines_relevant_to_diff(larq)
+    assert lines == [{"all": False, "files": {}}]
+    mock_parse_diff.assert_called_with(larq)
+    mock_get_relevant_lines.assert_called_with(larq, ["parsed_git_diff"])
+
+
+@pytest.mark.asyncio
+@patch(
+    "tasks.label_analysis.LabelAnalysisRequestProcessingTask.get_relevant_executable_lines"
+)
+@patch(
+    "tasks.label_analysis.LabelAnalysisRequestProcessingTask._get_parsed_git_diff",
+    return_value=None,
+)
+async def test__get_lines_relevant_to_diff_error(
+    mock_parse_diff, mock_get_relevant_lines, dbsession
+):
+    repository = RepositoryFactory.create()
+    dbsession.add(repository)
+    dbsession.flush()
+    larq = LabelAnalysisRequestFactory.create(
+        base_commit__repository=repository, head_commit__repository=repository
+    )
+    dbsession.add(larq)
+    dbsession.flush()
+    task = LabelAnalysisRequestProcessingTask()
+    lines = await task._get_lines_relevant_to_diff(larq)
+    assert lines == None
+    mock_parse_diff.assert_called_with(larq)
+    mock_get_relevant_lines.assert_not_called()
