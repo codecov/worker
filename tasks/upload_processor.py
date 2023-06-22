@@ -54,6 +54,8 @@ class UploadProcessorTask(BaseCodecovTask):
 
     name = upload_processor_task_name
 
+    acks_late = get_config("setup", "tasks", "upload", "acks_late", default=False)
+
     def schedule_for_later_try(self, max_retries=5):
         retry_in = FIRST_RETRY_DELAY * 3**self.request.retries
         self.retry(max_retries=max_retries, countdown=retry_in)

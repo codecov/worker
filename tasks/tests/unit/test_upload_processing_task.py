@@ -4,6 +4,7 @@ import celery
 import pytest
 from celery.exceptions import Retry
 from redis.exceptions import LockError
+from shared.config import get_config
 from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
 from shared.torngit.exceptions import TorngitObjectNotFoundError
@@ -23,6 +24,15 @@ from services.report.raw_upload_processor import UploadProcessingResult
 from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
+
+
+def test_default_acks_late():
+    task = UploadProcessorTask()
+    # task.acks_late is defined at import time, so it's difficult to test
+    # This test ensures that, in the absence of config the default is False
+    # So we need to explicitly set acks_late
+    assert get_config("setup", "tasks", "upload", "acks_late", default=None) is None
+    assert task.acks_late == False
 
 
 class TestUploadProcessorTask(object):
