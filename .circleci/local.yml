@@ -17,7 +17,7 @@ k8s_auth: &k8s_auth
 jobs:
   build:
     docker:
-    - image: us-docker.pkg.dev/test6u3411ty6xqh462sri/codecov-devops/codecov-deploy:latest
+    - image: $CODECOV_DEPLOY_IMAGE_LATEST
       user: root
       auth:
         username: _json_key
@@ -37,7 +37,7 @@ jobs:
           make -f Makefile.circle push
   test:
     docker:
-    - image: gcr.io/test6u3411ty6xqh462sri/codecov-worker:latest
+    - image: $CODECOV_WORKER_IMAGE_LATEST
       user: root
       auth:
         username: _json_key
@@ -58,7 +58,7 @@ jobs:
           codecov
   deploy:
     docker:
-    - image: us-docker.pkg.dev/test6u3411ty6xqh462sri/codecov-devops/codecov-deploy:latest
+    - image: $CODECOV_DEPLOY_IMAGE_LATEST
       user: root
       auth:
         username: _json_key
