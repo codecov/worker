@@ -89,7 +89,6 @@ class TestUploadProcessorTask(object):
                 {
                     "arguments": {"upload_pk": upload.id_, "url": url},
                     "successful": True,
-                    "should_delete_archive": False,
                     "upload_obj": upload,
                 }
             ]
@@ -216,7 +215,6 @@ class TestUploadProcessorTask(object):
                 {
                     "arguments": {"upload_pk": upload.id_, "url": url},
                     "successful": True,
-                    "should_delete_archive": True,
                     "upload_obj": upload,
                 }
             ]
@@ -339,7 +337,6 @@ class TestUploadProcessorTask(object):
                     "arguments": {"url": url, "upload_pk": upload.id_},
                     "successful": True,
                     "upload_obj": upload,
-                    "should_delete_archive": False,
                 }
             ]
         }
@@ -465,7 +462,6 @@ class TestUploadProcessorTask(object):
                     "arguments": {"upload_pk": upload.id_, "url": url},
                     "successful": True,
                     "upload_obj": upload,
-                    "should_delete_archive": False,
                 }
             ]
         }
@@ -530,7 +526,7 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         assert exc.value.args == ("first", "aruba", "digimon")
-        mocked_2.assert_called_with(mocker.ANY, mocker.ANY, False, upload=upload)
+        mocked_2.assert_called_with(mocker.ANY, mocker.ANY, upload=upload)
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
         assert not mocked_3.called
@@ -651,7 +647,6 @@ class TestUploadProcessorTask(object):
                     },
                     "upload_obj": upload_1,
                     "raw_report": None,
-                    "should_delete_archive": False,
                     "successful": True,
                 },
                 {
@@ -663,7 +658,6 @@ class TestUploadProcessorTask(object):
                     "error": {"code": "report_expired", "params": {}},
                     "report": None,
                     "should_retry": False,
-                    "should_delete_archive": False,
                     "successful": False,
                 },
             ]
@@ -709,7 +703,6 @@ class TestUploadProcessorTask(object):
             commit=commit,
             report=false_report,
             upload_obj=upload,
-            should_delete_archive=False,
         )
         expected_result = {
             "error": {
@@ -719,7 +712,6 @@ class TestUploadProcessorTask(object):
             "report": None,
             "should_retry": False,
             "successful": False,
-            "should_delete_archive": False,
         }
         assert expected_result == result
         assert commit.state == "complete"
@@ -763,7 +755,6 @@ class TestUploadProcessorTask(object):
                 commit=commit,
                 report=false_report,
                 upload_obj=upload,
-                should_delete_archive=False,
             )
         mock_schedule_for_later_try.assert_called_with()
 
@@ -844,7 +835,6 @@ class TestUploadProcessorTask(object):
                     },
                     "raw_report": None,
                     "successful": True,
-                    "should_delete_archive": False,
                     "upload_obj": upload_1,
                 },
                 {
@@ -856,7 +846,6 @@ class TestUploadProcessorTask(object):
                     "error": {"code": "report_empty", "params": {}},
                     "report": None,
                     "should_retry": False,
-                    "should_delete_archive": False,
                     "successful": False,
                 },
             ]
@@ -937,7 +926,6 @@ class TestUploadProcessorTask(object):
                     "report": None,
                     "should_retry": False,
                     "successful": False,
-                    "should_delete_archive": False,
                 },
                 {
                     "arguments": {
@@ -949,7 +937,6 @@ class TestUploadProcessorTask(object):
                     "report": None,
                     "should_retry": False,
                     "successful": False,
-                    "should_delete_archive": False,
                 },
             ]
         }

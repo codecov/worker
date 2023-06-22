@@ -127,7 +127,6 @@ class UploadProcessorTask(BaseCodecovTask):
         assert commit, "Commit not found in database."
         repository = commit.repository
         pr = None
-        should_delete_archive = self.should_delete_archive(commit_yaml)
         try_later = []
         report_service = ReportService(commit_yaml)
 
@@ -169,7 +168,6 @@ class UploadProcessorTask(BaseCodecovTask):
                             commit,
                             report,
                             upload_obj,
-                            should_delete_archive,
                         )
                     individual_info.update(result)
                 except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
@@ -236,11 +234,9 @@ class UploadProcessorTask(BaseCodecovTask):
             raise
 
     @sentry_sdk.trace
-    def process_individual_report(
-        self, report_service, commit, report, upload_obj, should_delete_archive
-    ):
+    def process_individual_report(self, report_service, commit, report, upload_obj):
         processing_result = self.do_process_individual_report(
-            report_service, report, should_delete_archive, upload=upload_obj
+            report_service, report, upload=upload_obj
         )
         if (
             processing_result.error is not None
@@ -268,14 +264,12 @@ class UploadProcessorTask(BaseCodecovTask):
         self,
         report_service: ReportService,
         current_report: Optional[Report],
-        should_delete_archive: bool,
         *,
         upload: Upload,
     ):
         res: ProcessingResult = report_service.build_report_from_raw_content(
             current_report, upload
         )
-        res.should_delete_archive = should_delete_archive
         return res
 
     def should_delete_archive(self, commit_yaml):
@@ -288,13 +282,17 @@ class UploadProcessorTask(BaseCodecovTask):
     def _delete_archive(
         self, processing_result: dict, report_service: ReportService, commit: Commit
     ):
-        if processing_result["should_delete_archive"]:
+        if self.should_delete_archive(report_service.current_yaml):
             upload = processing_result.get("upload_obj")
             archive_url = upload.storage_path
             if archive_url and not archive_url.startswith("http"):
                 log.info(
                     "Deleting uploaded file as requested",
-                    extra=dict(archive_url=archive_url),
+                    extra=dict(
+                        archive_url=archive_url,
+                        commit=commit.commitid,
+                        upload=upload.external_id,
+                    ),
                 )
                 archive_service = report_service.get_archive_service(commit.repository)
                 archive_service.delete_file(archive_url)
@@ -307,6 +305,14 @@ class UploadProcessorTask(BaseCodecovTask):
         if raw_report:
             upload = processing_result.get("upload_obj")
             archive_url = upload.storage_path
+            log.info(
+                "Re-writing raw report in readable format",
+                extra=dict(
+                    archive_url=archive_url,
+                    commit=commit.commitid,
+                    upload=upload.external_id,
+                ),
+            )
             archive_service = report_service.get_archive_service(commit.repository)
             archive_service.write_file(archive_url, raw_report.content().getvalue())
 

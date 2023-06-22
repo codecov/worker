@@ -66,7 +66,6 @@ class ProcessingResult(object):
     partially_deleted_sessions: typing.List[int]
     raw_report: ParsedRawReport
     upload_obj: Upload
-    should_delete_archive: bool = False
 
     def as_dict(self):
         # Weird flow for now in order to keep things compatible with previous logging
@@ -76,12 +75,10 @@ class ProcessingResult(object):
                 "error": self.error.as_dict(),
                 "report": self.report,
                 "should_retry": False,
-                "should_delete_archive": self.should_delete_archive,
             }
         return {
             "successful": True,
             "report": self.report,
-            "should_delete_archive": self.should_delete_archive,
             "raw_report": self.raw_report,
             "upload_obj": self.upload_obj,
         }
