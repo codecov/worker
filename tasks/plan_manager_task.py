@@ -12,7 +12,7 @@ from tasks.crontasks import CodecovCronTask
 
 log = logging.getLogger(__name__)
 
-
+# This is currently disabled, as we decided to support the org wide token for all org types
 class DailyPlanManagerTask(CodecovCronTask):
     PLANS_THAT_CAN_HAVE_ORG_LEVEL_TOKENS = [
         BillingPlan.enterprise_cloud_monthly.value,
