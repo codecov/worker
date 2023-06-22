@@ -99,16 +99,9 @@ class TestUploadProcessorTask(object):
                 {
                     "arguments": {"upload_pk": upload.id_, "url": url},
                     "successful": True,
-                    "upload_obj": upload,
                 }
             ]
         }
-        # We can't compare the raw_report in this test, so we pop it from the result
-        individual_result = result["processings_so_far"][0]
-        assert "raw_report" in individual_result and isinstance(
-            individual_result["raw_report"], LegacyParsedRawReport
-        )
-        individual_result.pop("raw_report")
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         expected_generated_report = {
@@ -225,18 +218,11 @@ class TestUploadProcessorTask(object):
                 {
                     "arguments": {"upload_pk": upload.id_, "url": url},
                     "successful": True,
-                    "upload_obj": upload,
                 }
             ]
         }
         mock_delete_file.assert_called()
         assert upload.storage_path is None
-        # We can't compare the raw_report in this test, so we pop it from the result
-        individual_result = result["processings_so_far"][0]
-        assert "raw_report" in individual_result and isinstance(
-            individual_result["raw_report"], LegacyParsedRawReport
-        )
-        individual_result.pop("raw_report")
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         expected_generated_report = {
@@ -346,16 +332,9 @@ class TestUploadProcessorTask(object):
                 {
                     "arguments": {"url": url, "upload_pk": upload.id_},
                     "successful": True,
-                    "upload_obj": upload,
                 }
             ]
         }
-        # We can't compare the raw_report in this test, so we pop it from the result
-        individual_result = result["processings_so_far"][0]
-        assert "raw_report" in individual_result and isinstance(
-            individual_result["raw_report"], LegacyParsedRawReport
-        )
-        individual_result.pop("raw_report")
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         assert upload.state == "processed"
@@ -471,16 +450,9 @@ class TestUploadProcessorTask(object):
                 {
                     "arguments": {"upload_pk": upload.id_, "url": url},
                     "successful": True,
-                    "upload_obj": upload,
                 }
             ]
         }
-        # We can't compare the raw_report in this test, so we pop it from the result
-        individual_result = result["processings_so_far"][0]
-        assert "raw_report" in individual_result and isinstance(
-            individual_result["raw_report"], LegacyParsedRawReport
-        )
-        individual_result.pop("raw_report")
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         mocked_1.assert_called_with(commit.commitid, None)
@@ -655,8 +627,6 @@ class TestUploadProcessorTask(object):
                         "what": "huh",
                         "upload_pk": upload_1.id_,
                     },
-                    "upload_obj": upload_1,
-                    "raw_report": None,
                     "successful": True,
                 },
                 {
@@ -843,9 +813,7 @@ class TestUploadProcessorTask(object):
                         "what": "huh",
                         "upload_pk": upload_1.id_,
                     },
-                    "raw_report": None,
                     "successful": True,
-                    "upload_obj": upload_1,
                 },
                 {
                     "arguments": {
