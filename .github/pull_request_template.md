@@ -4,7 +4,7 @@
 
 <!--
 
-  Sentry employees and contractors can delete or ignore the following.
+  Sentry/Codecov employees and contractors can delete or ignore the following.
 
 -->
 
