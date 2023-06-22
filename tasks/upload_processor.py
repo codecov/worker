@@ -214,6 +214,8 @@ class UploadProcessorTask(BaseCodecovTask):
                 self._rewrite_raw_report_readable(
                     processed_individual_report, report_service, commit
                 )
+                processed_individual_report.pop("upload_obj", None)
+                processed_individual_report.pop("raw_report", None)
             log.info(
                 "Processed %d reports",
                 n_processed,
