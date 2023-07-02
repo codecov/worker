@@ -208,12 +208,13 @@ class UploadProcessorTask(BaseCodecovTask):
                     report_code,
                 )
             for processed_individual_report in processings_so_far:
-                self._delete_archive(
+                deleted_archive = self._possibly_delete_archive(
                     processed_individual_report, report_service, commit
                 )
-                self._rewrite_raw_report_readable(
-                    processed_individual_report, report_service, commit
-                )
+                if not deleted_archive:
+                    self._rewrite_raw_report_readable(
+                        processed_individual_report, report_service, commit
+                    )
                 processed_individual_report.pop("upload_obj", None)
                 processed_individual_report.pop("raw_report", None)
             log.info(
@@ -283,7 +284,7 @@ class UploadProcessorTask(BaseCodecovTask):
             commit_yaml, ("codecov", "archive", "uploads"), _else=True
         )
 
-    def _delete_archive(
+    def _possibly_delete_archive(
         self, processing_result: dict, report_service: ReportService, commit: Commit
     ):
         if self.should_delete_archive(report_service.current_yaml):
@@ -300,7 +301,8 @@ class UploadProcessorTask(BaseCodecovTask):
                 )
                 archive_service = report_service.get_archive_service(commit.repository)
                 archive_service.delete_file(archive_url)
-                upload.storage_path = None
+                return True
+        return False
 
     def _rewrite_raw_report_readable(
         self, processing_result: dict, report_service: ReportService, commit: Commit

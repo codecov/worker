@@ -222,7 +222,10 @@ class TestUploadProcessorTask(object):
             ]
         }
         mock_delete_file.assert_called()
-        assert upload.storage_path is None
+        assert (
+            upload.storage_path
+            == "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7F/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        )
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         expected_generated_report = {
