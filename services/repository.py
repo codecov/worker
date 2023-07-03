@@ -261,18 +261,6 @@ def get_or_create_author(
         )
         db_session.add(author)
         db_session.commit()
-        if service == "bitbucket":
-            # temporary log line to investigate issue of owners with null username in bb users. Ticket: https://codecovio.atlassian.net/browse/CODE-699
-            log.info(
-                "Saving author in the database",
-                extra=dict(
-                    service=service,
-                    service_id=str(service_id),
-                    username=username,
-                    users_name=name,
-                    email=email,
-                ),
-            )
         return author
     except IntegrityError:
         log.warning(
