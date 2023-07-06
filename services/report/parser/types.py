@@ -53,6 +53,9 @@ class ParsedRawReport(object):
 
     def content(self) -> BytesIO:
         buffer = BytesIO()
+        for file in self.get_toc():
+            buffer.write(f"{file}\n".encode("utf-8"))
+        buffer.write("<<<<<< network\n\n".encode("utf-8"))
         for file in self.uploaded_files:
             buffer.write(f"# path={file.filename}\n".encode("utf-8"))
             buffer.write(file.contents)
@@ -79,6 +82,7 @@ class LegacyParsedRawReport(ParsedRawReport):
     def get_toc(self) -> List[str]:
         toc = self.toc.read().decode(errors="replace").strip()
         toc = clean_toc(toc)
+        self.toc.seek(0, 0)
         return toc
 
     def get_env(self):
