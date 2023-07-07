@@ -7,6 +7,7 @@ name ?= worker
 branch = $(shell git branch | grep \* | cut -f2 -d' ')
 gh_access_token := $(shell echo ${GH_ACCESS_TOKEN})
 epoch := $(shell date +"%s")
+dockerhub_image := codecov/self-hosted-worker
 
 build.local:
 	docker build -f dockerscripts/Dockerfile . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}" --ssh default
@@ -78,18 +79,6 @@ test.unit:
 test.integration:
 	python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml
 
-push.worker-new:
-	docker tag codecov/worker ${_gcr}-worker:${release_version}-${sha}
-	docker push ${_gcr}-worker:${release_version}-${sha}
-
-push.enterprise-private:
-	docker push codecov/worker-private:${release_version}-${sha}
-
-#push enterprise
-push.enterprise:
-	docker push codecov/enterprise-worker:${release_version}
-	docker tag codecov/enterprise-worker:${release_version} codecov/enterprise-worker:latest-stable
-	docker push codecov/enterprise-worker:latest-stable
 
 update-requirements:
 	pip install pip-tools==6.1.0
