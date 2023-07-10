@@ -162,7 +162,7 @@ interactions:
 - request:
     body: '{"name": "web", "active": true, "events": ["pull_request", "delete", "push",
       "public", "status", "repository"], "config": {"url": "https://codecov.io/webhooks/github",
-      "secret": "ab164bf3f7d947f2a0681b215404873e", "content_type": "json"}}'
+      "secret": "test46nudghi6oft49bay37keyiuhok7", "content_type": "json"}}'
     headers:
       Accept:
       - application/json
