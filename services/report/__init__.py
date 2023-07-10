@@ -328,7 +328,7 @@ class ReportService(object):
         totals = self.build_totals(upload.totals) if upload.totals is not None else None
 
         return Session(
-            id=upload.id,
+            id=upload.order_number,
             totals=totals,
             time=int(upload.created_at.timestamp()),
             archive=upload.storage_path,
@@ -357,6 +357,7 @@ class ReportService(object):
 
         commit_report = commit.report
         if not commit_report:
+            log.warning("Missing commit report", extra=dict(commit=commit.commitid))
             return sessions
 
         db_session = commit.get_db_session()
@@ -364,6 +365,7 @@ class ReportService(object):
             (Upload.report_id == commit_report.id_)
             & ((Upload.state == "processed") | (Upload.state == "complete"))
         )
+
         for upload in report_uploads:
             session = self.build_session(upload)
             if session.session_type == SessionType.carriedforward:
@@ -378,6 +380,15 @@ class ReportService(object):
                 # we can include this CF session since there are no direct uploads
                 # with the same flag name OR we're carrying forward labels
                 sessions[sid] = session
+
+        log.info(
+            "Building report sessions from upload records",
+            extra=dict(
+                commit=commit.commitid,
+                upload_count=report_uploads.count(),
+                session_ids=list(sessions.keys()),
+            ),
+        )
 
         return sessions
 
@@ -498,6 +509,8 @@ class ReportService(object):
         report = self.build_report(
             chunks, files, sessions, totals, report_class=report_class
         )
+
+        sessions_to_delete = []
         for sid, session in report.sessions.items():
             # this mimics behavior in the `adjust_sessions` function from
             # `services/report/raw_upload_processor.py` - we need to delete
@@ -508,12 +521,21 @@ class ReportService(object):
             if labels_session:
                 labels = get_labels_per_session(report, sid)
                 if not labels:
-                    del sessions[sid]
+                    sessions_to_delete.append(sid)
 
-        # rebuild the report since we may have deleted some sessions above
-        report = self.build_report(
-            chunks, files, sessions, totals, report_class=report_class
-        )
+        if len(sessions_to_delete) > 0:
+            log.info(
+                "Deleting empty labels sessions",
+                extra=dict(commit=commit.commitid, session_ids=sessions_to_delete),
+            )
+            for sid in sessions_to_delete:
+                del sessions[sid]
+
+            # rebuild the report since we deleted some sessions
+            report = self.build_report(
+                chunks, files, sessions, totals, report_class=report_class
+            )
+
         return report
 
     async def _do_build_report_from_commit(self, commit) -> Report:
