@@ -267,6 +267,44 @@ class TestUploadFinisherTask(object):
         )
 
     @pytest.mark.asyncio
+    async def test_should_call_notifications_manual_trigger(self, dbsession):
+        commit_yaml = {"codecov": {"notify": {"manual_trigger": True}}}
+        commit = CommitFactory.create(
+            message="dsidsahdsahdsa",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="aabbcc",
+            repository__owner__username="Codecov",
+            repository__yaml=commit_yaml,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        processing_results = {}
+        assert not UploadFinisherTask().should_call_notifications(
+            commit, commit_yaml, processing_results, None
+        )
+
+    @pytest.mark.asyncio
+    async def test_should_call_notifications_manual_trigger_off(self, dbsession):
+        commit_yaml = {
+            "codecov": {"max_report_age": "1y ago", "notify": {"manual_trigger": False}}
+        }
+        commit = CommitFactory.create(
+            message="dsidsahdsahdsa",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
+            repository__owner__username="ThiagoCodecov",
+            repository__yaml=commit_yaml,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        processing_results = {
+            "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
+        }
+        assert UploadFinisherTask().should_call_notifications(
+            commit, commit_yaml, processing_results, None
+        )
+
+    @pytest.mark.asyncio
     async def test_should_call_notifications_no_successful_reports(self, dbsession):
         commit_yaml = {"codecov": {"max_report_age": "1y ago"}}
         commit = CommitFactory.create(

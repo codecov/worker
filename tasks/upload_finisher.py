@@ -187,6 +187,20 @@ class UploadFinisherTask(BaseCodecovTask):
     def should_call_notifications(
         self, commit, commit_yaml, processing_results, report_code
     ):
+        manual_trigger = read_yaml_field(
+            commit_yaml, ("codecov", "notify", "manual_trigger")
+        )
+        if manual_trigger:
+            log.info(
+                "Not scheduling notify because manual trigger is used",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    commit_yaml=commit_yaml,
+                    processing_results=processing_results,
+                ),
+            )
+            return False
         # Notifications should be off in case of local uploads, and report code wouldn't be null in that case
         if report_code is not None:
             log.info(
