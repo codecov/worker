@@ -547,6 +547,21 @@ async def test_simple_call_with_requested_labels(
     }
 
 
+def test_get_requested_labels(dbsession, mocker):
+    larf = LabelAnalysisRequestFactory.create(requested_labels=[])
+
+    def side_effect(*args, **kwargs):
+        larf.requested_labels = ["tangerine", "pear", "banana", "apple"]
+
+    mock_refresh = mocker.patch.object(dbsession, "refresh", side_effect=side_effect)
+    dbsession.add(larf)
+    dbsession.flush()
+    task = LabelAnalysisRequestProcessingTask()
+    labels = task._get_requested_labels(larf, dbsession)
+    mock_refresh.assert_called()
+    assert labels == ["tangerine", "pear", "banana", "apple"]
+
+
 @pytest.mark.asyncio
 async def test_call_label_analysis_no_request_object(dbsession):
     task = LabelAnalysisRequestProcessingTask()
