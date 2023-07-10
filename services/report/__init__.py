@@ -182,7 +182,7 @@ class ReportService(object):
             )
             report_details = ReportDetails(
                 report_id=current_report_row.id_,
-                files_array=[],
+                _files_array=[],
                 report=current_report_row,
             )
             db_session.add(report_details)
