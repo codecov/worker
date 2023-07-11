@@ -98,6 +98,8 @@ jobs:
           command: |
             codecovcli static-analysis --token=$STATIC_TOKEN
   iterativetesting:
+    environment:
+      CURRENT_ENVIRONMENT: local
     executor: codecov-worker
     steps:
       - checkout
