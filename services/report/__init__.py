@@ -447,7 +447,7 @@ class ReportService(object):
         return res
 
     def _is_labels_flags(self, flags: Sequence[str]) -> bool:
-        return all(
+        return len(flags) > 0 and all(
             [
                 (self.current_yaml.get_flag_configuration(flag) or {}).get(
                     "carryforward_mode"

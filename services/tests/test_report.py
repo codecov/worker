@@ -471,6 +471,125 @@ class TestReportService(BaseTestCase):
         )
         dbsession.add(totals)
 
+        upload = UploadFactory(report=report, order_number=0, upload_type="upload")
+        dbsession.add(upload)
+        upload_totals = UploadLevelTotalsFactory(
+            upload=upload,
+            files=3,
+            lines=20,
+            hits=17,
+            misses=3,
+            partials=0,
+            coverage=85.0,
+            branches=0,
+            methods=0,
+        )
+        dbsession.add(upload_totals)
+        dbsession.commit()
+        dbsession.flush()
+
+        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
+            mock_storage.write_file("archive", chunks_url, content)
+
+        report = await ReportService({}).build_report_from_commit(commit)
+        assert report is not None
+        assert report.files == [
+            "awesome/__init__.py",
+            "tests/__init__.py",
+            "tests/test_sample.py",
+        ]
+        assert report.totals == ReportTotals(
+            files=3,
+            lines=20,
+            hits=17,
+            misses=3,
+            partials=0,
+            coverage=Decimal("85.00"),
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+
+        assert len(report.sessions) == 1
+        assert report.sessions[0].flags == []
+        assert report.sessions[0].session_type == SessionType.uploaded
+        assert report.sessions[0].totals == ReportTotals(
+            files=3,
+            lines=20,
+            hits=17,
+            misses=3,
+            partials=0,
+            coverage=Decimal("85.00"),
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=0,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+
+        # make sure report is still serializable
+        ReportService({}).save_report(commit, report)
+
+    @pytest.mark.asyncio
+    async def test_build_report_from_commit_with_flags(self, dbsession, mock_storage):
+        commit = CommitFactory(report_json=None)
+        dbsession.add(commit)
+        report = ReportFactory(commit=commit)
+        dbsession.add(report)
+
+        details = ReportDetailsFactory(
+            report=report,
+            files_array=[
+                {
+                    "filename": "awesome/__init__.py",
+                    "file_index": 2,
+                    "file_totals": [0, 10, 8, 2, 0, "80.00000", 0, 0, 0, 0, 0, 0, 0],
+                    "session_totals": [
+                        [0, 10, 8, 2, 0, "80.00000", 0, 0, 0, 0, 0, 0, 0]
+                    ],
+                    "diff_totals": [0, 2, 1, 1, 0, "50.00000", 0, 0, 0, 0, 0, 0, 0],
+                },
+                {
+                    "filename": "tests/__init__.py",
+                    "file_index": 0,
+                    "file_totals": [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0],
+                    "session_totals": [
+                        [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0]
+                    ],
+                    "diff_totals": None,
+                },
+                {
+                    "filename": "tests/test_sample.py",
+                    "file_index": 1,
+                    "file_totals": [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
+                    "session_totals": [[0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
+                    "diff_totals": None,
+                },
+            ],
+        )
+        dbsession.add(details)
+        totals = ReportLevelTotalsFactory(
+            report=report,
+            files=3,
+            lines=20,
+            hits=17,
+            misses=3,
+            partials=0,
+            coverage=85.0,
+            branches=0,
+            methods=0,
+        )
+        dbsession.add(totals)
+
         flag1 = RepositoryFlagFactory(
             repository=commit.repository,
             flag_name="unit",
