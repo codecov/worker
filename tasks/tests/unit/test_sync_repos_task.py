@@ -482,7 +482,10 @@ class TestSyncReposTaskUnit(object):
 
     @pytest.mark.asyncio
     async def test_sync_repos_using_integration(
-        self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
+        self,
+        mocker,
+        dbsession,
+        mock_owner_provider,
     ):
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -495,48 +498,58 @@ class TestSyncReposTaskUnit(object):
         )
         dbsession.add(user)
 
-        repo_pytest = RepositoryFactory.create(
-            private=False,
-            name="pytest",
-            using_integration=False,
-            service_id="159089634",
-            owner=user,
-        )
-        repo_spack = RepositoryFactory.create(
-            private=False,
-            name="spack",
-            using_integration=True,
-            service_id="164948070",
-            owner=user,
-        )
-        repo_pub = RepositoryFactory.create(
-            private=False,
-            name="pub",
-            using_integration=None,
-            service_id="213786132",
-            owner=user,
-        )
-        dbsession.add(repo_pytest)
-        dbsession.add(repo_spack)
-        dbsession.add(repo_pub)
+        def repo_obj(service_id, name, language, private, branch, using_integration):
+            return {
+                "id": service_id,
+                "name": name,
+                "language": language,
+                "private": private,
+                "default_branch": branch,
+                "using_integration": using_integration,
+            }
+
+        mock_repos = [
+            repo_obj("159089634", "pytest", "python", False, "main", True),
+            repo_obj("164948070", "spack", "python", False, "develop", False),
+            repo_obj("213786132", "pub", "dart", False, "master", None),
+            repo_obj("555555555", "soda", "python", False, "main", None),
+        ]
+
+        # Mock GitHub response for repos that are visible to our app
+        mock_owner_provider.list_repos_using_installation.return_value = mock_repos
+
+        # Three of the four repositories we can see are already in the database.
+        # Will we update `using_integration` correctly?
+        preseeded_repos = []
+        for repo in mock_repos[:-1]:
+            preseeded_repos.append(
+                RepositoryFactory.create(
+                    private=repo["private"],
+                    name=repo["name"],
+                    using_integration=repo["using_integration"],
+                    service_id=repo["id"],
+                    owner=user,
+                )
+            )
+
+        for repo in preseeded_repos:
+            dbsession.add(repo)
         dbsession.flush()
 
         await SyncReposTask().run_async(
             dbsession, ownerid=user.ownerid, using_integration=True
         )
-
         dbsession.commit()
 
         repos = (
             dbsession.query(Repository)
-            .filter(
-                Repository.service_id.in_(
-                    (repo_pytest.service_id, repo_spack.service_id, repo_pub.service_id)
-                )
-            )
+            .filter(Repository.service_id.in_((repo["id"] for repo in mock_repos)))
             .all()
         )
-        assert len(repos) == 3
+
+        # We pre-seeded 3 repos in the database, but we should have added the
+        # 4th based on our GitHub response
+        assert len(repos) == 4
 
         assert user.permission == []  # there were no private repos
         for repo in repos:
