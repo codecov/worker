@@ -99,9 +99,9 @@ pull-latest:
 	docker pull ${GCR_REPO}:latest
 	docker tag ${GCR_REPO}:latest codecov/$(name):latest
 
-# job: dockerhub-deploy-master
+# job: dockerhub-deploy-main
 # used to pull latest worker image and push it to dockerhub
-dockerhub-deploy-master:
+dockerhub-deploy-main:
 	docker push codecov/$(name):latest
 	docker tag codecov/$(name):latest codecov/$(name):${IMAGE_VERSION}
 	docker push codecov/$(name):${IMAGE_VERSION}
@@ -143,7 +143,7 @@ circleci-local:
 # use locally to tag a new release version.  
 # this will trigger a build/test/deployment on circle ci
 release:
-	git checkout master
+	git checkout main
 	git pull
 	git tag ${VERSION}
 	git push --tags

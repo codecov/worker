@@ -110,8 +110,8 @@ jobs:
   #     - run:
   #         name: Run Predictor Analysis
   #         command: |
-  #           echo $(git merge-base HEAD^ master)
-  #           codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ master)
+  #           echo $(git merge-base HEAD^ main)
+  #           codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ main)
   #     - run:
   #         name: Upload onlysomelabels
   #         command: |
@@ -124,7 +124,7 @@ jobs:
           name: Run Mutations
           command: |
             apk add git
-            git diff master $CIRCLE_SHA1 > data.patch
+            git diff main $CIRCLE_SHA1 > data.patch
             pip install mutmut[patch]
             mutmut run --use-patch-file data.patch || true
             mkdir /tmp/artifacts;
@@ -269,7 +269,7 @@ jobs:
             docker login -u _json_key -p "$GCLOUD_SERVICE_KEY" "$CODECOV_DEPLOY_IMAGE_LATEST"
             make -f Makefile.circle pull-latest
             echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-            make -f Makefile.circle dockerhub-deploy-master
+            make -f Makefile.circle dockerhub-deploy-main
 
 workflows:
   version: 2
@@ -288,7 +288,7 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - main
             tags:
               only:
                 - /enterprise-.*/
@@ -337,7 +337,7 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - main
                 - staging
       - production:
           context: "circleci google deploy context"
@@ -362,7 +362,7 @@ workflows:
                 - /^qa-.*/
                 - /^enterprise-.*/
             branches:
-              only: master
+              only: main
       - hold:
           type: approval
           requires:
@@ -403,4 +403,4 @@ workflows:
             # - standards-coverage-comparison
           filters:
             branches:
-              only: master
+              only: main
