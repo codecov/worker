@@ -137,6 +137,9 @@ class UploadProcessorTask(BaseCodecovTask):
                 commit, report_code=report_code
             )
             if report is None:
+                log.info(
+                    "No existing report for commit", extra=dict(commit=commit.commitid)
+                )
                 report = Report()
         try:
             for arguments in arguments_list:

@@ -59,12 +59,16 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 label_analysis_request
             )
             base_report = self._get_base_report(label_analysis_request)
+
             if lines_relevant_to_diff and base_report:
                 exisisting_labels = self._get_existing_labels(
                     base_report, lines_relevant_to_diff
                 )
+                requested_labels = self._get_requested_labels(
+                    label_analysis_request, db_session
+                )
                 result = self.calculate_final_result(
-                    requested_labels=label_analysis_request.requested_labels,
+                    requested_labels=requested_labels,
                     existing_labels=exisisting_labels,
                     commit_sha=label_analysis_request.head_commit.commitid,
                 )
@@ -115,6 +119,15 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         }
         label_analysis_request.result = result
         return result
+
+    def _get_requested_labels(
+        self, label_analysis_request: LabelAnalysisRequest, dbsession
+    ):
+        if label_analysis_request.requested_labels:
+            return label_analysis_request.requested_labels
+        # This is the case where the CLI PATCH the requested labels after collecting them
+        dbsession.refresh(label_analysis_request, ["requested_labels"])
+        return label_analysis_request.requested_labels
 
     @sentry_sdk.trace
     def _get_existing_labels(

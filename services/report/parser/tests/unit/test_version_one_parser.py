@@ -84,7 +84,7 @@ def test_version_one_parser():
 
     assert (
         res.content().getvalue().decode("utf-8")
-        == f"# path=coverage.xml\n{first_file.contents.decode('utf-8')}\n<<<<<< EOF\n\n# path=another.coverage.json\n{second_file.contents.decode('utf-8')}\n<<<<<< EOF\n\n"
+        == f"path/to/file1.c\npath/from/another.cpp\npath/from/aaaaaa.cpp\n<<<<<< network\n\n# path=coverage.xml\n{first_file.contents.decode('utf-8')}\n<<<<<< EOF\n\n# path=another.coverage.json\n{second_file.contents.decode('utf-8')}\n<<<<<< EOF\n\n"
     )
 
 
