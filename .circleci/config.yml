@@ -288,7 +288,7 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - main
             tags:
               only:
                 - /enterprise-.*/
@@ -337,7 +337,7 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - main
                 - staging
       - production:
           context: "circleci google deploy context"
@@ -362,7 +362,7 @@ workflows:
                 - /^qa-.*/
                 - /^enterprise-.*/
             branches:
-              only: master
+              only: main
       - hold:
           type: approval
           requires:
@@ -403,4 +403,4 @@ workflows:
             # - standards-coverage-comparison
           filters:
             branches:
-              only: master
+              only: main
