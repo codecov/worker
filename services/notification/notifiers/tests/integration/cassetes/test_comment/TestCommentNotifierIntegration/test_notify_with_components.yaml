@@ -129,51 +129,31 @@ interactions:
     method: POST
     uri: https://api.github.com/repos/codecove2e/example-python/issues/4/comments
   response:
-    content: "{\"url\":\"https://api.github.com/repos/codecove2e/example-python/issues/comments/1253851153\"\
-      ,\"html_url\":\"https://github.com/codecove2e/example-python/pull/4#issuecomment-1253851153\"\
-      ,\"issue_url\":\"https://api.github.com/repos/codecove2e/example-python/issues/4\"\
-      ,\"id\":1253851153,\"node_id\":\"IC_kwDOHrbKcs5KvEAR\",\"user\":{\"login\":\"\
-      codecove2e\",\"id\":93560619,\"node_id\":\"U_kgDOBZOfKw\",\"avatar_url\":\"\
-      https://avatars.githubusercontent.com/u/93560619?v=4\",\"gravatar_id\":\"\"\
-      ,\"url\":\"https://api.github.com/users/codecove2e\",\"html_url\":\"https://github.com/codecove2e\"\
-      ,\"followers_url\":\"https://api.github.com/users/codecove2e/followers\",\"\
-      following_url\":\"https://api.github.com/users/codecove2e/following{/other_user}\"\
-      ,\"gists_url\":\"https://api.github.com/users/codecove2e/gists{/gist_id}\",\"\
-      starred_url\":\"https://api.github.com/users/codecove2e/starred{/owner}{/repo}\"\
-      ,\"subscriptions_url\":\"https://api.github.com/users/codecove2e/subscriptions\"\
-      ,\"organizations_url\":\"https://api.github.com/users/codecove2e/orgs\",\"repos_url\"\
-      :\"https://api.github.com/users/codecove2e/repos\",\"events_url\":\"https://api.github.com/users/codecove2e/events{/privacy}\"\
-      ,\"received_events_url\":\"https://api.github.com/users/codecove2e/received_events\"\
-      ,\"type\":\"User\",\"site_admin\":false},\"created_at\":\"2022-09-21T15:11:06Z\"\
-      ,\"updated_at\":\"2022-09-21T15:11:06Z\",\"author_association\":\"OWNER\",\"\
-      body\":\"## [Codecov](None/gh/codecove2e/example-python/pull/4?src=pr&el=h1)\
-      \ Report\\nBase: **50.00**% // Head: **60.00**% // Increases project coverage\
-      \ by **`+10.00%`** :tada:\\n> Coverage data is based on head [(`8589c19`)](None/gh/codecove2e/example-python/pull/4?src=pr&el=desc)\
-      \ compared to base [(`93189ce`)](None/gh/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654?el=desc).\\\
-      n> Patch has no changes to coverable lines.\\n\\n<details><summary>Additional\
-      \ details and impacted files</summary>\\n\\n\\n[![Impacted file tree graph](None/gh/codecove2e/example-python/pull/4/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree)\\\
-      n\\n```diff\\n@@              Coverage Diff              @@\\n##           \
-      \  master       #4       +/-   ##\\n=============================================\\\
-      n+ Coverage     50.00%   60.00%   +10.00%     \\n+ Complexity       11     \
-      \  10        -1     \\n=============================================\\n  Files\
-      \             2        2               \\n  Lines             6       10   \
-      \     +4     \\n  Branches          0        1        +1     \\n=============================================\\\
-      n+ Hits              3        6        +3     \\n  Misses            3     \
-      \   3               \\n- Partials          0        1        +1     \\n```\\\
-      n\\n| Flag | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n|\
-      \ integration | `?` | `?` | |\\n| unit | `100.00% <\xF8> (?)` | `0.00 <\xF8\
-      > (?)` | |\\n\\nFlags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Molly+Taylor#carryforward-flags-in-the-pull-request-comment)\
-      \ to find out more.\\n\\n| [Impacted Files](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree)\
-      \ | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| [file\\\\\
-      _2.py](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree#diff-ZmlsZV8yLnB5)\
-      \ | `50.00% <0.00%> (\xF8)` | `0.00% <0.00%> (\xF8%)` | |\\n| [file\\\\_1.go](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree#diff-ZmlsZV8xLmdv)\
-      \ | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\\\
-      n\\n</details>\\n\\n[:umbrella: View full report in Codecov by Sentry](None/gh/codecove2e/example-python/pull/4?src=pr&el=continue).\
-      \   \\n:loudspeaker: Do you have feedback about the report comment? [Let us\
-      \ know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Molly+Taylor).\\\
-      n\",\"reactions\":{\"url\":\"https://api.github.com/repos/codecove2e/example-python/issues/comments/1253851153/reactions\"\
-      ,\"total_count\":0,\"+1\":0,\"-1\":0,\"laugh\":0,\"hooray\":0,\"confused\":0,\"\
-      heart\":0,\"rocket\":0,\"eyes\":0},\"performed_via_github_app\":null}"
+    content: "{\"url\":\"https://api.github.com/repos/codecove2e/example-python/issues/comments/1253851153\",\"html_url\":\"https://github.com/codecove2e/example-python/pull/4#issuecomment-1253851153\",\"issue_url\":\"https://api.github.com/repos/codecove2e/example-python/issues/4\",\"id\":1253851153,\"node_id\":\"IC_kwDOHrbKcs5KvEAR\",\"user\":{\"login\":\"codecove2e\",\"id\":93560619,\"node_id\":\"U_kgDOBZOfKw\",\"avatar_url\":\"https://avatars.githubusercontent.com/u/93560619?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/codecove2e\",\"html_url\":\"https://github.com/codecove2e\",\"followers_url\":\"https://api.github.com/users/codecove2e/followers\",\"following_url\":\"https://api.github.com/users/codecove2e/following{/other_user}\",\"gists_url\":\"https://api.github.com/users/codecove2e/gists{/gist_id}\",\"starred_url\":\"https://api.github.com/users/codecove2e/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api.github.com/users/codecove2e/subscriptions\",\"organizations_url\":\"https://api.github.com/users/codecove2e/orgs\",\"repos_url\":\"https://api.github.com/users/codecove2e/repos\",\"events_url\":\"https://api.github.com/users/codecove2e/events{/privacy}\",\"received_events_url\":\"https://api.github.com/users/codecove2e/received_events\",\"type\":\"User\",\"site_admin\":false},\"created_at\":\"2022-09-21T15:11:06Z\",\"updated_at\":\"2022-09-21T15:11:06Z\",\"author_association\":\"OWNER\",\"body\":\"##
+      [Codecov](None/gh/codecove2e/example-python/pull/4?src=pr&el=h1) Report\\nBase:
+      **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`**
+      :tada:\\n> Coverage data is based on head [(`8589c19`)](None/gh/codecove2e/example-python/pull/4?src=pr&el=desc)
+      compared to base [(`93189ce`)](None/gh/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654?el=desc).\\n>
+      Patch has no changes to coverable lines.\\n\\n<details><summary>Additional details
+      and impacted files</summary>\\n\\n\\n[![Impacted file tree graph](None/gh/codecove2e/example-python/pull/4/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree)\\n\\n```diff\\n@@
+      \             Coverage Diff              @@\\n##             master       #4
+      \      +/-   ##\\n=============================================\\n+ Coverage
+      \    50.00%   60.00%   +10.00%     \\n+ Complexity       11       10        -1
+      \    \\n=============================================\\n  Files             2
+      \       2               \\n  Lines             6       10        +4     \\n
+      \ Branches          0        1        +1     \\n=============================================\\n+
+      Hits              3        6        +3     \\n  Misses            3        3
+      \              \\n- Partials          0        1        +1     \\n```\\n\\n|
+      Flag | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| integration
+      | `?` | `?` | |\\n| unit | `100.00% <\xF8> (?)` | `0.00 <\xF8> (?)` | |\\n\\nFlags
+      with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Molly+Taylor#carryforward-flags-in-the-pull-request-comment)
+      to find out more.\\n\\n| [Impacted Files](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree)
+      | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| [file\\\\_2.py](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree#diff-ZmlsZV8yLnB5)
+      | `50.00% <0.00%> (\xF8)` | `0.00% <0.00%> (\xF8%)` | |\\n| [file\\\\_1.go](None/gh/codecove2e/example-python/pull/4?src=pr&el=tree#diff-ZmlsZV8xLmdv)
+      | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\\n\\n</details>\\n\\n[:umbrella:
+      View full report in Codecov by Sentry](None/gh/codecove2e/example-python/pull/4?src=pr&el=continue).
+      \  \\n:loudspeaker: Do you have feedback about the report comment? [Let us know
+      in this issue](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Molly+Taylor).\\n\",\"reactions\":{\"url\":\"https://api.github.com/repos/codecove2e/example-python/issues/comments/1253851153/reactions\",\"total_count\":0,\"+1\":0,\"-1\":0,\"laugh\":0,\"hooray\":0,\"confused\":0,\"heart\":0,\"rocket\":0,\"eyes\":0},\"performed_via_github_app\":null}"
     headers:
       Access-Control-Allow-Origin:
       - '*'
@@ -233,4 +213,166 @@ interactions:
       - 2022-10-21 13:48:23 UTC
     http_version: HTTP/1.1
     status_code: 201
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://api.github.com/repos/codecove2e/example-python/branches?per_page=100&page=1
+  response:
+    content: '[{"name":"codecove2e-patch-1","commit":{"sha":"dd2085468f3d09d3e277c04bec61aeb84a782dee","url":"https://api.github.com/repos/codecove2e/example-python/commits/dd2085468f3d09d3e277c04bec61aeb84a782dee"},"protected":false},{"name":"codecove2e-patch-2","commit":{"sha":"12f3e9a05310ed583cd1b0ad683d373f88a84053","url":"https://api.github.com/repos/codecove2e/example-python/commits/12f3e9a05310ed583cd1b0ad683d373f88a84053"},"protected":false},{"name":"codecove2e-patch-3","commit":{"sha":"0206296b1424912cc05069a9bf4025cbb95f5ecc","url":"https://api.github.com/repos/codecove2e/example-python/commits/0206296b1424912cc05069a9bf4025cbb95f5ecc"},"protected":false},{"name":"master","commit":{"sha":"93189ce50f224296d6412e2884b93dcc3c7c8654","url":"https://api.github.com/repos/codecove2e/example-python/commits/93189ce50f224296d6412e2884b93dcc3c7c8654"},"protected":false},{"name":"random-branch","commit":{"sha":"b12b8ba6046c1738c5c89325b8a63a6f51bc4ff6","url":"https://api.github.com/repos/codecove2e/example-python/commits/b12b8ba6046c1738c5c89325b8a63a6f51bc4ff6"},"protected":false},{"name":"test-branch","commit":{"sha":"bec77909e0a9b04603d2cdddcba62f99592d6579","url":"https://api.github.com/repos/codecove2e/example-python/commits/bec77909e0a9b04603d2cdddcba62f99592d6579"},"protected":false},{"name":"thiago/base-no-base","commit":{"sha":"620b8042c2f846fcc6dda1c732dedd15cdbe76db","url":"https://api.github.com/repos/codecove2e/example-python/commits/620b8042c2f846fcc6dda1c732dedd15cdbe76db"},"protected":false},{"name":"thiago/f/big-pt","commit":{"sha":"d55dc4ef748fd11537e50c9abed4ab1864fa1d94","url":"https://api.github.com/repos/codecove2e/example-python/commits/d55dc4ef748fd11537e50c9abed4ab1864fa1d94"},"protected":false},{"name":"thiago/f/something","commit":{"sha":"c9fb9262268f11b53c6b0682d4f9acac89bdeee5","url":"https://api.github.com/repos/codecove2e/example-python/commits/c9fb9262268f11b53c6b0682d4f9acac89bdeee5"},"protected":false},{"name":"thiago/test-1","commit":{"sha":"2e2600aa09525e2e1e1d98b09de61454d29c94bb","url":"https://api.github.com/repos/codecove2e/example-python/commits/2e2600aa09525e2e1e1d98b09de61454d29c94bb"},"protected":false}]'
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 03 Jul 2023 04:38:35 GMT
+      ETag:
+      - W/"a73b85e14f3662ed4e2f7350a4352806cf22f390684fc1f3fa4182ebfa79e8d4"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3
+      X-GitHub-Request-Id:
+      - C50B:64A0:3572E4C:6D8129C:64A250CB
+      X-OAuth-Scopes:
+      - repo
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4993'
+      X-RateLimit-Reset:
+      - '1688361672'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '7'
+      X-XSS-Protection:
+      - '0'
+      github-authentication-token-expiration:
+      - 2023-08-02 04:17:36 UTC
+      x-github-api-version-selected:
+      - '2022-11-28'
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://api.github.com/repos/codecove2e/example-python/compare/93189ce50f224296d6412e2884b93dcc3c7c8654...93189ce50f224296d6412e2884b93dcc3c7c8654
+  response:
+    content: '{"url":"https://api.github.com/repos/codecove2e/example-python/compare/93189ce50f224296d6412e2884b93dcc3c7c8654...93189ce50f224296d6412e2884b93dcc3c7c8654","html_url":"https://github.com/codecove2e/example-python/compare/93189ce50f224296d6412e2884b93dcc3c7c8654...93189ce50f224296d6412e2884b93dcc3c7c8654","permalink_url":"https://github.com/codecove2e/example-python/compare/codecove2e:93189ce...codecove2e:93189ce","diff_url":"https://github.com/codecove2e/example-python/compare/93189ce50f224296d6412e2884b93dcc3c7c8654...93189ce50f224296d6412e2884b93dcc3c7c8654.diff","patch_url":"https://github.com/codecove2e/example-python/compare/93189ce50f224296d6412e2884b93dcc3c7c8654...93189ce50f224296d6412e2884b93dcc3c7c8654.patch","base_commit":{"sha":"93189ce50f224296d6412e2884b93dcc3c7c8654","node_id":"MDY6Q29tbWl0NTE1Mjk1ODU4OjkzMTg5Y2U1MGYyMjQyOTZkNjQxMmUyODg0YjkzZGNjM2M3Yzg2NTQ=","commit":{"author":{"name":"Thiago
+      Ramos","email":"thiago@codecov.io","date":"2020-12-04T04:21:18Z"},"committer":{"name":"Thiago
+      Ramos","email":"thiago@codecov.io","date":"2020-12-04T04:21:18Z"},"message":"Adding
+      some encoding","tree":{"sha":"966e4dc888b0828c5dea75f21e82eb2daa9a4485","url":"https://api.github.com/repos/codecove2e/example-python/git/trees/966e4dc888b0828c5dea75f21e82eb2daa9a4485"},"url":"https://api.github.com/repos/codecove2e/example-python/git/commits/93189ce50f224296d6412e2884b93dcc3c7c8654","comment_count":0,"verification":{"verified":false,"reason":"unsigned","signature":null,"payload":null}},"url":"https://api.github.com/repos/codecove2e/example-python/commits/93189ce50f224296d6412e2884b93dcc3c7c8654","html_url":"https://github.com/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654","comments_url":"https://api.github.com/repos/codecove2e/example-python/commits/93189ce50f224296d6412e2884b93dcc3c7c8654/comments","author":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"committer":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"parents":[{"sha":"6f87a6bba8b0151bb78064a0dba9fa4f13b76a67","url":"https://api.github.com/repos/codecove2e/example-python/commits/6f87a6bba8b0151bb78064a0dba9fa4f13b76a67","html_url":"https://github.com/codecove2e/example-python/commit/6f87a6bba8b0151bb78064a0dba9fa4f13b76a67"}]},"merge_base_commit":{"sha":"93189ce50f224296d6412e2884b93dcc3c7c8654","node_id":"MDY6Q29tbWl0NTE1Mjk1ODU4OjkzMTg5Y2U1MGYyMjQyOTZkNjQxMmUyODg0YjkzZGNjM2M3Yzg2NTQ=","commit":{"author":{"name":"Thiago
+      Ramos","email":"thiago@codecov.io","date":"2020-12-04T04:21:18Z"},"committer":{"name":"Thiago
+      Ramos","email":"thiago@codecov.io","date":"2020-12-04T04:21:18Z"},"message":"Adding
+      some encoding","tree":{"sha":"966e4dc888b0828c5dea75f21e82eb2daa9a4485","url":"https://api.github.com/repos/codecove2e/example-python/git/trees/966e4dc888b0828c5dea75f21e82eb2daa9a4485"},"url":"https://api.github.com/repos/codecove2e/example-python/git/commits/93189ce50f224296d6412e2884b93dcc3c7c8654","comment_count":0,"verification":{"verified":false,"reason":"unsigned","signature":null,"payload":null}},"url":"https://api.github.com/repos/codecove2e/example-python/commits/93189ce50f224296d6412e2884b93dcc3c7c8654","html_url":"https://github.com/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654","comments_url":"https://api.github.com/repos/codecove2e/example-python/commits/93189ce50f224296d6412e2884b93dcc3c7c8654/comments","author":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"committer":{"login":"ThiagoCodecov","id":44376991,"node_id":"MDQ6VXNlcjQ0Mzc2OTkx","avatar_url":"https://avatars.githubusercontent.com/u/44376991?v=4","gravatar_id":"","url":"https://api.github.com/users/ThiagoCodecov","html_url":"https://github.com/ThiagoCodecov","followers_url":"https://api.github.com/users/ThiagoCodecov/followers","following_url":"https://api.github.com/users/ThiagoCodecov/following{/other_user}","gists_url":"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}","starred_url":"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/ThiagoCodecov/subscriptions","organizations_url":"https://api.github.com/users/ThiagoCodecov/orgs","repos_url":"https://api.github.com/users/ThiagoCodecov/repos","events_url":"https://api.github.com/users/ThiagoCodecov/events{/privacy}","received_events_url":"https://api.github.com/users/ThiagoCodecov/received_events","type":"User","site_admin":false},"parents":[{"sha":"6f87a6bba8b0151bb78064a0dba9fa4f13b76a67","url":"https://api.github.com/repos/codecove2e/example-python/commits/6f87a6bba8b0151bb78064a0dba9fa4f13b76a67","html_url":"https://github.com/codecove2e/example-python/commit/6f87a6bba8b0151bb78064a0dba9fa4f13b76a67"}]},"status":"identical","ahead_by":0,"behind_by":0,"total_commits":0,"commits":[],"files":[]}'
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 03 Jul 2023 04:38:36 GMT
+      ETag:
+      - W/"1ee7ec16be9404907626e70c31409eff643bd43d57aba766d1b696b5a81ef722"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3
+      X-GitHub-Request-Id:
+      - C50C:4061:348EFE3:6BE942E:64A250CB
+      X-OAuth-Scopes:
+      - repo
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4992'
+      X-RateLimit-Reset:
+      - '1688361672'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '8'
+      X-XSS-Protection:
+      - '0'
+      github-authentication-token-expiration:
+      - 2023-08-02 04:17:36 UTC
+      x-github-api-version-selected:
+      - '2022-11-28'
+    http_version: HTTP/1.1
+    status_code: 200
 version: 1

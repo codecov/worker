@@ -42,9 +42,11 @@ class ComparisonProxy(object):
         self._diff = None
         self._changes = None
         self._existing_statuses = None
+        self._behind_by = None
         self._diff_lock = asyncio.Lock()
         self._changes_lock = asyncio.Lock()
         self._existing_statuses_lock = asyncio.Lock()
+        self._behind_by_lock = asyncio.Lock()
         self._archive_service = None
         self._overlays = {}
 
@@ -143,6 +145,43 @@ class ComparisonProxy(object):
                             ),
                         )
             return self._changes
+
+    async def get_behind_by(self):
+        async with self._behind_by_lock:
+            if self._behind_by is None:
+                if not getattr(self.comparison.base.commit, "commitid", None):
+                    log.info(
+                        "Comparison base commit does not have commitid, unable to get behind_by"
+                    )
+                    return None
+
+                provider_pull = self.comparison.enriched_pull.provider_pull
+                if provider_pull is None:
+                    log.info(
+                        "Comparison does not have provider pull request information, unable to get behind by"
+                    )
+                    return None
+
+                branches = await self.repository_service.get_branches()
+                branch = [
+                    b for b in branches if b[0] == provider_pull["base"]["branch"]
+                ]
+
+                if len(branch) == 0:
+                    log.warning(
+                        "Unable to find branch %s in list of branches on repo",
+                        provider_pull["base"]["branch"],
+                    )
+                    return None
+
+                self._behind_by = (
+                    await self.repository_service.get_distance_in_commits(
+                        branch[0][1],
+                        self.comparison.base.commit.commitid,
+                        with_commits=False,
+                    )
+                )["behind_by"]
+        return self._behind_by
 
     async def get_existing_statuses(self):
         async with self._existing_statuses_lock:
