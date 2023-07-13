@@ -128,13 +128,17 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
         "files_array_storage_path", types.Text, nullable=True
     )
 
-    def rehidrate_json(self, json_files_array):
+    @classmethod
+    def rehydrate_encoded_data(self, json_files_array):
+        """This ensures that we always use the files_array with the correct underlying classes.
+        No matter where the data comes from.
+        """
         return [
             {
                 **v,
-                "file_totals": ReportTotals(*v["file_totals"]),
+                "file_totals": ReportTotals(*(v.get("file_totals", []))),
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    v["session_totals"]
+                    v.get("session_totals", {"meta": {"session_count": 0}})
                 ),
                 "diff_totals": ReportTotals(*v["diff_totals"])
                 if v["diff_totals"]
@@ -147,12 +151,12 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
     def _get_files_array(self):
         # Get files_array from the proper source
         if self._files_array is not None:
-            return self._files_array
+            return ReportDetails.rehydrate_encoded_data(self._files_array)
         repository = self.report.commit.repository
         archive_service = ArchiveService(repository=repository)
         try:
             file_str = archive_service.read_file(self._files_array_storage_path)
-            return self.rehidrate_json(json.loads(file_str))
+            return ReportDetails.rehydrate_encoded_data(json.loads(file_str))
         except FileNotInStorageError:
             log.error(
                 "files_array not in storage",

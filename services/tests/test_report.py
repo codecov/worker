@@ -4005,7 +4005,6 @@ class TestReportService(BaseTestCase):
     ):
         commit = sample_commit_with_report_big
         report_service = ReportService({})
-        print(mock_storage)
         mocker.patch.object(
             ReportDetails, "_should_write_to_storage", return_value=True
         )
