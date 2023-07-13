@@ -138,7 +138,7 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
                 **v,
                 "file_totals": ReportTotals(*(v.get("file_totals", []))),
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    v.get("session_totals", {"meta": {"session_count": 0}})
+                    v.get("session_totals")
                 ),
                 "diff_totals": ReportTotals(*v["diff_totals"])
                 if v["diff_totals"]
