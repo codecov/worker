@@ -82,6 +82,10 @@ class SyncReposTask(BaseCodecovTask):
             log.warning("Unable to sync repos because another task is already doing it")
 
     async def sync_repos_using_integration(self, db_session, git, ownerid, username):
+        log.info(
+            "Syncing repos using integration",
+            extra=dict(ownerid=ownerid, username=username),
+        )
         with metrics.timer(f"{metrics_scope}.sync_repos_using_integration.list_repos"):
             repos = await git.list_repos_using_installation(username)
         if repos:
@@ -124,6 +128,10 @@ class SyncReposTask(BaseCodecovTask):
                     )
                     db_session.add(new_repo)
                 db_session.flush()
+                log.info(
+                    "Repo sync using integration done",
+                    extra=dict(repoids=missing_repos),
+                )
         else:
             db_session.query(Repository).filter(
                 Repository.ownerid == ownerid, Repository.using_integration.is_(True)
@@ -133,6 +141,11 @@ class SyncReposTask(BaseCodecovTask):
         service = owner.service
         ownerid = owner.ownerid
         private_project_ids = []
+
+        log.info(
+            "Syncing repos without integration",
+            extra=dict(ownerid=ownerid, username=username, service=service),
+        )
 
         # get my repos (and team repos)
         try:
@@ -162,7 +175,7 @@ class SyncReposTask(BaseCodecovTask):
             owner.permission = []
             return
         owners_by_id = {}
-
+        repoids = []
         for repo in repos:
             # Time how long processing a single repo takes so we can estimate how
             # performance degrades. Sampling at 10% will be enough.
@@ -189,6 +202,8 @@ class SyncReposTask(BaseCodecovTask):
                     db_session, service, _ownerid, repo["repo"], using_integration
                 )
 
+                repoids.append(repoid)
+
                 if repo["repo"]["fork"]:
                     _ownerid = self.upsert_owner(
                         db_session,
@@ -200,6 +215,8 @@ class SyncReposTask(BaseCodecovTask):
                     _repoid = self.upsert_repo(
                         db_session, service, _ownerid, repo["repo"]["fork"]["repo"]
                     )
+
+                    repoids.append(_repoid)
 
                     if repo["repo"]["fork"]["repo"]["private"]:
                         private_project_ids.append(int(_repoid))
@@ -230,6 +247,8 @@ class SyncReposTask(BaseCodecovTask):
         # update user permissions
         owner.permission = sorted(set(private_project_ids))
 
+        log.info("Repo sync done", extra=dict(repoids=repoids))
+
     def upsert_owner(self, db_session, service, service_id, username):
         log.info(
             "Upserting owner",
@@ -256,7 +275,7 @@ class SyncReposTask(BaseCodecovTask):
     def upsert_repo(
         self, db_session, service, ownerid, repo_data, using_integration=None
     ):
-        log.debug("Upserting repo", extra=dict(ownerid=ownerid, repo_data=repo_data))
+        log.info("Upserting repo", extra=dict(ownerid=ownerid, repo_data=repo_data))
         repo = (
             db_session.query(Repository)
             .filter(
@@ -321,8 +340,12 @@ class SyncReposTask(BaseCodecovTask):
             # repo exists, but wrong owner
             repo_wrong_owner = repo_correct_serviceid_wrong_owner
             log.info(
-                "Upserting repo - wrong owner",
-                extra=dict(ownerid=ownerid, repo_id=repo_wrong_owner.repoid),
+                "Updating repo - wrong owner",
+                extra=dict(
+                    ownerid=ownerid,
+                    repo_id=repo_wrong_owner.repoid,
+                    repo_name=repo_data["name"],
+                ),
             )
             repo_wrong_owner.ownerid = ownerid
             repo_wrong_owner.private = repo_data["private"]
@@ -335,10 +358,11 @@ class SyncReposTask(BaseCodecovTask):
         # could be correct owner but wrong service_id (repo deleted and recreated)
         if repo_correct_owner_wrong_service_id:
             log.info(
-                "Upserting repo - correct owner, wrong service_id",
+                "Updating repo - correct owner, wrong service_id",
                 extra=dict(
                     ownerid=ownerid,
                     repo_id=repo_correct_owner_wrong_service_id.service_id,
+                    repo_name=repo_data["name"],
                 ),
             )
             repo_correct_owner_wrong_service_id.service_id = str(
@@ -360,6 +384,12 @@ class SyncReposTask(BaseCodecovTask):
             private=repo_data["private"],
             branch=repo_data["branch"],
             using_integration=using_integration,
+        )
+        log.info(
+            "Inserting repo",
+            extra=dict(
+                ownerid=ownerid, repo_id=new_repo.repoid, repo_name=new_repo.name
+            ),
         )
         db_session.add(new_repo)
         db_session.flush()
