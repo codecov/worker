@@ -85,7 +85,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
             )
         )
         yield (
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue]({0}).".format(
+            ":loudspeaker: Have feedback on the report? [Share it here]({0}).".format(
                 "https://about.codecov.io/codecov-pr-comment-feedback/"
                 if repo_service == "github"
                 else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
@@ -116,18 +116,18 @@ class NewHeaderSectionWriter(BaseSectionWriter):
 
         if base_report and head_report:
             patch_cov_msg = (
-                f"Patch coverage: **`{patch_cov}`**%"
+                f"Patch coverage: **`{patch_cov}%`**"
                 if patch_cov
                 else "Patch coverage has no change"
             )
 
             if rounded_change > 0:
                 project_cov_change_msg = (
-                    f"project coverage change: **`+{rounded_change}`** :tada:"
+                    f"project coverage change: **`+{rounded_change}%`** :tada:"
                 )
             elif rounded_change < 0:
                 project_cov_change_msg = (
-                    f"project coverage change: **`{rounded_change}`** :warning:"
+                    f"project coverage change: **`{rounded_change}%`** :warning:"
                 )
             else:
                 project_cov_change_msg = "no project coverage change."
@@ -469,7 +469,7 @@ class FileSectionWriter(BaseSectionWriter):
             table_layout = "|---|---|---|" + ("---|" if self.show_complexity else "")
             # add table headers
             yield (
-                "| [Impacted Files]({0}?src=pr&el=tree) {1}".format(
+                "| [Files Changed]({0}?src=pr&el=tree) {1}".format(
                     links["pull"], table_header
                 )
             )
