@@ -2,6 +2,7 @@ import json
 from unittest.mock import call
 
 import pytest
+from shared.reports.types import ReportTotals, SessionTotalsArray
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
 
@@ -134,21 +135,29 @@ class TestReportDetailsModel(object):
         {
             "filename": "file_1.go",
             "file_index": 0,
-            "file_totals": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-            "session_totals": {
-                "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                "meta": {"session_count": 1},
-            },
+            "file_totals": ReportTotals(
+                *[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]
+            ),
+            "session_totals": SessionTotalsArray.build_from_encoded_data(
+                {
+                    "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
+                    "meta": {"session_count": 1},
+                }
+            ),
             "diff_totals": None,
         },
         {
             "filename": "file_2.py",
             "file_index": 1,
-            "file_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-            "session_totals": {
-                "0": [0, 2, 1, 0, 1, "50.00000", 1],
-                "meta": {"session_count": 1},
-            },
+            "file_totals": ReportTotals(
+                *[0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0]
+            ),
+            "session_totals": SessionTotalsArray.build_from_encoded_data(
+                {
+                    "0": [0, 2, 1, 0, 1, "50.00000", 1],
+                    "meta": {"session_count": 1},
+                }
+            ),
             "diff_totals": None,
         },
     ]
@@ -263,7 +272,17 @@ class TestReportDetailsModel(object):
         assert allowlisted_repo._should_write_to_storage() == False
         assert codecov_report_details._should_write_to_storage() == False
 
-    def test_set_files_array_to_db(self, dbsession, mocker):
+    def test_set_files_array_to_db(self, dbsession, mocker, mock_configuration):
+        mock_configuration.set_params(
+            {
+                "setup": {
+                    "save_report_data_in_storage": {
+                        "only_codecov": False,
+                        "report_details_files_array": False,
+                    },
+                }
+            }
+        )
         mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
 
         factory_report_details: ReportDetails = ReportDetailsFactory()
