@@ -3,6 +3,7 @@ import logging
 from functools import cached_property, lru_cache
 
 from shared.config import get_config
+from shared.reports.types import ReportTotals, SessionTotalsArray
 from shared.storage.exceptions import FileNotInStorageError
 from sqlalchemy import Column, ForeignKey, Table, types
 from sqlalchemy.dialects import postgresql
@@ -127,16 +128,35 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
         "files_array_storage_path", types.Text, nullable=True
     )
 
+    @classmethod
+    def rehydrate_encoded_data(self, json_files_array):
+        """This ensures that we always use the files_array with the correct underlying classes.
+        No matter where the data comes from.
+        """
+        return [
+            {
+                **v,
+                "file_totals": ReportTotals(*(v.get("file_totals", []))),
+                "session_totals": SessionTotalsArray.build_from_encoded_data(
+                    v.get("session_totals")
+                ),
+                "diff_totals": ReportTotals(*v["diff_totals"])
+                if v["diff_totals"]
+                else None,
+            }
+            for v in json_files_array
+        ]
+
     @lru_cache(maxsize=1)
     def _get_files_array(self):
         # Get files_array from the proper source
         if self._files_array is not None:
-            return self._files_array
+            return ReportDetails.rehydrate_encoded_data(self._files_array)
         repository = self.report.commit.repository
         archive_service = ArchiveService(repository=repository)
         try:
             file_str = archive_service.read_file(self._files_array_storage_path)
-            return json.loads(file_str)
+            return ReportDetails.rehydrate_encoded_data(json.loads(file_str))
         except FileNotInStorageError:
             log.error(
                 "files_array not in storage",
@@ -151,23 +171,36 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
             return []
 
     def _should_write_to_storage(self):
+        # Safety check to see if the path to repository is valid
+        # Because we had issues around this before
+        if (
+            self.report is None
+            or self.report.commit is None
+            or self.report.commit.repository is None
+            or self.report.commit.repository.slug is None
+        ):
+            return False
         report_builder_repo_ids = get_config(
             "setup", "save_report_data_in_storage", "repo_ids", default=[]
         )
-        return get_config(
+        master_write_switch = get_config(
             "setup",
             "save_report_data_in_storage",
             "report_details_files_array",
             default=False,
-        ) and (
-            not get_config(
-                "setup",
-                "save_report_data_in_storage",
-                "only_codecov",
-                default=True,
-            )
-            or self.report.commit.repository.slug.startswith("codecov/")
-            or self.report.commit.repository.repoid in report_builder_repo_ids
+        )
+        only_codecov = get_config(
+            "setup",
+            "save_report_data_in_storage",
+            "only_codecov",
+            default=True,
+        )
+        is_codecov_repo = self.report.commit.repository.slug.startswith("codecov/")
+        is_repo_allowed = (
+            self.report.commit.repository.repoid in report_builder_repo_ids
+        )
+        return master_write_switch and (
+            not only_codecov or is_codecov_repo or is_repo_allowed
         )
 
     def _set_files_array(self, files_array: dict):
