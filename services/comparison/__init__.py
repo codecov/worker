@@ -174,13 +174,16 @@ class ComparisonProxy(object):
                     )
                     return None
 
-                self._behind_by = (
-                    await self.repository_service.get_distance_in_commits(
-                        branch[0][1],
-                        self.comparison.base.commit.commitid,
-                        with_commits=False,
-                    )
-                )["behind_by"]
+                distance = await self.repository_service.get_distance_in_commits(
+                    branch[0][1],
+                    self.comparison.base.commit.commitid,
+                    with_commits=False,
+                )
+                self._behind_by = distance["behind_by"]
+                self.enriched_pull.database_pull.behind_by = distance["behind_by"]
+                self.enriched_pull.database_pull.behind_by_commit = distance[
+                    "behind_by_commit"
+                ]
         return self._behind_by
 
     async def get_existing_statuses(self):

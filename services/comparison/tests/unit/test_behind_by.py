@@ -9,7 +9,10 @@ class TestGetBehindBy(object):
         comparison = ComparisonProxy(mocker.MagicMock())
         comparison.comparison.enriched_pull.provider_pull = {"base": {"branch": "a"}}
         mock_repo_provider.get_branches.return_value = [("a", "1")]
-        mock_repo_provider.get_distance_in_commits.return_value = {"behind_by": 3}
+        mock_repo_provider.get_distance_in_commits.return_value = {
+            "behind_by": 3,
+            "behind_by_commit": 123456,
+        }
         mocker.patch(
             "services.comparison.get_repo_provider_service",
             return_value=mock_repo_provider,

@@ -81,7 +81,6 @@ class Owner(CodecovBaseModel):
 
 
 class Repository(CodecovBaseModel):
-
     __tablename__ = "repos"
 
     repoid = Column(types.Integer, primary_key=True)
@@ -127,7 +126,6 @@ class Repository(CodecovBaseModel):
 
 
 class Commit(CodecovBaseModel):
-
     __tablename__ = "commits"
 
     id_ = Column("id", types.BigInteger, primary_key=True)
@@ -185,7 +183,6 @@ class Commit(CodecovBaseModel):
 
 
 class Branch(CodecovBaseModel):
-
     __tablename__ = "branches"
 
     repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
@@ -204,7 +201,6 @@ class Branch(CodecovBaseModel):
 
 
 class LoginSession(CodecovBaseModel):
-
     __tablename__ = "sessions"
 
     sessionid = Column(types.Integer, primary_key=True)
@@ -218,7 +214,6 @@ class LoginSession(CodecovBaseModel):
 
 
 class Pull(CodecovBaseModel):
-
     __tablename__ = "pulls"
 
     id_ = Column("id", types.BigInteger, primary_key=True)
@@ -238,6 +233,8 @@ class Pull(CodecovBaseModel):
     diff = Column(postgresql.JSON)
     flare = Column(postgresql.JSON)
     author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))
+    behind_by = Column(types.Integer)
+    behind_by_commit = Column(types.Text)
 
     author = relationship(Owner)
     repository = relationship(Repository, backref=backref("pulls", cascade="delete"))
@@ -276,7 +273,6 @@ class Pull(CodecovBaseModel):
 
 
 class CommitNotification(CodecovBaseModel):
-
     __tablename__ = "commit_notifications"
 
     id_ = Column("id", types.BigInteger, primary_key=True)
