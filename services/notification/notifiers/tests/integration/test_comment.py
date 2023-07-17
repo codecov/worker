@@ -551,7 +551,7 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "## [Codecov](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
-            "Patch coverage has no change and project coverage change: **`+10.00`** :tada:",
+            "Patch coverage has no change and project coverage change: **`+10.00%`** :tada:",
             "> Comparison is base [(`4535be1`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) 50.00% compared to head [(`2e2600a`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) 60.00%.",
             "",
             ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the Github App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
@@ -588,7 +588,7 @@ class TestCommentNotifierIntegration(object):
             "</details>",
             "",
             "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   ",
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
@@ -596,7 +596,7 @@ class TestCommentNotifierIntegration(object):
 
         assert result.data_sent["message"] == message
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 15}
-        assert result.data_received == {"id": 1069392024}
+        assert result.data_received == {"id": 1620423805}
 
     @pytest.mark.asyncio
     async def test_notify_with_components(
@@ -626,7 +626,7 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "## [Codecov](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=h1) Report",
-            "Patch coverage has no change and project coverage change: **`+10.00`** :tada:",
+            "Patch coverage has no change and project coverage change: **`+10.00%`** :tada:",
             "> Comparison is base [(`93189ce`)](https://app.codecov.io/gh/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654?el=desc) 50.00% compared to head [(`8589c19`)](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=desc) 60.00%.",
             "",
             ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the Github App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
@@ -667,7 +667,7 @@ class TestCommentNotifierIntegration(object):
             "</details>",
             "",
             "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=continue).   ",
-            ":loudspeaker: Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):

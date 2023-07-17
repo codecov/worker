@@ -93,25 +93,25 @@ interactions:
     http_version: HTTP/1.1
     status_code: 200
 - request:
-    body: '{"body": "## [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1)
-      Report\nBase: **50.00**% // Head: **60.00**% // Increases project coverage by
-      **`+10.00%`** :tada:\n> Coverage data is based on head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc)
-      compared to base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc).\n>
-      Patch has no changes to coverable lines.\n<details><summary>Additional details
-      and impacted files</summary>\n\n\n[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)\n\n```diff\n@@              Coverage
+    body: '{"body": "## [Codecov](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)
+      Report\nPatch coverage has no change and project coverage change: **`+10.00%`**
+      :tada:\n> Comparison is base [(`4535be1`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)
+      50.00% compared to head [(`2e2600a`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)
+      60.00%.\n\n:exclamation: Your organization is not using the GitHub App Integration.
+      As a result you may experience degraded service beginning May 15th. Please [install
+      the Github App Integration](https://github.com/apps/codecov) for your organization.
+      [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper).\n\n<details><summary>Additional
+      details and impacted files</summary>\n\n\n[![Impacted file tree graph](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)\n\n```diff\n@@              Coverage
       Diff              @@\n##             master      #15       +/-   ##\n=============================================\n+
       Coverage     50.00%   60.00%   +10.00%     \n+ Complexity       11       10        -1     \n=============================================\n  Files             2        2               \n  Lines             6       10        +4     \n  Branches          0        1        +1     \n=============================================\n+
       Hits              3        6        +3     \n  Misses            3        3               \n-
       Partials          0        1        +1     \n```\n\n| Flag | Coverage \u0394
       | Complexity \u0394 | |\n|---|---|---|---|\n| integration | `?` | `?` | |\n|
       unit | `100.00% <\u00f8> (?)` | `0.00 <\u00f8> (?)` | |\n\nFlags with carried
-      forward coverage won''t be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Amanda+Armstrong#carryforward-flags-in-the-pull-request-comment)
-      to find out more.\n\n| [Impacted Files](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)
-      | Coverage \u0394 | Complexity \u0394 | |\n|---|---|---|---|\n| [file\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8yLnB5)
-      | `50.00% <0.00%> (\u00f8)` | `0.00% <0.00%> (\u00f8%)` | |\n| [file\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8xLmdv)
-      | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\n\n</details>\n[:umbrella:
-      View full report in Codecov by Sentry](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   \n:loudspeaker:
-      Do you have feedback about the report comment? [Let us know in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).\n"}'
+      forward coverage won''t be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper#carryforward-flags-in-the-pull-request-comment)
+      to find out more.\n\n[see 2 files with indirect coverage changes](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/indirect-changes?src=pr&el=tree-more&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)\n\n</details>\n\n[:umbrella:
+      View full report in Codecov by Sentry](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper).   \n:loudspeaker:
+      Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper).\n"}'
     headers:
       accept:
       - application/json
@@ -120,7 +120,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '2485'
+      - '3553'
       content-type:
       - application/json
       host:
@@ -130,13 +130,16 @@ interactions:
     method: POST
     uri: https://api.github.com/repos/ThiagoCodecov/example-python/issues/15/comments
   response:
-    content: "{\"url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1069392024\",\"html_url\":\"https://github.com/ThiagoCodecov/example-python/pull/15#issuecomment-1069392024\",\"issue_url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/15\",\"id\":1069392024,\"node_id\":\"IC_kwDOCVXMMc4_vaCY\",\"user\":{\"login\":\"ThiagoCodecov\",\"id\":44376991,\"node_id\":\"MDQ6VXNlcjQ0Mzc2OTkx\",\"avatar_url\":\"https://avatars.githubusercontent.com/u/44376991?u=d50e43da66b2dbe47099d854ebd3b489f1162d48&v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/ThiagoCodecov\",\"html_url\":\"https://github.com/ThiagoCodecov\",\"followers_url\":\"https://api.github.com/users/ThiagoCodecov/followers\",\"following_url\":\"https://api.github.com/users/ThiagoCodecov/following{/other_user}\",\"gists_url\":\"https://api.github.com/users/ThiagoCodecov/gists{/gist_id}\",\"starred_url\":\"https://api.github.com/users/ThiagoCodecov/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api.github.com/users/ThiagoCodecov/subscriptions\",\"organizations_url\":\"https://api.github.com/users/ThiagoCodecov/orgs\",\"repos_url\":\"https://api.github.com/users/ThiagoCodecov/repos\",\"events_url\":\"https://api.github.com/users/ThiagoCodecov/events{/privacy}\",\"received_events_url\":\"https://api.github.com/users/ThiagoCodecov/received_events\",\"type\":\"User\",\"site_admin\":false},\"created_at\":\"2022-03-16T17:44:09Z\",\"updated_at\":\"2022-03-16T17:44:09Z\",\"author_association\":\"OWNER\",\"body\":\"#
-      [Codecov](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report\\nBase:
-      **50.00**% // Head: **60.00**% // Increases project coverage by **`+10.00%`**
-      :tada:\\n> Coverage data is based on head [(`2e2600a`)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc)
-      compared to base [(`4535be1`)](None/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc).\\n>
-      Patch has no changes to coverable lines.\\n<details><summary>Additional details
-      and impacted files</summary>\\n\\n[![Impacted file tree graph](None/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)\\n\\n```diff\\n@@
+    content: "{\"url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1620423805\",\"html_url\":\"https://github.com/ThiagoCodecov/example-python/pull/15#issuecomment-1620423805\",\"issue_url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/15\",\"id\":1620423805,\"node_id\":\"IC_kwDOCVXMMc5glbR9\",\"user\":{\"login\":\"joseph-sentry\",\"id\":136376984,\"node_id\":\"U_kgDOCCDymA\",\"avatar_url\":\"https://avatars.githubusercontent.com/u/136376984?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/joseph-sentry\",\"html_url\":\"https://github.com/joseph-sentry\",\"followers_url\":\"https://api.github.com/users/joseph-sentry/followers\",\"following_url\":\"https://api.github.com/users/joseph-sentry/following{/other_user}\",\"gists_url\":\"https://api.github.com/users/joseph-sentry/gists{/gist_id}\",\"starred_url\":\"https://api.github.com/users/joseph-sentry/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api.github.com/users/joseph-sentry/subscriptions\",\"organizations_url\":\"https://api.github.com/users/joseph-sentry/orgs\",\"repos_url\":\"https://api.github.com/users/joseph-sentry/repos\",\"events_url\":\"https://api.github.com/users/joseph-sentry/events{/privacy}\",\"received_events_url\":\"https://api.github.com/users/joseph-sentry/received_events\",\"type\":\"User\",\"site_admin\":false},\"created_at\":\"2023-07-04T15:10:22Z\",\"updated_at\":\"2023-07-04T15:10:22Z\",\"author_association\":\"NONE\",\"body\":\"##
+      [Codecov](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)
+      Report\\nPatch coverage has no change and project coverage change: **`+10.00%`**
+      :tada:\\n> Comparison is base [(`4535be1`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)
+      50.00% compared to head [(`2e2600a`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)
+      60.00%.\\n\\n:exclamation: Your organization is not using the GitHub App Integration.
+      As a result you may experience degraded service beginning May 15th. Please [install
+      the Github App Integration](https://github.com/apps/codecov) for your organization.
+      [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper).\\n\\n<details><summary>Additional
+      details and impacted files</summary>\\n\\n\\n[![Impacted file tree graph](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)\\n\\n```diff\\n@@
       \             Coverage Diff              @@\\n##             master      #15
       \      +/-   ##\\n=============================================\\n+ Coverage
       \    50.00%   60.00%   +10.00%     \\n+ Complexity       11       10        -1
@@ -147,14 +150,10 @@ interactions:
       \              \\n- Partials          0        1        +1     \\n```\\n\\n|
       Flag | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| integration
       | `?` | `?` | |\\n| unit | `100.00% <\xF8> (?)` | `0.00 <\xF8> (?)` | |\\n\\nFlags
-      with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Amanda+Armstrong#carryforward-flags-in-the-pull-request-comment)
-      to find out more.\\n\\n| [Impacted Files](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)
-      | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| [file\\\\_2.py](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8yLnB5)
-      | `50.00% <0.00%> (\xF8)` | `0.00% <0.00%> (\xF8%)` | |\\n| [file\\\\_1.go](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree#diff-ZmlsZV8xLmdv)
-      | `62.50% <0.00%> (+12.50%)` | `10.00% <0.00%> (-1.00%)` | :arrow_up: |\\n\\n</details>\\n[:umbrella:
-      View full report in Codecov by Sentry](None/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).
-      \  \\n:loudspeaker: Do you have feedback about the report comment? [Let us know
-      in this issue](https://about.codecov.io/codecov-pr-comment-feedback/).\\n\",\"reactions\":{\"url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1069392024/reactions\",\"total_count\":0,\"+1\":0,\"-1\":0,\"laugh\":0,\"hooray\":0,\"confused\":0,\"heart\":0,\"rocket\":0,\"eyes\":0},\"performed_via_github_app\":null}"
+      with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper#carryforward-flags-in-the-pull-request-comment)
+      to find out more.\\n\\n[see 2 files with indirect coverage changes](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/indirect-changes?src=pr&el=tree-more&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)\\n\\n</details>\\n\\n[:umbrella:
+      View full report in Codecov by Sentry](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper).
+      \  \\n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper).\\n\",\"reactions\":{\"url\":\"https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1620423805/reactions\",\"total_count\":0,\"+1\":0,\"-1\":0,\"laugh\":0,\"hooray\":0,\"confused\":0,\"heart\":0,\"rocket\":0,\"eyes\":0},\"performed_via_github_app\":null}"
     headers:
       Access-Control-Allow-Origin:
       - '*'
@@ -166,17 +165,17 @@ interactions:
       Cache-Control:
       - private, max-age=60, s-maxage=60
       Content-Length:
-      - '4130'
+      - '5164'
       Content-Security-Policy:
       - default-src 'none'
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Wed, 16 Mar 2022 17:44:10 GMT
+      - Tue, 04 Jul 2023 15:10:23 GMT
       ETag:
-      - '"c3b97a78cd204958d00a348d45a71b40e1143dd1c89d52020b3ea5a4624fbae5"'
+      - '"d914e81787c93a02fb56a26985bd567b55e4e586cac7b137e25c96d35143464c"'
       Location:
-      - https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1069392024
+      - https://api.github.com/repos/ThiagoCodecov/example-python/issues/comments/1620423805
       Referrer-Policy:
       - origin-when-cross-origin, strict-origin-when-cross-origin
       Server:
@@ -195,23 +194,25 @@ interactions:
       X-GitHub-Media-Type:
       - github.v3
       X-GitHub-Request-Id:
-      - C64A:3C7E:16C6D94:174B417:623221E8
+      - D49F:7F4F:123714A:24DC770:64A4365E
       X-OAuth-Scopes:
-      - public_repo
+      - repo
       X-RateLimit-Limit:
       - '5000'
       X-RateLimit-Remaining:
-      - '4998'
+      - '4992'
       X-RateLimit-Reset:
-      - '1647456248'
+      - '1688485927'
       X-RateLimit-Resource:
       - core
       X-RateLimit-Used:
-      - '2'
+      - '8'
       X-XSS-Protection:
       - '0'
       github-authentication-token-expiration:
-      - 2022-03-17 03:00:00 UTC
+      - 2023-07-11 14:51:11 UTC
+      x-github-api-version-selected:
+      - '2022-11-28'
     http_version: HTTP/1.1
     status_code: 201
 version: 1
