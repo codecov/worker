@@ -321,7 +321,7 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
             "diff_totals": None,
         },
     ]
-    details = ReportDetailsFactory(report=report, files_array=files_array)
+    details = ReportDetailsFactory(report=report, _files_array=files_array)
     dbsession.add(details)
 
     dbsession.flush()

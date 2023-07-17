@@ -211,18 +211,15 @@ class TestReportDetailsModel(object):
                 "diff_totals": None,
             },
         ]
+        rd: ReportDetails = ReportDetailsFactory()
         assert (
-            ReportDetails.rehydrate_encoded_data(self.sample_files_array)
+            rd.rehydrate_encoded_data(self.sample_files_array)
             == self.sample_files_array
         )
         assert (
-            ReportDetails.rehydrate_encoded_data(fully_encoded_sample)
-            == self.sample_files_array
+            rd.rehydrate_encoded_data(fully_encoded_sample) == self.sample_files_array
         )
-        assert (
-            ReportDetails.rehydrate_encoded_data(half_encoded_sample)
-            == self.sample_files_array
-        )
+        assert rd.rehydrate_encoded_data(half_encoded_sample) == self.sample_files_array
 
     def test_get_files_array_from_db(self, dbsession, mocker):
         factory_report_details: ReportDetails = ReportDetailsFactory()
@@ -231,7 +228,7 @@ class TestReportDetailsModel(object):
         dbsession.add(factory_report_details)
         dbsession.flush()
 
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
         retrieved_instance = dbsession.query(ReportDetails).get(
             factory_report_details.id_
         )
@@ -249,7 +246,7 @@ class TestReportDetailsModel(object):
         dbsession.add(factory_report_details)
         dbsession.flush()
 
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
         mock_archive_service.return_value.read_file.return_value = json.dumps(
             self.sample_files_array, cls=ReportEncoder
         )
@@ -277,7 +274,7 @@ class TestReportDetailsModel(object):
         dbsession.add(factory_report_details)
         dbsession.flush()
 
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
 
         def side_effect(path):
             assert path == "https://storage-url/path/to/item.json"
@@ -345,7 +342,7 @@ class TestReportDetailsModel(object):
                 }
             }
         )
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
 
         factory_report_details: ReportDetails = ReportDetailsFactory()
         # Setting files_array.
@@ -372,7 +369,7 @@ class TestReportDetailsModel(object):
                 }
             }
         )
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
         mock_archive_service.return_value.read_file.return_value = json.dumps(
             self.sample_files_array, cls=ReportEncoder
         )
@@ -398,7 +395,7 @@ class TestReportDetailsModel(object):
             [
                 call(
                     commit_id=retrieved_instance.report.commit.commitid,
-                    model="ReportDetails",
+                    table="reports_reportdetails",
                     field="files_array",
                     external_id=retrieved_instance.external_id,
                     data=self.sample_files_array,

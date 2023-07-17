@@ -83,7 +83,9 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        report_details = ReportDetails(
+            report_id=current_report_row.id_, _files_array=[]
+        )
         dbsession.add(report_details)
         dbsession.flush()
         result = await UploadProcessorTask().run_async(
@@ -202,7 +204,9 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        report_details = ReportDetails(
+            report_id=current_report_row.id_, _files_array=[]
+        )
         dbsession.add(report_details)
         dbsession.flush()
         result = await UploadProcessorTask().run_async(
@@ -305,7 +309,9 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        report_details = ReportDetails(
+            report_id=current_report_row.id_, _files_array=[]
+        )
         dbsession.add(report_details)
         dbsession.flush()
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
@@ -431,7 +437,9 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        report_details = ReportDetails(
+            report_id=current_report_row.id_, _files_array=[]
+        )
         dbsession.add(report_details)
         dbsession.flush()
         upload = UploadFactory.create(
@@ -598,7 +606,9 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        report_details = ReportDetails(
+            report_id=current_report_row.id_, _files_array=[]
+        )
         dbsession.add(report_details)
         dbsession.flush()
         upload_1 = UploadFactory.create(
@@ -784,7 +794,9 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        report_details = ReportDetails(
+            report_id=current_report_row.id_, _files_array=[]
+        )
         dbsession.add(report_details)
         dbsession.flush()
         upload_1 = UploadFactory.create(
@@ -871,7 +883,9 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        report_details = ReportDetails(
+            report_id=current_report_row.id_, _files_array=[]
+        )
         dbsession.add(report_details)
         dbsession.flush()
         upload_1 = UploadFactory.create(
@@ -955,7 +969,9 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        report_details = ReportDetails(
+            report_id=current_report_row.id_, _files_array=[]
+        )
         dbsession.add(report_details)
         dbsession.flush()
         upload_1 = UploadFactory.create(
@@ -998,7 +1014,9 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_, files_array=[])
+        report_details = ReportDetails(
+            report_id=current_report_row.id_, _files_array=[]
+        )
         dbsession.add(report_details)
         dbsession.flush()
         upload_1 = UploadFactory.create(
