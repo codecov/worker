@@ -486,6 +486,7 @@ class TestSyncReposTaskUnit(object):
         mocker,
         dbsession,
         mock_owner_provider,
+        mock_redis,
     ):
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
