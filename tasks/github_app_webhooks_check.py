@@ -79,7 +79,9 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
         # Same as above, we need to materialize our filter into a list so we can both take
         # the length of it and return it.
         deliveries = list(self._apply_event_filter(deliveries))
-        metrics.incr("webhooks.github.deliveries.retry_requested", count=len(deliveries))
+        metrics.incr(
+            "webhooks.github.deliveries.retry_requested", count=len(deliveries)
+        )
 
         return deliveries
 
