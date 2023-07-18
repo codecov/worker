@@ -314,8 +314,8 @@ class TestGHAppWebhooksTask(object):
         _ = await task.run_cron_task(dbsession)
 
         # There are 3 failed deliveries above, but 1 of them is old and excluded from the query
-        assert mock_metrics["webhooks.deliveries.failed"] == 2
+        assert mock_metrics["webhooks.github.deliveries.failed"] == 2
 
         # There are 2 failed deliveries that pass the check above, but one isn't for an installation
         # event so we don't ask for a redelivery
-        assert mock_metrics["webhooks.deliveries.retry_requested"] == 1
+        assert mock_metrics["webhooks.github.deliveries.retry_requested"] == 1
