@@ -4,6 +4,7 @@ from datetime import datetime
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.celery_config import sync_repos_task_name
+from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
 
@@ -14,6 +15,7 @@ from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
+metrics_scope = "worker.SyncReposTask"
 
 
 class SyncReposTask(BaseCodecovTask):
@@ -67,18 +69,21 @@ class SyncReposTask(BaseCodecovTask):
             ):
                 git = get_owner_provider_service(owner, using_integration)
                 if using_integration:
-                    await self.sync_repos_using_integration(
-                        db_session, git, ownerid, username
-                    )
+                    with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
+                        await self.sync_repos_using_integration(
+                            db_session, git, ownerid, username
+                        )
                 else:
-                    await self.sync_repos(
-                        db_session, git, owner, username, using_integration
-                    )
+                    with metrics.timer(f"{metrics_scope}.sync_repos"):
+                        await self.sync_repos(
+                            db_session, git, owner, username, using_integration
+                        )
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 
     async def sync_repos_using_integration(self, db_session, git, ownerid, username):
-        repos = await git.list_repos_using_installation(username)
+        with metrics.timer(f"{metrics_scope}.sync_repos_using_integration.list_repos"):
+            repos = await git.list_repos_using_installation(username)
         if repos:
             service_ids = {repo["id"] for repo in repos}
             if service_ids:
@@ -131,7 +136,8 @@ class SyncReposTask(BaseCodecovTask):
 
         # get my repos (and team repos)
         try:
-            repos = await git.list_repos()
+            with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
+                repos = await git.list_repos()
         except SoftTimeLimitExceeded:
             old_permissions = owner.permission or []
             log.warning(
@@ -158,41 +164,48 @@ class SyncReposTask(BaseCodecovTask):
         owners_by_id = {}
 
         for repo in repos:
-            _ownerid = owners_by_id.get(
-                (service, repo["owner"]["service_id"], repo["owner"]["username"])
-            )
-            if not _ownerid:
-                _ownerid = self.upsert_owner(
-                    db_session,
-                    service,
-                    repo["owner"]["service_id"],
-                    repo["owner"]["username"],
-                )
-                owners_by_id[
+            # Time how long processing a single repo takes so we can estimate how
+            # performance degrades. Sampling at 10% will be enough.
+            with metrics.timer(f"{metrics_scope}.process_each_repo", rate=0.1):
+                _ownerid = owners_by_id.get(
                     (service, repo["owner"]["service_id"], repo["owner"]["username"])
-                ] = _ownerid
+                )
+                if not _ownerid:
+                    _ownerid = self.upsert_owner(
+                        db_session,
+                        service,
+                        repo["owner"]["service_id"],
+                        repo["owner"]["username"],
+                    )
+                    owners_by_id[
+                        (
+                            service,
+                            repo["owner"]["service_id"],
+                            repo["owner"]["username"],
+                        )
+                    ] = _ownerid
 
-            repoid = self.upsert_repo(
-                db_session, service, _ownerid, repo["repo"], using_integration
-            )
-
-            if repo["repo"]["fork"]:
-                _ownerid = self.upsert_owner(
-                    db_session,
-                    service,
-                    repo["repo"]["fork"]["owner"]["service_id"],
-                    repo["repo"]["fork"]["owner"]["username"],
+                repoid = self.upsert_repo(
+                    db_session, service, _ownerid, repo["repo"], using_integration
                 )
 
-                _repoid = self.upsert_repo(
-                    db_session, service, _ownerid, repo["repo"]["fork"]["repo"]
-                )
+                if repo["repo"]["fork"]:
+                    _ownerid = self.upsert_owner(
+                        db_session,
+                        service,
+                        repo["repo"]["fork"]["owner"]["service_id"],
+                        repo["repo"]["fork"]["owner"]["username"],
+                    )
 
-                if repo["repo"]["fork"]["repo"]["private"]:
-                    private_project_ids.append(int(_repoid))
-            if repo["repo"]["private"]:
-                private_project_ids.append(int(repoid))
-            db_session.commit()
+                    _repoid = self.upsert_repo(
+                        db_session, service, _ownerid, repo["repo"]["fork"]["repo"]
+                    )
+
+                    if repo["repo"]["fork"]["repo"]["private"]:
+                        private_project_ids.append(int(_repoid))
+                if repo["repo"]["private"]:
+                    private_project_ids.append(int(repoid))
+                db_session.commit()
 
         log.info(
             "Updating permissions",
