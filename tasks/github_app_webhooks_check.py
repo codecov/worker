@@ -5,6 +5,7 @@ from typing import Iterable, List, Tuple
 
 from shared.celery_config import gh_app_webhook_check_task_name
 from shared.config import get_config
+from shared.metrics import metrics
 from shared.torngit import Github
 from shared.torngit.exceptions import (
     TorngitRateLimitError,
@@ -65,14 +66,24 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask):
         return filter(event_filter, deliveries)
 
     def apply_filters_to_deliveries(self, deliveries: List[object]) -> List[object]:
-        filters_to_apply = [
-            self._apply_time_filter,
-            self._apply_status_filter,
-            self._apply_event_filter,
-        ]
-        for current_filter in filters_to_apply:
-            deliveries = current_filter(deliveries)
-        return list(deliveries)
+        deliveries = self._apply_time_filter(deliveries)
+        deliveries = self._apply_status_filter(deliveries)
+
+        # Filter objects are one-and-done iterables. We have to materialize it into a list
+        # if we want to take the length *and* continue using it.
+        # Since Python lists contain references to their contents, this shouldn't be too much
+        # more expensive than just iterating.
+        deliveries = list(deliveries)
+        metrics.incr("webhooks.github.deliveries.failed", count=len(deliveries))
+
+        # Same as above, we need to materialize our filter into a list so we can both take
+        # the length of it and return it.
+        deliveries = list(self._apply_event_filter(deliveries))
+        metrics.incr(
+            "webhooks.github.deliveries.retry_requested", count=len(deliveries)
+        )
+
+        return deliveries
 
     async def request_redeliveries(
         self, gh_handler: Github, deliveries_to_request: List[object]
