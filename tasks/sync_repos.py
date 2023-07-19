@@ -6,6 +6,7 @@ from redis.exceptions import LockError
 from shared.celery_config import sync_repos_task_name
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
+from sqlalchemy import and_
 
 from app import celery_app
 from database.models import Owner, Repository
@@ -82,17 +83,47 @@ class SyncReposTask(BaseCodecovTask):
 
     async def sync_repos_using_integration(self, db_session, git, ownerid, username):
         with metrics.timer(f"{metrics_scope}.sync_repos_using_integration.list_repos"):
-            repo_service_ids = await git.list_repos_using_installation(username)
-        if repo_service_ids:
-            repo_service_ids = list(map(str, repo_service_ids))
-            if repo_service_ids:
-                db_session.query(Repository).filter(
-                    Repository.ownerid == ownerid,
-                    Repository.service_id.in_(repo_service_ids),
-                    Repository.using_integration.isnot(True),
-                ).update(
-                    {Repository.using_integration: True}, synchronize_session=False
+            repos = await git.list_repos_using_installation(username)
+        if repos:
+            service_ids = {repo["id"] for repo in repos}
+            if service_ids:
+                # Querying through the `Repository` model is cleaner, but we
+                # need to go through the table object instead if we want to
+                # use a Postgres `RETURNING` clause like this.
+                table = Repository.__table__
+                update_statement = (
+                    table.update()
+                    .returning(table.columns.service_id)
+                    .where(
+                        and_(
+                            table.columns.ownerid == ownerid,
+                            table.columns.service_id.in_(service_ids),
+                        )
+                    )
+                    .values(using_integration=True)
                 )
+                result = db_session.execute(update_statement)
+                updated_service_ids = {r[0] for r in result.fetchall()}
+
+                # The set of repos our app can see minus the set of repos we
+                # just updated = the set of repos we need to insert.
+                missing_service_ids = service_ids - updated_service_ids
+                missing_repos = [
+                    repo for repo in repos if repo["id"] in missing_service_ids
+                ]
+
+                for repo in missing_repos:
+                    new_repo = Repository(
+                        ownerid=ownerid,
+                        service_id=repo["id"],
+                        name=repo["name"],
+                        language=repo["language"],
+                        private=repo["private"],
+                        branch=repo["default_branch"],
+                        using_integration=True,
+                    )
+                    db_session.add(new_repo)
+                db_session.flush()
         else:
             db_session.query(Repository).filter(
                 Repository.ownerid == ownerid, Repository.using_integration.is_(True)
