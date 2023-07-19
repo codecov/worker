@@ -43,6 +43,7 @@ class ComparisonProxy(object):
         self._changes = None
         self._existing_statuses = None
         self._behind_by = None
+        self._branch = None
         self._diff_lock = asyncio.Lock()
         self._changes_lock = asyncio.Lock()
         self._existing_statuses_lock = asyncio.Lock()
@@ -161,18 +162,20 @@ class ComparisonProxy(object):
                         "Comparison does not have provider pull request information, unable to get behind by"
                     )
                     return None
+                if self._branch is None:
+                    branches = await self.repository_service.get_branches()
+                    branch = [
+                        b for b in branches if b[0] == provider_pull["base"]["branch"]
+                    ]
 
-                branches = await self.repository_service.get_branches()
-                branch = [
-                    b for b in branches if b[0] == provider_pull["base"]["branch"]
-                ]
+                    if len(branch) == 0:
+                        log.warning(
+                            "Unable to find branch %s in list of branches on repo",
+                            provider_pull["base"]["branch"],
+                        )
+                        return None
 
-                if len(branch) == 0:
-                    log.warning(
-                        "Unable to find branch %s in list of branches on repo",
-                        provider_pull["base"]["branch"],
-                    )
-                    return None
+                    self._branch = branch
 
                 distance = await self.repository_service.get_distance_in_commits(
                     branch[0][1],
