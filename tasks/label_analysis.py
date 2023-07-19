@@ -62,9 +62,13 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             "Starting label analysis request",
             extra=dict(
                 request_id=request_id,
+                external_id=label_analysis_request.external_id,
                 commit=label_analysis_request.head_commit.commitid,
             ),
         )
+        if label_analysis_request.state_id == LabelAnalysisRequestState.FINISHED.db_id:
+            return self._handle_larq_already_calculated(label_analysis_request)
+
         try:
             lines_relevant_to_diff = await self._get_lines_relevant_to_diff(
                 label_analysis_request
@@ -100,6 +104,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 extra=dict(
                     request_id=request_id,
                     commit=label_analysis_request.head_commit.commitid,
+                    external_id=label_analysis_request.external_id,
                 ),
             )
             label_analysis_request.result = None
@@ -124,6 +129,8 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 has_relevant_lines=(lines_relevant_to_diff is not None),
                 has_base_report=(base_report is not None),
                 commit=label_analysis_request.head_commit.commitid,
+                external_id=label_analysis_request.external_id,
+                request_id=request_id,
             ),
         )
         label_analysis_request.state_id = LabelAnalysisRequestState.FINISHED.db_id
@@ -152,6 +159,43 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         )
         self.errors.append(error.to_representation())
         self.dbsession.add(error)
+
+    def _handle_larq_already_calculated(self, larq: LabelAnalysisRequest):
+        # This means we already calculated everything
+        # Except possibly the absent labels
+        log.info(
+            "Label analysis was request already calculated",
+            extra=dict(
+                request_id=larq.id,
+                external_id=larq.external_id,
+                commit=larq.head_commit.commitid,
+            ),
+        )
+        if larq.requested_labels:
+            saved_result = larq.result
+            all_saved_labels = set(
+                saved_result.get("present_report_labels", [])
+                + saved_result.get("present_diff_labels", [])
+                + saved_result.get("global_level_labels", [])
+            )
+            executable_lines_saved_labels = set(
+                saved_result.get("present_diff_labels", [])
+            )
+            global_saved_labels = set(saved_result.get("global_level_labels", []))
+            result = self.calculate_final_result(
+                requested_labels=larq.requested_labels,
+                existing_labels=(
+                    all_saved_labels,
+                    executable_lines_saved_labels,
+                    global_saved_labels,
+                ),
+                commit_sha=larq.head_commit.commitid,
+            )
+            larq.result = result  # Save the new result
+            return { **result, 'success': True }
+        # No requested labels mean we don't have to calculate again
+        # This shouldn't actually happen
+        return { **larq.result, 'success': True }
 
     def _get_requested_labels(self, label_analysis_request: LabelAnalysisRequest):
         if label_analysis_request.requested_labels:
@@ -186,6 +230,8 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 extra=dict(
                     lines_relevant_to_diff=executable_lines_relevant_to_diff,
                     commit=label_analysis_request.head_commit.commitid,
+                    external_id=label_analysis_request.external_id,
+                    request_id=label_analysis_request.id_,
                 ),
             )
             return executable_lines_relevant_to_diff
@@ -210,6 +256,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 "Label analysis failed to parse git diff",
                 extra=dict(
                     request_id=label_analysis_request.id,
+                    external_id=label_analysis_request.external_id,
                     commit=label_analysis_request.head_commit.commitid,
                 ),
             )

@@ -406,7 +406,7 @@ def sample_report_with_labels():
 
 
 @pytest.mark.asyncio
-async def test_simple_call_without_requested_labels(
+async def test_simple_call_without_requested_labels_then_with_requested_labels(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mocker.patch.object(
@@ -502,6 +502,29 @@ async def test_simple_call_without_requested_labels(
         "present_report_labels": expected_present_report_labels,
         "global_level_labels": ["applejuice", "justjuice", "orangejuice"],
     }
+    # Now we call the task again, this time with the requested labels.
+    # This illustrates what should happen if we patch the labels after calculating
+    # And trigger the task again to save the new results
+    larf.requested_labels = ["tangerine", "pear", "banana", "apple"]
+    dbsession.flush()
+    res = await task.run_async(dbsession, larf.id)
+    expected_present_diff_labels = ["banana"]
+    expected_present_report_labels = ["apple", "banana"]
+    expected_absent_labels = ["pear", "tangerine"]
+    assert res == {
+        "absent_labels": expected_absent_labels,
+        "present_diff_labels": expected_present_diff_labels,
+        "present_report_labels": expected_present_report_labels,
+        "success": True,
+        "global_level_labels": [],
+    }
+    assert larf.result == {
+        "absent_labels": expected_absent_labels,
+        "present_diff_labels": expected_present_diff_labels,
+        "present_report_labels": expected_present_report_labels,
+        "global_level_labels": [],
+    }
+
 
 
 @pytest.mark.asyncio
