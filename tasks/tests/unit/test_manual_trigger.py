@@ -4,7 +4,7 @@ from celery.exceptions import Retry
 from database.models.core import Pull
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from database.tests.factories.core import UploadFactory
-from tasks.upload_completion import CompleteUploadTask
+from tasks.manual_trigger import ManualTriggerTask
 
 
 class TestUploadCompletionTask(object):
@@ -20,7 +20,7 @@ class TestUploadCompletionTask(object):
     ):
 
         mocked_app = mocker.patch.object(
-            CompleteUploadTask,
+            ManualTriggerTask,
             "app",
             tasks={
                 "app.tasks.notify.Notify": mocker.MagicMock(),
@@ -41,14 +41,17 @@ class TestUploadCompletionTask(object):
         dbsession.add(pull)
         dbsession.add(compared_to)
         dbsession.flush()
-        result = await CompleteUploadTask().run_async(
+        result = await ManualTriggerTask().run_async(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
             report_code=None,
             current_yaml={},
         )
-        assert {"notifications_called": True} == result
+        assert {
+            "notifications_called": True,
+            "message": "All uploads are processed. Triggering notifications.",
+        } == result
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
             kwargs=dict(
                 commitid=commit.commitid, current_yaml=None, repoid=commit.repoid
@@ -79,7 +82,7 @@ class TestUploadCompletionTask(object):
     ):
 
         mocker.patch.object(
-            CompleteUploadTask,
+            ManualTriggerTask,
             "app",
             celery_app,
         )
@@ -89,11 +92,14 @@ class TestUploadCompletionTask(object):
         dbsession.add(upload)
         dbsession.flush()
         with pytest.raises(Retry):
-            result = await CompleteUploadTask().run_async(
+            result = await ManualTriggerTask().run_async(
                 dbsession,
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 report_code=None,
                 current_yaml={},
             )
-            assert {"notifications_called": False} == result
+            assert {
+                "notifications_called": False,
+                "message": "Uploads are still in process and the task got retired so many times. Not triggering notifications.",
+            } == result

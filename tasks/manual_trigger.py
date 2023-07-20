@@ -19,7 +19,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class CompleteUploadTask(BaseCodecovTask):
+class ManualTriggerTask(BaseCodecovTask):
 
     name = f"app.tasks.upload.UploadCompletion"
 
@@ -56,12 +56,15 @@ class CompleteUploadTask(BaseCodecovTask):
                 )
         except LockError:
             log.warning(
-                "Unable to acquire lock for key %s.",
-                lock_name,
+                "Unable to acquire lock",
                 extra=dict(
-                    commit=commitid, repoid=repoid, number_retries=self.request.retries
+                    commit=commitid,
+                    repoid=repoid,
+                    number_retries=self.request.retries,
+                    lock_name=lock_name,
                 ),
             )
+            return {"notifications_called": False, "message": "Unable to acquire lock"}
 
     async def process_async_within_lock(
         self,
@@ -91,67 +94,18 @@ class CompleteUploadTask(BaseCodecovTask):
             if not upload.state:
                 still_processing += 1
         if still_processing == 0:
-            log.info(
-                "Scheduling notify task",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    commit_yaml=commit_yaml.to_dict() if commit_yaml else None,
-                ),
-            )
-            self.app.tasks[notify_task_name].apply_async(
-                kwargs=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    current_yaml=commit_yaml.to_dict() if commit_yaml else None,
-                )
-            )
+            self.trigger_notifications(repoid, commitid, commit_yaml)
             if commit.pullid:
-                print("commit.pullid exists")
-                pull = (
-                    db_session.query(Pull)
-                    .filter_by(repoid=commit.repoid, pullid=commit.pullid)
-                    .first()
-                )
-
-                if pull:
-                    print("pull exists")
-                    head = pull.get_head_commit()
-                    if head is None or head.timestamp <= commit.timestamp:
-                        pull.head = commit.commitid
-                    if pull.head == commit.commitid:
-                        db_session.commit()
-                        log.info(
-                            "Scheduling pulls syc task",
-                            extra=dict(
-                                repoid=repoid,
-                                pullid=pull.pullid,
-                            ),
-                        )
-                        self.app.tasks[pulls_task_name].apply_async(
-                            kwargs=dict(
-                                repoid=repoid,
-                                pullid=pull.pullid,
-                                should_send_notifications=False,
-                            )
-                        )
-                        compared_to = pull.get_comparedto_commit()
-                        if compared_to:
-                            comparison = get_or_create_comparison(
-                                db_session, compared_to, commit
-                            )
-                            db_session.commit()
-                            self.app.tasks[compute_comparison_task_name].apply_async(
-                                kwargs=dict(comparison_id=comparison.id)
-                            )
+                self.trigger_pull_sync(db_session, repoid, commit)
             return {
                 "notifications_called": True,
+                "message": "All uploads are processed. Triggering notifications.",
             }
         else:
             # reschedule the task
             try:
                 log.info(
-                    "Retrying CompleteUploadTask. Some uploads are still being processed."
+                    "Retrying ManualTriggerTask. Some uploads are still being processed."
                 )
                 retry_in = 30
                 self.retry(max_retries=5, countdown=retry_in)
@@ -167,8 +121,63 @@ class CompleteUploadTask(BaseCodecovTask):
                 )
                 return {
                     "notifications_called": False,
+                    "message": "Uploads are still in process and the task got retired so many times. Not triggering notifications.",
                 }
 
+    def trigger_notifications(self, repoid, commitid, commit_yaml):
+        log.info(
+            "Scheduling notify task",
+            extra=dict(
+                repoid=repoid,
+                commit=commitid,
+                commit_yaml=commit_yaml.to_dict() if commit_yaml else None,
+            ),
+        )
+        self.app.tasks[notify_task_name].apply_async(
+            kwargs=dict(
+                repoid=repoid,
+                commitid=commitid,
+                current_yaml=commit_yaml.to_dict() if commit_yaml else None,
+            )
+        )
 
-RegisteredCompleteUploadTask = celery_app.register_task(CompleteUploadTask())
-complete_upload_task = celery_app.tasks[RegisteredCompleteUploadTask.name]
+    def trigger_pull_sync(self, db_session, repoid, commit):
+        pull = (
+            db_session.query(Pull)
+            .filter_by(repoid=commit.repoid, pullid=commit.pullid)
+            .first()
+        )
+
+        if pull:
+            head = pull.get_head_commit()
+            if head is None or head.timestamp <= commit.timestamp:
+                pull.head = commit.commitid
+            if pull.head == commit.commitid:
+                db_session.commit()
+                log.info(
+                    "Scheduling pulls syc task",
+                    extra=dict(
+                        repoid=repoid,
+                        pullid=pull.pullid,
+                    ),
+                )
+                self.app.tasks[pulls_task_name].apply_async(
+                    kwargs=dict(
+                        repoid=repoid,
+                        pullid=pull.pullid,
+                        should_send_notifications=False,
+                    )
+                )
+                compared_to = pull.get_comparedto_commit()
+                if compared_to:
+                    comparison = get_or_create_comparison(
+                        db_session, compared_to, commit
+                    )
+                    db_session.commit()
+                    self.app.tasks[compute_comparison_task_name].apply_async(
+                        kwargs=dict(comparison_id=comparison.id)
+                    )
+
+
+RegisteredManualTriggerTask = celery_app.register_task(ManualTriggerTask())
+manual_trigger_task = celery_app.tasks[RegisteredManualTriggerTask.name]
