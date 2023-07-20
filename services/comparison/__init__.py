@@ -159,7 +159,7 @@ class ComparisonProxy(object):
                 provider_pull = self.comparison.enriched_pull.provider_pull
                 if provider_pull is None:
                     log.info(
-                        "Comparison does not have provider pull request information, unable to get behind by"
+                        "Comparison does not have provider pull request information, unable to get behind_by"
                     )
                     return None
                 if self._branch is None:
@@ -170,8 +170,10 @@ class ComparisonProxy(object):
 
                     if len(branch) == 0:
                         log.warning(
-                            "Unable to find branch %s in list of branches on repo",
-                            provider_pull["base"]["branch"],
+                            "Unable to find branch in list of branches on repo",
+                            extra=dict(
+                                branch=provider_pull["base"]["branch"],
+                            ),
                         )
                         return None
 
