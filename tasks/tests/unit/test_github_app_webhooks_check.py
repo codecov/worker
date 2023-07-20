@@ -7,8 +7,32 @@ from tasks.github_app_webhooks_check import Github, GitHubAppWebhooksCheckTask
 
 
 @pytest.fixture
+def mock_metrics(mocker):
+    from collections import defaultdict
+
+    metrics = defaultdict(int)
+
+    def incr(stat, count=1, rate=1):
+        metrics[stat] += count
+
+    def decr(stat, count=1, rate=1):
+        metrics[stat] -= count
+
+    mock_incr = mocker.patch("shared.metrics.metrics.incr")
+    mock_incr.side_effect = incr
+
+    mock_decr = mocker.patch("shared.metrics.metrics.decr")
+    mock_decr.side_effect = decr
+
+    yield metrics
+
+
+@pytest.fixture
 def sample_deliveries():
     sample_deliveries = [
+        # time filter: passes, because the `delivered_at` is updated below to be recent
+        # status filter: fails, because this was a successful delivery
+        # event filter: passes, because it's an installation event
         {
             "id": 17324040107,
             "guid": "53c93580-7a6e-11ed-96c9-5e1ce3e5574e",
@@ -23,6 +47,9 @@ def sample_deliveries():
             "repository_id": None,
             "url": "",
         },
+        # time filter: fails, because the `delivered_at` is old and not updated below
+        # status filter: fails, because this was a successful delivery
+        # event filter: passes, because it's an installation event
         {
             "id": 17324018336,
             "guid": "40d7f830-7a6e-11ed-8b90-0777e88b1858",
@@ -37,6 +64,9 @@ def sample_deliveries():
             "repository_id": None,
             "url": "",
         },
+        # time filter: passes, because the `delivered_at` is updated below to be recent
+        # status filter: passes, because this was a failed delivery
+        # event filter: passes, because it's an installation even
         {
             "id": 17323292984,
             "guid": "0498e8e0-7a6c-11ed-8834-c5eb5a4b102a",
@@ -51,6 +81,9 @@ def sample_deliveries():
             "repository_id": None,
             "url": "",
         },
+        # time filter: fails, because the `delivered_at` is old and not updated below
+        # status filter: passes, because this was a failed delivery
+        # event filter: passes, because it's an installation even
         {
             "id": 17323228732,
             "guid": "d41fa780-7a6b-11ed-8890-0619085a3f97",
@@ -65,6 +98,9 @@ def sample_deliveries():
             "repository_id": None,
             "url": "",
         },
+        # time filter: passes, because the `delivered_at` is updated below to be recent
+        # status filter: passes, because this was a failed delivery
+        # event filter: fails, because it isn't an installation event
         {
             "id": 17323228732,
             "guid": "d41fa780-7a6b-11ed-8890-0619085a3f97",
@@ -79,6 +115,9 @@ def sample_deliveries():
             "repository_id": None,
             "url": "",
         },
+        # time filter: fails, because the `delivered_at` is old and not updated below
+        # status filter: fails, because this was a successful delivery
+        # event filter: fails, because it isn't an installation event
         {
             "id": 17323228732,
             "guid": "d41fa780-7a6b-11ed-8890-0619085a3f97",
@@ -151,7 +190,6 @@ class TestGHAppWebhooksTask(object):
         assert filtered_deliveries == sample_deliveries[2:5]
 
     def test_apply_filters_to_deliveries(self, sample_deliveries):
-
         task = GitHubAppWebhooksCheckTask()
         filtered_deliveries = list(task.apply_filters_to_deliveries(sample_deliveries))
         assert len(filtered_deliveries) == 1
@@ -250,3 +288,34 @@ class TestGHAppWebhooksTask(object):
         fake_list_deliveries.assert_called()
         fake_get_token.assert_called()
         fake_redelivery.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_redelivery_counters(
+        self, dbsession, mocker, sample_deliveries, mock_metrics
+    ):
+        async def side_effect(*args, **kwargs):
+            yield sample_deliveries
+
+        fake_list_deliveries = mocker.patch.object(
+            Github,
+            "list_webhook_deliveries",
+            side_effect=side_effect,
+        )
+        fake_get_token = mocker.patch(
+            "tasks.github_app_webhooks_check.get_github_integration_token",
+            return_value="integration_jwt_token",
+        )
+        fake_redelivery = mocker.patch.object(
+            Github,
+            "request_webhook_redelivery",
+            return_value=True,
+        )
+        task = GitHubAppWebhooksCheckTask()
+        _ = await task.run_cron_task(dbsession)
+
+        # There are 3 failed deliveries above, but 1 of them is old and excluded from the query
+        assert mock_metrics["webhooks.github.deliveries.failed"] == 2
+
+        # There are 2 failed deliveries that pass the check above, but one isn't for an installation
+        # event so we don't ask for a redelivery
+        assert mock_metrics["webhooks.github.deliveries.retry_requested"] == 1
