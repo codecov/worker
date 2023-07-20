@@ -2,13 +2,15 @@ import logging
 from typing import List, Optional, Set, Tuple
 
 import sentry_sdk
-from shared import torngit
 from shared.celery_config import label_analysis_task_name
 from shared.labelanalysis import LabelAnalysisRequestState
 
 from app import celery_app
-from database.models.core import Commit
-from database.models.labelanalysis import LabelAnalysisRequest
+from database.models.labelanalysis import (
+    LabelAnalysisProcessingError,
+    LabelAnalysisProcessingErrorCode,
+    LabelAnalysisRequest,
+)
 from database.models.staticanalysis import StaticAnalysisSuite
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from services.report import Report, ReportService
@@ -31,6 +33,8 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
     name = label_analysis_task_name
 
     async def run_async(self, db_session, request_id, *args, **kwargs):
+        self.errors = []
+        self.dbsession = db_session
         label_analysis_request = (
             db_session.query(LabelAnalysisRequest)
             .filter(LabelAnalysisRequest.id_ == request_id)
@@ -40,12 +44,19 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             log.error(
                 "LabelAnalysisRequest not found", extra=dict(request_id=request_id)
             )
+            self.add_processing_error(
+                larq_id=request_id,
+                error_code=LabelAnalysisProcessingErrorCode.NOT_FOUND,
+                error_msg="LabelAnalysisRequest not found",
+                error_extra=dict(),
+            )
             return {
                 "success": False,
                 "present_report_labels": None,
                 "present_diff_labels": None,
                 "absent_labels": None,
                 "global_level_labels": None,
+                "errors": self.errors,
             }
         log.info(
             "Starting label analysis request",
@@ -64,9 +75,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 exisisting_labels = self._get_existing_labels(
                     base_report, lines_relevant_to_diff
                 )
-                requested_labels = self._get_requested_labels(
-                    label_analysis_request, db_session
-                )
+                requested_labels = self._get_requested_labels(label_analysis_request)
                 result = self.calculate_final_result(
                     requested_labels=requested_labels,
                     existing_labels=exisisting_labels,
@@ -82,6 +91,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                     "present_diff_labels": result["present_diff_labels"],
                     "absent_labels": result["absent_labels"],
                     "global_level_labels": result["global_level_labels"],
+                    "errors": self.errors,
                 }
         except Exception:
             # temporary general catch while we find possible problems on this
@@ -94,12 +104,19 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             )
             label_analysis_request.result = None
             label_analysis_request.state_id = LabelAnalysisRequestState.ERROR.db_id
+            self.add_processing_error(
+                larq_id=request_id,
+                error_code=LabelAnalysisProcessingErrorCode.FAILED,
+                error_msg="Failed to calculate",
+                error_extra=dict(),
+            )
             return {
                 "success": False,
                 "present_report_labels": None,
                 "present_diff_labels": None,
                 "absent_labels": None,
                 "global_level_labels": None,
+                "errors": self.errors,
             }
         log.warning(
             "We failed to get some information that was important to label analysis",
@@ -116,17 +133,31 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             "present_diff_labels": None,
             "absent_labels": label_analysis_request.requested_labels,
             "global_level_labels": None,
+            "errors": self.errors,
         }
         label_analysis_request.result = result
         return result
 
-    def _get_requested_labels(
-        self, label_analysis_request: LabelAnalysisRequest, dbsession
+    def add_processing_error(
+        self,
+        larq_id: int,
+        error_code: LabelAnalysisProcessingErrorCode,
+        error_msg: str,
+        error_extra: dict,
     ):
+        error = LabelAnalysisProcessingError(
+            label_analysis_request_id=larq_id,
+            error_code=error_code.value,
+            error_params=dict(message=error_msg, extra=error_extra),
+        )
+        self.errors.append(error.to_representation())
+        self.dbsession.add(error)
+
+    def _get_requested_labels(self, label_analysis_request: LabelAnalysisRequest):
         if label_analysis_request.requested_labels:
             return label_analysis_request.requested_labels
         # This is the case where the CLI PATCH the requested labels after collecting them
-        dbsession.refresh(label_analysis_request, ["requested_labels"])
+        self.dbsession.refresh(label_analysis_request, ["requested_labels"])
         return label_analysis_request.requested_labels
 
     @sentry_sdk.trace
@@ -181,7 +212,15 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                     request_id=label_analysis_request.id,
                     commit=label_analysis_request.head_commit.commitid,
                 ),
-                exc_info=True,
+            )
+            self.add_processing_error(
+                larq_id=label_analysis_request.id,
+                error_code=LabelAnalysisProcessingErrorCode.FAILED,
+                error_msg="Failed to parse git diff",
+                error_extra=dict(
+                    head_commit=label_analysis_request.head_commit.commitid,
+                    base_commit=label_analysis_request.base_commit.commitid,
+                ),
             )
             return None
 
@@ -199,6 +238,15 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 extra=dict(
                     request_id=label_analysis_request.id,
                     commit=label_analysis_request.head_commit.commitid,
+                ),
+            )
+            self.add_processing_error(
+                larq_id=label_analysis_request.id,
+                error_code=LabelAnalysisProcessingErrorCode.MISSING_DATA,
+                error_msg="Missing base report",
+                error_extra=dict(
+                    head_commit=label_analysis_request.head_commit.commitid,
+                    base_commit=label_analysis_request.base_commit.commitid,
                 ),
             )
         return report
@@ -275,6 +323,17 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                     if head_static_analysis is not None
                     else None,
                     commit=label_analysis_request.head_commit.commitid,
+                ),
+            )
+            self.add_processing_error(
+                larq_id=label_analysis_request.id,
+                error_code=LabelAnalysisProcessingErrorCode.MISSING_DATA,
+                error_msg="Missing static analysis info",
+                error_extra=dict(
+                    head_commit=label_analysis_request.head_commit.commitid,
+                    base_commit=label_analysis_request.base_commit.commitid,
+                    has_base_static_analysis=(base_static_analysis is not None),
+                    has_head_static_analysis=(head_static_analysis is not None),
                 ),
             )
             return None
