@@ -5,6 +5,7 @@ from mock import patch
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
 
+from database.models.labelanalysis import LabelAnalysisRequest
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.labelanalysis import LabelAnalysisRequestFactory
 from database.tests.factories.staticanalysis import (
@@ -489,6 +490,7 @@ async def test_simple_call_without_requested_labels(
         "present_report_labels": expected_present_report_labels,
         "global_level_labels": ["applejuice", "justjuice", "orangejuice"],
         "success": True,
+        "errors": [],
     }
     assert res == expected_result
     dbsession.flush()
@@ -535,6 +537,7 @@ async def test_simple_call_with_requested_labels(
         "present_report_labels": expected_present_report_labels,
         "success": True,
         "global_level_labels": [],
+        "errors": [],
     }
     dbsession.flush()
     dbsession.refresh(larf)
@@ -557,7 +560,8 @@ def test_get_requested_labels(dbsession, mocker):
     dbsession.add(larf)
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
-    labels = task._get_requested_labels(larf, dbsession)
+    task.dbsession = dbsession
+    labels = task._get_requested_labels(larf)
     mock_refresh.assert_called()
     assert labels == ["tangerine", "pear", "banana", "apple"]
 
@@ -572,6 +576,15 @@ async def test_call_label_analysis_no_request_object(dbsession):
         "present_diff_labels": None,
         "absent_labels": None,
         "global_level_labels": None,
+        "errors": [
+            {
+                "error_code": "not found",
+                "error_params": {
+                    "extra": {},
+                    "message": "LabelAnalysisRequest not found",
+                },
+            }
+        ],
     }
 
 
@@ -646,6 +659,8 @@ def test_get_relevant_executable_lines_nothing_found(dbsession, mocker):
     dbsession.add(larf)
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
+    task.errors = []
+    task.dbsession = dbsession
     parsed_git_diff = []
     assert task.get_relevant_executable_lines(larf, parsed_git_diff) is None
 
@@ -697,6 +712,12 @@ async def test_run_async_with_error(
         "present_report_labels": None,
         "success": False,
         "global_level_labels": None,
+        "errors": [
+            {
+                "error_code": "failed",
+                "error_params": {"extra": {}, "message": "Failed to calculate"},
+            }
+        ],
     }
     assert res == expected_result
     dbsession.flush()
@@ -709,7 +730,7 @@ async def test_run_async_with_error(
 async def test_calculate_result_no_report(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
-    larf = LabelAnalysisRequestFactory.create(
+    larf: LabelAnalysisRequest = LabelAnalysisRequestFactory.create(
         # This being not-ordered is important in the test
         # TO make sure we go through the warning at the bottom of run_async
         requested_labels=["tangerine", "pear", "banana", "apple"]
@@ -734,6 +755,18 @@ async def test_calculate_result_no_report(
         "present_diff_labels": None,
         "present_report_labels": None,
         "global_level_labels": None,
+        "errors": [
+            {
+                "error_code": "missing data",
+                "error_params": {
+                    "extra": {
+                        "base_commit": larf.base_commit.commitid,
+                        "head_commit": larf.head_commit.commitid,
+                    },
+                    "message": "Missing base report",
+                },
+            }
+        ],
     }
 
 
@@ -750,6 +783,7 @@ async def test__get_parsed_git_diff(mock_parse_diff, dbsession, mock_repo_provid
     dbsession.flush()
     mock_repo_provider.get_compare.return_value = {"diff": "json"}
     task = LabelAnalysisRequestProcessingTask()
+    task.errors = []
     parsed_diff = await task._get_parsed_git_diff(larq)
     assert parsed_diff == ["parsed_git_diff"]
     mock_parse_diff.assert_called_with({"diff": "json"})
@@ -773,6 +807,8 @@ async def test__get_parsed_git_diff_error(
     dbsession.flush()
     mock_repo_provider.get_compare.side_effect = Exception("Oh no")
     task = LabelAnalysisRequestProcessingTask()
+    task.errors = []
+    task.dbsession = dbsession
     parsed_diff = await task._get_parsed_git_diff(larq)
     assert parsed_diff == None
     mock_parse_diff.assert_not_called()
