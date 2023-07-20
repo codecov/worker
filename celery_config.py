@@ -93,6 +93,11 @@ def init_celery_tracing(*args, **kwargs):
 hourly_check_task_name = "app.cron.hourly_check.HourlyCheckTask"
 daily_plan_manager_task_name = "app.cron.daily.PlanManagerTask"
 
+trial_expiration_task_name = "app.tasks.trial_expiration.TrialExpirationTask"
+trial_expiration_cron_task_name = (
+    "app.cron.trial_expiration_cron.TrialExpirationCronTask"
+)
+
 
 class CeleryWorkerConfig(BaseCeleryConfig):
     beat_schedule = {
@@ -120,6 +125,14 @@ class CeleryWorkerConfig(BaseCeleryConfig):
         "github_app_webhooks_task": {
             "task": gh_app_webhook_check_task_name,
             "schedule": crontab(hour="0,6,12,18"),
+            "kwargs": {
+                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            },
+        },
+        "trial_expiration_cron": {
+            "task": trial_expiration_cron_task_name,
+            # 4 UTC is 12pm EDT
+            "schedule": crontab(hour="4"),
             "kwargs": {
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },
