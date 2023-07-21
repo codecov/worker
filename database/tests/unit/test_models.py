@@ -2,6 +2,7 @@ import json
 from unittest.mock import call
 
 import pytest
+from shared.reports.types import ReportTotals, SessionTotalsArray
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
 
@@ -134,24 +135,91 @@ class TestReportDetailsModel(object):
         {
             "filename": "file_1.go",
             "file_index": 0,
-            "file_totals": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-            "session_totals": {
-                "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                "meta": {"session_count": 1},
-            },
+            "file_totals": ReportTotals(
+                *[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]
+            ),
+            "session_totals": SessionTotalsArray.build_from_encoded_data(
+                {
+                    "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
+                    "meta": {"session_count": 1},
+                }
+            ),
             "diff_totals": None,
         },
         {
             "filename": "file_2.py",
             "file_index": 1,
-            "file_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-            "session_totals": {
-                "0": [0, 2, 1, 0, 1, "50.00000", 1],
-                "meta": {"session_count": 1},
-            },
+            "file_totals": ReportTotals(
+                *[0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0]
+            ),
+            "session_totals": SessionTotalsArray.build_from_encoded_data(
+                {
+                    "0": [0, 2, 1, 0, 1, "50.00000", 1],
+                    "meta": {"session_count": 1},
+                }
+            ),
             "diff_totals": None,
         },
     ]
+
+    def test_rehydrate_already_hydrated(self):
+        fully_encoded_sample = [
+            {
+                "filename": "file_1.go",
+                "file_index": 0,
+                "file_totals": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
+                "session_totals": {
+                    "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
+                    "meta": {"session_count": 1},
+                },
+                "diff_totals": None,
+            },
+            {
+                "filename": "file_2.py",
+                "file_index": 1,
+                "file_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
+                "session_totals": {
+                    "0": [0, 2, 1, 0, 1, "50.00000", 1],
+                    "meta": {"session_count": 1},
+                },
+                "diff_totals": None,
+            },
+        ]
+        half_encoded_sample = [
+            {
+                "filename": "file_1.go",
+                "file_index": 0,
+                "file_totals": ReportTotals(
+                    *[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]
+                ),
+                "session_totals": {
+                    "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
+                    "meta": {"session_count": 1},
+                },
+                "diff_totals": None,
+            },
+            {
+                "filename": "file_2.py",
+                "file_index": 1,
+                "file_totals": ReportTotals(
+                    *[0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0]
+                ),
+                "session_totals": {
+                    "0": [0, 2, 1, 0, 1, "50.00000", 1],
+                    "meta": {"session_count": 1},
+                },
+                "diff_totals": None,
+            },
+        ]
+        rd: ReportDetails = ReportDetailsFactory()
+        assert (
+            rd.rehydrate_encoded_data(self.sample_files_array)
+            == self.sample_files_array
+        )
+        assert (
+            rd.rehydrate_encoded_data(fully_encoded_sample) == self.sample_files_array
+        )
+        assert rd.rehydrate_encoded_data(half_encoded_sample) == self.sample_files_array
 
     def test_get_files_array_from_db(self, dbsession, mocker):
         factory_report_details: ReportDetails = ReportDetailsFactory()
@@ -160,7 +228,7 @@ class TestReportDetailsModel(object):
         dbsession.add(factory_report_details)
         dbsession.flush()
 
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
         retrieved_instance = dbsession.query(ReportDetails).get(
             factory_report_details.id_
         )
@@ -178,7 +246,7 @@ class TestReportDetailsModel(object):
         dbsession.add(factory_report_details)
         dbsession.flush()
 
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
         mock_archive_service.return_value.read_file.return_value = json.dumps(
             self.sample_files_array, cls=ReportEncoder
         )
@@ -206,7 +274,7 @@ class TestReportDetailsModel(object):
         dbsession.add(factory_report_details)
         dbsession.flush()
 
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
 
         def side_effect(path):
             assert path == "https://storage-url/path/to/item.json"
@@ -263,8 +331,18 @@ class TestReportDetailsModel(object):
         assert allowlisted_repo._should_write_to_storage() == False
         assert codecov_report_details._should_write_to_storage() == False
 
-    def test_set_files_array_to_db(self, dbsession, mocker):
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+    def test_set_files_array_to_db(self, dbsession, mocker, mock_configuration):
+        mock_configuration.set_params(
+            {
+                "setup": {
+                    "save_report_data_in_storage": {
+                        "only_codecov": False,
+                        "report_details_files_array": False,
+                    },
+                }
+            }
+        )
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
 
         factory_report_details: ReportDetails = ReportDetailsFactory()
         # Setting files_array.
@@ -291,7 +369,7 @@ class TestReportDetailsModel(object):
                 }
             }
         )
-        mock_archive_service = mocker.patch("database.models.reports.ArchiveService")
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
         mock_archive_service.return_value.read_file.return_value = json.dumps(
             self.sample_files_array, cls=ReportEncoder
         )
@@ -317,7 +395,7 @@ class TestReportDetailsModel(object):
             [
                 call(
                     commit_id=retrieved_instance.report.commit.commitid,
-                    model="ReportDetails",
+                    table="reports_reportdetails",
                     field="files_array",
                     external_id=retrieved_instance.external_id,
                     data=self.sample_files_array,

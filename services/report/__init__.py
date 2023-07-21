@@ -159,7 +159,9 @@ class ReportService(object):
             )
             if report_details is None:
                 report_details = ReportDetails(
-                    report_id=current_report_row.id_, files_array=[]
+                    report_id=current_report_row.id_,
+                    _files_array=[],
+                    report=current_report_row,
                 )
                 db_session.add(report_details)
                 db_session.flush()
