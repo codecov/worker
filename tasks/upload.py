@@ -148,10 +148,10 @@ class UploadTask(BaseCodecovTask):
             and self.request.retries == 0
         ):
             log.info(
-                "Waiting longer to collect more jobs for processing",
+                "Currently processing upload. Retrying in 60s.",
                 extra=dict(
                     repoid=repoid,
-                    commtid=commitid,
+                    commit=commitid,
                     has_pending_jobs=self.has_pending_jobs(
                         redis_connection, repoid, commitid
                     ),
@@ -175,7 +175,7 @@ class UploadTask(BaseCodecovTask):
                 )
         except LockError:
             log.warning(
-                "Unable to acquire lock for key %s. Retrying",
+                "Unable to acquire lock for key %s.",
                 lock_name,
                 extra=dict(commit=commitid, repoid=repoid),
             )
@@ -200,7 +200,14 @@ class UploadTask(BaseCodecovTask):
                     "tasks_were_scheduled": False,
                     "reason": "too_many_retries",
                 }
-            self.retry(max_retries=3, countdown=20 * 2**self.request.retries)
+            retry_countdown = 20 * 2**self.request.retries
+            log.warning(
+                "Retrying upload",
+                extra=dict(
+                    commit=commitid, repoid=repoid, countdown=int(retry_countdown)
+                ),
+            )
+            self.retry(max_retries=3, countdown=retry_countdown)
 
     async def run_async_within_lock(
         self,
@@ -214,9 +221,14 @@ class UploadTask(BaseCodecovTask):
     ):
         log.info(
             "Starting processing of report",
-            extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
+            extra=dict(
+                repoid=repoid,
+                commit=commitid,
+                report_code=report_code,
+            ),
         )
         if not self.has_pending_jobs(redis_connection, repoid, commitid):
+            log.info("No pending jobs. Upload task is done.")
             return {
                 "was_setup": False,
                 "was_updated": False,
@@ -234,11 +246,14 @@ class UploadTask(BaseCodecovTask):
                     datetime.utcnow() - timedelta(seconds=upload_processing_delay)
                     < last_upload
                 ):
+                    retry_countdown = max(30, upload_processing_delay)
                     log.info(
-                        "Retrying due to very recent uploads",
-                        extra=dict(repoid=repoid, commit=commitid),
+                        "Retrying due to very recent uploads.",
+                        extra=dict(
+                            repoid=repoid, commit=commitid, countdown=retry_countdown
+                        ),
                     )
-                    self.retry(countdown=max(30, upload_processing_delay))
+                    self.retry(countdown=retry_countdown)
         commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
@@ -289,12 +304,20 @@ class UploadTask(BaseCodecovTask):
             )
         report_service = ReportService(commit_yaml)
         try:
+            log.info(
+                "Initializing and saving report",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    report_code=report_code,
+                ),
+            )
             commit_report = await report_service.initialize_and_save_report(
                 commit, report_code
             )
         except NotReadyToBuildReportYetError:
             log.warning(
-                "Commit not yet ready to build its initial report",
+                "Commit not yet ready to build its initial report. Retrying in 60s.",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             self.retry(countdown=60)
@@ -330,6 +353,10 @@ class UploadTask(BaseCodecovTask):
     async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
         try:
+            log.info(
+                "Fetching commit yaml from provider for commit",
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+            )
             commit_yaml = await fetch_commit_yaml_from_provider(
                 commit, repository_service
             )
@@ -429,10 +456,19 @@ class UploadTask(BaseCodecovTask):
 
         # try to add webhook
         if should_post_webhook:
+            log.info(
+                "Setting up webhook",
+                extra=dict(repoid=repository.repoid, commit=commit.commitid),
+            )
             try:
                 hook_result = await create_webhook_on_provider(repository_service)
                 hookid = hook_result["id"]
-                log.info("Registered hook %s for repo %s", hookid, repository.repoid)
+                log.info(
+                    "Registered hook",
+                    extra=dict(
+                        repoid=commit.repoid, commit=commit.commitid, hookid=hookid
+                    ),
+                )
                 repository.hookid = hookid
                 repo_data["repo"]["hookid"] = hookid
                 return True
