@@ -102,7 +102,6 @@ class StatusChangesMixin(object):
 
 
 class StatusProjectMixin(object):
-
     DEFAULT_REMOVED_CODE_BEHAVIOR = "fully_covered_patch"
 
     async def _apply_removals_only_behavior(
@@ -172,15 +171,16 @@ class StatusProjectMixin(object):
         partials_removed = 0
         for file_dict in impacted_files:
             removed_diff_coverage_list = file_dict.get("removed_diff_coverage", [])
-            hits_removed += get_sum_from_lists(
-                removed_diff_coverage_list, lambda item: 1 if item[1] == "h" else 0
-            )
-            misses_removed += get_sum_from_lists(
-                removed_diff_coverage_list, lambda item: 1 if item[1] == "m" else 0
-            )
-            partials_removed += get_sum_from_lists(
-                removed_diff_coverage_list, lambda item: 1 if item[1] == "p" else 0
-            )
+            if removed_diff_coverage_list is not None:
+                hits_removed += get_sum_from_lists(
+                    removed_diff_coverage_list, lambda item: 1 if item[1] == "h" else 0
+                )
+                misses_removed += get_sum_from_lists(
+                    removed_diff_coverage_list, lambda item: 1 if item[1] == "m" else 0
+                )
+                partials_removed += get_sum_from_lists(
+                    removed_diff_coverage_list, lambda item: 1 if item[1] == "p" else 0
+                )
 
         base_totals = comparison.base.report.totals
         base_adjusted_hits = base_totals.hits - hits_removed
