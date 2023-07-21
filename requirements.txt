@@ -246,7 +246,7 @@ s3transfer==0.3.4
     # via boto3
 sentry-sdk==1.19.1
     # via -r requirements.in
-shared @ git+ssh://git@github.com/codecov/shared.git@bc9933c6d61555ab36f310103feb6edd381d928f
+shared @ git+ssh://git@github.com/codecov/shared.git@02eae9af6c670f27cbd7ba56a3464c213b6a83a0
     # via -r requirements.in
 six==1.15.0
     # via
