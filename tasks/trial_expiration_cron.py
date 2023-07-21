@@ -9,6 +9,8 @@ from tasks.crontasks import CodecovCronTask
 
 log = logging.getLogger(__name__)
 
+yield_amount = 100
+
 
 class TrialExpirationCronTask(CodecovCronTask):
     @classmethod
@@ -27,7 +29,7 @@ class TrialExpirationCronTask(CodecovCronTask):
                 Owner.trial_status == TrialStatus.ONGOING.value,
                 Owner.trial_end_date <= now,
             )
-            .all()
+            .yield_per(yield_amount)
         )
 
         for owner in ongoing_trial_owners_that_should_be_expired:
@@ -35,7 +37,7 @@ class TrialExpirationCronTask(CodecovCronTask):
                 kwargs=dict(ownerid=owner.ownerid)
             )
 
-        return {"trial_expiration_cron_check": True}
+        return {"successful": True}
 
 
 RegisteredTrialExpirationCronTask = celery_app.register_task(TrialExpirationCronTask())

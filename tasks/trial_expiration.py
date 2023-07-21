@@ -31,12 +31,13 @@ class TrialExpirationTask(BaseCodecovTask):
             owner.stripe_subscription_id = None
             db_session.add(owner)
             db_session.flush()
-        except:
+        except Exception as e:
             log.warning(
                 "Unable to expire owner trial",
                 extra=dict(
                     comparison_id=ownerid,
                 ),
+                exc_info=True,
             )
             return {"successful": False}
         return {"successful": True}

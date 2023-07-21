@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 
@@ -12,6 +13,7 @@ from tasks.trial_expiration_cron import TrialExpirationCronTask
 
 class TestTrialExpirationCheck(object):
     @pytest.mark.asyncio
+    @patch("tasks.trial_expiration_cron.yield_amount", 1)
     async def test_enqueue_trial_expiration_task(self, dbsession, mocker):
         mocked_now = datetime(2023, 7, 3, 6, 8, 12)
         mocker.patch(
@@ -78,9 +80,7 @@ class TestTrialExpirationCheck(object):
         )
         task = TrialExpirationCronTask()
 
-        assert await task.run_cron_task(dbsession) == {
-            "trial_expiration_cron_check": True
-        }
+        assert await task.run_cron_task(dbsession) == {"successful": True}
         mocked_app.tasks[trial_expiration_task_name].apply_async.assert_any_call(
             kwargs={"ownerid": second_ongoing_owner_that_should_expire.ownerid}
         )
