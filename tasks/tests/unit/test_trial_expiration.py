@@ -1,6 +1,6 @@
 import pytest
 
-from celery_config import trial_expiration_task_name
+from database.enums import TrialStatus
 from database.tests.factories.core import OwnerFactory
 from services.billing import BillingPlan
 from tasks.trial_expiration import TrialExpirationTask
@@ -20,3 +20,4 @@ class TestTrialExpiration(object):
         assert owner.plan_activated_users == None
         assert owner.plan_user_count == 1
         assert owner.stripe_subscription_id == None
+        assert owner.trial_status == TrialStatus.EXPIRED.value

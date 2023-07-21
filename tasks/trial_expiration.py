@@ -1,10 +1,8 @@
 import logging
-from typing import List, Mapping
-
-from shared.torngit.exceptions import TorngitRateLimitError
 
 from app import celery_app
 from celery_config import trial_expiration_task_name
+from database.enums import TrialStatus
 from database.models.core import Owner
 from services.billing import BillingPlan
 from tasks.base import BaseCodecovTask
@@ -29,6 +27,7 @@ class TrialExpirationTask(BaseCodecovTask):
             owner.plan_activated_users = None
             owner.plan_user_count = 1
             owner.stripe_subscription_id = None
+            owner.trial_status = TrialStatus.EXPIRED.value
             db_session.add(owner)
             db_session.flush()
         except Exception as e:
