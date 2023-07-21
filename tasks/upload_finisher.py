@@ -83,38 +83,6 @@ class UploadFinisherTask(BaseCodecovTask):
             )
             save_commit_measurements(commit)
             self.invalidate_caches(redis_connection, commit)
-            if commit.repository.branch == commit.branch:
-                author_dict = None
-                if commit.author:
-                    author_dict = {
-                        "service": commit.author.service,
-                        "service_id": commit.author.service_id,
-                        "username": commit.author.username,
-                        "email": commit.author.email,
-                        "name": commit.author.name,
-                    }
-                commit_dict = {
-                    "timestamp": commit.timestamp.isoformat()
-                    if commit.timestamp
-                    else None,
-                    "commitid": commit.commitid,
-                    "ci_passed": commit.ci_passed,
-                    "message": commit.message,
-                    "author": author_dict,
-                    "totals": commit.totals,
-                }
-                new_cache = deepcopy(commit.repository.cache_do_not_use) or {}
-                new_cache["commit"] = commit_dict
-                log.info(
-                    "Updating repo cache",
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        value=commit_dict,
-                        parent_task=self.request.parent_id,
-                    ),
-                )
-                commit.repository.cache_do_not_use = new_cache
         return result
 
     async def finish_reports_processing(

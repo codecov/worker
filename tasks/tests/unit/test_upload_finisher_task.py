@@ -67,37 +67,6 @@ class TestUploadFinisherTask(object):
         assert expected_result == result
         dbsession.refresh(commit)
         assert commit.message == "dsidsahdsahdsa"
-        expected_cache = {
-            "commit": {
-                "author": {
-                    "name": commit.author.name,
-                    "email": commit.author.email,
-                    "service": "github",
-                    "username": commit.author.username,
-                    "service_id": commit.author.service_id,
-                },
-                "totals": {
-                    "C": 0,
-                    "M": 0,
-                    "N": 0,
-                    "b": 0,
-                    "c": "85.00000",
-                    "d": 0,
-                    "diff": [1, 2, 1, 1, 0, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-                    "f": 3,
-                    "h": 17,
-                    "m": 3,
-                    "n": 20,
-                    "p": 0,
-                    "s": 1,
-                },
-                "message": commit.message,
-                "commitid": commit.commitid,
-                "ci_passed": True,
-                "timestamp": commit.timestamp.isoformat(),
-            }
-        }
-        assert commit.repository.cache_do_not_use == expected_cache
 
         mock_redis.lock.assert_called_with(
             f"upload_finisher_lock_{commit.repoid}_{commit.commitid}",
@@ -148,31 +117,6 @@ class TestUploadFinisherTask(object):
         assert expected_result == result
         dbsession.refresh(commit)
         assert commit.message == "dsidsahdsahdsa"
-        expected_cache = {
-            "commit": {
-                "author": None,
-                "totals": {
-                    "C": 0,
-                    "M": 0,
-                    "N": 0,
-                    "b": 0,
-                    "c": "85.00000",
-                    "d": 0,
-                    "diff": [1, 2, 1, 1, 0, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-                    "f": 3,
-                    "h": 17,
-                    "m": 3,
-                    "n": 20,
-                    "p": 0,
-                    "s": 1,
-                },
-                "message": commit.message,
-                "commitid": commit.commitid,
-                "ci_passed": True,
-                "timestamp": commit.timestamp.isoformat(),
-            }
-        }
-        assert commit.repository.cache_do_not_use == expected_cache
 
         mock_redis.lock.assert_called_with(
             f"upload_finisher_lock_{commit.repoid}_{commit.commitid}",
@@ -222,7 +166,6 @@ class TestUploadFinisherTask(object):
         assert expected_result == result
         dbsession.refresh(commit)
         assert commit.message == "dsidsahdsahdsa"
-        assert commit.repository.cache_do_not_use is None
 
         mock_redis.lock.assert_called_with(
             f"upload_finisher_lock_{commit.repoid}_{commit.commitid}",
