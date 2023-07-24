@@ -1,0 +1,27 @@
+FROM            codecov/baseworker
+
+# We need to be able to build shared inside the dev container to perform an "editable install"
+RUN             apk update \
+                apk add --upgrade --no-cache apk-tools && \
+                apk add --update --no-cache \
+                git \
+                openssh \
+                musl-dev \
+                rust \
+                cargo
+
+COPY            . /worker
+WORKDIR         /worker
+
+RUN             pip install watchdog[watchmedo]
+
+# unclear why/whether we need to run this both here + in docker-compose.yml's startup command
+RUN             pip install -e ./shared
+
+# notably, we need to run the above steps as root before switching to `codecov`
+USER            codecov
+
+ARG             RELEASE_VERSION
+
+ENV             RELEASE_VERSION $RELEASE_VERSION
+

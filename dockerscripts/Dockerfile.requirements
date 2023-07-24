@@ -24,11 +24,11 @@ RUN             apk update \
 RUN             mkdir /root/.ssh/
 RUN             ssh-keyscan -H github.com >> /root/.ssh/known_hosts
 
-COPY            requirements.txt /
-WORKDIR         /pip-packages/
+COPY            . /worker
+WORKDIR         /worker
 ENV             PYCURL_SSL_LIBRARY=openssl
 
-RUN             --mount=type=ssh pip wheel -r /requirements.txt
+RUN             --mount=type=ssh pip wheel -r requirements.txt -w /pip-packages/
 
 
 
