@@ -22,23 +22,13 @@ class TrialExpirationTask(BaseCodecovTask):
         log.info(
             "Expiring owner's trial and setting back to basic plan", extra=log_extra
         )
-        try:
-            owner.plan = BillingPlan.users_basic.value
-            owner.plan_activated_users = None
-            owner.plan_user_count = 1
-            owner.stripe_subscription_id = None
-            owner.trial_status = TrialStatus.EXPIRED.value
-            db_session.add(owner)
-            db_session.flush()
-        except Exception as e:
-            log.warning(
-                "Unable to expire owner trial",
-                extra=dict(
-                    comparison_id=ownerid,
-                ),
-                exc_info=True,
-            )
-            return {"successful": False}
+        owner.plan = BillingPlan.users_basic.value
+        owner.plan_activated_users = None
+        owner.plan_user_count = 1
+        owner.stripe_subscription_id = None
+        owner.trial_status = TrialStatus.EXPIRED.value
+        db_session.add(owner)
+        db_session.flush()
         return {"successful": True}
 
 
