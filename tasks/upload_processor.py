@@ -73,10 +73,23 @@ class UploadProcessorTask(BaseCodecovTask):
         **kwargs,
     ):
         repoid = int(repoid)
-        log.debug("In run_async for repoid %d and commit %s", repoid, commitid)
+        log.info(
+            "Received upload processor task",
+            extra=dict(repoid=repoid, commit=commitid),
+        )
         lock_name = f"upload_processing_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
         try:
+            log.info(
+                "Acquiring upload processing lock",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    report_code=report_code,
+                    lock_name=lock_name,
+                    parent_task=self.request.parent_id,
+                ),
+            )
             with redis_connection.lock(
                 lock_name,
                 timeout=max(60 * 5, self.hard_time_limit_task),
@@ -91,18 +104,22 @@ class UploadProcessorTask(BaseCodecovTask):
                     commit_yaml=commit_yaml,
                     arguments_list=actual_arguments_list,
                     report_code=report_code,
+                    parent_task=self.request.parent_id,
                     **kwargs,
                 )
         except LockError:
+            max_retry = 200 * 3**self.request.retries
+            retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
             log.warning(
                 "Unable to acquire lock for key %s. Retrying",
                 lock_name,
                 extra=dict(
-                    commit=commitid, repoid=repoid, number_retries=self.request.retries
+                    commit=commitid,
+                    repoid=repoid,
+                    countdown=retry_in,
+                    number_retries=self.request.retries,
                 ),
             )
-            max_retry = 200 * 3**self.request.retries
-            retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
             self.retry(max_retries=5, countdown=retry_in)
 
     async def process_async_within_lock(
@@ -118,7 +135,15 @@ class UploadProcessorTask(BaseCodecovTask):
         **kwargs,
     ):
         commit_yaml = UserYaml(commit_yaml)
-        log.debug("Obtained lock for repoid %d and commit %s", repoid, commitid)
+        log.info(
+            "Obtained upload processing lock, starting",
+            extra=dict(
+                repoid=repoid,
+                commit=commitid,
+                parent_task=self.request.parent_id,
+                report_code=report_code,
+            ),
+        )
         processings_so_far = previous_results.get("processings_so_far", [])
         commit = None
         n_processed = 0
@@ -158,6 +183,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         arguments=arguments,
                         commit_yaml=commit_yaml.to_dict(),
                         upload=upload_obj.id_,
+                        parent_task=self.request.parent_id,
                     ),
                 )
                 individual_info = {"arguments": arguments.copy()}
@@ -169,10 +195,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         f"{self.metrics_prefix}.process_individual_report"
                     ):
                         result = self.process_individual_report(
-                            report_service,
-                            commit,
-                            report,
-                            upload_obj,
+                            report_service, commit, report, upload_obj
                         )
                     individual_info.update(result)
                 except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
@@ -186,6 +209,7 @@ class UploadProcessorTask(BaseCodecovTask):
                             repoid=repoid,
                             commit=commitid,
                             arguments=arguments,
+                            parent_task=self.request.parent_id,
                         ),
                     )
                     upload_obj.state_id = UploadState.ERROR.db_id
@@ -198,7 +222,11 @@ class UploadProcessorTask(BaseCodecovTask):
             log.info(
                 "Finishing the processing of %d reports",
                 n_processed,
-                extra=dict(repoid=repoid, commit=commitid),
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    parent_task=self.request.parent_id,
+                ),
             )
             with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
                 results_dict = await self.save_report_results(
@@ -228,6 +256,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     commit=commitid,
                     commit_yaml=commit_yaml.to_dict(),
                     url=results_dict.get("url"),
+                    parent_task=self.request.parent_id,
                 ),
             )
             return {"processings_so_far": processings_so_far}
@@ -260,6 +289,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     upload_id=upload_obj.id,
                     processing_result_error_code=processing_result.error.code,
                     processing_result_error_params=processing_result.error.params,
+                    parent_task=self.request.parent_id,
                 ),
             )
             self.schedule_for_later_try()
@@ -300,6 +330,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         archive_url=archive_url,
                         commit=commit.commitid,
                         upload=upload.external_id,
+                        parent_task=self.request.parent_id,
                     ),
                 )
                 archive_service = report_service.get_archive_service(commit.repository)
@@ -308,7 +339,10 @@ class UploadProcessorTask(BaseCodecovTask):
         return False
 
     def _rewrite_raw_report_readable(
-        self, processing_result: dict, report_service: ReportService, commit: Commit
+        self,
+        processing_result: dict,
+        report_service: ReportService,
+        commit: Commit,
     ):
         raw_report = processing_result.get("raw_report")
         if raw_report:
@@ -320,6 +354,7 @@ class UploadProcessorTask(BaseCodecovTask):
                     archive_url=archive_url,
                     commit=commit.commitid,
                     upload=upload.external_id,
+                    parent_task=self.request.parent_id,
                 ),
             )
             archive_service = report_service.get_archive_service(commit.repository)
@@ -354,7 +389,11 @@ class UploadProcessorTask(BaseCodecovTask):
             # alternative of refusing an otherwise "good" report because of the lack of diff
             log.warning(
                 "Could not apply diff to report because there was an error fetching diff from provider",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    parent_task=self.request.parent_id,
+                ),
                 exc_info=True,
             )
         except RepositoryWithoutValidBotError:
@@ -369,7 +408,11 @@ class UploadProcessorTask(BaseCodecovTask):
 
             log.warning(
                 "Could not apply diff to report because there is no valid bot found for that repo",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    parent_task=self.request.parent_id,
+                ),
                 exc_info=True,
             )
         if pr is not None:

@@ -428,7 +428,7 @@ class TestReportService(BaseTestCase):
 
         details = ReportDetailsFactory(
             report=report,
-            files_array=[
+            _files_array=[
                 {
                     "filename": "awesome/__init__.py",
                     "file_index": 2,
@@ -547,7 +547,7 @@ class TestReportService(BaseTestCase):
 
         details = ReportDetailsFactory(
             report=report,
-            files_array=[
+            _files_array=[
                 {
                     "filename": "awesome/__init__.py",
                     "file_index": 2,
@@ -4030,6 +4030,7 @@ class TestReportService(BaseTestCase):
             .count()
             == 2
         )
+        print(r.details)
         assert r.details.files_array == [
             {
                 "filename": "file_00.py",
@@ -4272,8 +4273,8 @@ class TestReportService(BaseTestCase):
                 "diff_totals": None,
             },
         ]
-        # The chunks and the ReportDetails.files_array
-        assert len(mock_storage.storage["archive"]) == 2
+        storage_keys = mock_storage.storage["archive"].keys()
+        assert any(map(lambda key: key.endswith("chunks.txt"), storage_keys))
 
     @pytest.mark.asyncio
     async def test_initialize_and_save_report_existing_report(
