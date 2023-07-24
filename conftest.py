@@ -15,8 +15,10 @@ from sqlalchemy_utils import create_database, database_exists
 from celery_config import initialize_logging
 from database.base import Base
 from database.engine import json_dumps
+from helpers.environment import _get_cached_current_env
 
 
+# @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config):
     """
     Allows plugins and conftest files to perform initial configuration.
@@ -24,6 +26,7 @@ def pytest_configure(config):
     file after command line options have been parsed.
     """
     os.environ["CURRENT_ENVIRONMENT"] = "local"
+    _get_cached_current_env.cache_clear()
     initialize_logging()
 
 

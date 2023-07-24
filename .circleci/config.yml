@@ -84,7 +84,7 @@ jobs:
           name: Create report
           command: |
             codecovcli create-report 
-  staticanalysis:
+  ATS:
     executor: codecov-worker
     steps:
       - checkout
@@ -97,25 +97,15 @@ jobs:
           name: Run Static Analysis
           command: |
             codecovcli static-analysis --token=$STATIC_TOKEN
-  # TODO(rfox) this is disabled for now because it was blocking git history rewriting -- we need to re-enable it probably
-  # iterativetesting:
-  #   executor: codecov-worker
-  #   steps:
-  #     - checkout
-  #     - run:
-  #         name: Install CLI
-  #         command: |
-  #           apk add git build-base
-  #           pip install codecov-cli
-  #     - run:
-  #         name: Run Predictor Analysis
-  #         command: |
-  #           echo $(git merge-base HEAD^ main)
-  #           codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ main)
-  #     - run:
-  #         name: Upload onlysomelabels
-  #         command: |
-  #           codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
+      - run:
+          name: Run Predictor Analysis
+          command: |
+            echo $(git merge-base HEAD^ main)
+            codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ main)
+      - run:
+          name: Upload onlysomelabels
+          command: |
+            codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
   mutations:
     executor: codecov-worker
     steps:
@@ -308,20 +298,13 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - staticanalysis:
+      - ATS:
           context: "circleci google deploy context"
           requires:
             - codecovstartup
           filters:
             tags:
               only: /.*/
-      # - iterativetesting:
-      #     context: "circleci google deploy context"
-      #     requires:
-      #       - staticanalysis
-      #     filters:
-      #       tags:
-      #         only: /.*/
       - codecovstartup:
           context: "circleci google deploy context"
           requires:
