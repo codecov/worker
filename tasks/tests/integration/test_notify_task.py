@@ -1263,7 +1263,7 @@ class TestNotifyTask(object):
             branch="test-branch-1",
             commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
             repository=repository,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(commit)
         dbsession.add(master_commit)

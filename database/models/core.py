@@ -10,6 +10,8 @@ from sqlalchemy.schema import FetchedValue
 import database.models
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.enums import Decoration, Notification, NotificationState
+from database.utils import ArchiveField
+from helpers.config import should_write_data_to_storage_config_check
 
 
 class Owner(CodecovBaseModel):
@@ -140,7 +142,6 @@ class Commit(CodecovBaseModel):
     parent_commit_id = Column("parent", types.Text)
     pullid = Column(types.Integer)
     repoid = Column(types.Integer, ForeignKey("repos.repoid"))
-    report_json = Column("report", postgresql.JSON)
     state = Column(types.String(256))
     timestamp = Column(types.DateTime, nullable=False)
     updatestamp = Column(types.DateTime, nullable=True)
@@ -180,6 +181,36 @@ class Commit(CodecovBaseModel):
             .filter_by(commit_id=self.id_, code=None)
             .first()
         )
+
+    @property
+    def id(self):
+        return self.id_
+
+    @property
+    def external_id(self):
+        return self.commitid
+
+    def get_repository(self):
+        return self.repository
+
+    def get_commitid(self):
+        return self.commitid
+
+    def should_write_to_storage(self) -> bool:
+        if self.repository is None or self.repository.owner is None:
+            return False
+        is_codecov_repo = self.repository.owner.username == "codecov"
+        return should_write_data_to_storage_config_check(
+            "commit_report", is_codecov_repo, self.repository.repoid
+        )
+
+    # Use custom JSON to properly serialize custom data classes on reports
+    _report_json = Column("report", postgresql.JSON)
+    _report_json_storage_path = Column("report_storage_path", types.Text, nullable=True)
+    report_json = ArchiveField(
+        should_write_to_storage_fn=should_write_to_storage,
+        default_value={},
+    )
 
 
 class Branch(CodecovBaseModel):
