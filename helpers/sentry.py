@@ -39,5 +39,5 @@ def initialize_sentry() -> None:
             RedisIntegration(),
             HttpxIntegration(),
         ],
-        release=version_str,
+        release=os.getenv("SENTRY_RELEASE", version_str),
     )
