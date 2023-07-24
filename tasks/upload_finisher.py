@@ -55,7 +55,10 @@ class UploadFinisherTask(BaseCodecovTask):
         log.info(
             "Received upload_finisher task",
             extra=dict(
-                repoid=repoid, commit=commitid, processing_results=processing_results
+                repoid=repoid,
+                commit=commitid,
+                processing_results=processing_results,
+                parent_task=self.request.parent_id,
             ),
         )
         repoid = int(repoid)
@@ -72,7 +75,11 @@ class UploadFinisherTask(BaseCodecovTask):
             commit.notified = False
             db_session.commit()
             result = await self.finish_reports_processing(
-                db_session, commit, commit_yaml, processing_results, report_code
+                db_session,
+                commit,
+                commit_yaml,
+                processing_results,
+                report_code,
             )
             save_commit_measurements(commit)
             self.invalidate_caches(redis_connection, commit)
@@ -104,13 +111,19 @@ class UploadFinisherTask(BaseCodecovTask):
                         repoid=repoid,
                         commit=commitid,
                         value=commit_dict,
+                        parent_task=self.request.parent_id,
                     ),
                 )
                 commit.repository.cache_do_not_use = new_cache
         return result
 
     async def finish_reports_processing(
-        self, db_session, commit, commit_yaml: UserYaml, processing_results, report_code
+        self,
+        db_session,
+        commit,
+        commit_yaml: UserYaml,
+        processing_results,
+        report_code,
     ):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
@@ -138,6 +151,7 @@ class UploadFinisherTask(BaseCodecovTask):
                         commit_yaml=commit_yaml.to_dict(),
                         processing_results=processing_results,
                         notify_task_id=task.id,
+                        parent_task=self.request.parent_id,
                     ),
                 )
                 if commit.pullid:
@@ -178,6 +192,7 @@ class UploadFinisherTask(BaseCodecovTask):
                         commit=commitid,
                         commit_yaml=commit_yaml.to_dict(),
                         processing_results=processing_results,
+                        parent_task=self.request.parent_id,
                     ),
                 )
         else:
@@ -211,6 +226,7 @@ class UploadFinisherTask(BaseCodecovTask):
                     commit_yaml=commit_yaml,
                     processing_results=processing_results,
                     report_code=report_code,
+                    parent_task=self.request.parent_id,
                 ),
             )
             return False
@@ -235,6 +251,7 @@ class UploadFinisherTask(BaseCodecovTask):
                         commit=commit.commitid,
                         commit_yaml=commit_yaml,
                         processing_results=processing_results,
+                        parent_task=self.request.parent_id,
                     ),
                 )
                 return False
