@@ -8,6 +8,7 @@ from celery.exceptions import Retry
 from redis.exceptions import LockError
 from shared.reports.enums import UploadState, UploadType
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
+from shared.torngit.gitlab import Gitlab
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
@@ -1168,6 +1169,49 @@ class TestUploadTaskUnit(object):
             "None/webhooks/github",
             ["pull_request", "delete", "push", "public", "status", "repository"],
             "ab164bf3f7d947f2a0681b215404873e",
+            token=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_possibly_setup_webhooks_gitlab(
+        self, dbsession, mocker, mock_configuration
+    ):
+        mock_configuration.set_params({"gitlab": {"bot": {"key": "somekey"}}})
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
+
+        gitlab_provider = mocker.MagicMock(
+            Gitlab, get_commit_diff=mock.AsyncMock(return_value={})
+        )
+        mock_repo_provider = mocker.patch(
+            "services.repository._get_repo_provider_service_instance"
+        )
+        mock_repo_provider.return_value = gitlab_provider
+        gitlab_provider.data = mocker.MagicMock()
+        gitlab_provider.service = "gitlab"
+
+        task = UploadTask()
+        res = await task.possibly_setup_webhooks(commit, gitlab_provider)
+        assert res is True
+
+        assert repository.webhook_secret is not None
+        gitlab_provider.post_webhook.assert_called_with(
+            "Codecov Webhook. None",
+            "None/webhooks/gitlab",
+            {
+                "push_events": True,
+                "issues_events": False,
+                "merge_requests_events": True,
+                "tag_push_events": False,
+                "note_events": False,
+                "job_events": False,
+                "build_events": True,
+                "pipeline_events": True,
+                "wiki_events": False,
+            },
+            commit.repository.webhook_secret,
             token=None,
         )
 

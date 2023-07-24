@@ -1,5 +1,6 @@
 import logging
 import re
+import uuid
 from datetime import datetime, timedelta
 from json import loads
 from typing import Any, Mapping
@@ -461,7 +462,15 @@ class UploadTask(BaseCodecovTask):
                 extra=dict(repoid=repository.repoid, commit=commit.commitid),
             )
             try:
-                hook_result = await create_webhook_on_provider(repository_service)
+                if repository_service.service in ["gitlab", "gitlab_enterprise"]:
+                    # we use per-repo webhook secrets in this case
+                    webhook_secret = repository.webhook_secret or uuid.uuid4()
+                else:
+                    # service-level config value will be used instead in this case
+                    webhook_secret = None
+                hook_result = await create_webhook_on_provider(
+                    repository_service, webhook_secret=webhook_secret
+                )
                 hookid = hook_result["id"]
                 log.info(
                     "Registered hook",
@@ -470,6 +479,8 @@ class UploadTask(BaseCodecovTask):
                     ),
                 )
                 repository.hookid = hookid
+                if webhook_secret is not None:
+                    repository.webhook_secret = webhook_secret
                 repo_data["repo"]["hookid"] = hookid
                 return True
             except TorngitClientError:

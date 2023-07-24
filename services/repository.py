@@ -272,7 +272,9 @@ def get_or_create_author(
         return author
 
 
-async def create_webhook_on_provider(repository_service, token=None):
+async def create_webhook_on_provider(
+    repository_service, token=None, webhook_secret: Optional[str] = None
+):
     """
     Posts to the provider a webhook so we can receive updates from this
     repo
@@ -330,15 +332,18 @@ async def create_webhook_on_provider(repository_service, token=None):
             "wiki_events": False,
         },
     }
+
+    if webhook_secret is None:
+        webhook_secret = get_config(
+            repository_service.service,
+            "webhook_secret",
+            default="ab164bf3f7d947f2a0681b215404873e",
+        )
     return await repository_service.post_webhook(
         f"Codecov Webhook. {webhook_url}",
         f"{webhook_url}/webhooks/{repository_service.service}",
         WEBHOOK_EVENTS[repository_service.service],
-        get_config(
-            repository_service.service,
-            "webhook_secret",
-            default="ab164bf3f7d947f2a0681b215404873e",
-        ),
+        webhook_secret,
         token=token,
     )
 
