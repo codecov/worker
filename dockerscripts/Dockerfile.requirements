@@ -3,6 +3,8 @@
 # BUILD STAGE - Download dependencies from GitHub that require SSH access
 FROM            python:3.10.8-alpine3.16 as build
 
+ARG             REQS=requirements.txt
+
 RUN             apk update \
                 apk add --upgrade --no-cache apk-tools && \
                 apk add --update --no-cache \
@@ -31,7 +33,7 @@ RUN             --mount=type=ssh git submodule update --init --recursive
 
 ENV             PYCURL_SSL_LIBRARY=openssl
 
-RUN             --mount=type=ssh pip wheel -r requirements.txt -w /pip-packages/
+RUN             --mount=type=ssh pip wheel -r ${REQS} -w /pip-packages/
 
 
 

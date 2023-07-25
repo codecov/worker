@@ -14,6 +14,9 @@ build.local:
 build.base:
 	DOCKER_BUILDKIT=1 docker build -f dockerscripts/Dockerfile.requirements . -t codecov/baseworker:latest --ssh default
 
+build.base_dev:
+	DOCKER_BUILDKIT=1 docker build --build-arg="REQS=requirements.dev" -f dockerscripts/Dockerfile.requirements . -t codecov/baseworker:latest --ssh default
+
 build.dev:
 	DOCKER_BUILDKIT=1 docker build -f dockerscripts/Dockerfile.local . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}" --ssh default
 
@@ -21,8 +24,8 @@ build:
 	$(MAKE) build.base
 	$(MAKE) build.local
 
-build-dev:
-	$(MAKE) build.base
+dev:
+	$(MAKE) build.base_dev
 	$(MAKE) build.dev
 
 build.enterprise_runtime:
