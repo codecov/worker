@@ -29,6 +29,7 @@ from services.notification.notifiers.mixins.message.sections import (
     FileSectionWriter,
     ImpactedEntrypointsSectionWriter,
     NewFooterSectionWriter,
+    NewHeaderSectionWriter,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 from services.yaml.reader import get_components_from_yaml
@@ -191,10 +192,16 @@ def mock_repo_provider(mock_repo_provider):
             },
         ],
     }
+
+    branches_result = [
+        ("main", "aaaaaaa"),
+    ]
+
     mock_repo_provider.get_compare.return_value = compare_result
     mock_repo_provider.post_comment.return_value = {}
     mock_repo_provider.edit_comment.return_value = {}
     mock_repo_provider.delete_comment.return_value = {}
+    mock_repo_provider.get_branches.return_value = branches_result
     return mock_repo_provider
 
 
@@ -559,6 +566,7 @@ class TestCommentNotifier(object):
         mocker,
     ):
         comparison = sample_comparison
+        mocker.patch.object(comparison, "get_behind_by", return_value=0)
         mocker.patch.object(
             comparison,
             "get_diff",
@@ -3656,6 +3664,66 @@ class TestImpactedEndpointWriter(object):
             )
         )
         assert lines == []
+
+
+class TestNewHeaderSectionWriter(object):
+    @pytest.mark.asyncio
+    async def test_new_header_section_writer(self, mocker, sample_comparison):
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        print(res)
+        assert res == [
+            "Patch and project coverage have no change.",
+            f"> Comparison is base [(`{sample_comparison.base.commit.commitid[:7]}`)](urlurl?el=desc) 0% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc) 0%.",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_new_header_section_writer_with_behind_by(
+        self, mocker, sample_comparison
+    ):
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+                behind_by=3,
+            )
+        )
+        print(res)
+        assert res == [
+            "Patch and project coverage have no change.",
+            f"> Comparison is base [(`{sample_comparison.base.commit.commitid[:7]}`)](urlurl?el=desc) 0% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc) 0%.",
+            "> Report is 3 commits behind head on master.",
+        ]
 
 
 class TestAnnouncementsSectionWriter(object):

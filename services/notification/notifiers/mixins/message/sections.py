@@ -76,7 +76,7 @@ class NullSectionWriter(BaseSectionWriter):
 
 
 class NewFooterSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         repo_service = comparison.repository_service.service
         yield ("")
         yield (
@@ -94,7 +94,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
 
 
 class NewHeaderSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         yaml = self.current_yaml
         base_report = comparison.base.report
         head_report = comparison.head.report
@@ -148,6 +148,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     head_cov=round_number(yaml, Decimal(head_report.totals.coverage)),
                 )
             )
+
         else:
             yield (
                 "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
@@ -174,6 +175,11 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 )
             else:
                 yield "> Patch has no changes to coverable lines."
+
+        if behind_by:
+            yield (
+                f"> Report is {behind_by} commits behind head on {pull_dict['base']['branch']}."
+            )
 
         if (
             comparison.enriched_pull.provider_pull is not None
@@ -226,7 +232,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
 
 
 class HeaderSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         yaml = self.current_yaml
         base_report = comparison.base.report
         head_report = comparison.head.report
@@ -261,6 +267,7 @@ class HeaderSectionWriter(BaseSectionWriter):
                     links=links,
                 )
             )
+
         else:
             yield (
                 "> :exclamation: No coverage uploaded for pull request {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
@@ -270,6 +277,11 @@ class HeaderSectionWriter(BaseSectionWriter):
                         :7
                     ],
                 )
+            )
+
+        if isinstance(behind_by, int) and behind_by > 0:
+            yield (
+                f"> Report is {behind_by} commits behind head on {pull_dict['base']['branch']}."
             )
 
         diff_totals = head_report.apply_diff(diff)
@@ -347,7 +359,7 @@ class AnnouncementSectionWriter(BaseSectionWriter):
 
 
 class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         overlay = comparison.get_overlay(OverlayType.line_execution_count)
         impacted_endpoints = await overlay.find_impacted_endpoints()
         if impacted_endpoints:
@@ -367,7 +379,7 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
 
 
 class FooterSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         pull_dict = comparison.enriched_pull.provider_pull
         yield ("------")
         yield ("")
@@ -393,7 +405,7 @@ class FooterSectionWriter(BaseSectionWriter):
 
 
 class ReachSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         pull = comparison.enriched_pull.database_pull
         yield (
             "[![Impacted file tree graph]({})]({}?src=pr&el=tree)".format(
@@ -411,7 +423,7 @@ class ReachSectionWriter(BaseSectionWriter):
 
 
 class DiffSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         base_report = comparison.base.report
         head_report = comparison.head.report
         if base_report is None:
@@ -432,7 +444,7 @@ class DiffSectionWriter(BaseSectionWriter):
 
 
 class FileSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # create list of files changed in diff
         base_report = comparison.base.report
         head_report = comparison.head.report
@@ -535,7 +547,7 @@ class FileSectionWriter(BaseSectionWriter):
 
 
 class FlagSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # flags
         base_report = comparison.base.report
         head_report = comparison.head.report
@@ -683,7 +695,9 @@ class ComponentsSectionWriter(BaseSectionWriter):
             )
         return component_data
 
-    async def do_write_section(self, comparison: ComparisonProxy, diff, changes, links):
+    async def do_write_section(
+        self, comparison: ComparisonProxy, diff, changes, links, behind_by=None
+    ):
         all_components = get_components_from_yaml(self.current_yaml)
         if all_components == []:
             return  # fast return if there's noting to process
