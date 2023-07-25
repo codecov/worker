@@ -26,6 +26,9 @@ RUN             ssh-keyscan -H github.com >> /root/.ssh/known_hosts
 
 COPY            . /worker
 WORKDIR         /worker
+
+RUN             git submodule update --init --recursive
+
 ENV             PYCURL_SSL_LIBRARY=openssl
 
 RUN             --mount=type=ssh pip wheel -r requirements.txt -w /pip-packages/
