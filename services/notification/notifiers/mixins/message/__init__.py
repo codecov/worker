@@ -39,6 +39,7 @@ class MessageMixin(object):
         """
         changes = await comparison.get_changes()
         diff = await comparison.get_diff()
+        behind_by = await comparison.get_behind_by()
         base_report = comparison.base.report
         head_report = comparison.head.report
         pull = comparison.pull
@@ -80,8 +81,9 @@ class MessageMixin(object):
             settings,
             current_yaml,
         )
+
         await self.write_section_to_msg(
-            comparison, changes, diff, links, write, section_writer
+            comparison, changes, diff, links, write, section_writer, behind_by
         )
 
         is_compact_message = should_message_be_compact(comparison, settings)
@@ -121,7 +123,12 @@ class MessageMixin(object):
                     )
 
                 await self.write_section_to_msg(
-                    comparison, changes, diff, links, write, section_writer
+                    comparison,
+                    changes,
+                    diff,
+                    links,
+                    write,
+                    section_writer,
                 )
 
             if is_compact_message:
@@ -141,7 +148,12 @@ class MessageMixin(object):
                         current_yaml,
                     )
                     await self.write_section_to_msg(
-                        comparison, changes, diff, links, write, section_writer
+                        comparison,
+                        changes,
+                        diff,
+                        links,
+                        write,
+                        section_writer,
                     )
 
         return [m for m in message if m is not None]
@@ -161,15 +173,16 @@ class MessageMixin(object):
             write("")
 
     async def write_section_to_msg(
-        self, comparison, changes, diff, links, write, section_writer
+        self, comparison, changes, diff, links, write, section_writer, behind_by=None
     ):
         with metrics.timer(
             f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
         ):
             for line in await section_writer.write_section(
-                comparison, diff, changes, links
+                comparison, diff, changes, links, behind_by=behind_by
             ):
                 write(line)
+
         write("")
 
     def get_middle_layout_section_names(self, settings):
