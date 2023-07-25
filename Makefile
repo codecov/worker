@@ -7,7 +7,6 @@ name ?= worker
 branch = $(shell git branch | grep \* | cut -f2 -d' ')
 gh_access_token := $(shell echo ${GH_ACCESS_TOKEN})
 epoch := $(shell date +"%s")
-dockerhub_image := codecov/self-hosted-worker
 
 build.local:
 	docker build -f dockerscripts/Dockerfile . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}" --ssh default
