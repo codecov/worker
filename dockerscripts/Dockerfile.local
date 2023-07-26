@@ -15,11 +15,12 @@ WORKDIR         /worker
 
 RUN             pip install watchdog[watchmedo]
 
-# unclear why/whether we need to run this both here + in docker-compose.yml's startup command
-RUN             pip install -e ./shared
+WORKDIR         /worker/shared
+RUN             pip install setuptools-rust pip-tools
+RUN             pip install -r requirements.txt
 
 # notably, we need to run the above steps as root before switching to `codecov`
-USER            codecov
+USER            root
 
 ARG             RELEASE_VERSION
 
