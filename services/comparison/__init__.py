@@ -180,7 +180,7 @@ class ComparisonProxy(object):
                     self._branch = branch
 
                 distance = await self.repository_service.get_distance_in_commits(
-                    branch[0][1],
+                    self._branch[0][1],
                     self.comparison.base.commit.commitid,
                     with_commits=False,
                 )
