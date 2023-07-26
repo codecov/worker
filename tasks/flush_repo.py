@@ -136,7 +136,6 @@ class FlushRepoTask(BaseCodecovTask):
         )
         deleted_pulls = db_session.query(Pull).filter_by(repoid=repo.repoid).delete()
         repo.yaml = None
-        # Be aware of SQL NULL vs JSON 'null'. This is the first one
         return {
             "deleted_commits_count": deleted_commits,
             "delete_branches_count": delete_branches,
