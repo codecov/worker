@@ -3,6 +3,10 @@
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/codecov/worker/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/codecov/worker/tree/main)
 [![worker](https://codecov.io/github/codecov/worker/coverage.svg?branch=master&token=BWTOrjBaE5)](https://codecov.io/github/codecov/worker)
 
+> We believe that everyone should have access to quality software (like Sentry), that’s why we have always offered Codecov for free to open source maintainers.
+>
+> By open sourcing Codecov, we’re not only joining the community that’s supported us from the start — but also want to make sure that every developer can contribute to and build on the Codecov experience.
+
 
 Code for Background Workers of Codecov. This is built on top of the `celery` async framework
 

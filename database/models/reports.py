@@ -1,10 +1,7 @@
-import json
 import logging
-from functools import cached_property, lru_cache
+from functools import cached_property
 
-from shared.config import get_config
 from shared.reports.types import ReportTotals, SessionTotalsArray
-from shared.storage.exceptions import FileNotInStorageError
 from sqlalchemy import Column, ForeignKey, Table, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import backref, relationship
@@ -12,7 +9,7 @@ from sqlalchemy.orm import backref, relationship
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.models.core import Commit, CompareCommit, Repository
 from database.utils import ArchiveField
-from services.archive import ArchiveService
+from helpers.config import should_write_data_to_storage_config_check
 
 log = logging.getLogger(__name__)
 
@@ -153,37 +150,21 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
             for v in json_files_array
         ]
 
-    def _should_write_to_storage(self):
+    def _should_write_to_storage(self) -> bool:
         # Safety check to see if the path to repository is valid
         # Because we had issues around this before
         if (
             self.report is None
             or self.report.commit is None
             or self.report.commit.repository is None
-            or self.report.commit.repository.slug is None
+            or self.report.commit.repository.owner is None
         ):
             return False
-        report_builder_repo_ids = get_config(
-            "setup", "save_report_data_in_storage", "repo_ids", default=[]
-        )
-        master_write_switch = get_config(
-            "setup",
-            "save_report_data_in_storage",
+        is_codecov_repo = self.report.commit.repository.owner.username == "codecov"
+        return should_write_data_to_storage_config_check(
             "report_details_files_array",
-            default=False,
-        )
-        only_codecov = get_config(
-            "setup",
-            "save_report_data_in_storage",
-            "only_codecov",
-            default=True,
-        )
-        is_codecov_repo = self.report.commit.repository.slug.startswith("codecov/")
-        is_repo_allowed = (
-            self.report.commit.repository.repoid in report_builder_repo_ids
-        )
-        return master_write_switch and (
-            not only_codecov or is_codecov_repo or is_repo_allowed
+            is_codecov_repo,
+            self.report.commit.repository.repoid,
         )
 
     files_array = ArchiveField(

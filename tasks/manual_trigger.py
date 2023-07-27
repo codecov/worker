@@ -5,6 +5,7 @@ from celery.exceptions import MaxRetriesExceededError
 from redis.exceptions import LockError
 from shared.celery_config import (
     compute_comparison_task_name,
+    manual_upload_completion_trigger_task_name,
     notify_task_name,
     pulls_task_name,
 )
@@ -21,7 +22,7 @@ log = logging.getLogger(__name__)
 
 class ManualTriggerTask(BaseCodecovTask):
 
-    name = f"app.tasks.upload.UploadCompletion"
+    name = manual_upload_completion_trigger_task_name
 
     async def run_async(
         self,
@@ -34,11 +35,11 @@ class ManualTriggerTask(BaseCodecovTask):
         **kwargs,
     ):
         log.info(
-            "Received upload completion task",
+            "Received manual trigger task",
             extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
         )
         repoid = int(repoid)
-        lock_name = f"upload_completion_lock_{repoid}_{commitid}"
+        lock_name = f"manual_trigger_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
         try:
             with redis_connection.lock(

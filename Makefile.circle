@@ -1,12 +1,12 @@
 -include .envrc
 
-#GCLOUD_SERVICE_KEY := $(shell cat ~/.gcloud/codecov-enterprise-sandbox-03eb0a0ecaf2.json | base64 --wrap=0)
 GCR_REPO := ${CODECOV_WORKER_GCR_REPO}
 ENTERPRISE_GCR_REPO := ${CODECOV_WORKER_ENTERPRISE_GCR_REPO}
 REQUIREMENTS_TAG := requirements-v04-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)-$(shell sha1sum dockerscripts/Dockerfile.requirements | cut -d ' ' -f 1)
 SEMANTIC_VERSION := `cat VERSION`
 IMAGE_VERSION := ${SEMANTIC_VERSION}-$(shell git rev-parse --short=7 HEAD)
 VERSION := release-$(shell git rev-parse --short=7 HEAD)
+dockerhub_image := codecov/self-hosted-worker
 name ?= worker
 
 # CIRCLECI
@@ -108,7 +108,6 @@ dockerhub-deploy-main:
 
 # build and tag with staging tag
 # - when the docker image is uploaded to GCR with the "staging" tag, spinnaker will automatically detect the new image and deploy to the staging k8s cluster
-# - spinnaker pipeline: https://spinnaker.codecov.dev/?to=https%3A%2F%2Fspinnaker.codecov.dev%2F%23%2Fsearch#/applications/codecov-staging/executions?pipeline=worker
 staging:
 	DOCKER_BUILDKIT=1 docker build \
 		-f  dockerscripts/Dockerfile.circle . \
@@ -119,7 +118,6 @@ staging:
 
 # build and tag with production tag
 # - when the docker image is uploaded to GCR with the "production" tag, spinnaker will automatically detect the new image and deploy to the production k8s cluster
-# - spinnaker pipeline: https://spinnaker.codecov.dev/?to=https%3A%2F%2Fspinnaker.codecov.dev%2F%23%2Fsearch#/applications/codecov-production/executions?pipeline=worker
 production:
 	DOCKER_BUILDKIT=1 docker build \
 		-f  dockerscripts/Dockerfile.circle . \
@@ -152,30 +150,34 @@ release:
 
 # CIRCLECI
 # job: enterprise
-# deploys tagged version of the private enterprise-api
+# deploys tagged version
 enterprise:
 	docker pull ${ENTERPRISE_GCR_REPO}:latest
 	docker pull ${ENTERPRISE_GCR_REPO}:latest_no_dependencies
 	docker tag ${ENTERPRISE_GCR_REPO}:latest ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}
-	docker tag ${ENTERPRISE_GCR_REPO}:latest codecov/worker-private:${IMAGE_VERSION}
+	docker tag ${ENTERPRISE_GCR_REPO}:latest ${dockerhub_image}:rolling
 	docker tag ${ENTERPRISE_GCR_REPO}:latest_no_dependencies ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies
-	docker tag ${ENTERPRISE_GCR_REPO}:latest_no_dependencies codecov/worker-private:${IMAGE_VERSION}_no_dependencies
+	docker tag ${ENTERPRISE_GCR_REPO}:latest_no_dependencies ${dockerhub_image}:rolling_no_dependencies
 	docker push ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}
-	docker push codecov/worker-private:${IMAGE_VERSION}
+	docker push ${dockerhub_image}:rolling
 	docker push ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies
-	docker push codecov/worker-private:${IMAGE_VERSION}_no_dependencies
+	docker push ${dockerhub_image}:rolling_no_dependencies
 
 # CIRCLECI
 # job: enterprise-release
-# deploys tagged version of the public enterprise-api
+# deploys tagged version
 release-enterprise:
 	docker pull ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}
 	docker pull ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies
-	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION} codecov/enterprise-worker:${SEMANTIC_VERSION}
-	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION} codecov/enterprise-worker:latest-stable
-	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies codecov/enterprise-worker:${SEMANTIC_VERSION}_no_dependencies
-	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies codecov/enterprise-worker:latest-stable_no_dependencies
-	docker push codecov/enterprise-worker:${SEMANTIC_VERSION}
-	docker push codecov/enterprise-worker:latest-stable
-	docker push codecov/enterprise-worker:${SEMANTIC_VERSION}_no_dependencies
-	docker push codecov/enterprise-worker:latest-stable_no_dependencies
+	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION} ${dockerhub_image}:${SEMANTIC_VERSION}
+	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION} ${dockerhub_image}:latest-stable
+	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION} ${dockerhub_image}:latest-calver
+	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies ${dockerhub_image}:${SEMANTIC_VERSION}_no_dependencies
+	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies ${dockerhub_image}:latest-stable_no_dependencies
+	docker tag ${ENTERPRISE_GCR_REPO}:${IMAGE_VERSION}_no_dependencies ${dockerhub_image}:latest-calver_no_dependencies
+	docker push ${dockerhub_image}:${SEMANTIC_VERSION}
+	docker push ${dockerhub_image}:latest-stable
+	docker push ${dockerhub_image}:latest-calver
+	docker push ${dockerhub_image}:${SEMANTIC_VERSION}_no_dependencies
+	docker push ${dockerhub_image}:latest-stable_no_dependencies
+	docker push ${dockerhub_image}:latest-calver_no_dependencies
