@@ -1,6 +1,7 @@
 import json
 
 from shared.storage.exceptions import FileNotInStorageError
+from shared.utils.ReportEncoder import ReportEncoder
 
 from database.models.core import Commit
 from database.tests.factories.core import CommitFactory
@@ -138,6 +139,7 @@ class TestArchiveField(object):
             field="archive_field",
             external_id=test_class.external_id,
             data=some_json,
+            encoder=ReportEncoder,
         )
         mock_archive_service.return_value.delete_file.assert_called_with(
             "path/to/old/data"

@@ -69,7 +69,7 @@ class TestPullSyncTask(object):
             repository=repository,
             commitid="6dc3afd80a8deea5ea949d284d996d58811cd01d",
             branch="new_branch",
-            report_json=report_json,
+            _report_json=report_json,
         )
         archive_hash = ArchiveService.get_archive_hash(repository)
         with open(here.parent.parent / "samples" / "sample_chunks_1.txt") as f:
