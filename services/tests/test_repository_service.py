@@ -593,7 +593,7 @@ class TestRepositoryServiceTestCase(object):
             author=None,
             pullid=1,
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=possible_parent_commit.repository,
         )
         dbsession.add(possible_parent_commit)
@@ -623,7 +623,7 @@ class TestRepositoryServiceTestCase(object):
         assert commit.message == "This message is brought to you by"
         assert commit.pullid == 1
         assert commit.totals is None
-        assert commit.report_json is None
+        assert commit.report_json == {}
         assert commit.branch == "newbranchyeah"
         assert commit.merged is False
         assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
@@ -646,7 +646,7 @@ class TestRepositoryServiceTestCase(object):
             pullid=None,
             totals=None,
             branch="papapa",
-            report_json=None,
+            _report_json=None,
             repository=repository,
         )
         dbsession.add(possible_parent_commit)
@@ -677,7 +677,7 @@ class TestRepositoryServiceTestCase(object):
         assert commit.message == "This message is brought to you by"
         assert commit.pullid is None
         assert commit.totals is None
-        assert commit.report_json is None
+        assert commit.report_json == {}
         assert commit.branch == "superbranch"
         assert commit.merged is True
         assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
@@ -700,7 +700,7 @@ class TestRepositoryServiceTestCase(object):
             pullid=None,
             branch="papapa",
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=repository,
         )
         dbsession.add(possible_parent_commit)
@@ -727,7 +727,7 @@ class TestRepositoryServiceTestCase(object):
         assert commit.message == "This message is brought to you by"
         assert commit.pullid is None
         assert commit.totals is None
-        assert commit.report_json is None
+        assert commit.report_json == {}
         assert commit.branch == "papapa"
         assert commit.merged is False
         assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
@@ -746,7 +746,7 @@ class TestRepositoryServiceTestCase(object):
             author=None,
             pullid=1,
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=possible_parent_commit.repository,
         )
         dbsession.add(possible_parent_commit)
@@ -775,7 +775,7 @@ class TestRepositoryServiceTestCase(object):
         assert commit.message == "This message is brought to you by"
         assert commit.pullid == 1
         assert commit.totals is None
-        assert commit.report_json is None
+        assert commit.report_json == {}
         assert commit.branch == "newbranchyeah"
         assert commit.parent_commit_id == possible_parent_commit.commitid
         assert commit.state == "complete"
@@ -797,7 +797,7 @@ class TestRepositoryServiceTestCase(object):
             author=None,
             pullid=1,
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=possible_parent_commit.repository,
         )
         dbsession.add(possible_parent_commit)
@@ -832,7 +832,7 @@ class TestRepositoryServiceTestCase(object):
         )
         assert commit.pullid == 1
         assert commit.totals is None
-        assert commit.report_json is None
+        assert commit.report_json == {}
         assert commit.branch == "thebasebranch"
         assert commit.parent_commit_id == possible_parent_commit.commitid
         assert commit.state == "complete"
@@ -891,7 +891,7 @@ class TestPullRequestFetcher(object):
     ):
         now = datetime.utcnow()
         commit = CommitFactory.create(
-            message="", pullid=1, totals=None, report_json=None
+            message="", pullid=1, totals=None, _report_json=None
         )
         base_commit = CommitFactory.create(repository=commit.repository)
         dbsession.add(commit)
@@ -954,7 +954,7 @@ class TestPullRequestFetcher(object):
             message="",
             pullid=pull.pullid,
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=repository,
         )
         base_commit = CommitFactory.create(repository=repository, branch="master")
@@ -1035,7 +1035,7 @@ class TestPullRequestFetcher(object):
             message="",
             pullid=pull.pullid,
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=repository,
         )
         base_commit = CommitFactory.create(repository=repository, branch="master")
@@ -1116,7 +1116,7 @@ class TestPullRequestFetcher(object):
             message="",
             pullid=pull.pullid,
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=repository,
         )
         second_comparedto_commit = CommitFactory.create(
@@ -1209,7 +1209,7 @@ class TestPullRequestFetcher(object):
             message="",
             pullid=pull.pullid,
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=repository,
         )
         dbsession.add(pull)
@@ -1275,7 +1275,7 @@ class TestPullRequestFetcher(object):
             message="",
             pullid=None,
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=repository,
         )
         compared_to_commit = CommitFactory.create(
@@ -1306,7 +1306,7 @@ class TestPullRequestFetcher(object):
             message="",
             pullid="123",
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=repository,
         )
         compared_to_commit = CommitFactory.create(
@@ -1357,7 +1357,7 @@ class TestPullRequestFetcher(object):
             message="",
             pullid=pull.pullid,
             totals=None,
-            report_json=None,
+            _report_json=None,
             repository=repository,
         )
         compared_to_commit = CommitFactory.create(

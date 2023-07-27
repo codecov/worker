@@ -112,7 +112,7 @@ class CommitFactory(Factory):
             "s": 1,
         }
     )
-    report_json = factory.LazyFunction(
+    _report_json = factory.LazyFunction(
         lambda: {
             "files": {
                 "awesome/__init__.py": [
