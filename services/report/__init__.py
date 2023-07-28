@@ -116,7 +116,10 @@ class ReportService(object):
         Returns:
             bool: Whether the commit already has initialized a report
         """
-        return commit.report_json is not None
+        return (
+            commit._report_json is not None
+            or commit._report_json_storage_path is not None
+        )
 
     async def initialize_and_save_report(
         self, commit: Commit, report_code: str = None
@@ -189,7 +192,6 @@ class ReportService(object):
             )
             db_session.add(report_details)
             db_session.flush()
-
         if not self.has_initialized_report(commit):
             report = await self.create_new_report_for_commit(commit)
             if not report.is_empty():
@@ -425,7 +427,7 @@ class ReportService(object):
         self, commit: Commit, report_class=None, *, report_code=None
     ) -> Optional[Report]:
         commitid = commit.commitid
-        if commit.report_json is None:
+        if commit._report_json is None and commit._report_json_storage_path is None:
             return None
         try:
             archive_service = self.get_archive_service(commit.repository)

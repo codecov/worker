@@ -231,7 +231,7 @@ def sample_commit_with_report_big(dbsession, mock_storage):
         ],
     }
     commit = CommitFactory.create(
-        report_json={"sessions": sessions_dict, "files": file_headers}
+        _report_json={"sessions": sessions_dict, "files": file_headers}
     )
     dbsession.add(commit)
     dbsession.flush()
@@ -396,7 +396,7 @@ def sample_commit_with_report_big_already_carriedforward(dbsession, mock_storage
         ],
     }
     commit = CommitFactory.create(
-        report_json={"sessions": sessions_dict, "files": file_headers}
+        _report_json={"sessions": sessions_dict, "files": file_headers}
     )
     dbsession.add(commit)
     dbsession.flush()
@@ -411,7 +411,7 @@ def sample_commit_with_report_big_already_carriedforward(dbsession, mock_storage
 class TestReportService(BaseTestCase):
     @pytest.mark.asyncio
     async def test_build_report_from_commit_no_report_saved(self, dbsession, mocker):
-        commit = CommitFactory(report_json=None)
+        commit = CommitFactory(_report_json=None)
         dbsession.add(commit)
         dbsession.commit()
         res = await ReportService({}).build_report_from_commit(commit)
@@ -421,7 +421,7 @@ class TestReportService(BaseTestCase):
 
     @pytest.mark.asyncio
     async def test_build_report_from_commit(self, dbsession, mock_storage):
-        commit = CommitFactory(report_json=None)
+        commit = CommitFactory(_report_json=None)
         dbsession.add(commit)
         report = ReportFactory(commit=commit)
         dbsession.add(report)
@@ -540,7 +540,7 @@ class TestReportService(BaseTestCase):
 
     @pytest.mark.asyncio
     async def test_build_report_from_commit_with_flags(self, dbsession, mock_storage):
-        commit = CommitFactory(report_json=None)
+        commit = CommitFactory(_report_json=None)
         dbsession.add(commit)
         report = ReportFactory(commit=commit)
         dbsession.add(report)
@@ -817,7 +817,7 @@ class TestReportService(BaseTestCase):
         commit = CommitFactory.create(
             repository=parent_commit.repository,
             parent_commit_id=parent_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -1879,7 +1879,7 @@ class TestReportService(BaseTestCase):
     async def test_create_new_report_for_commit_is_called_as_generate(
         self, dbsession, mocker
     ):
-        commit = CommitFactory.create(report_json=None)
+        commit = CommitFactory.create(_report_json=None)
         dbsession.add(commit)
         dbsession.flush()
         mocked_create_new_report_for_commit = mocker.patch.object(
@@ -1899,7 +1899,7 @@ class TestReportService(BaseTestCase):
         commit = CommitFactory.create(
             repository=parent_commit.repository,
             parent_commit_id=parent_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -2104,7 +2104,7 @@ class TestReportService(BaseTestCase):
         commit = CommitFactory.create(
             repository=parent_commit.repository,
             parent_commit_id=parent_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -2625,7 +2625,7 @@ class TestReportService(BaseTestCase):
         commit = CommitFactory.create(
             repository=parent_commit.repository,
             parent_commit_id=parent_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -2694,7 +2694,9 @@ class TestReportService(BaseTestCase):
     ):
         parent_commit = sample_commit_with_report_big
         commit = CommitFactory.create(
-            repository=parent_commit.repository, parent_commit_id=None, report_json=None
+            repository=parent_commit.repository,
+            parent_commit_id=None,
+            _report_json=None,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -2760,13 +2762,13 @@ class TestReportService(BaseTestCase):
         parent_commit = CommitFactory.create(
             repository=grandparent_commit.repository,
             parent_commit_id=grandparent_commit.commitid,
-            report_json=None,
+            _report_json=None,
             state="pending",
         )
         commit = CommitFactory.create(
             repository=grandparent_commit.repository,
             parent_commit_id=parent_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(parent_commit)
         dbsession.add(commit)
@@ -2966,7 +2968,7 @@ class TestReportService(BaseTestCase):
         commit = CommitFactory.create(
             repository=parent_commit.repository,
             parent_commit_id=parent_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(parent_commit)
         dbsession.add(commit)
@@ -3073,14 +3075,14 @@ class TestReportService(BaseTestCase):
             current_commit = CommitFactory.create(
                 repository=grandparent_commit.repository,
                 parent_commit_id=current_commit.commitid,
-                report_json=None,
+                _report_json=None,
                 state="pending",
             )
             dbsession.add(current_commit)
         commit = CommitFactory.create(
             repository=grandparent_commit.repository,
             parent_commit_id=current_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -3106,14 +3108,14 @@ class TestReportService(BaseTestCase):
             current_commit = CommitFactory.create(
                 repository=current_commit.repository,
                 parent_commit_id=current_commit.commitid,
-                report_json=None,
+                _report_json=None,
                 state="pending",
             )
             dbsession.add(current_commit)
         commit = CommitFactory.create(
             repository=current_commit.repository,
             parent_commit_id=current_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -3132,7 +3134,7 @@ class TestReportService(BaseTestCase):
         commit = CommitFactory.create(
             repository=parent_commit.repository,
             parent_commit_id=parent_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(parent_commit)
         dbsession.add(commit)
@@ -3844,7 +3846,7 @@ class TestReportService(BaseTestCase):
     ):
         parent_commit = sample_commit_with_report_big
         commit = CommitFactory.create(
-            report_json=None,
+            _report_json=None,
             parent_commit_id=parent_commit.commitid,
             repository=parent_commit.repository,
         )
@@ -3923,7 +3925,7 @@ class TestReportService(BaseTestCase):
     ):
         parent_commit = sample_commit_with_report_big
         commit = CommitFactory.create(
-            report_json=None,
+            _report_json=None,
             parent_commit_id=parent_commit.commitid,
             repository=parent_commit.repository,
         )
@@ -4507,7 +4509,7 @@ class TestReportService(BaseTestCase):
         commit = CommitFactory.create(
             repository=parent_commit.repository,
             parent_commit_id=parent_commit.commitid,
-            report_json=None,
+            _report_json=None,
         )
         dbsession.add(commit)
         dbsession.flush()

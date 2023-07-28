@@ -78,18 +78,6 @@ test.unit:
 test.integration:
 	python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml
 
-push.worker-new:
-	docker tag codecov/worker ${_gcr}-worker:${release_version}-${sha}
-	docker push ${_gcr}-worker:${release_version}-${sha}
-
-push.enterprise-private:
-	docker push codecov/worker-private:${release_version}-${sha}
-
-#push enterprise
-push.enterprise:
-	docker push codecov/enterprise-worker:${release_version}
-	docker tag codecov/enterprise-worker:${release_version} codecov/enterprise-worker:latest-stable
-	docker push codecov/enterprise-worker:latest-stable
 
 update-requirements:
 	pip install pip-tools==6.1.0

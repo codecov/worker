@@ -125,6 +125,7 @@ def _get_user_plan_from_task(dbsession, task_name: str, task_kwargs: dict) -> st
         shared_celery_config.status_set_pending_task_name: _get_user_plan_from_repoid,
         shared_celery_config.pulls_task_name: _get_user_plan_from_repoid,
         shared_celery_config.upload_finisher_task_name: _get_user_plan_from_repoid,  # didn't want to directly import the task module
+        shared_celery_config.manual_upload_completion_trigger_task_name: _get_user_plan_from_repoid,
         # from profiling_commitid
         shared_celery_config.profiling_collection_task_name: _get_user_plan_from_profiling_commit,
         shared_celery_config.profiling_summarization_task_name: _get_user_plan_from_profiling_commit,

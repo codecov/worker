@@ -10,6 +10,8 @@ from sqlalchemy.schema import FetchedValue
 import database.models
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.enums import Decoration, Notification, NotificationState
+from database.utils import ArchiveField
+from helpers.config import should_write_data_to_storage_config_check
 
 
 class Owner(CodecovBaseModel):
@@ -42,6 +44,9 @@ class Owner(CodecovBaseModel):
     updatestamp = Column(types.DateTime, server_default=FetchedValue())
     parent_service_id = Column(types.Text, server_default=FetchedValue())
     plan_provider = Column(types.Text, server_default=FetchedValue())
+    trial_start_date = Column(types.DateTime, server_default=FetchedValue())
+    trial_end_date = Column(types.DateTime, server_default=FetchedValue())
+    trial_status = Column(types.Text, server_default=FetchedValue())
     plan = Column(types.Text, server_default=FetchedValue())
     plan_user_count = Column(types.SmallInteger, server_default=FetchedValue())
     plan_auto_activate = Column(types.Boolean, server_default=FetchedValue())
@@ -78,7 +83,6 @@ class Owner(CodecovBaseModel):
 
 
 class Repository(CodecovBaseModel):
-
     __tablename__ = "repos"
 
     repoid = Column(types.Integer, primary_key=True)
@@ -125,7 +129,6 @@ class Repository(CodecovBaseModel):
 
 
 class Commit(CodecovBaseModel):
-
     __tablename__ = "commits"
 
     id_ = Column("id", types.BigInteger, primary_key=True)
@@ -140,7 +143,6 @@ class Commit(CodecovBaseModel):
     parent_commit_id = Column("parent", types.Text)
     pullid = Column(types.Integer)
     repoid = Column(types.Integer, ForeignKey("repos.repoid"))
-    report_json = Column("report", postgresql.JSON)
     state = Column(types.String(256))
     timestamp = Column(types.DateTime, nullable=False)
     updatestamp = Column(types.DateTime, nullable=True)
@@ -181,9 +183,38 @@ class Commit(CodecovBaseModel):
             .first()
         )
 
+    @property
+    def id(self):
+        return self.id_
+
+    @property
+    def external_id(self):
+        return self.commitid
+
+    def get_repository(self):
+        return self.repository
+
+    def get_commitid(self):
+        return self.commitid
+
+    def should_write_to_storage(self) -> bool:
+        if self.repository is None or self.repository.owner is None:
+            return False
+        is_codecov_repo = self.repository.owner.username == "codecov"
+        return should_write_data_to_storage_config_check(
+            "commit_report", is_codecov_repo, self.repository.repoid
+        )
+
+    # Use custom JSON to properly serialize custom data classes on reports
+    _report_json = Column("report", postgresql.JSON)
+    _report_json_storage_path = Column("report_storage_path", types.Text, nullable=True)
+    report_json = ArchiveField(
+        should_write_to_storage_fn=should_write_to_storage,
+        default_value={},
+    )
+
 
 class Branch(CodecovBaseModel):
-
     __tablename__ = "branches"
 
     repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
@@ -202,7 +233,6 @@ class Branch(CodecovBaseModel):
 
 
 class LoginSession(CodecovBaseModel):
-
     __tablename__ = "sessions"
 
     sessionid = Column(types.Integer, primary_key=True)
@@ -216,7 +246,6 @@ class LoginSession(CodecovBaseModel):
 
 
 class Pull(CodecovBaseModel):
-
     __tablename__ = "pulls"
 
     id_ = Column("id", types.BigInteger, primary_key=True)
@@ -236,6 +265,8 @@ class Pull(CodecovBaseModel):
     diff = Column(postgresql.JSON)
     flare = Column(postgresql.JSON)
     author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))
+    behind_by = Column(types.Integer)
+    behind_by_commit = Column(types.Text)
 
     author = relationship(Owner)
     repository = relationship(Repository, backref=backref("pulls", cascade="delete"))
@@ -274,7 +305,6 @@ class Pull(CodecovBaseModel):
 
 
 class CommitNotification(CodecovBaseModel):
-
     __tablename__ = "commit_notifications"
 
     id_ = Column("id", types.BigInteger, primary_key=True)

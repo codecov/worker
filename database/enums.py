@@ -48,3 +48,10 @@ class CommitErrorTypes(Enum):
     YAML_CLIENT_ERROR = "yaml_client_error"
     YAML_UNKNOWN_ERROR = "yaml_unknown_error"
     REPO_BOT_INVALID = "repo_bot_invalid"
+
+
+class TrialStatus(Enum):
+    NOT_STARTED = "not_started"
+    ONGOING = "ongoing"
+    EXPIRED = "expired"
+    CANNOT_TRIAL = "cannot_trial"

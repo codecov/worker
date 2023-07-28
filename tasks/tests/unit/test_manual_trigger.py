@@ -1,15 +1,14 @@
 import pytest
 from celery.exceptions import Retry
 
-from database.models.core import Pull
-from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
+from database.tests.factories import CommitFactory, PullFactory
 from database.tests.factories.core import UploadFactory
 from tasks.manual_trigger import ManualTriggerTask
 
 
 class TestUploadCompletionTask(object):
     @pytest.mark.asyncio
-    async def test_upload_completion(
+    async def test_manual_upload_completion_trigger(
         self,
         mocker,
         mock_configuration,
@@ -71,7 +70,7 @@ class TestUploadCompletionTask(object):
         ].apply_async.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_upload_completion_uploads_still_processing(
+    async def test_manual_upload_completion_trigger_uploads_still_processing(
         self,
         mocker,
         mock_configuration,

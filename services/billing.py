@@ -13,6 +13,7 @@ class BillingPlan(Enum):
     users_yearly = "users-inappy"
     users_free = "users-free"
     users_basic = "users-basic"
+    users_trial = "users-trial"
     pr_monthly = "users-pr-inappm"
     pr_yearly = "users-pr-inappy"
     enterprise_cloud_yearly = "users-enterprisey"
@@ -26,6 +27,7 @@ def is_pr_billing_plan(plan: str) -> bool:
             BillingPlan.pr_yearly.value,
             BillingPlan.users_free.value,
             BillingPlan.users_basic.value,
+            BillingPlan.users_trial.value,
             BillingPlan.enterprise_cloud_monthly.value,
             BillingPlan.enterprise_cloud_yearly.value,
         ]
