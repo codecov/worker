@@ -103,6 +103,7 @@ class Repository(CodecovBaseModel):
     )
     language = Column(types.Text)
     hookid = Column(types.Text)
+    webhook_secret = Column(types.Text)
     activated = Column(types.Boolean, default=False)
     using_integration = Column(types.Boolean)
     cache_do_not_use = Column("cache", postgresql.JSONB)
