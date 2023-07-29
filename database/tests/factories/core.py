@@ -15,6 +15,19 @@ def encrypt_oauth_token(val):
     return encryptor.encode(val)
 
 
+class UserFactory(Factory):
+    class Meta:
+        model = models.User
+
+    id_ = factory.Sequence(lambda n: n)
+
+    name = factory.Faker("name")
+    email = factory.Faker("email")
+    is_staff = False
+    is_superuser = False
+    external_id = factory.LazyFunction(lambda: uuid4())
+
+
 class OwnerFactory(Factory):
     class Meta:
         model = models.Owner
@@ -261,3 +274,11 @@ class OrgLevelTokenFactory(Factory):
     token = factory.LazyFunction(lambda: uuid4().hex)
     token_type = "upload"
     owner = factory.SubFactory(OwnerFactory)
+
+
+class ConstantsFactory(Factory):
+    class Meta:
+        model = models.Constants
+
+    key = ""
+    value = ""

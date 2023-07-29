@@ -4,9 +4,6 @@ from pathlib import Path
 import mock
 import pytest
 import vcr
-from shared.config import ConfigHelper
-from shared.storage.memory import MemoryStorageService
-from shared.torngit import Github as GithubHandler
 from sqlalchemy import event
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
@@ -16,6 +13,9 @@ from celery_config import initialize_logging
 from database.base import Base
 from database.engine import json_dumps
 from helpers.environment import _get_cached_current_env
+from shared.config import ConfigHelper
+from shared.storage.memory import MemoryStorageService
+from shared.torngit import Github as GithubHandler
 
 
 # @pytest.hookimpl(tryfirst=True)
@@ -103,7 +103,6 @@ def dbsession(db, engine):
     @event.listens_for(session, "after_transaction_end")
     def restart_savepoint(session, transaction):
         if transaction.nested and not transaction._parent.nested:
-
             # ensure that state is expired the way
             # session.commit() at the top level normally does
             # (optional step)
@@ -139,6 +138,9 @@ def mock_configuration(mocker):
         "setup": {
             "codecov_url": "https://codecov.io",
             "encryption_secret": "zp^P9*i8aR3",
+            "telemetry": {
+                "endpoint_override": "abcde",
+            },
         },
     }
     mock_config.set_params(our_config)
