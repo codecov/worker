@@ -91,7 +91,7 @@ class TestFlushRepo(object):
 
     @pytest.mark.asyncio
     async def test_flush_repo_little_bit_of_everything(self, dbsession, mock_storage):
-        repo = RepositoryFactory.create(cache_do_not_use={})
+        repo = RepositoryFactory.create()
         dbsession.add(repo)
         dbsession.flush()
         archive_service = ArchiveService(repo)
@@ -119,21 +119,3 @@ class TestFlushRepo(object):
         dbsession.refresh(repo)
         # Those assertions are almost tautological. If they start being a
         # problem, don't hesitate to delete them
-        assert (
-            dbsession.query(Repository)
-            .filter(
-                Repository.repoid == repo.repoid, Repository.cache_do_not_use == null()
-            )
-            .count()
-            == 1
-        )
-        assert (
-            dbsession.query(Repository)
-            .filter(
-                Repository.repoid == repo.repoid,
-                Repository.cache_do_not_use == postgresql.JSON.NULL,
-            )
-            .count()
-            == 0
-        )
-        assert repo.cache_do_not_use is None
