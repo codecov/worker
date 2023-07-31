@@ -307,8 +307,7 @@ class TestReportDetailsModel(object):
                 "setup": {
                     "save_report_data_in_storage": {
                         "repo_ids": [allowlisted_repo.report.commit.repository.repoid],
-                        "only_codecov": True,
-                        "report_details_files_array": True,
+                        "report_details_files_array": "restricted_access",
                     },
                 }
             }
@@ -321,7 +320,6 @@ class TestReportDetailsModel(object):
                 "setup": {
                     "save_report_data_in_storage": {
                         "repo_ids": [],
-                        "only_codecov": False,
                         "report_details_files_array": False,
                     },
                 }
@@ -363,8 +361,7 @@ class TestReportDetailsModel(object):
             {
                 "setup": {
                     "save_report_data_in_storage": {
-                        "only_codecov": False,
-                        "report_details_files_array": True,
+                        "report_details_files_array": "general_access",
                     },
                 }
             }
