@@ -209,6 +209,11 @@ class ArchiveService(object):
             external_id=external_id,
         )
         stringified_data = json.dumps(data, cls=encoder)
+        if table == "reports_reportdetails" and not ("meta" in stringified_data):
+            log.warning(
+                "Saving files_array data without meta",
+                extra=dict(commit=commit_id, data=stringified_data, path=path),
+            )
         self.write_file(path, stringified_data)
         return path
 
