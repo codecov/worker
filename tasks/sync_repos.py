@@ -89,7 +89,7 @@ class SyncReposTask(BaseCodecovTask):
         with metrics.timer(f"{metrics_scope}.sync_repos_using_integration.list_repos"):
             repos = await git.list_repos_using_installation(username)
         if repos:
-            service_ids = {repo["id"] for repo in repos}
+            service_ids = {str(repo["repo"]["service_id"]) for repo in repos}
             if service_ids:
                 # Querying through the `Repository` model is cleaner, but we
                 # need to go through the table object instead if we want to
@@ -113,17 +113,20 @@ class SyncReposTask(BaseCodecovTask):
                 # just updated = the set of repos we need to insert.
                 missing_service_ids = service_ids - updated_service_ids
                 missing_repos = [
-                    repo for repo in repos if repo["id"] in missing_service_ids
+                    repo
+                    for repo in repos
+                    if str(repo["repo"]["service_id"]) in missing_service_ids
                 ]
 
                 for repo in missing_repos:
+                    repo_data = repo["repo"]
                     new_repo = Repository(
                         ownerid=ownerid,
-                        service_id=repo["id"],
-                        name=repo["name"],
-                        language=repo["language"],
-                        private=repo["private"],
-                        branch=repo["default_branch"],
+                        service_id=str(repo_data["service_id"]),
+                        name=repo_data["name"],
+                        language=repo_data["language"],
+                        private=repo_data["private"],
+                        branch=repo_data["branch"],
                         using_integration=True,
                     )
                     db_session.add(new_repo)
@@ -204,7 +207,7 @@ class SyncReposTask(BaseCodecovTask):
 
                 repoids.append(repoid)
 
-                if repo["repo"]["fork"]:
+                if repo["repo"].get("fork"):
                     _ownerid = self.upsert_owner(
                         db_session,
                         service,

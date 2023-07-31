@@ -501,12 +501,18 @@ class TestSyncReposTaskUnit(object):
 
         def repo_obj(service_id, name, language, private, branch, using_integration):
             return {
-                "id": service_id,
-                "name": name,
-                "language": language,
-                "private": private,
-                "default_branch": branch,
-                "using_integration": using_integration,
+                "owner": {
+                    "service_id": "test-owner-service-id",
+                    "username": "test-owner-username",
+                },
+                "repo": {
+                    "service_id": service_id,
+                    "name": name,
+                    "language": language,
+                    "private": private,
+                    "branch": branch,
+                },
+                "_using_integration": using_integration,
             }
 
         mock_repos = [
@@ -525,10 +531,10 @@ class TestSyncReposTaskUnit(object):
         for repo in mock_repos[:-1]:
             preseeded_repos.append(
                 RepositoryFactory.create(
-                    private=repo["private"],
-                    name=repo["name"],
-                    using_integration=repo["using_integration"],
-                    service_id=repo["id"],
+                    private=repo["repo"]["private"],
+                    name=repo["repo"]["name"],
+                    using_integration=repo["_using_integration"],
+                    service_id=repo["repo"]["service_id"],
                     owner=user,
                 )
             )
@@ -544,7 +550,11 @@ class TestSyncReposTaskUnit(object):
 
         repos = (
             dbsession.query(Repository)
-            .filter(Repository.service_id.in_((repo["id"] for repo in mock_repos)))
+            .filter(
+                Repository.service_id.in_(
+                    (repo["repo"]["service_id"] for repo in mock_repos)
+                )
+            )
             .all()
         )
 
