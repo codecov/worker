@@ -89,7 +89,7 @@ class SyncReposTask(BaseCodecovTask):
         with metrics.timer(f"{metrics_scope}.sync_repos_using_integration.list_repos"):
             repos = await git.list_repos_using_installation(username)
         if repos:
-            service_ids = {str(repo["repo"]["service_id"]) for repo in repos}
+            service_ids = {repo["repo"]["service_id"] for repo in repos}
             if service_ids:
                 # Querying through the `Repository` model is cleaner, but we
                 # need to go through the table object instead if we want to
@@ -115,14 +115,14 @@ class SyncReposTask(BaseCodecovTask):
                 missing_repos = [
                     repo
                     for repo in repos
-                    if str(repo["repo"]["service_id"]) in missing_service_ids
+                    if repo["repo"]["service_id"] in missing_service_ids
                 ]
 
                 for repo in missing_repos:
                     repo_data = repo["repo"]
                     new_repo = Repository(
                         ownerid=ownerid,
-                        service_id=str(repo_data["service_id"]),
+                        service_id=repo_data["service_id"],
                         name=repo_data["name"],
                         language=repo_data["language"],
                         private=repo_data["private"],
@@ -259,7 +259,7 @@ class SyncReposTask(BaseCodecovTask):
         )
         owner = (
             db_session.query(Owner)
-            .filter(Owner.service == service, Owner.service_id == str(service_id))
+            .filter(Owner.service == service, Owner.service_id == service_id)
             .first()
         )
 
@@ -267,9 +267,7 @@ class SyncReposTask(BaseCodecovTask):
             if (owner.username or "").lower() != username.lower():
                 owner.username = username
         else:
-            owner = Owner(
-                service=service, service_id=str(service_id), username=username
-            )
+            owner = Owner(service=service, service_id=service_id, username=username)
             db_session.add(owner)
             db_session.flush()
 
@@ -283,7 +281,7 @@ class SyncReposTask(BaseCodecovTask):
             db_session.query(Repository)
             .filter(
                 Repository.ownerid == ownerid,
-                Repository.service_id == str(repo_data["service_id"]),
+                Repository.service_id == repo_data["service_id"],
             )
             .first()
         )
@@ -302,7 +300,7 @@ class SyncReposTask(BaseCodecovTask):
             db_session.query(Repository)
             .join(Owner, Repository.ownerid == Owner.ownerid)
             .filter(
-                Repository.service_id == str(repo_data["service_id"]),
+                Repository.service_id == repo_data["service_id"],
                 Owner.service == service,
             )
             .first()
@@ -368,9 +366,7 @@ class SyncReposTask(BaseCodecovTask):
                     repo_name=repo_data["name"],
                 ),
             )
-            repo_correct_owner_wrong_service_id.service_id = str(
-                repo_data["service_id"]
-            )
+            repo_correct_owner_wrong_service_id.service_id = repo_data["service_id"]
             repo_correct_owner_wrong_service_id.name = repo_data["name"]
             repo_correct_owner_wrong_service_id.language = repo_data["language"]
             repo_correct_owner_wrong_service_id.private = repo_data["private"]
@@ -381,7 +377,7 @@ class SyncReposTask(BaseCodecovTask):
         # repo does not exist, create it
         new_repo = Repository(
             ownerid=ownerid,
-            service_id=str(repo_data["service_id"]),
+            service_id=repo_data["service_id"],
             name=repo_data["name"],
             language=repo_data["language"],
             private=repo_data["private"],

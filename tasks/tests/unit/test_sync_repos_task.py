@@ -92,7 +92,7 @@ class TestSyncReposTaskUnit(object):
         self, mocker, mock_configuration, dbsession
     ):
         service = "gitlab"
-        repo_service_id = 12071992
+        repo_service_id = "12071992"
         repo_data = {
             "service_id": repo_service_id,
             "name": "new-name",
@@ -145,7 +145,7 @@ class TestSyncReposTaskUnit(object):
         self, mocker, mock_configuration, dbsession
     ):
         service = "gitlab"
-        repo_service_id = 12071992
+        repo_service_id = "12071992"
         repo_data = {
             "service_id": repo_service_id,
             "name": "pytest",
@@ -257,7 +257,7 @@ class TestSyncReposTaskUnit(object):
             dbsession.query(Repository)
             .filter(
                 Repository.ownerid == correct_owner.ownerid,
-                Repository.service_id == str(repo_service_id),
+                Repository.service_id == repo_service_id,
             )
             .count()
         ) == 0  # We didn't move any repos or anything
@@ -275,8 +275,8 @@ class TestSyncReposTaskUnit(object):
         self, mocker, mock_configuration, dbsession
     ):
         service = "gitlab"
-        repo_service_id = 12071992
-        repo_wrong_service_id = 40404
+        repo_service_id = "12071992"
+        repo_wrong_service_id = "40404"
         repo_data = {
             "service_id": repo_service_id,
             "name": "pytest",
@@ -337,7 +337,7 @@ class TestSyncReposTaskUnit(object):
     @pytest.mark.asyncio
     async def test_upsert_repo_create_new(self, mocker, mock_configuration, dbsession):
         service = "gitlab"
-        repo_service_id = 12071992
+        repo_service_id = "12071992"
         repo_data = {
             "service_id": repo_service_id,
             "name": "pytest",
