@@ -24,10 +24,9 @@ class TrialExpirationTask(BaseCodecovTask):
         )
         owner.plan = BillingPlan.users_basic.value
         owner.plan_activated_users = None
-        owner.plan_user_count = 1
+        owner.plan_user_count = owner.pretrial_users_count or 1
         owner.stripe_subscription_id = None
         owner.trial_status = TrialStatus.EXPIRED.value
-        db_session.add(owner)
         db_session.flush()
         return {"successful": True}
 
