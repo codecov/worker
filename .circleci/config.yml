@@ -157,10 +157,7 @@ jobs:
             codecovcli do-upload --flag latest-uploader-overall 
             codecovcli do-upload --flag unit --file unit.coverage.xml
             codecovcli do-upload --flag integration --file integration.coverage.xml
-      - run:
-          name: assign upload as completed to get notifications
-          command: |
-            codecovcli upload-completion
+      
 
   staging:
     executor: codecov-deploy
