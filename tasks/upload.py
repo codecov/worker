@@ -20,6 +20,7 @@ from shared.yaml import UserYaml
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit
+from helpers.checkpoint_logger import CheckpointLogger, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
@@ -137,6 +138,12 @@ class UploadTask(BaseCodecovTask):
     async def run_async(
         self, db_session, repoid, commitid, report_code=None, *args, **kwargs
     ):
+        # If we're a retry, we already computed the first checkpoint
+        if "checkpoints" not in kwargs:
+            checkpoints = CheckpointLogger(UploadFlow)
+            checkpoints.log(UploadFlow.UPLOAD_TASK_BEGIN)
+            kwargs["checkpoints"] = checkpoints
+
         log.info(
             "Received upload task",
             extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
@@ -158,7 +165,7 @@ class UploadTask(BaseCodecovTask):
                     ),
                 ),
             )
-            self.retry(countdown=60)
+            self.retry(countdown=60, args=args, kwargs=kwargs)
         try:
             with redis_connection.lock(
                 lock_name,
@@ -208,7 +215,9 @@ class UploadTask(BaseCodecovTask):
                     commit=commitid, repoid=repoid, countdown=int(retry_countdown)
                 ),
             )
-            self.retry(max_retries=3, countdown=retry_countdown)
+            self.retry(
+                max_retries=3, countdown=retry_countdown, args=args, kwargs=kwargs
+            )
 
     async def run_async_within_lock(
         self,
@@ -235,6 +244,7 @@ class UploadTask(BaseCodecovTask):
                 "was_updated": False,
                 "tasks_were_scheduled": False,
             }
+
         upload_processing_delay = get_config("setup", "upload_processing_delay")
         if upload_processing_delay is not None:
             upload_processing_delay = int(upload_processing_delay)
@@ -254,7 +264,17 @@ class UploadTask(BaseCodecovTask):
                             repoid=repoid, commit=commitid, countdown=retry_countdown
                         ),
                     )
-                    self.retry(countdown=retry_countdown)
+                    self.retry(countdown=retry_countdown, args=args, kwargs=kwargs)
+
+        checkpoints = kwargs.get("checkpoints")
+        if checkpoints:
+            checkpoints.log(UploadFlow.PROCESSING_BEGIN)
+            checkpoints.submit_subflow(
+                "time_before_processing",
+                UploadFlow.UPLOAD_TASK_BEGIN,
+                UploadFlow.PROCESSING_BEGIN,
+            )
+
         commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
@@ -321,7 +341,7 @@ class UploadTask(BaseCodecovTask):
                 "Commit not yet ready to build its initial report. Retrying in 60s.",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            self.retry(countdown=60)
+            self.retry(countdown=60, args=args, kwargs=kwargs)
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, repoid, commitid):
             normalized_arguments = self.normalize_upload_arguments(
@@ -339,8 +359,16 @@ class UploadTask(BaseCodecovTask):
             argument_list.append(normalized_arguments)
         if argument_list:
             db_session.commit()
-            self.schedule_task(commit, commit_yaml, argument_list, commit_report)
+            self.schedule_task(
+                commit, commit_yaml, argument_list, commit_report, checkpoints
+            )
         else:
+            checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+            checkpoints.submit_subflow(
+                "initial_processing_duration",
+                UploadFlow.PROCESSING_BEGIN,
+                UploadFlow.INITIAL_PROCESSING_COMPLETE,
+            )
             log.info(
                 "Not scheduling task because there were no arguments were found on redis",
                 extra=dict(
@@ -396,7 +424,9 @@ class UploadTask(BaseCodecovTask):
             ownerid=repository.owner.ownerid,
         )
 
-    def schedule_task(self, commit, commit_yaml, argument_list, commit_report):
+    def schedule_task(
+        self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
+    ):
         commit_yaml = commit_yaml.to_dict()
         chain_to_call = []
         for i in range(0, len(argument_list), CHUNK_SIZE):
@@ -420,10 +450,18 @@ class UploadTask(BaseCodecovTask):
                     commitid=commit.commitid,
                     commit_yaml=commit_yaml,
                     report_code=commit_report.code,
+                    checkpoints=checkpoints,
                 )
             )
             chain_to_call.append(finish_sig)
             res = chain(*chain_to_call).apply_async()
+            if checkpoints:
+                checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+                checkpoints.submit_subflow(
+                    "initial_processing_duration",
+                    UploadFlow.PROCESSING_BEGIN,
+                    UploadFlow.INITIAL_PROCESSING_COMPLETE,
+                )
             log.info(
                 "Scheduling task for %s different reports",
                 len(argument_list),

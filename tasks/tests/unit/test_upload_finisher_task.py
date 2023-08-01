@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from unittest.mock import ANY, call
 
 import pytest
 from shared.yaml import UserYaml
@@ -11,9 +12,22 @@ from database.tests.factories import (
     RepositoryFactory,
     UploadFactory,
 )
+from helpers.checkpoint_logger import CheckpointLogger, UploadFlow
 from tasks.upload_finisher import ReportService, UploadFinisherTask
 
 here = Path(__file__)
+
+
+def _create_checkpoint_logger(mocker):
+    mocker.patch(
+        "helpers.checkpoint_logger._get_milli_timestamp",
+        side_effect=[1337, 9001, 10000, 15000, 20000, 25000],
+    )
+    checkpoints = CheckpointLogger(UploadFlow)
+    checkpoints.log(UploadFlow.UPLOAD_TASK_BEGIN)
+    checkpoints.log(UploadFlow.PROCESSING_BEGIN)
+    checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+    return checkpoints
 
 
 class TestUploadFinisherTask(object):
@@ -26,6 +40,7 @@ class TestUploadFinisherTask(object):
         codecov_vcr,
         mock_storage,
         mock_redis,
+        mock_checkpoint_submit,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": url}]
@@ -55,12 +70,15 @@ class TestUploadFinisherTask(object):
         previous_results = {
             "processings_so_far": [{"arguments": {"url": url}, "successful": True}]
         }
+
+        checkpoints = _create_checkpoint_logger(mocker)
         result = await UploadFinisherTask().run_async(
             dbsession,
             previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
+            checkpoints=checkpoints,
         )
         assert commit.notified is False
         expected_result = {"notifications_called": True}
@@ -73,6 +91,27 @@ class TestUploadFinisherTask(object):
             blocking_timeout=5,
             timeout=300,
         )
+
+        assert checkpoints.data == {
+            UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+            UploadFlow.PROCESSING_BEGIN: 9001,
+            UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+            UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
+            UploadFlow.PROCESSING_COMPLETE: 20000,
+        }
+        calls = [
+            call(
+                "batch_processing_duration",
+                UploadFlow.INITIAL_PROCESSING_COMPLETE,
+                UploadFlow.BATCH_PROCESSING_COMPLETE,
+            ),
+            call(
+                "total_processing_duration",
+                UploadFlow.PROCESSING_BEGIN,
+                UploadFlow.PROCESSING_COMPLETE,
+            ),
+        ]
+        mock_checkpoint_submit.assert_has_calls(calls)
 
     @pytest.mark.asyncio
     async def test_upload_finisher_task_call_no_author(
@@ -338,12 +377,15 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, UserYaml(commit_yaml), processing_results, None
+            dbsession, commit, UserYaml(commit_yaml), processing_results, None, None
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
             kwargs=dict(
-                commitid=commit.commitid, current_yaml=commit_yaml, repoid=commit.repoid
+                commitid=commit.commitid,
+                current_yaml=commit_yaml,
+                repoid=commit.repoid,
+                checkpoints=ANY,
             )
         )
         assert mocked_app.send_task.call_count == 0
@@ -382,12 +424,15 @@ class TestUploadFinisherTask(object):
         dbsession.add(pull)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, UserYaml(commit_yaml), processing_results, None
+            dbsession, commit, UserYaml(commit_yaml), processing_results, None, None
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
             kwargs=dict(
-                commitid=commit.commitid, current_yaml=commit_yaml, repoid=commit.repoid
+                commitid=commit.commitid,
+                current_yaml=commit_yaml,
+                repoid=commit.repoid,
+                checkpoints=ANY,
             )
         )
         mocked_app.tasks["app.tasks.pulls.Sync"].apply_async.assert_called_with(
@@ -418,7 +463,7 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, UserYaml(commit_yaml), processing_results, None
+            dbsession, commit, UserYaml(commit_yaml), processing_results, None, None
         )
         assert res == {"notifications_called": False}
         assert mocked_app.send_task.call_count == 0

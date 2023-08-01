@@ -1,3 +1,5 @@
+from unittest.mock import call
+
 import pytest
 from celery.exceptions import MaxRetriesExceededError, Retry
 from redis.exceptions import LockError
@@ -16,6 +18,7 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
+from helpers.checkpoint_logger import CheckpointLogger, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.decoration import DecorationDetails
 from services.notification import NotificationService
@@ -26,6 +29,20 @@ from services.notification.notifiers.base import (
 from services.report import ReportService
 from services.repository import EnrichedPull
 from tasks.notify import NotifyTask
+
+
+def _create_checkpoint_logger(mocker):
+    mocker.patch(
+        "helpers.checkpoint_logger._get_milli_timestamp",
+        side_effect=[1337, 9001, 10000, 15000, 20000, 25000],
+    )
+    checkpoints = CheckpointLogger(UploadFlow)
+    checkpoints.log(UploadFlow.UPLOAD_TASK_BEGIN)
+    checkpoints.log(UploadFlow.PROCESSING_BEGIN)
+    checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+    checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
+    checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
+    return checkpoints
 
 
 @pytest.fixture
@@ -297,7 +314,12 @@ class TestNotifyTask(object):
 
     @pytest.mark.asyncio
     async def test_simple_call_yes_notifications_no_base(
-        self, dbsession, mocker, mock_storage, mock_configuration
+        self,
+        dbsession,
+        mocker,
+        mock_storage,
+        mock_configuration,
+        mock_checkpoint_submit,
     ):
         fake_notifier = mocker.MagicMock(
             AbstractBaseNotifier,
@@ -337,12 +359,16 @@ class TestNotifyTask(object):
         commit = CommitFactory.create(message="", pullid=None)
         dbsession.add(commit)
         dbsession.flush()
+
+        checkpoints = _create_checkpoint_logger(mocker)
+
         task = NotifyTask()
         result = await task.run_async_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
             current_yaml={"coverage": {"status": {"patch": True}}},
+            checkpoints=checkpoints,
         )
         print(result)
         expected_result = {
@@ -368,6 +394,23 @@ class TestNotifyTask(object):
         dbsession.flush()
         dbsession.refresh(commit)
         assert commit.notified is True
+
+        assert checkpoints.data == {
+            UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+            UploadFlow.PROCESSING_BEGIN: 9001,
+            UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+            UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
+            UploadFlow.PROCESSING_COMPLETE: 20000,
+            UploadFlow.NOTIFIED: 25000,
+        }
+        calls = [
+            call(
+                "notification_latency",
+                UploadFlow.UPLOAD_TASK_BEGIN,
+                UploadFlow.NOTIFIED,
+            ),
+        ]
+        mock_checkpoint_submit.assert_has_calls(calls)
 
     @pytest.mark.asyncio
     async def test_simple_call_no_pullrequest_found(
@@ -818,4 +861,5 @@ class TestNotifyTask(object):
             commitid=commit.commitid,
             current_yaml=current_yaml,
             empty_upload=None,
+            checkpoints=mocker.ANY,
         )

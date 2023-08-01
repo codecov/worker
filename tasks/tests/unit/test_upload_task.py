@@ -16,6 +16,7 @@ from database.models import Upload
 from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from database.tests.factories.core import ReportFactory
+from helpers.checkpoint_logger import CheckpointLogger, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -24,6 +25,16 @@ from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
 
 here = Path(__file__)
+
+
+def _create_checkpoint_logger(mocker):
+    mocker.patch(
+        "helpers.checkpoint_logger._get_milli_timestamp",
+        side_effect=[1337, 9001, 10000, 15000, 20000, 25000],
+    )
+    checkpoints = CheckpointLogger(UploadFlow)
+    checkpoints.log(UploadFlow.UPLOAD_TASK_BEGIN)
+    return checkpoints
 
 
 class FakeRedis(object):
@@ -91,6 +102,7 @@ class TestUploadTaskIntegration(object):
         mock_storage,
         mock_redis,
         celery_app,
+        mock_checkpoint_submit,
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
@@ -112,7 +124,10 @@ class TestUploadTaskIntegration(object):
         mock_redis.lists[
             f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
-        result = await UploadTask().run_async(dbsession, commit.repoid, commit.commitid)
+        checkpoints = _create_checkpoint_logger(mocker)
+        result = await UploadTask().run_async(
+            dbsession, commit.repoid, commit.commitid, checkpoints=checkpoints
+        )
         expected_result = {"was_setup": False, "was_updated": True}
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
@@ -148,9 +163,29 @@ class TestUploadTaskIntegration(object):
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
                 report_code=None,
+                checkpoints=mocker.ANY,
             )
         )
         mocked_1.assert_called_with(t1, t2)
+
+        assert checkpoints.data == {
+            UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+            UploadFlow.PROCESSING_BEGIN: 9001,
+            UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+        }
+        calls = [
+            mock.call(
+                "time_before_processing",
+                UploadFlow.UPLOAD_TASK_BEGIN,
+                UploadFlow.PROCESSING_BEGIN,
+            ),
+            mock.call(
+                "initial_processing_duration",
+                UploadFlow.PROCESSING_BEGIN,
+                UploadFlow.INITIAL_PROCESSING_COMPLETE,
+            ),
+        ]
+        mock_checkpoint_submit.assert_has_calls(calls)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_no_jobs(
@@ -419,6 +454,7 @@ class TestUploadTaskIntegration(object):
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
                 report_code=None,
+                checkpoints=mocker.ANY,
             )
         )
         mocked_1.assert_called_with(t1, t2, t3, t_final)
@@ -539,6 +575,7 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
             commit.report,
+            mocker.ANY,
         )
         assert not mocked_fetch_yaml.called
 
@@ -592,6 +629,7 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
             commit.report,
+            mocker.ANY,
         )
         assert not mocked_fetch_yaml.called
 
@@ -660,6 +698,7 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": second_session.id},
             ],
             commit.report,
+            mocker.ANY,
         )
 
     @pytest.mark.asyncio
@@ -744,6 +783,7 @@ class TestUploadTaskIntegration(object):
                 }
             ],
             report,
+            mocker.ANY,
         )
 
 
@@ -833,7 +873,11 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         result = UploadTask().schedule_task(
-            commit, commit_yaml, argument_list, ReportFactory.create()
+            commit,
+            commit_yaml,
+            argument_list,
+            ReportFactory.create(),
+            None,
         )
         assert result is None
 
@@ -846,7 +890,11 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         result = UploadTask().schedule_task(
-            commit, commit_yaml, argument_list, ReportFactory.create()
+            commit,
+            commit_yaml,
+            argument_list,
+            ReportFactory.create(),
+            None,
         )
         assert result == mocked_chain.return_value.apply_async.return_value
         t1 = upload_processor_task.signature(
@@ -865,6 +913,7 @@ class TestUploadTaskUnit(object):
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml.to_dict(),
                 report_code=None,
+                checkpoints=mocker.ANY,
             )
         )
         mocked_chain.assert_called_with(t1, t2)

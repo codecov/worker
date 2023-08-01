@@ -2,6 +2,7 @@ import logging
 import re
 from copy import deepcopy
 
+import sentry_sdk
 from shared.celery_config import (
     compute_comparison_task_name,
     notify_task_name,
@@ -12,6 +13,7 @@ from shared.yaml import UserYaml
 
 from app import celery_app
 from database.models import Commit, Pull
+from helpers.checkpoint_logger import UploadFlow
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -50,8 +52,17 @@ class UploadFinisherTask(BaseCodecovTask):
         commitid,
         commit_yaml,
         report_code=None,
+        checkpoints=None,
         **kwargs,
     ):
+        if checkpoints:
+            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
+            checkpoints.submit_subflow(
+                "batch_processing_duration",
+                UploadFlow.INITIAL_PROCESSING_COMPLETE,
+                UploadFlow.BATCH_PROCESSING_COMPLETE,
+            )
+
         log.info(
             "Received upload_finisher task",
             extra=dict(
@@ -80,6 +91,7 @@ class UploadFinisherTask(BaseCodecovTask):
                 commit_yaml,
                 processing_results,
                 report_code,
+                checkpoints,
             )
             save_commit_measurements(commit)
             self.invalidate_caches(redis_connection, commit)
@@ -92,6 +104,7 @@ class UploadFinisherTask(BaseCodecovTask):
         commit_yaml: UserYaml,
         processing_results,
         report_code,
+        checkpoints,
     ):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
@@ -109,6 +122,7 @@ class UploadFinisherTask(BaseCodecovTask):
                         repoid=repoid,
                         commitid=commitid,
                         current_yaml=commit_yaml.to_dict(),
+                        checkpoints=checkpoints,
                     )
                 )
                 log.info(
@@ -165,6 +179,14 @@ class UploadFinisherTask(BaseCodecovTask):
                 )
         else:
             commit.state = "skipped"
+
+        if checkpoints:
+            checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
+            checkpoints.submit_subflow(
+                "total_processing_duration",
+                UploadFlow.PROCESSING_BEGIN,
+                UploadFlow.PROCESSING_COMPLETE,
+            )
         return {"notifications_called": notifications_called}
 
     def should_call_notifications(
