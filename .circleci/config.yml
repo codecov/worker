@@ -102,10 +102,10 @@ jobs:
           command: |
             echo $(git merge-base HEAD^ main)
             codecovcli label-analysis --token=$STATIC_TOKEN --base-sha=$(git merge-base HEAD^ main)
-      - run:
-          name: Upload onlysomelabels
-          command: |
-            codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
+  #     - run:
+  #         name: Upload onlysomelabels
+  #         command: |
+  #           codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
   mutations:
     executor: codecov-worker
     steps:
@@ -154,9 +154,7 @@ jobs:
           command: |
             apk add git build-base
             pip install codecov-cli
-            codecovcli do-upload --flag latest-uploader-overall 
-            codecovcli do-upload --flag unit --file unit.coverage.xml
-            codecovcli do-upload --flag integration --file integration.coverage.xml
+            codecovcli do-upload --disable-search
 
   staging:
     executor: codecov-deploy
