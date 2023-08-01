@@ -2,6 +2,7 @@ codecov:
   require_ci_to_pass: false
   notify:
     wait_for_ci: false
+    manual_trigger: true
 comment:
   show_critical_paths: true
   layout: "reach,diff,flags,components,tree,betaprofiling"
