@@ -572,10 +572,10 @@ async def test_call_label_analysis_no_request_object(dbsession):
     res = await task.run_async(db_session=dbsession, request_id=-1)
     assert res == {
         "success": False,
-        "present_report_labels": None,
-        "present_diff_labels": None,
-        "absent_labels": None,
-        "global_level_labels": None,
+        "present_report_labels": [],
+        "present_diff_labels": [],
+        "absent_labels": [],
+        "global_level_labels": [],
         "errors": [
             {
                 "error_code": "not found",
@@ -707,11 +707,11 @@ async def test_run_async_with_error(
     task = LabelAnalysisRequestProcessingTask()
     res = await task.run_async(dbsession, larf.id)
     expected_result = {
-        "absent_labels": None,
-        "present_diff_labels": None,
-        "present_report_labels": None,
+        "absent_labels": [],
+        "present_diff_labels": [],
+        "present_report_labels": [],
         "success": False,
-        "global_level_labels": None,
+        "global_level_labels": [],
         "errors": [
             {
                 "error_code": "failed",
@@ -752,9 +752,9 @@ async def test_calculate_result_no_report(
     assert res == {
         "success": True,
         "absent_labels": larf.requested_labels,
-        "present_diff_labels": None,
-        "present_report_labels": None,
-        "global_level_labels": None,
+        "present_diff_labels": [],
+        "present_report_labels": [],
+        "global_level_labels": [],
         "errors": [
             {
                 "error_code": "missing data",
