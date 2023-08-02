@@ -52,10 +52,10 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             )
             return {
                 "success": False,
-                "present_report_labels": None,
-                "present_diff_labels": None,
-                "absent_labels": None,
-                "global_level_labels": None,
+                "present_report_labels": [],
+                "present_diff_labels": [],
+                "absent_labels": [],
+                "global_level_labels": [],
                 "errors": self.errors,
             }
         log.info(
@@ -112,10 +112,10 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             )
             return {
                 "success": False,
-                "present_report_labels": None,
-                "present_diff_labels": None,
-                "absent_labels": None,
-                "global_level_labels": None,
+                "present_report_labels": [],
+                "present_diff_labels": [],
+                "absent_labels": [],
+                "global_level_labels": [],
                 "errors": self.errors,
             }
         log.warning(
@@ -129,10 +129,10 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         label_analysis_request.state_id = LabelAnalysisRequestState.FINISHED.db_id
         result = {
             "success": True,
-            "present_report_labels": None,
-            "present_diff_labels": None,
+            "present_report_labels": [],
+            "present_diff_labels": [],
             "absent_labels": label_analysis_request.requested_labels,
-            "global_level_labels": None,
+            "global_level_labels": [],
             "errors": self.errors,
         }
         label_analysis_request.result = result
