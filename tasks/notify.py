@@ -191,14 +191,6 @@ class NotifyTask(BaseCodecovTask):
         if self.should_send_notifications(
             current_yaml, commit, ci_results, head_report
         ):
-            log.info(
-                "We are going to be sending notifications",
-                extra=dict(
-                    commit=commit.commitid,
-                    repoid=commit.repoid,
-                    current_yaml=current_yaml.to_dict(),
-                ),
-            )
             enriched_pull = await fetch_and_update_pull_request_information_from_commit(
                 repository_service, commit, current_yaml
             )
@@ -208,6 +200,27 @@ class NotifyTask(BaseCodecovTask):
             else:
                 pull = None
                 base_commit = self.fetch_parent(commit)
+
+            if (
+                enriched_pull
+                and not self.send_notifications_if_commit_differs_from_pulls_head(
+                    commit, enriched_pull, current_yaml
+                )
+            ):
+                log.info(
+                    "Not sending notifications for commit when it differs from pull's most recent head",
+                    extra=dict(
+                        commit=commit.commitid,
+                        repoid=commit.repoid,
+                        current_yaml=current_yaml.to_dict(),
+                        pull_head=enriched_pull.provider_pull["head"]["commitid"],
+                    ),
+                )
+                return {
+                    "notified": False,
+                    "notifications": None,
+                    "reason": "User doesnt want notifications warning them that current head differs from pull request most recent head.",
+                }
 
             if base_commit is not None:
                 base_report = report_service.get_existing_report_for_commit(
@@ -224,7 +237,14 @@ class NotifyTask(BaseCodecovTask):
                     "notifications": None,
                     "reason": "no_head_report",
                 }
-
+            log.info(
+                "We are going to be sending notifications",
+                extra=dict(
+                    commit=commit.commitid,
+                    repoid=commit.repoid,
+                    current_yaml=current_yaml.to_dict(),
+                ),
+            )
             notifications = await self.submit_third_party_notifications(
                 current_yaml,
                 base_commit,
@@ -303,6 +323,26 @@ class NotifyTask(BaseCodecovTask):
             commit.repository, current_yaml, decoration_type
         )
         return await notifications_service.notify(comparison)
+
+    def send_notifications_if_commit_differs_from_pulls_head(
+        self, commit, enriched_pull, current_yaml
+    ):
+        if (
+            enriched_pull.provider_pull is not None
+            and commit.commitid != enriched_pull.provider_pull["head"]["commitid"]
+        ):
+            wait_for_ci = read_yaml_field(
+                current_yaml, ("codecov", "notify", "wait_for_ci")
+            )
+            manual_trigger = read_yaml_field(
+                current_yaml, ("codecov", "notify", "manual_trigger")
+            )
+            after_n_builds = read_yaml_field(
+                current_yaml, ("codecov", "notify", "after_n_builds")
+            )
+            if wait_for_ci or manual_trigger or after_n_builds:
+                return False
+        return True
 
     def fetch_pull_request_base(self, pull: Pull) -> Commit:
         return pull.get_comparedto_commit()
