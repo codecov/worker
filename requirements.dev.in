@@ -1,0 +1,3 @@
+# Requirements for dev environments
+-r requirements.txt
+watchdog[watchmedo]

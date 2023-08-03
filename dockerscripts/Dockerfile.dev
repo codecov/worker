@@ -1,0 +1,26 @@
+FROM            codecov/baseworker-dev
+
+# Build-time deps for `shared`. Not needed by default, but needed if
+# EDITABLE_SHARED is turned on.
+RUN             apk update \
+                apk add --upgrade --no-cache apk-tools && \
+                apk add --update --no-cache \
+                git \
+                openssh \
+                musl-dev \
+                rust \
+                cargo
+
+COPY            . /worker
+WORKDIR         /worker
+
+USER            root
+
+ARG             RELEASE_VERSION
+
+# Passed in via Makefile. Controls whether `shared` is rebuilt editably + included
+# in hot-reloading in worker-dev.sh.
+ARG             EDITABLE_SHARED=n
+
+ENV             RELEASE_VERSION $RELEASE_VERSION
+ENV             EDITABLE_SHARED $EDITABLE_SHARED

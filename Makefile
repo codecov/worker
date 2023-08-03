@@ -8,25 +8,38 @@ branch = $(shell git branch | grep \* | cut -f2 -d' ')
 gh_access_token := $(shell echo ${GH_ACCESS_TOKEN})
 epoch := $(shell date +"%s")
 
+# Old dev workflow
 build.local:
 	docker build -f dockerscripts/Dockerfile . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}" --ssh default
 
+# Base build for old dev workflow
 build.base:
 	DOCKER_BUILDKIT=1 docker build -f dockerscripts/Dockerfile.requirements . -t codecov/baseworker:latest --ssh default
 
-build.base_dev:
-	DOCKER_BUILDKIT=1 docker build --build-arg="REQS=requirements.dev" -f dockerscripts/Dockerfile.requirements . -t codecov/baseworker:latest --ssh default
+# Base build for new dev workflow
+build.base-dev:
+	DOCKER_BUILDKIT=1 docker build --build-arg="REQS=requirements.dev.txt" -f dockerscripts/Dockerfile.requirements . -t codecov/baseworker-dev:latest --ssh default
 
 build.dev:
-	DOCKER_BUILDKIT=1 docker build -f dockerscripts/Dockerfile.local . -t codecov/worker:latest --build-arg RELEASE_VERSION="${release_version}" --ssh default
+	DOCKER_BUILDKIT=1 docker build -f dockerscripts/Dockerfile.dev . -t codecov/worker-dev:latest --build-arg RELEASE_VERSION="${release_version}" --ssh default
 
+build.dev-shared:
+	DOCKER_BUILDKIT=1 docker build --build-arg="EDITABLE_SHARED=y" -f dockerscripts/Dockerfile.dev . -t codecov/worker-dev:latest --build-arg RELEASE_VERSION="${release_version}" --ssh default
+
+# Legacy
 build:
 	$(MAKE) build.base
 	$(MAKE) build.local
 
+# Developer image for when you don't need to work on `shared`
 dev:
-	$(MAKE) build.base_dev
+	$(MAKE) build.base-dev
 	$(MAKE) build.dev
+
+# Developer image for when you do need to work on `shared`
+dev-shared:
+	$(MAKE) build.base-dev
+	$(MAKE) build.dev-shared
 
 build.enterprise_runtime:
 	$(MAKE) build.enterprise

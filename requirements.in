@@ -26,7 +26,7 @@ redis>=4.4.4
 requests
 sentry-sdk
 SQLAlchemy-Utils
-SQLAlchemy
+SQLAlchemy==1.3.23
 statsd
 stripe
 timestring
