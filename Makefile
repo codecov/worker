@@ -70,7 +70,7 @@ lint:
 	isort --profile black .
 
 test:
-	python -m pytest --cov=./
+	python -m pytest --cov=./ 
 
 test.unit:
 	python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml
