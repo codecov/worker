@@ -296,6 +296,65 @@ class TestNotifyTask(object):
         mocked_fetch_yaml.assert_called_with(commit, mock_repo_provider)
 
     @pytest.mark.asyncio
+    async def test_simple_call_no_notifications_commit_differs_from_pulls_head(
+        self,
+        dbsession,
+        mocker,
+        mock_storage,
+        mock_configuration,
+        mock_repo_provider,
+        enriched_pull,
+    ):
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
+        mocker.patch.object(NotifyTask, "app")
+        mocked_should_send_notifications = mocker.patch.object(
+            NotifyTask, "should_send_notifications", return_value=True
+        )
+        fetch_and_update_whether_ci_passed_result = {}
+        mocker.patch.object(
+            NotifyTask,
+            "fetch_and_update_whether_ci_passed",
+            return_value=fetch_and_update_whether_ci_passed_result,
+        )
+        mocked_fetch_pull = mocker.patch(
+            "tasks.notify.fetch_and_update_pull_request_information_from_commit"
+        )
+        head_report = Report()
+        mocker.patch.object(
+            ReportService, "get_existing_report_for_commit", return_value=head_report
+        )
+        mocked_fetch_pull.return_value = enriched_pull
+        # commit different from provider pull recent head
+        commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        task = NotifyTask()
+        result = await task.run_async_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml={"codecov": {"notify": {"manual_trigger": True}}},
+        )
+        assert result == {
+            "notified": False,
+            "notifications": None,
+            "reason": "User doesnt want notifications warning them that current head differs from pull request most recent head.",
+        }
+        mocked_should_send_notifications.assert_called_with(
+            UserYaml({"codecov": {"notify": {"manual_trigger": True}}}),
+            commit,
+            fetch_and_update_whether_ci_passed_result,
+            head_report,
+        )
+
+    @pytest.mark.asyncio
     async def test_simple_call_yes_notifications_no_base(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
