@@ -154,7 +154,7 @@ jobs:
           command: |
             apk add git build-base
             pip install codecov-cli
-            codecovcli -v do-upload --disable-search
+            codecovcli -v empty-upload
 
   staging:
     executor: codecov-deploy
