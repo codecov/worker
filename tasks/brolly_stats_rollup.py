@@ -45,13 +45,13 @@ class BrollyStatsRollupTask(CodecovCronTask):
         return db_session.query(Constants).get("install_id").value
 
     def _get_users_count(self, db_session):
-        return db_session.query(User).count()
+        return db_session.query(User.id_).count()
 
     def _get_repos_count(self, db_session):
-        return db_session.query(Repository).count()
+        return db_session.query(Repository.repoid).count()
 
     def _get_commits_count(self, db_session):
-        return db_session.query(Commit).count()
+        return db_session.query(Commit.id_).count()
 
     def _get_uploads_count_last_24h(self, db_session):
         time_24h_ago = datetime.datetime.now() - datetime.timedelta(days=1)
