@@ -148,7 +148,7 @@ jobs:
           name: run tests
           command: |
             make test.unit
-            make test.integration    
+            make test.integration     
       - run:
           name: upload to codecov using python uploader
           command: |
