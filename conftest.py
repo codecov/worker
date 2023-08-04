@@ -4,6 +4,9 @@ from pathlib import Path
 import mock
 import pytest
 import vcr
+from shared.config import ConfigHelper
+from shared.storage.memory import MemoryStorageService
+from shared.torngit import Github as GithubHandler
 from sqlalchemy import event
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
@@ -13,9 +16,6 @@ from celery_config import initialize_logging
 from database.base import Base
 from database.engine import json_dumps
 from helpers.environment import _get_cached_current_env
-from shared.config import ConfigHelper
-from shared.storage.memory import MemoryStorageService
-from shared.torngit import Github as GithubHandler
 
 
 # @pytest.hookimpl(tryfirst=True)

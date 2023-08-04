@@ -14,14 +14,6 @@ from codecovopentelem import (
     UnableToStartProcessorException,
     get_codecov_opentelemetry_instances,
 )
-
-from celery_task_router import route_task
-from helpers.cache import RedisBackend, cache
-from helpers.clock import get_utc_now_as_iso_format
-from helpers.environment import is_enterprise
-from helpers.health_check import get_health_check_interval_seconds
-from helpers.version import get_current_version
-from services.redis import get_redis_connection
 from shared.celery_config import (
     BaseCeleryConfig,
     brolly_stats_rollup_task_name,
@@ -30,6 +22,14 @@ from shared.celery_config import (
     profiling_finding_task_name,
 )
 from shared.config import get_config
+
+from celery_task_router import route_task
+from helpers.cache import RedisBackend, cache
+from helpers.clock import get_utc_now_as_iso_format
+from helpers.environment import is_enterprise
+from helpers.health_check import get_health_check_interval_seconds
+from helpers.version import get_current_version
+from services.redis import get_redis_connection
 
 log = logging.getLogger(__name__)
 
