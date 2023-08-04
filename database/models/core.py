@@ -74,6 +74,7 @@ class Owner(CodecovBaseModel):
     trial_status = Column(types.Text, server_default=FetchedValue())
     plan = Column(types.Text, server_default=FetchedValue())
     plan_user_count = Column(types.SmallInteger, server_default=FetchedValue())
+    pretrial_users_count = Column(types.SmallInteger, server_default=FetchedValue())
     plan_auto_activate = Column(types.Boolean, server_default=FetchedValue())
     stripe_customer_id = Column(types.Text, server_default=FetchedValue())
     stripe_subscription_id = Column(types.Text, server_default=FetchedValue())
@@ -134,7 +135,6 @@ class Repository(CodecovBaseModel):
     webhook_secret = Column(types.Text)
     activated = Column(types.Boolean, default=False)
     using_integration = Column(types.Boolean)
-    cache_do_not_use = Column("cache", postgresql.JSONB)
 
     owner = relationship(Owner, foreign_keys=[ownerid], back_populates="repositories")
     bot = relationship(Owner, foreign_keys=[bot_id])

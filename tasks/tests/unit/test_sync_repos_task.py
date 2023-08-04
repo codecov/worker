@@ -92,7 +92,7 @@ class TestSyncReposTaskUnit(object):
         self, mocker, mock_configuration, dbsession
     ):
         service = "gitlab"
-        repo_service_id = 12071992
+        repo_service_id = "12071992"
         repo_data = {
             "service_id": repo_service_id,
             "name": "new-name",
@@ -145,7 +145,7 @@ class TestSyncReposTaskUnit(object):
         self, mocker, mock_configuration, dbsession
     ):
         service = "gitlab"
-        repo_service_id = 12071992
+        repo_service_id = "12071992"
         repo_data = {
             "service_id": repo_service_id,
             "name": "pytest",
@@ -257,7 +257,7 @@ class TestSyncReposTaskUnit(object):
             dbsession.query(Repository)
             .filter(
                 Repository.ownerid == correct_owner.ownerid,
-                Repository.service_id == str(repo_service_id),
+                Repository.service_id == repo_service_id,
             )
             .count()
         ) == 0  # We didn't move any repos or anything
@@ -275,8 +275,8 @@ class TestSyncReposTaskUnit(object):
         self, mocker, mock_configuration, dbsession
     ):
         service = "gitlab"
-        repo_service_id = 12071992
-        repo_wrong_service_id = 40404
+        repo_service_id = "12071992"
+        repo_wrong_service_id = "40404"
         repo_data = {
             "service_id": repo_service_id,
             "name": "pytest",
@@ -337,7 +337,7 @@ class TestSyncReposTaskUnit(object):
     @pytest.mark.asyncio
     async def test_upsert_repo_create_new(self, mocker, mock_configuration, dbsession):
         service = "gitlab"
-        repo_service_id = 12071992
+        repo_service_id = "12071992"
         repo_data = {
             "service_id": repo_service_id,
             "name": "pytest",
@@ -501,12 +501,18 @@ class TestSyncReposTaskUnit(object):
 
         def repo_obj(service_id, name, language, private, branch, using_integration):
             return {
-                "id": service_id,
-                "name": name,
-                "language": language,
-                "private": private,
-                "default_branch": branch,
-                "using_integration": using_integration,
+                "owner": {
+                    "service_id": "test-owner-service-id",
+                    "username": "test-owner-username",
+                },
+                "repo": {
+                    "service_id": service_id,
+                    "name": name,
+                    "language": language,
+                    "private": private,
+                    "branch": branch,
+                },
+                "_using_integration": using_integration,
             }
 
         mock_repos = [
@@ -525,10 +531,10 @@ class TestSyncReposTaskUnit(object):
         for repo in mock_repos[:-1]:
             preseeded_repos.append(
                 RepositoryFactory.create(
-                    private=repo["private"],
-                    name=repo["name"],
-                    using_integration=repo["using_integration"],
-                    service_id=repo["id"],
+                    private=repo["repo"]["private"],
+                    name=repo["repo"]["name"],
+                    using_integration=repo["_using_integration"],
+                    service_id=repo["repo"]["service_id"],
                     owner=user,
                 )
             )
@@ -544,7 +550,11 @@ class TestSyncReposTaskUnit(object):
 
         repos = (
             dbsession.query(Repository)
-            .filter(Repository.service_id.in_((repo["id"] for repo in mock_repos)))
+            .filter(
+                Repository.service_id.in_(
+                    (repo["repo"]["service_id"] for repo in mock_repos)
+                )
+            )
             .all()
         )
 
