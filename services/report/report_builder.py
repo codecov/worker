@@ -227,10 +227,37 @@ class ReportBuilder(object):
         return ReportBuilderSession(self, filepath)
 
     def supports_labels(self) -> bool:
-        # temporary check to make it limited to us while we check if
-        # something breaks
+        if self.current_yaml is None or self.current_yaml == {}:
+            return False
+        old_flag_style = self.current_yaml.get("flags")
+        flag_management = self.current_yaml.get("flag_management")
+        # Check if some of the old style flags uses labels
+        old_flag_with_carryforward_labels = False
+        if old_flag_style:
+            old_flag_with_carryforward_labels = any(
+                map(
+                    lambda flag_definition: flag_definition.get("carryforward_mode")
+                    == "labels",
+                    old_flag_style.values(),
+                )
+            )
+        # Check if some of the flags or default rules use labels
+        flag_management_default_rule_carryforward_labels = False
+        flag_management_flag_with_carryforward_labels = False
+        if flag_management:
+            flag_management_default_rule_carryforward_labels = (
+                flag_management.get("default_rules", {}).get("carryforward_mode")
+                == "labels"
+            )
+            flag_management_flag_with_carryforward_labels = any(
+                map(
+                    lambda flag_definition: flag_definition.get("carryforward_mode")
+                    == "labels",
+                    flag_management.get("individual_flags", []),
+                )
+            )
         return (
-            self.current_yaml
-            and self.current_yaml.get("beta_groups")
-            and "labels" in self.current_yaml.get("beta_groups")
+            old_flag_with_carryforward_labels
+            or flag_management_default_rule_carryforward_labels
+            or flag_management_flag_with_carryforward_labels
         )
