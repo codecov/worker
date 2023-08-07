@@ -1,7 +1,7 @@
 import json
 import logging
 from functools import lru_cache
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
@@ -18,16 +18,23 @@ class ArchiveFieldInterfaceMeta(type):
             and callable(subclass.get_repository)
             and hasattr(subclass, "get_commitid")
             and callable(subclass.get_commitid)
+            and hasattr(subclass, "external_id")
         )
 
 
 class ArchiveFieldInterface(metaclass=ArchiveFieldInterfaceMeta):
     """Any class that uses ArchiveField must implement this interface"""
 
+    external_id: str
+
     def get_repository(self):
+        """Returns the repository object associated with self"""
         raise NotImplementedError()
 
-    def get_commitid(self) -> str:
+    def get_commitid(self) -> Optional[str]:
+        """Returns the commitid associated with self.
+        If no commitid is associated return None.
+        """
         raise NotImplementedError()
 
 
