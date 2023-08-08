@@ -1,3 +1,4 @@
+import pytest
 from shared.reports.resources import LineSession, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
 
@@ -151,7 +152,14 @@ def test_report_builder_session(mocker):
 
 def test_report_builder_session_create_line(mocker):
     current_yaml, sessionid, ignored_lines, path_fixer = (
-        {"beta_groups": ["labels"]},
+        {
+            "flag_management": {
+                "default_rules": {
+                    "carryforward": "true",
+                    "carryforward_mode": "labels",
+                }
+            }
+        },
         45,
         mocker.MagicMock(),
         mocker.MagicMock(),
@@ -175,3 +183,62 @@ def test_report_builder_session_create_line(mocker):
         ],
         complexity=None,
     )
+
+
+@pytest.mark.parametrize(
+    "current_yaml,expected_result",
+    [
+        ({}, False),
+        ({"flags": {"oldflag": {"carryforward": "true"}}}, False),
+        (
+            {
+                "flags": {
+                    "oldflag": {"carryforward": "true", "carryforward_mode": "labels"}
+                }
+            },
+            True,
+        ),
+        (
+            {
+                "flag_management": {
+                    "default_rules": {
+                        "carryforward": "true",
+                        "carryforward_mode": "labels",
+                    }
+                }
+            },
+            True,
+        ),
+        (
+            {
+                "flag_management": {
+                    "default_rules": {
+                        "carryforward": "true",
+                        "carryforward_mode": "all",
+                    }
+                }
+            },
+            False,
+        ),
+        (
+            {
+                "flag_management": {
+                    "default_rules": {
+                        "carryforward": "true",
+                        "carryforward_mode": "all",
+                    },
+                    "individual_flags": [
+                        {
+                            "name": "some_flag",
+                            "carryforward_mode": "labels",
+                        }
+                    ],
+                }
+            },
+            True,
+        ),
+    ],
+)
+def test_report_builder_supports_flags(current_yaml, expected_result):
+    builder = ReportBuilder(current_yaml, 0, None, None)
+    assert builder.supports_labels() == expected_result
