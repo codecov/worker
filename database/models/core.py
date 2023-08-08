@@ -1,10 +1,11 @@
 import random
 import string
+import uuid
 from datetime import datetime
 
 from sqlalchemy import Column, ForeignKey, Index, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import backref, relationship
+from sqlalchemy.orm import backref, relationship, validates
 from sqlalchemy.schema import FetchedValue
 
 import database.models
@@ -12,6 +13,30 @@ from database.base import CodecovBaseModel, MixinBaseClass
 from database.enums import Decoration, Notification, NotificationState
 from database.utils import ArchiveField
 from helpers.config import should_write_data_to_storage_config_check
+
+
+class User(CodecovBaseModel):
+    __tablename__ = "users"
+    id_ = Column("id", types.BigInteger, primary_key=True)
+
+    # This field is case-insensitive but we don't have a way to represent that
+    # here. Options to address:
+    # - Upgrade sqlalchemy and use `postgresql.CITEXT(100)` as the field type
+    # - Add a case-insensitive collation to postgres[1] and use it here + in `codecov-api`
+    #
+    # [1] https://www.postgresql.org/docs/current/collation.html
+    email = Column(types.String(100), nullable=True)
+
+    name = Column(types.String(100), nullable=True)
+    is_staff = Column(types.Boolean, default=False)
+    is_superuser = Column(types.Boolean, default=False)
+    external_id = Column(postgresql.UUID(as_uuid=True), unique=True, default=uuid.uuid4)
+
+    @validates("external_id")
+    def validate_external_id(self, key, value):
+        if self.external_id:
+            raise ValueError("`external_id` cannot be modified")
+        return value
 
 
 class Owner(CodecovBaseModel):
@@ -69,6 +94,9 @@ class Owner(CodecovBaseModel):
         cascade="all, delete",
         passive_deletes=True,
     )
+
+    # TODO: Create association between `User` and `Owner` mirroring `codecov-api`
+    # https://github.com/codecov/codecov-api/blob/204f7fd7e37896efe0259e4bc91aad20601087e0/codecov_auth/models.py#L196-L202
 
     __table_args__ = (
         Index("owner_service_ids", "service", "service_id", unique=True),
@@ -384,3 +412,10 @@ class OrganizationLevelToken(MixinBaseClass, CodecovBaseModel):
     token = Column(postgresql.UUID)
     valid_until = Column(types.DateTime)
     token_type = Column(types.String)
+
+
+class Constants(CodecovBaseModel):
+    __tablename__ = "constants"
+
+    key = Column(types.String, primary_key=True)
+    value = Column(types.String)

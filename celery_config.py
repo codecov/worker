@@ -16,10 +16,12 @@ from codecovopentelem import (
 )
 from shared.celery_config import (
     BaseCeleryConfig,
+    brolly_stats_rollup_task_name,
     gh_app_webhook_check_task_name,
     health_check_task_name,
     profiling_finding_task_name,
 )
+from shared.config import get_config
 
 from celery_task_router import route_task
 from helpers.cache import RedisBackend, cache
@@ -97,7 +99,7 @@ trial_expiration_task_name = "app.tasks.plan.TrialExpirationTask"
 trial_expiration_cron_task_name = "app.cron.plan.TrialExpirationCronTask"
 
 
-class CeleryWorkerConfig(BaseCeleryConfig):
+def _beat_schedule():
     beat_schedule = {
         "hourly_check": {
             "task": hourly_check_task_name,
@@ -136,5 +138,20 @@ class CeleryWorkerConfig(BaseCeleryConfig):
             },
         },
     }
+
+    if get_config("setup", "telemetry", "enabled", default=True):
+        beat_schedule["brolly_stats_rollup"] = {
+            "task": brolly_stats_rollup_task_name,
+            "schedule": crontab(hour="2"),
+            "kwargs": {
+                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            },
+        }
+
+    return beat_schedule
+
+
+class CeleryWorkerConfig(BaseCeleryConfig):
+    beat_schedule = _beat_schedule()
 
     task_routes = route_task
