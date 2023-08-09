@@ -3672,9 +3672,9 @@ class TestNewHeaderSectionWriter(object):
         writer = NewHeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mocker.patch(
             "services.notification.notifiers.mixins.message.sections.round_number",
@@ -3701,9 +3701,9 @@ class TestNewHeaderSectionWriter(object):
         writer = NewHeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mocker.patch(
             "services.notification.notifiers.mixins.message.sections.round_number",
@@ -3723,6 +3723,33 @@ class TestNewHeaderSectionWriter(object):
             "Patch and project coverage have no change.",
             f"> Comparison is base [(`{sample_comparison.base.commit.commitid[:7]}`)](urlurl?el=desc) 0% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc) 0%.",
             "> Report is 3 commits behind head on master.",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_new_header_section_writer_no_project_coverage(
+        self, mocker, sample_comparison
+    ):
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={"hide_project_coverage": True},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "Patch has no changes to coverable lines.",
         ]
 
 
@@ -4099,6 +4126,49 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"</details>",
+            f"",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f"",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_no_project_coverage(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        comparison = sample_comparison
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "newheader, files, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"Patch coverage is **`66.67%`** of modified lines.",
+            f"",
+            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"|---|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"",
+            f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
+            f"",
             f"",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",

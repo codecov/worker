@@ -113,74 +113,88 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             patch_cov = round_number(yaml, Decimal(diff_totals.coverage))
         else:
             patch_cov = None
-
-        if base_report and head_report:
-            patch_cov_msg = (
-                f"Patch coverage: **`{patch_cov}%`**"
-                if patch_cov
-                else "Patch coverage has no change"
-            )
-
-            if rounded_change > 0:
-                project_cov_change_msg = (
-                    f"project coverage change: **`+{rounded_change}%`** :tada:"
-                )
-            elif rounded_change < 0:
-                project_cov_change_msg = (
-                    f"project coverage change: **`{rounded_change}%`** :warning:"
-                )
-            else:
-                project_cov_change_msg = "no project coverage change."
-
-            if not patch_cov and rounded_change == 0:
-                yield (f"Patch and project coverage have no change.")
-            else:
-                yield (f"{patch_cov_msg} and {project_cov_change_msg}")
-
-            yield (
-                "> Comparison is base [(`{commitid_base}`)]({links[base]}?el=desc) {base_cov}% compared to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) {head_cov}%.".format(
-                    pull=pull.pullid,
-                    base=pull_dict["base"]["branch"],
-                    commitid_head=comparison.head.commit.commitid[:7],
-                    commitid_base=comparison.base.commit.commitid[:7],
-                    links=links,
-                    base_cov=round_number(yaml, Decimal(base_report.totals.coverage)),
-                    head_cov=round_number(yaml, Decimal(head_report.totals.coverage)),
-                )
-            )
-
-        else:
-            yield (
-                "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
-                    what="base" if not base_report else "head",
-                    branch=pull_dict["base" if not base_report else "head"]["branch"],
-                    commit=pull_dict["base" if not base_report else "head"]["commitid"][
-                        :7
-                    ],
-                    request_type="merge request"
-                    if repo_service == "gitlab"
-                    else "pull request",
-                )
-            )
-
+        hide_project_coverage = self.settings.get("hide_project_coverage", False)
+        if hide_project_coverage:
             diff_totals = head_report.apply_diff(diff)
-            if diff_totals and diff_totals.coverage is not None:
+            if patch_cov:
+                yield (f"Patch coverage is **`{patch_cov}%`** of modified lines.")
+            else:
+                yield "Patch has no changes to coverable lines."
+        else:
+            if base_report and head_report:
+                patch_cov_msg = (
+                    f"Patch coverage: **`{patch_cov}%`**"
+                    if patch_cov
+                    else "Patch coverage has no change"
+                )
+
+                if rounded_change > 0:
+                    project_cov_change_msg = (
+                        f"project coverage change: **`+{rounded_change}%`** :tada:"
+                    )
+                elif rounded_change < 0:
+                    project_cov_change_msg = (
+                        f"project coverage change: **`{rounded_change}%`** :warning:"
+                    )
+                else:
+                    project_cov_change_msg = "no project coverage change."
+
+                if not patch_cov and rounded_change == 0:
+                    yield (f"Patch and project coverage have no change.")
+                else:
+                    yield (f"{patch_cov_msg} and {project_cov_change_msg}")
+
                 yield (
-                    "> Patch coverage: {percentage}% of modified lines in {request_type} are covered.".format(
-                        percentage=round_number(yaml, Decimal(diff_totals.coverage)),
+                    "> Comparison is base [(`{commitid_base}`)]({links[base]}?el=desc) {base_cov}% compared to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) {head_cov}%.".format(
+                        pull=pull.pullid,
+                        base=pull_dict["base"]["branch"],
+                        commitid_head=comparison.head.commit.commitid[:7],
+                        commitid_base=comparison.base.commit.commitid[:7],
+                        links=links,
+                        base_cov=round_number(
+                            yaml, Decimal(base_report.totals.coverage)
+                        ),
+                        head_cov=round_number(
+                            yaml, Decimal(head_report.totals.coverage)
+                        ),
+                    )
+                )
+
+            else:
+                yield (
+                    "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
+                        what="base" if not base_report else "head",
+                        branch=pull_dict["base" if not base_report else "head"][
+                            "branch"
+                        ],
+                        commit=pull_dict["base" if not base_report else "head"][
+                            "commitid"
+                        ][:7],
                         request_type="merge request"
                         if repo_service == "gitlab"
                         else "pull request",
                     )
                 )
-            else:
-                yield "> Patch has no changes to coverable lines."
 
-        if behind_by:
-            yield (
-                f"> Report is {behind_by} commits behind head on {pull_dict['base']['branch']}."
-            )
+                diff_totals = head_report.apply_diff(diff)
+                if diff_totals and diff_totals.coverage is not None:
+                    yield (
+                        "> Patch coverage: {percentage}% of modified lines in {request_type} are covered.".format(
+                            percentage=round_number(
+                                yaml, Decimal(diff_totals.coverage)
+                            ),
+                            request_type="merge request"
+                            if repo_service == "gitlab"
+                            else "pull request",
+                        )
+                    )
+                else:
+                    yield "> Patch has no changes to coverable lines."
 
+            if behind_by:
+                yield (
+                    f"> Report is {behind_by} commits behind head on {pull_dict['base']['branch']}."
+                )
         if (
             comparison.enriched_pull.provider_pull is not None
             and comparison.head.commit.commitid
