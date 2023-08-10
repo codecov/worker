@@ -1,7 +1,7 @@
 file:./shared#egg=shared
 git+ssh://git@github.com/codecov/opentelem-python.git@v0.0.4a1#egg=codecovopentelem
 boto3
-celery
+celery>=5.2.7
 click
 coverage
 factory-boy

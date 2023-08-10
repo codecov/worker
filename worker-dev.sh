@@ -5,6 +5,9 @@ ignores=''
 
 if [ "$EDITABLE_SHARED" = "y" ]
 then
+    cd ./shared
+    python setup.py develop
+    cd ..
     # Install shared "editably" so that the installed module maps back to the in-tree source
     pip install -e ./shared
     watchmedo auto-restart --patterns="*.py;*.sh" --recursive --signal=SIGTERM sh worker.sh
