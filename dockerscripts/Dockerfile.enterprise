@@ -13,7 +13,6 @@ RUN         apk --update --no-cache add \
             g++ \
             git \
             pwgen \
-            curl \
             && pip install --upgrade pip
 
 # Build bootloader for alpine
