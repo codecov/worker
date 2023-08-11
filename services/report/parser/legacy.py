@@ -9,7 +9,6 @@ from services.report.parser.types import LegacyParsedRawReport, ParsedUploadedRe
 
 
 class LegacyReportParser(object):
-
     network_separator = b"<<<<<< network"
     env_separator = b"<<<<<< ENV"
     eof_separator = b"<<<<<< EOF"
@@ -72,7 +71,7 @@ class LegacyReportParser(object):
             - toc: the 'network', list of files present on this report
             - env: the envvars the user set on the upload
             - uploaded_files: the actual report files
-            - path_fixes: the patfixes some languages need
+            - report_fixes: the report fixes some languages need
 
         and splits them, also taking care of 'strip()' them, removing whitespaces,
             as the original logic also does.
@@ -132,7 +131,7 @@ class LegacyReportParser(object):
         uploaded_files = []
         toc_section = None
         env_section = None
-        path_fixes_section = None
+        report_fixes_section = None
         for sect in sections:
             if sect["footer"] == self.network_separator:
                 toc_section = sect["contents"]
@@ -140,7 +139,7 @@ class LegacyReportParser(object):
                 env_section = sect["contents"]
             else:
                 if sect["filename"] == "fixes":
-                    path_fixes_section = sect["contents"]
+                    report_fixes_section = sect["contents"]
                 else:
                     uploaded_files.append(
                         ParsedUploadedReportFile(
@@ -152,5 +151,5 @@ class LegacyReportParser(object):
             toc=toc_section,
             env=env_section,
             uploaded_files=uploaded_files,
-            path_fixes=path_fixes_section,
+            report_fixes=report_fixes_section,
         )

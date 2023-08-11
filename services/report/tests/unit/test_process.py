@@ -455,7 +455,7 @@ class TestProcessReport(BaseTestCase):
 
         assert res.get("file") is not None
 
-    def test_path_fixes_same_final_result(self):
+    def test_report_fixes_same_final_result(self):
         commit_yaml = {"fixes": ["arroba::prefix", "bingo::prefix"]}
         result = process.process_raw_upload(
             commit_yaml=UserYaml(commit_yaml),
@@ -915,7 +915,7 @@ class TestProcessReport(BaseTestCase):
         uploaded_reports = LegacyParsedRawReport(
             toc=None,
             env=None,
-            path_fixes=None,
+            report_fixes=None,
             uploaded_files=[
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
@@ -1074,7 +1074,7 @@ class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
         uploaded_reports = LegacyParsedRawReport(
             toc=None,
             env=None,
-            path_fixes=None,
+            report_fixes=None,
             uploaded_files=[
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.json",
