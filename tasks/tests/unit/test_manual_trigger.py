@@ -1,5 +1,6 @@
 import pytest
 from celery.exceptions import Retry
+from shared.reports.enums import UploadState
 
 from database.tests.factories import CommitFactory, PullFactory
 from database.tests.factories.core import UploadFactory
@@ -86,9 +87,15 @@ class TestUploadCompletionTask(object):
             celery_app,
         )
         commit = CommitFactory.create()
-        upload = UploadFactory.create(report__commit=commit, state="")
+        upload = UploadFactory.create(report__commit=commit, state="", state_id=None)
+        upload2 = UploadFactory.create(
+            report__commit=commit,
+            state="started",
+            state_id=UploadState.UPLOADED.db_id,
+        )
         dbsession.add(commit)
         dbsession.add(upload)
+        dbsession.add(upload2)
         dbsession.flush()
         with pytest.raises(Retry):
             result = await ManualTriggerTask().run_async(

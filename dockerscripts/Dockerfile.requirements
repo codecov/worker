@@ -37,7 +37,7 @@ FROM            python:3.10.8-alpine3.16
 
 RUN             apk add --upgrade --no-cache apk-tools && \
                 apk -U upgrade busybox expat libretls  && \
-                apk add --no-cache postgresql-libs gcc libxslt-dev make
+                apk add --no-cache postgresql-libs gcc libxslt-dev curl make
 
 WORKDIR         /pip-packages/
 COPY            --from=build /pip-packages/ /pip-packages/

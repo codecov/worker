@@ -9,6 +9,7 @@ from shared.celery_config import (
     notify_task_name,
     pulls_task_name,
 )
+from shared.reports.enums import UploadState
 
 from app import celery_app
 from database.models import Commit, Pull
@@ -92,7 +93,7 @@ class ManualTriggerTask(BaseCodecovTask):
         )
         still_processing = 0
         for upload in uploads:
-            if not upload.state:
+            if not upload.state or upload.state_id == UploadState.UPLOADED.db_id:
                 still_processing += 1
         if still_processing == 0:
             self.trigger_notifications(repoid, commitid, commit_yaml)
@@ -108,7 +109,7 @@ class ManualTriggerTask(BaseCodecovTask):
                 log.info(
                     "Retrying ManualTriggerTask. Some uploads are still being processed."
                 )
-                retry_in = 30
+                retry_in = 60 * 3**self.request.retries
                 self.retry(max_retries=5, countdown=retry_in)
             except MaxRetriesExceededError:
                 log.warning(

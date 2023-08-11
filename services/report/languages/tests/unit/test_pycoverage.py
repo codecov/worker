@@ -179,7 +179,14 @@ class TestPyCoverageProcessor(BaseTestCase):
         content = SAMPLE
         p = PyCoverageProcessor()
         report_builder = ReportBuilder(
-            current_yaml={"beta_groups": ["labels"]},
+            current_yaml={
+                "flag_management": {
+                    "default_rules": {
+                        "carryforward": "true",
+                        "carryforward_mode": "labels",
+                    }
+                }
+            },
             sessionid=0,
             ignored_lines={},
             path_fixer=str,
@@ -445,7 +452,14 @@ class TestPyCoverageProcessor(BaseTestCase):
         content = COMPRESSED_SAMPLE
         p = PyCoverageProcessor()
         report_builder = ReportBuilder(
-            current_yaml={"beta_groups": ["labels"]},
+            current_yaml={
+                "flag_management": {
+                    "default_rules": {
+                        "carryforward": "true",
+                        "carryforward_mode": "labels",
+                    }
+                }
+            },
             sessionid=0,
             ignored_lines={},
             path_fixer=str,
