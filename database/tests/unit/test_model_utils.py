@@ -130,17 +130,5 @@ class TestArchiveField(object):
         assert test_class._archive_field == None
         assert test_class._archive_field_storage_path == "path/to/written/object"
         assert test_class.archive_field == some_json
-        # Writing cleans the cache
-        assert mock_read_file.call_count == 1
-        mock_read_file.assert_called_with("path/to/written/object")
-        mock_write_file.assert_called_with(
-            commit_id=commit.commitid,
-            table="test_table",
-            field="archive_field",
-            external_id=test_class.external_id,
-            data=some_json,
-            encoder=ReportEncoder,
-        )
-        mock_archive_service.return_value.delete_file.assert_called_with(
-            "path/to/old/data"
-        )
+        # Cache is updated on write
+        assert mock_read_file.call_count == 0

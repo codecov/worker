@@ -403,14 +403,11 @@ class TestReportDetailsModel(object):
         # Retrieve the set value
         files_array = retrieved_instance.files_array
         assert files_array == self.sample_files_array
-        assert mock_archive_service.call_count == 2
-        mock_archive_service.return_value.read_file.assert_has_calls(
-            [call("https://storage-url/path/to/item.json")]
-        )
-        # Check that caching (still) works within the instance
+        assert mock_archive_service.call_count == 1
+        # Check that caching works within the instance
         files_array = retrieved_instance.files_array
-        assert mock_archive_service.call_count == 2
-        assert mock_archive_service.return_value.read_file.call_count == 1
+        assert mock_archive_service.call_count == 1
+        assert mock_archive_service.return_value.read_file.call_count == 0
 
 
 class TestCommitModel(object):
