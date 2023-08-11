@@ -20,7 +20,8 @@ from shared.yaml import UserYaml
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit
-from helpers.checkpoint_logger import CheckpointLogger, UploadFlow
+from helpers.checkpoint_logger import UploadFlow, _kwargs_key
+from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
@@ -138,11 +139,11 @@ class UploadTask(BaseCodecovTask):
     async def run_async(
         self, db_session, repoid, commitid, report_code=None, *args, **kwargs
     ):
-        # If we're a retry, we already computed the first checkpoint
-        if "checkpoints" not in kwargs:
-            checkpoints = CheckpointLogger(UploadFlow)
-            checkpoints.log(UploadFlow.UPLOAD_TASK_BEGIN)
-            kwargs["checkpoints"] = checkpoints
+        # If we're a retry, kwargs will already have our first checkpoint.
+        # If not, log it directly into kwargs so we can pass it onto other tasks
+        checkpoints_from_kwargs(UploadFlow, kwargs).log(
+            UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
+        )
 
         log.info(
             "Received upload task",
@@ -266,14 +267,15 @@ class UploadTask(BaseCodecovTask):
                     )
                     self.retry(countdown=retry_countdown, args=args, kwargs=kwargs)
 
-        checkpoints = kwargs.get("checkpoints")
-        if checkpoints:
-            checkpoints.log(UploadFlow.PROCESSING_BEGIN)
-            checkpoints.submit_subflow(
+        try:
+            checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
+            checkpoints.log(UploadFlow.PROCESSING_BEGIN).submit_subflow(
                 "time_before_processing",
                 UploadFlow.UPLOAD_TASK_BEGIN,
                 UploadFlow.PROCESSING_BEGIN,
             )
+        except ValueError as e:
+            log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
 
         commit = None
         commits = db_session.query(Commit).filter(
@@ -444,17 +446,7 @@ class UploadTask(BaseCodecovTask):
                 )
                 chain_to_call.append(sig)
         if chain_to_call:
-            finish_sig = upload_finisher_task.signature(
-                kwargs=dict(
-                    repoid=commit.repoid,
-                    commitid=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    report_code=commit_report.code,
-                    checkpoints=checkpoints,
-                )
-            )
-            chain_to_call.append(finish_sig)
-            res = chain(*chain_to_call).apply_async()
+            checkpoint_data = None
             if checkpoints:
                 checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
                 checkpoints.submit_subflow(
@@ -462,6 +454,20 @@ class UploadTask(BaseCodecovTask):
                     UploadFlow.PROCESSING_BEGIN,
                     UploadFlow.INITIAL_PROCESSING_COMPLETE,
                 )
+                checkpoint_data = checkpoints.data
+
+            finish_sig = upload_finisher_task.signature(
+                kwargs={
+                    "repoid": commit.repoid,
+                    "commitid": commit.commitid,
+                    "commit_yaml": commit_yaml,
+                    "report_code": commit_report.code,
+                    _kwargs_key(UploadFlow): checkpoint_data,
+                },
+            )
+            chain_to_call.append(finish_sig)
+            res = chain(*chain_to_call).apply_async()
+
             log.info(
                 "Scheduling task for %s different reports",
                 len(argument_list),

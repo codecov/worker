@@ -16,6 +16,7 @@ from app import celery_app
 from database.enums import CommitErrorTypes, Decoration
 from database.models import Commit, Pull
 from helpers.checkpoint_logger import UploadFlow
+from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
@@ -50,7 +51,6 @@ class NotifyTask(BaseCodecovTask):
         commitid: str,
         current_yaml=None,
         empty_upload=None,
-        checkpoints=None,
         **kwargs,
     ):
         redis_connection = get_redis_connection()
@@ -81,7 +81,6 @@ class NotifyTask(BaseCodecovTask):
                     commitid=commitid,
                     current_yaml=current_yaml,
                     empty_upload=empty_upload,
-                    checkpoints=checkpoints,
                     **kwargs,
                 )
         except LockError as err:
@@ -108,7 +107,6 @@ class NotifyTask(BaseCodecovTask):
         commitid: str,
         current_yaml=None,
         empty_upload=None,
-        checkpoints=None,
         **kwargs,
     ):
         log.info("Starting notifications", extra=dict(commit=commitid, repoid=repoid))
@@ -257,13 +255,13 @@ class NotifyTask(BaseCodecovTask):
                 enriched_pull,
                 empty_upload,
             )
-            if checkpoints:
-                checkpoints.log(UploadFlow.NOTIFIED)
-                checkpoints.submit_subflow(
-                    "notification_latency",
-                    UploadFlow.UPLOAD_TASK_BEGIN,
-                    UploadFlow.NOTIFIED,
-                )
+            checkpoints_from_kwargs(UploadFlow, kwargs).log(
+                UploadFlow.NOTIFIED
+            ).submit_subflow(
+                "notification_latency",
+                UploadFlow.UPLOAD_TASK_BEGIN,
+                UploadFlow.NOTIFIED,
+            )
             log.info(
                 "Notifications done",
                 extra=dict(

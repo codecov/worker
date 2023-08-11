@@ -16,7 +16,7 @@ from database.models import Upload
 from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from database.tests.factories.core import ReportFactory
-from helpers.checkpoint_logger import CheckpointLogger, UploadFlow
+from helpers.checkpoint_logger import CheckpointLogger, UploadFlow, _kwargs_key
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -125,8 +125,12 @@ class TestUploadTaskIntegration(object):
             f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
         checkpoints = _create_checkpoint_logger(mocker)
+        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
         result = await UploadTask().run_async(
-            dbsession, commit.repoid, commit.commitid, checkpoints=checkpoints
+            dbsession,
+            commit.repoid,
+            commit.commitid,
+            kwargs=kwargs,
         )
         expected_result = {"was_setup": False, "was_updated": True}
         assert expected_result == result
@@ -157,22 +161,16 @@ class TestUploadTaskIntegration(object):
                 report_code=None,
             ),
         )
-        t2 = upload_finisher_task.signature(
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                report_code=None,
-                checkpoints=mocker.ANY,
-            )
+        kwargs = dict(
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            report_code=None,
         )
+        kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
+        t2 = upload_finisher_task.signature(kwargs=kwargs)
         mocked_1.assert_called_with(t1, t2)
 
-        assert checkpoints.data == {
-            UploadFlow.UPLOAD_TASK_BEGIN: 1337,
-            UploadFlow.PROCESSING_BEGIN: 9001,
-            UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
-        }
         calls = [
             mock.call(
                 "time_before_processing",
@@ -448,15 +446,14 @@ class TestUploadTaskIntegration(object):
                 report_code=None,
             ),
         )
-        t_final = upload_finisher_task.signature(
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                report_code=None,
-                checkpoints=mocker.ANY,
-            )
+        kwargs = dict(
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            report_code=None,
         )
+        kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
+        t_final = upload_finisher_task.signature(kwargs=kwargs)
         mocked_1.assert_called_with(t1, t2, t3, t_final)
         mock_redis.lock.assert_any_call(
             f"upload_lock_{commit.repoid}_{commit.commitid}",
@@ -908,13 +905,13 @@ class TestUploadTaskUnit(object):
             ),
         )
         t2 = upload_finisher_task.signature(
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml=commit_yaml.to_dict(),
-                report_code=None,
-                checkpoints=mocker.ANY,
-            )
+            kwargs={
+                "repoid": commit.repoid,
+                "commitid": commit.commitid,
+                "commit_yaml": commit_yaml.to_dict(),
+                "report_code": None,
+                _kwargs_key(UploadFlow): mocker.ANY,
+            }
         )
         mocked_chain.assert_called_with(t1, t2)
 

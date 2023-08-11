@@ -12,7 +12,7 @@ from database.tests.factories import (
     RepositoryFactory,
     UploadFactory,
 )
-from helpers.checkpoint_logger import CheckpointLogger, UploadFlow
+from helpers.checkpoint_logger import CheckpointLogger, UploadFlow, _kwargs_key
 from tasks.upload_finisher import ReportService, UploadFinisherTask
 
 here = Path(__file__)
@@ -72,13 +72,14 @@ class TestUploadFinisherTask(object):
         }
 
         checkpoints = _create_checkpoint_logger(mocker)
+        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
         result = await UploadFinisherTask().run_async(
             dbsession,
             previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            checkpoints=checkpoints,
+            **kwargs,
         )
         assert commit.notified is False
         expected_result = {"notifications_called": True}
@@ -376,17 +377,24 @@ class TestUploadFinisherTask(object):
         processing_results = {"processings_so_far": [{"successful": True}]}
         dbsession.add(commit)
         dbsession.flush()
+
+        checkpoints = _create_checkpoint_logger(mocker)
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, UserYaml(commit_yaml), processing_results, None, None
+            dbsession,
+            commit,
+            UserYaml(commit_yaml),
+            processing_results,
+            None,
+            checkpoints,
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
-            kwargs=dict(
-                commitid=commit.commitid,
-                current_yaml=commit_yaml,
-                repoid=commit.repoid,
-                checkpoints=ANY,
-            )
+            kwargs={
+                "commitid": commit.commitid,
+                "current_yaml": commit_yaml,
+                "repoid": commit.repoid,
+                _kwargs_key(UploadFlow): ANY,
+            },
         )
         assert mocked_app.send_task.call_count == 0
 
@@ -423,17 +431,24 @@ class TestUploadFinisherTask(object):
         dbsession.add(compared_to)
         dbsession.add(pull)
         dbsession.flush()
+
+        checkpoints = _create_checkpoint_logger(mocker)
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, UserYaml(commit_yaml), processing_results, None, None
+            dbsession,
+            commit,
+            UserYaml(commit_yaml),
+            processing_results,
+            None,
+            checkpoints,
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
-            kwargs=dict(
-                commitid=commit.commitid,
-                current_yaml=commit_yaml,
-                repoid=commit.repoid,
-                checkpoints=ANY,
-            )
+            kwargs={
+                "commitid": commit.commitid,
+                "current_yaml": commit_yaml,
+                "repoid": commit.repoid,
+                _kwargs_key(UploadFlow): ANY,
+            },
         )
         mocked_app.tasks["app.tasks.pulls.Sync"].apply_async.assert_called_with(
             kwargs={
@@ -462,8 +477,15 @@ class TestUploadFinisherTask(object):
         processing_results = {"processings_so_far": [{"successful": False}]}
         dbsession.add(commit)
         dbsession.flush()
+
+        checkpoints = _create_checkpoint_logger(mocker)
         res = await UploadFinisherTask().finish_reports_processing(
-            dbsession, commit, UserYaml(commit_yaml), processing_results, None, None
+            dbsession,
+            commit,
+            UserYaml(commit_yaml),
+            processing_results,
+            None,
+            checkpoints,
         )
         assert res == {"notifications_called": False}
         assert mocked_app.send_task.call_count == 0

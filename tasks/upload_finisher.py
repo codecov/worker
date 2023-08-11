@@ -13,7 +13,8 @@ from shared.yaml import UserYaml
 
 from app import celery_app
 from database.models import Commit, Pull
-from helpers.checkpoint_logger import UploadFlow
+from helpers.checkpoint_logger import UploadFlow, _kwargs_key
+from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -52,16 +53,17 @@ class UploadFinisherTask(BaseCodecovTask):
         commitid,
         commit_yaml,
         report_code=None,
-        checkpoints=None,
         **kwargs,
     ):
-        if checkpoints:
-            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
-            checkpoints.submit_subflow(
+        try:
+            checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
+            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE).submit_subflow(
                 "batch_processing_duration",
                 UploadFlow.INITIAL_PROCESSING_COMPLETE,
                 UploadFlow.BATCH_PROCESSING_COMPLETE,
             )
+        except ValueError as e:
+            log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
 
         log.info(
             "Received upload_finisher task",
@@ -118,12 +120,12 @@ class UploadFinisherTask(BaseCodecovTask):
             ):
                 notifications_called = True
                 task = self.app.tasks[notify_task_name].apply_async(
-                    kwargs=dict(
-                        repoid=repoid,
-                        commitid=commitid,
-                        current_yaml=commit_yaml.to_dict(),
-                        checkpoints=checkpoints,
-                    )
+                    kwargs={
+                        "repoid": repoid,
+                        "commitid": commitid,
+                        "current_yaml": commit_yaml.to_dict(),
+                        _kwargs_key(UploadFlow): checkpoints.data,
+                    },
                 )
                 log.info(
                     "Scheduling notify task",
@@ -181,8 +183,7 @@ class UploadFinisherTask(BaseCodecovTask):
             commit.state = "skipped"
 
         if checkpoints:
-            checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
-            checkpoints.submit_subflow(
+            checkpoints.log(UploadFlow.PROCESSING_COMPLETE).submit_subflow(
                 "total_processing_duration",
                 UploadFlow.PROCESSING_BEGIN,
                 UploadFlow.PROCESSING_COMPLETE,

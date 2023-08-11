@@ -18,7 +18,7 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
-from helpers.checkpoint_logger import CheckpointLogger, UploadFlow
+from helpers.checkpoint_logger import CheckpointLogger, UploadFlow, _kwargs_key
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.decoration import DecorationDetails
 from services.notification import NotificationService
@@ -420,6 +420,7 @@ class TestNotifyTask(object):
         dbsession.flush()
 
         checkpoints = _create_checkpoint_logger(mocker)
+        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
 
         task = NotifyTask()
         result = await task.run_async_within_lock(
@@ -427,9 +428,8 @@ class TestNotifyTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             current_yaml={"coverage": {"status": {"patch": True}}},
-            checkpoints=checkpoints,
+            **kwargs,
         )
-        print(result)
         expected_result = {
             "notified": True,
             "notifications": [
@@ -907,18 +907,22 @@ class TestNotifyTask(object):
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
         mock_redis.get.return_value = False
+        checkpoints = _create_checkpoint_logger(mocker)
+        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
         res = await task.run_async(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
             current_yaml=current_yaml,
+            **kwargs,
         )
         assert res == {"notifications": [], "notified": True, "reason": "yay"}
+        kwargs = {_kwargs_key(UploadFlow): mocker.ANY}
         mocked_run_async_within_lock.assert_called_with(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
             current_yaml=current_yaml,
             empty_upload=None,
-            checkpoints=mocker.ANY,
+            **kwargs,
         )
