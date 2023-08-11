@@ -4037,9 +4037,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_00.py",
                 "file_index": 0,
-                "file_totals": ReportTotals(
-                    *[0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4053,9 +4051,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_01.py",
                 "file_index": 1,
-                "file_totals": ReportTotals(
-                    *[0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4069,9 +4065,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_10.py",
                 "file_index": 10,
-                "file_totals": ReportTotals(
-                    *[0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4085,9 +4079,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_11.py",
                 "file_index": 11,
-                "file_totals": ReportTotals(
-                    *[0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4101,9 +4093,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_12.py",
                 "file_index": 12,
-                "file_totals": ReportTotals(
-                    *[0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4117,9 +4107,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_13.py",
                 "file_index": 13,
-                "file_totals": ReportTotals(
-                    *[0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4133,9 +4121,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_14.py",
                 "file_index": 14,
-                "file_totals": ReportTotals(
-                    *[0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4149,9 +4135,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_02.py",
                 "file_index": 2,
-                "file_totals": ReportTotals(
-                    *[0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4165,9 +4149,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_03.py",
                 "file_index": 3,
-                "file_totals": ReportTotals(
-                    *[0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4181,9 +4163,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_04.py",
                 "file_index": 4,
-                "file_totals": ReportTotals(
-                    *[0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4197,9 +4177,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_05.py",
                 "file_index": 5,
-                "file_totals": ReportTotals(
-                    *[0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4213,9 +4191,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_06.py",
                 "file_index": 6,
-                "file_totals": ReportTotals(
-                    *[0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4229,9 +4205,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_07.py",
                 "file_index": 7,
-                "file_totals": ReportTotals(
-                    *[0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4245,9 +4219,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_08.py",
                 "file_index": 8,
-                "file_totals": ReportTotals(
-                    *[0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
@@ -4261,9 +4233,7 @@ class TestReportService(BaseTestCase):
             {
                 "filename": "file_09.py",
                 "file_index": 9,
-                "file_totals": ReportTotals(
-                    *[0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0]
-                ),
+                "file_totals": [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     [
                         None,
