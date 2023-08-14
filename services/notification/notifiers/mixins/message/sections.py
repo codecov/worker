@@ -628,7 +628,10 @@ class FlagSectionWriter(BaseSectionWriter):
                 + ("---|" if has_carriedforward_flags else "")
             )
 
-            yield ("| Flag " + table_header)
+            yield (
+                "| [Flag]({href}/flags?src=pr&el=flags) ".format(href=links["pull"])
+                + table_header
+            )
             yield (table_layout)
             for flag in sorted(flags, key=lambda f: f["name"]):
                 carriedforward, carriedforward_from = (
@@ -660,7 +663,10 @@ class FlagSectionWriter(BaseSectionWriter):
 
                 yield (
                     "| {name} {metrics}{cf}".format(
-                        name=flag["name"],
+                        name="[{flag_name}]({href}/flags?src=pr&el=flag)".format(
+                            flag_name=flag["name"],
+                            href=links["pull"],
+                        ),
                         metrics=make_metrics(
                             flag["before"],
                             flag["after"],
@@ -721,13 +727,18 @@ class ComponentsSectionWriter(BaseSectionWriter):
         )
 
         # Table header and layout
-        yield "| Components | Coverage \u0394 | |"
+        yield "| [Components]({href}/components?src=pr&el=components) | Coverage \u0394 | |".format(
+            href=links["pull"],
+        )
         yield "|---|---|---|"
         # The interesting part
         for component_data in component_data_to_show:
             yield (
                 "| {name} {metrics}".format(
-                    name=component_data["name"],
+                    name="[{component_name}]({href}/components?src=pr&el=component)".format(
+                        component_name=component_data["name"],
+                        href=links["pull"],
+                    ),
                     metrics=make_metrics(
                         component_data["before"],
                         component_data["after"],
