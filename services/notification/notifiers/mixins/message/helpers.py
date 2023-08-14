@@ -116,6 +116,53 @@ def make_metrics(before, after, relative, show_complexity, yaml):
     return "".join(("|", coverage, complexity, icon))
 
 
+def make_patch_only_metrics(before, after, relative, show_complexity, yaml):
+    if after is None:
+        # e.g. missing flags
+        coverage = " `?` |"
+
+    elif after is False:
+        # e.g. file deleted
+        coverage = " |"
+
+    else:
+        layout = " `{relative}` |"
+        coverage = layout.format(
+            relative=format_number_to_str(
+                yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xF8"
+            ),
+        )
+    return "".join(("|", coverage))
+
+
+def get_metrics_method(hide_project_coverage):
+    if hide_project_coverage:
+        metrics = make_patch_only_metrics
+    else:
+        metrics = make_metrics
+    return metrics
+
+
+def get_table_header(hide_project_coverage, show_complexity):
+    if not hide_project_coverage:
+        table_header = (
+            "| Coverage \u0394 |"
+            + (" Complexity \u0394 |" if show_complexity else "")
+            + " |"
+        )
+    else:
+        table_header = "| Coverage |"
+
+    return table_header
+
+
+def get_table_layout(hide_project_coverage, show_complexity):
+    if hide_project_coverage:
+        return "|---|---|"
+    else:
+        return "|---|---|---|" + ("---|" if show_complexity else "")
+
+
 def format_number_to_str(
     yml, value, if_zero=None, if_null=None, plus=False, style="{0}"
 ) -> str:
