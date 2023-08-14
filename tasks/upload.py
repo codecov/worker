@@ -229,6 +229,7 @@ class UploadTask(BaseCodecovTask):
             ),
         )
         if not self.has_pending_jobs(redis_connection, repoid, commitid):
+            print("No pending jobs")
             log.info("No pending jobs. Upload task is done.")
             return {
                 "was_setup": False,

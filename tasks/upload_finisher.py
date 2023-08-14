@@ -186,6 +186,7 @@ class UploadFinisherTask(BaseCodecovTask):
             return False
         # Notifications should be off in case of local uploads, and report code wouldn't be null in that case
         if report_code is not None:
+            print("local upload")
             log.info(
                 "Not scheduling notify because it's a local upload",
                 extra=dict(
