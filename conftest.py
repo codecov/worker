@@ -103,7 +103,6 @@ def dbsession(db, engine):
     @event.listens_for(session, "after_transaction_end")
     def restart_savepoint(session, transaction):
         if transaction.nested and not transaction._parent.nested:
-
             # ensure that state is expired the way
             # session.commit() at the top level normally does
             # (optional step)
@@ -139,6 +138,9 @@ def mock_configuration(mocker):
         "setup": {
             "codecov_url": "https://codecov.io",
             "encryption_secret": "zp^P9*i8aR3",
+            "telemetry": {
+                "endpoint_override": "abcde",
+            },
         },
     }
     mock_config.set_params(our_config)
