@@ -1177,9 +1177,9 @@ class TestNotifyTask(object):
                                 "  Misses          3        3           ",
                                 "```",
                                 "",
-                                "| Flag | Coverage Δ | |",
+                                "| [Flag](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1/flags?src=pr&el=flags) | Coverage Δ | |",
                                 "|---|---|---|",
-                                "| unit | `85.00% <ø> (ø)` | |",
+                                "| [unit](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1/flags?src=pr&el=flag) | `85.00% <ø> (ø)` | |",
                                 "",
                                 "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
                                 "",
