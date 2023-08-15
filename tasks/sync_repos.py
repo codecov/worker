@@ -86,56 +86,57 @@ class SyncReposTask(BaseCodecovTask):
             "Syncing repos using integration",
             extra=dict(ownerid=ownerid, username=username),
         )
+        installation_was_used = False
         with metrics.timer(f"{metrics_scope}.sync_repos_using_integration.list_repos"):
-            repos = await git.list_repos_using_installation(username)
-        if repos:
-            service_ids = {repo["repo"]["service_id"] for repo in repos}
-            if service_ids:
-                # Querying through the `Repository` model is cleaner, but we
-                # need to go through the table object instead if we want to
-                # use a Postgres `RETURNING` clause like this.
-                table = Repository.__table__
-                update_statement = (
-                    table.update()
-                    .returning(table.columns.service_id)
-                    .where(
-                        and_(
-                            table.columns.ownerid == ownerid,
-                            table.columns.service_id.in_(service_ids),
+            async for page in git.list_repos_using_installation(username):
+                installation_was_used = True
+                service_ids = {repo["repo"]["service_id"] for repo in page}
+                if service_ids:
+                    # Querying through the `Repository` model is cleaner, but we
+                    # need to go through the table object instead if we want to
+                    # use a Postgres `RETURNING` clause like this.
+                    table = Repository.__table__
+                    update_statement = (
+                        table.update()
+                        .returning(table.columns.service_id)
+                        .where(
+                            and_(
+                                table.columns.ownerid == ownerid,
+                                table.columns.service_id.in_(service_ids),
+                            )
                         )
+                        .values(using_integration=True)
                     )
-                    .values(using_integration=True)
-                )
-                result = db_session.execute(update_statement)
-                updated_service_ids = {r[0] for r in result.fetchall()}
+                    result = db_session.execute(update_statement)
+                    updated_service_ids = {r[0] for r in result.fetchall()}
 
-                # The set of repos our app can see minus the set of repos we
-                # just updated = the set of repos we need to insert.
-                missing_service_ids = service_ids - updated_service_ids
-                missing_repos = [
-                    repo
-                    for repo in repos
-                    if repo["repo"]["service_id"] in missing_service_ids
-                ]
+                    # The set of repos our app can see minus the set of repos we
+                    # just updated = the set of repos we need to insert.
+                    missing_service_ids = service_ids - updated_service_ids
+                    missing_repos = [
+                        repo
+                        for repo in page
+                        if repo["repo"]["service_id"] in missing_service_ids
+                    ]
 
-                for repo in missing_repos:
-                    repo_data = repo["repo"]
-                    new_repo = Repository(
-                        ownerid=ownerid,
-                        service_id=repo_data["service_id"],
-                        name=repo_data["name"],
-                        language=repo_data["language"],
-                        private=repo_data["private"],
-                        branch=repo_data["branch"],
-                        using_integration=True,
-                    )
-                    db_session.add(new_repo)
-                db_session.flush()
-                log.info(
-                    "Repo sync using integration done",
-                    extra=dict(repoids=missing_repos),
-                )
-        else:
+                    for repo in missing_repos:
+                        repo_data = repo["repo"]
+                        new_repo = Repository(
+                            ownerid=ownerid,
+                            service_id=repo_data["service_id"],
+                            name=repo_data["name"],
+                            language=repo_data["language"],
+                            private=repo_data["private"],
+                            branch=repo_data["branch"],
+                            using_integration=True,
+                        )
+                        db_session.add(new_repo)
+                    db_session.flush()
+            log.info(
+                "Repo sync using integration done",
+            )
+
+        if not installation_was_used:
             db_session.query(Repository).filter(
                 Repository.ownerid == ownerid, Repository.using_integration.is_(True)
             ).update({Repository.using_integration: False}, synchronize_session=False)
@@ -152,8 +153,71 @@ class SyncReposTask(BaseCodecovTask):
 
         # get my repos (and team repos)
         try:
+            repoids = []
+            owners_by_id = {}
             with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                repos = await git.list_repos()
+                async for page in git.list_repos():
+                    for repo in page:
+                        # Time how long processing a single repo takes so we can estimate how
+                        # performance degrades. Sampling at 10% will be enough.
+                        with metrics.timer(
+                            f"{metrics_scope}.process_each_repo", rate=0.1
+                        ):
+                            _ownerid = owners_by_id.get(
+                                (
+                                    service,
+                                    repo["owner"]["service_id"],
+                                    repo["owner"]["username"],
+                                )
+                            )
+                            if not _ownerid:
+                                _ownerid = self.upsert_owner(
+                                    db_session,
+                                    service,
+                                    repo["owner"]["service_id"],
+                                    repo["owner"]["username"],
+                                )
+                                owners_by_id[
+                                    (
+                                        service,
+                                        repo["owner"]["service_id"],
+                                        repo["owner"]["username"],
+                                    )
+                                ] = _ownerid
+
+                            repoid = self.upsert_repo(
+                                db_session,
+                                service,
+                                _ownerid,
+                                repo["repo"],
+                                using_integration,
+                            )
+
+                            repoids.append(repoid)
+
+                            if repo["repo"].get("fork"):
+                                _ownerid = self.upsert_owner(
+                                    db_session,
+                                    service,
+                                    repo["repo"]["fork"]["owner"]["service_id"],
+                                    repo["repo"]["fork"]["owner"]["username"],
+                                )
+
+                                _repoid = self.upsert_repo(
+                                    db_session,
+                                    service,
+                                    _ownerid,
+                                    repo["repo"]["fork"]["repo"],
+                                )
+
+                                repoids.append(_repoid)
+
+                                if repo["repo"]["fork"]["repo"]["private"]:
+                                    private_project_ids.append(int(_repoid))
+                            if repo["repo"]["private"]:
+                                private_project_ids.append(int(repoid))
+                            db_session.commit()
+
         except SoftTimeLimitExceeded:
             old_permissions = owner.permission or []
             log.warning(
@@ -177,55 +241,6 @@ class SyncReposTask(BaseCodecovTask):
             )
             owner.permission = []
             return
-        owners_by_id = {}
-        repoids = []
-        for repo in repos:
-            # Time how long processing a single repo takes so we can estimate how
-            # performance degrades. Sampling at 10% will be enough.
-            with metrics.timer(f"{metrics_scope}.process_each_repo", rate=0.1):
-                _ownerid = owners_by_id.get(
-                    (service, repo["owner"]["service_id"], repo["owner"]["username"])
-                )
-                if not _ownerid:
-                    _ownerid = self.upsert_owner(
-                        db_session,
-                        service,
-                        repo["owner"]["service_id"],
-                        repo["owner"]["username"],
-                    )
-                    owners_by_id[
-                        (
-                            service,
-                            repo["owner"]["service_id"],
-                            repo["owner"]["username"],
-                        )
-                    ] = _ownerid
-
-                repoid = self.upsert_repo(
-                    db_session, service, _ownerid, repo["repo"], using_integration
-                )
-
-                repoids.append(repoid)
-
-                if repo["repo"].get("fork"):
-                    _ownerid = self.upsert_owner(
-                        db_session,
-                        service,
-                        repo["repo"]["fork"]["owner"]["service_id"],
-                        repo["repo"]["fork"]["owner"]["username"],
-                    )
-
-                    _repoid = self.upsert_repo(
-                        db_session, service, _ownerid, repo["repo"]["fork"]["repo"]
-                    )
-
-                    repoids.append(_repoid)
-
-                    if repo["repo"]["fork"]["repo"]["private"]:
-                        private_project_ids.append(int(_repoid))
-                if repo["repo"]["private"]:
-                    private_project_ids.append(int(repoid))
-                db_session.commit()
 
         log.info(
             "Updating permissions",

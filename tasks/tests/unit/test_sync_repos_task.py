@@ -522,8 +522,14 @@ class TestSyncReposTaskUnit(object):
             repo_obj("555555555", "soda", "python", False, "main", None),
         ]
 
+        async def mock_repos_using_installation(*args, **kwargs):
+            yield mock_repos[0:2]
+            yield mock_repos[2:4]
+
         # Mock GitHub response for repos that are visible to our app
-        mock_owner_provider.list_repos_using_installation.return_value = mock_repos
+        mock_owner_provider.list_repos_using_installation.side_effect = (
+            mock_repos_using_installation
+        )
 
         # Three of the four repositories we can see are already in the database.
         # Will we update `using_integration` correctly?
