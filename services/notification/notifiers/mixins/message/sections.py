@@ -20,6 +20,9 @@ from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
     ellipsis,
     escape_markdown,
+    get_metrics_function,
+    get_table_header,
+    get_table_layout,
     make_metrics,
     sort_by_importance,
 )
@@ -464,11 +467,13 @@ class FileSectionWriter(BaseSectionWriter):
         head_report = comparison.head.report
         if base_report is None:
             base_report = Report()
+        hide_project_coverage = self.settings.get("hide_project_coverage", False)
+        make_metrics_fn = get_metrics_function(hide_project_coverage)
         files_in_diff = [
             (
                 _diff["type"],
                 path,
-                make_metrics(
+                make_metrics_fn(
                     get_totals_from_file_in_reports(base_report, path) or False,
                     get_totals_from_file_in_reports(head_report, path) or False,
                     _diff["totals"],
@@ -487,12 +492,8 @@ class FileSectionWriter(BaseSectionWriter):
             c.path for c in changes or []
         )
         if files_in_diff:
-            table_header = (
-                "| Coverage \u0394 |"
-                + (" Complexity \u0394 |" if self.show_complexity else "")
-                + " |"
-            )
-            table_layout = "|---|---|---|" + ("---|" if self.show_complexity else "")
+            table_header = get_table_header(hide_project_coverage, self.show_complexity)
+            table_layout = get_table_layout(hide_project_coverage, self.show_complexity)
             # add table headers
             yield (
                 "| [Files Changed]({0}?src=pr&el=tree) {1}".format(
@@ -539,7 +540,7 @@ class FileSectionWriter(BaseSectionWriter):
                     )
                 )
 
-        if changes:
+        if changes and not hide_project_coverage:
             len_changes_not_in_diff = len(all_files or []) - len(files_in_diff or [])
             if files_in_diff and len_changes_not_in_diff > 0:
                 yield ("")
@@ -628,7 +629,10 @@ class FlagSectionWriter(BaseSectionWriter):
                 + ("---|" if has_carriedforward_flags else "")
             )
 
-            yield ("| Flag " + table_header)
+            yield (
+                "| [Flag]({href}/flags?src=pr&el=flags) ".format(href=links["pull"])
+                + table_header
+            )
             yield (table_layout)
             for flag in sorted(flags, key=lambda f: f["name"]):
                 carriedforward, carriedforward_from = (
@@ -660,7 +664,10 @@ class FlagSectionWriter(BaseSectionWriter):
 
                 yield (
                     "| {name} {metrics}{cf}".format(
-                        name=flag["name"],
+                        name="[{flag_name}]({href}/flags?src=pr&el=flag)".format(
+                            flag_name=flag["name"],
+                            href=links["pull"],
+                        ),
                         metrics=make_metrics(
                             flag["before"],
                             flag["after"],
@@ -721,13 +728,18 @@ class ComponentsSectionWriter(BaseSectionWriter):
         )
 
         # Table header and layout
-        yield "| Components | Coverage \u0394 | |"
+        yield "| [Components]({href}/components?src=pr&el=components) | Coverage \u0394 | |".format(
+            href=links["pull"],
+        )
         yield "|---|---|---|"
         # The interesting part
         for component_data in component_data_to_show:
             yield (
                 "| {name} {metrics}".format(
-                    name=component_data["name"],
+                    name="[{component_name}]({href}/components?src=pr&el=component)".format(
+                        component_name=component_data["name"],
+                        href=links["pull"],
+                    ),
                     metrics=make_metrics(
                         component_data["before"],
                         component_data["after"],
