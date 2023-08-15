@@ -135,7 +135,7 @@ def make_patch_only_metrics(before, after, relative, show_complexity, yaml):
     return "".join(("|", coverage))
 
 
-def get_metrics_method(hide_project_coverage):
+def get_metrics_function(hide_project_coverage):
     if hide_project_coverage:
         metrics = make_patch_only_metrics
     else:

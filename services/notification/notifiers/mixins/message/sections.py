@@ -20,7 +20,7 @@ from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
     ellipsis,
     escape_markdown,
-    get_metrics_method,
+    get_metrics_function,
     get_table_header,
     get_table_layout,
     make_metrics,
@@ -468,12 +468,12 @@ class FileSectionWriter(BaseSectionWriter):
         if base_report is None:
             base_report = Report()
         hide_project_coverage = self.settings.get("hide_project_coverage", False)
-        metrics = get_metrics_method(hide_project_coverage)
+        make_metrics_fn = get_metrics_function(hide_project_coverage)
         files_in_diff = [
             (
                 _diff["type"],
                 path,
-                metrics(
+                make_metrics_fn(
                     get_totals_from_file_in_reports(base_report, path) or False,
                     get_totals_from_file_in_reports(head_report, path) or False,
                     _diff["totals"],
