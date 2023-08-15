@@ -20,6 +20,9 @@ log = logging.getLogger(__name__)
 class MinioEndpoints(Enum):
     chunks = "{version}/repos/{repo_hash}/commits/{commitid}/{chunks_file_name}.txt"
     json_data = "{version}/repos/{repo_hash}/commits/{commitid}/json_data/{table}/{field}/{external_id}.json"
+    json_data_no_commit = (
+        "{version}/repos/{repo_hash}/json_data/{table}/{field}/{external_id}.json"
+    )
     profiling_summary = "{version}/repos/{repo_hash}/profilingsummaries/{profiling_commit_id}/{location}"
     raw = "v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt"
     profiling_collection = "{version}/repos/{repo_hash}/profilingcollections/{profiling_commit_id}/{location}"
@@ -200,20 +203,26 @@ class ArchiveService(object):
         *,
         encoder=ReportEncoder,
     ):
-        path = MinioEndpoints.json_data.get_path(
-            version="v4",
-            repo_hash=self.storage_hash,
-            commitid=commit_id,
-            table=table,
-            field=field,
-            external_id=external_id,
-        )
-        stringified_data = json.dumps(data, cls=encoder)
-        if table == "reports_reportdetails" and not ("meta" in stringified_data):
-            log.warning(
-                "Saving files_array data without meta",
-                extra=dict(commit=commit_id, data=stringified_data, path=path),
+        if commit_id is None:
+            # Some classes don't have a commit associated with them
+            # For example Pull belongs to multiple commits.
+            path = MinioEndpoints.json_data_no_commit.get_path(
+                version="v4",
+                repo_hash=self.storage_hash,
+                table=table,
+                field=field,
+                external_id=external_id,
             )
+        else:
+            path = MinioEndpoints.json_data.get_path(
+                version="v4",
+                repo_hash=self.storage_hash,
+                commitid=commit_id,
+                table=table,
+                field=field,
+                external_id=external_id,
+            )
+        stringified_data = json.dumps(data, cls=encoder)
         self.write_file(path, stringified_data)
         return path
 

@@ -929,7 +929,8 @@ class TestPullRequestFetcher(object):
         assert res.head == commit.commitid
         assert res.commentid is None
         assert res.diff is None
-        assert res.flare is None
+        assert res._flare is None
+        assert res._flare_storage_path is None
         assert (
             res.author
             == dbsession.query(Owner)
@@ -1007,7 +1008,8 @@ class TestPullRequestFetcher(object):
         assert res.head == commit.commitid
         assert res.commentid is None
         assert res.diff is None
-        assert res.flare is None
+        assert res._flare is None
+        assert res._flare_storage_path is None
         assert (
             res.author
             == dbsession.query(Owner)
@@ -1091,7 +1093,8 @@ class TestPullRequestFetcher(object):
         assert res.head == commit.commitid
         assert res.commentid is None
         assert res.diff is None
-        assert res.flare is None
+        assert res._flare is None
+        assert res._flare_storage_path is None
         assert (
             res.author
             == dbsession.query(Owner)
@@ -1181,7 +1184,8 @@ class TestPullRequestFetcher(object):
         assert res.head == commit.commitid
         assert res.commentid is None
         assert res.diff is None
-        assert res.flare is None
+        assert res._flare is None
+        assert res._flare_storage_path is None
         assert (
             res.author
             == dbsession.query(Owner)
@@ -1252,7 +1256,8 @@ class TestPullRequestFetcher(object):
         assert res.head is None
         assert res.commentid is None
         assert res.diff is None
-        assert res.flare is None
+        assert res._flare is None
+        assert res._flare_storage_path is None
         assert (
             res.author
             == dbsession.query(Owner)
