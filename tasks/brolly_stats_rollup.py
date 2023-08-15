@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import json
 import logging
-import uuid  # TODO remove
 
 import httpx
 from shared.celery_config import brolly_stats_rollup_task_name
