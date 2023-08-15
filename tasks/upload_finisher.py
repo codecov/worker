@@ -224,6 +224,17 @@ class UploadFinisherTask(BaseCodecovTask):
         if not any(
             x["successful"] for x in processing_results.get("processings_so_far", [])
         ):
+            log.info(
+                "Not scheduling notify because there are no successful processing results",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    commit_yaml=commit_yaml,
+                    processing_results=processing_results,
+                    report_code=report_code,
+                    parent_task=self.request.parent_id,
+                ),
+            )
             return False
 
         after_n_builds = (
