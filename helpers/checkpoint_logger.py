@@ -51,7 +51,7 @@ class CheckpointLogger:
         if self.strict:
             raise ValueError(msg)
         else:
-            logger.error(msg)
+            logger.warning(msg)
 
     def _validate_checkpoint(self, checkpoint):
         if checkpoint.__class__ != self.cls:
