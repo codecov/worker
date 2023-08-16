@@ -508,7 +508,7 @@ class UploadTask(BaseCodecovTask):
             try:
                 if repository_service.service in ["gitlab", "gitlab_enterprise"]:
                     # we use per-repo webhook secrets in this case
-                    webhook_secret = repository.webhook_secret or uuid.uuid4()
+                    webhook_secret = repository.webhook_secret or str(uuid.uuid4())
                 else:
                     # service-level config value will be used instead in this case
                     webhook_secret = None

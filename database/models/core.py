@@ -238,7 +238,7 @@ class Commit(CodecovBaseModel):
     _report_json_storage_path = Column("report_storage_path", types.Text, nullable=True)
     report_json = ArchiveField(
         should_write_to_storage_fn=should_write_to_storage,
-        default_value={},
+        default_value_class=dict,
     )
 
 
@@ -330,6 +330,36 @@ class Pull(CodecovBaseModel):
                 .all()
             )
         return []
+
+    def get_repository(self):
+        return self.repository
+
+    def get_commitid(self):
+        return None
+
+    @property
+    def external_id(self):
+        return self.pullid
+
+    @property
+    def id(self):
+        return self.id_
+
+    def should_write_to_storage(self) -> bool:
+        if self.repository is None or self.repository.owner is None:
+            return False
+        is_codecov_repo = self.repository.owner.username == "codecov"
+        return should_write_data_to_storage_config_check(
+            master_switch_key="pull_flare",
+            is_codecov_repo=is_codecov_repo,
+            repoid=self.repository.repoid,
+        )
+
+    _flare = Column("flare", postgresql.JSON)
+    _flare_storage_path = Column("flare_storage_path", types.Text, nullable=True)
+    flare = ArchiveField(
+        should_write_to_storage_fn=should_write_to_storage, default_value_class=dict
+    )
 
 
 class CommitNotification(CodecovBaseModel):
