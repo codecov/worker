@@ -145,6 +145,12 @@ class UploadTask(BaseCodecovTask):
             UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
         )
 
+        # `BaseCodecovTask` / `celery_task_router.py` try to route tasks based
+        # on the active user plan and require these to be in `kwargs` for that
+        # to work.
+        kwargs["repoid"] = repoid
+        kwargs["commitid"] = commitid
+
         log.info(
             "Received upload task",
             extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
