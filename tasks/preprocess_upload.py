@@ -1,13 +1,14 @@
 import logging
 
 from redis.exceptions import LockError
-from shared.torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit
+from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -84,7 +85,7 @@ class PreProcessUpload(BaseCodecovTask):
         commit = commits.first()
         assert commit, "Commit not found in database."
         repository = commit.repository
-        repository_service = get_repo_provider_service(repository, commit)
+        repository_service = self.get_repo_service(commit)
         if repository_service:
             commit_yaml = await self.fetch_commit_yaml_and_possibly_store(
                 commit, repository_service
@@ -101,6 +102,36 @@ class PreProcessUpload(BaseCodecovTask):
             commit, report_code
         )
         return {"preprocessed_upload": True, "reportid": str(commit_report.external_id)}
+
+    def get_repo_service(self, commit):
+        repository_service = None
+        try:
+            repository_service = get_repo_provider_service(commit.repository, commit)
+        except RepositoryWithoutValidBotError:
+            save_commit_error(
+                commit,
+                error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
+                error_params=dict(
+                    repoid=commit.repoid, repository_service=repository_service
+                ),
+            )
+            log.warning(
+                "Unable to reach git provider because repo doesn't have a valid bot",
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+            )
+        except TorngitRepoNotFoundError:
+            log.warning(
+                "Unable to reach git provider because this specific bot/integration can't see that repository",
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+            )
+        except TorngitClientError:
+            log.warning(
+                "Unable to reach git provider because there was a 4xx error",
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+                exc_info=True,
+            )
+
+        return repository_service
 
     async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository

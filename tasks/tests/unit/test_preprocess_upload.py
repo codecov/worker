@@ -1,5 +1,7 @@
 import pytest
+from redis.exceptions import LockError
 from shared.reports.types import ReportTotals, SessionTotalsArray
+from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 
 from database.models.reports import Upload
 from database.tests.factories.core import (
@@ -7,6 +9,7 @@ from database.tests.factories.core import (
     ReportFactory,
     RepositoryFactory,
 )
+from helpers.exceptions import RepositoryWithoutValidBotError
 from services.report import ReportService
 from tasks.preprocess_upload import PreProcessUpload
 
@@ -172,3 +175,49 @@ class TestPreProcessUpload(object):
         dbsession.add(report)
         dbsession.flush()
         return commit, report
+
+    @pytest.mark.asyncio
+    async def test_run_async_unobtainable_lock(self, dbsession, mocker, mock_redis):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        mock_redis.lock.side_effect = LockError()
+        result = await PreProcessUpload().run_async(
+            dbsession,
+            repoid=commit.repository.repoid,
+            commitid=commit.commitid,
+            report_code=None,
+        )
+        assert result == {"preprocessed_upload": False}
+
+    def test_get_repo_provider_service_no_bot(self, dbsession, mocker):
+        mocker.patch("tasks.preprocess_upload.save_commit_error")
+        mock_get_repo_service = mocker.patch(
+            "tasks.preprocess_upload.get_repo_provider_service"
+        )
+        mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
+        commit = CommitFactory.create()
+        repo_provider = PreProcessUpload().get_repo_service(commit)
+        assert not repo_provider
+
+    def test_get_repo_service_repo_not_found(self, dbsession, mocker):
+        mock_get_repo_service = mocker.patch(
+            "tasks.preprocess_upload.get_repo_provider_service"
+        )
+        mock_get_repo_service.side_effect = TorngitRepoNotFoundError(
+            "fake_response", "message"
+        )
+        commit = CommitFactory.create()
+        repo_provider = PreProcessUpload().get_repo_service(commit)
+        assert not repo_provider
+
+    def test_get_repo_service_torngit_error(self, dbsession, mocker):
+        mock_get_repo_service = mocker.patch(
+            "tasks.preprocess_upload.get_repo_provider_service"
+        )
+        mock_get_repo_service.side_effect = TorngitClientError(
+            403, "response", "message"
+        )
+        commit = CommitFactory.create()
+        repo_provider = PreProcessUpload().get_repo_service(commit)
+        assert not repo_provider
