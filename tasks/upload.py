@@ -46,6 +46,16 @@ merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 CHUNK_SIZE = 3
 
 
+def _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs):
+    kwargs.update(
+        {
+            "repoid": repoid,
+            "commitid": commitid,
+            "report_code": report_code,
+        }
+    )
+
+
 class UploadTask(BaseCodecovTask):
     """The first of a series of tasks designed to process an `upload` made by the user
 
@@ -166,7 +176,8 @@ class UploadTask(BaseCodecovTask):
                     ),
                 ),
             )
-            self.retry(countdown=60, args=args, kwargs=kwargs)
+            _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+            self.retry(countdown=60, kwargs=kwargs)
         try:
             with redis_connection.lock(
                 lock_name,
@@ -216,9 +227,8 @@ class UploadTask(BaseCodecovTask):
                     commit=commitid, repoid=repoid, countdown=int(retry_countdown)
                 ),
             )
-            self.retry(
-                max_retries=3, countdown=retry_countdown, args=args, kwargs=kwargs
-            )
+            _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+            self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
     async def run_async_within_lock(
         self,
@@ -265,7 +275,8 @@ class UploadTask(BaseCodecovTask):
                             repoid=repoid, commit=commitid, countdown=retry_countdown
                         ),
                     )
-                    self.retry(countdown=retry_countdown, args=args, kwargs=kwargs)
+                    _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+                    self.retry(countdown=retry_countdown, kwargs=kwargs)
 
         try:
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
@@ -343,7 +354,8 @@ class UploadTask(BaseCodecovTask):
                 "Commit not yet ready to build its initial report. Retrying in 60s.",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            self.retry(countdown=60, args=args, kwargs=kwargs)
+            _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+            self.retry(countdown=60, kwargs=kwargs)
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, repoid, commitid):
             normalized_arguments = self.normalize_upload_arguments(
