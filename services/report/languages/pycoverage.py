@@ -53,14 +53,15 @@ class PyCoverageProcessor(BaseLanguageProcessor):
                             str(ln), []
                         )
                     ]
-                    report_file.append(
-                        ln,
-                        report_builder_session.create_coverage_line(
-                            fixed_filename,
-                            cov,
-                            coverage_type=CoverageType.line,
-                            labels_list_of_lists=label_list_of_lists,
-                        ),
-                    )
+                    if ln > 0:
+                        report_file.append(
+                            ln,
+                            report_builder_session.create_coverage_line(
+                                fixed_filename,
+                                cov,
+                                coverage_type=CoverageType.line,
+                                labels_list_of_lists=label_list_of_lists,
+                            ),
+                        )
                 report_builder_session.append(report_file)
         return report_builder_session.output_report()
