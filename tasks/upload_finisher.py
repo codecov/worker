@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from copy import deepcopy
@@ -76,11 +77,46 @@ class UploadFinisherTask(BaseCodecovTask):
         )
         repoid = int(repoid)
         lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
-        commits = db_session.query(Commit).filter(
-            Commit.repoid == repoid, Commit.commitid == commitid
+        commit = (
+            db_session.query(Commit)
+            .filter(Commit.repoid == repoid, Commit.commitid == commitid)
+            .first()
         )
-        commit = commits.first()
         assert commit, "Commit not found in database."
+
+        def dl(partial_report):
+            chunks = archive_service.read_file(partial_report["chunks_path"]).decode(
+                errors="replace"
+            )
+            files_and_sessions = json.loads(
+                archive_service.read_file(partial_report["files_sessions_path"])
+            )
+            return report_service.build_report(
+                chunks,
+                files_and_sessions["files"],
+                files_and_sessions["sessions"],
+                None,
+            )
+
+        def merge_report(l, r):
+            # TODO, this is complicated
+            # reference `raw_upload_processor`'s `_adjust_sessions` and `report.merge()`
+            pass
+
+        unmerged_reports = (dl(report) for report in processing_results)
+        report = functools.reduce(merge_report, unmerged_reports)
+
+        with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
+            results_dict = await self.save_report_results(
+                db_session,
+                report_service,
+                repository,
+                commit,
+                report,
+                pr,
+                report_code,
+            )
+
         redis_connection = get_redis_connection()
         with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
             commit_yaml = UserYaml(commit_yaml)
@@ -93,6 +129,7 @@ class UploadFinisherTask(BaseCodecovTask):
                 commit_yaml,
                 processing_results,
                 report_code,
+                report,
                 checkpoints,
             )
             save_commit_measurements(commit)
@@ -106,6 +143,7 @@ class UploadFinisherTask(BaseCodecovTask):
         commit_yaml: UserYaml,
         processing_results,
         report_code,
+        report,
         checkpoints,
     ):
         log.debug("In finish_reports_processing for commit: %s" % commit)
@@ -116,7 +154,7 @@ class UploadFinisherTask(BaseCodecovTask):
         notifications_called = False
         if not regexp_ci_skip.search(commit.message or ""):
             if self.should_call_notifications(
-                commit, commit_yaml, processing_results, report_code
+                commit, commit_yaml, processing_results, report_code, report
             ):
                 notifications_called = True
                 task = self.app.tasks[notify_task_name].apply_async(
@@ -191,7 +229,7 @@ class UploadFinisherTask(BaseCodecovTask):
         return {"notifications_called": notifications_called}
 
     def should_call_notifications(
-        self, commit, commit_yaml, processing_results, report_code
+        self, commit, commit_yaml, processing_results, report_code, report
     ):
         manual_trigger = read_yaml_field(
             commit_yaml, ("codecov", "notify", "manual_trigger")
@@ -230,7 +268,6 @@ class UploadFinisherTask(BaseCodecovTask):
             read_yaml_field(commit_yaml, ("codecov", "notify", "after_n_builds")) or 0
         )
         if after_n_builds > 0:
-            report = ReportService(commit_yaml).get_existing_report_for_commit(commit)
             number_sessions = len(report.sessions) if report is not None else 0
             if after_n_builds > number_sessions:
                 log.info(
@@ -261,6 +298,75 @@ class UploadFinisherTask(BaseCodecovTask):
             redis_connection.hdel("badge", ("%s:%s" % (key, (commit.branch))).lower())
             if commit.branch == repository.branch:
                 redis_connection.hdel("badge", ("%s:" % key).lower())
+
+    async def save_report_results(
+        self,
+        db_session,
+        report_service,
+        repository,
+        commit,
+        report,
+        pr,
+        report_code=None,
+    ):
+        """Saves the result of `report` to the commit database and chunks archive
+
+        This method only takes care of getting a processed Report to the database and archive.
+
+        It also tries to calculate the diff of the report (which uses commit info
+            from th git provider), but it it fails to do so, it just moves on without such diff
+        """
+        log.debug("In save_report_results for commit: %s" % commit)
+        commitid = commit.commitid
+        try:
+            repository_service = get_repo_provider_service(repository, commit)
+            report.apply_diff(await repository_service.get_commit_diff(commitid))
+        except TorngitError:
+            # When this happens, we have that commit.totals["diff"] is not available.
+            # Since there is no way to calculate such diff without the git commit,
+            # then we assume having the rest of the report saved there is better than the
+            # alternative of refusing an otherwise "good" report because of the lack of diff
+            log.warning(
+                "Could not apply diff to report because there was an error fetching diff from provider",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    parent_task=self.request.parent_id,
+                ),
+                exc_info=True,
+            )
+        except RepositoryWithoutValidBotError:
+            save_commit_error(
+                commit,
+                error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
+                error_params=dict(
+                    repoid=commit.repoid,
+                    pr=pr,
+                ),
+            )
+
+            log.warning(
+                "Could not apply diff to report because there is no valid bot found for that repo",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    parent_task=self.request.parent_id,
+                ),
+                exc_info=True,
+            )
+        if pr is not None:
+            try:
+                commit.pullid = int(pr)
+            except (ValueError, TypeError):
+                log.warning(
+                    "Cannot set PR value on commit",
+                    extra=dict(
+                        repoid=commit.repoid, commit=commit.commitid, pr_value=pr
+                    ),
+                )
+        res = report_service.save_report(commit, report, report_code)
+        db_session.commit()
+        return res
 
 
 RegisteredUploadTask = celery_app.register_task(UploadFinisherTask())

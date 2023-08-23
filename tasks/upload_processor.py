@@ -63,12 +63,13 @@ class UploadProcessorTask(BaseCodecovTask):
     async def run_async(
         self,
         db_session,
-        previous_results,
+        previous_results,  # TODO do we need this
         *,
         repoid,
         commitid,
         commit_yaml,
         arguments_list,
+        chunk_idx,
         report_code=None,
         **kwargs,
     ):
@@ -79,48 +80,19 @@ class UploadProcessorTask(BaseCodecovTask):
         )
         lock_name = f"upload_processing_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
-        try:
-            log.info(
-                "Acquiring upload processing lock",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    report_code=report_code,
-                    lock_name=lock_name,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-            with redis_connection.lock(
-                lock_name,
-                timeout=max(60 * 5, self.hard_time_limit_task),
-                blocking_timeout=5,
-            ):
-                actual_arguments_list = deepcopy(arguments_list)
-                return await self.process_async_within_lock(
-                    db_session=db_session,
-                    previous_results=previous_results,
-                    repoid=repoid,
-                    commitid=commitid,
-                    commit_yaml=commit_yaml,
-                    arguments_list=actual_arguments_list,
-                    report_code=report_code,
-                    parent_task=self.request.parent_id,
-                    **kwargs,
-                )
-        except LockError:
-            max_retry = 200 * 3**self.request.retries
-            retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
-            log.warning(
-                "Unable to acquire lock for key %s. Retrying",
-                lock_name,
-                extra=dict(
-                    commit=commitid,
-                    repoid=repoid,
-                    countdown=retry_in,
-                    number_retries=self.request.retries,
-                ),
-            )
-            self.retry(max_retries=5, countdown=retry_in)
+        actual_arguments_list = deepcopy(arguments_list)
+        return await self.process_async_within_lock(
+            db_session=db_session,
+            previous_results=previous_results,
+            repoid=repoid,
+            commitid=commitid,
+            commit_yaml=commit_yaml,
+            arguments_list=actual_arguments_list,
+            chunk_idx=chunk_idx,
+            report_code=report_code,
+            parent_task=self.request.parent_id,
+            **kwargs,
+        )
 
     async def process_async_within_lock(
         self,
@@ -131,44 +103,25 @@ class UploadProcessorTask(BaseCodecovTask):
         commitid,
         commit_yaml,
         arguments_list,
+        chunk_idx,
         report_code,
         **kwargs,
     ):
-        commit_yaml = UserYaml(commit_yaml)
-        log.info(
-            "Obtained upload processing lock, starting",
-            extra=dict(
-                repoid=repoid,
-                commit=commitid,
-                parent_task=self.request.parent_id,
-                report_code=report_code,
-            ),
+        commit = (
+            db_session.query(Commit)
+            .filter(Commit.repoid == repoid, Commit.commitid == commitid)
+            .first()
         )
-        processings_so_far = previous_results.get("processings_so_far", [])
-        commit = None
-        n_processed = 0
-        commits = db_session.query(Commit).filter(
-            Commit.repoid == repoid, Commit.commitid == commitid
-        )
-        commit = commits.first()
-        assert commit, "Commit not found in database."
+        assert commit, "Commit not found in database"
+
         repository = commit.repository
-        pr = None
-        try_later = []
+        commit_yaml = UserYaml(commit_yaml)
         report_service = ReportService(commit_yaml)
 
-        with metrics.timer(f"{self.metrics_prefix}.build_original_report"):
-            report = report_service.get_existing_report_for_commit(
-                commit, report_code=report_code
-            )
-            if report is None:
-                log.info(
-                    "No existing report for commit", extra=dict(commit=commit.commitid)
-                )
-                report = Report()
+        report = Report()
+        processing_results = []
         try:
             for arguments in arguments_list:
-                pr = arguments.get("pr")
                 upload_obj = (
                     db_session.query(Upload)
                     .filter_by(id_=arguments.get("upload_pk"))
@@ -186,7 +139,7 @@ class UploadProcessorTask(BaseCodecovTask):
                         parent_task=self.request.parent_id,
                     ),
                 )
-                individual_info = {"arguments": arguments.copy()}
+
                 try:
                     arguments_commitid = arguments.pop("commit", None)
                     if arguments_commitid:
@@ -197,7 +150,6 @@ class UploadProcessorTask(BaseCodecovTask):
                         result = self.process_individual_report(
                             report_service, commit, report, upload_obj
                         )
-                    individual_info.update(result)
                 except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
                     raise
                 except Exception:
@@ -215,51 +167,54 @@ class UploadProcessorTask(BaseCodecovTask):
                     upload_obj.state_id = UploadState.ERROR.db_id
                     upload_obj.state = "error"
                     raise
-                if individual_info.get("successful"):
-                    report = individual_info.pop("report")
-                    n_processed += 1
-                processings_so_far.append(individual_info)
+                if result.get("successful"):
+                    report = result.pop("report")
+                    processing_results.append(
+                        {
+                            "upload_obj": result.pop("upload_obj"),
+                            "raw_report": result.pop("raw_report"),
+                        }
+                    )
             log.info(
                 "Finishing the processing of %d reports",
-                n_processed,
+                len(arguments_list),
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
                     parent_task=self.request.parent_id,
                 ),
             )
-            with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
-                results_dict = await self.save_report_results(
-                    db_session,
-                    report_service,
-                    repository,
-                    commit,
-                    report,
-                    pr,
-                    report_code,
-                )
-            for processed_individual_report in processings_so_far:
+
+            # saving incremental result to archive storage
+            # upload finisher task will combine
+            chunks = report.to_archive().encode()
+            _, files_and_sessions = report.to_database()
+
+            chunks_url = archive_service.write_chunks(
+                commitid, chunks, report_code=f"incremental/chunk{chunk_idx}.txt"
+            )
+            files_and_sessions_url = archive_service.write_chunks(
+                commitid,
+                files_and_sessions,
+                report_code=f"incremental/files_and_sessions{chunk_idx}.txt",
+            )
+
+            incremental_result = {
+                "idx": chunk_idx,
+                "chunks_path": chunks_url,
+                "files_sessions_path": files_and_sessions_url,
+            }
+
+            for processed_upload in processing_results:
                 deleted_archive = self._possibly_delete_archive(
-                    processed_individual_report, report_service, commit
+                    processed_upload, report_service, commit
                 )
                 if not deleted_archive:
                     self._rewrite_raw_report_readable(
-                        processed_individual_report, report_service, commit
+                        processed_upload, report_service, commit
                     )
-                processed_individual_report.pop("upload_obj", None)
-                processed_individual_report.pop("raw_report", None)
-            log.info(
-                "Processed %d reports",
-                n_processed,
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    commit_yaml=commit_yaml.to_dict(),
-                    url=results_dict.get("url"),
-                    parent_task=self.request.parent_id,
-                ),
-            )
-            return {"processings_so_far": processings_so_far}
+
+            return incremental_result
         except CeleryError:
             raise
         except Exception:
@@ -359,75 +314,6 @@ class UploadProcessorTask(BaseCodecovTask):
             )
             archive_service = report_service.get_archive_service(commit.repository)
             archive_service.write_file(archive_url, raw_report.content().getvalue())
-
-    async def save_report_results(
-        self,
-        db_session,
-        report_service,
-        repository,
-        commit,
-        report,
-        pr,
-        report_code=None,
-    ):
-        """Saves the result of `report` to the commit database and chunks archive
-
-        This method only takes care of getting a processed Report to the database and archive.
-
-        It also tries to calculate the diff of the report (which uses commit info
-            from th git provider), but it it fails to do so, it just moves on without such diff
-        """
-        log.debug("In save_report_results for commit: %s" % commit)
-        commitid = commit.commitid
-        try:
-            repository_service = get_repo_provider_service(repository, commit)
-            report.apply_diff(await repository_service.get_commit_diff(commitid))
-        except TorngitError:
-            # When this happens, we have that commit.totals["diff"] is not available.
-            # Since there is no way to calculate such diff without the git commit,
-            # then we assume having the rest of the report saved there is better than the
-            # alternative of refusing an otherwise "good" report because of the lack of diff
-            log.warning(
-                "Could not apply diff to report because there was an error fetching diff from provider",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    parent_task=self.request.parent_id,
-                ),
-                exc_info=True,
-            )
-        except RepositoryWithoutValidBotError:
-            save_commit_error(
-                commit,
-                error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
-                error_params=dict(
-                    repoid=commit.repoid,
-                    pr=pr,
-                ),
-            )
-
-            log.warning(
-                "Could not apply diff to report because there is no valid bot found for that repo",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    parent_task=self.request.parent_id,
-                ),
-                exc_info=True,
-            )
-        if pr is not None:
-            try:
-                commit.pullid = int(pr)
-            except (ValueError, TypeError):
-                log.warning(
-                    "Cannot set PR value on commit",
-                    extra=dict(
-                        repoid=commit.repoid, commit=commit.commitid, pr_value=pr
-                    ),
-                )
-        res = report_service.save_report(commit, report, report_code)
-        db_session.commit()
-        return res
 
 
 RegisteredUploadTask = celery_app.register_task(UploadProcessorTask())

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from json import loads
 from typing import Any, Mapping
 
-from celery import chain
+from celery import chord
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
@@ -442,7 +442,7 @@ class UploadTask(BaseCodecovTask):
         self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
     ):
         commit_yaml = commit_yaml.to_dict()
-        chain_to_call = []
+        processing_task_chord = []
         for i in range(0, len(argument_list), CHUNK_SIZE):
             chunk = argument_list[i : i + CHUNK_SIZE]
             if chunk:
@@ -453,11 +453,12 @@ class UploadTask(BaseCodecovTask):
                         commitid=commit.commitid,
                         commit_yaml=commit_yaml,
                         arguments_list=chunk,
+                        chunk_idx=i,
                         report_code=commit_report.code,
                     ),
                 )
-                chain_to_call.append(sig)
-        if chain_to_call:
+                processing_task_chord.append(sig)
+        if processing_task_chord:
             checkpoint_data = None
             if checkpoints:
                 checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
@@ -477,8 +478,7 @@ class UploadTask(BaseCodecovTask):
                     _kwargs_key(UploadFlow): checkpoint_data,
                 },
             )
-            chain_to_call.append(finish_sig)
-            res = chain(*chain_to_call).apply_async()
+            res = chord(processing_task_chord, body=finish_sig).apply_async()
 
             log.info(
                 "Scheduling task for %s different reports",
