@@ -8,8 +8,29 @@ import sentry_sdk
 from helpers.checkpoint_logger import (
     CheckpointLogger,
     _get_milli_timestamp,
+    failure_events,
     from_kwargs,
+    subflows,
+    success_events,
 )
+
+
+@failure_events("BRANCH_1_FAIL")
+@success_events("BRANCH_1_SUCCESS", "BRANCH_2_SUCCESS")
+@subflows(
+    ("first_checkpoint", "BEGIN", "CHECKPOINT"),
+    ("branch_1_to_finish", "BRANCH_1", "BRANCH_1_SUCCESS"),
+    ("total_branch_1_time", "BEGIN", "BRANCH_1_SUCCESS"),
+    ("total_branch_1_fail_time", "BEGIN", "BRANCH_1_FAIL"),
+)
+class DecoratedEnum(Enum):
+    BEGIN = auto()
+    CHECKPOINT = auto()
+    BRANCH_1 = auto()
+    BRANCH_1_FAIL = auto()
+    BRANCH_1_SUCCESS = auto()
+    BRANCH_2 = auto()
+    BRANCH_2_SUCCESS = auto()
 
 
 class TestEnum1(Enum):
@@ -194,3 +215,66 @@ class TestCheckpointLogger(unittest.TestCase):
         mock_sentry.assert_called_with("x", expected_duration, "milliseconds")
         assert kwargs["checkpoints_TestEnum1"][TestEnum1.A] == 1337
         assert kwargs["checkpoints_TestEnum1"][TestEnum1.B] == 9001
+
+    def test_success_failure_decorators(self):
+        for val in DecoratedEnum.__members__.values():
+            if val in [DecoratedEnum.BRANCH_1_SUCCESS, DecoratedEnum.BRANCH_2_SUCCESS]:
+                assert val.is_success()
+            else:
+                assert not val.is_success()
+
+            if val in [DecoratedEnum.BRANCH_1_FAIL]:
+                assert val.is_failure()
+            else:
+                assert not val.is_failure()
+
+    def test_subflows_decorator(self):
+        subflows = DecoratedEnum._subflows()
+
+        # No subflows end at these checkpoints
+        assert DecoratedEnum.BEGIN not in subflows
+        assert DecoratedEnum.BRANCH_1 not in subflows
+        assert DecoratedEnum.BRANCH_2 not in subflows
+
+        # `DecoratedEnum.CHECKPOINT` is not a terminal event, but we explicitly
+        # defined a subflow ending there.
+        checkpoint_subflows = subflows.get(DecoratedEnum.CHECKPOINT)
+        assert checkpoint_subflows is not None
+        assert len(checkpoint_subflows) == 1
+        assert checkpoint_subflows[0] == ("first_checkpoint", DecoratedEnum.BEGIN)
+
+        # All terminal events should have a subflow defined for them which
+        # begins at the flow's first event. `BRANCH_1_FAIL` has had this
+        # subflow provided by the user, so we should use the user's name.
+        branch_1_fail_subflows = subflows.get(DecoratedEnum.BRANCH_1_FAIL)
+        assert branch_1_fail_subflows is not None
+        assert len(branch_1_fail_subflows) == 1
+        assert branch_1_fail_subflows[0] == (
+            "total_branch_1_fail_time",
+            DecoratedEnum.BEGIN,
+        )
+
+        # All terminal events should have a subflow defined for them which
+        # begins at the flow's first event. `BRANCH_1_SUCCESS` has had this
+        # subflow provided by the user, so we should use the user's name.
+        # Also, `BRANCH_1_SUCCESS` is the end of a second subflow. Ensure that
+        # both subflows are present.
+        branch_1_success_subflows = subflows.get(DecoratedEnum.BRANCH_1_SUCCESS)
+        assert branch_1_success_subflows is not None
+        assert len(branch_1_success_subflows) == 2
+        assert ("total_branch_1_time", DecoratedEnum.BEGIN) in branch_1_success_subflows
+        assert (
+            "branch_1_to_finish",
+            DecoratedEnum.BRANCH_1,
+        ) in branch_1_success_subflows
+
+        # All terminal events should have a subflow defined for them which
+        # begins at the flow's first event. `BRANCH_2_SUCCESS` has not had this
+        # subflow provided by the user, so we should use the default name.
+        branch_2_success_subflows = subflows.get(DecoratedEnum.BRANCH_2_SUCCESS)
+        assert branch_2_success_subflows is not None
+        assert len(branch_2_success_subflows) == 1
+        assert branch_2_success_subflows[0] == (
+            "DecoratedEnum_BEGIN_to_BRANCH_2_SUCCESS",
+            DecoratedEnum.BEGIN,
+        )
