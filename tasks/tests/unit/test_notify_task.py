@@ -1,3 +1,5 @@
+from unittest.mock import call
+
 import pytest
 from celery.exceptions import MaxRetriesExceededError, Retry
 from redis.exceptions import LockError
@@ -16,6 +18,7 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
+from helpers.checkpoint_logger import CheckpointLogger, UploadFlow, _kwargs_key
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.decoration import DecorationDetails
 from services.notification import NotificationService
@@ -26,6 +29,20 @@ from services.notification.notifiers.base import (
 from services.report import ReportService
 from services.repository import EnrichedPull
 from tasks.notify import NotifyTask
+
+
+def _create_checkpoint_logger(mocker):
+    mocker.patch(
+        "helpers.checkpoint_logger._get_milli_timestamp",
+        side_effect=[1337, 9001, 10000, 15000, 20000, 25000],
+    )
+    checkpoints = CheckpointLogger(UploadFlow)
+    checkpoints.log(UploadFlow.UPLOAD_TASK_BEGIN)
+    checkpoints.log(UploadFlow.PROCESSING_BEGIN)
+    checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+    checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
+    checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
+    return checkpoints
 
 
 @pytest.fixture
@@ -296,8 +313,72 @@ class TestNotifyTask(object):
         mocked_fetch_yaml.assert_called_with(commit, mock_repo_provider)
 
     @pytest.mark.asyncio
+    async def test_simple_call_no_notifications_commit_differs_from_pulls_head(
+        self,
+        dbsession,
+        mocker,
+        mock_storage,
+        mock_configuration,
+        mock_repo_provider,
+        enriched_pull,
+    ):
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
+        mocker.patch.object(NotifyTask, "app")
+        mocked_should_send_notifications = mocker.patch.object(
+            NotifyTask, "should_send_notifications", return_value=True
+        )
+        fetch_and_update_whether_ci_passed_result = {}
+        mocker.patch.object(
+            NotifyTask,
+            "fetch_and_update_whether_ci_passed",
+            return_value=fetch_and_update_whether_ci_passed_result,
+        )
+        mocked_fetch_pull = mocker.patch(
+            "tasks.notify.fetch_and_update_pull_request_information_from_commit"
+        )
+        head_report = Report()
+        mocker.patch.object(
+            ReportService, "get_existing_report_for_commit", return_value=head_report
+        )
+        mocked_fetch_pull.return_value = enriched_pull
+        # commit different from provider pull recent head
+        commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        task = NotifyTask()
+        result = await task.run_async_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml={"codecov": {"notify": {"manual_trigger": True}}},
+        )
+        assert result == {
+            "notified": False,
+            "notifications": None,
+            "reason": "User doesnt want notifications warning them that current head differs from pull request most recent head.",
+        }
+        mocked_should_send_notifications.assert_called_with(
+            UserYaml({"codecov": {"notify": {"manual_trigger": True}}}),
+            commit,
+            fetch_and_update_whether_ci_passed_result,
+            head_report,
+        )
+
+    @pytest.mark.asyncio
     async def test_simple_call_yes_notifications_no_base(
-        self, dbsession, mocker, mock_storage, mock_configuration
+        self,
+        dbsession,
+        mocker,
+        mock_storage,
+        mock_configuration,
+        mock_checkpoint_submit,
     ):
         fake_notifier = mocker.MagicMock(
             AbstractBaseNotifier,
@@ -337,14 +418,18 @@ class TestNotifyTask(object):
         commit = CommitFactory.create(message="", pullid=None)
         dbsession.add(commit)
         dbsession.flush()
+
+        checkpoints = _create_checkpoint_logger(mocker)
+        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
+
         task = NotifyTask()
         result = await task.run_async_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
             current_yaml={"coverage": {"status": {"patch": True}}},
+            **kwargs,
         )
-        print(result)
         expected_result = {
             "notified": True,
             "notifications": [
@@ -368,6 +453,23 @@ class TestNotifyTask(object):
         dbsession.flush()
         dbsession.refresh(commit)
         assert commit.notified is True
+
+        assert checkpoints.data == {
+            UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+            UploadFlow.PROCESSING_BEGIN: 9001,
+            UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+            UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
+            UploadFlow.PROCESSING_COMPLETE: 20000,
+            UploadFlow.NOTIFIED: 25000,
+        }
+        calls = [
+            call(
+                "notification_latency",
+                UploadFlow.UPLOAD_TASK_BEGIN,
+                UploadFlow.NOTIFIED,
+            ),
+        ]
+        mock_checkpoint_submit.assert_has_calls(calls)
 
     @pytest.mark.asyncio
     async def test_simple_call_no_pullrequest_found(
@@ -805,17 +907,22 @@ class TestNotifyTask(object):
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
         mock_redis.get.return_value = False
+        checkpoints = _create_checkpoint_logger(mocker)
+        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
         res = await task.run_async(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
             current_yaml=current_yaml,
+            **kwargs,
         )
         assert res == {"notifications": [], "notified": True, "reason": "yay"}
+        kwargs = {_kwargs_key(UploadFlow): mocker.ANY}
         mocked_run_async_within_lock.assert_called_with(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
             current_yaml=current_yaml,
             empty_upload=None,
+            **kwargs,
         )

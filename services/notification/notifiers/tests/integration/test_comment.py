@@ -364,10 +364,10 @@ class TestCommentNotifierIntegration(object):
             "- Partials          0        1        +1     ",
             "```",
             "",
-            "| Flag | Coverage Δ | Complexity Δ | |",
+            "| [Flag](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
-            "| integration | `?` | `?` | |",
-            "| unit | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "| [integration](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
@@ -431,7 +431,7 @@ class TestCommentNotifierIntegration(object):
     ):
         mock_configuration._params["setup"] = {
             "codecov_url": None,
-            "codecov_dashboard_url": "test.example.br",
+            "codecov_dashboard_url": "https://app.codecov.io",
         }
         comparison = sample_comparison_for_limited_upload
         notifier = CommentNotifier(
@@ -447,10 +447,10 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         expected_message = [
-            f"## [Codecov](test.example.br/plan/gh/test-acc9) upload limit reached :warning:",
+            f"## [Codecov](https://app.codecov.io/plan/gh/test-acc9) upload limit reached :warning:",
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
-                      upgrade to our [pro plan](test.example.br/plan/gh/test-acc9).",
+                      upgrade to our [pro plan](https://app.codecov.io/plan/gh/test-acc9).",
             f"",
             f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
@@ -507,10 +507,10 @@ class TestCommentNotifierIntegration(object):
             "- Partials          0        1        +1     ",
             "```",
             "",
-            "| Flag | Coverage Δ | Complexity Δ | |",
+            "| [Flag](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
-            "| integration | `?` | `?` | |",
-            "| unit | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "| [integration](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
@@ -578,10 +578,10 @@ class TestCommentNotifierIntegration(object):
             "- Partials          0        1        +1     ",
             "```",
             "",
-            "| Flag | Coverage Δ | Complexity Δ | |",
+            "| [Flag](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
-            "| integration | `?` | `?` | |",
-            "| unit | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "| [integration](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
@@ -653,18 +653,18 @@ class TestCommentNotifierIntegration(object):
             "- Partials          0        1        +1     ",
             "```",
             "",
-            "| Flag | Coverage Δ | Complexity Δ | |",
+            "| [Flag](https://app.codecov.io/gh/codecove2e/example-python/pull/4/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
-            "| integration | `?` | `?` | |",
-            "| unit | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "| [integration](https://app.codecov.io/gh/codecove2e/example-python/pull/4/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gh/codecove2e/example-python/pull/4/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
             "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/codecove2e/example-python/pull/4/indirect-changes?src=pr&el=tree-more)",
             "",
-            "| Components | Coverage Δ | |",
+            "| [Components](https://app.codecov.io/gh/codecove2e/example-python/pull/4/components?src=pr&el=components) | Coverage Δ | |",
             "|---|---|---|",
-            "| go_files | `62.50% <ø> (+12.50%)` | :arrow_up: |",
+            "| [go_files](https://app.codecov.io/gh/codecove2e/example-python/pull/4/components?src=pr&el=component) | `62.50% <ø> (+12.50%)` | :arrow_up: |",
             "",
             "</details>",
             "",

@@ -20,6 +20,9 @@ from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
     ellipsis,
     escape_markdown,
+    get_metrics_function,
+    get_table_header,
+    get_table_layout,
     make_metrics,
     sort_by_importance,
 )
@@ -113,74 +116,88 @@ class NewHeaderSectionWriter(BaseSectionWriter):
             patch_cov = round_number(yaml, Decimal(diff_totals.coverage))
         else:
             patch_cov = None
-
-        if base_report and head_report:
-            patch_cov_msg = (
-                f"Patch coverage: **`{patch_cov}%`**"
-                if patch_cov
-                else "Patch coverage has no change"
-            )
-
-            if rounded_change > 0:
-                project_cov_change_msg = (
-                    f"project coverage change: **`+{rounded_change}%`** :tada:"
-                )
-            elif rounded_change < 0:
-                project_cov_change_msg = (
-                    f"project coverage change: **`{rounded_change}%`** :warning:"
-                )
-            else:
-                project_cov_change_msg = "no project coverage change."
-
-            if not patch_cov and rounded_change == 0:
-                yield (f"Patch and project coverage have no change.")
-            else:
-                yield (f"{patch_cov_msg} and {project_cov_change_msg}")
-
-            yield (
-                "> Comparison is base [(`{commitid_base}`)]({links[base]}?el=desc) {base_cov}% compared to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) {head_cov}%.".format(
-                    pull=pull.pullid,
-                    base=pull_dict["base"]["branch"],
-                    commitid_head=comparison.head.commit.commitid[:7],
-                    commitid_base=comparison.base.commit.commitid[:7],
-                    links=links,
-                    base_cov=round_number(yaml, Decimal(base_report.totals.coverage)),
-                    head_cov=round_number(yaml, Decimal(head_report.totals.coverage)),
-                )
-            )
-
-        else:
-            yield (
-                "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
-                    what="base" if not base_report else "head",
-                    branch=pull_dict["base" if not base_report else "head"]["branch"],
-                    commit=pull_dict["base" if not base_report else "head"]["commitid"][
-                        :7
-                    ],
-                    request_type="merge request"
-                    if repo_service == "gitlab"
-                    else "pull request",
-                )
-            )
-
+        hide_project_coverage = self.settings.get("hide_project_coverage", False)
+        if hide_project_coverage:
             diff_totals = head_report.apply_diff(diff)
-            if diff_totals and diff_totals.coverage is not None:
+            if patch_cov:
+                yield (f"Patch coverage is **`{patch_cov}%`** of modified lines.")
+            else:
+                yield "Patch has no changes to coverable lines."
+        else:
+            if base_report and head_report:
+                patch_cov_msg = (
+                    f"Patch coverage: **`{patch_cov}%`**"
+                    if patch_cov
+                    else "Patch coverage has no change"
+                )
+
+                if rounded_change > 0:
+                    project_cov_change_msg = (
+                        f"project coverage change: **`+{rounded_change}%`** :tada:"
+                    )
+                elif rounded_change < 0:
+                    project_cov_change_msg = (
+                        f"project coverage change: **`{rounded_change}%`** :warning:"
+                    )
+                else:
+                    project_cov_change_msg = "no project coverage change."
+
+                if not patch_cov and rounded_change == 0:
+                    yield (f"Patch and project coverage have no change.")
+                else:
+                    yield (f"{patch_cov_msg} and {project_cov_change_msg}")
+
                 yield (
-                    "> Patch coverage: {percentage}% of modified lines in {request_type} are covered.".format(
-                        percentage=round_number(yaml, Decimal(diff_totals.coverage)),
+                    "> Comparison is base [(`{commitid_base}`)]({links[base]}?el=desc) {base_cov}% compared to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) {head_cov}%.".format(
+                        pull=pull.pullid,
+                        base=pull_dict["base"]["branch"],
+                        commitid_head=comparison.head.commit.commitid[:7],
+                        commitid_base=comparison.base.commit.commitid[:7],
+                        links=links,
+                        base_cov=round_number(
+                            yaml, Decimal(base_report.totals.coverage)
+                        ),
+                        head_cov=round_number(
+                            yaml, Decimal(head_report.totals.coverage)
+                        ),
+                    )
+                )
+
+            else:
+                yield (
+                    "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
+                        what="base" if not base_report else "head",
+                        branch=pull_dict["base" if not base_report else "head"][
+                            "branch"
+                        ],
+                        commit=pull_dict["base" if not base_report else "head"][
+                            "commitid"
+                        ][:7],
                         request_type="merge request"
                         if repo_service == "gitlab"
                         else "pull request",
                     )
                 )
-            else:
-                yield "> Patch has no changes to coverable lines."
 
-        if behind_by:
-            yield (
-                f"> Report is {behind_by} commits behind head on {pull_dict['base']['branch']}."
-            )
+                diff_totals = head_report.apply_diff(diff)
+                if diff_totals and diff_totals.coverage is not None:
+                    yield (
+                        "> Patch coverage: {percentage}% of modified lines in {request_type} are covered.".format(
+                            percentage=round_number(
+                                yaml, Decimal(diff_totals.coverage)
+                            ),
+                            request_type="merge request"
+                            if repo_service == "gitlab"
+                            else "pull request",
+                        )
+                    )
+                else:
+                    yield "> Patch has no changes to coverable lines."
 
+            if behind_by:
+                yield (
+                    f"> Report is {behind_by} commits behind head on {pull_dict['base']['branch']}."
+                )
         if (
             comparison.enriched_pull.provider_pull is not None
             and comparison.head.commit.commitid
@@ -450,11 +467,13 @@ class FileSectionWriter(BaseSectionWriter):
         head_report = comparison.head.report
         if base_report is None:
             base_report = Report()
+        hide_project_coverage = self.settings.get("hide_project_coverage", False)
+        make_metrics_fn = get_metrics_function(hide_project_coverage)
         files_in_diff = [
             (
                 _diff["type"],
                 path,
-                make_metrics(
+                make_metrics_fn(
                     get_totals_from_file_in_reports(base_report, path) or False,
                     get_totals_from_file_in_reports(head_report, path) or False,
                     _diff["totals"],
@@ -473,12 +492,8 @@ class FileSectionWriter(BaseSectionWriter):
             c.path for c in changes or []
         )
         if files_in_diff:
-            table_header = (
-                "| Coverage \u0394 |"
-                + (" Complexity \u0394 |" if self.show_complexity else "")
-                + " |"
-            )
-            table_layout = "|---|---|---|" + ("---|" if self.show_complexity else "")
+            table_header = get_table_header(hide_project_coverage, self.show_complexity)
+            table_layout = get_table_layout(hide_project_coverage, self.show_complexity)
             # add table headers
             yield (
                 "| [Files Changed]({0}?src=pr&el=tree) {1}".format(
@@ -525,7 +540,7 @@ class FileSectionWriter(BaseSectionWriter):
                     )
                 )
 
-        if changes:
+        if changes and not hide_project_coverage:
             len_changes_not_in_diff = len(all_files or []) - len(files_in_diff or [])
             if files_in_diff and len_changes_not_in_diff > 0:
                 yield ("")
@@ -614,7 +629,10 @@ class FlagSectionWriter(BaseSectionWriter):
                 + ("---|" if has_carriedforward_flags else "")
             )
 
-            yield ("| Flag " + table_header)
+            yield (
+                "| [Flag]({href}/flags?src=pr&el=flags) ".format(href=links["pull"])
+                + table_header
+            )
             yield (table_layout)
             for flag in sorted(flags, key=lambda f: f["name"]):
                 carriedforward, carriedforward_from = (
@@ -646,7 +664,10 @@ class FlagSectionWriter(BaseSectionWriter):
 
                 yield (
                     "| {name} {metrics}{cf}".format(
-                        name=flag["name"],
+                        name="[{flag_name}]({href}/flags?src=pr&el=flag)".format(
+                            flag_name=flag["name"],
+                            href=links["pull"],
+                        ),
                         metrics=make_metrics(
                             flag["before"],
                             flag["after"],
@@ -707,13 +728,18 @@ class ComponentsSectionWriter(BaseSectionWriter):
         )
 
         # Table header and layout
-        yield "| Components | Coverage \u0394 | |"
+        yield "| [Components]({href}/components?src=pr&el=components) | Coverage \u0394 | |".format(
+            href=links["pull"],
+        )
         yield "|---|---|---|"
         # The interesting part
         for component_data in component_data_to_show:
             yield (
                 "| {name} {metrics}".format(
-                    name=component_data["name"],
+                    name="[{component_name}]({href}/components?src=pr&el=component)".format(
+                        component_name=component_data["name"],
+                        href=links["pull"],
+                    ),
                     metrics=make_metrics(
                         component_data["before"],
                         component_data["after"],

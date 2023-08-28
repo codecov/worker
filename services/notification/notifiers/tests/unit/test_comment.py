@@ -909,10 +909,10 @@ class TestCommentNotifier(object):
             f"- Partials          0        1        +1     ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| integration | `?` | `?` | |",
-            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -965,16 +965,16 @@ class TestCommentNotifier(object):
             f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) ({comparison.base.commit.commitid[:7]}) will **not change** coverage.",
             f"> The diff coverage is `n/a`.",
             f"",
-            "| Flag | Coverage Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | |",
             "|---|---|---|",
-            "| eighth | `?` | |",
-            "| fifth | `∅ <ø> (?)` | |",
-            "| first | `100.00% <ø> (ø)` | |",
-            "| fourth | `∅ <ø> (∅)` | |",
-            "| second | `50.00% <ø> (∅)` | |",
-            "| seventh | `?` | |",
-            "| sixth | `100.00% <ø> (?)` | |",
-            "| third | `∅ <ø> (∅)` | |",
+            f"| [eighth](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | |",
+            f"| [fifth](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `∅ <ø> (?)` | |",
+            f"| [first](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <ø> (ø)` | |",
+            f"| [fourth](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `∅ <ø> (∅)` | |",
+            f"| [second](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `50.00% <ø> (∅)` | |",
+            f"| [seventh](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | |",
+            f"| [sixth](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <ø> (?)` | |",
+            f"| [third](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `∅ <ø> (∅)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
@@ -1036,10 +1036,10 @@ class TestCommentNotifier(object):
             f"- Partials          0        1        +1     ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| integration | `?` | `?` | |",
-            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -1301,10 +1301,10 @@ class TestCommentNotifier(object):
             f"- Partials          0        1        +1     ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | |",
             f"|---|---|---|",
-            f"| integration | `?` | |",
-            f"| unit | `100.00% <100.00%> (?)` | |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -1375,9 +1375,9 @@ class TestCommentNotifier(object):
             f"  Partials          ?        1           ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -1446,9 +1446,9 @@ class TestCommentNotifier(object):
             f"  Partials          ?        1           ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| unit | `100.00% <0.00%> (?)` | `0.00% <0.00%> (?%)` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <0.00%> (?)` | `0.00% <0.00%> (?%)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -1516,9 +1516,9 @@ class TestCommentNotifier(object):
             f"  Partials          1        1           ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| unit | `100.00% <100.00%> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -1591,10 +1591,10 @@ class TestCommentNotifier(object):
             f"+ Partials          1        0        -1     ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| integration | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
-            f"| unit | `?` | `?` | |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -1786,10 +1786,10 @@ class TestCommentNotifier(object):
             f"- Partials          0        1        +1     ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| integration | `?` | `?` | |",
-            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
             f"",
             f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
@@ -1920,11 +1920,11 @@ class TestCommentNotifier(object):
             f"  Partials       68       68           ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | | *Carryforward flag |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | | *Carryforward flag |",
             f"|---|---|---|---|",
-            f"| enterprise | `25.00% <ø> (ø)` | | Carriedforward from [1234567](test.example.br/gh/{repository.slug}/commit/123456789sha) |",
-            f"| integration | `25.00% <ø> (ø)` | | Carriedforward |",
-            f"| unit | `25.00% <ø> (ø)` | | |",
+            f"| [enterprise](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | Carriedforward from [1234567](test.example.br/gh/{repository.slug}/commit/123456789sha) |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | Carriedforward |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | |",
             f"",
             f"*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
             f"",
@@ -1996,11 +1996,11 @@ class TestCommentNotifier(object):
             f"  Partials       68       68           ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | | *Carryforward flag |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | | *Carryforward flag |",
             f"|---|---|---|---|",
-            f"| enterprise | `25.00% <ø> (ø)` | | Carriedforward from [1234567](test.example.br/gh/{repository.slug}/commit/123456789sha) |",
-            f"| integration | `25.00% <ø> (ø)` | | Carriedforward |",
-            f"| unit | `25.00% <ø> (ø)` | | |",
+            f"| [enterprise](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | Carriedforward from [1234567](test.example.br/gh/{repository.slug}/commit/123456789sha) |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | Carriedforward |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | |",
             f"",
             f"*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
             f"",
@@ -2072,9 +2072,9 @@ class TestCommentNotifier(object):
             f"  Partials       68       68           ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | |",
             f"|---|---|---|",
-            f"| unit | `25.00% <ø> (ø)` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
             f"",
@@ -2175,9 +2175,9 @@ class TestCommentNotifier(object):
             f"- Partials          0        1        +1     ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| integration | `?` | `?` | |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -3672,9 +3672,9 @@ class TestNewHeaderSectionWriter(object):
         writer = NewHeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mocker.patch(
             "services.notification.notifiers.mixins.message.sections.round_number",
@@ -3701,9 +3701,9 @@ class TestNewHeaderSectionWriter(object):
         writer = NewHeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mocker.patch(
             "services.notification.notifiers.mixins.message.sections.round_number",
@@ -3723,6 +3723,33 @@ class TestNewHeaderSectionWriter(object):
             "Patch and project coverage have no change.",
             f"> Comparison is base [(`{sample_comparison.base.commit.commitid[:7]}`)](urlurl?el=desc) 0% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc) 0%.",
             "> Report is 3 commits behind head on master.",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_new_header_section_writer_no_project_coverage(
+        self, mocker, sample_comparison
+    ):
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={"hide_project_coverage": True},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "Patch has no changes to coverable lines.",
         ]
 
 
@@ -4022,9 +4049,9 @@ class TestCommentNotifierInNewLayout(object):
             f"  Partials          ?        1           ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| unit | `100.00% <0.00%> (?)` | `0.00% <0.00%> (?%)` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <0.00%> (?)` | `0.00% <0.00%> (?%)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -4088,9 +4115,9 @@ class TestCommentNotifierInNewLayout(object):
             f"  Partials          ?        1           ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -4099,6 +4126,47 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"</details>",
+            f"",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f"",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_no_project_coverage(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        comparison = sample_comparison
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "newheader, files, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"Patch coverage is **`66.67%`** of modified lines.",
+            f"",
+            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage |",
+            f"|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `66.67%` |",
+            f"",
             f"",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
@@ -4159,10 +4227,10 @@ class TestCommentNotifierInNewLayout(object):
             f"- Partials          0        1        +1     ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| integration | `?` | `?` | |",
-            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
@@ -4234,17 +4302,17 @@ class TestCommentNotifierInNewLayout(object):
             f"- Partials          0        1        +1     ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | Complexity Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| integration | `?` | `?` | |",
-            f"| unit | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
+            f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| Components | Coverage Δ | |",
+            f"| [Components](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/components?src=pr&el=components) | Coverage Δ | |",
             f"|---|---|---|",
-            f"| go_files | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
-            f"| unit_flags | `100.00% <100.00%> (∅)` | |",
+            f"| [go_files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/components?src=pr&el=component) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
+            f"| [unit_flags](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/components?src=pr&el=component) | `100.00% <100.00%> (∅)` | |",
             f"",
             f"</details>",
             f"",
@@ -4299,9 +4367,9 @@ class TestCommentNotifierInNewLayout(object):
             f"  Partials       68       68           ",
             f"```",
             f"",
-            f"| Flag | Coverage Δ | |",
+            f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | |",
             f"|---|---|---|",
-            f"| unit | `25.00% <ø> (ø)` | |",
+            f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | |",
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
             f"",
@@ -4581,10 +4649,10 @@ class TestComponentWriterSection(object):
             comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
         )
         expected = [
-            "| Components | Coverage Δ | |",
+            "| [Components](urlurl/components?src=pr&el=components) | Coverage Δ | |",
             "|---|---|---|",
-            "| go_files | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
-            "| py_files | `50.00% <ø> (ø)` | |",
+            "| [go_files](urlurl/components?src=pr&el=component) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
+            "| [py_files](urlurl/components?src=pr&el=component) | `50.00% <ø> (ø)` | |",
         ]
         assert message == expected
 
@@ -4617,9 +4685,9 @@ class TestComponentWriterSection(object):
             comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
         )
         expected = [
-            "| Components | Coverage Δ | |",
+            "| [Components](urlurl/components?src=pr&el=components) | Coverage Δ | |",
             "|---|---|---|",
-            "| go_files | `62.50% <0.00%> (?)` | |",
-            "| py_files | `50.00% <0.00%> (?)` | |",
+            "| [go_files](urlurl/components?src=pr&el=component) | `62.50% <0.00%> (?)` | |",
+            "| [py_files](urlurl/components?src=pr&el=component) | `50.00% <0.00%> (?)` | |",
         ]
         assert message == expected

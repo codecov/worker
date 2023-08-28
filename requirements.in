@@ -24,6 +24,7 @@ python-json-logger
 PyYAML
 redis>=4.4.4
 requests
+respx
 sentry-sdk
 SQLAlchemy-Utils
 SQLAlchemy==1.3.23

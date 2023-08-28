@@ -157,6 +157,20 @@ COMPRESSED_SAMPLE = {
             "excluded_lines": [],
             "contexts": {},
         },
+        "services/__init__.py": {
+            "executed_lines": [0],
+            "summary": {
+                "covered_lines": 0,
+                "num_statements": 0,
+                "percent_covered": "100.0",
+                "percent_covered_display": "100",
+                "missing_lines": 0,
+                "excluded_lines": 0,
+            },
+            "missing_lines": [],
+            "excluded_lines": [],
+            "contexts": {"0": [0]},
+        },
     },
     "labels_table": {
         "0": "",
@@ -179,7 +193,14 @@ class TestPyCoverageProcessor(BaseTestCase):
         content = SAMPLE
         p = PyCoverageProcessor()
         report_builder = ReportBuilder(
-            current_yaml={"beta_groups": ["labels"]},
+            current_yaml={
+                "flag_management": {
+                    "default_rules": {
+                        "carryforward": "true",
+                        "carryforward_mode": "labels",
+                    }
+                }
+            },
             sessionid=0,
             ignored_lines={},
             path_fixer=str,
@@ -445,7 +466,14 @@ class TestPyCoverageProcessor(BaseTestCase):
         content = COMPRESSED_SAMPLE
         p = PyCoverageProcessor()
         report_builder = ReportBuilder(
-            current_yaml={"beta_groups": ["labels"]},
+            current_yaml={
+                "flag_management": {
+                    "default_rules": {
+                        "carryforward": "true",
+                        "carryforward_mode": "labels",
+                    }
+                }
+            },
             sessionid=0,
             ignored_lines={},
             path_fixer=str,
