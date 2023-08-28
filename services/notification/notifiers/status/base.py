@@ -3,6 +3,7 @@ from contextlib import nullcontext
 from typing import Dict
 
 from shared.analytics_tracking import track_event
+from shared.config import get_config
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.utils.sessions import SessionType
 
@@ -227,7 +228,12 @@ class StatusNotifier(AbstractBaseNotifier):
 
             last_payload = cache.get_backend().get(cache_key)
             if last_payload is NO_VALUE or last_payload != payload:
-                cache.get_backend().set(cache_key, 300, payload)  # 5 min expiration
+                ttl = int(
+                    get_config(
+                        "setup", "cache", "send_status_notification", default=600
+                    )
+                )  # 10 min default
+                cache.get_backend().set(cache_key, ttl, payload)
                 return await self.send_notification(comparison, payload)
             else:
                 return NotificationResult(
