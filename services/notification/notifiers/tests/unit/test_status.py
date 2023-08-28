@@ -20,6 +20,7 @@ from services.notification.notifiers.status import (
     ProjectStatusNotifier,
 )
 from services.notification.notifiers.status.base import StatusNotifier
+from services.urls import get_pull_url
 
 
 def test_notification_type(mocker):
@@ -486,6 +487,80 @@ class TestBaseStatusNotifier(object):
             "title": "codecov/project/title",
         }
         assert result.data_received == {"id": "some_id"}
+
+    @pytest.mark.asyncio
+    async def test_notify_uncached(
+        self,
+        sample_comparison,
+        mocker,
+    ):
+        comparison = sample_comparison
+        payload = {
+            "message": "something to say",
+            "state": "success",
+            "url": get_pull_url(comparison.pull),
+        }
+
+        class TestNotifier(StatusNotifier):
+            async def build_payload(self, comparison):
+                return payload
+
+        notifier = TestNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        notifier.context = "fake"
+
+        send_notification = mocker.patch.object(TestNotifier, "send_notification")
+        await notifier.notify(comparison)
+        send_notification.assert_called_once
+
+    @pytest.mark.asyncio
+    async def test_notify_cached(
+        self,
+        sample_comparison,
+        mocker,
+    ):
+        comparison = sample_comparison
+
+        payload = {
+            "message": "something to say",
+            "state": "success",
+            "url": get_pull_url(comparison.pull),
+        }
+
+        class TestNotifier(StatusNotifier):
+            async def build_payload(self, comparison):
+                return payload
+
+        notifier = TestNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        notifier.context = "fake"
+
+        mocker.patch(
+            "helpers.cache.NullBackend.get",
+            return_value=payload,
+        )
+
+        send_notification = mocker.patch.object(TestNotifier, "send_notification")
+        result = await notifier.notify(comparison)
+        assert result == NotificationResult(
+            notification_attempted=False,
+            notification_successful=None,
+            explanation="payload_unchanged",
+            data_sent=None,
+        )
+
+        # payload was cached - we do not send the notification
+        assert not send_notification.called
 
     @pytest.mark.asyncio
     async def test_send_notification(
