@@ -236,6 +236,16 @@ class StatusNotifier(AbstractBaseNotifier):
                 cache.get_backend().set(cache_key, ttl, payload)
                 return await self.send_notification(comparison, payload)
             else:
+                log.info(
+                    "Notification payload unchanged.  Skipping notification.",
+                    extra=dict(
+                        repoid=head_commit.repoid,
+                        base_commitid=base_commit.commitid if base_commit else None,
+                        head_commitid=head_commit.commitid if head_commit else None,
+                        notifier_name=self.name,
+                        notifier_title=self.title,
+                    ),
+                )
                 return NotificationResult(
                     notification_attempted=False,
                     notification_successful=None,
