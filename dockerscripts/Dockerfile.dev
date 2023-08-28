@@ -14,8 +14,6 @@ RUN             apk update \
 COPY            . /worker
 WORKDIR         /worker
 
-USER            root
-
 ARG             RELEASE_VERSION
 
 # Passed in via Makefile. Controls whether `shared` is rebuilt editably + included
