@@ -12,10 +12,18 @@ analytics-python==1.3.0b1
     # via
     #   -r requirements.txt
     #   shared
-anyio==3.7.1
+anyio==3.6.1
     # via
     #   -r requirements.txt
     #   httpcore
+async-timeout==4.0.2
+    # via
+    #   -r requirements.txt
+    #   redis
+attrs==20.3.0
+    # via
+    #   -r requirements.txt
+    #   pytest
 backoff==1.6.0
     # via
     #   -r requirements.txt
@@ -24,16 +32,16 @@ billiard==4.1.0
     # via
     #   -r requirements.txt
     #   celery
-boto3==1.28.35
+boto3==1.17.26
     # via
     #   -r requirements.txt
     #   shared
-botocore==1.31.35
+botocore==1.20.26
     # via
     #   -r requirements.txt
     #   boto3
     #   s3transfer
-cachetools==5.3.1
+cachetools==4.2.1
     # via
     #   -r requirements.txt
     #   google-auth
@@ -41,11 +49,11 @@ celery==5.3.1
     # via
     #   -r requirements.txt
     #   pytest-celery
-cerberus==1.3.5
+cerberus==1.3.4
     # via
     #   -r requirements.txt
     #   shared
-certifi==2023.7.22
+certifi==2020.12.5
     # via
     #   -r requirements.txt
     #   httpcore
@@ -53,11 +61,12 @@ certifi==2023.7.22
     #   minio
     #   requests
     #   sentry-sdk
-cffi==1.15.1
+cffi==1.14.5
     # via
     #   -r requirements.txt
     #   cryptography
-charset-normalizer==3.2.0
+    #   google-crc32c
+charset-normalizer==2.0.12
     # via
     #   -r requirements.txt
     #   requests
@@ -76,7 +85,7 @@ click-plugins==1.1.1
     # via
     #   -r requirements.txt
     #   celery
-click-repl==0.3.0
+click-repl==0.2.0
     # via
     #   -r requirements.txt
     #   celery
@@ -86,26 +95,26 @@ colour==0.1.5
     # via
     #   -r requirements.txt
     #   shared
-coverage[toml]==7.3.0
+coverage==5.5
     # via
     #   -r requirements.txt
     #   codecovopentelem
     #   pytest-cov
-cryptography==41.0.3
+cryptography==40.0.2
     # via
     #   -r requirements.txt
     #   shared
-deprecated==1.2.14
+deprecated==1.2.12
     # via
     #   -r requirements.txt
     #   opentelemetry-api
-ecdsa==0.18.0
+ecdsa==0.16.1
     # via
     #   -r requirements.txt
     #   tlslite-ng
-factory-boy==3.3.0
+factory-boy==3.2.0
     # via -r requirements.txt
-faker==19.3.1
+faker==8.8.2
     # via
     #   -r requirements.txt
     #   factory-boy
@@ -133,7 +142,7 @@ google-cloud-storage==2.10.0
     # via
     #   -r requirements.txt
     #   shared
-google-crc32c==1.5.0
+google-crc32c==1.1.2
     # via
     #   -r requirements.txt
     #   google-resumable-media
@@ -141,43 +150,39 @@ google-resumable-media==2.5.0
     # via
     #   -r requirements.txt
     #   google-cloud-storage
-googleapis-common-protos==1.60.0
+googleapis-common-protos==1.59.1
     # via
     #   -r requirements.txt
     #   google-api-core
-h11==0.14.0
+h11==0.12.0
     # via
     #   -r requirements.txt
     #   httpcore
-httpcore==0.17.3
+httpcore==0.15.0
     # via
     #   -r requirements.txt
     #   httpx
-httplib2==0.22.0
+httplib2==0.19.0
     # via
     #   -r requirements.txt
     #   oauth2
-httpx==0.24.1
+httpx==0.23.0
     # via
     #   -r requirements.txt
     #   respx
     #   shared
-idna==3.4
+idna==2.10
     # via
     #   -r requirements.txt
     #   anyio
-    #   httpx
     #   requests
+    #   rfc3986
     #   yarl
-importlib-metadata==6.8.0
-    # via
-    #   -r requirements.txt
-    #   opentelemetry-api
-iniconfig==2.0.0
+iniconfig==1.1.1
     # via
     #   -r requirements.txt
     #   pytest
-jmespath==1.0.1
+jmespath==0.10.0
     # via
     #   -r requirements.txt
     #   boto3
@@ -186,19 +191,19 @@ kombu==5.3.1
     # via
     #   -r requirements.txt
     #   celery
-lxml==4.9.3
+lxml==4.9.1
     # via -r requirements.txt
-minio==7.1.16
+minio==7.1.13
     # via
     #   -r requirements.txt
     #   shared
-mock==5.1.0
+mock==4.0.3
     # via -r requirements.txt
-monotonic==1.6
+monotonic==1.5
     # via
     #   -r requirements.txt
     #   analytics-python
-multidict==6.0.4
+multidict==5.1.0
     # via
     #   -r requirements.txt
     #   yarl
@@ -206,40 +211,41 @@ oauth2==1.9.0.post1
     # via
     #   -r requirements.txt
     #   shared
-oauthlib==3.2.2
+oauthlib==3.1.0
     # via
     #   -r requirements.txt
     #   shared
-opentelemetry-api==1.19.0
+opentelemetry-api==1.4.1
     # via
     #   -r requirements.txt
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-celery
     #   opentelemetry-sdk
-opentelemetry-instrumentation==0.40b0
-    # via
-    #   -r requirements.txt
-    #   opentelemetry-instrumentation-celery
-opentelemetry-instrumentation-celery==0.40b0
-    # via -r requirements.txt
-opentelemetry-sdk==1.19.0
-    # via
-    #   -r requirements.txt
-    #   codecovopentelem
-opentelemetry-semantic-conventions==0.40b0
+opentelemetry-instrumentation==0.23b2
     # via
     #   -r requirements.txt
     #   opentelemetry-instrumentation-celery
     #   opentelemetry-sdk
-packaging==23.1
+opentelemetry-instrumentation-celery==0.23b2
+    # via -r requirements.txt
+opentelemetry-sdk==1.4.1
+    # via
+    #   -r requirements.txt
+    #   codecovopentelem
+opentelemetry-semantic-conventions==0.23b2
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation-celery
+    #   opentelemetry-sdk
+packaging==20.9
     # via
     #   -r requirements.txt
     #   pytest
-pluggy==1.3.0
+pluggy==0.13.1
     # via
     #   -r requirements.txt
     #   pytest
-prompt-toolkit==3.0.39
+prompt-toolkit==3.0.28
     # via
     #   -r requirements.txt
     #   click-repl
@@ -249,28 +255,29 @@ protobuf==3.20.3
     #   google-api-core
     #   googleapis-common-protos
     #   shared
-psycopg2==2.9.7
+psycopg2==2.9.3
     # via -r requirements.txt
-pyasn1==0.5.0
+pyasn1==0.4.8
     # via
     #   -r requirements.txt
     #   pyasn1-modules
     #   rsa
-pyasn1-modules==0.3.0
+pyasn1-modules==0.2.8
     # via
     #   -r requirements.txt
     #   google-auth
-pycparser==2.21
+pycparser==2.20
     # via
     #   -r requirements.txt
     #   cffi
-pyjwt==2.8.0
+pyjwt==2.4.0
     # via -r requirements.txt
-pyparsing==3.1.1
+pyparsing==2.4.7
     # via
     #   -r requirements.txt
     #   httplib2
-pytest==7.4.0
+    #   packaging
+pytest==7.2.0
     # via
     #   -r requirements.txt
     #   pytest-asyncio
@@ -278,15 +285,15 @@ pytest==7.4.0
     #   pytest-freezegun
     #   pytest-mock
     #   pytest-sqlalchemy
-pytest-asyncio==0.21.1
+pytest-asyncio==0.14.0
     # via -r requirements.txt
 pytest-celery==0.0.0
     # via -r requirements.txt
-pytest-cov==4.1.0
+pytest-cov==2.11.1
     # via -r requirements.txt
 pytest-freezegun==0.4.2
     # via -r requirements.txt
-pytest-mock==3.11.1
+pytest-mock==1.13.0
     # via -r requirements.txt
 pytest-sqlalchemy==0.2.1
     # via -r requirements.txt
@@ -298,9 +305,9 @@ python-dateutil==2.8.2
     #   celery
     #   faker
     #   freezegun
-python-json-logger==2.0.7
+python-json-logger==0.1.11
     # via -r requirements.txt
-pytz==2023.3
+pytz==2022.1
     # via
     #   -r requirements.txt
     #   timestring
@@ -309,11 +316,11 @@ pyyaml==6.0.1
     #   -r requirements.txt
     #   vcrpy
     #   watchdog
-redis==5.0.0
+redis==4.5.4
     # via
     #   -r requirements.txt
     #   shared
-requests==2.31.0
+requests==2.28.0
     # via
     #   -r requirements.txt
     #   analytics-python
@@ -323,30 +330,37 @@ requests==2.31.0
     #   stripe
 respx==0.20.2
     # via -r requirements.txt
-rsa==4.9
+rfc3986[idna2008]==1.4.0
+    # via
+    #   -r requirements.txt
+    #   httpx
+rsa==4.7.2
     # via
     #   -r requirements.txt
     #   google-auth
-s3transfer==0.6.2
+s3transfer==0.3.4
     # via
     #   -r requirements.txt
     #   boto3
 semantic-version==2.10.0
     # via setuptools-rust
-sentry-sdk==1.29.2
+sentry-sdk==1.19.1
     # via -r requirements.txt
-setuptools-rust==1.6.0
+setuptools-rust==1.7.0
     # via -r requirements.dev.in
 file:./shared#egg=shared
     # via -r requirements.txt
-six==1.16.0
+six==1.15.0
     # via
     #   -r requirements.txt
     #   analytics-python
+    #   click-repl
     #   ecdsa
     #   google-auth
     #   python-dateutil
-sniffio==1.3.0
+    #   sqlalchemy-utils
+    #   vcrpy
+sniffio==1.2.0
     # via
     #   -r requirements.txt
     #   anyio
@@ -357,19 +371,23 @@ sqlalchemy==1.3.23
     #   -r requirements.txt
     #   pytest-sqlalchemy
     #   sqlalchemy-utils
-sqlalchemy-utils==0.41.1
+sqlalchemy-utils==0.36.8
     # via
     #   -r requirements.txt
     #   pytest-sqlalchemy
-statsd==4.0.1
+statsd==3.3.0
     # via
     #   -r requirements.txt
     #   shared
-stripe==6.1.0
+stripe==2.56.0
     # via -r requirements.txt
+text-unidecode==1.3
+    # via
+    #   -r requirements.txt
+    #   faker
 timestring==1.6.4
     # via -r requirements.txt
-tlslite-ng==0.7.6
+tlslite-ng==0.8.0a39
     # via
     #   -r requirements.txt
     #   shared
@@ -377,18 +395,16 @@ typing==3.7.4.3
     # via
     #   -r requirements.txt
     #   shared
-typing-extensions==4.7.1
+typing-extensions==4.6.3
     # via
     #   -r requirements.txt
-    #   opentelemetry-sdk
     #   setuptools-rust
     #   shared
-    #   stripe
 tzdata==2023.3
     # via
     #   -r requirements.txt
     #   celery
-urllib3==1.26.16
+urllib3==1.26.13
     # via
     #   -r requirements.txt
     #   botocore
@@ -396,7 +412,7 @@ urllib3==1.26.16
     #   minio
     #   requests
     #   sentry-sdk
-vcrpy==5.1.0
+vcrpy==4.1.1
     # via -r requirements.txt
 vine==5.0.0
     # via
@@ -406,24 +422,20 @@ vine==5.0.0
     #   kombu
 watchdog[watchmedo]==3.0.0
     # via -r requirements.dev.in
-wcwidth==0.2.6
+wcwidth==0.2.5
     # via
     #   -r requirements.txt
     #   prompt-toolkit
-wrapt==1.15.0
+wrapt==1.12.1
     # via
     #   -r requirements.txt
     #   deprecated
     #   opentelemetry-instrumentation
     #   vcrpy
-yarl==1.9.2
+yarl==1.6.3
     # via
     #   -r requirements.txt
     #   vcrpy
-zipp==3.16.2
-    # via
-    #   -r requirements.txt
-    #   importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

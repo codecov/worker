@@ -27,7 +27,7 @@ requests
 respx
 sentry-sdk
 SQLAlchemy-Utils
-SQLAlchemy==1.3.23
+SQLAlchemy
 statsd
 stripe
 timestring
