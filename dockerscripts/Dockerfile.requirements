@@ -3,6 +3,9 @@
 # BUILD STAGE - Download dependencies from GitHub that require SSH access
 FROM            python:3.10.8-alpine3.16 as build
 
+# May be substituted for `requirements.dev.txt`
+ARG             REQS=requirements.txt
+
 RUN             apk update \
                 apk add --upgrade --no-cache apk-tools && \
                 apk add --update --no-cache \
@@ -24,11 +27,16 @@ RUN             apk update \
 RUN             mkdir /root/.ssh/
 RUN             ssh-keyscan -H github.com >> /root/.ssh/known_hosts
 
-COPY            requirements.txt /
-WORKDIR         /pip-packages/
+COPY            . /worker
+WORKDIR         /worker
+
+# Only initialize submodules if they aren't already initialized.
+# Otherwise, this will blow away any local uncommitted updates of the submodule silently.
+RUN             --mount=type=ssh git submodule status | grep '^-' > /dev/null && git submodule update --init --recursive || true
+
 ENV             PYCURL_SSL_LIBRARY=openssl
 
-RUN             --mount=type=ssh pip wheel -r /requirements.txt
+RUN             --mount=type=ssh pip wheel -r ${REQS} -w /pip-packages/
 
 
 

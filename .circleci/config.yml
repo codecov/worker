@@ -57,6 +57,9 @@ jobs:
     executor: codecov-deploy
     steps:
       - checkout
+      - run:
+          name: Initialize submodules
+          command: git submodule update --init --recursive
       - setup_remote_docker:
           version: 20.10.7
       - run:
@@ -88,6 +91,11 @@ jobs:
     executor: codecov-worker
     steps:
       - checkout
+      - run:
+          name: Initialize submodules
+          command: |
+            apk add git
+            git submodule update --init --recursive
       - run:
           name: Install CLI
           command: |
@@ -125,6 +133,9 @@ jobs:
     executor: codecov-deploy
     steps:
       - checkout
+      - run:
+          name: Initialize submodules
+          command: git submodule update --init --recursive
       - setup_remote_docker:
           version: 20.10.7
       - run:
@@ -140,6 +151,11 @@ jobs:
     executor: codecov-worker
     steps:
       - checkout
+      - run:
+          name: Initialize submodules
+          command: |
+            apk add git
+            git submodule update --init --recursive
       - run:
           name: verify postgres is up
           command: |
