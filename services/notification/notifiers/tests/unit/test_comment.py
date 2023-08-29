@@ -3778,8 +3778,8 @@ class TestNewFooterSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "github"
@@ -3800,8 +3800,8 @@ class TestNewFooterSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "gitlab"
@@ -3822,8 +3822,8 @@ class TestNewFooterSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "bitbucket"
@@ -3836,6 +3836,30 @@ class TestNewFooterSectionWriter(object):
             "",
             "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_with_project_cov_hidden(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            settings={
+                "layout": "newheader, files, newfooter",
+                "hide_project_coverage": True,
+            },
+            current_yaml={},
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "bitbucket"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
         ]
 
 
@@ -4168,8 +4192,7 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `66.67%` |",
             f"",
             f"",
-            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
             f"",
         ]
         for exp, res in zip(expected_result, result):
