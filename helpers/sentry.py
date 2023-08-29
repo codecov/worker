@@ -34,7 +34,7 @@ def initialize_sentry() -> None:
         environment=os.getenv("DD_ENV", "production"),
         traces_sample_rate=float(os.environ.get("SERVICES__SENTRY__SAMPLE_RATE", 1)),
         integrations=[
-            CeleryIntegration(),
+            CeleryIntegration(monitor_beat_tasks=True),
             SqlalchemyIntegration(),
             RedisIntegration(),
             HttpxIntegration(),
