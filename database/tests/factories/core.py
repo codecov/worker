@@ -125,6 +125,7 @@ class CommitFactory(Factory):
             "s": 1,
         }
     )
+    _report_json_storage_path = None
     _report_json = factory.LazyFunction(
         lambda: {
             "files": {
