@@ -58,11 +58,15 @@ class BaseCodecovTask(celery_app.Task):
             "soft_time_limit": extra_config.get("soft_timelimit", None),
         }
         options = {**options, **celery_compatible_config}
+
+        opt_headers = options.pop("headers", {})
+        opt_headers = opt_headers if opt_headers is not None else {}
+
         # Pass current time in task headers so we can emit a metric of
         # how long the task was in the queue for
         current_time = datetime.now()
         headers = {
-            **options.pop("headers", {}),
+            **opt_headers,
             "created_timestamp": current_time.isoformat(),
         }
         return super().apply_async(args=args, kwargs=kwargs, headers=headers, **options)

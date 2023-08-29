@@ -256,3 +256,27 @@ def with_sql_functions(dbsession):
             $$ language sql stable strict;"""
     )
     dbsession.flush()
+
+
+# We don't want any tests submitting checkpoint logs to Sentry for real
+@pytest.fixture(autouse=True)
+def mock_checkpoint_submit(mocker, request):
+    # We mock sentry differently in the tests for CheckpointLogger
+    if request.node.get_closest_marker("real_checkpoint_logger"):
+        return
+
+    def mock_submit_fn(metric, start, end):
+        pass
+
+    mock_submit = mocker.Mock()
+    mock_submit.side_effect = mock_submit_fn
+
+    import helpers
+
+    return mocker.patch.object(
+        helpers.checkpoint_logger.CheckpointLogger,
+        "submit_subflow",
+        mock_submit,
+    )
+
+    return mock_submit

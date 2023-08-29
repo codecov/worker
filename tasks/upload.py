@@ -20,6 +20,8 @@ from shared.yaml import UserYaml
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit
+from helpers.checkpoint_logger import UploadFlow, _kwargs_key
+from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
@@ -42,6 +44,16 @@ regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]").search
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
 CHUNK_SIZE = 3
+
+
+def _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs):
+    kwargs.update(
+        {
+            "repoid": repoid,
+            "commitid": commitid,
+            "report_code": report_code,
+        }
+    )
 
 
 class UploadTask(BaseCodecovTask):
@@ -137,6 +149,12 @@ class UploadTask(BaseCodecovTask):
     async def run_async(
         self, db_session, repoid, commitid, report_code=None, *args, **kwargs
     ):
+        # If we're a retry, kwargs will already have our first checkpoint.
+        # If not, log it directly into kwargs so we can pass it onto other tasks
+        checkpoints_from_kwargs(UploadFlow, kwargs).log(
+            UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
+        )
+
         log.info(
             "Received upload task",
             extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
@@ -158,7 +176,8 @@ class UploadTask(BaseCodecovTask):
                     ),
                 ),
             )
-            self.retry(countdown=60)
+            _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+            self.retry(countdown=60, kwargs=kwargs)
         try:
             with redis_connection.lock(
                 lock_name,
@@ -208,7 +227,8 @@ class UploadTask(BaseCodecovTask):
                     commit=commitid, repoid=repoid, countdown=int(retry_countdown)
                 ),
             )
-            self.retry(max_retries=3, countdown=retry_countdown)
+            _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+            self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
     async def run_async_within_lock(
         self,
@@ -235,6 +255,7 @@ class UploadTask(BaseCodecovTask):
                 "was_updated": False,
                 "tasks_were_scheduled": False,
             }
+
         upload_processing_delay = get_config("setup", "upload_processing_delay")
         if upload_processing_delay is not None:
             upload_processing_delay = int(upload_processing_delay)
@@ -254,7 +275,19 @@ class UploadTask(BaseCodecovTask):
                             repoid=repoid, commit=commitid, countdown=retry_countdown
                         ),
                     )
-                    self.retry(countdown=retry_countdown)
+                    _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+                    self.retry(countdown=retry_countdown, kwargs=kwargs)
+
+        try:
+            checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
+            checkpoints.log(UploadFlow.PROCESSING_BEGIN).submit_subflow(
+                "time_before_processing",
+                UploadFlow.UPLOAD_TASK_BEGIN,
+                UploadFlow.PROCESSING_BEGIN,
+            )
+        except ValueError as e:
+            log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
+
         commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
@@ -321,7 +354,8 @@ class UploadTask(BaseCodecovTask):
                 "Commit not yet ready to build its initial report. Retrying in 60s.",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            self.retry(countdown=60)
+            _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+            self.retry(countdown=60, kwargs=kwargs)
         argument_list = []
         for arguments in self.lists_of_arguments(redis_connection, repoid, commitid):
             normalized_arguments = self.normalize_upload_arguments(
@@ -339,8 +373,16 @@ class UploadTask(BaseCodecovTask):
             argument_list.append(normalized_arguments)
         if argument_list:
             db_session.commit()
-            self.schedule_task(commit, commit_yaml, argument_list, commit_report)
+            self.schedule_task(
+                commit, commit_yaml, argument_list, commit_report, checkpoints
+            )
         else:
+            checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+            checkpoints.submit_subflow(
+                "initial_processing_duration",
+                UploadFlow.PROCESSING_BEGIN,
+                UploadFlow.INITIAL_PROCESSING_COMPLETE,
+            )
             log.info(
                 "Not scheduling task because there were no arguments were found on redis",
                 extra=dict(
@@ -396,7 +438,9 @@ class UploadTask(BaseCodecovTask):
             ownerid=repository.owner.ownerid,
         )
 
-    def schedule_task(self, commit, commit_yaml, argument_list, commit_report):
+    def schedule_task(
+        self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
+    ):
         commit_yaml = commit_yaml.to_dict()
         chain_to_call = []
         for i in range(0, len(argument_list), CHUNK_SIZE):
@@ -414,16 +458,28 @@ class UploadTask(BaseCodecovTask):
                 )
                 chain_to_call.append(sig)
         if chain_to_call:
-            finish_sig = upload_finisher_task.signature(
-                kwargs=dict(
-                    repoid=commit.repoid,
-                    commitid=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    report_code=commit_report.code,
+            checkpoint_data = None
+            if checkpoints:
+                checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+                checkpoints.submit_subflow(
+                    "initial_processing_duration",
+                    UploadFlow.PROCESSING_BEGIN,
+                    UploadFlow.INITIAL_PROCESSING_COMPLETE,
                 )
+                checkpoint_data = checkpoints.data
+
+            finish_sig = upload_finisher_task.signature(
+                kwargs={
+                    "repoid": commit.repoid,
+                    "commitid": commit.commitid,
+                    "commit_yaml": commit_yaml,
+                    "report_code": commit_report.code,
+                    _kwargs_key(UploadFlow): checkpoint_data,
+                },
             )
             chain_to_call.append(finish_sig)
             res = chain(*chain_to_call).apply_async()
+
             log.info(
                 "Scheduling task for %s different reports",
                 len(argument_list),
@@ -464,7 +520,7 @@ class UploadTask(BaseCodecovTask):
             try:
                 if repository_service.service in ["gitlab", "gitlab_enterprise"]:
                     # we use per-repo webhook secrets in this case
-                    webhook_secret = repository.webhook_secret or uuid.uuid4()
+                    webhook_secret = repository.webhook_secret or str(uuid.uuid4())
                 else:
                     # service-level config value will be used instead in this case
                     webhook_secret = None
