@@ -3,9 +3,11 @@ from contextlib import nullcontext
 from typing import Dict
 
 from shared.analytics_tracking import track_event
+from shared.config import get_config
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.utils.sessions import SessionType
 
+from helpers.cache import DEFAULT_TTL, NO_VALUE, cache, make_hash_sha256
 from helpers.environment import is_enterprise
 from helpers.match import match
 from helpers.metrics import metrics
@@ -209,7 +211,47 @@ class StatusNotifier(AbstractBaseNotifier):
                 payload["url"] = get_pull_url(comparison.pull)
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)
-            return await self.send_notification(comparison, payload)
+
+            base_commit = comparison.base.commit if comparison.base else None
+            head_commit = comparison.head.commit if comparison.head else None
+
+            cache_key = make_hash_sha256(
+                dict(
+                    type="status_check_notification",
+                    repoid=head_commit.repoid,
+                    base_commitid=base_commit.commitid if base_commit else None,
+                    head_commitid=head_commit.commitid if head_commit else None,
+                    notifier_name=self.name,
+                    notifier_title=self.title,
+                )
+            )
+
+            last_payload = cache.get_backend().get(cache_key)
+            if last_payload is NO_VALUE or last_payload != payload:
+                ttl = int(
+                    get_config(
+                        "setup", "cache", "send_status_notification", default=600
+                    )
+                )  # 10 min default
+                cache.get_backend().set(cache_key, ttl, payload)
+                return await self.send_notification(comparison, payload)
+            else:
+                log.info(
+                    "Notification payload unchanged.  Skipping notification.",
+                    extra=dict(
+                        repoid=head_commit.repoid,
+                        base_commitid=base_commit.commitid if base_commit else None,
+                        head_commitid=head_commit.commitid if head_commit else None,
+                        notifier_name=self.name,
+                        notifier_title=self.title,
+                    ),
+                )
+                return NotificationResult(
+                    notification_attempted=False,
+                    notification_successful=None,
+                    explanation="payload_unchanged",
+                    data_sent=None,
+                )
         except TorngitClientError:
             log.warning(
                 "Unable to send status notification to user due to a client-side error",
