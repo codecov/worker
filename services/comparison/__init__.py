@@ -4,6 +4,12 @@ from typing import List, Optional
 
 from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
 from shared.reports.types import Change
+from shared.torngit.exceptions import (
+    TorngitClientError,
+    TorngitClientGeneralError,
+    TorngitError,
+    TorngitObjectNotFoundError,
+)
 
 from database.enums import CompareCommitState
 from database.models import CompareCommit
@@ -162,25 +168,25 @@ class ComparisonProxy(object):
                         "Comparison does not have provider pull request information, unable to get behind_by"
                     )
                     return None
+                branch_to_get = provider_pull["base"]["branch"]
                 if self._branch is None:
-                    branches = await self.repository_service.get_branches()
-                    branch = [
-                        b for b in branches if b[0] == provider_pull["base"]["branch"]
-                    ]
-
-                    if len(branch) == 0:
+                    try:
+                        branch_response = await self.repository_service.get_branch(
+                            branch_to_get
+                        )
+                    except TorngitClientGeneralError:
                         log.warning(
-                            "Unable to find branch in list of branches on repo",
+                            "Unable to fetch base branch from Git provider",
                             extra=dict(
-                                branch=provider_pull["base"]["branch"],
+                                branch=branch_to_get,
                             ),
                         )
                         return None
 
-                    self._branch = branch
+                    self._branch = branch_response
 
                 distance = await self.repository_service.get_distance_in_commits(
-                    self._branch[0][1],
+                    self._branch["sha"],
                     self.comparison.base.commit.commitid,
                     with_commits=False,
                 )
