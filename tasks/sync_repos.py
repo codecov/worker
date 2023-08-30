@@ -50,7 +50,7 @@ class SyncReposTask(BaseCodecovTask):
         **kwargs,
     ):
         log.info(
-            "Sync repos",
+            "Sync repos!",
             extra=dict(
                 ownerid=ownerid, username=username, using_integration=using_integration
             ),
