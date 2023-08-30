@@ -99,7 +99,7 @@ interactions:
       50.00% compared to head [(`2e2600a`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)
       60.00%.\n\n:exclamation: Your organization is not using the GitHub App Integration.
       As a result you may experience degraded service beginning May 15th. Please [install
-      the Github App Integration](https://github.com/apps/codecov) for your organization.
+      the GitHub App Integration](https://github.com/apps/codecov) for your organization.
       [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper).\n\n<details><summary>Additional
       details and impacted files</summary>\n\n\n[![Impacted file tree graph](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)\n\n```diff\n@@              Coverage
       Diff              @@\n##             master      #15       +/-   ##\n=============================================\n+
@@ -137,7 +137,7 @@ interactions:
       50.00% compared to head [(`2e2600a`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)
       60.00%.\\n\\n:exclamation: Your organization is not using the GitHub App Integration.
       As a result you may experience degraded service beginning May 15th. Please [install
-      the Github App Integration](https://github.com/apps/codecov) for your organization.
+      the GitHub App Integration](https://github.com/apps/codecov) for your organization.
       [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper).\\n\\n<details><summary>Additional
       details and impacted files</summary>\\n\\n\\n[![Impacted file tree graph](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=Vernon+Cooper)\\n\\n```diff\\n@@
       \             Coverage Diff              @@\\n##             master      #15
