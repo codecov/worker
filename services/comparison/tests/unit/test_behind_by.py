@@ -2,6 +2,8 @@ import pytest
 
 from services.comparison import ComparisonProxy
 
+from shared.torngit.exceptions import TorngitClientGeneralError
+
 
 class TestGetBehindBy(object):
     @pytest.mark.asyncio
@@ -36,7 +38,11 @@ class TestGetBehindBy(object):
 
     @pytest.mark.asyncio
     async def test_get_behind_by_no_matching_branches(self, mocker, mock_repo_provider):
-        mock_repo_provider.get_branches.return_value = []
+        mock_repo_provider.get_branch.side_effect = TorngitClientGeneralError(
+            404,
+            None,
+            "Branch not found",
+        )
         mocker.patch(
             "services.comparison.get_repo_provider_service",
             return_value=mock_repo_provider,

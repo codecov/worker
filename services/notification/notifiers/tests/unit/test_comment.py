@@ -2,11 +2,13 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
+
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import Change, LineSession, ReportLine, ReportTotals
 from shared.torngit.exceptions import (
     TorngitClientError,
+    TorngitClientGeneralError,
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
 )
@@ -193,15 +195,15 @@ def mock_repo_provider(mock_repo_provider):
         ],
     }
 
-    branches_result = [
-        ("main", "aaaaaaa"),
-    ]
+    branch_result = {"name": "test", "sha": "aaaaaaa"}
 
     mock_repo_provider.get_compare.return_value = compare_result
     mock_repo_provider.post_comment.return_value = {}
     mock_repo_provider.edit_comment.return_value = {}
     mock_repo_provider.delete_comment.return_value = {}
-    mock_repo_provider.get_branches.return_value = branches_result
+    mock_repo_provider.get_branch.side_effect = TorngitClientGeneralError(
+        404, None, "Branch not found"
+    )
     return mock_repo_provider
 
 

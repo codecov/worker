@@ -55,7 +55,7 @@ def codecove2e_comparison(dbsession, request, sample_report, small_report):
                 provider_pull={
                     "author": {"id": "12345", "username": "codecove2e"},
                     "base": {
-                        "branch": "master",
+                        "branch": "main",
                         "commitid": "93189ce50f224296d6412e2884b93dcc3c7c8654",
                     },
                     "head": {
@@ -76,26 +76,26 @@ def codecove2e_comparison(dbsession, request, sample_report, small_report):
 def sample_comparison(dbsession, request, sample_report, small_report):
     repository = RepositoryFactory.create(
         owner__service="github",
-        owner__username="ThiagoCodecov",
-        name="example-python",
+        owner__username="joseph-sentry",
+        name="codecov-demo",
         owner__unencrypted_oauth_token="ghp_testmgzs9qm7r27wp376fzv10aobbpva7hd3",
         image_token="abcdefghij",
     )
     dbsession.add(repository)
     dbsession.flush()
     base_commit = CommitFactory.create(
-        repository=repository, commitid="4535be18e90467d6d9a99c0ce651becec7f7eba6"
+        repository=repository, commitid="5b174c2b40d501a70c479e91025d5109b1ad5c1b"
     )
     head_commit = CommitFactory.create(
         repository=repository,
-        branch="new_branch",
-        commitid="2e2600aa09525e2e1e1d98b09de61454d29c94bb",
+        branch="test",
+        commitid="5601846871b8142ab0df1e0b8774756c658bcc7d",
     )
     pull = PullFactory.create(
         repository=repository,
         base=base_commit.commitid,
         head=head_commit.commitid,
-        pullid=15,
+        pullid=9,
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
@@ -115,19 +115,19 @@ def sample_comparison(dbsession, request, sample_report, small_report):
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
-                    "author": {"id": "12345", "username": "hootener"},
+                    "author": {"id": "12345", "username": "joseph-sentry"},
                     "base": {
-                        "branch": "master",
-                        "commitid": "30cc1ed751a59fa9e7ad8e79fff41a6fe11ef5dd",
+                        "branch": "main",
+                        "commitid": "5b174c2b40d501a70c479e91025d5109b1ad5c1b",
                     },
                     "head": {
-                        "branch": "thiago/test-1",
-                        "commitid": "2e2600aa09525e2e1e1d98b09de61454d29c94bb",
+                        "branch": "test",
+                        "commitid": "5601846871b8142ab0df1e0b8774756c658bcc7d",
                     },
                     "state": "open",
-                    "title": "Thiago/test 1",
-                    "id": "15",
-                    "number": "15",
+                    "title": "make change",
+                    "id": "9",
+                    "number": "9",
                 },
             ),
         )
@@ -302,7 +302,7 @@ def sample_comparison_for_limited_upload(
                 provider_pull={
                     "author": {"id": "12345", "username": "dana-yaish"},
                     "base": {
-                        "branch": "master",
+                        "branch": "main",
                         "commitid": "ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
                     },
                     "head": {
@@ -339,18 +339,18 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
-            "> Merging [#15](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) (2e2600a) into [master](https://app.codecov.io/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) (4535be1) will **increase** coverage by `10.00%`.",
-            "> Report is 52 commits behind head on master.",
+            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
+            "> Merging [#9](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) (5601846) into [main](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) (5b174c2) will **increase** coverage by `10.00%`.",
+            "> Report is 2 commits behind head on main.",
             "> The diff coverage is `n/a`.",
             "",
             ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the GitHub App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
             "",
-            "[![Impacted file tree graph](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)",
+            "[![Impacted file tree graph](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=tree)",
             "",
             "```diff",
             "@@              Coverage Diff              @@",
-            "##             master      #15       +/-   ##",
+            "##               main       #9       +/-   ##",
             "=============================================",
             "+ Coverage     50.00%   60.00%   +10.00%     ",
             "+ Complexity       11       10        -1     ",
@@ -364,28 +364,28 @@ class TestCommentNotifierIntegration(object):
             "- Partials          0        1        +1     ",
             "```",
             "",
-            "| [Flag](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
+            "| [Flag](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
-            "| [integration](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flag) | `?` | `?` | |",
-            "| [unit](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "| [integration](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/indirect-changes?src=pr&el=tree-more)",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/indirect-changes?src=pr&el=tree-more)",
             "",
             "------",
             "",
-            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).",
+            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).",
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-            "> Powered by [Codecov](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=footer). Last update [30cc1ed...2e2600a](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=footer). Last update [5b174c2...5601846](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
         assert result.data_sent["message"] == message
-        assert result.data_sent == {"commentid": None, "message": message, "pullid": 15}
-        assert result.data_received == {"id": 570682170}
+        assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
+        assert result.data_received == {"id": 1699669247}
 
     @pytest.mark.asyncio
     async def test_notify_upgrade(
@@ -551,20 +551,20 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=h1) Report",
+            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
             "Patch coverage has no change and project coverage change: **`+10.00%`** :tada:",
-            "> Comparison is base [(`4535be1`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/commit/4535be18e90467d6d9a99c0ce651becec7f7eba6?el=desc) 50.00% compared to head [(`2e2600a`)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=desc) 60.00%.",
-            "> Report is 52 commits behind head on master.",
+            "> Comparison is base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 50.00% compared to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 60.00%.",
+            "> Report is 2 commits behind head on main.",
             "",
             ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the GitHub App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
             "",
             "<details><summary>Additional details and impacted files</summary>\n",
             "",
-            "[![Impacted file tree graph](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=tree)",
+            "[![Impacted file tree graph](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=tree)",
             "",
             "```diff",
             "@@              Coverage Diff              @@",
-            "##             master      #15       +/-   ##",
+            "##               main       #9       +/-   ##",
             "=============================================",
             "+ Coverage     50.00%   60.00%   +10.00%     ",
             "+ Complexity       11       10        -1     ",
@@ -578,18 +578,18 @@ class TestCommentNotifierIntegration(object):
             "- Partials          0        1        +1     ",
             "```",
             "",
-            "| [Flag](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
+            "| [Flag](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
-            "| [integration](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flag) | `?` | `?` | |",
-            "| [unit](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "| [integration](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15/indirect-changes?src=pr&el=tree-more)",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/indirect-changes?src=pr&el=tree-more)",
             "",
             "</details>",
             "",
-            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/ThiagoCodecov/example-python/pull/15?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
@@ -597,15 +597,15 @@ class TestCommentNotifierIntegration(object):
             assert exp == res
 
         assert result.data_sent["message"] == message
-        assert result.data_sent == {"commentid": None, "message": message, "pullid": 15}
-        assert result.data_received == {"id": 1620423805}
+        assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
+        assert result.data_received == {"id": 1699669290}
 
     @pytest.mark.asyncio
     async def test_notify_with_components(
-        self, codecove2e_comparison, codecov_vcr, mock_configuration
+        self, sample_comparison, codecov_vcr, mock_configuration
     ):
         mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
-        comparison = codecove2e_comparison
+        comparison = sample_comparison
         notifier = CommentNotifier(
             repository=comparison.head.commit.repository,
             title="title",
@@ -627,19 +627,20 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=h1) Report",
+            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
             "Patch coverage has no change and project coverage change: **`+10.00%`** :tada:",
-            "> Comparison is base [(`93189ce`)](https://app.codecov.io/gh/codecove2e/example-python/commit/93189ce50f224296d6412e2884b93dcc3c7c8654?el=desc) 50.00% compared to head [(`8589c19`)](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=desc) 60.00%.",
+            "> Comparison is base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 50.00% compared to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 60.00%.",
+            "> Report is 2 commits behind head on main.",
             "",
             ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the GitHub App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
             "",
             "<details><summary>Additional details and impacted files</summary>\n",
             "",
-            "[![Impacted file tree graph](https://app.codecov.io/gh/codecove2e/example-python/pull/4/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=tree)",
+            "[![Impacted file tree graph](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=tree)",
             "",
             "```diff",
             "@@              Coverage Diff              @@",
-            "##             master       #4       +/-   ##",
+            "##               main       #9       +/-   ##",
             "=============================================",
             "+ Coverage     50.00%   60.00%   +10.00%     ",
             "+ Complexity       11       10        -1     ",
@@ -653,22 +654,22 @@ class TestCommentNotifierIntegration(object):
             "- Partials          0        1        +1     ",
             "```",
             "",
-            "| [Flag](https://app.codecov.io/gh/codecove2e/example-python/pull/4/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
+            "| [Flag](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
-            "| [integration](https://app.codecov.io/gh/codecove2e/example-python/pull/4/flags?src=pr&el=flag) | `?` | `?` | |",
-            "| [unit](https://app.codecov.io/gh/codecove2e/example-python/pull/4/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "| [integration](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/codecove2e/example-python/pull/4/indirect-changes?src=pr&el=tree-more)",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/indirect-changes?src=pr&el=tree-more)",
             "",
-            "| [Components](https://app.codecov.io/gh/codecove2e/example-python/pull/4/components?src=pr&el=components) | Coverage Δ | |",
+            "| [Components](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/components?src=pr&el=components) | Coverage Δ | |",
             "|---|---|---|",
-            "| [go_files](https://app.codecov.io/gh/codecove2e/example-python/pull/4/components?src=pr&el=component) | `62.50% <ø> (+12.50%)` | :arrow_up: |",
+            "| [go_files](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/components?src=pr&el=component) | `62.50% <ø> (+12.50%)` | :arrow_up: |",
             "",
             "</details>",
             "",
-            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/codecove2e/example-python/pull/4?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
@@ -676,5 +677,5 @@ class TestCommentNotifierIntegration(object):
             assert exp == res
 
         assert result.data_sent["message"] == message
-        assert result.data_sent == {"commentid": None, "message": message, "pullid": 4}
-        assert result.data_received == {"id": 1253851153}
+        assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
+        assert result.data_received == {"id": 1699669323}
