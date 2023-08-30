@@ -2,7 +2,6 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import Change, LineSession, ReportLine, ReportTotals

@@ -10,6 +10,7 @@ from shared.torngit.exceptions import (
     TorngitError,
     TorngitObjectNotFoundError,
 )
+
 from database.enums import CompareCommitState
 from database.models import CompareCommit
 from helpers.metrics import metrics
