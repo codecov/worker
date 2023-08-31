@@ -170,7 +170,7 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
     files_array = ArchiveField(
         should_write_to_storage_fn=_should_write_to_storage,
         rehydrate_fn=rehydrate_encoded_data,
-        default_value=[],
+        default_value_class=list,
     )
 
 

@@ -7,6 +7,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import Change, LineSession, ReportLine, ReportTotals
 from shared.torngit.exceptions import (
     TorngitClientError,
+    TorngitClientGeneralError,
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
 )
@@ -193,15 +194,15 @@ def mock_repo_provider(mock_repo_provider):
         ],
     }
 
-    branches_result = [
-        ("main", "aaaaaaa"),
-    ]
+    branch_result = {"name": "test", "sha": "aaaaaaa"}
 
     mock_repo_provider.get_compare.return_value = compare_result
     mock_repo_provider.post_comment.return_value = {}
     mock_repo_provider.edit_comment.return_value = {}
     mock_repo_provider.delete_comment.return_value = {}
-    mock_repo_provider.get_branches.return_value = branches_result
+    mock_repo_provider.get_branch.side_effect = TorngitClientGeneralError(
+        404, None, "Branch not found"
+    )
     return mock_repo_provider
 
 
@@ -435,7 +436,7 @@ class TestCommentNotifierHelpers(object):
             fake_comparison, mock_write
         )
         mock_write.assert_any_call(
-            ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the Github App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
+            ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the GitHub App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
         )
         assert mock_write.call_count == 2
 
@@ -3778,8 +3779,8 @@ class TestNewFooterSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "github"
@@ -3800,8 +3801,8 @@ class TestNewFooterSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "gitlab"
@@ -3822,8 +3823,8 @@ class TestNewFooterSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "bitbucket"
@@ -3836,6 +3837,30 @@ class TestNewFooterSectionWriter(object):
             "",
             "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_with_project_cov_hidden(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            settings={
+                "layout": "newheader, files, newfooter",
+                "hide_project_coverage": True,
+            },
+            current_yaml={},
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "bitbucket"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
         ]
 
 
@@ -4168,8 +4193,7 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `66.67%` |",
             f"",
             f"",
-            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
             f"",
         ]
         for exp, res in zip(expected_result, result):

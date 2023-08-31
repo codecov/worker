@@ -788,29 +788,29 @@ class TestNotifyTask(object):
         mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
-            owner__username="test-acc9",
+            owner__username="joseph-sentry",
             owner__service="github",
-            owner__service_id="104562106",
-            owner__email="atest7321@gmail.com",
-            name="test_example",
+            owner__service_id="136376984",
+            owner__email="joseph.sawaya@sentry.io",
+            name="codecov-demo",
             image_token="abcdefghij",
         )
         dbsession.add(repository)
         dbsession.flush()
-        head_commitid = "610ada9fa2bbc49f1a08917da3f73bef2d03709c"
-        master_sha = "ef6edf5ae6643d53a7971fb8823d3f7b2ac65619"
+        head_commitid = "5601846871b8142ab0df1e0b8774756c658bcc7d"
+        master_sha = "5b174c2b40d501a70c479e91025d5109b1ad5c1b"
         master_commit = CommitFactory.create(
             message="",
             pullid=None,
-            branch="master",
+            branch="main",
             commitid=master_sha,
             repository=repository,
             author=repository.owner,
         )
         commit = CommitFactory.create(
             message="",
-            pullid=None,
-            branch="featureA",
+            pullid=9,
+            branch="test",
             commitid=head_commitid,
             parent_commit_id=master_commit.commitid,
             repository=repository,
@@ -859,7 +859,7 @@ class TestNotifyTask(object):
             },
         )
         expected_author_dict = {
-            "username": "test-acc9",
+            "username": "joseph-sentry",
             "service_id": repository.owner.service_id,
             "email": repository.owner.email,
             "service": "github",
@@ -877,14 +877,14 @@ class TestNotifyTask(object):
                         "explanation": None,
                         "data_sent": {
                             "repo": {
-                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example",
+                                "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo",
                                 "service_id": repository.service_id,
-                                "name": "test_example",
+                                "name": "codecov-demo",
                                 "private": True,
                             },
                             "head": {
                                 "author": expected_author_dict,
-                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example/commit/610ada9fa2bbc49f1a08917da3f73bef2d03709c",
+                                "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d",
                                 "timestamp": "2019-02-01T17:59:47",
                                 "totals": {
                                     "files": 3,
@@ -916,13 +916,13 @@ class TestNotifyTask(object):
                                     ],
                                 },
                                 "commitid": head_commitid,
-                                "service_url": f"https://github.com/test-acc9/test_example/commit/{head_commitid}",
-                                "branch": "featureA",
+                                "service_url": f"https://github.com/joseph-sentry/codecov-demo/commit/{head_commitid}",
+                                "branch": "test",
                                 "message": "",
                             },
                             "base": {
                                 "author": expected_author_dict,
-                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example/commit/ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
+                                "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b",
                                 "timestamp": "2019-02-01T17:59:47",
                                 "totals": {
                                     "files": 3,
@@ -953,34 +953,34 @@ class TestNotifyTask(object):
                                         0,
                                     ],
                                 },
-                                "commitid": "ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
-                                "service_url": "https://github.com/test-acc9/test_example/commit/ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
-                                "branch": "master",
+                                "commitid": "5b174c2b40d501a70c479e91025d5109b1ad5c1b",
+                                "service_url": "https://github.com/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b",
+                                "branch": "main",
                                 "message": "",
                             },
                             "compare": {
-                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1",
+                                "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9",
                                 "message": "no change",
                                 "coverage": Decimal("0.00"),
                                 "notation": "",
                             },
                             "owner": {
-                                "username": "test-acc9",
+                                "username": "joseph-sentry",
                                 "service_id": repository.owner.service_id,
                                 "service": "github",
                             },
                             "pull": {
                                 "head": {
-                                    "commit": "610ada9fa2bbc49f1a08917da3f73bef2d03709c",
+                                    "commit": "5601846871b8142ab0df1e0b8774756c658bcc7d",
                                     "branch": "master",
                                 },
-                                "number": "1",
+                                "number": "9",
                                 "base": {
-                                    "commit": "ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
+                                    "commit": "5b174c2b40d501a70c479e91025d5109b1ad5c1b",
                                     "branch": "master",
                                 },
                                 "open": True,
-                                "id": 1,
+                                "id": 9,
                                 "merged": False,
                             },
                         },
@@ -995,9 +995,9 @@ class TestNotifyTask(object):
                         "notification_successful": True,
                         "explanation": None,
                         "data_sent": {
-                            "text": f"Coverage for <https://myexamplewebsite.io/gh/test-acc9/test_example/commit/610ada9fa2bbc49f1a08917da3f73bef2d03709c|test-acc9/test_example> *no change* `<https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1|0.00%>` on `featureA` is `85.00000%` via `<https://myexamplewebsite.io/gh/test-acc9/test_example/commit/610ada9fa2bbc49f1a08917da3f73bef2d03709c|610ada9>`",
+                            "text": f"Coverage for <https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|joseph-sentry/codecov-demo> *no change* `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9|0.00%>` on `test` is `85.00000%` via `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|5601846>`",
                             "author_name": "Codecov",
-                            "author_link": "https://myexamplewebsite.io/gh/test-acc9/test_example/commit/610ada9fa2bbc49f1a08917da3f73bef2d03709c",
+                            "author_link": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d",
                             "attachments": [],
                         },
                         "data_received": None,
@@ -1056,18 +1056,18 @@ class TestNotifyTask(object):
                         "notification_successful": True,
                         "explanation": "Successfully notified slack app",
                         "data_sent": {
-                            "repository": "test_example",
-                            "owner": "test-acc9",
+                            "repository": "codecov-demo",
+                            "owner": "joseph-sentry",
                             "comparison": {
-                                "url": "https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1",
+                                "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9",
                                 "message": "no change",
                                 "coverage": "0.00",
                                 "notation": "",
                                 "head_commit": {
-                                    "commitid": "610ada9fa2bbc49f1a08917da3f73bef2d03709c",
-                                    "branch": "featureA",
+                                    "commitid": "5601846871b8142ab0df1e0b8774756c658bcc7d",
+                                    "branch": "test",
                                     "message": "",
-                                    "author": "test-acc9",
+                                    "author": "joseph-sentry",
                                     "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
@@ -1099,13 +1099,13 @@ class TestNotifyTask(object):
                                         "p": 0,
                                         "s": 1,
                                     },
-                                    "pull": None,
+                                    "pull": 9,
                                 },
                                 "base_commit": {
-                                    "commitid": "ef6edf5ae6643d53a7971fb8823d3f7b2ac65619",
-                                    "branch": "master",
+                                    "commitid": "5b174c2b40d501a70c479e91025d5109b1ad5c1b",
+                                    "branch": "main",
                                     "message": "",
-                                    "author": "test-acc9",
+                                    "author": "joseph-sentry",
                                     "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
@@ -1154,19 +1154,18 @@ class TestNotifyTask(object):
                         "explanation": None,
                         "data_sent": {
                             "message": [
-                                "## [Codecov](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=h1) Report",
-                                "> Merging [#1](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=desc) (610ada9) into [main](https://myexamplewebsite.io/gh/test-acc9/test_example/commit/ef6edf5ae6643d53a7971fb8823d3f7b2ac65619?el=desc) (ef6edf5) will **not change** coverage.",
+                                "## [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
+                                "> Merging [#9](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) (5601846) into [main](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) (5b174c2) will **not change** coverage.",
+                                "> Report is 2 commits behind head on main.",
                                 "> The diff coverage is `n/a`.",
                                 "",
-                                "> :exclamation: Current head 610ada9 differs from pull request most recent head a2d3e3c. Consider uploading reports for the commit a2d3e3c to get more accurate results",
+                                ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the GitHub App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
                                 "",
-                                ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the Github App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
-                                "",
-                                "[![Impacted file tree graph](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=tree)",
+                                "[![Impacted file tree graph](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=tree)",
                                 "",
                                 "```diff",
                                 "@@           Coverage Diff           @@",
-                                "##             main       #1   +/-   ##",
+                                "##             main       #9   +/-   ##",
                                 "=======================================",
                                 "  Coverage   85.00%   85.00%           ",
                                 "=======================================",
@@ -1177,9 +1176,9 @@ class TestNotifyTask(object):
                                 "  Misses          3        3           ",
                                 "```",
                                 "",
-                                "| [Flag](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1/flags?src=pr&el=flags) | Coverage Δ | |",
+                                "| [Flag](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flags) | Coverage Δ | |",
                                 "|---|---|---|",
-                                "| [unit](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1/flags?src=pr&el=flag) | `85.00% <ø> (ø)` | |",
+                                "| [unit](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `85.00% <ø> (ø)` | |",
                                 "",
                                 "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
                                 "",
@@ -1187,23 +1186,23 @@ class TestNotifyTask(object):
                                 "",
                                 "------",
                                 "",
-                                "[Continue to review full report in Codecov by Sentry](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=continue).",
+                                "[Continue to review full report in Codecov by Sentry](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).",
                                 "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
                                 "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-                                "> Powered by [Codecov](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=footer). Last update [ef6edf5...a2d3e3c](https://myexamplewebsite.io/gh/test-acc9/test_example/pull/1?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+                                "> Powered by [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=footer). Last update [5b174c2...5601846](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
                                 "",
                             ],
                             "commentid": None,
-                            "pullid": 1,
+                            "pullid": 9,
                         },
-                        "data_received": {"id": 1203062549},
+                        "data_received": {"id": 1699669573},
                     },
                 },
             ],
         }
 
-        pull = dbsession.query(Pull).filter_by(pullid=1, repoid=commit.repoid).first()
-        assert pull.commentid == "1203062549"
+        pull = dbsession.query(Pull).filter_by(pullid=9, repoid=commit.repoid).first()
+        assert pull.commentid == "1699669573"
 
         assert len(result["notifications"]) == len(expected_result["notifications"])
         for expected, actual in zip(

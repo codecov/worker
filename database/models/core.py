@@ -238,7 +238,7 @@ class Commit(CodecovBaseModel):
     _report_json_storage_path = Column("report_storage_path", types.Text, nullable=True)
     report_json = ArchiveField(
         should_write_to_storage_fn=should_write_to_storage,
-        default_value={},
+        default_value_class=dict,
     )
 
 
@@ -358,7 +358,7 @@ class Pull(CodecovBaseModel):
     _flare = Column("flare", postgresql.JSON)
     _flare_storage_path = Column("flare_storage_path", types.Text, nullable=True)
     flare = ArchiveField(
-        should_write_to_storage_fn=should_write_to_storage, default_value={}
+        should_write_to_storage_fn=should_write_to_storage, default_value_class=dict
     )
 
 
