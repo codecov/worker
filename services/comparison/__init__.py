@@ -182,7 +182,14 @@ class ComparisonProxy(object):
                             ),
                         )
                         return None
-
+                    except KeyError:
+                        log.warning(
+                            "Error fetching base branch from Git provider",
+                            extra=dict(
+                                branch=branch_to_get,
+                            ),
+                        )
+                        return None
                     self._branch = branch_response
 
                 distance = await self.repository_service.get_distance_in_commits(
