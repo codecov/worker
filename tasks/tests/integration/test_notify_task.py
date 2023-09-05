@@ -1159,7 +1159,7 @@ class TestNotifyTask(object):
                                 "> Report is 2 commits behind head on main.",
                                 "> The diff coverage is `n/a`.",
                                 "",
-                                ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the GitHub App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
+                                ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
                                 "",
                                 "[![Impacted file tree graph](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=tree)",
                                 "",
