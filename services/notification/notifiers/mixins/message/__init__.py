@@ -168,7 +168,7 @@ class MessageMixin(object):
             and not owner.integration_id
             and not is_enterprise()
         ):
-            message_to_display = "Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the GitHub App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/)."
+            message_to_display = "Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality."
             write(f":exclamation: {message_to_display}")
             write("")
 
