@@ -1,5 +1,5 @@
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -34,6 +34,15 @@ from services.notification.notifiers.mixins.message.sections import (
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 from services.yaml.reader import get_components_from_yaml
+
+
+@pytest.fixture
+def is_not_first_pull(mocker):
+    mocker.patch(
+        "database.models.core.Pull.is_first_pull",
+        return_value=False,
+        new_callable=PropertyMock,
+    )
 
 
 @pytest.fixture
@@ -500,6 +509,7 @@ class TestCommentNotifierHelpers(object):
         assert mock_write.call_count == 0
 
 
+@pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifier(object):
     @pytest.mark.asyncio
     async def test_is_enabled_settings_individual_settings_false(self, dbsession):
@@ -3837,6 +3847,7 @@ class TestNewFooterSectionWriter(object):
         assert res == []
 
 
+@pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifierInNewLayout(object):
     @pytest.mark.asyncio
     async def test_create_message_files_section_with_critical_files_new_layout(
@@ -4689,3 +4700,29 @@ class TestComponentWriterSection(object):
             "| [py_files](urlurl/components?src=pr&el=component) | `50.00% <0.00%> (?)` | |",
         ]
         assert message == expected
+
+
+class TestCommentNotifierWelcome:
+    @pytest.mark.asyncio
+    async def test_build_message(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        expected_result = [
+            "## Welcome to [Codecov](https://codecov.io) :tada:",
+            "",
+            "Once merged to your default branch, Codecov will compare your coverage reports and display the results in this comment.",
+            "",
+            "Thanks for integrating Codecov - We've got you covered :open_umbrella:",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
