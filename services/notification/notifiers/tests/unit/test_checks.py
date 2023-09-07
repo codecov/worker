@@ -1516,6 +1516,7 @@ class TestProjectChecksNotifier(object):
                         f"",
                         f"... and [1 file with indirect coverage changes](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/indirect-changes?src=pr&el=tree-more)",
                         f"",
+                        ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
                     ]
                 ),
             },
@@ -1558,6 +1559,7 @@ class TestProjectChecksNotifier(object):
                         f"",
                         f"... and [1 file with indirect coverage changes](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}/indirect-changes?src=pr&el=tree-more)",
                         f"",
+                        ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
                     ]
                 ),
             },
@@ -1608,6 +1610,7 @@ class TestProjectChecksNotifier(object):
                         f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
                         f"> Powered by [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=footer). Last update [{base_commit.commitid[:7]}...{head_commit.commitid[:7]}](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
                         f"",
+                        ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
                     ]
                 ),
             },
