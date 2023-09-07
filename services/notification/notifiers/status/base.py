@@ -2,13 +2,11 @@ import logging
 from contextlib import nullcontext
 from typing import Dict
 
-from shared.analytics_tracking import track_event
 from shared.config import get_config
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.utils.sessions import SessionType
 
 from helpers.cache import DEFAULT_TTL, NO_VALUE, cache, make_hash_sha256
-from helpers.environment import is_enterprise
 from helpers.match import match
 from helpers.metrics import metrics
 from services.comparison import ComparisonProxy
@@ -313,19 +311,6 @@ class StatusNotifier(AbstractBaseNotifier):
         if not await self.status_already_exists(comparison, title, state, message):
             state = (
                 "success" if self.notifier_yaml_settings.get("informational") else state
-            )
-
-            # Track state in analytics
-            event_name = (
-                "Coverage Report Passed"
-                if state == "success"
-                else "Coverage Report Failed"
-            )
-            track_event(
-                user_id=self.repository.ownerid,
-                event_name=event_name,
-                is_enterprise=is_enterprise(),
-                event_data={"state": state, "repository_id": self.repository.repoid},
             )
 
             notification_result_data_sent = {

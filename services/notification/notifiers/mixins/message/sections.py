@@ -5,14 +5,9 @@ from decimal import Decimal
 from itertools import starmap
 from typing import List
 
-from shared.analytics_tracking import (
-    track_critical_files_sent,
-    track_related_entrypoints_sent,
-)
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
 
-from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
 from services.comparison import ComparisonProxy
 from services.comparison.overlays import OverlayType
@@ -248,13 +243,6 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
                 )
-                track_critical_files_sent(
-                    self.repository.repoid,
-                    self.repository.ownerid,
-                    comparison.head.commit.commitid,
-                    pull.pullid,
-                    is_enterprise(),
-                )
 
 
 class HeaderSectionWriter(BaseSectionWriter):
@@ -361,13 +349,6 @@ class HeaderSectionWriter(BaseSectionWriter):
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
                 )
-                track_critical_files_sent(
-                    self.repository.repoid,
-                    self.repository.ownerid,
-                    comparison.head.commit.commitid,
-                    pull.pullid,
-                    is_enterprise(),
-                )
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):
@@ -393,13 +374,6 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             yield "|---|"
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
-            track_related_entrypoints_sent(
-                self.repository.repoid,
-                self.repository.ownerid,
-                comparison.head.commit.commitid,
-                comparison.pull.pullid,
-                is_enterprise(),
-            )
         elif impacted_endpoints is not None:
             yield "This change has been scanned for critical changes. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
 
