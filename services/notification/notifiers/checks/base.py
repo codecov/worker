@@ -187,7 +187,7 @@ class ChecksNotifier(StatusNotifier):
                 payload["url"] = get_pull_url(comparison.pull)
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)
-            return await self.send_notification(comparison, payload)
+            return await self.maybe_send_notification(comparison, payload)
         except TorngitClientError as e:
             if e.code == 403:
                 raise e

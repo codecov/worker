@@ -212,46 +212,7 @@ class StatusNotifier(AbstractBaseNotifier):
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)
 
-            base_commit = comparison.base.commit if comparison.base else None
-            head_commit = comparison.head.commit if comparison.head else None
-
-            cache_key = make_hash_sha256(
-                dict(
-                    type="status_check_notification",
-                    repoid=head_commit.repoid,
-                    base_commitid=base_commit.commitid if base_commit else None,
-                    head_commitid=head_commit.commitid if head_commit else None,
-                    notifier_name=self.name,
-                    notifier_title=self.title,
-                )
-            )
-
-            last_payload = cache.get_backend().get(cache_key)
-            if last_payload is NO_VALUE or last_payload != payload:
-                ttl = int(
-                    get_config(
-                        "setup", "cache", "send_status_notification", default=600
-                    )
-                )  # 10 min default
-                cache.get_backend().set(cache_key, ttl, payload)
-                return await self.send_notification(comparison, payload)
-            else:
-                log.info(
-                    "Notification payload unchanged.  Skipping notification.",
-                    extra=dict(
-                        repoid=head_commit.repoid,
-                        base_commitid=base_commit.commitid if base_commit else None,
-                        head_commitid=head_commit.commitid if head_commit else None,
-                        notifier_name=self.name,
-                        notifier_title=self.title,
-                    ),
-                )
-                return NotificationResult(
-                    notification_attempted=False,
-                    notification_successful=None,
-                    explanation="payload_unchanged",
-                    data_sent=None,
-                )
+            return await self.maybe_send_notification(comparison, payload)
         except TorngitClientError:
             log.warning(
                 "Unable to send status notification to user due to a client-side error",
@@ -301,6 +262,48 @@ class StatusNotifier(AbstractBaseNotifier):
     def get_status_external_name(self) -> str:
         status_piece = f"/{self.title}" if self.title != "default" else ""
         return f"codecov/{self.context}{status_piece}"
+
+    async def maybe_send_notification(
+        self, comparison: Comparison, payload: dict
+    ) -> NotificationResult:
+        base_commit = comparison.base.commit if comparison.base else None
+        head_commit = comparison.head.commit if comparison.head else None
+
+        cache_key = make_hash_sha256(
+            dict(
+                type="status_check_notification",
+                repoid=head_commit.repoid,
+                base_commitid=base_commit.commitid if base_commit else None,
+                head_commitid=head_commit.commitid if head_commit else None,
+                notifier_name=self.name,
+                notifier_title=self.title,
+            )
+        )
+
+        last_payload = cache.get_backend().get(cache_key)
+        if last_payload is NO_VALUE or last_payload != payload:
+            ttl = int(
+                get_config("setup", "cache", "send_status_notification", default=600)
+            )  # 10 min default
+            cache.get_backend().set(cache_key, ttl, payload)
+            return await self.send_notification(comparison, payload)
+        else:
+            log.info(
+                "Notification payload unchanged.  Skipping notification.",
+                extra=dict(
+                    repoid=head_commit.repoid,
+                    base_commitid=base_commit.commitid if base_commit else None,
+                    head_commitid=head_commit.commitid if head_commit else None,
+                    notifier_name=self.name,
+                    notifier_title=self.title,
+                ),
+            )
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="payload_unchanged",
+                data_sent=None,
+            )
 
     async def send_notification(self, comparison: Comparison, payload):
         title = self.get_status_external_name()
