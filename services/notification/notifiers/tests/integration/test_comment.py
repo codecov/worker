@@ -380,6 +380,7 @@ class TestCommentNotifierIntegration(object):
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             "> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=footer). Last update [5b174c2...5601846](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
+            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
@@ -523,6 +524,7 @@ class TestCommentNotifierIntegration(object):
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             "> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=footer). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
+            f":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
@@ -590,8 +592,8 @@ class TestCommentNotifierIntegration(object):
             "</details>",
             "",
             "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
-            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
@@ -670,8 +672,8 @@ class TestCommentNotifierIntegration(object):
             "</details>",
             "",
             "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
-            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
