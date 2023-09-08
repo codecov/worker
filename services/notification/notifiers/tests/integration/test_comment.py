@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -8,6 +8,15 @@ from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.comment import CommentNotifier
+
+
+@pytest.fixture
+def is_not_first_pull(mocker):
+    mocker.patch(
+        "database.models.core.Pull.is_first_pull",
+        return_value=False,
+        new_callable=PropertyMock,
+    )
 
 
 @pytest.fixture
@@ -319,6 +328,7 @@ def sample_comparison_for_limited_upload(
     )
 
 
+@pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifierIntegration(object):
     @pytest.mark.asyncio
     async def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):

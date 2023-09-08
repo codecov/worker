@@ -2,6 +2,7 @@ import random
 import string
 import uuid
 from datetime import datetime
+from functools import cached_property
 
 from sqlalchemy import Column, ForeignKey, Index, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
@@ -297,7 +298,9 @@ class Pull(CodecovBaseModel):
     behind_by_commit = Column(types.Text)
 
     author = relationship(Owner)
-    repository = relationship(Repository, backref=backref("pulls", cascade="delete"))
+    repository = relationship(
+        Repository, backref=backref("pulls", cascade="delete", lazy="dynamic")
+    )
 
     __table_args__ = (Index("pulls_repoid_pullid", "repoid", "pullid", unique=True),)
 
@@ -354,6 +357,13 @@ class Pull(CodecovBaseModel):
             is_codecov_repo=is_codecov_repo,
             repoid=self.repository.repoid,
         )
+
+    @cached_property
+    def is_first_pull(self):
+        first_pull = (
+            self.repository.pulls.with_entities(Pull.id_).order_by(Pull.id_).first()
+        )
+        return first_pull.id_ == self.id_
 
     _flare = Column("flare", postgresql.JSON)
     _flare_storage_path = Column("flare_storage_path", types.Text, nullable=True)
