@@ -81,11 +81,26 @@ class NullSectionWriter(BaseSectionWriter):
 class NewFooterSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         hide_project_coverage = self.settings.get("hide_project_coverage", False)
-        if not hide_project_coverage:
+        if hide_project_coverage:
+            yield ("")
+            yield (
+                ":loudspeaker: Thoughts on this report? [Let us know!]({0}).".format(
+                    "https://about.codecov.io/pull-request-comment-report/"
+                )
+            )
+        else:
+            repo_service = comparison.repository_service.service
             yield ("")
             yield (
                 "[:umbrella: View full report in Codecov by Sentry]({0}?src=pr&el=continue).   ".format(
                     links["pull"]
+                )
+            )
+            yield (
+                ":loudspeaker: Have feedback on the report? [Share it here]({0}).".format(
+                    "https://about.codecov.io/codecov-pr-comment-feedback/"
+                    if repo_service == "github"
+                    else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
                 )
             )
 

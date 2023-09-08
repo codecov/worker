@@ -1193,7 +1193,6 @@ class TestNotifyTask(object):
                                 "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
                                 "> Powered by [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=footer). Last update [5b174c2...5601846](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
                                 "",
-                                ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
                             ],
                             "commentid": None,
                             "pullid": 9,

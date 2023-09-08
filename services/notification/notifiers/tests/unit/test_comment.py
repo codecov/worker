@@ -713,7 +713,6 @@ class TestCommentNotifier(object):
             f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         res = await notifier.create_message(comparison, pull_dict, {"layout": "files"})
         print(res)
@@ -874,7 +873,6 @@ class TestCommentNotifier(object):
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
             "",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         res = await notifier.build_message(comparison)
         assert expected_result == res
@@ -948,7 +946,6 @@ class TestCommentNotifier(object):
             f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -992,7 +989,6 @@ class TestCommentNotifier(object):
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         li = 0
         print("\n".join(result))
@@ -1083,7 +1079,6 @@ class TestCommentNotifier(object):
             f"",
             f"",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1343,7 +1338,6 @@ class TestCommentNotifier(object):
             f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1415,7 +1409,6 @@ class TestCommentNotifier(object):
             f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1484,7 +1477,6 @@ class TestCommentNotifier(object):
             f"[cdf9aa4...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1558,7 +1550,6 @@ class TestCommentNotifier(object):
             f"[{sample_comparison_no_change.base.commit.commitid[:7]}...{sample_comparison_no_change.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         print(result)
         li = 0
@@ -1637,7 +1628,6 @@ class TestCommentNotifier(object):
             f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         print(result)
         for exp, res in zip(expected_result, result):
@@ -1702,7 +1692,6 @@ class TestCommentNotifier(object):
             f"- Misses        871      874       +3     ",
             f"```",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         print(result)
         li = 0
@@ -1757,7 +1746,6 @@ class TestCommentNotifier(object):
             f"Patch coverage has no change and project coverage change: **`-0.04%`** :warning:",
             f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 88.58% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 88.54%.",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         print(result)
         li = 0
@@ -1833,7 +1821,6 @@ class TestCommentNotifier(object):
             f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1898,7 +1885,6 @@ class TestCommentNotifier(object):
             f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         print(result)
         li = 0
@@ -1968,7 +1954,6 @@ class TestCommentNotifier(object):
             f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         print(result)
         li = 0
@@ -2045,7 +2030,6 @@ class TestCommentNotifier(object):
             f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         print(result)
         li = 0
@@ -2120,7 +2104,6 @@ class TestCommentNotifier(object):
             f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         print(result)
         li = 0
@@ -2228,7 +2211,6 @@ class TestCommentNotifier(object):
             f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -3246,7 +3228,6 @@ class TestCommentNotifier(object):
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
             f"</details>",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -3279,7 +3260,6 @@ class TestCommentNotifier(object):
             "",
             ":mega: message",
             "",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(expected_result, result):
             if exp == ":mega: message":
@@ -3317,7 +3297,6 @@ class TestCommentNotifier(object):
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -3823,6 +3802,51 @@ class TestNewFooterSectionWriter(object):
         assert res == [
             "",
             "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_in_gitlab(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "gitlab"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_in_bitbucket(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "bitbucket"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
 
     @pytest.mark.asyncio
@@ -3844,7 +3868,10 @@ class TestNewFooterSectionWriter(object):
                 mock_comparison, {}, [], links={"pull": "pull.link"}
             )
         )
-        assert res == []
+        assert res == [
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
+        ]
 
 
 @pytest.mark.usefixtures("is_not_first_pull")
@@ -4004,7 +4031,6 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
             "",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         res = await notifier.build_message(comparison)
         assert expected_result == res
@@ -4068,8 +4094,8 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f"",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f"",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4138,8 +4164,8 @@ class TestCommentNotifierInNewLayout(object):
             f"</details>",
             f"",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f"",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f"",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4179,6 +4205,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"",
             f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
+            f"",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4245,8 +4272,8 @@ class TestCommentNotifierInNewLayout(object):
             f"</details>",
             f"",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f"",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f"",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4325,8 +4352,8 @@ class TestCommentNotifierInNewLayout(object):
             f"</details>",
             f"",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f"",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f"",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4396,7 +4423,6 @@ class TestCommentNotifierInNewLayout(object):
             f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
 
         for exp, res in zip(expected_result, result):
