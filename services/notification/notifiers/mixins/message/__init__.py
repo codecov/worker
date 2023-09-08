@@ -156,8 +156,6 @@ class MessageMixin(object):
                         section_writer,
                     )
 
-        await self._write_feedback_link(comparison, settings, write)
-
         return [m for m in message if m is not None]
 
     async def _possibly_write_gh_app_login_announcement(
@@ -173,26 +171,6 @@ class MessageMixin(object):
             message_to_display = "Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality."
             write(f":exclamation: {message_to_display}")
             write("")
-
-    async def _write_feedback_link(
-        self, comparison: ComparisonProxy, settings: dict, write: Callable
-    ):
-        hide_project_coverage = settings.get("hide_project_coverage", False)
-        if hide_project_coverage:
-            write(
-                ":loudspeaker: Thoughts on this report? [Let us know!]({0}).".format(
-                    "https://about.codecov.io/pull-request-comment-report/"
-                )
-            )
-        else:
-            repo_service = comparison.repository_service.service
-            write(
-                ":loudspeaker: Have feedback on the report? [Share it here]({0}).".format(
-                    "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
-                    if repo_service == "gitlab"
-                    else "https://about.codecov.io/codecov-pr-comment-feedback/"
-                )
-            )
 
     async def write_section_to_msg(
         self, comparison, changes, diff, links, write, section_writer, behind_by=None
