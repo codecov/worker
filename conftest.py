@@ -271,12 +271,10 @@ def mock_checkpoint_submit(mocker, request):
     mock_submit = mocker.Mock()
     mock_submit.side_effect = mock_submit_fn
 
-    import helpers
+    from helpers.checkpoint_logger import CheckpointLogger
 
     return mocker.patch.object(
-        helpers.checkpoint_logger.CheckpointLogger,
+        CheckpointLogger,
         "submit_subflow",
         mock_submit,
     )
-
-    return mock_submit

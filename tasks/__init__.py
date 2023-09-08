@@ -17,6 +17,7 @@ from tasks.mutation_test_upload import mutation_test_upload_task
 from tasks.new_user_activated import new_user_activated_task
 from tasks.notify import notify_task
 from tasks.plan_manager_task import daily_plan_manager_task_name
+from tasks.preprocess_upload import preprocess_upload_task
 from tasks.profiling_find_uncollected import find_untotalized_profilings_task
 from tasks.profiling_normalizer import profiling_normalizer_task
 from tasks.save_report_results import save_report_results_task

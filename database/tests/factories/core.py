@@ -44,6 +44,9 @@ class OwnerFactory(Factory):
     service = factory.Iterator(["gitlab", "github", "bitbucket"])
     free = 0
     unencrypted_oauth_token = factory.LazyFunction(lambda: uuid4().hex)
+    trial_start_date = datetime.now()
+    trial_end_date = datetime.now()
+    trial_status = enums.TrialStatus.NOT_STARTED.value
 
     oauth_token = factory.LazyAttribute(
         lambda o: encrypt_oauth_token(o.unencrypted_oauth_token)
@@ -223,6 +226,7 @@ class UploadFactory(Factory):
     upload_extras = {}
     upload_type = "uploaded"
     storage_path = "storage/path.txt"
+    created_at = datetime.now()
 
 
 class UploadLevelTotalsFactory(Factory):
