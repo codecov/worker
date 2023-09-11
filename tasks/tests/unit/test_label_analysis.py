@@ -517,6 +517,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
         "present_report_labels": expected_present_report_labels,
         "success": True,
         "global_level_labels": [],
+        "errors": [],
     }
     assert larf.result == {
         "absent_labels": expected_absent_labels,
@@ -524,7 +525,6 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
         "present_report_labels": expected_present_report_labels,
         "global_level_labels": [],
     }
-
 
 
 @pytest.mark.asyncio

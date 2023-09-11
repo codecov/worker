@@ -66,7 +66,10 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 commit=label_analysis_request.head_commit.commitid,
             ),
         )
+
         if label_analysis_request.state_id == LabelAnalysisRequestState.FINISHED.db_id:
+            # Indicates that this request has been calculated already
+            # We might need to update the requested labels
             return self._handle_larq_already_calculated(label_analysis_request)
 
         try:
@@ -164,7 +167,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
         # This means we already calculated everything
         # Except possibly the absent labels
         log.info(
-            "Label analysis was request already calculated",
+            "Label analysis request was already calculated",
             extra=dict(
                 request_id=larq.id,
                 external_id=larq.external_id,
@@ -192,10 +195,11 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 commit_sha=larq.head_commit.commitid,
             )
             larq.result = result  # Save the new result
-            return { **result, 'success': True }
-        # No requested labels mean we don't have to calculate again
+            return {**result, "success": True, "errors": []}
+        # No requested labels mean we don't have any new information
+        # So we don't need to calculate again
         # This shouldn't actually happen
-        return { **larq.result, 'success': True }
+        return {**larq.result, "success": True, "errors": []}
 
     def _get_requested_labels(self, label_analysis_request: LabelAnalysisRequest):
         if label_analysis_request.requested_labels:
