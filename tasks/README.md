@@ -27,7 +27,6 @@ As of 2020-08-14 the following tasks are available:
 * app.tasks.remove_webhook.RemoveOldHook
 * app.tasks.synchronize.Synchronize
 * app.tasks.new_user_activated.NewUserActivated
-* app.tasks.add_to_sendgrid_list.AddToSendgridList
 
 You should be able to see documentation on their purpose and usage on their docstrings
 
