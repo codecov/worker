@@ -181,6 +181,14 @@ def mock_storage(mocker):
 
 
 @pytest.fixture
+def mock_smtp(mocker):
+    m = mocker.patch("services.smtp._get_cached_smtp_service")
+    smtp_server = mocker.MagicMock()
+    m.return_value = smtp_server
+    yield smtp_server
+
+
+@pytest.fixture
 def mock_repo_provider(mocker):
     m = mocker.patch("services.repository._get_repo_provider_service_instance")
     provider_instance = mocker.MagicMock(
