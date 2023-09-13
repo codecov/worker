@@ -184,7 +184,7 @@ test_env.install_cli:
 test_env.container_prepare:
 	apk add -U curl git build-base
 	make test_env.install_cli
-	git config --global --add safe.directory /app
+	git config --global --add safe.directory /worker
 
 test_env.container_check_db:
 	while ! nc -vz postgres 5432; do sleep 1; echo "waiting for postgres"; done
