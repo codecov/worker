@@ -235,7 +235,7 @@ test_env.run_mutation:
 
 test_env.container_mutation:
 	apk add git
-	git diff main ${full_sha} > data.patch
+	git diff origin/main ${full_sha} > data.patch
 	pip install mutmut[patch]
 	mutmut run --use-patch-file data.patch || true
 	mkdir /tmp/artifacts;
