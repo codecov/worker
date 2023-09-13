@@ -1,5 +1,5 @@
 sha := $(shell git rev-parse --short=7 HEAD)
-full_sha := sha := $(shell git rev-parse HEAD)
+full_sha := $(shell git rev-parse HEAD)
 release_version = `cat VERSION`
 _gcr := ${CODECOV_WORKER_GCR_REPO_BASE}
 
