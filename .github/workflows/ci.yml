@@ -211,6 +211,41 @@ jobs:
         if: github.repository_owner == 'codecov'
         run: |
           make test_env.upload_staging CODECOV_UPLOAD_TOKEN=${{ secrets.CODECOV_ORG_TOKEN_STAGING }}
+  mutation:
+    name: Run Mutations
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Cache App
+        id: cache-app
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-worker-app
+        with:
+          path: |
+            app.tar
+          key: ${{ runner.os }}-worker-${{ env.cache-name }}-${{ github.run_id }}
+      - name: Load built image
+        run: |
+          docker load --input app.tar
+      - name: Install docker compose
+        run: |
+          sudo curl -SL https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+      - name: Bring test env up
+        run: |
+          make test_env.up
+      - name: Prepare for tests
+        run: |
+          make test_env.prepare
+      - name: Run mutations
+        run: |
+          make test_env.run_mutation
+      
 
   build-self-hosted:
     name: Build Self Hosted Worker

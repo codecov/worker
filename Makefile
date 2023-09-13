@@ -1,4 +1,5 @@
 sha := $(shell git rev-parse --short=7 HEAD)
+full_sha := sha := $(shell git rev-parse HEAD)
 release_version = `cat VERSION`
 _gcr := ${CODECOV_WORKER_GCR_REPO_BASE}
 
@@ -227,7 +228,18 @@ test_env.container_label_analysis:
 	codecovcli label-analysis --base-sha=$(shell git merge-base HEAD^ origin/main) --token=${CODECOV_STATIC_TOKEN}
 
 test_env.container_ats:
-	codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag smart-labels --fail-on-error
+	codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
+
+test_env.run_mutation:
+	docker-compose -f docker-compose-test.yml exec worker make test_env.container_mutation
+
+test_env.container_mutation:
+	apk add git
+	git diff main ${full_sha} > data.patch
+	pip install mutmut[patch]
+	mutmut run --use-patch-file data.patch || true
+	mkdir /tmp/artifacts;
+	mutmut junitxml > /tmp/artifacts/mut.xml
 
 test_env:
 	make test_env.up
