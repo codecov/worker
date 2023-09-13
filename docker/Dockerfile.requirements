@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1.4
+
+# BUILD STAGE
+FROM python:3.10.8-alpine3.16 as build
+
+RUN apk add --upgrade --no-cache apk-tools && \
+    apk add --update --no-cache \
+    git \
+    openssh \
+    postgresql-dev \
+    musl-dev \
+    libxslt-dev \
+    python3-dev \
+    libffi-dev \
+    gcc \
+    libcurl \
+    build-base \
+    curl-dev \
+    rust \
+    cargo \
+    && pip install --upgrade pip
+
+COPY requirements.txt /
+WORKDIR /pip-packages/
+ENV PYCURL_SSL_LIBRARY=openssl
+
+RUN pip wheel --no-cache-dir -r /requirements.txt
+RUN rm -rf /pip-packages/src
+
+
+# RUNTIME STAGE - Copy packages from build stage and install runtime dependencies
+FROM python:3.10.8-alpine3.16
+
+RUN apk add --upgrade --no-cache apk-tools busybox expat libretls postgresql-libs gcc libxslt-dev curl make
+
+WORKDIR /pip-packages/
+COPY --from=build /pip-packages/ /pip-packages/
+
+
+RUN pip install --no-deps --no-index --find-links=/pip-packages/ /pip-packages/*
+
+RUN addgroup -S application && adduser -S codecov -G application
