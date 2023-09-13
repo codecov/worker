@@ -60,7 +60,7 @@ def success_events(*args):
         def is_success(obj):
             return obj in klass._success_events()
 
-        # `_failure_events` is a cached function rather than a data member so
+        # `_success_events` is a cached function rather than a data member so
         # that it is not processed as if it's a value from the enum.
         klass._success_events = functools.lru_cache(maxsize=1)(_success_events)
         klass.is_success = is_success
@@ -245,6 +245,13 @@ class CheckpointLogger:
 
         if kwargs is not None:
             kwargs[self.kwargs_key] = self.data
+
+        # `self.cls._subflows()` comes from the `@subflows` decorator
+        # If the flow has pre-defined subflows, we can automatically submit
+        # any of them that end with the checkpoint we just logged.
+        if hasattr(self.cls, "_subflows"):
+            for metric, beginning in self.cls._subflows().get(checkpoint, []):
+                self.submit_subflow(metric, beginning, checkpoint)
 
         return self
 

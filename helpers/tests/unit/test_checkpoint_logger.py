@@ -72,7 +72,7 @@ class TestCheckpointLogger(unittest.TestCase):
         self.assertEqual(checkpoints.data[TestEnum1.B], 9001)
         self.assertEqual(checkpoints.data[TestEnum1.C], 100000)
 
-    def test_log_checkpoint_twice_ahrows(self):
+    def test_log_checkpoint_twice_throws(self):
         checkpoints = CheckpointLogger(TestEnum1, strict=True)
         checkpoints.log(TestEnum1.A)
 
@@ -194,8 +194,6 @@ class TestCheckpointLogger(unittest.TestCase):
         assert kwargs["checkpoints_TestEnum1"][TestEnum1.A] == 1337
         assert kwargs["checkpoints_TestEnum1"][TestEnum1.B] == 9001
 
-        pass
-
     @pytest.mark.real_checkpoint_logger
     @patch("sentry_sdk.set_measurement")
     @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[9001])
@@ -277,4 +275,17 @@ class TestCheckpointLogger(unittest.TestCase):
         assert branch_2_success_subflows[0] == (
             "DecoratedEnum_BEGIN_to_BRANCH_2_SUCCESS",
             DecoratedEnum.BEGIN,
+        )
+
+    @pytest.mark.real_checkpoint_logger
+    @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337, 9001])
+    @patch("sentry_sdk.set_measurement")
+    def test_subflow_autosubmit(self, mock_sentry, mock_timestamp):
+        checkpoints = CheckpointLogger(DecoratedEnum)
+        checkpoints.log(DecoratedEnum.BEGIN)
+        checkpoints.log(DecoratedEnum.CHECKPOINT)
+
+        expected_duration = 9001 - 1337
+        mock_sentry.assert_called_with(
+            "first_checkpoint", expected_duration, "milliseconds"
         )
