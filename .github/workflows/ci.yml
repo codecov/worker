@@ -2,13 +2,14 @@ name: Worker CI
 
 on:
   push:
+    tags:
+      - production-*
+      - self-hosted-*
     branches:
       - main
       - staging
   pull_request:
-  tags:
-    - production-*
-    - self-hosted-*
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
