@@ -26,7 +26,16 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
         return Notification.codecov_slack_app
 
     def is_enabled(self) -> bool:
-        return True
+        # if yaml settings are a dict, then check the enabled key and return that
+        # the enabled field should always exist if the yaml settings are a dict because otherwise it would fail the validation
+
+        # else if the yaml settings is a boolean then just return that
+
+        # in any case, self.notifier_yaml_settings should either be a bool or a dict always and should never be None
+        if isinstance(self.notifier_yaml_settings, dict):
+            return self.notifier_yaml_settings.get("enabled", False)
+        elif isinstance(self.notifier_yaml_settings, bool):
+            return self.notifier_yaml_settings
 
     def store_results(self, comparison: Comparison, result: NotificationResult):
         pass
