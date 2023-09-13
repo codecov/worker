@@ -222,7 +222,6 @@ test_env.ats:
 	docker-compose -f docker-compose-test.yml exec worker make test_env.container_ats CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
 test_env.container_static_analysis:
-	echo ${CODECOV_STATIC_TOKEN} | grep 234
 	codecovcli static-analysis --token=${CODECOV_STATIC_TOKEN}
 
 test_env.container_label_analysis:
