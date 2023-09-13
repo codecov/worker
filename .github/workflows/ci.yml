@@ -80,7 +80,7 @@ jobs:
       - name: Load requirements from cache
         if: ${{ steps.cache-requirements.outputs.cache-hit == 'true' }}
         run: |
-          docker load --input requirements.tar
+          make load.requirements
 
       - name: Build/pull requirements
         if: ${{ steps.cache-requirements.outputs.cache-hit != 'true' }}
@@ -120,8 +120,18 @@ jobs:
       - name: Run Startup Staging
         if: ${{ !github.event.pull_request.head.repo.fork && github.repository_owner == 'codecov' }}
         run: |
-          codecovcli -u https://stage-api.codecov.dev create-commit -t ${{ secrets.CODECOV_ORG_TOKEN_STAGING }} --fail-on-error
-          codecovcli -u https://stage-api.codecov.dev create-report -t ${{ secrets.CODECOV_ORG_TOKEN_STAGING }} --fail-on-error
+          codecovcli -u ${{ secrets.CODECOV_STAGING_URL }} create-commit -t ${{ secrets.CODECOV_ORG_TOKEN_STAGING }} --fail-on-error
+          codecovcli -u ${{ secrets.CODECOV_STAGING_URL }} create-report -t ${{ secrets.CODECOV_ORG_TOKEN_STAGING }} --fail-on-error
+      - name: Run Startup QA
+        if: ${{ !github.event.pull_request.head.repo.fork && github.repository_owner == 'codecov' }}
+        run: |
+          codecovcli -u ${{ secrets.CODECOV_QA_URL }} create-commit -t ${{ secrets.CODECOV_QA_TOKEN }} --fail-on-error
+          codecovcli -u ${{ secrets.CODECOV_QA_URL }} create-report -t ${{ secrets.CODECOV_QA_TOKEN }} --fail-on-error
+      - name: Run Startup Public QA
+        if: ${{ !github.event.pull_request.head.repo.fork && github.repository_owner == 'codecov' }}
+        run: |
+          codecovcli -u ${{ secrets.CODECOV_PUBLIC_QA_URL }} create-commit -t ${{ secrets.CODECOV_PUBLIC_QA_TOKEN }} --fail-on-error
+          codecovcli -u ${{ secrets.CODECOV_PUBLIC_QA_URL }} create-report -t ${{ secrets.CODECOV_PUBLIC_QA_TOKEN }} --fail-on-error
 
   ats:
     name: ATS
@@ -310,7 +320,7 @@ jobs:
       - name: Load requirements from cache
         if: ${{ steps.cache-requirements.outputs.cache-hit == 'true' }}
         run: |
-          docker load --input requirements.tar
+          make load.requirements
 
       - name: Build/pull requirements
         if: ${{ steps.cache-requirements.outputs.cache-hit != 'true' }}
