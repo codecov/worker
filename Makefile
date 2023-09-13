@@ -15,6 +15,7 @@ REQUIREMENTS_TAG := requirements-v1-$(shell sha1sum requirements.txt | cut -d ' 
 VERSION := release-${sha}
 CODECOV_UPLOAD_TOKEN ?= "notset"
 CODECOV_STATIC_TOKEN ?= "notset"
+CODECOV_URL ?= "https://api.codecov.io"
 export DOCKER_BUILDKIT=1
 export WORKER_DOCKER_REPO=${AR_REPO}
 export WORKER_DOCKER_VERSION=${VERSION}
@@ -197,20 +198,12 @@ test_env.run_integration:
 	docker-compose -f docker-compose-test.yml exec worker make test.integration
 
 test_env.upload:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN}
-
-test_env.upload_staging:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_upload_staging CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN}
+	docker-compose -f docker-compose-test.yml exec worker make test_env.container_upload_custom_url CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
 
 test_env.container_upload:
-	codecovcli do-upload --flag latest-uploader-overall
-	codecovcli do-upload --flag unit --file unit.coverage.xml
-	codecovcli do-upload --flag integration --file integration.coverage.xml
-
-test_env.container_upload_staging:
-	codecovcli -u https://stage-api.codecov.dev  do-upload --flag latest-uploader-overall
-	codecovcli -u https://stage-api.codecov.dev  do-upload --flag unit --file unit.coverage.xml
-	codecovcli -u https://stage-api.codecov.dev  do-upload --flag integration --file integration.coverage.xml
+	codecovcli -u ${CODECOV_URL} do-upload --flag latest-uploader-overall
+	codecovcli -u ${CODECOV_URL} do-upload --flag unit --file unit.coverage.xml
+	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml
 
 test_env.static_analysis:
 	docker-compose -f docker-compose-test.yml exec worker make test_env.container_static_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
