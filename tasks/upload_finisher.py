@@ -57,11 +57,7 @@ class UploadFinisherTask(BaseCodecovTask):
     ):
         try:
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
-            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE).submit_subflow(
-                "batch_processing_duration",
-                UploadFlow.INITIAL_PROCESSING_COMPLETE,
-                UploadFlow.BATCH_PROCESSING_COMPLETE,
-            )
+            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
         except ValueError as e:
             log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
 
@@ -183,11 +179,7 @@ class UploadFinisherTask(BaseCodecovTask):
             commit.state = "skipped"
 
         if checkpoints:
-            checkpoints.log(UploadFlow.PROCESSING_COMPLETE).submit_subflow(
-                "total_processing_duration",
-                UploadFlow.PROCESSING_BEGIN,
-                UploadFlow.PROCESSING_COMPLETE,
-            )
+            checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
         return {"notifications_called": notifications_called}
 
     def should_call_notifications(

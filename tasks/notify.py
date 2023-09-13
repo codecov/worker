@@ -255,13 +255,7 @@ class NotifyTask(BaseCodecovTask):
                 enriched_pull,
                 empty_upload,
             )
-            checkpoints_from_kwargs(UploadFlow, kwargs).log(
-                UploadFlow.NOTIFIED
-            ).submit_subflow(
-                "notification_latency",
-                UploadFlow.UPLOAD_TASK_BEGIN,
-                UploadFlow.NOTIFIED,
-            )
+            checkpoints_from_kwargs(UploadFlow, kwargs).log(UploadFlow.NOTIFIED)
             log.info(
                 "Notifications done",
                 extra=dict(

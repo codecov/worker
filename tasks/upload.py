@@ -280,11 +280,7 @@ class UploadTask(BaseCodecovTask):
 
         try:
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
-            checkpoints.log(UploadFlow.PROCESSING_BEGIN).submit_subflow(
-                "time_before_processing",
-                UploadFlow.UPLOAD_TASK_BEGIN,
-                UploadFlow.PROCESSING_BEGIN,
-            )
+            checkpoints.log(UploadFlow.PROCESSING_BEGIN)
         except ValueError as e:
             log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
 
@@ -378,11 +374,6 @@ class UploadTask(BaseCodecovTask):
             )
         else:
             checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-            checkpoints.submit_subflow(
-                "initial_processing_duration",
-                UploadFlow.PROCESSING_BEGIN,
-                UploadFlow.INITIAL_PROCESSING_COMPLETE,
-            )
             log.info(
                 "Not scheduling task because there were no arguments were found on redis",
                 extra=dict(
@@ -461,11 +452,6 @@ class UploadTask(BaseCodecovTask):
             checkpoint_data = None
             if checkpoints:
                 checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-                checkpoints.submit_subflow(
-                    "initial_processing_duration",
-                    UploadFlow.PROCESSING_BEGIN,
-                    UploadFlow.INITIAL_PROCESSING_COMPLETE,
-                )
                 checkpoint_data = checkpoints.data
 
             finish_sig = upload_finisher_task.signature(
