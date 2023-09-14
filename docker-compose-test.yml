@@ -10,6 +10,7 @@ services:
     volumes:
       - ./:/worker
       - ./docker/test_codecov_config.yml:/config/codecov.yml
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - SETUP__TIMESERIES__ENABLED=${TIMESERIES_ENABLED-true}
     env_file:
@@ -41,4 +42,6 @@ services:
           size: 2048M
   redis:
     image: redis:6-alpine
+  mailhog:
+    image: mailhog/mailhog:latest
 

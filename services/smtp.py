@@ -2,10 +2,10 @@ import smtplib
 import ssl
 from functools import cached_property
 
-from helpers.email import Email
-from helpers.environment import Environment, get_current_env
 from shared.config import get_config
 
+from helpers.email import Email
+from helpers.environment import Environment, get_current_env
 
 _smtp_service = None
 
@@ -23,8 +23,8 @@ def _get_cached_smtp_service():
 
 class SMTPService:
     def __init__(self):
-        self.host = get_config("services", "smtp", "host")
-        self.port = get_config("services", "smtp", "port")
+        self.host = get_config("services", "smtp", "host", default="mailhog")
+        self.port = get_config("services", "smtp", "port", default=1025)
         self.username = get_config("services", "smtp", "username", default=None)
         self.password = get_config("services", "smtp", "password", default=None)
         self.certfile = get_config("services", "smtp", "ssl", "certfile", default=None)
@@ -47,10 +47,12 @@ class SMTPService:
     def open(self):
         if self._conn:
             return
+
         self._conn = self._smtp_object(
             host=self.host,
             port=self.port,
         )
+
         if get_current_env() != Environment.local:
             self._conn.starttls(context=self._ssl_context)
 

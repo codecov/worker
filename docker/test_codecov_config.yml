@@ -14,6 +14,10 @@ services:
     access_key_id: codecov-default-key
     secret_access_key: codecov-default-secret
     verify_ssl: false
+  smtp:
+    host: mailhog
+    port: 1025
+
 
 github:
   bot:
