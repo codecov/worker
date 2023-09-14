@@ -204,7 +204,7 @@ test_env.run_integration:
 	docker-compose -f docker-compose-test.yml exec worker make test.integration
 
 test_env.upload:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_upload_custom_url CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
+	docker-compose -f docker-compose-test.yml exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
 
 test_env.container_upload:
 	codecovcli -u ${CODECOV_URL} do-upload --flag latest-uploader-overall
