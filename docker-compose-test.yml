@@ -9,7 +9,7 @@ services:
       - timescale
     volumes:
       - ./:/worker
-      - ./docker/test.yml:/config/codecov.yml
+      - ./docker/test_codecov_config.yml:/config/codecov.yml
     environment:
       - SETUP__TIMESERIES__ENABLED=${TIMESERIES_ENABLED-true}
     env_file:
