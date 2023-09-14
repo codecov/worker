@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:1.3
 ARG REQUIREMENTS_IMAGE
-FROM            busybox:1.34.1 as berglas
-WORKDIR /tmp
-ADD             https://storage.googleapis.com/berglas/0.5.0/linux_amd64/berglas berglas
-RUN             echo "99dc4b3146d19b7e36cc6d339eeefa6a959a6d86143b7317e722d09a3b57ca45  berglas" | sha256sum -c
+ARG BERGLAS_VERSION=1.0.3
+FROM            us-docker.pkg.dev/berglas/berglas/berglas:$BERGLAS_VERSION as berglas
 
 
 FROM $REQUIREMENTS_IMAGE
@@ -12,7 +10,7 @@ ARG             RELEASE_VERSION
 
 ENV             RELEASE_VERSION $RELEASE_VERSION
 
-COPY            --chmod=755 --from=berglas /tmp/berglas /usr/local/bin/berglas
+COPY            --chmod=755 --from=berglas /bin/berglas /usr/local/bin/berglas
 
 USER            codecov
 

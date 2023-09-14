@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -8,6 +8,15 @@ from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.comment import CommentNotifier
+
+
+@pytest.fixture
+def is_not_first_pull(mocker):
+    mocker.patch(
+        "database.models.core.Pull.is_first_pull",
+        return_value=False,
+        new_callable=PropertyMock,
+    )
 
 
 @pytest.fixture
@@ -319,6 +328,7 @@ def sample_comparison_for_limited_upload(
     )
 
 
+@pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifierIntegration(object):
     @pytest.mark.asyncio
     async def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
@@ -380,7 +390,6 @@ class TestCommentNotifierIntegration(object):
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             "> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=footer). Last update [5b174c2...5601846](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
@@ -524,7 +533,6 @@ class TestCommentNotifierIntegration(object):
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             "> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=footer). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
@@ -592,8 +600,8 @@ class TestCommentNotifierIntegration(object):
             "</details>",
             "",
             "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
-            "",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
@@ -672,8 +680,8 @@ class TestCommentNotifierIntegration(object):
             "</details>",
             "",
             "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
-            "",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
