@@ -1,5 +1,5 @@
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -7,6 +7,7 @@ from shared.reports.resources import Report, ReportFile
 from shared.reports.types import Change, LineSession, ReportLine, ReportTotals
 from shared.torngit.exceptions import (
     TorngitClientError,
+    TorngitClientGeneralError,
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
 )
@@ -33,6 +34,15 @@ from services.notification.notifiers.mixins.message.sections import (
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 from services.yaml.reader import get_components_from_yaml
+
+
+@pytest.fixture
+def is_not_first_pull(mocker):
+    mocker.patch(
+        "database.models.core.Pull.is_first_pull",
+        return_value=False,
+        new_callable=PropertyMock,
+    )
 
 
 @pytest.fixture
@@ -193,15 +203,15 @@ def mock_repo_provider(mock_repo_provider):
         ],
     }
 
-    branches_result = [
-        ("main", "aaaaaaa"),
-    ]
+    branch_result = {"name": "test", "sha": "aaaaaaa"}
 
     mock_repo_provider.get_compare.return_value = compare_result
     mock_repo_provider.post_comment.return_value = {}
     mock_repo_provider.edit_comment.return_value = {}
     mock_repo_provider.delete_comment.return_value = {}
-    mock_repo_provider.get_branches.return_value = branches_result
+    mock_repo_provider.get_branch.side_effect = TorngitClientGeneralError(
+        404, None, "Branch not found"
+    )
     return mock_repo_provider
 
 
@@ -435,7 +445,7 @@ class TestCommentNotifierHelpers(object):
             fake_comparison, mock_write
         )
         mock_write.assert_any_call(
-            ":exclamation: Your organization is not using the GitHub App Integration. As a result you may experience degraded service beginning May 15th. Please [install the Github App Integration](https://github.com/apps/codecov) for your organization. [Read more](https://about.codecov.io/blog/codecov-is-updating-its-github-integration/).",
+            ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
         )
         assert mock_write.call_count == 2
 
@@ -499,6 +509,7 @@ class TestCommentNotifierHelpers(object):
         assert mock_write.call_count == 0
 
 
+@pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifier(object):
     @pytest.mark.asyncio
     async def test_is_enabled_settings_individual_settings_false(self, dbsession):
@@ -3778,8 +3789,8 @@ class TestNewFooterSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "github"
@@ -3800,8 +3811,8 @@ class TestNewFooterSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "gitlab"
@@ -3822,8 +3833,8 @@ class TestNewFooterSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
-            mocker.MagicMock(),
-            mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
         )
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "bitbucket"
@@ -3838,7 +3849,32 @@ class TestNewFooterSectionWriter(object):
             ":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
 
+    @pytest.mark.asyncio
+    async def test_footer_section_writer_with_project_cov_hidden(self, mocker):
+        writer = NewFooterSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            settings={
+                "layout": "newheader, files, newfooter",
+                "hide_project_coverage": True,
+            },
+            current_yaml={},
+        )
+        mock_comparison = mocker.MagicMock()
+        mock_comparison.repository_service.service = "bitbucket"
+        res = list(
+            await writer.write_section(
+                mock_comparison, {}, [], links={"pull": "pull.link"}
+            )
+        )
+        assert res == [
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
+        ]
 
+
+@pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifierInNewLayout(object):
     @pytest.mark.asyncio
     async def test_create_message_files_section_with_critical_files_new_layout(
@@ -4168,8 +4204,7 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `66.67%` |",
             f"",
             f"",
-            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
             f"",
         ]
         for exp, res in zip(expected_result, result):
@@ -4691,3 +4726,29 @@ class TestComponentWriterSection(object):
             "| [py_files](urlurl/components?src=pr&el=component) | `50.00% <0.00%> (?)` | |",
         ]
         assert message == expected
+
+
+class TestCommentNotifierWelcome:
+    @pytest.mark.asyncio
+    async def test_build_message(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        expected_result = [
+            "## Welcome to [Codecov](https://codecov.io) :tada:",
+            "",
+            "Once merged to your default branch, Codecov will compare your coverage reports and display the results in this comment.",
+            "",
+            "Thanks for integrating Codecov - We've got you covered :open_umbrella:",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result

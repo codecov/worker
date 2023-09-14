@@ -1,5 +1,6 @@
 from app import celery_app
 from tasks.add_to_sendgrid_list import add_to_sendgrid_list_task
+from tasks.backfill_commit_data_to_storage import backfill_commit_data_to_storage_task
 from tasks.brolly_stats_rollup import brolly_stats_rollup_task
 from tasks.commit_update import commit_update_task
 from tasks.compute_comparison import compute_comparison_task
@@ -16,6 +17,7 @@ from tasks.mutation_test_upload import mutation_test_upload_task
 from tasks.new_user_activated import new_user_activated_task
 from tasks.notify import notify_task
 from tasks.plan_manager_task import daily_plan_manager_task_name
+from tasks.preprocess_upload import preprocess_upload_task
 from tasks.profiling_find_uncollected import find_untotalized_profilings_task
 from tasks.profiling_normalizer import profiling_normalizer_task
 from tasks.save_report_results import save_report_results_task

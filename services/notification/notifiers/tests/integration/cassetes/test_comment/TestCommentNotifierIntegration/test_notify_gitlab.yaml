@@ -197,29 +197,60 @@ interactions:
     method: POST
     uri: https://gitlab.com/api/v4/projects/47404140/merge_requests/1/notes
   response:
-    content: "{\"id\":1457135397,\"type\":null,\"body\":\"## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\u0026el=h1\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)
-      Report\\n\\u003e Merging [#1](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\u0026el=desc\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)
-      (0b6a213) into [main](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?el=desc\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)
-      (0fc784a) will **increase** coverage by `10.00%`.\\n\\u003e The diff coverage
-      is `n/a`.\\n\\n[![Impacted file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/graphs/tree.svg?width=650\\u0026height=150\\u0026src=pr\\u0026token=abcdefghij\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\u0026el=tree\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)\\n\\n```diff\\n@@
-      \             Coverage Diff              @@\\n##               main       #1
-      \      +/-   ##\\n=============================================\\n+ Coverage
-      \    50.00%   60.00%   +10.00%     \\n+ Complexity       11       10        -1
-      \    \\n=============================================\\n  Files             2
-      \       2               \\n  Lines             6       10        +4     \\n
-      \ Branches          0        1        +1     \\n=============================================\\n+
-      Hits              3        6        +3     \\n  Misses            3        3
-      \              \\n- Partials          0        1        +1     \\n```\\n\\n|
-      Flag | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n| integration
-      | `?` | `?` | |\\n| unit | `100.00% \\u003c\xF8\\u003e (?)` | `0.00 \\u003c\xF8\\u003e
-      (?)` | |\\n\\nFlags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French#carryforward-flags-in-the-pull-request-comment)
-      to find out more.\\n\\n[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/indirect-changes?src=pr\\u0026el=tree-more\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)\\n\\n------\\n\\n[Continue
-      to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\u0026el=continue\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French).\\n\\u003e
-      **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta?utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)\\n\\u003e
-      `\u0394 = absolute \\u003crelative\\u003e (impact)`, `\xF8 = not affected`,
-      `? = missing data`\\n\\u003e Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\u0026el=footer\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French).
-      Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\u0026el=lastupdated\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French).
-      Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments?utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French).\",\"attachment\":null,\"author\":{\"id\":15014576,\"username\":\"joseph-sentry\",\"name\":\"joseph-sentry\",\"state\":\"active\",\"avatar_url\":\"https://secure.gravatar.com/avatar/b8db468edebbae1ffa228d3095c230c5?s=80\\u0026d=identicon\",\"web_url\":\"https://gitlab.com/joseph-sentry\"},\"created_at\":\"2023-07-04T17:54:03.693Z\",\"updated_at\":\"2023-07-04T17:54:03.693Z\",\"system\":false,\"noteable_id\":234535703,\"noteable_type\":\"MergeRequest\",\"project_id\":47404140,\"resolvable\":false,\"confidential\":false,\"internal\":false,\"noteable_iid\":1,\"commands_changes\":{}}"
+    content: "{\"id\":1457135397,\"type\":null,\"body\":\"## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=h1\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French) Report\\n\\u003e Merging\
+      \ [#1](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=desc\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French) (0b6a213) into [main](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?el=desc\\\
+      u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French) (0fc784a) will **increase**\
+      \ coverage by `10.00%`.\\n\\u003e The diff coverage is `n/a`.\\n\\n[![Impacted\
+      \ file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/graphs/tree.svg?width=650\\\
+      u0026height=150\\u0026src=pr\\u0026token=abcdefghij\\u0026utm_medium=referral\\\
+      u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
+      u0026utm_term=Gina+French)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=tree\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)\\n\\n```diff\\n@@\
+      \              Coverage Diff              @@\\n##               main       #1\
+      \       +/-   ##\\n=============================================\\n+ Coverage\
+      \     50.00%   60.00%   +10.00%     \\n+ Complexity       11       10      \
+      \  -1     \\n=============================================\\n  Files       \
+      \      2        2               \\n  Lines             6       10        +4\
+      \     \\n  Branches          0        1        +1     \\n=============================================\\\
+      n+ Hits              3        6        +3     \\n  Misses            3     \
+      \   3               \\n- Partials          0        1        +1     \\n```\\\
+      n\\n| Flag | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n|\
+      \ integration | `?` | `?` | |\\n| unit | `100.00% \\u003c\xF8\\u003e (?)` |\
+      \ `0.00 \\u003c\xF8\\u003e (?)` | |\\n\\nFlags with carried forward coverage\
+      \ won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral\\\
+      u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
+      u0026utm_term=Gina+French#carryforward-flags-in-the-pull-request-comment) to\
+      \ find out more.\\n\\n[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/indirect-changes?src=pr\\\
+      u0026el=tree-more\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)\\n\\n------\\n\\n[Continue\
+      \ to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=continue\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French).\\n\\u003e **Legend**\
+      \ - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta?utm_medium=referral\\\
+      u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
+      u0026utm_term=Gina+French)\\n\\u003e `\u0394 = absolute \\u003crelative\\u003e\
+      \ (impact)`, `\xF8 = not affected`, `? = missing data`\\n\\u003e Powered by\
+      \ [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=footer\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=lastupdated\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French). Read the [comment\
+      \ docs](https://docs.codecov.io/docs/pull-request-comments?utm_medium=referral\\\
+      u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
+      u0026utm_term=Gina+French).\",\"attachment\":null,\"author\":{\"id\":15014576,\"\
+      username\":\"joseph-sentry\",\"name\":\"joseph-sentry\",\"state\":\"active\"\
+      ,\"avatar_url\":\"https://secure.gravatar.com/avatar/b8db468edebbae1ffa228d3095c230c5?s=80\\\
+      u0026d=identicon\",\"web_url\":\"https://gitlab.com/joseph-sentry\"},\"created_at\"\
+      :\"2023-07-04T17:54:03.693Z\",\"updated_at\":\"2023-07-04T17:54:03.693Z\",\"\
+      system\":false,\"noteable_id\":234535703,\"noteable_type\":\"MergeRequest\"\
+      ,\"project_id\":47404140,\"resolvable\":false,\"confidential\":false,\"internal\"\
+      :false,\"noteable_iid\":1,\"commands_changes\":{}}"
     headers:
       CF-Cache-Status:
       - DYNAMIC
@@ -270,4 +301,79 @@ interactions:
       - '0.228506'
     http_version: HTTP/1.1
     status_code: 201
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - gitlab.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/47404140/repository/branches/main
+  response:
+    content: '{"message":"401 Unauthorized"}'
+    headers:
+      CF-Cache-Status:
+      - MISS
+      CF-RAY:
+      - 7fef2fd0182436fe-YYZ
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '30'
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 30 Aug 2023 18:44:44 GMT
+      GitLab-LB:
+      - fe-05-lb-gprd
+      GitLab-SV:
+      - localhost
+      NEL:
+      - '{"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}'
+      RateLimit-Limit:
+      - '2000'
+      RateLimit-Observed:
+      - '2'
+      RateLimit-Remaining:
+      - '1998'
+      RateLimit-Reset:
+      - '1693421144'
+      RateLimit-ResetTime:
+      - Wed, 30 Aug 2023 18:45:44 GMT
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Report-To:
+      - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=lBgieih4yF%2BSFqCVeTidu8Y1w18hb7BV63ktECkxzQPrULx2APCFXvtqQDV6ZmRnfTxppDY%2F15MRyjs064ja6G4RylNKxJlsQ8C7GUpx67j3H%2BfnNW7ugAHn574%3D"}],"group":"cf-nel","max_age":604800}'
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - _cfuvid=0RVizv.CnCUUI1sQDhOigxGHiJY1v6BbpkmTQn7RUNM-1693421084336-0-604800000;
+        path=/; domain=.gitlab.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Gitlab-Meta:
+      - '{"correlation_id":"0a55ef3f31f3613df4edf90f82a78c20","version":"1"}'
+      X-Request-Id:
+      - 0a55ef3f31f3613df4edf90f82a78c20
+      X-Runtime:
+      - '0.034387'
+    http_version: HTTP/1.1
+    status_code: 401
 version: 1
