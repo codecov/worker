@@ -11,19 +11,30 @@ class TestCodecovSlackAppNotifier(object):
         notifier = CodecovSlackAppNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml={"slack_app": {"enabled": True}},
         )
         assert notifier.is_enabled() == True
+
+    def test_is_enable_false(self, dbsession, mock_configuration, sample_comparison):
+        notifier = CodecovSlackAppNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"enabled": False},
+            notifier_site_settings=True,
+            current_yaml={"slack_app": {"enabled": False}},
+        )
+
+        assert notifier.is_enabled() is False
 
     def test_notification_type(self, dbsession, mock_configuration, sample_comparison):
         notifier = CodecovSlackAppNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml={"slack_app": {"enabled": True}},
         )
         assert notifier.notification_type == Notification.codecov_slack_app
 
@@ -36,9 +47,9 @@ class TestCodecovSlackAppNotifier(object):
         notifier = CodecovSlackAppNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml={"slack_app": {"enabled": True}},
         )
         result = await notifier.notify(sample_comparison)
         assert result.notification_successful == True
@@ -54,9 +65,9 @@ class TestCodecovSlackAppNotifier(object):
         notifier = CodecovSlackAppNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml={"slack_app": {"enabled": True}},
         )
         result = await notifier.notify(sample_comparison)
         assert result.notification_successful == False
@@ -74,9 +85,9 @@ class TestCodecovSlackAppNotifier(object):
         notifier = CodecovSlackAppNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
-            current_yaml={},
+            current_yaml={"slack_app": {"enabled": True}},
         )
         result = await notifier.notify(sample_comparison)
         assert result.notification_successful == True
