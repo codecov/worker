@@ -7,7 +7,6 @@ from app import celery_app
 from database.models import Owner
 from helpers.email import Email
 from helpers.metrics import metrics
-from services.redis import get_redis_connection
 from services.smtp import get_smtp_service
 from services.templates import get_template_service
 from tasks.base import BaseCodecovTask
@@ -71,11 +70,11 @@ class SendEmailTask(BaseCodecovTask):
             if err_msg is not None:
                 log.warning(f"Failed to send email: {err_msg}", extra=log_extra_dict)
                 metrics.incr(f"worker.tasks.send_email.fail")
-                return {"email_successful": False}
+                return {"email_successful": False, "err_msg": err_msg}
 
             log.info("Sent email", extra=log_extra_dict)
             metrics.incr(f"worker.tasks.send_email.succeed")
-            return {"email_successful": True}
+            return {"email_successful": True, "err_msg": None}
 
 
 RegisteredSendEmailTask = celery_app.register_task(SendEmailTask())
