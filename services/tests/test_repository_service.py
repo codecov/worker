@@ -31,7 +31,7 @@ from services.repository import (
 
 
 class TestRepositoryServiceTestCase(object):
-    def test_get_repo_provider_service(self, dbsession):
+    def test_get_repo_provider_service_github(self, dbsession):
         repo = RepositoryFactory.create(
             owner__unencrypted_oauth_token="testyftq3ovzkb3zmt823u3t04lkrt9w",
             owner__service="github",
@@ -55,7 +55,39 @@ class TestRepositoryServiceTestCase(object):
         }
         assert res.data == expected_data
         assert repo.owner.service == "github"
-        assert res._on_token_refresh is None  # GH doesn't have callback implemented
+        assert res._on_token_refresh is not None
+        assert inspect.isawaitable(res._on_token_refresh(None))
+        assert res.token == {
+            "username": repo.owner.username,
+            "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
+            "secret": None,
+        }
+
+    def test_get_repo_provider_service_bitbucket(self, dbsession):
+        repo = RepositoryFactory.create(
+            owner__unencrypted_oauth_token="testyftq3ovzkb3zmt823u3t04lkrt9w",
+            owner__service="bitbucket",
+            name="example-python",
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+        res = get_repo_provider_service(repo)
+        expected_data = {
+            "owner": {
+                "ownerid": repo.owner.ownerid,
+                "service_id": repo.owner.service_id,
+                "username": repo.owner.username,
+            },
+            "repo": {
+                "name": "example-python",
+                "using_integration": False,
+                "service_id": repo.service_id,
+                "repoid": repo.repoid,
+            },
+        }
+        assert res.data == expected_data
+        assert repo.owner.service == "bitbucket"
+        assert res._on_token_refresh is None
         assert res.token == {
             "username": repo.owner.username,
             "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",

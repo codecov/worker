@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import func
 
-from database.enums import Decoration
+from conftest import dbsession
+from database.enums import Decoration, TrialStatus
 from database.models import Commit, Owner, Repository
 from database.models.reports import CommitReport, Upload
 from services.billing import BillingPlan, is_pr_billing_plan
@@ -22,6 +23,7 @@ BOT_USER_EMAILS = [
     "29139614+renovate[bot]@users.noreply.github.com",
 ]
 BOT_USER_IDS = ["29139614"]  # renovate[bot] github
+USER_BASIC_LIMIT_UPLOAD = 250
 
 
 @dataclass
@@ -35,6 +37,34 @@ class DecorationDetails(object):
 
 def _is_bot_account(author: Owner) -> bool:
     return author.email in BOT_USER_EMAILS or author.service_id in BOT_USER_IDS
+
+
+def determine_uploads_used(db_session, org: Owner) -> int:
+    query = (
+        db_session.query(Upload)
+        .join(CommitReport)
+        .join(Commit)
+        .join(Repository)
+        .filter(
+            Upload.upload_type == "uploaded",
+            Repository.ownerid == org.ownerid,
+            Repository.private == True,
+            Upload.created_at >= (datetime.now() - timedelta(days=30)),
+            Commit.timestamp >= (datetime.now() - timedelta(days=60)),
+        )
+    )
+
+    if (
+        org.trial_status == TrialStatus.EXPIRED.value
+        and org.trial_start_date
+        and org.trial_end_date
+    ):
+        query = query.filter(
+            (Upload.created_at >= org.trial_end_date)
+            | (Upload.created_at <= org.trial_start_date)
+        )
+
+    return query.limit(USER_BASIC_LIMIT_UPLOAD).count()
 
 
 def determine_decoration_details(
@@ -118,22 +148,7 @@ def determine_decoration_details(
             )
 
         # TODO declare this to be shared between codecov-api and worker
-        USER_BASIC_LIMIT_UPLOAD = 250
-        uploads_used = (
-            db_session.query(Upload)
-            .join(CommitReport)
-            .join(Commit)
-            .join(Repository)
-            .filter(
-                Upload.upload_type == "uploaded",
-                Repository.ownerid == org.ownerid,
-                Repository.private == True,
-                Upload.created_at >= (datetime.now() - timedelta(days=30)),
-                Commit.timestamp >= (datetime.now() - timedelta(days=60)),
-            )
-            .limit(USER_BASIC_LIMIT_UPLOAD)
-            .count()
-        )
+        uploads_used = determine_uploads_used(db_session=db_session, org=org)
 
         if (
             org.plan == BillingPlan.users_basic.value
