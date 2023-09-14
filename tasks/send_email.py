@@ -19,7 +19,7 @@ class SendEmailTask(BaseCodecovTask):
     name = send_email_task_name
 
     async def run_async(
-        self, db_session, ownerid, template_name, from_addr, *args, **kwargs
+        self, db_session, ownerid, template_name, from_addr, subject, **kwargs
     ):
         with metrics.timer("worker.tasks.send_email"):
             log_extra_dict = {
@@ -51,14 +51,14 @@ class SendEmailTask(BaseCodecovTask):
                 text = template_service.get_template(f"{template_name}.txt", **kwargs)
                 html = template_service.get_template(f"{template_name}.html", **kwargs)
 
-            email_wrapper = Email(to_addr, from_addr, text, html)
+            email_wrapper = Email(to_addr, from_addr, subject, text, html)
 
             err_msg = None
             try:
                 smtp_service.open()
                 metrics.incr(f"worker.tasks.send_email.attempt")
                 with metrics.timer("worker.tasks.send_email.send"):
-                    errs = smtp_service.send(email_wrapper.message)
+                    errs = smtp_service.send(email_wrapper)
                 if len(errs) != 0:
                     err_msg = "\n".join(errs)
             except SMTPRecipientsRefused:

@@ -2,12 +2,15 @@ from email.message import EmailMessage
 
 
 class Email:
-    def __init__(self, to_addr=None, from_addr=None, text=None, html=None):
+    def __init__(
+        self, to_addr=None, from_addr=None, subject=None, text=None, html=None
+    ):
         self.message = EmailMessage()
         self.to_addr = to_addr
         self.from_addr = from_addr
         self.text = text
         self.html = html
+        self.subject = subject
 
     @property
     def to_addr(self):
