@@ -152,6 +152,51 @@ def subflows(*args):
     return class_decorator
 
 
+def reliability_counters(klass):
+    """
+    Class decorator that enables computing success/failure rates for a flow.
+
+    @success_events('FINISHED')
+    @failure_events('ERROR')
+    @reliability_counters
+    class MyEnum(str, Enum):
+        BEGIN: auto()
+        CHECKPOINT: auto()
+        ERROR: auto()
+        FINISHED: auto()
+    MyEnum.BEGIN.count() # increments "MyEnum.begun" counter
+    MyEnum.ERROR.count() # increments "MyEnum.failed" counter
+    MyEnum.FINISHED.count() # increments "MyEnum.succeeded" counter
+
+    A "MyEnum.ended" counter is incremented for both success and failure events.
+    This counter can be compared to "MyEnum.begun" to detect if any branches
+    aren't instrumented.
+    """
+
+    def count(obj):
+        metrics.incr(f"{klass.__name__}.events.{obj.name}")
+
+        # If this is the first checkpoint, increment the number of flows we've begun
+        if obj == next(iter(klass.__members__.values())):
+            metrics.incr(f"{klass.__name__}.total.begun")
+            return
+
+        is_failure = hasattr(obj, "is_failure") and obj.is_failure()
+        is_success = hasattr(obj, "is_success") and obj.is_success()
+        is_terminal = is_failure or is_success
+
+        if is_failure:
+            metrics.incr(f"{klass.__name__}.total.failed")
+        elif is_success:
+            metrics.incr(f"{klass.__name__}.total.succeeded")
+
+        if is_terminal:
+            metrics.incr(f"{klass.__name__}.total.ended")
+
+    klass.count = count
+    return klass
+
+
 def _get_milli_timestamp():
     return time.time_ns() // 1000000
 
@@ -253,6 +298,14 @@ class CheckpointLogger:
             for metric, beginning in self.cls._subflows().get(checkpoint, []):
                 self.submit_subflow(metric, beginning, checkpoint)
 
+        if hasattr(checkpoint, "count"):
+            checkpoint.count()
+
+        if hasattr(checkpoint, "is_failure") and checkpoint.is_failure():
+            pass
+        elif hasattr(checkpoint, "is_success") and checkpoint.is_success():
+            pass
+
         return self
 
     def submit_subflow(self, metric, start, end):
@@ -275,6 +328,7 @@ class CheckpointLogger:
     ("total_processing_duration", "PROCESSING_BEGIN", "PROCESSING_COMPLETE"),
     ("notification_latency", "UPLOAD_TASK_BEGIN", "NOTIFIED"),
 )
+@reliability_counters
 class UploadFlow(str, Enum):
     UPLOAD_TASK_BEGIN = auto()
     PROCESSING_BEGIN = auto()

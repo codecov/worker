@@ -4,12 +4,14 @@ from unittest.mock import ANY, patch
 
 import pytest
 import sentry_sdk
+from shared.utils.test_utils import mock_metrics
 
 from helpers.checkpoint_logger import (
     CheckpointLogger,
     _get_milli_timestamp,
     failure_events,
     from_kwargs,
+    reliability_counters,
     subflows,
     success_events,
 )
@@ -23,6 +25,7 @@ from helpers.checkpoint_logger import (
     ("total_branch_1_time", "BEGIN", "BRANCH_1_SUCCESS"),
     ("total_branch_1_fail_time", "BEGIN", "BRANCH_1_FAIL"),
 )
+@reliability_counters
 class DecoratedEnum(Enum):
     BEGIN = auto()
     CHECKPOINT = auto()
@@ -46,6 +49,10 @@ class TestEnum2(Enum):
 
 
 class TestCheckpointLogger(unittest.TestCase):
+    @pytest.fixture(scope="function", autouse=True)
+    def inject_mocker(request, mocker):
+        request.mocker = mocker
+
     @patch("time.time_ns", return_value=123456789)
     def test_get_milli_timestamp(self, mocker):
         expected_ms = 123456789 // 1000000
@@ -289,3 +296,48 @@ class TestCheckpointLogger(unittest.TestCase):
         mock_sentry.assert_called_with(
             "first_checkpoint", expected_duration, "milliseconds"
         )
+
+    def test_reliability_counters(self):
+        metrics = mock_metrics(self.mocker)
+        assert not metrics.data
+
+        checkpoints = CheckpointLogger(DecoratedEnum)
+
+        checkpoints.log(DecoratedEnum.BEGIN)
+        assert metrics.data["DecoratedEnum.events.BEGIN"] == 1
+        assert metrics.data["DecoratedEnum.total.begun"] == 1
+        assert "DecoratedEnum.total.succeeded" not in metrics.data
+        assert "DecoratedEnum.total.failed" not in metrics.data
+        assert "DecoratedEnum.total.ended" not in metrics.data
+
+        # Nothing special about `CHECKPOINT` - no counters should change
+        checkpoints.log(DecoratedEnum.CHECKPOINT)
+        assert metrics.data["DecoratedEnum.events.CHECKPOINT"] == 1
+        assert metrics.data["DecoratedEnum.total.begun"] == 1
+        assert "DecoratedEnum.total.succeeded" not in metrics.data
+        assert "DecoratedEnum.total.failed" not in metrics.data
+        assert "DecoratedEnum.total.ended" not in metrics.data
+
+        # Failures should increment both `failed` and `ended`
+        checkpoints.log(DecoratedEnum.BRANCH_1_FAIL)
+        assert metrics.data["DecoratedEnum.events.BRANCH_1_FAIL"] == 1
+        assert metrics.data["DecoratedEnum.total.begun"] == 1
+        assert metrics.data["DecoratedEnum.total.failed"] == 1
+        assert metrics.data["DecoratedEnum.total.ended"] == 1
+        assert "DecoratedEnum.total.succeeded" not in metrics.data
+
+        # Successes should increment both `succeeded` and `ended`
+        checkpoints.log(DecoratedEnum.BRANCH_1_SUCCESS)
+        assert metrics.data["DecoratedEnum.events.BRANCH_1_SUCCESS"] == 1
+        assert metrics.data["DecoratedEnum.total.begun"] == 1
+        assert metrics.data["DecoratedEnum.total.failed"] == 1
+        assert metrics.data["DecoratedEnum.total.ended"] == 2
+        assert metrics.data["DecoratedEnum.total.succeeded"] == 1
+
+        # A different success path should also increment `succeeded` and `ended`
+        checkpoints.log(DecoratedEnum.BRANCH_2_SUCCESS)
+        assert metrics.data["DecoratedEnum.events.BRANCH_2_SUCCESS"] == 1
+        assert metrics.data["DecoratedEnum.total.begun"] == 1
+        assert metrics.data["DecoratedEnum.total.failed"] == 1
+        assert metrics.data["DecoratedEnum.total.ended"] == 3
+        assert metrics.data["DecoratedEnum.total.succeeded"] == 2
