@@ -151,7 +151,7 @@ class UploadTask(BaseCodecovTask):
     ):
         # If we're a retry, kwargs will already have our first checkpoint.
         # If not, log it directly into kwargs so we can pass it onto other tasks
-        checkpoints_from_kwargs(UploadFlow, kwargs).log(
+        checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs).log(
             UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
         )
 
@@ -204,6 +204,7 @@ class UploadTask(BaseCodecovTask):
                     "Not retrying since there are likely no jobs that need scheduling",
                     extra=dict(commit=commitid, repoid=repoid),
                 )
+                checkpoints.log(UploadFlow.NO_PENDING_JOBS)
                 return {
                     "was_setup": False,
                     "was_updated": False,
@@ -214,6 +215,7 @@ class UploadTask(BaseCodecovTask):
                     "Not retrying since we already had too many retries",
                     extra=dict(commit=commitid, repoid=repoid),
                 )
+                checkpoints.log(UploadFlow.TOO_MANY_RETRIES)
                 return {
                     "was_setup": False,
                     "was_updated": False,

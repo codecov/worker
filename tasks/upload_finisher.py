@@ -180,6 +180,9 @@ class UploadFinisherTask(BaseCodecovTask):
 
         if checkpoints:
             checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
+            if not notifications_called:
+                checkpoints.log(UploadFlow.SKIPPING_NOTIFICATION)
+
         return {"notifications_called": notifications_called}
 
     def should_call_notifications(
