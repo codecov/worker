@@ -137,16 +137,16 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             ),
         )
         label_analysis_request.state_id = LabelAnalysisRequestState.FINISHED.db_id
-        result = {
+        result_to_save = {
             "success": True,
             "present_report_labels": [],
             "present_diff_labels": [],
             "absent_labels": label_analysis_request.requested_labels,
             "global_level_labels": [],
-            "errors": self.errors,
         }
-        label_analysis_request.result = result
-        return result
+        label_analysis_request.result = result_to_save
+        result_to_return = {**result_to_save, "errors": self.errors}
+        return result_to_return
 
     def add_processing_error(
         self,
