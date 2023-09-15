@@ -223,20 +223,35 @@ class CheckpointLogger:
     reconstructed from its serialized data allowing you to begin a flow on one host
     and log its completion on another (as long as clock drift is marginal).
 
+    See `UploadFlow` for an example of defining a flow. It's recomended that you
+    define your flow with the decorators in this file:
+    - `@subflows()`: pre-define subflows that get submitted automatically
+    - `@success_events()`, `@failure_events()`: auto-define subflows from a flow's
+      beginning to each success/failure event
+    - `@reliability_counters`: increment event, start, finish, success, failure counters
+      for defining reliability metrics for your flow
+
       # Simple usage
       checkpoints = CheckpointLogger(UploadFlow)
       checkpoints.log(UploadFlow.BEGIN)
       ...
-      checkpoints.log(UploadFlow.PROCESSING_BEGIN)
-      checkpoints.submit_subflow("time_before_processing", UploadFlow.BEGIN, UploadFlow.PROCESSING_BEGIN)
+      # each member returns `self` so you can chain `log` and `submit_subflow` calls
+      # calling `submit_subflow` manually is unnecessary when using `@subflows()`
+      checkpoints
+          .log(UploadFlow.PROCESSING_BEGIN)
+          .submit_subflow("time_before_processing", UploadFlow.BEGIN, UploadFlow.PROCESSING_BEGIN)
 
-      # Alternate usage (`kwargs=kwargs` will insert the log directly into `kwargs`)
-      from_kwargs(UploadFlow, kwargs).log(UploadFlow.BEGIN, kwargs=kwargs)
+      # More complicated usage
+      # - Creates logger from `kwargs`
+      # - logs `UploadFlow.BEGIN` directly into `kwargs`
+      # - ignores if `UploadFlow.BEGIN` was already logged (i.e. if this is a task retry)
+      from_kwargs(UploadFlow, kwargs).log(UploadFlow.BEGIN, kwargs=kwargs, ignore_repeat=True)
       next_task(kwargs)
       ...
+      # when using `@failure_events()` and `@subflows()`, an auto-created subflow
+      # is automatically submitted because `UploadFlow.TOO_MANY_RETRIES` is an error
       from_kwargs(UploadFlow, kwargs)
-          .log(UploadFlow.NOTIFIED)
-          .submit_subflow('notification_latency', UploadFlow.BEGIN, UploadFlow.NOTIFIED)
+          .log(UploadFlow.TOO_MANY_RETRIES)
     """
 
     def __init__(self, cls, data=None, strict=False):
@@ -298,13 +313,10 @@ class CheckpointLogger:
             for metric, beginning in self.cls._subflows().get(checkpoint, []):
                 self.submit_subflow(metric, beginning, checkpoint)
 
+        # `checkpoint.count()` comes from the `@reliability_counters` decorator
+        # Increment event, start, finish, success, failure counters
         if hasattr(checkpoint, "count"):
             checkpoint.count()
-
-        if hasattr(checkpoint, "is_failure") and checkpoint.is_failure():
-            pass
-        elif hasattr(checkpoint, "is_success") and checkpoint.is_success():
-            pass
 
         return self
 
