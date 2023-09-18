@@ -23,7 +23,9 @@ class TrialExpirationTask(BaseCodecovTask):
             "Expiring owner's trial and setting back to basic plan", extra=log_extra
         )
         owner.plan = BillingPlan.users_basic.value
-        owner.plan_activated_users = [owner.trial_fired_by] if owner.trial_fired_by else None
+        owner.plan_activated_users = (
+            [owner.trial_fired_by] if owner.trial_fired_by else None
+        )
         owner.plan_user_count = owner.pretrial_users_count or 1
         owner.stripe_subscription_id = None
         owner.trial_status = TrialStatus.EXPIRED.value
