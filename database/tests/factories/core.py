@@ -47,6 +47,7 @@ class OwnerFactory(Factory):
     trial_start_date = datetime.now()
     trial_end_date = datetime.now()
     trial_status = enums.TrialStatus.NOT_STARTED.value
+    trial_fired_by = None
 
     oauth_token = factory.LazyAttribute(
         lambda o: encrypt_oauth_token(o.unencrypted_oauth_token)
