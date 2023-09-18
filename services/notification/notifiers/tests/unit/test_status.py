@@ -599,63 +599,50 @@ class TestBaseStatusNotifier(object):
     async def test_notify_analytics(
         self, sample_comparison, mocker, mock_repo_provider
     ):
-        with patch("shared.analytics_tracking.analytics.track") as mock_track:
-            mocker.patch("helpers.environment.is_enterprise", return_value=False)
-            comparison = sample_comparison
-            no_settings_notifier = StatusNotifier(
-                repository=comparison.head.commit.repository,
-                title="title",
-                notifier_yaml_settings={},
-                notifier_site_settings=True,
-                current_yaml=UserYaml({}),
-            )
-            no_settings_notifier.context = "fake"
-            mocked_status_already_exists = mocker.patch.object(
-                StatusNotifier, "status_already_exists"
-            )
-            mocked_status_already_exists.return_value = False
-            mock_repo_provider.set_commit_status.side_effect = TorngitClientError(
-                403, "response", "message"
-            )
-            payload = {"message": "something to say", "state": "success", "url": "url"}
-            await no_settings_notifier.send_notification(comparison, payload)
-            assert mock_track.called_with(
-                15,
-                "Coverage Report Passed",
-                {"state": "success", "repository_id": 6},
-                False,
-            )
+
+        mocker.patch("helpers.environment.is_enterprise", return_value=False)
+        comparison = sample_comparison
+        no_settings_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        no_settings_notifier.context = "fake"
+        mocked_status_already_exists = mocker.patch.object(
+            StatusNotifier, "status_already_exists"
+        )
+        mocked_status_already_exists.return_value = False
+        mock_repo_provider.set_commit_status.side_effect = TorngitClientError(
+            403, "response", "message"
+        )
+        payload = {"message": "something to say", "state": "success", "url": "url"}
+        await no_settings_notifier.send_notification(comparison, payload)
 
     @pytest.mark.asyncio
     async def test_notify_analytics_enterprise(
         self, sample_comparison, mocker, mock_repo_provider
     ):
-        with patch("shared.analytics_tracking.analytics.track") as mock_track:
-            mocker.patch("helpers.environment.is_enterprise", return_value=True)
-            comparison = sample_comparison
-            no_settings_notifier = StatusNotifier(
-                repository=comparison.head.commit.repository,
-                title="title",
-                notifier_yaml_settings={},
-                notifier_site_settings=True,
-                current_yaml=UserYaml({}),
-            )
-            no_settings_notifier.context = "fake"
-            mocked_status_already_exists = mocker.patch.object(
-                StatusNotifier, "status_already_exists"
-            )
-            mocked_status_already_exists.return_value = False
-            mock_repo_provider.set_commit_status.side_effect = TorngitClientError(
-                403, "response", "message"
-            )
-            payload = {"message": "something to say", "state": "success", "url": "url"}
-            await no_settings_notifier.send_notification(comparison, payload)
-            assert mock_track.called_with(
-                15,
-                "Coverage Report Passed",
-                {"state": "success", "repository_id": 6},
-                True,
-            )
+        mocker.patch("helpers.environment.is_enterprise", return_value=True)
+        comparison = sample_comparison
+        no_settings_notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        no_settings_notifier.context = "fake"
+        mocked_status_already_exists = mocker.patch.object(
+            StatusNotifier, "status_already_exists"
+        )
+        mocked_status_already_exists.return_value = False
+        mock_repo_provider.set_commit_status.side_effect = TorngitClientError(
+            403, "response", "message"
+        )
+        payload = {"message": "something to say", "state": "success", "url": "url"}
+        await no_settings_notifier.send_notification(comparison, payload)
 
     def test_determine_status_check_behavior_to_apply(self, sample_comparison):
         # uses component level setting if provided
