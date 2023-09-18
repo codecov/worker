@@ -8,6 +8,7 @@ from shared.torngit.exceptions import (
 )
 
 from database.enums import Notification
+from database.models import Pull
 from helpers.metrics import metrics
 from services.comparison.types import Comparison
 from services.license import requires_license
@@ -358,10 +359,21 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             return self._create_empty_upload_message()
         if self.should_use_upload_limit_decoration():
             return self._create_reached_upload_limit_message(comparison)
+        if comparison.pull.is_first_pull:
+            return self._create_welcome_message()
         pull_dict = comparison.enriched_pull.provider_pull
         return await self.create_message(
             comparison, pull_dict, self.notifier_yaml_settings
         )
+
+    def _create_welcome_message(self):
+        return [
+            "## Welcome to [Codecov](https://codecov.io) :tada:",
+            "",
+            "Once merged to your default branch, Codecov will compare your coverage reports and display the results in this comment.",
+            "",
+            "Thanks for integrating Codecov - We've got you covered :open_umbrella:",
+        ]
 
     def _create_empty_upload_message(self):
         if self.is_passing_empty_upload():

@@ -2,7 +2,7 @@ import logging
 
 from shared.config import get_config
 
-HEALTH_CHECK_DEFAULT_INTERVAL_SECONDS = 10
+HEALTH_CHECK_DEFAULT_INTERVAL_SECONDS = 10000
 
 logger = logging.getLogger(__name__)
 

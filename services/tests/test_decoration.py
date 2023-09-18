@@ -1,7 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
+from database.enums import TrialStatus
+from database.models.reports import Upload
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
@@ -15,6 +17,7 @@ from services.decoration import (
     Decoration,
     _is_bot_account,
     determine_decoration_details,
+    determine_uploads_used,
 )
 from services.repository import EnrichedPull
 
@@ -239,6 +242,51 @@ class TestDecorationServiceTestCase(object):
         # self-hosted should not be limited with their uploads
         assert decoration_details.decoration_type != Decoration.upload_limit
         assert decoration_details.reason != "Org has exceeded the upload limit"
+
+    def test_uploads_used_with_expired_trial(self, dbsession):
+        owner = OwnerFactory.create(
+            service="github",
+            trial_status=TrialStatus.EXPIRED.value,
+            trial_start_date=datetime.now() + timedelta(days=-10),
+            trial_end_date=datetime.now() + timedelta(days=-2),
+        )
+        dbsession.add(owner)
+        dbsession.flush()
+
+        repository = RepositoryFactory.create(
+            owner=owner,
+            private=True,
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+
+        commit = CommitFactory.create(
+            repository=repository,
+            author__service="github",
+            timestamp=datetime.now(),
+        )
+
+        report = ReportFactory.create(commit=commit)
+        report_before_trial = UploadFactory.create(report=report, storage_path="url")
+        report_before_trial.created_at += timedelta(days=-12)
+        dbsession.add(report_before_trial)
+        dbsession.flush()
+
+        report_during_trial = UploadFactory.create(report=report, storage_path="url")
+        report_during_trial.created_at += timedelta(days=-5)
+        dbsession.add(report_during_trial)
+        dbsession.flush()
+
+        report_after_trial = UploadFactory.create(report=report, storage_path="url")
+        dbsession.add(report_after_trial)
+        dbsession.flush()
+
+        uploads_present = dbsession.query(Upload).all()
+        assert len(uploads_present) == 3
+
+        uploads_used = determine_uploads_used(dbsession, owner)
+
+        assert uploads_used == 2
 
     def test_get_decoration_type_no_pull(self, mocker):
         decoration_details = determine_decoration_details(None)

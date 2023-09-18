@@ -107,14 +107,17 @@ class NotificationService(object):
                     decoration_type=self.decoration_type,
                 )
 
-        yield CodecovSlackAppNotifier(
-            repository=self.repository,
-            title="codecov-slack-app",
-            notifier_yaml_settings={},
-            notifier_site_settings={},
-            current_yaml=self.current_yaml,
-            decoration_type=self.decoration_type,
-        )
+        # yield notifier if slack_app field is True, nonexistent, or a non-empty dict
+        slack_app_yaml_field = read_yaml_field(self.current_yaml, ("slack_app",), True)
+        if slack_app_yaml_field:
+            yield CodecovSlackAppNotifier(
+                repository=self.repository,
+                title="codecov-slack-app",
+                notifier_yaml_settings=slack_app_yaml_field,
+                notifier_site_settings={},
+                current_yaml=self.current_yaml,
+                decoration_type=self.decoration_type,
+            )
 
         comment_yaml_field = read_yaml_field(self.current_yaml, ("comment",))
         if comment_yaml_field:

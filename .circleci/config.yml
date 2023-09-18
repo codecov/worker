@@ -77,13 +77,13 @@ jobs:
             apk add git build-base
             pip install codecov-cli
       - run:
-          name: Save commit info 
+          name: Save commit info
           command: |
-            codecovcli create-commit 
-      - run: 
+            codecovcli create-commit
+      - run:
           name: Create report
           command: |
-            codecovcli create-report 
+            codecovcli create-report
   ATS:
     executor: codecov-worker
     steps:
@@ -148,7 +148,7 @@ jobs:
           name: run tests
           command: |
             make test.unit
-            make test.integration    
+            make test.integration
       - run:
           name: upload to codecov using python uploader
           command: |
@@ -208,7 +208,7 @@ jobs:
             sentry-cli releases new -p $SENTRY_PROJECT $SENTRY_RELEASE
             sentry-cli releases set-commits $SENTRY_RELEASE --auto
             sentry-cli releases finalize $SENTRY_RELEASE
-            sentry-cli releases deploys $SENTRY_RELEASE new -e $SENTRY_ENVIRONMENT 
+            sentry-cli releases deploys $SENTRY_RELEASE new -e $SENTRY_ENVIRONMENT
   enterprise:
     executor: codecov-deploy
     steps:

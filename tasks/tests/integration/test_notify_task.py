@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from database.models import Pull
-from database.tests.factories import CommitFactory, RepositoryFactory
+from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.archive import ArchiveService
 from services.notification.notifiers.base import NotificationResult
 from tasks.notify import NotifyTask
@@ -807,6 +807,8 @@ class TestNotifyTask(object):
             repository=repository,
             author=repository.owner,
         )
+        # create another pull so that we don't trigger the 1st time comment message
+        dbsession.add(PullFactory.create(repository=repository, pullid=8))
         commit = CommitFactory.create(
             message="",
             pullid=9,
