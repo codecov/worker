@@ -116,17 +116,25 @@ class NewHeaderSectionWriter(BaseSectionWriter):
         )
         rounded_change = Decimal(round_number(yaml, change))
         diff_totals = head_report.apply_diff(diff)
-        if diff_totals and diff_totals.coverage is not None:
-            patch_cov = round_number(yaml, Decimal(diff_totals.coverage))
+        if diff_totals:
+            patch_cov = (
+                round_number(yaml, Decimal(diff_totals.coverage))
+                if diff_totals.coverage
+                else None
+            )
+            misses_and_partials = diff_totals.misses + diff_totals.partials
         else:
             patch_cov = None
+            misses_and_partials = None
+
         hide_project_coverage = self.settings.get("hide_project_coverage", False)
         if hide_project_coverage:
-            diff_totals = head_report.apply_diff(diff)
-            if patch_cov:
-                yield (f"Patch coverage is **`{patch_cov}%`** of modified lines.")
+            if misses_and_partials:
+                yield (
+                    f"Attention: `{misses_and_partials} lines` in your changes are missing coverage. Please review."
+                )
             else:
-                yield "Patch has no changes to coverable lines."
+                yield "All modified lines are covered by tests :white_check_mark:"
         else:
             if base_report and head_report:
                 patch_cov_msg = (
@@ -462,10 +470,9 @@ class FileSectionWriter(BaseSectionWriter):
                     _diff["totals"],
                     self.show_complexity,
                     self.current_yaml,
+                    links["pull"],
                 ),
-                Decimal(_diff["totals"].coverage)
-                if _diff["totals"].coverage is not None
-                else None,
+                int(_diff["totals"].misses + _diff["totals"].partials),
             )
             for path, _diff in (diff["files"] if diff else {}).items()
             if _diff.get("totals")
@@ -479,9 +486,7 @@ class FileSectionWriter(BaseSectionWriter):
             table_layout = get_table_layout(hide_project_coverage, self.show_complexity)
             # add table headers
             yield (
-                "| [Files Changed]({0}?src=pr&el=tree) {1}".format(
-                    links["pull"], table_header
-                )
+                "| [Files]({0}?src=pr&el=tree) {1}".format(links["pull"], table_header)
             )
             yield (table_layout)
 
@@ -508,21 +513,43 @@ class FileSectionWriter(BaseSectionWriter):
                         file_tags=" **Critical**" if path in files_in_critical else "",
                     )
 
-            # add to comment
-            for line in starmap(
-                tree_cell,
-                sorted(files_in_diff, key=lambda a: a[3] or Decimal("0"))[:limit],
-            ):
-                yield (line)
+            if not hide_project_coverage:
+                for line in starmap(
+                    tree_cell,
+                    sorted(files_in_diff, key=lambda a: a[3] or Decimal("0"))[:limit],
+                ):
+                    yield (line)
 
-            remaining = len(files_in_diff) - limit
-            if remaining > 0:
-                yield (
-                    "| ... and [{n} more]({href}?src=pr&el=tree-more) | |".format(
-                        n=remaining, href=links["pull"]
+                remaining = len(files_in_diff) - limit
+                if remaining > 0:
+                    yield (
+                        "| ... and [{n} more]({href}?src=pr&el=tree-more) | |".format(
+                            n=remaining, href=links["pull"]
+                        )
                     )
+            else:
+                remaining_files = 0
+                printed_files = 0
+                changed_files = sorted(
+                    files_in_diff, key=lambda a: a[3] or Decimal("0"), reverse=True
                 )
+                for file in changed_files:
+                    # misses + partials != 0
+                    if file[3] != 0:
+                        if printed_files == limit:
+                            remaining_files += 1
+                        else:
+                            printed_files += 1
+                            yield (tree_cell(file[0], file[1], file[2]))
+                    else:
+                        break
 
+                if remaining_files:
+                    yield (
+                        "| ... and [{n} more]({href}?src=pr&el=tree-more) | |".format(
+                            n=remaining_files, href=links["pull"]
+                        )
+                    )
         if changes and not hide_project_coverage:
             len_changes_not_in_diff = len(all_files or []) - len(files_in_diff or [])
             if files_in_diff and len_changes_not_in_diff > 0:
