@@ -1,6 +1,7 @@
 import pytest
 import requests
 
+import services.smtp
 from database.tests.factories import OwnerFactory
 from tasks.send_email import SendEmailTask
 
@@ -21,6 +22,7 @@ class TestSendEmailTask:
         mock_redis,
         mock_configuration,
     ):
+        services.smtp._smtp_service = None
         tls = mocker.patch("smtplib.SMTP.starttls")
         login = mocker.patch("smtplib.SMTP.login")
         owner = OwnerFactory.create(email=to_addr, username=username)

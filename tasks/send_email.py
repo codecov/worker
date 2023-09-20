@@ -44,6 +44,11 @@ class SendEmailTask(BaseCodecovTask):
             to_addr = owner.email
 
             smtp_service = get_smtp_service()
+            if smtp_service is None:
+                log.warning(
+                    "Cannot send email because SMTP is not configured for this installation of codecov."
+                )
+                return None
             template_service = get_template_service()
 
             with metrics.timer("worker.tasks.send_email.render_templates"):
@@ -54,12 +59,17 @@ class SendEmailTask(BaseCodecovTask):
 
             err_msg = None
             try:
-                smtp_service.open()
                 metrics.incr(f"worker.tasks.send_email.attempt")
                 with metrics.timer("worker.tasks.send_email.send"):
                     errs = smtp_service.send(email_wrapper)
                 if len(errs) != 0:
-                    err_msg = "\n".join(errs)
+                    err_msg = " ".join(
+                        list(
+                            map(
+                                lambda err_tuple: f"{err_tuple[0]} {err_tuple[1]}", errs
+                            )
+                        )
+                    )
             except SMTPRecipientsRefused:
                 err_msg = "All recipients were refused"
             except SMTPSenderRefused:
