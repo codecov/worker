@@ -19,11 +19,23 @@ class TestSendEmailTask:
         dbsession,
         mock_storage,
         mock_redis,
+        mock_configuration,
     ):
+        tls = mocker.patch("smtplib.SMTP.starttls")
+        login = mocker.patch("smtplib.SMTP.login")
         owner = OwnerFactory.create(email=to_addr, username=username)
         dbsession.add(owner)
         dbsession.flush()
         task = SendEmailTask()
+
+        # make sure mailhog is not storing any other messages before
+        # running this test
+        res = requests.delete(
+            "http://mailhog:8025/api/v1/messages",
+        )
+
+        assert res.status_code == 200
+
         result = await task.run_async(
             dbsession,
             owner.ownerid,

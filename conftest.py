@@ -135,8 +135,10 @@ def mock_configuration(mocker):
             },
             "redis_url": "redis://redis:@localhost:6379/",
             "smtp": {
-                "host": "localhost",
+                "host": "mailhog",
                 "port": 1025,
+                "username": "username",
+                "password": "password",
             },
         },
         "setup": {

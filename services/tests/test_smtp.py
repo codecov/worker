@@ -10,3 +10,20 @@ class TestStorage(object):
         first = get_smtp_service()
         second = get_smtp_service()
         assert id(first) == id(second)
+
+    def test_idempotent_open(self, mocker, mock_configuration):
+        mocker.patch("smtplib.SMTP")
+        service = get_smtp_service()
+        service.open()
+        first = service._conn
+        service.open()
+        second = service._conn
+        assert id(first) == id(second)
+
+    def test_idempotent_close(self, mocker, mock_configuration):
+        mocker.patch("smtplib.SMTP")
+        service = get_smtp_service()
+        service.close()
+        assert service._conn == None
+        service.close()
+        assert service._conn == None

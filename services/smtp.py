@@ -53,8 +53,7 @@ class SMTPService:
             port=self.port,
         )
 
-        if get_current_env() != Environment.local:
-            self._conn.starttls(context=self._ssl_context)
+        self._conn.starttls(context=self._ssl_context)
 
         if self.username and self.password:
             self._conn.login(self.username, self.password)
