@@ -134,6 +134,12 @@ def mock_configuration(mocker):
                 "verify_ssl": False,
             },
             "redis_url": "redis://redis:@localhost:6379/",
+            "smtp": {
+                "host": "testserver",
+                "port": 12345,
+                "username": None,
+                "password": None,
+            },
         },
         "setup": {
             "codecov_url": "https://codecov.io",
