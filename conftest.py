@@ -135,10 +135,10 @@ def mock_configuration(mocker):
             },
             "redis_url": "redis://redis:@localhost:6379/",
             "smtp": {
-                "host": "testserver",
-                "port": 12345,
-                "username": None,
-                "password": None,
+                "host": "mailhog",
+                "port": 1025,
+                "username": "username",
+                "password": "password",
             },
         },
         "setup": {
@@ -184,6 +184,14 @@ def mock_storage(mocker):
     storage_server = MemoryStorageService({})
     m.return_value = storage_server
     yield storage_server
+
+
+@pytest.fixture
+def mock_smtp(mocker):
+    m = mocker.patch("services.smtp._get_cached_smtp_service")
+    smtp_server = mocker.MagicMock()
+    m.return_value = smtp_server
+    yield smtp_server
 
 
 @pytest.fixture
