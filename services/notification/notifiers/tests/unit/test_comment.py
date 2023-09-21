@@ -708,7 +708,7 @@ class TestCommentNotifier(object):
             f"> Merging [#{pull.pullid}](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({sample_comparison.head.commit.commitid[:7]}) into [master](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             f"> The diff coverage is `n/a`.",
             f"",
-            f"| [Files Changed](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
@@ -867,7 +867,7 @@ class TestCommentNotifier(object):
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
-            f"| [Files Changed](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
@@ -927,7 +927,7 @@ class TestCommentNotifier(object):
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"",
@@ -1054,7 +1054,7 @@ class TestCommentNotifier(object):
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"",
@@ -1319,7 +1319,7 @@ class TestCommentNotifier(object):
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | |",
             f"|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
             f"",
@@ -1392,7 +1392,7 @@ class TestCommentNotifier(object):
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
@@ -1533,7 +1533,7 @@ class TestCommentNotifier(object):
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (ø)` | |",
             f"",
@@ -1609,7 +1609,7 @@ class TestCommentNotifier(object):
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `50.00% <ø> (-12.50%)` | `11.00 <0.00> (+1.00)` | :arrow_down: |",
             f"",
@@ -1802,7 +1802,7 @@ class TestCommentNotifier(object):
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"",
@@ -2192,7 +2192,7 @@ class TestCommentNotifier(object):
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"",
@@ -3385,7 +3385,7 @@ class TestFileSectionWriter(object):
             )
         )
         assert lines == [
-            "| [Files Changed](pull.link?src=pr&el=tree) | Coverage Δ | |",
+            "| [Files](pull.link?src=pr&el=tree) | Coverage Δ | |",
             "|---|---|---|",
             "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
             f"",
@@ -3479,12 +3479,137 @@ class TestFileSectionWriter(object):
             )
         )
         assert lines == [
-            "| [Files Changed](pull.link?src=pr&el=tree) | Coverage Δ | |",
+            "| [Files](pull.link?src=pr&el=tree) | Coverage Δ | |",
             "|---|---|---|",
             "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) **Critical** | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
             "",
             "... and [3 files with indirect coverage changes](pull.link/indirect-changes?src=pr&el=tree-more)",
         ]
+
+    @pytest.mark.asyncio
+    async def test_filesection_hide_project_cov(self, sample_comparison, mocker):
+        section_writer = FileSectionWriter(
+            sample_comparison.head.commit.repository,
+            "layout",
+            show_complexity=False,
+            settings={"hide_project_coverage": True},
+            current_yaml={},
+        )
+        changes = [
+            Change(
+                path="unrelated.py",
+                in_diff=False,
+                totals=ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=-3,
+                    misses=2,
+                    partials=0,
+                    coverage=-43.333330000000004,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            ),
+            Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
+        ]
+        lines = list(
+            await section_writer.write_section(
+                sample_comparison,
+                {
+                    "files": {
+                        "file_1.go": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=2,
+                                misses=1,
+                                coverage=66.66,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        },
+                        "file_2.py": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=-2,
+                                misses=2,
+                                partials=3,
+                                coverage=-23.333330000000004,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        },
+                    }
+                },
+                changes,
+                links={"pull": "pull.link"},
+            )
+        )
+        assert lines == [
+            "| [Files](pull.link?src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            "| [file\\_2.py](pull.link?src=pr&el=tree#diff-ZmlsZV8yLnB5) | -23.33% | [2 Missing and 3 partials :warning: ](pull.link?src=pr&el=tree) |",
+            "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.66% | [1 Missing :warning: ](pull.link?src=pr&el=tree) |",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_filesection_hide_project_cov_no_files_changed(
+        self, sample_comparison, mocker
+    ):
+        section_writer = FileSectionWriter(
+            sample_comparison.head.commit.repository,
+            "layout",
+            show_complexity=False,
+            settings={"hide_project_coverage": True},
+            current_yaml={},
+        )
+        changes = [
+            Change(
+                path="unrelated.py",
+                in_diff=False,
+                totals=ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=-3,
+                    misses=2,
+                    partials=0,
+                    coverage=-43.333330000000004,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            ),
+            Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
+        ]
+        lines = list(
+            await section_writer.write_section(
+                sample_comparison,
+                {"files": {}},
+                changes,
+                links={"pull": "pull.link"},
+            )
+        )
+        assert lines == []
 
 
 class TestImpactedEndpointWriter(object):
@@ -3760,7 +3885,7 @@ class TestNewHeaderSectionWriter(object):
             )
         )
         assert res == [
-            "Patch has no changes to coverable lines.",
+            "All modified lines are covered by tests :white_check_mark:",
         ]
 
 
@@ -4025,7 +4150,7 @@ class TestCommentNotifierInNewLayout(object):
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
-            f"| [Files Changed](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
@@ -4157,7 +4282,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
@@ -4195,13 +4320,14 @@ class TestCommentNotifierInNewLayout(object):
         )
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
+        pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Patch coverage is **`66.67%`** of modified lines.",
+            f"## [Codecov]({pull_url}?src=pr&el=h1) Report",
+            f"Attention: `1 lines` in your changes are missing coverage. Please review.",
             f"",
-            f"| [Files Changed](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage |",
-            f"|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `66.67%` |",
+            f"| [Files]({pull_url}?src=pr&el=tree) | Patch % | Lines |",
+            f"|---|---|---|",
+            f"| [file\\_1.go]({pull_url}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
             f"",
             f"",
             f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
