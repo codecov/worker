@@ -190,7 +190,7 @@ class MessageMixin(object):
         return [
             section
             for section in sections
-            if section not in ["header", "newheader", "newfooter"]
+            if section not in ["header", "newheader", "newfooter", "newfiles"]
         ]
 
     def get_upper_section_name(self, settings):

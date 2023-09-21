@@ -29,6 +29,7 @@ from services.notification.notifiers.mixins.message.sections import (
     ComponentsSectionWriter,
     FileSectionWriter,
     ImpactedEntrypointsSectionWriter,
+    NewFilesSectionWriter,
     NewFooterSectionWriter,
     NewHeaderSectionWriter,
 )
@@ -3488,7 +3489,7 @@ class TestFileSectionWriter(object):
 
     @pytest.mark.asyncio
     async def test_filesection_hide_project_cov(self, sample_comparison, mocker):
-        section_writer = FileSectionWriter(
+        section_writer = NewFilesSectionWriter(
             sample_comparison.head.commit.repository,
             "layout",
             show_complexity=False,
@@ -3572,7 +3573,7 @@ class TestFileSectionWriter(object):
     async def test_filesection_hide_project_cov_with_changed_files_but_no_missing_lines(
         self, sample_comparison, mocker
     ):
-        section_writer = FileSectionWriter(
+        section_writer = NewFilesSectionWriter(
             sample_comparison.head.commit.repository,
             "layout",
             show_complexity=False,
@@ -3651,7 +3652,7 @@ class TestFileSectionWriter(object):
     async def test_filesection_hide_project_cov_no_files_changed(
         self, sample_comparison, mocker
     ):
-        section_writer = FileSectionWriter(
+        section_writer = NewFilesSectionWriter(
             sample_comparison.head.commit.repository,
             "layout",
             show_complexity=False,
@@ -4391,7 +4392,7 @@ class TestCommentNotifierInNewLayout(object):
             repository=comparison.head.commit.repository,
             title="title",
             notifier_yaml_settings={
-                "layout": "newheader, files, newfooter",
+                "layout": "newheader, newfiles, newfooter",
                 "hide_project_coverage": True,
             },
             notifier_site_settings=True,
