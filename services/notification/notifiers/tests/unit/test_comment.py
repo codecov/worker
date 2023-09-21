@@ -3569,6 +3569,85 @@ class TestFileSectionWriter(object):
         ]
 
     @pytest.mark.asyncio
+    async def test_filesection_hide_project_cov_with_changed_files_but_no_missing_lines(
+        self, sample_comparison, mocker
+    ):
+        section_writer = FileSectionWriter(
+            sample_comparison.head.commit.repository,
+            "layout",
+            show_complexity=False,
+            settings={"hide_project_coverage": True},
+            current_yaml={},
+        )
+        changes = [
+            Change(
+                path="unrelated.py",
+                in_diff=False,
+                totals=ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=-3,
+                    misses=2,
+                    partials=0,
+                    coverage=-43.333330000000004,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            ),
+            Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
+        ]
+        lines = list(
+            await section_writer.write_section(
+                sample_comparison,
+                {
+                    "files": {
+                        "file_1.go": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=3,
+                                misses=0,
+                                coverage=100.00,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        },
+                        "file_2.py": {
+                            "type": "added",
+                            "totals": ReportTotals(
+                                lines=3,
+                                hits=3,
+                                misses=0,
+                                partials=0,
+                                coverage=-100.00,
+                                branches=0,
+                                methods=0,
+                                messages=0,
+                                sessions=0,
+                                complexity=0,
+                                complexity_total=0,
+                                diff=0,
+                            ),
+                        },
+                    }
+                },
+                changes,
+                links={"pull": "pull.link"},
+            )
+        )
+        assert lines == []
+
+    @pytest.mark.asyncio
     async def test_filesection_hide_project_cov_no_files_changed(
         self, sample_comparison, mocker
     ):

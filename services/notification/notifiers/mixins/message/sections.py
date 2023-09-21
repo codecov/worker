@@ -484,11 +484,6 @@ class FileSectionWriter(BaseSectionWriter):
         if files_in_diff:
             table_header = get_table_header(hide_project_coverage, self.show_complexity)
             table_layout = get_table_layout(hide_project_coverage, self.show_complexity)
-            # add table headers
-            yield (
-                "| [Files]({0}?src=pr&el=tree) {1}".format(links["pull"], table_header)
-            )
-            yield (table_layout)
 
             # get limit of results to show
             limit = int(self.layout.split(":")[1] if ":" in self.layout else 10)
@@ -514,6 +509,12 @@ class FileSectionWriter(BaseSectionWriter):
                     )
 
             if not hide_project_coverage:
+                yield (
+                    "| [Files]({0}?src=pr&el=tree) {1}".format(
+                        links["pull"], table_header
+                    )
+                )
+                yield (table_layout)
                 for line in starmap(
                     tree_cell,
                     sorted(files_in_diff, key=lambda a: a[3] or Decimal("0"))[:limit],
@@ -533,16 +534,22 @@ class FileSectionWriter(BaseSectionWriter):
                 changed_files = sorted(
                     files_in_diff, key=lambda a: a[3] or Decimal("0"), reverse=True
                 )
-                for file in changed_files:
-                    # misses + partials != 0
-                    if file[3] != 0:
-                        if printed_files == limit:
-                            remaining_files += 1
-                        else:
-                            printed_files += 1
-                            yield (tree_cell(file[0], file[1], file[2]))
+                changed_files_with_missing_lines = [
+                    f for f in changed_files if f[3] > 0
+                ]
+                if changed_files_with_missing_lines:
+                    yield (
+                        "| [Files]({0}?src=pr&el=tree) {1}".format(
+                            links["pull"], table_header
+                        )
+                    )
+                    yield (table_layout)
+                for file in changed_files_with_missing_lines:
+                    if printed_files == limit:
+                        remaining_files += 1
                     else:
-                        break
+                        printed_files += 1
+                        yield (tree_cell(file[0], file[1], file[2]))
 
                 if remaining_files:
                     yield (
