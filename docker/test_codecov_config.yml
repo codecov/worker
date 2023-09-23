@@ -1,0 +1,63 @@
+setup:
+  codecov_url: https://codecov.io
+  debug: no
+  loglvl: INFO
+  encryption_secret: "zp^P9*i8aR3"
+
+services:
+  database_url: postgres://postgres:password@postgres:5432/postgres
+  timeseries_database_url: postgres://postgres:password@timescale:5432/postgres
+  redis_url: redis://redis:6379
+  minio:
+    hash_key: testixik8qdauiab1yiffydimvi72ekq # never change this
+    periodic_callback_ms: false
+    access_key_id: codecov-default-key
+    secret_access_key: codecov-default-secret
+    verify_ssl: false
+
+github:
+  bot:
+    username: codecov-io
+  integration:
+    id: 254
+    pem: src/certs/github.pem
+
+bitbucket:
+  bot:
+    username: codecov-io
+
+gitlab:
+  bot:
+    username: codecov-io
+
+site:
+  codecov:
+    require_ci_to_pass: yes
+
+  coverage:
+    precision: 2
+    round: down
+    range: "70...100"
+
+    status:
+      project: yes
+      patch: yes
+      changes: no
+
+  parsers:
+    gcov:
+      branch_detection:
+        conditional: yes
+        loop: yes
+        method: no
+        macro: no
+
+    javascript:
+      enable_partials: no
+
+  comment:
+    layout: "reach, diff, flags, files, footer"
+    behavior: default
+    require_changes: no
+    require_base: no
+    require_head: yes

@@ -1,5 +1,5 @@
-git+ssh://git@github.com/codecov/shared.git@bef9260a4b6218b5ce4b5b9152a71d7e6d63a954#egg=shared
-git+ssh://git@github.com/codecov/opentelem-python.git@v0.0.4a1#egg=codecovopentelem
+https://github.com/codecov/shared/archive/c8db8d447b259fab3359cfb0d48f169de7c791d2.tar.gz#egg=shared
+https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 boto3
 celery
 click
