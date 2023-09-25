@@ -9,7 +9,6 @@ from database.models import Commit
 from helpers.save_commit_error import save_commit_error
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from services.yaml.reader import read_yaml_field
-from services.yaml.tracking import tracking_yaml_fields_changes
 
 log = logging.getLogger(__name__)
 
@@ -111,7 +110,6 @@ def save_repo_yaml_to_database_if_needed(current_commit, new_yaml):
         current_commit.repository.branch,
         read_yaml_field(existing_yaml, ("codecov", "branch")),
     )
-    tracking_yaml_fields_changes(existing_yaml, new_yaml, repository)
     if current_commit.branch and current_commit.branch in branches_considered_for_yaml:
         if not syb or syb == current_commit.branch:
             yaml_branch = read_yaml_field(new_yaml, ("codecov", "branch"))
