@@ -72,19 +72,22 @@ class MessageMixin(object):
         write = message.append
         # note: since we're using append, calling write("") will add a newline to the message
 
-        upper_section_name = self.get_upper_section_name(settings)
-        section_writer_class = get_section_class_from_layout_name(upper_section_name)
-        section_writer = section_writer_class(
-            self.repository,
-            upper_section_name,
-            show_complexity,
-            settings,
-            current_yaml,
-        )
+        upper_section_names = self.get_upper_section_names(settings)
+        for upper_section_name in upper_section_names:
+            section_writer_class = get_section_class_from_layout_name(
+                upper_section_name
+            )
+            section_writer = section_writer_class(
+                self.repository,
+                upper_section_name,
+                show_complexity,
+                settings,
+                current_yaml,
+            )
 
-        await self.write_section_to_msg(
-            comparison, changes, diff, links, write, section_writer, behind_by
-        )
+            await self.write_section_to_msg(
+                comparison, changes, diff, links, write, section_writer, behind_by
+            )
 
         is_compact_message = should_message_be_compact(comparison, settings)
 
@@ -190,13 +193,19 @@ class MessageMixin(object):
         return [
             section
             for section in sections
-            if section not in ["header", "newheader", "newfooter"]
+            if section not in ["header", "newheader", "newfooter", "newfiles"]
         ]
 
-    def get_upper_section_name(self, settings):
-        if "newheader" in settings["layout"]:
-            return "newheader"
-        return "header"
+    def get_upper_section_names(self, settings):
+        sections = list(map(lambda l: l.strip(), (settings["layout"] or "").split(",")))
+        if "newheader" not in sections and "header" not in sections:
+            sections.insert(0, "header")
+
+        return [
+            section
+            for section in sections
+            if section in ["header", "newheader", "newfiles"]
+        ]
 
     def get_lower_section_name(self, settings):
         if "newfooter" in settings["layout"]:
