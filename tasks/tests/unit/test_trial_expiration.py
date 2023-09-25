@@ -40,3 +40,17 @@ class TestTrialExpiration(object):
         assert owner.plan_user_count == 1
         assert owner.stripe_subscription_id == None
         assert owner.trial_status == TrialStatus.EXPIRED.value
+
+    @pytest.mark.asyncio
+    async def test_trial_expiration_task_with_trial_fired_by(self, dbsession, mocker):
+        owner = OwnerFactory.create(trial_fired_by=9)
+        dbsession.add(owner)
+        dbsession.flush()
+
+        task = TrialExpirationTask()
+        assert await task.run_async(dbsession, owner.ownerid) == {"successful": True}
+
+        assert owner.plan == BillingPlan.users_basic.value
+        assert owner.plan_activated_users == [9]
+        assert owner.stripe_subscription_id == None
+        assert owner.trial_status == TrialStatus.EXPIRED.value
