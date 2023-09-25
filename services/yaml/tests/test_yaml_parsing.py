@@ -130,7 +130,7 @@ class TestYamlSavingService(BaseTestCase):
                         "default": {
                             "only_pulls": False,
                             "branches": None,
-                            "attachments": "sunburst, diff",
+                            "attachments": "diff",
                             "paths": None,
                             "url": "http://test.thiago.website",
                             "flags": None,

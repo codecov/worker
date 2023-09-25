@@ -25,7 +25,7 @@ coverage:
         threshold: 1%
         branches: null  # all branches by default
         message: "Coverage {{changed}} for {{owner}}/{{repo}}"  # customize the message
-        attachments: "sunburst, diff"
+        attachments: "diff"
         only_pulls: false
         flags: null
         paths: null
@@ -94,7 +94,7 @@ class TestYamlSavingService(BaseTestCase):
                             "threshold": 1.0,
                             "branches": None,
                             "message": "Coverage {{changed}} for {{owner}}/{{repo}}",
-                            "attachments": "sunburst, diff",
+                            "attachments": "diff",
                             "only_pulls": False,
                             "flags": None,
                             "paths": None,
@@ -147,7 +147,7 @@ class TestYamlSavingService(BaseTestCase):
                             "threshold": 1.0,
                             "branches": None,
                             "message": "Coverage {{changed}} for {{owner}}/{{repo}}",
-                            "attachments": "sunburst, diff",
+                            "attachments": "diff",
                             "only_pulls": False,
                             "flags": None,
                             "paths": None,
