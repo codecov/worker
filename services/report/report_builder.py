@@ -81,9 +81,7 @@ class ReportBuilderSession(object):
         Returns:
             Report: The legacy report desired
         """
-        if self._present_labels and self._present_labels != {
-            SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
-        }:
+        if self._present_labels:
             for file in self._report:
                 for line_number, line in file.lines:
                     self._possibly_modify_line_to_account_for_special_labels(
@@ -111,7 +109,7 @@ class ReportBuilderSession(object):
                 for datapoint in line.datapoints
             ]
             new_datapoints = [item for dp_list in new_datapoints for item in dp_list]
-            if new_datapoints != line.datapoints:
+            if new_datapoints and new_datapoints != line.datapoints:
                 # A check to avoid unnecessary replacement
                 file[line_number] = dataclasses.replace(
                     line,
@@ -121,7 +119,6 @@ class ReportBuilderSession(object):
                             x.sessionid,
                             x.coverage,
                             x.coverage_type,
-                            x.labels,
                         ),
                     ),
                 )
