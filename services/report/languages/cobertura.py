@@ -121,19 +121,25 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                         for _ in line.iter("condition")
                         if _.attrib.get("coverage") != "100%"
                     ]
-                    if (
-                        type(coverage) is str
-                        and coverage[0] == "0"
-                        and len(conditions) < int(coverage.split("/")[1])
+                    if type(coverage) is str and len(conditions) < int(
+                        coverage.split("/")[1]
                     ):
                         # <line number="23" hits="0" branch="true" condition-coverage="0% (0/2)">
                         #     <conditions>
                         #         <condition number="0" type="jump" coverage="0%"/>
                         #     </conditions>
                         # </line>
+
+                        # <line number="3" hits="0" branch="true" condition-coverage="50% (1/2)"/>
+
                         conditions.extend(
                             map(
-                                str, range(len(conditions), int(coverage.split("/")[1]))
+                                str,
+                                range(
+                                    len(conditions),
+                                    int(coverage.split("/")[1])
+                                    - int(coverage.split("/")[0]),
+                                ),
                             )
                         )
                     if conditions:
