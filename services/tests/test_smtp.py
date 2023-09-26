@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, call
 from services.smtp import get_smtp_service
 
 
-class TestStorage(object):
+class TestSMTP(object):
     def test_correct_init(self, mocker, mock_configuration):
         mocker.patch("smtplib.SMTP")
         m = mocker.patch("ssl.create_default_context", return_value=MagicMock())
