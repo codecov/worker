@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 import typing
 from enum import Enum
 
@@ -7,6 +8,8 @@ from shared.reports.types import CoverageDatapoint
 from shared.yaml.user_yaml import UserYaml
 
 from helpers.labels import SpecialLabelsEnum
+
+log = logging.getLogger(__name__)
 
 
 class CoverageType(Enum):
@@ -82,6 +85,12 @@ class ReportBuilderSession(object):
             Report: The legacy report desired
         """
         if self._present_labels:
+            if self._present_labels == {
+                SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
+            }:
+                log.warning(
+                    "Report only has SpecialLabels. Might indicate it was not generated with contexts"
+                )
             for file in self._report:
                 for line_number, line in file.lines:
                     self._possibly_modify_line_to_account_for_special_labels(
