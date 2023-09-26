@@ -97,7 +97,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                 branch = _line.get("branch", "")
                 condition_coverage = _line.get("condition-coverage", "")
                 if (
-                    branch == "true"
+                    branch.lower() == "true"
                     and re.search("\(\d+\/\d+\)", condition_coverage) is not None
                 ):
                     coverage = condition_coverage.split(" ", 1)[1][1:-1]  # 1/2
