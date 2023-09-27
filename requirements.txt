@@ -255,6 +255,7 @@ pyyaml==6.0.1
     # via
     #   -r requirements.in
     #   vcrpy
+    #   watchdog
 redis==4.5.4
     # via
     #   -r requirements.in
@@ -334,6 +335,8 @@ vine==5.0.0
     #   amqp
     #   celery
     #   kombu
+watchdog[watchmedo]==3.0.0
+    # via -r requirements.in
 wcwidth==0.2.5
     # via prompt-toolkit
 wrapt==1.12.1

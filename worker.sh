@@ -7,7 +7,12 @@ fi
 
 if [ -z "$1" ];
 then
-  python main.py worker ${queues}
+  if [ "$WORKER_HOT_RELOAD" = "y" ]
+  then
+    watchmedo auto-restart --patterns="*.py;*.sh" --recursive --signal=SIGTERM python main.py worker ${queues}
+  else
+    python main.py worker ${queues}
+  fi
 else
   exec "$@"
 fi

@@ -34,3 +34,4 @@ timestring
 vcrpy
 opentelemetry-instrumentation-celery
 opentelemetry-sdk
+watchdog[watchmedo]
