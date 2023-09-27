@@ -9,6 +9,9 @@ on:
       - staging
   pull_request:
 
+permissions:
+  contents: 'read'
+  id-token: 'write'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -21,7 +24,7 @@ jobs:
     uses: codecov/gha-workflows/.github/workflows/lint.yml@main
 
   build:
-    name: Build WORKER
+    name: Build Worker
     uses: codecov/gha-workflows/.github/workflows/build-app.yml@main
     secrets: inherit
     with:
