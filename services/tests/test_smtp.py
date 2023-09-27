@@ -29,6 +29,11 @@ class TestSMTP(object):
         second_conn = second._conn
         assert id(first_conn) == id(second_conn)
 
+    def test_empty_config(self, mocker, mock_configuration):
+        del mock_configuration._params["services"]["smtp"]
+        service = get_smtp_service()
+        assert service is None
+
     def test_send(self, mocker, mock_configuration):
         email = Email(
             to_addr="test_to@codecov.io",
