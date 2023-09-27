@@ -2,7 +2,7 @@ sha := $(shell git rev-parse --short=7 HEAD)
 full_sha := $(shell git rev-parse HEAD)
 release_version = `cat VERSION`
 _gcr := ${CODECOV_WORKER_GCR_REPO_BASE}
-
+merge_sha := $(shell git merge-base HEAD^ origin/main)
 build_date ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
 name ?= worker
 branch = $(shell git branch | grep \* | cut -f2 -d' ')
@@ -224,7 +224,12 @@ test_env.container_static_analysis:
 	codecovcli -u ${CODECOV_URL} static-analysis --token=${CODECOV_STATIC_TOKEN}
 
 test_env.container_label_analysis:
-	codecovcli -u ${CODECOV_URL} label-analysis --base-sha=$(shell git merge-base HEAD^ origin/main) --token=${CODECOV_STATIC_TOKEN}
+	$(shell codecovcli label-analysis --base-sha=${merge_sha} --token=${CODECOV_STATIC_TOKEN} --dry-run > tests_to_run)
+	sed -i s/\"//g tests_to_run
+	sed -i s/ATS_TESTS_TO_RUN=//g tests_to_run
+	sed -i s/--cov-context=test//g tests_to_run
+	sed -i 's/\s\+/\n/g' tests_to_run
+	python -m pytest --cov=./ --cov-context=test `cat tests_to_run`
 
 test_env.container_ats:
 	codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
