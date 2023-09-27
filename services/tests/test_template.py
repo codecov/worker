@@ -5,11 +5,6 @@ from services.template import get_template_service
 
 
 class TestTemplate(object):
-    def test_idempotent_service(self):
-        first = get_template_service()
-        second = get_template_service()
-        assert id(first) == id(second)
-
     def test_get_template(self):
         ts = get_template_service()
         populated_template = ts.get_template(

@@ -1,17 +1,8 @@
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
-_template_service = None
-
 
 def get_template_service():
-    return _get_cached_template_service()
-
-
-def _get_cached_template_service():
-    global _template_service
-    if _template_service is None:
-        _template_service = TemplateService()
-    return _template_service
+    return TemplateService()
 
 
 class TemplateService:
