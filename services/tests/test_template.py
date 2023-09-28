@@ -1,5 +1,5 @@
 import pytest
-from jinja2.exceptions import UndefinedError, TemplateNotFound
+from jinja2.exceptions import TemplateNotFound, UndefinedError
 
 from services.template import TemplateService
 
@@ -7,16 +7,14 @@ from services.template import TemplateService
 class TestTemplate(object):
     def test_get_template(self):
         ts = TemplateService()
-        populated_template = ts.get_template(
-            "test.txt", **dict(username="test_username")
-        )
+        template = ts.get_template("test.txt")
+        populated_template = template.render(**dict(username="test_username"))
         assert populated_template == "Test template test_username"
 
     def test_get_template_html(self):
         ts = TemplateService()
-        populated_template = ts.get_template(
-            "test.html", **dict(username="test_username")
-        )
+        template = ts.get_template("test.html")
+        populated_template = template.render(**dict(username="test_username"))
         expected_result = """<!DOCTYPE html>
 <html lang="en">
 
@@ -40,8 +38,9 @@ class TestTemplate(object):
 
     def test_get_template_no_kwargs(self):
         ts = TemplateService()
+        template = ts.get_template("test.txt")
         with pytest.raises(UndefinedError):
-            ts.get_template("test.txt")
+            template.render(not_username="")
 
     def test_get_template_non_existing(self):
         ts = TemplateService()
