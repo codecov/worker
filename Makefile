@@ -224,10 +224,8 @@ test_env.container_static_analysis:
 	codecovcli -u ${CODECOV_URL} static-analysis --token=${CODECOV_STATIC_TOKEN}
 
 test_env.container_label_analysis:
-	$(shell codecovcli label-analysis --base-sha=${merge_sha} --token=${CODECOV_STATIC_TOKEN} --dry-run > tests_to_run)
-	sed -i s/\"//g tests_to_run
-	sed -i s/ATS_TESTS_TO_RUN=//g tests_to_run
-	sed -i s/--cov-context=test//g tests_to_run
+	$(shell codecovcli label-analysis --base-sha=${merge_sha} --token=${CODECOV_STATIC_TOKEN} --dry-run --dry-run-output-path=tests_to_run > /dev/null)
+	sed -i 's/--cov-context=test//g' tests_to_run
 	sed -i 's/\s\+/\n/g' tests_to_run
 	python -m pytest --cov=./ --cov-context=test `cat tests_to_run`
 
