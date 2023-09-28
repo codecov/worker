@@ -1,9 +1,9 @@
+from smtplib import SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
 from ssl import create_default_context
 from unittest.mock import MagicMock, call, patch
 
 from helpers.email import Email
 from services.smtp import SMTPService
-from smtplib import SMTPRecipientsRefused, SMTPSenderRefused, SMTPDataError
 
 to_addr = "test_to@codecov.io"
 from_addr = "test_from@codecov.io"

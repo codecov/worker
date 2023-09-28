@@ -6,7 +6,6 @@ from shared.config import get_config
 
 from helpers.email import Email
 
-
 log = logging.getLogger(__name__)
 
 
