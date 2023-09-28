@@ -63,9 +63,6 @@ class TestSMTP(object):
 
         smtp = SMTPService()
 
-        print(smtp.connection)
-        print(smtp.connection.send_message)
-
         err_msg = smtp.send(email=test_email)
         assert err_msg == "All recipients were refused"
 
