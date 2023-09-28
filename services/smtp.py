@@ -30,9 +30,8 @@ class SMTPService:
         if not self._load_config():
             log.warning("Unable to load SMTP config")
             return
-
-        if self.connection is None:
-            self.connection = smtplib.SMTP(
+        if SMTPService.connection is None:
+            SMTPService.connection = smtplib.SMTP(
                 host=self.host,
                 port=self.port,
             )
@@ -40,7 +39,7 @@ class SMTPService:
             # only necessary if SMTP server supports TLS and authentication,
             # for example mailhog does not need these two steps
             try:
-                self.connection.starttls(context=self.ssl_context)
+                SMTPService.connection.starttls(context=self.ssl_context)
             except smtplib.SMTPNotSupportedError:
                 log.warning(
                     "Server does not support TLS, continuing initialization of SMTP connection",
@@ -54,7 +53,7 @@ class SMTPService:
 
             if self.username and self.password:
                 try:
-                    self.connection.login(self.username, self.password)
+                    SMTPService.connection.login(self.username, self.password)
                 except smtplib.SMTPNotSupportedError:
                     log.warning(
                         "Server does not support auth, continuing initialization of SMTP connection",
@@ -68,8 +67,10 @@ class SMTPService:
 
     def send(self, email: Email):
         err_msg = None
+        if not SMTPService.connection:
+            return "Connection was not initialized"
         try:
-            errs = self.connection.send_message(
+            errs = SMTPService.connection.send_message(
                 email.message,
             )
             if len(errs) != 0:

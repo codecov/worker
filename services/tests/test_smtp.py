@@ -26,7 +26,6 @@ class TestSMTP(object):
         service.connection.login.assert_called_with("test_username", "test_password")
 
     def test_idempotentconnectionection(self, mocker, mock_configuration):
-        mocker.patch("smtplib.SMTP")
         first = SMTPService()
         firstconnection = first.connection
         second = SMTPService()
@@ -34,6 +33,7 @@ class TestSMTP(object):
         assert id(firstconnection) == id(secondconnection)
 
     def test_empty_config(self, mocker, mock_configuration):
+        SMTPService.connection = None
         del mock_configuration._params["services"]["smtp"]
         service = SMTPService()
         assert service.connection is None
@@ -54,6 +54,7 @@ class TestSMTP(object):
         smtp.connection.send_message.assert_called_with(email.message)
 
     def test_send_email_recipients_refused(self, mocker, mock_configuration, dbsession):
+        SMTPService.connection = None
         m = MagicMock()
         m.configure_mock(**{"send_message.side_effect": SMTPRecipientsRefused(to_addr)})
         mocker.patch(
@@ -67,6 +68,7 @@ class TestSMTP(object):
         assert err_msg == "All recipients were refused"
 
     def test_send_email_sender_refused(self, mocker, mock_configuration, dbsession):
+        SMTPService.connection = None
         m = MagicMock()
         m.configure_mock(
             **{"send_message.side_effect": SMTPSenderRefused(123, "", to_addr)}
@@ -83,6 +85,7 @@ class TestSMTP(object):
         assert err_msg == "Sender was refused"
 
     def test_send_email_data_error(self, mocker, mock_configuration, dbsession):
+        SMTPService.connection = None
         m = MagicMock()
         m.configure_mock(**{"send_message.side_effect": SMTPDataError(123, "")})
         mocker.patch(
@@ -97,6 +100,7 @@ class TestSMTP(object):
         assert err_msg == "The SMTP server did not accept the data"
 
     def test_send_email_sends_errs(self, mocker, mock_configuration, dbsession):
+        SMTPService.connection = None
         m = MagicMock()
         m.configure_mock(**{"send_message.return_value": [(123, "abc"), (456, "def")]})
         mocker.patch(
