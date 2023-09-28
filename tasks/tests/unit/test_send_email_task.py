@@ -8,8 +8,8 @@ from jinja2 import TemplateNotFound, UndefinedError
 from shared.config import ConfigHelper
 from shared.utils.test_utils.mock_metrics import mock_metrics as utils_mock_metrics
 
-import services.smtp
 from database.tests.factories import OwnerFactory
+from services.smtp import SMTPService
 from tasks.send_email import SendEmailTask
 
 here = Path(__file__)
@@ -58,6 +58,7 @@ class TestSendEmailTask(object):
         mock_smtp,
         mock_redis,
     ):
+        mock_smtp.configure_mock(**{"send.return_value": None})
         metrics = utils_mock_metrics(mocker)
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
@@ -126,7 +127,8 @@ class TestSendEmailTask(object):
     async def test_send_email_recipients_refused(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
-        mock_smtp.configure_mock(**{"send.side_effect": SMTPRecipientsRefused(to_addr)})
+        mock_smtp.configure_mock(**{"send.return_value": "All recipients were refused"})
+
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
@@ -145,9 +147,7 @@ class TestSendEmailTask(object):
     async def test_send_email_sender_refused(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
-        mock_smtp.configure_mock(
-            **{"send.side_effect": SMTPSenderRefused(123, "", to_addr)}
-        )
+        mock_smtp.configure_mock(**{"send.return_value": "Sender was refused"})
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
@@ -166,7 +166,9 @@ class TestSendEmailTask(object):
     async def test_send_email_data_error(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
-        mock_smtp.configure_mock(**{"send.side_effect": SMTPDataError(123, "")})
+        mock_smtp.configure_mock(
+            **{"send.return_value": "The SMTP server did not accept the data"}
+        )
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
@@ -185,7 +187,7 @@ class TestSendEmailTask(object):
     async def test_send_email_sends_errs(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
-        mock_smtp.configure_mock(**{"send.return_value": [(123, "abc"), (456, "def")]})
+        mock_smtp.configure_mock(**{"send.return_value": "123 abc 456 def"})
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
@@ -204,6 +206,7 @@ class TestSendEmailTask(object):
     async def test_send_email_no_smtp_config(
         self, mocker, mock_configuration_no_smtp, dbsession
     ):
+        SMTPService.connection = None
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
@@ -216,4 +219,3 @@ class TestSendEmailTask(object):
             username="test_username",
         )
         assert result is None
-        services.smtp._smtp_service = None  # reset SMTP service

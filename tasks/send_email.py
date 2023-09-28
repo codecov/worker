@@ -3,12 +3,12 @@ from smtplib import SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
 
 from shared.celery_config import send_email_task_name
 
+import services.smtp
 from app import celery_app
 from database.models import Owner
 from helpers.email import Email
 from helpers.metrics import metrics
-from services.smtp import get_smtp_service
-from services.template import get_template_service
+from services.template import TemplateService
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -43,39 +43,27 @@ class SendEmailTask(BaseCodecovTask):
                 return None
             to_addr = owner.email
 
-            smtp_service = get_smtp_service()
-            if smtp_service is None:
+            smtp_service = services.smtp.SMTPService()
+
+            if not smtp_service.active():
                 log.warning(
                     "Cannot send email because SMTP is not configured for this installation of codecov."
                 )
                 return None
-            template_service = get_template_service()
+            template_service = TemplateService()
 
             with metrics.timer("worker.tasks.send_email.render_templates"):
-                text = template_service.get_template(f"{template_name}.txt", **kwargs)
-                html = template_service.get_template(f"{template_name}.html", **kwargs)
+                text_template = template_service.get_template(f"{template_name}.txt")
+                text = text_template.render(**kwargs)
+
+                html_template = template_service.get_template(f"{template_name}.html")
+                html = html_template.render(**kwargs)
 
             email_wrapper = Email(to_addr, from_addr, subject, text, html)
 
-            err_msg = None
-            try:
-                metrics.incr(f"worker.tasks.send_email.attempt")
-                with metrics.timer("worker.tasks.send_email.send"):
-                    errs = smtp_service.send(email_wrapper)
-                if len(errs) != 0:
-                    err_msg = " ".join(
-                        list(
-                            map(
-                                lambda err_tuple: f"{err_tuple[0]} {err_tuple[1]}", errs
-                            )
-                        )
-                    )
-            except SMTPRecipientsRefused:
-                err_msg = "All recipients were refused"
-            except SMTPSenderRefused:
-                err_msg = "Sender was refused"
-            except SMTPDataError:
-                err_msg = "The SMTP server did not accept the data"
+            metrics.incr(f"worker.tasks.send_email.attempt")
+            with metrics.timer("worker.tasks.send_email.send"):
+                err_msg = smtp_service.send(email_wrapper)
 
             if err_msg is not None:
                 log.warning(f"Failed to send email: {err_msg}", extra=log_extra_dict)
