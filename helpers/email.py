@@ -10,4 +10,5 @@ class Email:
         self.message["From"] = from_addr
         self.message["Subject"] = subject
         self.message.set_content(text)
-        self.message.add_alternative(html, "text/html")
+        if html:
+            self.message.add_alternative(html, "text/html")
