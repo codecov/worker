@@ -1,10 +1,6 @@
 from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
 
 
-def get_template_service():
-    return TemplateService()
-
-
 class TemplateService:
     def __init__(self):
         # this loads the templates from the templates directory in this repository since it's looking for a dir named `templates` next to app.py
@@ -14,6 +10,6 @@ class TemplateService:
             undefined=StrictUndefined,
         )
 
-    def get_template(self, name, **kwargs):
+    def get_template(self, name):
         template = self.env.get_template(f"{name}")
-        return template.render(**kwargs)
+        return template
