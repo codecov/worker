@@ -155,7 +155,7 @@ class TestBullseye(BaseTestCase):
     @pytest.mark.parametrize(
         "date",
         [
-            (time.strftime("%Y-%m-%d_%H:%M:%S", (time.gmtime(time.time() - 172800)))),
+            (time.strftime("%Y-%m-%d_%H:00:00", (time.gmtime(time.time() - 172800)))),
             "2020-10-28_17:55:47",
         ],
     )

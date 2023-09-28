@@ -7,7 +7,6 @@ from test_utils.base import BaseTestCase
 
 # Hand-written TOCs.
 paths = [
-    ("a\\ b", ["a b"]),
     ("./a\\b", ["a/b"]),
     ("./a\n./b", ["a", "b"]),
     ("path/target/delombok/a\n./b", ["b"]),
@@ -29,6 +28,9 @@ class TestFixpaths(BaseTestCase):
     @pytest.mark.parametrize("toc, result", paths)
     def test_clean_toc(self, toc, result):
         assert fixpaths.clean_toc(toc) == result
+
+    def test_clean_toc_with_space(self):
+        assert fixpaths.clean_toc("a\\ b") == ["a b"]
 
     @pytest.mark.parametrize("path, result", list(unquoted_files.items()))
     def test_unquote_git_path(self, path, result):
