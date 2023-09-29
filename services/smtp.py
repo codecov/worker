@@ -34,6 +34,11 @@ class SMTPService:
         self.ssl_context = ssl.create_default_context()
         return True
 
+    def tls_and_auth(self):
+        self.try_starttls()
+        if self.username and self.password:
+            self.try_login()
+
     def try_starttls(self):
         # only necessary if SMTP server supports TLS and authentication,
         # for example mailhog does not need these two steps
@@ -75,9 +80,7 @@ class SMTPService:
             SMTPService.connection.connect(self.host, self.port)
         except smtplib.SMTPConnectError as exc:
             raise SMTPServiceError("Error starting connection for SMTPService") from exc
-        self.try_starttls()
-        if self.username and self.password:
-            self.try_login()
+        self.tls_and_auth()
 
     def __init__(self):
         if not self._load_config():
@@ -95,10 +98,7 @@ class SMTPService:
                     "Error starting connection for SMTPService"
                 ) from exc
 
-            self.try_starttls()
-
-            if self.username and self.password:
-                self.try_login()
+            self.tls_and_auth()
 
     def send(self, email: Email):
         if not SMTPService.connection:
