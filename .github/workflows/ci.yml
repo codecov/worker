@@ -3,7 +3,7 @@ name: Worker CI
 on:
   push:
     tags:
-      - production-*
+      - prod-*
     branches:
       - main
       - staging
