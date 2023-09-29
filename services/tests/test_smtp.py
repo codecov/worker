@@ -1,6 +1,8 @@
 from smtplib import SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
 from unittest.mock import MagicMock, call, patch
+
 import pytest
+
 from helpers.email import Email
 from services.smtp import SMTPService, SMTPServiceError
 
