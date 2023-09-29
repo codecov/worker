@@ -1,9 +1,8 @@
 from smtplib import SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
-from ssl import create_default_context
 from unittest.mock import MagicMock, call, patch
-
+import pytest
 from helpers.email import Email
-from services.smtp import SMTPService
+from services.smtp import SMTPService, SMTPServiceError
 
 to_addr = "test_to@codecov.io"
 from_addr = "test_from@codecov.io"
@@ -64,8 +63,8 @@ class TestSMTP(object):
 
         smtp = SMTPService()
 
-        err_msg = smtp.send(email=test_email)
-        assert err_msg == "All recipients were refused"
+        with pytest.raises(SMTPServiceError, match="All recipients were refused"):
+            smtp.send(email=test_email)
 
     def test_send_email_sender_refused(self, mocker, mock_configuration, dbsession):
         SMTPService.connection = None
@@ -80,9 +79,8 @@ class TestSMTP(object):
 
         smtp = SMTPService()
 
-        err_msg = smtp.send(email=test_email)
-
-        assert err_msg == "Sender was refused"
+        with pytest.raises(SMTPServiceError, match="Sender was refused"):
+            smtp.send(email=test_email)
 
     def test_send_email_data_error(self, mocker, mock_configuration, dbsession):
         SMTPService.connection = None
@@ -95,9 +93,10 @@ class TestSMTP(object):
 
         smtp = SMTPService()
 
-        err_msg = smtp.send(email=test_email)
-
-        assert err_msg == "The SMTP server did not accept the data"
+        with pytest.raises(
+            SMTPServiceError, match="The SMTP server did not accept the data"
+        ):
+            smtp.send(email=test_email)
 
     def test_send_email_sends_errs(self, mocker, mock_configuration, dbsession):
         SMTPService.connection = None
@@ -110,6 +109,5 @@ class TestSMTP(object):
 
         smtp = SMTPService()
 
-        err_msg = smtp.send(email=test_email)
-
-        assert err_msg == "123 abc 456 def"
+        with pytest.raises(SMTPServiceError, match="123 abc 456 def"):
+            smtp.send(email=test_email)
