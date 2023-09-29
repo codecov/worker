@@ -77,8 +77,6 @@ deprecated==1.2.12
     # via opentelemetry-api
 ecdsa==0.16.1
     # via tlslite-ng
-exceptiongroup==1.1.2
-    # via pytest
 factory-boy==3.2.0
     # via -r requirements.in
 faker==8.8.2
@@ -261,7 +259,7 @@ redis==4.5.4
     # via
     #   -r requirements.in
     #   shared
-requests==2.28.0
+requests==2.31.0
     # via
     #   -r requirements.in
     #   analytics-python
@@ -316,8 +314,6 @@ timestring==1.6.4
     # via -r requirements.in
 tlslite-ng==0.8.0a39
     # via shared
-tomli==2.0.1
-    # via pytest
 typing==3.7.4.3
     # via shared
 typing-extensions==4.6.3
