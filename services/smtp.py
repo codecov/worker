@@ -22,7 +22,7 @@ class SMTPService:
 
     @property
     def extra_dict(self):
-        return {self.host, self.port, self.username}
+        return {"host": self.host, "port": self.port, "username": self.username}
 
     def _load_config(self):
         if get_config("services", "smtp", default={}) == {}:
@@ -115,7 +115,8 @@ class SMTPService:
                 err_msg = " ".join(
                     list(map(lambda err_tuple: f"{err_tuple[0]} {err_tuple[1]}", errs))
                 )
-                raise SMTPServiceError(err_msg)
+                log.warning(f"Error sending email message: {err_msg}")
+                raise SMTPServiceError(f"Error sending email message: {err_msg}")
         except smtplib.SMTPRecipientsRefused as exc:
             log.warning("All recipients were refused", extra=self.extra_dict)
             raise SMTPServiceError("All recipients were refused") from exc
