@@ -86,6 +86,10 @@ jobs:
         with:
           container: 'worker-worker-1'
           static_token: ${{ secrets.STATIC_TOKEN }}
+      - name: GHA output
+        run: |
+          echo ${{ steps.test.outputs.tests }}
+          ls
 
 #
 #  test:
