@@ -1,13 +1,13 @@
 import logging
 from smtplib import (
     SMTPAuthenticationError,
+    SMTPConnectError,
     SMTPDataError,
     SMTPNotSupportedError,
     SMTPRecipientsRefused,
     SMTPResponseException,
     SMTPSenderRefused,
     SMTPServerDisconnected,
-    SMTPConnectError,
 )
 from unittest.mock import MagicMock, call, patch
 
@@ -146,10 +146,9 @@ class TestSMTP(object):
         SMTPService.connection = None
         assert smtp.active() == False
 
-    def test_smtp_disconnected(self, mocker, mock_configuration, dbsession):
-        mock_configuration._params["services"]["smtp"]["username"] = "test_username"
-        mock_configuration._params["services"]["smtp"]["password"] = "test_password"
-
+    def test_smtp_disconnected(
+        self, mocker, mock_configuration, dbsession, set_username_and_password
+    ):
         m = MagicMock()
         m.configure_mock(**{"noop.side_effect": SMTPServerDisconnected()})
         mocker.patch(
