@@ -1,19 +1,18 @@
+import logging
 from smtplib import (
     SMTPDataError,
+    SMTPNotSupportedError,
     SMTPRecipientsRefused,
     SMTPSenderRefused,
     SMTPServerDisconnected,
-    SMTPNotSupportedError,
 )
 from unittest.mock import MagicMock, call, patch
 
-
-import logging
 import pytest
 
+import services.smtp
 from helpers.email import Email
 from services.smtp import SMTPService, SMTPServiceError
-import services.smtp
 
 LOGGER = logging.getLogger(__name__)
 
