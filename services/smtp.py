@@ -50,6 +50,7 @@ class SMTPService:
                 ),
             )
         except smtplib.SMTPResponseException as exc:
+            log.warning("Error doing STARTTLS command on SMTP", extra=self.extra_dict)
             raise SMTPServiceError("Error doing STARTTLS command on SMTP") from exc
 
     def try_login(self):
@@ -61,6 +62,10 @@ class SMTPService:
                 extra=self.extra_dict,
             )
         except smtplib.SMTPAuthenticationError as exc:
+            log.warning(
+                "SMTP server did not accept username/password combination",
+                extra=self.extra_dict,
+            )
             raise SMTPServiceError(
                 "SMTP server did not accept username/password combination"
             ) from exc
@@ -97,11 +102,12 @@ class SMTPService:
 
     def send(self, email: Email):
         if not SMTPService.connection:
-            return "Connection was not initialized"
-        try:
-            SMTPService.connection.noop()
-        except smtplib.SMTPServerDisconnected:
-            self.make_connection()  # reconnect if disconnected
+            self.make_connection()
+        else:
+            try:
+                SMTPService.connection.noop()
+            except smtplib.SMTPServerDisconnected:
+                self.make_connection()  # reconnect if disconnected
         try:
             errs = SMTPService.connection.send_message(
                 email.message,
