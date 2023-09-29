@@ -7,6 +7,7 @@ from smtplib import (
     SMTPResponseException,
     SMTPSenderRefused,
     SMTPServerDisconnected,
+    SMTPConnectError,
 )
 from unittest.mock import MagicMock, call, patch
 
@@ -179,6 +180,52 @@ class TestSMTP(object):
         )
         smtp.connection.noop.assert_has_calls([call()])
         smtp.connection.send_message(call(email.message))
+
+    def test_smtp_init_connect_fail(
+        self, mocker, mock_configuration, dbsession, reset_connection_at_start
+    ):
+        m = MagicMock()
+        mocker.patch("smtplib.SMTP", side_effect=SMTPConnectError(123, "abc"))
+        email = Email(
+            to_addr="test_to@codecov.io",
+            from_addr="test_from@codecov.io",
+            subject="Test subject",
+            text="test text",
+            html="test html",
+        )
+
+        with pytest.raises(
+            SMTPServiceError, match="Error starting connection for SMTPService"
+        ):
+            smtp = SMTPService()
+
+    def test_smtp_disconnected_fail(
+        self, mocker, mock_configuration, dbsession, reset_connection_at_start
+    ):
+        m = MagicMock()
+        m.configure_mock(
+            **{
+                "noop.side_effect": SMTPServerDisconnected(),
+                "connect.side_effect": SMTPConnectError(123, "abc"),
+            }
+        )
+        mocker.patch(
+            "smtplib.SMTP",
+            return_value=m,
+        )
+        email = Email(
+            to_addr="test_to@codecov.io",
+            from_addr="test_from@codecov.io",
+            subject="Test subject",
+            text="test text",
+            html="test html",
+        )
+
+        with pytest.raises(
+            SMTPServiceError, match="Error starting connection for SMTPService"
+        ):
+            smtp = SMTPService()
+            smtp.send(email)
 
     @pytest.mark.parametrize(
         "fn, err_msg, side_effect",
