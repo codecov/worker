@@ -89,7 +89,9 @@ jobs:
       - name: GHA output
         run: |
           echo ${{ steps.test.outputs.tests-to-run }}
-          ls
+      - name: Run Tests
+        run: |
+          docker-compose -f docker-compose-test.yml exec worker python -m pytest --cov=./ --cov-context=test ${{ steps.test.outputs.tests-to-run }}
 
 #
 #  test:
