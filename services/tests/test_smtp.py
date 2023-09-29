@@ -1,10 +1,21 @@
-from smtplib import SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
+from smtplib import (
+    SMTPDataError,
+    SMTPRecipientsRefused,
+    SMTPSenderRefused,
+    SMTPServerDisconnected,
+    SMTPNotSupportedError,
+)
 from unittest.mock import MagicMock, call, patch
 
+
+import logging
 import pytest
 
 from helpers.email import Email
 from services.smtp import SMTPService, SMTPServiceError
+import services.smtp
+
+LOGGER = logging.getLogger(__name__)
 
 to_addr = "test_to@codecov.io"
 from_addr = "test_from@codecov.io"
@@ -113,3 +124,86 @@ class TestSMTP(object):
 
         with pytest.raises(SMTPServiceError, match="123 abc 456 def"):
             smtp.send(email=test_email)
+
+    def test_smtp_active(self, mocker, mock_configuration, dbsession):
+        smtp = SMTPService()
+        assert smtp.active() == True
+        SMTPService.connection = None
+        assert smtp.active() == False
+
+    def test_smtp_disconnected(self, mocker, mock_configuration, dbsession):
+        mock_configuration._params["services"]["smtp"]["username"] = "test_username"
+        mock_configuration._params["services"]["smtp"]["password"] = "test_password"
+
+        m = MagicMock()
+        m.configure_mock(**{"noop.side_effect": SMTPServerDisconnected()})
+        mocker.patch(
+            "smtplib.SMTP",
+            return_value=m,
+        )
+        email = Email(
+            to_addr="test_to@codecov.io",
+            from_addr="test_from@codecov.io",
+            subject="Test subject",
+            text="test text",
+            html="test html",
+        )
+
+        smtp = SMTPService()
+
+        smtp.send(email)
+
+        smtp.connection.connect.assert_has_calls([call("testserver", 12345)])
+        smtp.connection.starttls.assert_has_calls(
+            [call(context=smtp.ssl_context), call(context=smtp.ssl_context)]
+        )
+        smtp.connection.login.assert_has_calls(
+            [
+                call("test_username", "test_password"),
+                call("test_username", "test_password"),
+            ]
+        )
+        smtp.connection.noop.assert_has_calls([call()])
+        smtp.connection.send_message(call(email.message))
+
+    def test_smtp_tls_not_supported(
+        self, caplog, mocker, mock_configuration, dbsession
+    ):
+        services.smtp.SMTPService.connection = None
+        m = MagicMock()
+        m.configure_mock(**{"starttls.side_effect": SMTPNotSupportedError()})
+        mocker.patch(
+            "smtplib.SMTP",
+            return_value=m,
+        )
+
+        with caplog.at_level(logging.WARNING):
+            smtp = SMTPService()
+
+        assert (
+            "Server does not support TLS, continuing initialization of SMTP connection"
+            in caplog.text
+        )
+
+    def test_smtp_auth_not_supported(
+        self, caplog, mocker, mock_configuration, dbsession
+    ):
+        services.smtp.SMTPService.connection = None
+
+        mock_configuration._params["services"]["smtp"]["username"] = "test_username"
+        mock_configuration._params["services"]["smtp"]["password"] = "test_password"
+
+        m = MagicMock()
+        m.configure_mock(**{"login.side_effect": SMTPNotSupportedError()})
+        mocker.patch(
+            "smtplib.SMTP",
+            return_value=m,
+        )
+
+        with caplog.at_level(logging.WARNING):
+            smtp = SMTPService()
+
+        assert (
+            "Server does not support AUTH, continuing initialization of SMTP connection"
+            in caplog.text
+        )

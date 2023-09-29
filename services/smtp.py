@@ -34,26 +34,45 @@ class SMTPService:
         self.ssl_context = ssl.create_default_context()
         return True
 
-    def make_connection(self):
-        try:
-            SMTPService.connection.connect(self.host, self.port)
-        except smtplib.SMTPConnectError as exc:
-            raise SMTPServiceError("Error starting connection for SMTPService") from exc
+    def try_starttls(self):
+        # only necessary if SMTP server supports TLS and authentication,
+        # for example mailhog does not need these two steps
         try:
             SMTPService.connection.starttls(context=self.ssl_context)
         except smtplib.SMTPNotSupportedError:
             log.warning(
                 "Server does not support TLS, continuing initialization of SMTP connection",
+                extra=dict(
+                    host=self.host,
+                    port=self.port,
+                    username=self.username,
+                    password=self.password,
+                ),
+            )
+        except smtplib.SMTPResponseException as exc:
+            raise SMTPServiceError("Error doing STARTTLS command on SMTP") from exc
+
+    def try_login(self):
+        try:
+            SMTPService.connection.login(self.username, self.password)
+        except smtplib.SMTPNotSupportedError:
+            log.warning(
+                "Server does not support AUTH, continuing initialization of SMTP connection",
                 extra=self.extra_dict,
             )
+        except smtplib.SMTPAuthenticationError as exc:
+            raise SMTPServiceError(
+                "SMTP server did not accept username/password combination"
+            ) from exc
+
+    def make_connection(self):
+        try:
+            SMTPService.connection.connect(self.host, self.port)
+        except smtplib.SMTPConnectError as exc:
+            raise SMTPServiceError("Error starting connection for SMTPService") from exc
+        self.try_starttls()
         if self.username and self.password:
-            try:
-                SMTPService.connection.login(self.username, self.password)
-            except smtplib.SMTPNotSupportedError:
-                log.warning(
-                    "Server does not support auth, continuing initialization of SMTP connection",
-                    extra=self.extra_dict,
-                )
+            self.try_login()
 
     def __init__(self):
         if not self._load_config():
@@ -65,40 +84,16 @@ class SMTPService:
                     host=self.host,
                     port=self.port,
                 )
+
             except smtplib.SMTPConnectError as exc:
                 raise SMTPServiceError(
                     "Error starting connection for SMTPService"
                 ) from exc
 
-            # only necessary if SMTP server supports TLS and authentication,
-            # for example mailhog does not need these two steps
-            try:
-                SMTPService.connection.starttls(context=self.ssl_context)
-            except smtplib.SMTPNotSupportedError:
-                log.warning(
-                    "Server does not support TLS, continuing initialization of SMTP connection",
-                    extra=dict(
-                        host=self.host,
-                        port=self.port,
-                        username=self.username,
-                        password=self.password,
-                    ),
-                )
-            except smtplib.SMTPResponseException as exc:
-                raise SMTPServiceError("Error doing STARTTLS command on SMTP") from exc
+            self.try_starttls()
 
             if self.username and self.password:
-                try:
-                    SMTPService.connection.login(self.username, self.password)
-                except smtplib.SMTPNotSupportedError:
-                    log.warning(
-                        "Server does not support auth, continuing initialization of SMTP connection",
-                        extra=self.extra_dict,
-                    )
-                except smtplib.SMTPAuthenticationError as exc:
-                    raise SMTPServiceError(
-                        "SMTP server did not accept username/password combination"
-                    ) from exc
+                self.try_login()
 
     def send(self, email: Email):
         if not SMTPService.connection:
