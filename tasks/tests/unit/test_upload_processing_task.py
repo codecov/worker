@@ -95,6 +95,7 @@ class TestUploadProcessorTask(object):
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
+            chunk_idx=0,
         )
         expected_result = {
             "processings_so_far": [
@@ -102,7 +103,8 @@ class TestUploadProcessorTask(object):
                     "arguments": {"upload_pk": upload.id_, "url": url},
                     "successful": True,
                 }
-            ]
+            ],
+            "parallel_incremental_result": None,
         }
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
@@ -216,6 +218,7 @@ class TestUploadProcessorTask(object):
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
+            chunk_idx=0,
         )
         expected_result = {
             "processings_so_far": [
@@ -223,7 +226,8 @@ class TestUploadProcessorTask(object):
                     "arguments": {"upload_pk": upload.id_, "url": url},
                     "successful": True,
                 }
-            ]
+            ],
+            "parallel_incremental_result": None,
         }
         mock_delete_file.assert_called()
         assert (
@@ -332,8 +336,10 @@ class TestUploadProcessorTask(object):
             previous_results={},
             repoid=commit.repoid,
             commitid=commit.commitid,
+            commit=commit,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
+            chunk_idx=0,
             report_code=None,
         )
         expected_result = {
@@ -342,7 +348,8 @@ class TestUploadProcessorTask(object):
                     "arguments": {"url": url, "upload_pk": upload.id_},
                     "successful": True,
                 }
-            ]
+            ],
+            "parallel_incremental_result": None,
         }
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
@@ -455,6 +462,7 @@ class TestUploadProcessorTask(object):
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
+            chunk_idx=0,
         )
         expected_result = {
             "processings_so_far": [
@@ -462,7 +470,8 @@ class TestUploadProcessorTask(object):
                     "arguments": {"upload_pk": upload.id_, "url": url},
                     "successful": True,
                 }
-            ]
+            ],
+            "parallel_incremental_result": None,
         }
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
@@ -517,6 +526,7 @@ class TestUploadProcessorTask(object):
                 commitid=commit.commitid,
                 commit_yaml={},
                 arguments_list=redis_queue,
+                chunk_idx=0,
             )
         assert exc.value.args == ("first", "aruba", "digimon")
         mocked_2.assert_called_with(mocker.ANY, mocker.ANY, upload=upload)
@@ -558,6 +568,7 @@ class TestUploadProcessorTask(object):
                 commitid=commit.commitid,
                 commit_yaml={},
                 arguments_list=[{"url": "url", "upload_pk": upload.id_}],
+                chunk_idx=0,
             )
         mocked_3.assert_called_with(countdown=179, max_retries=5)
         mocked_random.assert_called_with(100, 200)
@@ -631,6 +642,7 @@ class TestUploadProcessorTask(object):
             commitid=commit.commitid,
             commit_yaml={},
             arguments_list=redis_queue,
+            chunk_idx=0,
         )
         expected_result = {
             "processings_so_far": [
@@ -653,7 +665,8 @@ class TestUploadProcessorTask(object):
                     "should_retry": False,
                     "successful": False,
                 },
-            ]
+            ],
+            "parallel_incremental_result": None,
         }
         assert expected_result == result
         assert commit.state == "complete"
@@ -819,6 +832,7 @@ class TestUploadProcessorTask(object):
             commitid=commit.commitid,
             commit_yaml={},
             arguments_list=redis_queue,
+            chunk_idx=0,
         )
         expected_result = {
             "processings_so_far": [
@@ -841,7 +855,8 @@ class TestUploadProcessorTask(object):
                     "should_retry": False,
                     "successful": False,
                 },
-            ]
+            ],
+            "parallel_incremental_result": None,
         }
         assert expected_result == result
         assert commit.state == "complete"
@@ -908,6 +923,7 @@ class TestUploadProcessorTask(object):
             commitid=commit.commitid,
             commit_yaml={},
             arguments_list=redis_queue,
+            chunk_idx=0,
         )
         expected_result = {
             "processings_so_far": [
@@ -933,7 +949,8 @@ class TestUploadProcessorTask(object):
                     "should_retry": False,
                     "successful": False,
                 },
-            ]
+            ],
+            "parallel_incremental_result": None,
         }
         assert expected_result == result
         assert commit.state == "error"
@@ -988,6 +1005,7 @@ class TestUploadProcessorTask(object):
                 commitid=commit.commitid,
                 commit_yaml={},
                 arguments_list=redis_queue,
+                chunk_idx=0,
             )
         assert commit.state == "error"
 
@@ -1033,6 +1051,7 @@ class TestUploadProcessorTask(object):
                 commitid=commit.commitid,
                 commit_yaml={},
                 arguments_list=redis_queue,
+                chunk_idx=0,
             )
         assert commit.state == "pending"
 

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from json import loads
 from typing import Any, Mapping
 
-from celery import chain
+from celery import chain, chord
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
@@ -24,6 +24,7 @@ from helpers.checkpoint_logger import UploadFlow, _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
+from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO, repo_slug
 from services.archive import ArchiveService
 from services.redis import Redis, download_archive_from_redis, get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -42,8 +43,6 @@ log = logging.getLogger(__name__)
 
 regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]").search
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
-
-CHUNK_SIZE = 3
 
 
 def _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs):
@@ -442,9 +441,18 @@ class UploadTask(BaseCodecovTask):
         self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
     ):
         commit_yaml = commit_yaml.to_dict()
-        chain_to_call = []
-        for i in range(0, len(argument_list), CHUNK_SIZE):
-            chunk = argument_list[i : i + CHUNK_SIZE]
+        processing_tasks = []
+
+        repository = commit.repository
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+            repo_slug(repository), default=False
+        ):
+            chunk_size = 1
+        else:
+            chunk_size = 3
+
+        for i in range(0, len(argument_list), chunk_size):
+            chunk = argument_list[i : i + chunk_size]
             if chunk:
                 sig = upload_processor_task.signature(
                     args=({},) if i == 0 else (),
@@ -453,11 +461,12 @@ class UploadTask(BaseCodecovTask):
                         commitid=commit.commitid,
                         commit_yaml=commit_yaml,
                         arguments_list=chunk,
+                        chunk_idx=i,
                         report_code=commit_report.code,
                     ),
                 )
-                chain_to_call.append(sig)
-        if chain_to_call:
+                processing_tasks.append(sig)
+        if processing_tasks:
             checkpoint_data = None
             if checkpoints:
                 checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
@@ -477,8 +486,13 @@ class UploadTask(BaseCodecovTask):
                     _kwargs_key(UploadFlow): checkpoint_data,
                 },
             )
-            chain_to_call.append(finish_sig)
-            res = chain(*chain_to_call).apply_async()
+
+            if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+                repo_slug(repository), default=False
+            ):
+                res = chord(processing_tasks, body=finish_sig).apply_async()
+            else:
+                res = chain(*processing_tasks, finish_sig).apply_async()
 
             log.info(
                 "Scheduling task for %s different reports",

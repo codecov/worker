@@ -229,7 +229,7 @@ class TestUploadFinisherTask(object):
             "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
         }
         assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+            commit, commit_yaml, processing_results, None, None
         )
 
     @pytest.mark.asyncio
@@ -246,7 +246,7 @@ class TestUploadFinisherTask(object):
         dbsession.flush()
         processing_results = {}
         assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, "local_report1"
+            commit, commit_yaml, processing_results, "local_report1", None
         )
 
     @pytest.mark.asyncio
@@ -263,7 +263,7 @@ class TestUploadFinisherTask(object):
         dbsession.flush()
         processing_results = {}
         assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+            commit, commit_yaml, processing_results, None, None
         )
 
     @pytest.mark.asyncio
@@ -284,7 +284,7 @@ class TestUploadFinisherTask(object):
             "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
         }
         assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+            commit, commit_yaml, processing_results, None, None
         )
 
     @pytest.mark.asyncio
@@ -304,7 +304,7 @@ class TestUploadFinisherTask(object):
             * [{"arguments": {"url": "url"}, "successful": False}]
         }
         assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+            commit, commit_yaml, processing_results, None, None
         )
 
     @pytest.mark.asyncio
@@ -331,7 +331,7 @@ class TestUploadFinisherTask(object):
             * [{"arguments": {"url": "url"}, "successful": True}]
         }
         assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+            commit, commit_yaml, processing_results, None, None
         )
 
     @pytest.mark.asyncio
@@ -348,10 +348,7 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
 
-        mocked_report = mocker.patch.object(
-            ReportService, "get_existing_report_for_commit"
-        )
-        mocked_report.return_value = mocker.MagicMock(
+        mocked_report = mocker.MagicMock(
             sessions=[mocker.MagicMock()] * 10
         )  # 10 sessions
 
@@ -360,7 +357,7 @@ class TestUploadFinisherTask(object):
             * [{"arguments": {"url": "url"}, "successful": True}]
         }
         assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+            commit, commit_yaml, processing_results, None, mocked_report
         )
 
     @pytest.mark.asyncio
@@ -384,6 +381,7 @@ class TestUploadFinisherTask(object):
             commit,
             UserYaml(commit_yaml),
             processing_results,
+            None,
             None,
             checkpoints,
         )
@@ -439,6 +437,7 @@ class TestUploadFinisherTask(object):
             UserYaml(commit_yaml),
             processing_results,
             None,
+            None,
             checkpoints,
         )
         assert res == {"notifications_called": True}
@@ -484,6 +483,7 @@ class TestUploadFinisherTask(object):
             commit,
             UserYaml(commit_yaml),
             processing_results,
+            None,
             None,
             checkpoints,
         )
