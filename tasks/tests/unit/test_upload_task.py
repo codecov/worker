@@ -158,6 +158,7 @@ class TestUploadTaskIntegration(object):
                         "upload_pk": first_session.id,
                     }
                 ],
+                chunk_idx=0,
                 report_code=None,
             ),
         )
@@ -416,6 +417,7 @@ class TestUploadTaskIntegration(object):
                     {"build": "part2", "url": "someurl2", "upload_pk": mocker.ANY},
                     {"build": "part3", "url": "someurl3", "upload_pk": mocker.ANY},
                 ],
+                chunk_idx=0,
                 report_code=None,
             ),
         )
@@ -430,6 +432,7 @@ class TestUploadTaskIntegration(object):
                     {"build": "part5", "url": "someurl5", "upload_pk": mocker.ANY},
                     {"build": "part6", "url": "someurl6", "upload_pk": mocker.ANY},
                 ],
+                chunk_idx=3,
                 report_code=None,
             ),
         )
@@ -443,6 +446,7 @@ class TestUploadTaskIntegration(object):
                     {"build": "part7", "url": "someurl7", "upload_pk": mocker.ANY},
                     {"build": "part8", "url": "someurl8", "upload_pk": mocker.ANY},
                 ],
+                chunk_idx=6,
                 report_code=None,
             ),
         )
@@ -454,6 +458,7 @@ class TestUploadTaskIntegration(object):
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t_final = upload_finisher_task.signature(kwargs=kwargs)
+        print(mocked_1.call_args_list)
         mocked_1.assert_called_with(t1, t2, t3, t_final)
         mock_redis.lock.assert_any_call(
             f"upload_lock_{commit.repoid}_{commit.commitid}",
@@ -901,6 +906,7 @@ class TestUploadTaskUnit(object):
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml.to_dict(),
                 arguments_list=argument_list,
+                chunk_idx=0,
                 report_code=None,
             ),
         )
