@@ -109,13 +109,13 @@ def _get_user_plan_from_task(dbsession, task_name: str, task_kwargs: dict) -> st
     owner_plan_lookup_funcs = {
         # from ownerid
         shared_celery_config.delete_owner_task_name: _get_user_plan_from_ownerid,
-        shared_celery_config.add_to_sendgrid_list_task_name: _get_user_plan_from_ownerid,
         shared_celery_config.send_email_task_name: _get_user_plan_from_ownerid,
         shared_celery_config.sync_repos_task_name: _get_user_plan_from_ownerid,
         shared_celery_config.sync_teams_task_name: _get_user_plan_from_ownerid,
         # from org_ownerid
         shared_celery_config.new_user_activated_task_name: _get_user_plan_from_org_ownerid,
         # from repoid
+        shared_celery_config.pre_process_upload_task_name: _get_user_plan_from_repoid,
         shared_celery_config.upload_task_name: _get_user_plan_from_repoid,
         shared_celery_config.upload_processor_task_name: _get_user_plan_from_repoid,
         shared_celery_config.notify_task_name: _get_user_plan_from_repoid,

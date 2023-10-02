@@ -2,7 +2,7 @@ sha := $(shell git rev-parse --short=7 HEAD)
 full_sha := $(shell git rev-parse HEAD)
 release_version = `cat VERSION`
 _gcr := ${CODECOV_WORKER_GCR_REPO_BASE}
-
+merge_sha := $(shell git merge-base HEAD^ origin/main)
 build_date ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
 name ?= worker
 branch = $(shell git branch | grep \* | cut -f2 -d' ')
@@ -98,6 +98,10 @@ build.app:
 		--build-arg BUILD_ENV=cloud
 
 build.self-hosted:
+	make build.self-hosted-base
+	make build.self-hosted-runtime
+
+build.self-hosted-base:
 	docker build -f docker/Dockerfile . \
 		-t ${DOCKERHUB_REPO}:latest-no-dependencies \
 		-t ${DOCKERHUB_REPO}:${VERSION}-no-dependencies \
@@ -126,7 +130,7 @@ tag.self-hosted-rolling:
 	docker tag ${DOCKERHUB_REPO}:${VERSION}-no-dependencies ${DOCKERHUB_REPO}:rolling_no_dependencies
 	docker tag ${DOCKERHUB_REPO}:${VERSION} ${DOCKERHUB_REPO}:rolling
 
-tag.self-hosted:
+tag.self-hosted-release:
 	docker tag ${DOCKERHUB_REPO}:${VERSION}-no-dependencies ${DOCKERHUB_REPO}:${release_version}_no_dependencies
 	docker tag ${DOCKERHUB_REPO}:${VERSION}-no-dependencies ${DOCKERHUB_REPO}:latest_calver_no_dependencies
 	docker tag ${DOCKERHUB_REPO}:${VERSION}-no-dependencies ${DOCKERHUB_REPO}:latest_stable_no_dependencies
@@ -138,6 +142,10 @@ load.requirements:
 	docker load --input requirements.tar
 	docker tag codecov/worker-ci-requirements:${REQUIREMENTS_TAG} ${AR_REPO}:${REQUIREMENTS_TAG}
 
+load.self-hosted:
+	docker load --input self-hosted-runtime.tar
+	docker load --input self-hosted.tar
+
 save.app:
 	docker save -o app.tar ${AR_REPO}:${VERSION}
 
@@ -146,6 +154,10 @@ save.requirements:
 	docker save -o requirements.tar codecov/worker-ci-requirements:${REQUIREMENTS_TAG}
 
 save.self-hosted:
+	make save.self-hosted-base
+	make save.self-hosted-runtime
+
+save.self-hosted-base:
 	docker save -o self-hosted.tar ${DOCKERHUB_REPO}:${VERSION}-no-dependencies
 
 save.self-hosted-runtime:
@@ -163,7 +175,7 @@ push.production:
 push.requirements:
 	docker push ${AR_REPO}:${REQUIREMENTS_TAG}
 
-push.self-hosted:
+push.self-hosted-release:
 	docker push ${DOCKERHUB_REPO}:${release_version}_no_dependencies
 	docker push ${DOCKERHUB_REPO}:latest_calver_no_dependencies
 	docker push ${DOCKERHUB_REPO}:latest_stable_no_dependencies
@@ -224,7 +236,10 @@ test_env.container_static_analysis:
 	codecovcli -u ${CODECOV_URL} static-analysis --token=${CODECOV_STATIC_TOKEN}
 
 test_env.container_label_analysis:
-	codecovcli -u ${CODECOV_URL} label-analysis --base-sha=$(shell git merge-base HEAD^ origin/main) --token=${CODECOV_STATIC_TOKEN}
+	$(shell codecovcli label-analysis --base-sha=${merge_sha} --token=${CODECOV_STATIC_TOKEN} --dry-run --dry-run-output-path=tests_to_run > /dev/null)
+	sed -i 's/--cov-context=test//g' tests_to_run
+	sed -i 's/\s\+/\n/g' tests_to_run
+	python -m pytest --cov=./ --cov-context=test `cat tests_to_run`
 
 test_env.container_ats:
 	codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error

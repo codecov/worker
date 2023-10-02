@@ -73,6 +73,7 @@ class Owner(CodecovBaseModel):
     trial_start_date = Column(types.DateTime, server_default=FetchedValue())
     trial_end_date = Column(types.DateTime, server_default=FetchedValue())
     trial_status = Column(types.Text, server_default=FetchedValue())
+    trial_fired_by = Column(types.Integer, server_default=FetchedValue())
     plan = Column(types.Text, server_default=FetchedValue())
     plan_user_count = Column(types.SmallInteger, server_default=FetchedValue())
     pretrial_users_count = Column(types.SmallInteger, server_default=FetchedValue())

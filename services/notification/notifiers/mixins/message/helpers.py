@@ -149,32 +149,17 @@ def make_patch_only_metrics(before, after, relative, show_complexity, yaml, pull
     return "".join(("|", coverage, missing_line_str))
 
 
-def get_metrics_function(hide_project_coverage):
-    if hide_project_coverage:
-        metrics = make_patch_only_metrics
-    else:
-        metrics = make_metrics
-    return metrics
+def get_table_header(show_complexity):
+
+    return (
+        "| Coverage \u0394 |"
+        + (" Complexity \u0394 |" if show_complexity else "")
+        + " |"
+    )
 
 
-def get_table_header(hide_project_coverage, show_complexity):
-    if not hide_project_coverage:
-        table_header = (
-            "| Coverage \u0394 |"
-            + (" Complexity \u0394 |" if show_complexity else "")
-            + " |"
-        )
-    else:
-        table_header = "| Patch % | Lines |"
-
-    return table_header
-
-
-def get_table_layout(hide_project_coverage, show_complexity):
-    if hide_project_coverage:
-        return "|---|---|---|"
-    else:
-        return "|---|---|---|" + ("---|" if show_complexity else "")
+def get_table_layout(show_complexity):
+    return "|---|---|---|" + ("---|" if show_complexity else "")
 
 
 def format_number_to_str(
