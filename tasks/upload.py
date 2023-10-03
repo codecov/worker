@@ -20,8 +20,9 @@ from shared.yaml import UserYaml
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit
-from helpers.checkpoint_logger import UploadFlow, _kwargs_key
+from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
+from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService

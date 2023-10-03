@@ -15,8 +15,8 @@ from sqlalchemy.orm.session import Session
 from app import celery_app
 from database.enums import CommitErrorTypes, Decoration
 from database.models import Commit, Pull
-from helpers.checkpoint_logger import UploadFlow
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
+from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user

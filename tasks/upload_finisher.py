@@ -13,8 +13,9 @@ from shared.yaml import UserYaml
 
 from app import celery_app
 from database.models import Commit, Pull
-from helpers.checkpoint_logger import UploadFlow, _kwargs_key
+from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
+from helpers.checkpoint_logger.flows import UploadFlow
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
