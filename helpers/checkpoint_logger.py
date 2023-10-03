@@ -3,6 +3,18 @@ import itertools
 import logging
 import time
 from enum import Enum, auto
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Generic,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Optional,
+    TypeAlias,
+    TypeVar,
+)
 
 import sentry_sdk
 from shared.metrics import metrics
@@ -10,7 +22,23 @@ from shared.metrics import metrics
 logger = logging.getLogger(__name__)
 
 
-def failure_events(*args):
+T = TypeVar("T", bound="BaseFlow")
+TSubflows: TypeAlias = Mapping[T, Iterable[tuple[str, T]]]
+
+
+class BaseFlow(Enum):
+    _subflows: Callable[[], TSubflows]
+    _success_events: Callable[[], Iterable[T]]
+    _failure_events: Callable[[], Iterable[T]]
+    is_success: ClassVar[Callable[[T], bool]]
+    is_failure: ClassVar[Callable[[T], bool]]
+    log_counters: ClassVar[Callable[[T], None]]
+
+
+TClassDecorator: TypeAlias = Callable[[type[T]], type[T]]
+
+
+def failure_events(*args: str) -> TClassDecorator:
     """
     Class decorator that designates some events as terminal failure conditions.
 
@@ -23,12 +51,12 @@ def failure_events(*args):
     assert MyEnum.ERROR.is_failure()
     """
 
-    def class_decorator(klass):
-        def _failure_events():
+    def class_decorator(klass: type[T]) -> type[T]:
+        def _failure_events() -> Iterable[T]:
             return {v for k, v in klass.__members__.items() if k in args}
 
-        def is_failure(obj):
-            return obj in klass._failure_events()
+        def is_failure(obj: T) -> bool:
+            return obj in _failure_events()
 
         # `_failure_events` is a cached function rather than a data member so
         # that it is not processed as if it's a value from the enum.
@@ -40,7 +68,7 @@ def failure_events(*args):
     return class_decorator
 
 
-def success_events(*args):
+def success_events(*args: str) -> TClassDecorator:
     """
     Class decorator that designates some events as terminal success conditions.
 
@@ -53,12 +81,12 @@ def success_events(*args):
     assert MyEnum.FINISHED.is_success()
     """
 
-    def class_decorator(klass):
-        def _success_events():
+    def class_decorator(klass: type[T]) -> type[T]:
+        def _success_events() -> Iterable[T]:
             return {v for k, v in klass.__members__.items() if k in args}
 
-        def is_success(obj):
-            return obj in klass._success_events()
+        def is_success(obj: T) -> bool:
+            return obj in _success_events()
 
         # `_success_events` is a cached function rather than a data member so
         # that it is not processed as if it's a value from the enum.
@@ -70,7 +98,7 @@ def success_events(*args):
     return class_decorator
 
 
-def subflows(*args):
+def subflows(*args: tuple[str, str, str]) -> TClassDecorator:
     """
     Class decorator that defines a set of interesting subflows which should be
     logged as well as the name each should be logged with.
@@ -90,8 +118,8 @@ def subflows(*args):
     overridden by defining the subflow explicitly.
     """
 
-    def class_decorator(klass):
-        def _subflows():
+    def class_decorator(klass: type[T]) -> type[T]:
+        def _subflows() -> TSubflows:
             # We get our subflows in the form: [(metric, begin, end)]
             # We want them in the form: {end: [(metric, begin)]}
             # The first step of munging is to group by end
@@ -118,7 +146,8 @@ def subflows(*args):
 
             # `klass._failure_events` comes from the `@failure_events` decorator
             if hasattr(klass, "_failure_events"):
-                for end in klass._failure_events():
+                # mypy thinks klass._failure_events == klass
+                for end in klass._failure_events():  # type: ignore[operator]
                     flows_ending_here = subflows.setdefault(
                         end, []
                     )  # [(metric, begin)]
@@ -132,7 +161,8 @@ def subflows(*args):
 
             # `klass._success_events` comes from the `@success_events` decorator
             if hasattr(klass, "_success_events"):
-                for end in klass._success_events():
+                # mypy thinks klass._success_events == klass
+                for end in klass._success_events():  # type: ignore[operator]
                     flows_ending_here = subflows.setdefault(
                         end, []
                     )  # [(metric, begin)]
@@ -152,7 +182,7 @@ def subflows(*args):
     return class_decorator
 
 
-def reliability_counters(klass):
+def reliability_counters(klass: type[T]) -> type[T]:
     """
     Class decorator that enables computing success/failure rates for a flow.
 
@@ -164,16 +194,16 @@ def reliability_counters(klass):
         CHECKPOINT: auto()
         ERROR: auto()
         FINISHED: auto()
-    MyEnum.BEGIN.count() # increments "MyEnum.begun" counter
-    MyEnum.ERROR.count() # increments "MyEnum.failed" counter
-    MyEnum.FINISHED.count() # increments "MyEnum.succeeded" counter
+    MyEnum.BEGIN.log_counters() # increments "MyEnum.begun" counter
+    MyEnum.ERROR.log_counters() # increments "MyEnum.failed" counter
+    MyEnum.FINISHED.log_counters() # increments "MyEnum.succeeded" counter
 
     A "MyEnum.ended" counter is incremented for both success and failure events.
     This counter can be compared to "MyEnum.begun" to detect if any branches
     aren't instrumented.
     """
 
-    def count(obj):
+    def log_counters(obj: T) -> None:
         metrics.incr(f"{klass.__name__}.events.{obj.name}")
 
         # If this is the first checkpoint, increment the number of flows we've begun
@@ -193,30 +223,19 @@ def reliability_counters(klass):
         if is_terminal:
             metrics.incr(f"{klass.__name__}.total.ended")
 
-    klass.count = count
+    klass.log_counters = log_counters
     return klass
 
 
-def _get_milli_timestamp():
+def _get_milli_timestamp() -> int:
     return time.time_ns() // 1000000
 
 
-def _kwargs_key(cls):
+def _kwargs_key(cls: type[T]) -> str:
     return f"checkpoints_{cls.__name__}"
 
 
-def from_kwargs(cls, kwargs, strict=False):
-    data = kwargs.get(_kwargs_key(cls), {})
-
-    # Make sure these checkpoints were made with the same flow
-    for key in data.keys():
-        if key not in iter(cls):
-            raise ValueError(f"Checkpoint {key} not part of flow `{cls.__name__}`")
-
-    return CheckpointLogger(cls, data, strict)
-
-
-class CheckpointLogger:
+class CheckpointLogger(Generic[T]):
     """
     CheckpointLogger is a class that tracks latencies/reliabilities for higher-level
     "flows" that don't map well to auto-instrumented tracing. It can be
@@ -254,13 +273,20 @@ class CheckpointLogger:
           .log(UploadFlow.TOO_MANY_RETRIES)
     """
 
-    def __init__(self, cls, data=None, strict=False):
+    _Self = TypeVar("_Self", bound="CheckpointLogger[T]")
+
+    def __init__(
+        self: _Self,
+        cls: type[T],
+        data: Optional[MutableMapping[T, int]] = None,
+        strict=False,
+    ):
         self.cls = cls
         self.data = data if data else {}
         self.kwargs_key = _kwargs_key(self.cls)
         self.strict = strict
 
-    def _error(self, msg):
+    def _error(self: _Self, msg: str) -> None:
         # When a new version of worker rolls out, it will pick up tasks that
         # may have been enqueued by the old worker and be missing checkpoints
         # data. At least for that reason, we want to allow failing softly.
@@ -270,7 +296,7 @@ class CheckpointLogger:
         else:
             logger.warning(msg)
 
-    def _validate_checkpoint(self, checkpoint):
+    def _validate_checkpoint(self: _Self, checkpoint: T) -> None:
         if checkpoint.__class__ != self.cls:
             # This error is not ignored when `self.strict==False` because it's definitely
             # a code mistake
@@ -278,15 +304,15 @@ class CheckpointLogger:
                 f"Checkpoint {checkpoint} not part of flow `{self.cls.__name__}`"
             )
 
-    def _subflow_duration(self, start, end):
+    def _subflow_duration(self: _Self, start: T, end: T) -> Optional[int]:
         self._validate_checkpoint(start)
         self._validate_checkpoint(end)
         if start not in self.data:
-            return self._error(
-                f"Cannot compute duration; missing start checkpoint {start}"
-            )
+            self._error(f"Cannot compute duration; missing start checkpoint {start}")
+            return None
         elif end not in self.data:
-            return self._error(f"Cannot compute duration; missing end checkpoint {end}")
+            self._error(f"Cannot compute duration; missing end checkpoint {end}")
+            return None
         elif end.value <= start.value:
             # This error is not ignored when `self.strict==False` because it's definitely
             # a code mistake
@@ -296,7 +322,12 @@ class CheckpointLogger:
 
         return self.data[end] - self.data[start]
 
-    def log(self, checkpoint, ignore_repeat=False, kwargs=None):
+    def log(
+        self: _Self,
+        checkpoint: T,
+        ignore_repeat: bool = False,
+        kwargs: Optional[MutableMapping[str, Any]] = None,
+    ) -> _Self:
         if checkpoint not in self.data:
             self._validate_checkpoint(checkpoint)
             self.data[checkpoint] = _get_milli_timestamp()
@@ -310,21 +341,37 @@ class CheckpointLogger:
         # If the flow has pre-defined subflows, we can automatically submit
         # any of them that end with the checkpoint we just logged.
         if hasattr(self.cls, "_subflows"):
-            for metric, beginning in self.cls._subflows().get(checkpoint, []):
+            # mypy thinks selc.cls._subflows == self.cls
+            for metric, beginning in self.cls._subflows().get(checkpoint, []):  # type: ignore[operator]
                 self.submit_subflow(metric, beginning, checkpoint)
 
-        # `checkpoint.count()` comes from the `@reliability_counters` decorator
+        # `checkpoint.log_counters()` comes from the `@reliability_counters`
+        # decorator
         # Increment event, start, finish, success, failure counters
-        if hasattr(checkpoint, "count"):
-            checkpoint.count()
+        if hasattr(checkpoint, "log_counters"):
+            checkpoint.log_counters()
 
         return self
 
-    def submit_subflow(self, metric, start, end):
+    def submit_subflow(self: _Self, metric: str, start: T, end: T) -> _Self:
         duration = self._subflow_duration(start, end)
-        sentry_sdk.set_measurement(metric, duration, "milliseconds")
+        if duration:
+            sentry_sdk.set_measurement(metric, duration, "milliseconds")
 
         return self
+
+
+def from_kwargs(
+    cls: type[T], kwargs: MutableMapping[str, Any], strict: bool = False
+) -> CheckpointLogger[T]:
+    data = kwargs.get(_kwargs_key(cls), {})
+
+    # Make sure these checkpoints were made with the same flow
+    for key in data.keys():
+        if key not in iter(cls):
+            raise ValueError(f"Checkpoint {key} not part of flow `{cls.__name__}`")
+
+    return CheckpointLogger(cls, data, strict)
 
 
 @failure_events(
@@ -351,7 +398,7 @@ class CheckpointLogger:
     ("notification_latency", "UPLOAD_TASK_BEGIN", "NOTIFIED"),
 )
 @reliability_counters
-class UploadFlow(str, Enum):
+class UploadFlow(BaseFlow):
     UPLOAD_TASK_BEGIN = auto()
     NO_PENDING_JOBS = auto()
     TOO_MANY_RETRIES = auto()

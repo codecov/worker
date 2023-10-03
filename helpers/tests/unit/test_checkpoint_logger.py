@@ -7,6 +7,7 @@ import sentry_sdk
 from shared.utils.test_utils import mock_metrics
 
 from helpers.checkpoint_logger import (
+    BaseFlow,
     CheckpointLogger,
     _get_milli_timestamp,
     failure_events,
@@ -26,7 +27,7 @@ from helpers.checkpoint_logger import (
     ("total_branch_1_fail_time", "BEGIN", "BRANCH_1_FAIL"),
 )
 @reliability_counters
-class DecoratedEnum(Enum):
+class DecoratedEnum(BaseFlow):
     BEGIN = auto()
     CHECKPOINT = auto()
     BRANCH_1 = auto()
@@ -36,13 +37,13 @@ class DecoratedEnum(Enum):
     BRANCH_2_SUCCESS = auto()
 
 
-class TestEnum1(Enum):
+class TestEnum1(BaseFlow):
     A = auto()
     B = auto()
     C = auto()
 
 
-class TestEnum2(Enum):
+class TestEnum2(BaseFlow):
     A = auto()
     B = auto()
     C = auto()
@@ -86,11 +87,11 @@ class TestCheckpointLogger(unittest.TestCase):
         with self.assertRaises(ValueError):
             checkpoints.log(TestEnum1.A)
 
-    def test_log_checkpoint_wrong_enum_throws(self):
+    def test_log_checkpoint_wrong_enum_throws(self) -> None:
         checkpoints = CheckpointLogger(TestEnum1, strict=True)
 
         with self.assertRaises(ValueError):
-            checkpoints.log(TestEnum2.A)
+            checkpoints.log(TestEnum2.A)  # type: ignore[arg-type]
 
     @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337, 9001])
     def test_subflow_duration(self, mocker):
