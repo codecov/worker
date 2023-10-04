@@ -55,7 +55,7 @@ def get_installation_plan_activated_users(db_session) -> list:
     query_string = text(
         """
                         WITH all_plan_activated_users AS (
-                            SELECT 
+                            SELECT DISTINCT
                                 UNNEST(o.plan_activated_users) AS activated_owner_id
                             FROM owners o
                         ) SELECT count(*) as count
