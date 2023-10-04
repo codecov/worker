@@ -73,8 +73,8 @@ def process_raw_upload(
     # ------------------
     # Extract bash fixes
     # ------------------
-    if reports.has_path_fixes():
-        ignored_file_lines = reports.get_path_fixes(path_fixer)
+    if reports.has_report_fixes():
+        ignored_file_lines = reports.get_report_fixes(path_fixer)
     else:
         ignored_file_lines = None
 
