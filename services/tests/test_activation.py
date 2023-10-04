@@ -92,8 +92,9 @@ class TestActivationServiceTestCase(object):
     def test_activate_user_failure_for_enterprise_pr_billing_no_seats(
         self, request, dbsession, mock_configuration, mocker, with_sql_functions
     ):
+        mocker.patch("services.license.is_enterprise", return_value=True)
+        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
 
-        mocker.patch("helpers.environment.is_enterprise", return_value=True)
         # Create two orgs to ensure our seat availability checking works across
         # multiple organizations.
         org = OwnerFactory.create(
