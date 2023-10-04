@@ -24,10 +24,15 @@ class VersionOneReportParser(object):
             uploaded_files=[
                 self._parse_single_coverage_file(x) for x in data["coverage_files"]
             ],
-            path_fixes=self._parse_path_fixes(data["path_fixes"]),
+            report_fixes=self._parse_report_fixes(
+                # want backwards compatibility with older versions of the CLI that still name this section path_fixes
+                data["report_fixes"]
+                if "report_fixes" in data
+                else data["path_fixes"]
+            ),
         )
 
-    def _parse_path_fixes(self, value):
+    def _parse_report_fixes(self, value):
         return value["value"]
 
     def _parse_single_coverage_file(self, coverage_file):
