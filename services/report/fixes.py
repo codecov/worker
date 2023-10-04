@@ -16,7 +16,6 @@ def get_fixes_from_raw(content, fix: Callable) -> Dict[str, Dict[str, Any]]:
                     files.setdefault(fix(filename), {})["eof"] = int(line)
 
                 else:
-                    # filename:5:<source>
                     # filename:5
                     # filename:5,10,20
                     filename, line = line.split(":", 1)

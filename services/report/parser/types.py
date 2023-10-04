@@ -26,17 +26,34 @@ class ParsedUploadedReportFile(object):
 
 
 class ParsedRawReport(object):
+    """
+    Parsed raw report parent class
+
+    Attributes
+    ----------
+    toc
+        table of contents, this lists the files relevant to the report,
+        i.e. the files contained in the repository
+    env
+        list of env vars in environment of uploader (legacy only)
+    uploaded_files
+        list of class ParsedUploadedReportFile describing uploaded coverage files
+    report_fixes
+        list of objects describing report_fixes for each file, the format differs between
+        legacy and VersionOne parsed raw report
+    """
+
     def __init__(
         self,
         toc: Optional[BinaryIO],
         env: Optional[BinaryIO],
         uploaded_files: List[ParsedUploadedReportFile],
-        path_fixes: Optional[BinaryIO],
+        report_fixes: Optional[BinaryIO],
     ):
         self.toc = toc
         self.env = env
         self.uploaded_files = uploaded_files
-        self.path_fixes = path_fixes
+        self.report_fixes = report_fixes
 
     def has_toc(self) -> bool:
         return self.toc is not None
@@ -44,8 +61,8 @@ class ParsedRawReport(object):
     def has_env(self) -> bool:
         return self.env is not None
 
-    def has_path_fixes(self) -> bool:
-        return self.path_fixes is not None
+    def has_report_fixes(self) -> bool:
+        return self.report_fixes is not None
 
     @property
     def size(self):
@@ -66,6 +83,17 @@ class ParsedRawReport(object):
 
 
 class VersionOneParsedRawReport(ParsedRawReport):
+    """
+    report_fixes : Dict[str, Dict[str, any]]
+    {
+        <path to file>: {
+            eof: int | None
+            lines: List[int]
+        },
+        ...
+    }
+    """
+
     def get_toc(self) -> List[str]:
         return self.toc
 
@@ -75,11 +103,16 @@ class VersionOneParsedRawReport(ParsedRawReport):
     def get_uploaded_files(self):
         return self.uploaded_files
 
-    def get_path_fixes(self, path_fixer) -> Dict[str, Dict[str, Any]]:
-        return self.path_fixes
+    def get_report_fixes(self, path_fixer) -> Dict[str, Dict[str, Any]]:
+        return self.report_fixes
 
 
 class LegacyParsedRawReport(ParsedRawReport):
+    """
+    report_fixes : BinaryIO
+    <filename>:<line number>,<line number>,...
+    """
+
     def get_toc(self) -> List[str]:
         toc = self.toc.read().decode(errors="replace").strip()
         toc = clean_toc(toc)
@@ -92,6 +125,6 @@ class LegacyParsedRawReport(ParsedRawReport):
     def get_uploaded_files(self):
         return self.uploaded_files
 
-    def get_path_fixes(self, path_fixer) -> Dict[str, Dict[str, Any]]:
-        path_fixes = self.path_fixes.read().decode(errors="replace")
-        return get_fixes_from_raw(path_fixes, path_fixer)
+    def get_report_fixes(self, path_fixer) -> Dict[str, Dict[str, Any]]:
+        report_fixes = self.report_fixes.read().decode(errors="replace")
+        return get_fixes_from_raw(report_fixes, path_fixer)

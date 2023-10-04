@@ -321,21 +321,21 @@ class TestParser(object):
         res = LegacyReportParser().parse_raw_report_from_bytes(simple_content)
         assert res.has_toc()
         assert not res.has_env()
-        assert not res.has_path_fixes()
+        assert not res.has_report_fixes()
         assert len(res.uploaded_files) == 1
 
     def test_parser_no_toc(self):
         res = LegacyReportParser().parse_raw_report_from_bytes(simple_no_toc)
         assert not res.has_toc()
         assert not res.has_env()
-        assert not res.has_path_fixes()
+        assert not res.has_report_fixes()
         assert len(res.uploaded_files) == 1
 
     def test_parser_more_complete(self):
         res = LegacyReportParser().parse_raw_report_from_bytes(more_complex)
         assert res.has_toc()
         assert res.has_env()
-        assert not res.has_path_fixes()
+        assert not res.has_report_fixes()
         assert len(res.uploaded_files) == 2
         assert res.uploaded_files[0].filename == "unit.coverage.xml"
         assert res.uploaded_files[0].contents.startswith(b'<?xml version="1.0" ?>')
@@ -350,7 +350,7 @@ class TestParser(object):
         )
         assert res.has_toc()
         assert res.has_env()
-        assert not res.has_path_fixes()
+        assert not res.has_report_fixes()
         assert len(res.uploaded_files) == 2
         assert res.uploaded_files[0].filename == "unit.coverage.xml"
         assert (
@@ -375,7 +375,7 @@ class TestParser(object):
         res = LegacyReportParser().parse_raw_report_from_bytes(line_end_no_line_break)
         assert res.has_toc()
         assert res.has_env()
-        assert not res.has_path_fixes()
+        assert not res.has_report_fixes()
         assert len(res.uploaded_files) == 2
         assert res.uploaded_files[0].filename == "unit.coverage.xml"
         assert (
@@ -415,7 +415,7 @@ class TestParser(object):
             ]
         )
         assert res.has_env()
-        assert not res.has_path_fixes()
+        assert not res.has_report_fixes()
         assert len(res.uploaded_files) == 2
         assert res.uploaded_files[0].filename == "unit.coverage.xml"
         assert (
@@ -453,7 +453,7 @@ class TestParser(object):
             ]
         )
         assert res.has_env()
-        assert not res.has_path_fixes()
+        assert not res.has_report_fixes()
         assert len(res.uploaded_files) == 2
         assert res.uploaded_files[0].filename == "unit.coverage.xml"
         assert (
@@ -482,7 +482,7 @@ class TestParser(object):
             ]
         )
         assert not res.has_env()
-        assert not res.has_path_fixes()
+        assert not res.has_report_fixes()
         assert len(res.uploaded_files) == 1
         assert res.uploaded_files[0].filename == "coverage.txt"
         assert (
@@ -510,8 +510,8 @@ github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
         assert res.toc.getvalue() == would_be_simple_content_res.toc.getvalue()
         assert not res.has_env()
         assert not would_be_simple_content_res.has_env()
-        assert not res.has_path_fixes()
-        assert not would_be_simple_content_res.has_path_fixes()
+        assert not res.has_report_fixes()
+        assert not would_be_simple_content_res.has_report_fixes()
         assert len(res.uploaded_files) == len(
             would_be_simple_content_res.uploaded_files
         )
@@ -538,8 +538,8 @@ github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
         assert res.toc.getvalue() == would_be_simple_content_res.toc.getvalue()
         assert not res.has_env()
         assert not would_be_simple_content_res.has_env()
-        assert not res.has_path_fixes()
-        assert not would_be_simple_content_res.has_path_fixes()
+        assert not res.has_report_fixes()
+        assert not would_be_simple_content_res.has_report_fixes()
         assert len(res.uploaded_files) == len(
             would_be_simple_content_res.uploaded_files
         )

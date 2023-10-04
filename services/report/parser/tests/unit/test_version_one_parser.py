@@ -8,7 +8,7 @@ from services.report.parser.version_one import (
 )
 
 input_data = b"""{
-    "path_fixes": {
+    "report_fixes": {
         "format": "legacy",
         "value": {
             "SwiftExample/AppDelegate.swift": {
@@ -49,7 +49,7 @@ def test_version_one_parser():
     subject = VersionOneReportParser()
     res = subject.parse_raw_report_from_bytes(input_data)
     assert res.get_env() is None
-    assert res.get_path_fixes(None) == {
+    assert res.get_report_fixes(None) == {
         "SwiftExample/AppDelegate.swift": {
             "eof": 15,
             "lines": [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13],
