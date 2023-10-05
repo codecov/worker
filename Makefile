@@ -189,13 +189,13 @@ push.self-hosted-rolling:
 
 test_env.up:
 	env | grep GITHUB > .testenv; true
-	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker-compose -f docker-compose-test.yml up -d
+	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker-compose up -d
 
 test_env.prepare:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_prepare
+	docker-compose exec worker make test_env.container_prepare
 
 test_env.check_db:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_check_db
+	docker-compose exec worker make test_env.container_check_db
 
 test_env.install_cli:
 	pip install --no-cache-dir codecov-cli
@@ -210,13 +210,13 @@ test_env.container_check_db:
 	while ! nc -vz timescale 5432; do sleep 1; echo "waiting for timescale"; done
 
 test_env.run_unit:
-	docker-compose -f docker-compose-test.yml exec worker make test.unit
+	docker-compose exec worker make test.unit
 
 test_env.run_integration:
-	docker-compose -f docker-compose-test.yml exec worker make test.integration
+	docker-compose exec worker make test.integration
 
 test_env.upload:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
+	docker-compose exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
 
 test_env.container_upload:
 	codecovcli -u ${CODECOV_URL} do-upload --flag latest-uploader-overall
@@ -224,28 +224,28 @@ test_env.container_upload:
 	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml
 
 test_env.static_analysis:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_static_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
+	docker-compose exec worker make test_env.container_static_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
 
 test_env.label_analysis:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_label_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
+	docker-compose exec worker make test_env.container_label_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
 
 test_env.ats:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_ats CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN}
+	docker-compose exec worker make test_env.container_ats CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
 test_env.container_static_analysis:
 	codecovcli -u ${CODECOV_URL} static-analysis --token=${CODECOV_STATIC_TOKEN}
 
 test_env.container_label_analysis:
-	$(shell codecovcli label-analysis --base-sha=${merge_sha} --token=${CODECOV_STATIC_TOKEN} --dry-run --dry-run-output-path=tests_to_run > /dev/null)
-	sed -i 's/--cov-context=test//g' tests_to_run
-	sed -i 's/\s\+/\n/g' tests_to_run
-	python -m pytest --cov=./ --cov-context=test `cat tests_to_run`
+	codecovcli label-analysis --base-sha=${merge_sha} --token=${CODECOV_STATIC_TOKEN} --dry-run --dry-run-output-path=tests_to_run > /dev/null
+	jq -r '.ats_tests_to_run []' tests_to_run.json | sed s/\"//g > test_list
+	jq -r '.runner_options | join(\" \")' tests_to_run.json | sed s/\"//g | tr -d '\n'> runner_options
+	python -m pytest --cov=./ `cat runner_options` `cat test_list`
 
 test_env.container_ats:
 	codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
 
 test_env.run_mutation:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_mutation
+	docker-compose exec worker make test_env.container_mutation
 
 test_env.container_mutation:
 	apk add git
