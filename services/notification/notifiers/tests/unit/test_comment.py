@@ -1232,6 +1232,39 @@ class TestCommentNotifier(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_processing_upload(
+        self,
+        request,
+        dbsession,
+        mocker,
+        mock_configuration,
+        with_sql_functions,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"] = {
+            "codecov_url": "test.example.br",
+            "codecov_dashboard_url": "test.example.br",
+        }
+        comparison = sample_comparison
+        pull = comparison.enriched_pull.database_pull
+        repository = sample_comparison.head.commit.repository
+        notifier = CommentNotifier(
+            repository=repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            decoration_type=Decoration.processing_upload,
+        )
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            "We're currently processing your upload.  This comment will be updated when the results are available.",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
     async def test_build_upgrade_message_enterprise(
         self,
         request,
