@@ -1,26 +1,44 @@
-version: '3'
+version: "3"
+
 services:
-    worker:
-        networks:
-            worker:
-        environment:
-            - CELERY_BROKER_URL=redis://redis:6379/0
-            - CELERY_RESULT_BACKEND=redis://redis:6379/0
-        build:
-            context: .
-            dockerfile: Dockerfile
-        volumes:
-            - .:/app
-        depends_on:
-            - redis
-    redis:
-        networks:
-            worker:
-        hostname: redis
-        image: redis:latest
-        ports:
-            - "5672:5672"
-            - "6379:6379"
-networks:
-    worker:
-        driver: bridge
+  worker:
+    image: ${WORKER_DOCKER_REPO}:${WORKER_DOCKER_VERSION}
+    depends_on:
+      - postgres
+      - redis
+      - timescale
+    volumes:
+      - ./:/worker
+      - ./docker/test_codecov_config.yml:/config/codecov.yml
+    environment:
+      - SETUP__TIMESERIES__ENABLED=${TIMESERIES_ENABLED-true}
+    env_file:
+      - .testenv
+    command:
+      - sleep
+      - infinity
+  postgres:
+    image: postgres:14.7-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - type: tmpfs
+        target: /var/lib/postgresql/data
+        tmpfs:
+          size: 2048M
+  timescale:
+    image: timescale/timescaledb-ha:pg14-latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - type: tmpfs
+        target: /var/lib/postgresql/data
+        tmpfs:
+          size: 2048M
+  redis:
+    image: redis:6-alpine
+
