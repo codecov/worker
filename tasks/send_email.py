@@ -33,15 +33,16 @@ class SendEmailTask(BaseCodecovTask):
                 extra=log_extra_dict,
             )
 
-            owners = db_session.query(Owner).filter_by(ownerid=ownerid)
-            owner = owners.first()
+            owner = db_session.query(Owner).filter_by(ownerid=ownerid).first()
             if not owner:
-                log.error(
+                log.warning(
                     "Unable to find owner",
                     extra=log_extra_dict,
                 )
                 return None
             to_addr = owner.email
+            if not owner.email:
+                log.warning("Owner does not have email", extra=log_extra_dict)
 
             smtp_service = services.smtp.SMTPService()
 

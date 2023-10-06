@@ -72,6 +72,7 @@ class TestSendEmailTask(object):
             username="test_username",
         )
 
+        assert result == {"email_successful": True, "err_msg": None}
         assert metrics.data["worker.tasks.send_email.attempt"] == 1
         assert metrics.data["worker.tasks.send_email.succeed"] == 1
         assert metrics.data["worker.tasks.send_email.fail"] == 0
@@ -140,6 +141,7 @@ class TestSendEmailTask(object):
             subject="Test",
             username="test_username",
         )
+
         assert result["email_successful"] == False
         assert result["err_msg"] == "All recipients were refused"
 
