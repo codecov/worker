@@ -132,6 +132,17 @@ class StaticAnalysisComparisonService(object):
             )
             if not head_analysis_file_data and not base_analysis_file_data:
                 return None
+            if head_analysis_file_data is None or base_analysis_file_data is None:
+                log.warning(
+                    "Failed to load snapshot for file. Fallback to all lines in the file",
+                    extra=dict(
+                        file_path=change.after_filepath,
+                        is_missing_head=(head_analysis_file_data is None),
+                        is_missing_base=(base_analysis_file_data is None),
+                    ),
+                )
+                return {"all": True, "lines": None}
+
             for base_line in change.lines_only_on_base:
                 corresponding_exec_line = (
                     base_analysis_file_data.get_corresponding_executable_line(base_line)
