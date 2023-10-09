@@ -105,7 +105,7 @@ class UploadFinisherTask(BaseCodecovTask):
                 return result
         except LockError:
             log.warning(
-                "Unable to acquire lock for key %s. Retrying",
+                "Unable to acquire lock for key %s.",
                 lock_name,
                 extra=dict(
                     commit=commitid,
