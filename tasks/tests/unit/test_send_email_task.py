@@ -98,18 +98,22 @@ class TestSendEmailTask(object):
     async def test_send_email_no_owner(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
-        owner = OwnerFactory.create()
+        owner = OwnerFactory.create(email=None)
         dbsession.add(owner)
         dbsession.flush()
-        with pytest.raises(TemplateNotFound):
-            result = await SendEmailTask().run_async(
-                db_session=dbsession,
-                ownerid=owner.ownerid,
-                from_addr="test_from@codecov.io",
-                template_name="non_existent",
-                subject="Test",
-                username="test_username",
-            )
+        result = await SendEmailTask().run_async(
+            db_session=dbsession,
+            ownerid=owner.ownerid,
+            from_addr="test_from@codecov.io",
+            template_name="test",
+            subject="Test",
+            username="test_username",
+        )
+
+        assert result == {
+            "email_successful": False,
+            "err_msg": "Owner does not have email",
+        }
 
     @pytest.mark.asyncio
     async def test_send_email_missing_kwargs(
