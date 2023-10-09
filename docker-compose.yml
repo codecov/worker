@@ -41,4 +41,6 @@ services:
           size: 2048M
   redis:
     image: redis:6-alpine
+  mailhog:
+    image: mailhog/mailhog:latest
 
