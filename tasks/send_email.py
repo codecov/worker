@@ -1,5 +1,4 @@
 import logging
-from smtplib import SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
 
 from shared.celery_config import send_email_task_name
 
@@ -39,18 +38,26 @@ class SendEmailTask(BaseCodecovTask):
                     "Unable to find owner",
                     extra=log_extra_dict,
                 )
-                return None
+                return {"email_successful": False, "err_msg": "Unable to find owner"}
+
             to_addr = owner.email
             if not owner.email:
                 log.warning("Owner does not have email", extra=log_extra_dict)
+                return {
+                    "email_successful": False,
+                    "err_msg": "Owner does not have email",
+                }
 
             smtp_service = services.smtp.SMTPService()
 
             if not smtp_service.active():
                 log.warning(
-                    "Cannot send email because SMTP is not configured for this installation of codecov."
+                    "Cannot send email because SMTP is not configured for this installation of codecov"
                 )
-                return None
+                return {
+                    "email_successful": False,
+                    "err_msg": "Cannot send email because SMTP is not configured for this installation of codecov",
+                }
             template_service = TemplateService()
 
             with metrics.timer("worker.tasks.send_email.render_templates"):
@@ -62,9 +69,13 @@ class SendEmailTask(BaseCodecovTask):
 
             email_wrapper = Email(to_addr, from_addr, subject, text, html)
 
+            err_msg = None
             metrics.incr(f"worker.tasks.send_email.attempt")
             with metrics.timer("worker.tasks.send_email.send"):
-                err_msg = smtp_service.send(email_wrapper)
+                try:
+                    smtp_service.send(email_wrapper)
+                except services.smtp.SMTPServiceError as exc:
+                    err_msg = str(exc)
 
             if err_msg is not None:
                 log.warning(f"Failed to send email: {err_msg}", extra=log_extra_dict)

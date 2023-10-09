@@ -9,7 +9,7 @@ from shared.config import ConfigHelper
 from shared.utils.test_utils.mock_metrics import mock_metrics as utils_mock_metrics
 
 from database.tests.factories import OwnerFactory
-from services.smtp import SMTPService
+from services.smtp import SMTPService, SMTPServiceError
 from tasks.send_email import SendEmailTask
 
 here = Path(__file__)
@@ -95,6 +95,23 @@ class TestSendEmailTask(object):
             )
 
     @pytest.mark.asyncio
+    async def test_send_email_no_owner(
+        self, mocker, mock_configuration, dbsession, mock_smtp
+    ):
+        owner = OwnerFactory.create()
+        dbsession.add(owner)
+        dbsession.flush()
+        with pytest.raises(TemplateNotFound):
+            result = await SendEmailTask().run_async(
+                db_session=dbsession,
+                ownerid=owner.ownerid,
+                from_addr="test_from@codecov.io",
+                template_name="non_existent",
+                subject="Test",
+                username="test_username",
+            )
+
+    @pytest.mark.asyncio
     async def test_send_email_missing_kwargs(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
@@ -122,13 +139,15 @@ class TestSendEmailTask(object):
             subject="Test",
             username="test_username",
         )
-        assert result is None
+        assert result == {"email_successful": False, "err_msg": "Unable to find owner"}
 
     @pytest.mark.asyncio
     async def test_send_email_recipients_refused(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
-        mock_smtp.configure_mock(**{"send.return_value": "All recipients were refused"})
+        mock_smtp.configure_mock(
+            **{"send.side_effect": SMTPServiceError("All recipients were refused")}
+        )
 
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
@@ -149,7 +168,9 @@ class TestSendEmailTask(object):
     async def test_send_email_sender_refused(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
-        mock_smtp.configure_mock(**{"send.return_value": "Sender was refused"})
+        mock_smtp.configure_mock(
+            **{"send.side_effect": SMTPServiceError("Sender was refused")}
+        )
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
@@ -169,7 +190,11 @@ class TestSendEmailTask(object):
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         mock_smtp.configure_mock(
-            **{"send.return_value": "The SMTP server did not accept the data"}
+            **{
+                "send.side_effect": SMTPServiceError(
+                    "The SMTP server did not accept the data"
+                )
+            }
         )
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
@@ -189,7 +214,9 @@ class TestSendEmailTask(object):
     async def test_send_email_sends_errs(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
-        mock_smtp.configure_mock(**{"send.return_value": "123 abc 456 def"})
+        mock_smtp.configure_mock(
+            **{"send.side_effect": SMTPServiceError("123 abc 456 def")}
+        )
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
@@ -220,4 +247,7 @@ class TestSendEmailTask(object):
             subject="Test",
             username="test_username",
         )
-        assert result is None
+        assert result == {
+            "email_successful": False,
+            "err_msg": "Cannot send email because SMTP is not configured for this installation of codecov",
+        }
