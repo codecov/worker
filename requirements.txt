@@ -48,6 +48,8 @@ cffi==1.14.5
     # via
     #   cryptography
     #   google-crc32c
+cfgv==3.4.0
+    # via pre-commit
 charset-normalizer==2.0.12
     # via requests
 click==8.0.4
@@ -76,6 +78,8 @@ cryptography==41.0.4
     # via shared
 deprecated==1.2.12
     # via opentelemetry-api
+distlib==0.3.7
+    # via virtualenv
 ecdsa==0.16.1
     # via tlslite-ng
 exceptiongroup==1.1.2
@@ -84,6 +88,8 @@ factory-boy==3.2.0
     # via -r requirements.in
 faker==8.8.2
     # via factory-boy
+filelock==3.12.4
+    # via virtualenv
 freezegun==1.2.2
     # via pytest-freezegun
 google-api-core[grpc]==2.11.1
@@ -138,6 +144,8 @@ httpx==0.23.0
     #   -r requirements.in
     #   respx
     #   shared
+identify==2.5.30
+    # via pre-commit
 idna==2.10
     # via
     #   anyio
@@ -168,6 +176,8 @@ monotonic==1.5
     # via analytics-python
 multidict==5.1.0
     # via yarl
+nodeenv==1.8.0
+    # via pre-commit
 oauth2==1.9.0.post1
     # via shared
 oauthlib==3.1.0
@@ -193,8 +203,12 @@ opentelemetry-semantic-conventions==0.23b2
     #   opentelemetry-sdk
 packaging==20.9
     # via pytest
+platformdirs==3.11.0
+    # via virtualenv
 pluggy==0.13.1
     # via pytest
+pre-commit==3.4.0
+    # via -r requirements.in
 prompt-toolkit==3.0.28
     # via click-repl
 proto-plus==1.22.3
@@ -261,6 +275,7 @@ pytz==2022.1
 pyyaml==6.0.1
     # via
     #   -r requirements.in
+    #   pre-commit
     #   vcrpy
 redis==4.5.4
     # via
@@ -341,6 +356,8 @@ vine==5.0.0
     #   amqp
     #   celery
     #   kombu
+virtualenv==20.24.5
+    # via pre-commit
 wcwidth==0.2.5
     # via prompt-toolkit
 wrapt==1.12.1

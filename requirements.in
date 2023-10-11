@@ -11,6 +11,7 @@ jinja2
 analytics-python==1.3.0b1
 lxml>=4.9.1
 mock
+pre-commit
 psycopg2
 PyJWT>=2.4.0
 pytest-asyncio
