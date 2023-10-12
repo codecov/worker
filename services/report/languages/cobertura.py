@@ -121,10 +121,11 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                         for _ in line.iter("condition")
                         if _.attrib.get("coverage") != "100%"
                     ]
+                    covered_conditions, total_conditions = coverage.split("/")
                     if type(coverage) is str and len(conditions) < int(
-                        coverage.split("/")[1]
+                        total_conditions
                     ):
-                        # <line number="23" hits="0" branch="true" condition-coverage="0% (0/2)">
+                        # <line number="23" hits="0" branch="true" condition-coverage="0% (covered/total)">
                         #     <conditions>
                         #         <condition number="0" type="jump" coverage="0%"/>
                         #     </conditions>
@@ -132,15 +133,14 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
 
                         # <line number="3" hits="0" branch="true" condition-coverage="50% (1/2)"/>
 
+                        coverage_difference = int(total_conditions) - int(
+                            covered_conditions
+                        )
+                        missing_condition_elements = range(
+                            len(conditions), coverage_difference
+                        )
                         conditions.extend(
-                            map(
-                                str,
-                                range(
-                                    len(conditions),
-                                    int(coverage.split("/")[1])
-                                    - int(coverage.split("/")[0]),
-                                ),
-                            )
+                            [str(condition) for condition in missing_condition_elements]
                         )
                     if conditions:
                         missing_branches = conditions
