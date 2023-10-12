@@ -38,9 +38,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class NotifyTask(BaseCodecovTask):
-    name = notify_task_name
-
+class NotifyTask(BaseCodecovTask, name=notify_task_name):
     throws = (SoftTimeLimitExceeded,)
 
     async def run_async(

@@ -14,12 +14,10 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class StatusSetErrorTask(BaseCodecovTask):
+class StatusSetErrorTask(BaseCodecovTask, name=status_set_error_task_name):
     """
     Set commit status upon error
     """
-
-    name = status_set_error_task_name
 
     async def run_async(self, db_session, repoid, commitid, *, message=None, **kwargs):
         log.info(

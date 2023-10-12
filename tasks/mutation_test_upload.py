@@ -5,10 +5,8 @@ from services.archive import ArchiveService
 from tasks.base import BaseCodecovTask
 
 
-class MutationTestUploadTask(BaseCodecovTask):
-    # TODO: Move task name to shared
-    name = "app.tasks.mutation_test.upload"
-
+# TODO: Move task name to shared
+class MutationTestUploadTask(BaseCodecovTask, name="app.tasks.mutation_test.upload"):
     async def run_async(
         self,
         db_session,

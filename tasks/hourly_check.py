@@ -8,12 +8,10 @@ from tasks.crontasks import CodecovCronTask
 log = logging.getLogger(__name__)
 
 
-class HourlyCheckTask(CodecovCronTask):
+class HourlyCheckTask(CodecovCronTask, name=hourly_check_task_name):
     @classmethod
     def get_min_seconds_interval_between_executions(cls):
         return 3300  # 55 minutes
-
-    name = hourly_check_task_name
 
     async def run_cron_task(self, db_session, *args, **kwargs):
         log.info("Doing hourly check")

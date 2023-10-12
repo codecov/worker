@@ -12,10 +12,7 @@ from tasks.profiling_collection import profiling_collection_task
 MIN_INTERVAL_PROFILINGS_HOURS = 2
 
 
-class FindUncollectedProfilingsTask(CodecovCronTask):
-
-    name = profiling_finding_task_name
-
+class FindUncollectedProfilingsTask(CodecovCronTask, name=profiling_finding_task_name):
     @classmethod
     def get_min_seconds_interval_between_executions(cls):
         return 800

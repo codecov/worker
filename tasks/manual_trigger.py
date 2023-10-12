@@ -21,10 +21,9 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class ManualTriggerTask(BaseCodecovTask):
-
-    name = manual_upload_completion_trigger_task_name
-
+class ManualTriggerTask(
+    BaseCodecovTask, name=manual_upload_completion_trigger_task_name
+):
     async def run_async(
         self,
         db_session,

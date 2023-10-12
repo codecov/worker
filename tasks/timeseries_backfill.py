@@ -20,11 +20,10 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class TimeseriesBackfillCommitsTask(BaseCodecovTask):
-
-    # TODO: add name to `shared.celery_config`
-    name = "app.tasks.timeseries.backfill_commits"
-
+# TODO: add name to `shared.celery_config`
+class TimeseriesBackfillCommitsTask(
+    BaseCodecovTask, name="app.tasks.timeseries.backfill_commits"
+):
     async def run_async(
         self,
         db_session: Session,

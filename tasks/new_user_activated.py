@@ -16,7 +16,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class NewUserActivatedTask(BaseCodecovTask):
+class NewUserActivatedTask(BaseCodecovTask, name=new_user_activated_task_name):
     """
     This task resends notifications for pull requests that were authored by a newly activated
     user for an org that is on a PR-author billing plan ('users-pr-inapp*'). We do this so that
@@ -32,8 +32,6 @@ class NewUserActivatedTask(BaseCodecovTask):
         - Schedule notify tasks to run again for the pulls that previously ran with just the
             "upgrade" decoration
     """
-
-    name = new_user_activated_task_name
 
     async def run_async(self, db_session, org_ownerid, user_ownerid, *args, **kwargs):
         log.info(

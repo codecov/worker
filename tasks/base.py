@@ -4,7 +4,9 @@ from datetime import datetime
 
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
+from prometheus_client import REGISTRY
 from shared.celery_router import route_tasks_based_on_user_plan
+from shared.metrics import Counter, Summary
 from sqlalchemy.exc import (
     DataError,
     IntegrityError,
@@ -19,6 +21,17 @@ from helpers.metrics import metrics
 
 log = logging.getLogger("worker")
 
+REQUEST_TIMEOUT_COUNTER = Counter(
+    "worker_task_counts_timeouts",
+    "Number of times a task experienced any kind of timeout",
+    ["task"],
+)
+REQUEST_HARD_TIMEOUT_COUNTER = Counter(
+    "worker_task_counts_hard_timeouts",
+    "Number of times a task experienced a hard timeout",
+    ["task"],
+)
+
 
 class BaseCodecovRequest(Request):
     @property
@@ -28,17 +41,66 @@ class BaseCodecovRequest(Request):
     def on_timeout(self, soft: bool, timeout: int):
         res = super().on_timeout(soft, timeout)
         if not soft:
+            REQUEST_HARD_TIMEOUT_COUNTER.labels(task=self.name).inc()
             metrics.incr(f"{self.metrics_prefix}.hardtimeout")
+        REQUEST_TIMEOUT_COUNTER.labels(task=self.name).inc()
         metrics.incr(f"{self.metrics_prefix}.timeout")
         return res
+
+
+# Task reliability metrics
+TASK_RUN_COUNTER = Counter(
+    "worker_task_counts_runs", "Number of times this task was run", ["task"]
+)
+TASK_RETRY_COUNTER = Counter(
+    "worker_task_counts_retries", "Number of times this task was retried", ["task"]
+)
+TASK_SUCCESS_COUNTER = Counter(
+    "worker_task_counts_successes",
+    "Number of times this task completed without error",
+    ["task"],
+)
+TASK_FAILURE_COUNTER = Counter(
+    "worker_task_counts_failures",
+    "Number of times this task failed with an exception",
+    ["task"],
+)
+
+# Task runtime metrics
+TASK_FULL_RUNTIME = Summary(
+    "worker_task_timers_full_runtime_seconds",
+    "Total runtime in seconds of this task including db commits and error handling",
+    ["task"],
+)
+TASK_CORE_RUNTIME = Summary(
+    "worker_task_timers_core_runtime_seconds",
+    "Runtime in seconds of this task's main logic, not including db commits or error handling",
+    ["task"],
+)
+TASK_TIME_IN_QUEUE = Summary(
+    "worker_tasks_timers_time_in_queue_seconds",
+    "Time in {TODO} spent waiting in the queue before being run",
+    ["task", "queue"],
+)
 
 
 class BaseCodecovTask(celery_app.Task):
     Request = BaseCodecovRequest
 
-    @property
-    def metrics_prefix(self):
-        return f"worker.task.{self.name}"
+    def __init_subclass__(cls, name=None):
+        cls.name = name
+
+        cls.metrics_prefix = f"worker.task.{name}"
+
+        # Task reliability metrics
+        cls.task_run_counter = TASK_RUN_COUNTER.labels(task=name)
+        cls.task_retry_counter = TASK_RETRY_COUNTER.labels(task=name)
+        cls.task_success_counter = TASK_SUCCESS_COUNTER.labels(task=name)
+        cls.task_failure_counter = TASK_FAILURE_COUNTER.labels(task=name)
+
+        # Task runtime metrics
+        cls.task_full_runtime = TASK_FULL_RUNTIME.labels(task=name)
+        cls.task_core_runtime = TASK_CORE_RUNTIME.labels(task=name)
 
     @property
     def hard_time_limit_task(self):
@@ -104,7 +166,13 @@ class BaseCodecovTask(celery_app.Task):
             now = datetime.now()
             delta = now - enqueued_time
             metrics.timing(f"{self.metrics_prefix}.time_in_queue", delta)
+
             queue_name = self.request.get("delivery_info", {}).get("routing_key", None)
+            time_in_queue_timer = TASK_TIME_IN_QUEUE.labels(
+                task=self.name, queue=queue_name
+            )  # TODO is None a valid label value
+            time_in_queue_timer.observe(delta.total_seconds())
+
             if queue_name:
                 metrics.timing(f"worker.queues.{queue_name}.time_in_queue", delta)
                 metrics.timing(
@@ -112,25 +180,30 @@ class BaseCodecovTask(celery_app.Task):
                 )
 
     def run(self, *args, **kwargs):
+        self.task_run_counter.inc()
         self._emit_queue_metrics()
-        with metrics.timer(f"{self.metrics_prefix}.full"):
-            db_session = get_db_session()
-            try:
-                with metrics.timer(f"{self.metrics_prefix}.run"):
-                    return asyncio.run(self.run_async(db_session, *args, **kwargs))
-            except (DataError, IntegrityError):
-                log.exception(
-                    "Errors related to the constraints of database happened",
-                    extra=dict(task_args=args, task_kwargs=kwargs),
-                )
-                db_session.rollback()
-                self.retry()
-            except SQLAlchemyError as ex:
-                self._analyse_error(ex, args, kwargs)
-                db_session.rollback()
-                self.retry()
-            finally:
-                self.wrap_up_dbsession(db_session)
+        with self.task_full_runtime.time():  # Timer isn't tested
+            with metrics.timer(f"{self.metrics_prefix}.full"):
+                db_session = get_db_session()
+                try:
+                    with self.task_core_runtime.time():  # Timer isn't tested
+                        with metrics.timer(f"{self.metrics_prefix}.run"):
+                            return asyncio.run(
+                                self.run_async(db_session, *args, **kwargs)
+                            )
+                except (DataError, IntegrityError):
+                    log.exception(
+                        "Errors related to the constraints of database happened",
+                        extra=dict(task_args=args, task_kwargs=kwargs),
+                    )
+                    db_session.rollback()
+                    self.retry()
+                except SQLAlchemyError as ex:
+                    self._analyse_error(ex, args, kwargs)
+                    db_session.rollback()
+                    self.retry()
+                finally:
+                    self.wrap_up_dbsession(db_session)
 
     def wrap_up_dbsession(self, db_session):
         """
@@ -173,11 +246,13 @@ class BaseCodecovTask(celery_app.Task):
 
     def on_retry(self, *args, **kwargs):
         res = super().on_retry(*args, **kwargs)
+        self.task_retry_counter.inc()
         metrics.incr(f"{self.metrics_prefix}.retries")
         return res
 
     def on_success(self, *args, **kwargs):
         res = super().on_success(*args, **kwargs)
+        self.task_success_counter.inc()
         metrics.incr(f"{self.metrics_prefix}.successes")
         return res
 
@@ -186,5 +261,6 @@ class BaseCodecovTask(celery_app.Task):
         Includes SoftTimeoutLimitException, for example
         """
         res = super().on_failure(*args, **kwargs)
+        self.task_failure_counter.inc()
         metrics.incr(f"{self.metrics_prefix}.failures")
         return res

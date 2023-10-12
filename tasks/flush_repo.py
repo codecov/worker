@@ -32,9 +32,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class FlushRepoTask(BaseCodecovTask):
-    name = "app.tasks.flush_repo.FlushRepo"
-
+class FlushRepoTask(BaseCodecovTask, name="app.tasks.flush_repo.FlushRepo"):
     async def run_async(self, db_session, *, repoid: int, **kwargs):
         log.info("Deleting repo contents", extra=dict(repoid=repoid))
         repo = db_session.query(Repository).filter_by(repoid=repoid).first()

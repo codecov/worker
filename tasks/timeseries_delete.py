@@ -12,10 +12,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class TimeseriesDeleteTask(BaseCodecovTask):
-
-    name = timeseries_delete_task_name
-
+class TimeseriesDeleteTask(BaseCodecovTask, name=timeseries_delete_task_name):
     async def run_async(
         self,
         db_session: Session,

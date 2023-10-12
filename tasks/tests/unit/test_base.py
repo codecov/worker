@@ -8,6 +8,7 @@ from celery import chain
 from celery.contrib.testing.mocks import TaskMessage
 from celery.exceptions import Retry, SoftTimeLimitExceeded
 from mock import call
+from prometheus_client import REGISTRY
 from shared.billing import BillingPlan
 from shared.celery_config import sync_repos_task_name, upload_task_name
 from sqlalchemy.exc import DBAPIError, IntegrityError, InvalidRequestError
@@ -19,14 +20,14 @@ from tasks.base import celery_app as base_celery_app
 here = Path(__file__)
 
 
-class SampleTask(BaseCodecovTask):
-    name = "test.SampleTask"
-
+class SampleTask(BaseCodecovTask, name="test.SampleTask"):
     async def run_async(self, dbsession):
         return {"unusual": "return", "value": ["There"]}
 
 
-class SampleTaskWithArbitraryError(BaseCodecovTask):
+class SampleTaskWithArbitraryError(
+    BaseCodecovTask, name="test.SampleTaskWithArbitraryError"
+):
     def __init__(self, error):
         self.error = error
 
@@ -38,7 +39,9 @@ class SampleTaskWithArbitraryError(BaseCodecovTask):
         raise Retry()
 
 
-class SampleTaskWithArbitraryPostgresError(BaseCodecovTask):
+class SampleTaskWithArbitraryPostgresError(
+    BaseCodecovTask, name="test.SampleTaskWithArbitraryPostgresError"
+):
     def __init__(self, error):
         self.error = error
 
@@ -50,23 +53,17 @@ class SampleTaskWithArbitraryPostgresError(BaseCodecovTask):
         raise Retry()
 
 
-class SampleTaskWithSoftTimeout(BaseCodecovTask):
+class SampleTaskWithSoftTimeout(BaseCodecovTask, name="test.SampleTaskWithSoftTimeout"):
     async def run_async(self, dbsession):
         raise SoftTimeLimitExceeded()
 
 
-class FailureSampleTask(BaseCodecovTask):
-
-    name = "test.FailureSampleTask"
-
+class FailureSampleTask(BaseCodecovTask, name="test.FailureSampleTask"):
     async def run_async(self, *args, **kwargs):
         raise Exception("Whhhhyyyyyyy")
 
 
-class RetrySampleTask(BaseCodecovTask):
-
-    name = "test.RetrySampleTask"
-
+class RetrySampleTask(BaseCodecovTask, name="test.RetrySampleTask"):
     def run(self, *args, **kwargs):
         self.retry()
 
@@ -114,6 +111,13 @@ class TestBaseCodecovTask(object):
                     timedelta(seconds=61, microseconds=123),
                 ),
             ]
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                "worker_tasks_timers_time_in_queue_seconds_sum",
+                labels={"task": SampleTask.name, "queue": "my-queue"},
+            )
+            == 61.000123
         )
 
     @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")
@@ -200,24 +204,36 @@ class TestBaseCodecovTask(object):
 
 class TestBaseCodecovTaskHooks(object):
     def test_sample_task_success(self, celery_app, mocker):
-        class SampleTask(BaseCodecovTask):
-            name = "test.SampleTask"
-
+        class SampleTask(BaseCodecovTask, name="test.SampleTask"):
             async def run_async(self, dbsession):
                 return {"unusual": "return", "value": ["There"]}
 
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         task = celery_app.tasks[DTask.name]
+
+        prom_run_counter_before = REGISTRY.get_sample_value(
+            "worker_task_counts_runs_total", labels={"task": DTask.name}
+        )
+        prom_success_counter_before = REGISTRY.get_sample_value(
+            "worker_task_counts_successes_total", labels={"task": DTask.name}
+        )
         k = task.apply()
+        prom_run_counter_after = REGISTRY.get_sample_value(
+            "worker_task_counts_runs_total", labels={"task": DTask.name}
+        )
+        prom_success_counter_after = REGISTRY.get_sample_value(
+            "worker_task_counts_successes_total", labels={"task": DTask.name}
+        )
+
         res = k.get()
         assert res == {"unusual": "return", "value": ["There"]}
         mock_metrics.assert_called_with("worker.task.test.SampleTask.successes")
+        assert prom_run_counter_after - prom_run_counter_before == 1
+        assert prom_success_counter_after - prom_success_counter_before == 1
 
     def test_sample_task_failure(self, celery_app, mocker):
-        class FailureSampleTask(BaseCodecovTask):
-            name = "test.FailureSampleTask"
-
+        class FailureSampleTask(BaseCodecovTask, name="test.FailureSampleTask"):
             async def run_async(self, *args, **kwargs):
                 raise Exception("Whhhhyyyyyyy")
 
@@ -225,7 +241,21 @@ class TestBaseCodecovTaskHooks(object):
         DTask = celery_app.register_task(FailureSampleTask())
         task = celery_app.tasks[DTask.name]
         with pytest.raises(Exception) as exc:
+            prom_run_counter_before = REGISTRY.get_sample_value(
+                "worker_task_counts_runs_total", labels={"task": DTask.name}
+            )
+            prom_failure_counter_before = REGISTRY.get_sample_value(
+                "worker_task_counts_failures_total", labels={"task": DTask.name}
+            )
             task.apply().get()
+            prom_run_counter_after = REGISTRY.get_sample_value(
+                "worker_task_counts_runs_total", labels={"task": DTask.name}
+            )
+            prom_failure_counter_after = REGISTRY.get_sample_value(
+                "worker_task_counts_failures_total", labels={"task": DTask.name}
+            )
+            assert prom_run_counter_after - prom_run_counter_before == 1
+            assert prom_failure_counter_after - prom_failure_counter_before == 1
         assert exc.value.args == ("Whhhhyyyyyyy",)
         mock_metrics.assert_called_with("worker.task.test.FailureSampleTask.failures")
 
@@ -237,8 +267,15 @@ class TestBaseCodecovTaskHooks(object):
         # metric be called
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
         task = RetrySampleTask()
+        prom_retry_counter_before = REGISTRY.get_sample_value(
+            "worker_task_counts_retries_total", labels={"task": task.name}
+        )
         task.on_retry("exc", "task_id", "args", "kwargs", "einfo")
+        prom_retry_counter_after = REGISTRY.get_sample_value(
+            "worker_task_counts_retries_total", labels={"task": task.name}
+        )
         mock_metrics.assert_called_with("worker.task.test.RetrySampleTask.retries")
+        assert prom_retry_counter_after - prom_retry_counter_before == 1
 
 
 class TestBaseCodecovRequest(object):
@@ -270,25 +307,55 @@ class TestBaseCodecovRequest(object):
         )
 
     def test_sample_task_timeout(self, celery_app, mocker):
-        class SampleTask(BaseCodecovTask):
-            name = "test.SampleTask"
+        class SampleTask(BaseCodecovTask, name="test.SampleTask"):
+            pass
 
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
+        prom_timeout_counter_before = (
+            REGISTRY.get_sample_value(
+                "worker_task_counts_timeouts_total", labels={"task": DTask.name}
+            )
+            or 0
+        )
         request.on_timeout(True, 10)
+        prom_timeout_counter_after = REGISTRY.get_sample_value(
+            "worker_task_counts_timeouts_total", labels={"task": DTask.name}
+        )
         mock_metrics.assert_called_with("worker.task.test.SampleTask.timeout")
+        assert prom_timeout_counter_after - prom_timeout_counter_before == 1
 
     def test_sample_task_hard_timeout(self, celery_app, mocker):
-        class SampleTask(BaseCodecovTask):
-            name = "test.SampleTask"
+        class SampleTask(BaseCodecovTask, name="test.SampleTask"):
+            pass
 
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
+        prom_timeout_counter_before = (
+            REGISTRY.get_sample_value(
+                "worker_task_counts_timeouts_total", labels={"task": DTask.name}
+            )
+            or 0
+        )
+        prom_hard_timeout_counter_before = (
+            REGISTRY.get_sample_value(
+                "worker_task_counts_hard_timeouts_total", labels={"task": DTask.name}
+            )
+            or 0
+        )
         request.on_timeout(False, 10)
+        prom_timeout_counter_after = REGISTRY.get_sample_value(
+            "worker_task_counts_timeouts_total", labels={"task": DTask.name}
+        )
+        prom_hard_timeout_counter_after = REGISTRY.get_sample_value(
+            "worker_task_counts_hard_timeouts_total", labels={"task": DTask.name}
+        )
         mock_metrics.assert_any_call("worker.task.test.SampleTask.hardtimeout")
         mock_metrics.assert_any_call("worker.task.test.SampleTask.timeout")
+        assert prom_timeout_counter_after - prom_timeout_counter_before == 1
+        assert prom_hard_timeout_counter_after - prom_hard_timeout_counter_before == 1
 
 
 class TestBaseCodecovTaskApplyAsyncOverride(object):
