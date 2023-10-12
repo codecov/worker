@@ -125,7 +125,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                     if type(coverage) is str and len(conditions) < int(
                         total_conditions
                     ):
-                        # <line number="23" hits="0" branch="true" condition-coverage="0% (covered/total)">
+                        # <line number="23" hits="0" branch="true" condition-coverage="0% (0/2)">
                         #     <conditions>
                         #         <condition number="0" type="jump" coverage="0%"/>
                         #     </conditions>
