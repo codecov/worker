@@ -6,6 +6,7 @@ import typing
 import click
 from shared.celery_config import BaseCeleryConfig
 from shared.config import get_config
+from shared.metrics import start_prometheus
 from shared.storage.exceptions import BucketAlreadyExistsError
 
 import app
@@ -51,6 +52,8 @@ def setup_worker():
         external_deps_folder = get_external_dependencies_folder()
         log.info(f"External dependencies folder configured to {external_deps_folder}")
         sys.path.append(external_deps_folder)
+
+    start_prometheus(9996)  # 9996 is an arbitrary port number
 
     storage_client = get_storage_client()
     minio_config = get_config("services", "minio")
