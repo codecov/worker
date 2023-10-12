@@ -97,7 +97,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                 branch = _line.get("branch", "")
                 condition_coverage = _line.get("condition-coverage", "")
                 if (
-                    branch == "true"
+                    branch.lower() == "true"
                     and re.search("\(\d+\/\d+\)", condition_coverage) is not None
                 ):
                     coverage = condition_coverage.split(" ", 1)[1][1:-1]  # 1/2
@@ -121,23 +121,31 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                         for _ in line.iter("condition")
                         if _.attrib.get("coverage") != "100%"
                     ]
-                    if (
-                        type(coverage) is str
-                        and coverage[0] == "0"
-                        and len(conditions) < int(coverage.split("/")[1])
-                    ):
-                        # <line number="23" hits="0" branch="true" condition-coverage="0% (0/2)">
-                        #     <conditions>
-                        #         <condition number="0" type="jump" coverage="0%"/>
-                        #     </conditions>
-                        # </line>
-                        conditions.extend(
-                            map(
-                                str, range(len(conditions), int(coverage.split("/")[1]))
+                    if type(coverage) is str:
+                        covered_conditions, total_conditions = coverage.split("/")
+                        if len(conditions) < int(total_conditions):
+                            # <line number="23" hits="0" branch="true" condition-coverage="0% (0/2)">
+                            #     <conditions>
+                            #         <condition number="0" type="jump" coverage="0%"/>
+                            #     </conditions>
+                            # </line>
+
+                            # <line number="3" hits="0" branch="true" condition-coverage="50% (1/2)"/>
+
+                            coverage_difference = int(total_conditions) - int(
+                                covered_conditions
                             )
-                        )
-                    if conditions:
-                        missing_branches = conditions
+                            missing_condition_elements = range(
+                                len(conditions), coverage_difference
+                            )
+                            conditions.extend(
+                                [
+                                    str(condition)
+                                    for condition in missing_condition_elements
+                                ]
+                            )
+                        if conditions:
+                            missing_branches = conditions
                 _file.append(
                     ln,
                     report_builder_session.create_coverage_line(
