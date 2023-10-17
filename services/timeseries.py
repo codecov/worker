@@ -18,6 +18,21 @@ log = logging.getLogger(__name__)
 def save_commit_measurements(
     commit: Commit, dataset_names: Iterable[str] = None
 ) -> None:
+    try:
+        _save_commit_measurements(commit, dataset_names)
+    except Exception as e:
+        log.error(
+            "An error happened while saving commit measurements",
+            extra=dict(
+                commit=commit.commitid,
+                error=e,
+            ),
+        )
+
+
+def _save_commit_measurements(
+    commit: Commit, dataset_names: Iterable[str] = None
+) -> None:
     if not timeseries_enabled():
         return
 
