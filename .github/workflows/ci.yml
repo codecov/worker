@@ -1,6 +1,9 @@
 name: Worker CI
 
 on:
+  release:
+    types:
+      - created
   push:
     tags:
       - prod-*
@@ -77,7 +80,7 @@ jobs:
   production:
     name: Push Production Image
     needs: [ build, test ]
-    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/production') && github.repository_owner == 'codecov' }}
+    if: ${{ github.event_name == 'release' && startsWith(github.ref, 'refs/tags/prod') && github.repository_owner == 'codecov' }}
     uses: codecov/gha-workflows/.github/workflows/push-env.yml@v1.2.3
     secrets: inherit
     with:
@@ -88,7 +91,7 @@ jobs:
     name: Push Self Hosted Image
     needs: [ build-self-hosted, test ]
     secrets: inherit
-    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/production') && github.repository_owner == 'codecov' }}
+    if: ${{ github.event_name == 'release' && startsWith(github.ref, 'refs/tags/prod') && github.repository_owner == 'codecov' }}
     uses: codecov/gha-workflows/.github/workflows/self-hosted.yml@v1.2.3
     with:
       push_rolling: true
