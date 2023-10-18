@@ -1,3 +1,4 @@
+import json
 import unittest
 from enum import Enum, auto
 from unittest.mock import ANY, patch
@@ -342,3 +343,18 @@ class TestCheckpointLogger(unittest.TestCase):
         assert metrics.data["DecoratedEnum.total.failed"] == 1
         assert metrics.data["DecoratedEnum.total.ended"] == 3
         assert metrics.data["DecoratedEnum.total.succeeded"] == 2
+
+    def test_serialize_between_tasks(self):
+        """
+        BaseFlow must inherit from str in order for our checkpoints dict to be
+        readily serializable to JSON for passing between celery tasks.
+
+        We encode the flow name and checkpoint name in the string value so that
+        we can validate when we deserialize. Make sure that all works.
+        """
+        deserialized = {
+            TestEnum1.A: 1337,
+            TestEnum1.B: 9001,
+        }
+        assert json.dumps(deserialized) == '{"TestEnum1.A": 1337, "TestEnum1.B": 9001}'
+        assert json.loads(json.dumps(deserialized)) == deserialized
