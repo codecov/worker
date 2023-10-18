@@ -294,6 +294,7 @@ class UploadTask(BaseCodecovTask):
         commit = commits.first()
         assert commit, "Commit not found in database."
         repository = commit.repository
+        repository.updatestamp = datetime.now()
         repository_service = None
         was_updated, was_setup = False, False
         try:
