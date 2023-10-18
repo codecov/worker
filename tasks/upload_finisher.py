@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import Iterable
 
 from redis.exceptions import LockError
 from shared.celery_config import (
@@ -92,7 +93,7 @@ class UploadFinisherTask(BaseCodecovTask):
                     report_code,
                     checkpoints,
                 )
-                save_commit_measurements(commit)
+                self._save_commit_measurements(commit)
                 self.invalidate_caches(redis_connection, commit)
                 log.info(
                     "Finished upload_finisher task",
@@ -110,6 +111,18 @@ class UploadFinisherTask(BaseCodecovTask):
                 extra=dict(
                     commit=commitid,
                     repoid=repoid,
+                ),
+            )
+
+    def _save_commit_measurements(self, commit: Commit) -> None:
+        try:
+            save_commit_measurements(commit)
+        except Exception as e:
+            log.error(
+                "An error happened while saving commit measurements",
+                extra=dict(
+                    commit=commit.commitid,
+                    error=e,
                 ),
             )
 
