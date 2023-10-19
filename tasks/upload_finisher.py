@@ -12,9 +12,8 @@ from shared.yaml import UserYaml
 
 from app import celery_app
 from database.models import Commit, Pull
-from helpers.checkpoint_logger import _kwargs_key
+from helpers.checkpoint_logger import UploadFlow, _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
-from helpers.checkpoint_logger.flows import UploadFlow
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -57,7 +56,11 @@ class UploadFinisherTask(BaseCodecovTask):
     ):
         try:
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
-            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
+            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE).submit_subflow(
+                "batch_processing_duration",
+                UploadFlow.INITIAL_PROCESSING_COMPLETE,
+                UploadFlow.BATCH_PROCESSING_COMPLETE,
+            )
         except ValueError as e:
             log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
 
@@ -197,10 +200,11 @@ class UploadFinisherTask(BaseCodecovTask):
             commit.state = "skipped"
 
         if checkpoints:
-            checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
-            if not notifications_called:
-                checkpoints.log(UploadFlow.SKIPPING_NOTIFICATION)
-
+            checkpoints.log(UploadFlow.PROCESSING_COMPLETE).submit_subflow(
+                "total_processing_duration",
+                UploadFlow.PROCESSING_BEGIN,
+                UploadFlow.PROCESSING_COMPLETE,
+            )
         return {"notifications_called": notifications_called}
 
     def should_call_notifications(
