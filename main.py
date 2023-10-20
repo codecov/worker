@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 import sys
 import typing
 
 import click
+from celery.signals import worker_process_shutdown
+from prometheus_client import REGISTRY, CollectorRegistry, multiprocess
 from shared.celery_config import BaseCeleryConfig
 from shared.config import get_config
 from shared.metrics import start_prometheus
@@ -44,6 +47,11 @@ def web():
     raise click.ClickException("System not suitable to run WEB mode")
 
 
+@worker_process_shutdown.connect
+def mark_process_dead(pid, exitcode, **kwargs):
+    multiprocess.mark_process_dead(pid)
+
+
 def setup_worker():
     print(initialization_text.format(version=get_current_version()))
 
@@ -53,7 +61,12 @@ def setup_worker():
         log.info(f"External dependencies folder configured to {external_deps_folder}")
         sys.path.append(external_deps_folder)
 
-    start_prometheus(9996)  # 9996 is an arbitrary port number
+    registry = REGISTRY
+    if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+
+    start_prometheus(9996, registry=registry)  # 9996 is an arbitrary port number
 
     storage_client = get_storage_client()
     minio_config = get_config("services", "minio")
