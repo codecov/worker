@@ -21,6 +21,9 @@ export WORKER_DOCKER_REPO=${AR_REPO}
 export WORKER_DOCKER_VERSION=${VERSION}
 export CODECOV_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
+# Codecov CLI version to use
+CODECOV_CLI_VERSION := 0.3.8
+
 build:
 	$(MAKE) build.requirements
 	$(MAKE) build.local
@@ -198,7 +201,7 @@ test_env.check_db:
 	docker-compose exec worker make test_env.container_check_db
 
 test_env.install_cli:
-	pip install --no-cache-dir codecov-cli
+	pip install --no-cache-dir codecov-cli==$(CODECOV_CLI_VERSION)
 
 test_env.container_prepare:
 	apk add -U curl git build-base jq
