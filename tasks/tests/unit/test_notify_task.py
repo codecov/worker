@@ -18,8 +18,7 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
-from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
-from helpers.checkpoint_logger.flows import UploadFlow
+from helpers.checkpoint_logger import CheckpointLogger, UploadFlow, _kwargs_key
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.decoration import DecorationDetails
 from services.notification import NotificationService

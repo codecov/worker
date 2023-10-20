@@ -1,4 +1,5 @@
 import json
+from unittest.mock import PropertyMock
 
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
@@ -36,7 +37,10 @@ class TestArchiveField(object):
             self._archive_field_storage_path = archive_value
             self.should_write_to_gcs = should_write_to_gcs
 
-        archive_field = ArchiveField(should_write_to_storage_fn=should_write_to_storage)
+        archive_field = ArchiveField(
+            should_write_to_storage_fn=should_write_to_storage,
+            read_timeout=0.1,
+        )
 
     class ClassWithArchiveFieldMissingMethods:
         commit: Commit
@@ -80,6 +84,11 @@ class TestArchiveField(object):
         assert mock_read_file.call_count == 1
 
     def test_archive_getter_file_not_in_storage(self, db, mocker):
+        mocker.patch(
+            "database.utils.ArchiveField.read_timeout",
+            new_callable=PropertyMock,
+            return_value=0.1,
+        )
         mock_read_file = mocker.MagicMock(side_effect=FileNotInStorageError())
         mock_archive_service = mocker.patch("database.utils.ArchiveService")
         mock_archive_service.return_value.read_file = mock_read_file

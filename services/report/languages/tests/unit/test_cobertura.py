@@ -49,6 +49,7 @@ xml = """<?xml version="1.0" ?>
                         </line>
                         <line branch="true" condition-coverage="0%% (0/2)" hits="1" missing-branches="exit,exit,exit" number="7"/>
                         <line branch="true" condition-coverage="50%%" hits="1" number="8"/>
+                        <line number="9" hits="0" branch="true" condition-coverage="50%% (1/2)"/>
                     </lines>
                 </class>
                 <!-- Scala coverage -->
@@ -130,6 +131,7 @@ class TestCobertura(BaseTestCase):
                         None,
                     ),
                     (8, 1, None, [[0, 1, None, None, None]], None, None),
+                    (9, "1/2", "b", [[0, "1/2", ["0"], None, None]], None, None),
                 ],
             },
             "report": {
@@ -145,9 +147,9 @@ class TestCobertura(BaseTestCase):
                     ],
                     "source": [
                         0,
-                        [0, 8, 3, 2, 3, "37.50000", 6, 0, 0, 0, 0, 0, 0],
+                        [0, 9, 3, 2, 4, "33.33333", 7, 0, 0, 0, 0, 0, 0],
                         {
-                            "0": [0, 8, 3, 2, 3, "37.50000", 6],
+                            "0": [0, 9, 3, 2, 4, "33.33333", 7],
                             "meta": {"session_count": 1},
                         },
                         None,
@@ -159,15 +161,15 @@ class TestCobertura(BaseTestCase):
                 "C": 0,
                 "M": 0,
                 "N": 0,
-                "b": 7,
-                "c": "45.45455",
+                "b": 8,
+                "c": "41.66667",
                 "d": 1,
                 "diff": None,
                 "f": 2,
                 "h": 5,
                 "m": 3,
-                "n": 11,
-                "p": 3,
+                "n": 12,
+                "p": 4,
                 "s": 0,
             },
         }
@@ -193,7 +195,7 @@ class TestCobertura(BaseTestCase):
         )
         processed_report = self.convert_report_to_better_readable(report)
         assert len(processed_report["archive"]["file"]) == 3
-        assert processed_report["totals"]["c"] == "45.45455"
+        assert processed_report["totals"]["c"] == "41.66667"
 
     @pytest.mark.parametrize(
         "date",
