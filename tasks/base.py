@@ -6,7 +6,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
 from prometheus_client import REGISTRY
 from shared.celery_router import route_tasks_based_on_user_plan
-from shared.metrics import Counter, Summary
+from shared.metrics import Counter, Histogram
 from sqlalchemy.exc import (
     DataError,
     IntegrityError,
@@ -67,20 +67,23 @@ TASK_FAILURE_COUNTER = Counter(
 )
 
 # Task runtime metrics
-TASK_FULL_RUNTIME = Summary(
+TASK_FULL_RUNTIME = Histogram(
     "worker_task_timers_full_runtime_seconds",
     "Total runtime in seconds of this task including db commits and error handling",
     ["task"],
+    buckets=[0.05, 0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 180, 300, 600, 900],
 )
-TASK_CORE_RUNTIME = Summary(
+TASK_CORE_RUNTIME = Histogram(
     "worker_task_timers_core_runtime_seconds",
     "Runtime in seconds of this task's main logic, not including db commits or error handling",
     ["task"],
+    buckets=[0.05, 0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 180, 300, 600, 900],
 )
-TASK_TIME_IN_QUEUE = Summary(
+TASK_TIME_IN_QUEUE = Histogram(
     "worker_tasks_timers_time_in_queue_seconds",
     "Time in {TODO} spent waiting in the queue before being run",
     ["task", "queue"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5, 7, 10],
 )
 
 
