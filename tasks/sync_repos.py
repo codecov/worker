@@ -10,6 +10,7 @@ from sqlalchemy import and_
 
 from app import celery_app
 from database.models import Owner, Repository
+from rollouts import LIST_REPOS_GENERATOR_BY_OWNER_SLUG, owner_slug
 from services.owner import get_owner_provider_service
 from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
@@ -71,7 +72,7 @@ class SyncReposTask(BaseCodecovTask):
                 if using_integration:
                     with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
                         await self.sync_repos_using_integration(
-                            db_session, git, ownerid, username
+                            db_session, git, owner, username
                         )
                 else:
                     with metrics.timer(f"{metrics_scope}.sync_repos"):
@@ -81,14 +82,17 @@ class SyncReposTask(BaseCodecovTask):
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 
-    async def sync_repos_using_integration(self, db_session, git, ownerid, username):
+    async def sync_repos_using_integration(self, db_session, git, owner, username):
+        ownerid = owner.ownerid
         log.info(
             "Syncing repos using integration",
             extra=dict(ownerid=ownerid, username=username),
         )
-        with metrics.timer(f"{metrics_scope}.sync_repos_using_integration.list_repos"):
-            repos = await git.list_repos_using_installation(username)
-        if repos:
+
+        total_missing_repos = []
+        # We're testing processing repos a page at a time and this helper
+        # function avoids duplicating the code in the old and new paths
+        def process_repos(repos):
             service_ids = {repo["repo"]["service_id"] for repo in repos}
             if service_ids:
                 # Querying through the `Repository` model is cleaner, but we
@@ -131,14 +135,39 @@ class SyncReposTask(BaseCodecovTask):
                     )
                     db_session.add(new_repo)
                 db_session.flush()
-                log.info(
-                    "Repo sync using integration done",
-                    extra=dict(repoids=missing_repos),
-                )
+                total_missing_repos.extend(missing_repos)
+
+        # Here comes the actual function
+        received_repos = False
+        if LIST_REPOS_GENERATOR_BY_OWNER_SLUG.check_value(
+            owner_slug(owner), default=False
+        ):
+            with metrics.timer(
+                f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
+            ):
+                async for page in git.list_repos_using_installation_generator(username):
+                    received_repos = True
+                    process_repos(page)
         else:
+            with metrics.timer(
+                f"{metrics_scope}.sync_repos_using_integration.list_repos"
+            ):
+                repos = await git.list_repos_using_installation(username)
+            if repos:
+                received_repos = True
+                process_repos(repos)
+
+        # If the installation returned no repos, we were probably disabled and
+        # should indicate as much on this owner's repositories.
+        if not received_repos:
             db_session.query(Repository).filter(
                 Repository.ownerid == ownerid, Repository.using_integration.is_(True)
             ).update({Repository.using_integration: False}, synchronize_session=False)
+
+        log.info(
+            "Repo sync using integration done",
+            extra=dict(repoids=total_missing_repos),
+        )
 
     async def sync_repos(self, db_session, git, owner, username, using_integration):
         service = owner.service
@@ -150,10 +179,75 @@ class SyncReposTask(BaseCodecovTask):
             extra=dict(ownerid=ownerid, username=username, service=service),
         )
 
-        # get my repos (and team repos)
+        repoids = []
+        owners_by_id = {}
+        # We're testing processing repos a page at a time and this helper
+        # function avoids duplicating the code in the old and new paths
+        def process_repos(repos):
+            for repo in repos:
+                # Time how long processing a single repo takes so we can estimate how
+                # performance degrades. Sampling at 10% will be enough.
+                with metrics.timer(f"{metrics_scope}.process_each_repo", rate=0.1):
+                    _ownerid = owners_by_id.get(
+                        (
+                            service,
+                            repo["owner"]["service_id"],
+                            repo["owner"]["username"],
+                        )
+                    )
+                    if not _ownerid:
+                        _ownerid = self.upsert_owner(
+                            db_session,
+                            service,
+                            repo["owner"]["service_id"],
+                            repo["owner"]["username"],
+                        )
+                        owners_by_id[
+                            (
+                                service,
+                                repo["owner"]["service_id"],
+                                repo["owner"]["username"],
+                            )
+                        ] = _ownerid
+
+                    repoid = self.upsert_repo(
+                        db_session, service, _ownerid, repo["repo"], using_integration
+                    )
+
+                    repoids.append(repoid)
+
+                    if repo["repo"].get("fork"):
+                        _ownerid = self.upsert_owner(
+                            db_session,
+                            service,
+                            repo["repo"]["fork"]["owner"]["service_id"],
+                            repo["repo"]["fork"]["owner"]["username"],
+                        )
+
+                        _repoid = self.upsert_repo(
+                            db_session, service, _ownerid, repo["repo"]["fork"]["repo"]
+                        )
+
+                        repoids.append(_repoid)
+
+                        if repo["repo"]["fork"]["repo"]["private"]:
+                            private_project_ids.append(int(_repoid))
+                    if repo["repo"]["private"]:
+                        private_project_ids.append(int(repoid))
+                    db_session.commit()
+
         try:
-            with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                repos = await git.list_repos()
+            if LIST_REPOS_GENERATOR_BY_OWNER_SLUG.check_value(
+                owner_slug(owner), default=False
+            ):
+                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
+                    async for page in git.list_repos_generator():
+                        process_repos(page)
+            else:
+                # get my repos (and team repos)
+                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
+                    repos = await git.list_repos()
+                    process_repos(repos)
         except SoftTimeLimitExceeded:
             old_permissions = owner.permission or []
             log.warning(
@@ -177,55 +271,6 @@ class SyncReposTask(BaseCodecovTask):
             )
             owner.permission = []
             return
-        owners_by_id = {}
-        repoids = []
-        for repo in repos:
-            # Time how long processing a single repo takes so we can estimate how
-            # performance degrades. Sampling at 10% will be enough.
-            with metrics.timer(f"{metrics_scope}.process_each_repo", rate=0.1):
-                _ownerid = owners_by_id.get(
-                    (service, repo["owner"]["service_id"], repo["owner"]["username"])
-                )
-                if not _ownerid:
-                    _ownerid = self.upsert_owner(
-                        db_session,
-                        service,
-                        repo["owner"]["service_id"],
-                        repo["owner"]["username"],
-                    )
-                    owners_by_id[
-                        (
-                            service,
-                            repo["owner"]["service_id"],
-                            repo["owner"]["username"],
-                        )
-                    ] = _ownerid
-
-                repoid = self.upsert_repo(
-                    db_session, service, _ownerid, repo["repo"], using_integration
-                )
-
-                repoids.append(repoid)
-
-                if repo["repo"].get("fork"):
-                    _ownerid = self.upsert_owner(
-                        db_session,
-                        service,
-                        repo["repo"]["fork"]["owner"]["service_id"],
-                        repo["repo"]["fork"]["owner"]["username"],
-                    )
-
-                    _repoid = self.upsert_repo(
-                        db_session, service, _ownerid, repo["repo"]["fork"]["repo"]
-                    )
-
-                    repoids.append(_repoid)
-
-                    if repo["repo"]["fork"]["repo"]["private"]:
-                        private_project_ids.append(int(_repoid))
-                if repo["repo"]["private"]:
-                    private_project_ids.append(int(repoid))
-                db_session.commit()
 
         log.info(
             "Updating permissions",
