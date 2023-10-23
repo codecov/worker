@@ -122,7 +122,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 f"Attention: `{misses_and_partials} lines` in your changes are missing coverage. Please review."
             )
         else:
-            yield "All modified lines are covered by tests :white_check_mark:"
+            yield "All modified and coverable lines are covered by tests :white_check_mark:"
 
         hide_project_coverage = self.settings.get("hide_project_coverage", False)
         if hide_project_coverage:

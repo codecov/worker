@@ -562,7 +562,7 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
-            "All modified lines are covered by tests :white_check_mark:",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
             "> Comparison is base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 50.00% compared to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 60.00%.",
             "> Report is 2 commits behind head on main.",
             "",
@@ -638,7 +638,7 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
-            "All modified lines are covered by tests :white_check_mark:",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
             "> Comparison is base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 50.00% compared to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 60.00%.",
             "> Report is 2 commits behind head on main.",
             "",

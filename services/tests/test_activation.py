@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from database.tests.factories import OwnerFactory
-from services.activation import activate_user
+from services.activation import activate_user, get_installation_plan_activated_users
 from services.license import _get_now, is_enterprise
 
 
@@ -62,7 +62,6 @@ class TestActivationServiceTestCase(object):
     def test_activate_user_success_for_enterprise_pr_billing(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):
-
         mocker.patch("services.license.is_enterprise", return_value=True)
         mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
 
@@ -89,11 +88,60 @@ class TestActivationServiceTestCase(object):
         dbsession.commit()
         assert user.ownerid in org.plan_activated_users
 
+    def test_activate_user_success_user_org_overlap(
+        self, request, dbsession, mock_configuration, mocker, with_sql_functions
+    ):
+        mocker.patch("services.license.is_enterprise", return_value=True)
+        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
+
+        # Create two orgs to ensure our seat availability checking works across
+        # multiple organizations.
+        org = OwnerFactory.create(
+            service="github",
+            oauth_token=None,
+            plan_activated_users=list(range(1, 6)),
+            plan_auto_activate=True,
+        )
+        dbsession.add(org)
+        dbsession.flush()
+
+        org_second = OwnerFactory.create(
+            service="github",
+            oauth_token=None,
+            plan_activated_users=list(range(2, 8)),
+            plan_auto_activate=True,
+        )
+        dbsession.add(org_second)
+        dbsession.flush()
+
+        assert get_installation_plan_activated_users(dbsession)[0][0] == 7
+
+        # {'company': 'Test Company', 'expires': '2021-01-01 00:00:00', 'url': 'https://codecov.mysite.com', 'trial': False, 'users': 10, 'repos': None, 'pr_billing': True}
+        encrypted_license = "wxWEJyYgIcFpi6nBSyKQZQeaQ9Eqpo3SXyUomAqQOzOFjdYB3A8fFM1rm+kOt2ehy9w95AzrQqrqfxi9HJIb2zLOMOB9tSy52OykVCzFtKPBNsXU/y5pQKOfV7iI3w9CHFh3tDwSwgjg8UsMXwQPOhrpvl2GdHpwEhFdaM2O3vY7iElFgZfk5D9E7qEnp+WysQwHKxDeKLI7jWCnBCBJLDjBJRSz0H7AfU55RQDqtTrnR+rsLDHOzJ80/VxwVYhb"
+        mock_configuration.params["setup"]["enterprise_license"] = encrypted_license
+        mock_configuration.params["setup"]["codecov_url"] = "https://codecov.mysite.com"
+
+        user = OwnerFactory.create_from_test_request(request)
+        dbsession.add(org_second)
+        dbsession.add(user)
+        dbsession.flush()
+
+        was_activated = activate_user(dbsession, org_second.ownerid, user.ownerid)
+        assert was_activated is True
+        dbsession.commit()
+
+        was_activated = activate_user(dbsession, org.ownerid, user.ownerid)
+        assert was_activated is True
+        dbsession.commit()
+
+        assert get_installation_plan_activated_users(dbsession)[0][0] == 8
+
     def test_activate_user_failure_for_enterprise_pr_billing_no_seats(
         self, request, dbsession, mock_configuration, mocker, with_sql_functions
     ):
+        mocker.patch("services.license.is_enterprise", return_value=True)
+        mocker.patch("services.license._get_now", return_value=datetime(2020, 4, 2))
 
-        mocker.patch("helpers.environment.is_enterprise", return_value=True)
         # Create two orgs to ensure our seat availability checking works across
         # multiple organizations.
         org = OwnerFactory.create(

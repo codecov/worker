@@ -1,5 +1,5 @@
 import json
-from unittest.mock import call
+from unittest.mock import PropertyMock, call
 
 from mock import MagicMock, patch
 from shared.reports.types import ReportTotals, SessionTotalsArray
@@ -274,6 +274,11 @@ class TestReportDetailsModel(object):
         dbsession.add(factory_report_details)
         dbsession.flush()
 
+        mocker.patch(
+            "database.utils.ArchiveField.read_timeout",
+            new_callable=PropertyMock,
+            return_value=0.1,
+        )
         mock_archive_service = mocker.patch("database.utils.ArchiveService")
 
         def side_effect(path):
@@ -487,7 +492,14 @@ class TestCommitModel(object):
         assert mock_read_file.call_count == 2
 
     @patch("database.utils.ArchiveService")
-    def test_get_report_from_storage_file_not_found(self, mock_archive, dbsession):
+    def test_get_report_from_storage_file_not_found(
+        self, mock_archive, dbsession, mocker
+    ):
+        mocker.patch(
+            "database.utils.ArchiveField.read_timeout",
+            new_callable=PropertyMock,
+            return_value=0.1,
+        )
         commit = CommitFactory()
         storage_path = "https://storage/path/files_array.json"
 

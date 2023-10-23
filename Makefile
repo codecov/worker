@@ -2,7 +2,7 @@ sha := $(shell git rev-parse --short=7 HEAD)
 full_sha := $(shell git rev-parse HEAD)
 release_version = `cat VERSION`
 _gcr := ${CODECOV_WORKER_GCR_REPO_BASE}
-
+merge_sha := $(shell git merge-base HEAD^ origin/main)
 build_date ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
 name ?= worker
 branch = $(shell git branch | grep \* | cut -f2 -d' ')
@@ -20,6 +20,9 @@ export DOCKER_BUILDKIT=1
 export WORKER_DOCKER_REPO=${AR_REPO}
 export WORKER_DOCKER_VERSION=${VERSION}
 export CODECOV_TOKEN=${CODECOV_UPLOAD_TOKEN}
+
+# Codecov CLI version to use
+CODECOV_CLI_VERSION := 0.3.8
 
 build:
 	$(MAKE) build.requirements
@@ -98,6 +101,10 @@ build.app:
 		--build-arg BUILD_ENV=cloud
 
 build.self-hosted:
+	make build.self-hosted-base
+	make build.self-hosted-runtime
+
+build.self-hosted-base:
 	docker build -f docker/Dockerfile . \
 		-t ${DOCKERHUB_REPO}:latest-no-dependencies \
 		-t ${DOCKERHUB_REPO}:${VERSION}-no-dependencies \
@@ -126,7 +133,7 @@ tag.self-hosted-rolling:
 	docker tag ${DOCKERHUB_REPO}:${VERSION}-no-dependencies ${DOCKERHUB_REPO}:rolling_no_dependencies
 	docker tag ${DOCKERHUB_REPO}:${VERSION} ${DOCKERHUB_REPO}:rolling
 
-tag.self-hosted:
+tag.self-hosted-release:
 	docker tag ${DOCKERHUB_REPO}:${VERSION}-no-dependencies ${DOCKERHUB_REPO}:${release_version}_no_dependencies
 	docker tag ${DOCKERHUB_REPO}:${VERSION}-no-dependencies ${DOCKERHUB_REPO}:latest_calver_no_dependencies
 	docker tag ${DOCKERHUB_REPO}:${VERSION}-no-dependencies ${DOCKERHUB_REPO}:latest_stable_no_dependencies
@@ -138,6 +145,10 @@ load.requirements:
 	docker load --input requirements.tar
 	docker tag codecov/worker-ci-requirements:${REQUIREMENTS_TAG} ${AR_REPO}:${REQUIREMENTS_TAG}
 
+load.self-hosted:
+	docker load --input self-hosted-runtime.tar
+	docker load --input self-hosted.tar
+
 save.app:
 	docker save -o app.tar ${AR_REPO}:${VERSION}
 
@@ -146,6 +157,10 @@ save.requirements:
 	docker save -o requirements.tar codecov/worker-ci-requirements:${REQUIREMENTS_TAG}
 
 save.self-hosted:
+	make save.self-hosted-base
+	make save.self-hosted-runtime
+
+save.self-hosted-base:
 	docker save -o self-hosted.tar ${DOCKERHUB_REPO}:${VERSION}-no-dependencies
 
 save.self-hosted-runtime:
@@ -163,7 +178,7 @@ push.production:
 push.requirements:
 	docker push ${AR_REPO}:${REQUIREMENTS_TAG}
 
-push.self-hosted:
+push.self-hosted-release:
 	docker push ${DOCKERHUB_REPO}:${release_version}_no_dependencies
 	docker push ${DOCKERHUB_REPO}:latest_calver_no_dependencies
 	docker push ${DOCKERHUB_REPO}:latest_stable_no_dependencies
@@ -177,19 +192,19 @@ push.self-hosted-rolling:
 
 test_env.up:
 	env | grep GITHUB > .testenv; true
-	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker-compose -f docker-compose-test.yml up -d
+	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker-compose up -d
 
 test_env.prepare:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_prepare
+	docker-compose exec worker make test_env.container_prepare
 
 test_env.check_db:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_check_db
+	docker-compose exec worker make test_env.container_check_db
 
 test_env.install_cli:
-	pip install --no-cache-dir codecov-cli
+	pip install --no-cache-dir codecov-cli==$(CODECOV_CLI_VERSION)
 
 test_env.container_prepare:
-	apk add -U curl git build-base
+	apk add -U curl git build-base jq
 	make test_env.install_cli
 	git config --global --add safe.directory /worker
 
@@ -198,13 +213,13 @@ test_env.container_check_db:
 	while ! nc -vz timescale 5432; do sleep 1; echo "waiting for timescale"; done
 
 test_env.run_unit:
-	docker-compose -f docker-compose-test.yml exec worker make test.unit
+	docker-compose exec worker make test.unit
 
 test_env.run_integration:
-	docker-compose -f docker-compose-test.yml exec worker make test.integration
+	docker-compose exec worker make test.integration
 
 test_env.upload:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
+	docker-compose exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
 
 test_env.container_upload:
 	codecovcli -u ${CODECOV_URL} do-upload --flag latest-uploader-overall
@@ -212,25 +227,28 @@ test_env.container_upload:
 	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml
 
 test_env.static_analysis:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_static_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
+	docker-compose exec worker make test_env.container_static_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
 
 test_env.label_analysis:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_label_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
+	docker-compose exec worker make test_env.container_label_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
 
 test_env.ats:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_ats CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN}
+	docker-compose exec worker make test_env.container_ats CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
 test_env.container_static_analysis:
 	codecovcli -u ${CODECOV_URL} static-analysis --token=${CODECOV_STATIC_TOKEN}
 
 test_env.container_label_analysis:
-	codecovcli -u ${CODECOV_URL} label-analysis --base-sha=$(shell git merge-base HEAD^ origin/main) --token=${CODECOV_STATIC_TOKEN}
+	codecovcli label-analysis --base-sha=${merge_sha} --token=${CODECOV_STATIC_TOKEN} --dry-run --dry-run-output-path=tests_to_run > /dev/null
+	jq -r '.ats_tests_to_run []' tests_to_run.json | sed s/\"//g > test_list
+	jq -r '.runner_options | join(\" \")' tests_to_run.json | sed s/\"//g | tr -d '\n'> runner_options
+	python -m pytest --cov=./ `cat runner_options` `cat test_list`
 
 test_env.container_ats:
 	codecovcli --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
 
 test_env.run_mutation:
-	docker-compose -f docker-compose-test.yml exec worker make test_env.container_mutation
+	docker-compose exec worker make test_env.container_mutation
 
 test_env.container_mutation:
 	apk add git

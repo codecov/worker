@@ -134,6 +134,12 @@ def mock_configuration(mocker):
                 "verify_ssl": False,
             },
             "redis_url": "redis://redis:@localhost:6379/",
+            "smtp": {
+                "host": "mailhog",
+                "port": 1025,
+                "username": "username",
+                "password": "password",
+            },
         },
         "setup": {
             "codecov_url": "https://codecov.io",
@@ -178,6 +184,14 @@ def mock_storage(mocker):
     storage_server = MemoryStorageService({})
     m.return_value = storage_server
     yield storage_server
+
+
+@pytest.fixture
+def mock_smtp(mocker):
+    m = mocker.patch("services.smtp.SMTPService")
+    smtp_server = mocker.MagicMock()
+    m.return_value = smtp_server
+    yield smtp_server
 
 
 @pytest.fixture

@@ -1,3 +1,4 @@
+import datetime
 import xml.etree.cElementTree as etree
 from time import time
 
@@ -151,7 +152,15 @@ class TestJacoco(BaseTestCase):
         processed_report = self.convert_report_to_better_readable(report)
         assert [path] == list(processed_report["archive"].keys())
 
-    @pytest.mark.parametrize("date", [(int(time()) - 172800), "01-01-2014"])
+    @pytest.mark.parametrize(
+        "date",
+        [
+            (datetime.datetime.now() - datetime.timedelta(seconds=172800))
+            .replace(minute=0, second=0)
+            .strftime("%s"),
+            "01-01-2014",
+        ],
+    )
     def test_expired(self, date):
         report_builder = ReportBuilder(
             current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=None
