@@ -71,6 +71,7 @@ class RepositoryFactory(Factory):
 
     owner = factory.SubFactory(OwnerFactory)
     bot = None
+    updatestamp = factory.LazyAttribute(lambda o: datetime.now())
 
 
 class BranchFactory(Factory):

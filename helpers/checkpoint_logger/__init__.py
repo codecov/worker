@@ -26,11 +26,14 @@ T = TypeVar("T", bound="BaseFlow")
 TSubflows: TypeAlias = Mapping[T, Iterable[tuple[str, T]]]
 
 
-class BaseFlow(Enum):
+class BaseFlow(str, Enum):
     """
     Base class for a flow. Defines optional functions which are added by the
     @success_events, @failure_events, @subflows, and @reliability_counters
     decorators to (mostly) appease mypy.
+
+    Inherits from `str` so a dictionary of checkpoints data can be serialized
+    between worker tasks.
     """
 
     _subflows: Callable[[], TSubflows]
@@ -39,6 +42,22 @@ class BaseFlow(Enum):
     is_success: ClassVar[Callable[[T], bool]]
     is_failure: ClassVar[Callable[[T], bool]]
     log_counters: ClassVar[Callable[[T], None]]
+
+    def __new__(cls, value):
+        """
+        Hook into the creation of each enum member and inject the class name
+        into the enum's value (e.g. "MEMBER_NAME" -> "MyEnum.MEMBER_NAME")
+        """
+        value = f"{cls.__name__}.{value}"
+        return super().__new__(cls, value)
+
+    def _generate_next_value_(name, start, count, last_values):
+        """
+        This powers `enum.auto()`. We want `MyEnum.MEMBER_NAME` as our value but
+        we don't have access to the name of `MyEnum` here so just return
+        `MEMBER_NAME` for now.
+        """
+        return name
 
 
 TClassDecorator: TypeAlias = Callable[[type[T]], type[T]]
@@ -382,7 +401,7 @@ def from_kwargs(
 
     # Make sure these checkpoints were made with the same flow
     for key in data.keys():
-        if key not in iter(cls):
+        if key not in cls.__members__.values():
             raise ValueError(f"Checkpoint {key} not part of flow `{cls.__name__}`")
 
     return CheckpointLogger(cls, data, strict)
