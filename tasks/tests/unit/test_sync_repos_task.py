@@ -1,16 +1,42 @@
 from datetime import datetime
 from pathlib import Path
 
+import httpx
 import pytest
+import respx
+import vcr
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
-from tasks.sync_repos import SyncReposTask
+from tasks.sync_repos import LIST_REPOS_GENERATOR_BY_OWNER_SLUG, SyncReposTask
 
 here = Path(__file__)
+
+
+class AsyncIterator:
+    def __init__(self, seq):
+        self.iter = iter(seq)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            return next(self.iter)
+        except StopIteration:
+            raise StopAsyncIteration
+
+
+def reuse_cassette(filepath):
+    return vcr.use_cassette(
+        filepath,
+        record_mode="new_episodes",
+        filter_headers=["authorization"],
+        match_on=["method", "scheme", "host", "port", "path"],
+    )
 
 
 class TestSyncReposTaskUnit(object):
@@ -88,9 +114,14 @@ class TestSyncReposTaskUnit(object):
         assert updated_owner.createstamp == now
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
     async def test_upsert_repo_update_existing(
-        self, mocker, mock_configuration, dbsession
+        self, mocker, mock_configuration, dbsession, use_generator
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
         service = "gitlab"
         repo_service_id = "12071992"
         repo_data = {
@@ -141,9 +172,14 @@ class TestSyncReposTaskUnit(object):
         assert updated_repo.deleted is False
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
     async def test_upsert_repo_exists_but_wrong_owner(
-        self, mocker, mock_configuration, dbsession
+        self, mocker, mock_configuration, dbsession, use_generator
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
         service = "gitlab"
         repo_service_id = "12071992"
         repo_data = {
@@ -200,9 +236,14 @@ class TestSyncReposTaskUnit(object):
         assert updated_repo.updatestamp is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
     async def test_upsert_repo_exists_both_wrong_owner_and_service_id(
-        self, mocker, mock_configuration, dbsession
+        self, mocker, mock_configuration, dbsession, use_generator
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
         # It is unclear what situation leads to this
         # The most likely sitaution is that there was a repo abc on both owners kay and jay
         # Then kay deleted its own repo, and jay moved its own repo to kay ownership
@@ -271,9 +312,14 @@ class TestSyncReposTaskUnit(object):
         assert repo_same_name.ownerid == correct_owner.ownerid
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
     async def test_upsert_repo_exists_but_wrong_service_id(
-        self, mocker, mock_configuration, dbsession
+        self, mocker, mock_configuration, dbsession, use_generator
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
         service = "gitlab"
         repo_service_id = "12071992"
         repo_wrong_service_id = "40404"
@@ -335,7 +381,14 @@ class TestSyncReposTaskUnit(object):
         assert bad_service_id_repo is None
 
     @pytest.mark.asyncio
-    async def test_upsert_repo_create_new(self, mocker, mock_configuration, dbsession):
+    @pytest.mark.parametrize("use_generator", [False, True])
+    async def test_upsert_repo_create_new(
+        self, mocker, mock_configuration, dbsession, use_generator
+    ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
         service = "gitlab"
         repo_service_id = "12071992"
         repo_data = {
@@ -431,9 +484,14 @@ class TestSyncReposTaskUnit(object):
         assert len(repos) == 3
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
     async def test_sync_repos_lock_error(
-        self, mocker, mock_configuration, dbsession, mock_redis
+        self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
         user = OwnerFactory.create(
             organizations=[],
             service="github",
@@ -450,9 +508,26 @@ class TestSyncReposTaskUnit(object):
         assert user.permission == []  # there were no private repos to add
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
+    @reuse_cassette(
+        "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_only_public_repos_not_in_db.yaml"
+    )
+    @respx.mock
     async def test_only_public_repos_not_in_db(
-        self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
+        self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
+            respx.post("https://api.github.com/graphql").mock(
+                httpx.Response(
+                    status_code=200,
+                    content='{"data":{"viewer":{"repositories":{"totalCount": 1}}}}',
+                    headers={"Content-Type": "application/json"},
+                )
+            )
+
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -481,13 +556,31 @@ class TestSyncReposTaskUnit(object):
         assert repos[0].ownerid == user.ownerid
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
+    @respx.mock
+    @reuse_cassette(
+        "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration.yaml"
+    )
     async def test_sync_repos_using_integration(
         self,
         mocker,
         dbsession,
         mock_owner_provider,
         mock_redis,
+        use_generator,
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
+            respx.post("https://api.github.com/graphql").mock(
+                httpx.Response(
+                    status_code=200,
+                    content='{"data":{"viewer":{"repositories":{"totalCount": 4}}}}',
+                    headers={"Content-Type": "application/json"},
+                )
+            )
+
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -523,7 +616,12 @@ class TestSyncReposTaskUnit(object):
         ]
 
         # Mock GitHub response for repos that are visible to our app
-        mock_owner_provider.list_repos_using_installation.return_value = mock_repos
+        if use_generator:
+            mock_owner_provider.list_repos_using_installation_generator.return_value = (
+                AsyncIterator([mock_repos])
+            )
+        else:
+            mock_owner_provider.list_repos_using_installation.return_value = mock_repos
 
         # Three of the four repositories we can see are already in the database.
         # Will we update `using_integration` correctly?
@@ -567,9 +665,26 @@ class TestSyncReposTaskUnit(object):
             assert repo.using_integration is True
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
+    @respx.mock
+    @reuse_cassette(
+        "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration_no_repos.yaml"
+    )
     async def test_sync_repos_using_integration_no_repos(
-        self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
+        self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
+            respx.post("https://api.github.com/graphql").mock(
+                httpx.Response(
+                    status_code=200,
+                    content='{"data":{"viewer":{"repositories":{"totalCount": 0}}}}',
+                    headers={"Content-Type": "application/json"},
+                )
+            )
+
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -622,9 +737,20 @@ class TestSyncReposTaskUnit(object):
             assert repo.using_integration is False
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
     async def test_sync_repos_no_github_access(
-        self, mocker, mock_configuration, dbsession, mock_owner_provider, mock_redis
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_owner_provider,
+        mock_redis,
+        use_generator,
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         repos = [RepositoryFactory.create(private=True) for _ in range(10)]
         dbsession.add_all(repos)
@@ -649,9 +775,20 @@ class TestSyncReposTaskUnit(object):
         assert user.permission == []  # repos were removed
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
     async def test_sync_repos_timeout(
-        self, mocker, mock_configuration, dbsession, mock_owner_provider, mock_redis
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_owner_provider,
+        mock_redis,
+        use_generator,
     ):
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
         repos = [RepositoryFactory.create(private=True) for _ in range(10)]
         dbsession.add_all(repos)
         dbsession.flush()
@@ -661,7 +798,14 @@ class TestSyncReposTaskUnit(object):
         assert len(user.permission) > 0
         dbsession.add(user)
         dbsession.flush()
-        mock_owner_provider.list_repos.side_effect = SoftTimeLimitExceeded()
+
+        if use_generator:
+            mock_owner_provider.list_repos_generator.side_effect = (
+                SoftTimeLimitExceeded()
+            )
+        else:
+            mock_owner_provider.list_repos.side_effect = SoftTimeLimitExceeded()
+
         with pytest.raises(SoftTimeLimitExceeded):
             await SyncReposTask().run_async(
                 dbsession, ownerid=user.ownerid, using_integration=False
