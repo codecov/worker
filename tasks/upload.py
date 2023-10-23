@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from json import loads
 from typing import Any, Mapping
 
+
 from celery import chain
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
@@ -111,11 +112,13 @@ class UploadTask(BaseCodecovTask):
 
     name = upload_task_name
 
+    def get_uploads_list_key(self, repoid, commitid):
+        return f"uploads/{repoid}/{commitid}"
+
     def has_pending_jobs(self, redis_connection, repoid, commitid) -> bool:
-        uploads_locations = [f"uploads/{repoid}/{commitid}"]
-        for uploads_list_key in uploads_locations:
-            if redis_connection.exists(uploads_list_key):
-                return True
+        uploads_list_key = self.get_uploads_list_key(repoid, commitid)
+        if redis_connection.exists(uploads_list_key):
+            return True
         return False
 
     def lists_of_arguments(self, redis_connection, repoid, commitid):
@@ -128,18 +131,18 @@ class UploadTask(BaseCodecovTask):
 
         Args:
             redis_connection (Redis): An instance of a redis connection
-            uploads_list_key (str): The key where the list is
+            repoid (str): The repoid of the repository this upload is for
+            commitid (str): The commitid of the commit this upload is for, this is not the commit SHA
 
         Yields:
             dict: A dict with the parameters to be passed
         """
-        uploads_locations = [f"uploads/{repoid}/{commitid}"]
-        for uploads_list_key in uploads_locations:
-            log.debug("Fetching arguments from redis %s", uploads_list_key)
-            while redis_connection.exists(uploads_list_key):
-                arguments = redis_connection.lpop(uploads_list_key)
-                if arguments:
-                    yield loads(arguments)
+        uploads_list_key = self.get_uploads_list_key(repoid, commitid)
+        log.debug("Fetching arguments from redis %s", uploads_list_key)
+        while redis_connection.exists(uploads_list_key):
+            arguments = redis_connection.lpop(uploads_list_key)
+            if arguments:
+                yield loads(arguments)
 
     def is_currently_processing(self, redis_connection, repoid, commitid):
         upload_processing_lock_name = f"upload_processing_lock_{repoid}_{commitid}"
