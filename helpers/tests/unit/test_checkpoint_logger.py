@@ -50,6 +50,12 @@ class TestEnum2(BaseFlow):
     C = auto()
 
 
+class SortOrderEnum(BaseFlow):
+    C = auto()
+    B = auto()
+    A = auto()
+
+
 class TestCheckpointLogger(unittest.TestCase):
     @pytest.fixture(scope="function", autouse=True)
     def inject_mocker(request, mocker):
@@ -352,9 +358,22 @@ class TestCheckpointLogger(unittest.TestCase):
         We encode the flow name and checkpoint name in the string value so that
         we can validate when we deserialize. Make sure that all works.
         """
-        deserialized = {
+        original = {
             TestEnum1.A: 1337,
             TestEnum1.B: 9001,
         }
-        assert json.dumps(deserialized) == '{"TestEnum1.A": 1337, "TestEnum1.B": 9001}'
-        assert json.loads(json.dumps(deserialized)) == deserialized
+        serialized = json.dumps(original)
+        deserialized = json.loads(serialized)
+
+        assert serialized == '{"TestEnum1.A": 1337, "TestEnum1.B": 9001}'
+        assert deserialized == {
+            "TestEnum1.A": 1337,
+            "TestEnum1.B": 9001,
+        }
+
+    def test_sort_order(self):
+        assert TestEnum1.A == TestEnum1.A
+        assert TestEnum1.A < TestEnum1.B
+        assert TestEnum1.C > TestEnum1.B
+        assert SortOrderEnum.C < SortOrderEnum.B
+        assert SortOrderEnum.A > SortOrderEnum.B
