@@ -409,6 +409,7 @@ def sample_report_with_labels():
 async def test_simple_call_without_requested_labels_then_with_requested_labels(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
+    mock_metrics = mocker.patch("tasks.label_analysis.metrics")
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
         "_get_lines_relevant_to_diff",
@@ -493,6 +494,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
         "errors": [],
     }
     assert res == expected_result
+    mock_metrics.incr.assert_called_with("label_analysis_task.success")
     dbsession.flush()
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id
@@ -525,12 +527,16 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
         "present_report_labels": expected_present_report_labels,
         "global_level_labels": [],
     }
+    mock_metrics.incr.assert_called_with(
+        "label_analysis_task.already_calculated.new_result"
+    )
 
 
 @pytest.mark.asyncio
 async def test_simple_call_with_requested_labels(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
+    mock_metrics = mocker.patch("tasks.label_analysis.metrics")
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
         "_get_lines_relevant_to_diff",
@@ -571,6 +577,7 @@ async def test_simple_call_with_requested_labels(
         "present_report_labels": expected_present_report_labels,
         "global_level_labels": [],
     }
+    mock_metrics.incr.assert_called_with("label_analysis_task.success")
 
 
 def test_get_requested_labels(dbsession, mocker):
@@ -590,8 +597,9 @@ def test_get_requested_labels(dbsession, mocker):
 
 
 @pytest.mark.asyncio
-async def test_call_label_analysis_no_request_object(dbsession):
+async def test_call_label_analysis_no_request_object(dbsession, mocker):
     task = LabelAnalysisRequestProcessingTask()
+    mock_metrics = mocker.patch("tasks.label_analysis.metrics")
     res = await task.run_async(db_session=dbsession, request_id=-1)
     assert res == {
         "success": False,
@@ -609,6 +617,9 @@ async def test_call_label_analysis_no_request_object(dbsession):
             }
         ],
     }
+    mock_metrics.incr.assert_called_with(
+        "label_analysis_task.failed_to_calculate.larq_not_found"
+    )
 
 
 def test_get_executable_lines_labels_all_labels(sample_report_with_labels):
@@ -717,6 +728,7 @@ def test_get_relevant_executable_lines_with_static_analyses(dbsession, mocker):
 async def test_run_async_with_error(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
+    mock_metrics = mocker.patch("tasks.label_analysis.metrics")
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
         "_get_lines_relevant_to_diff",
@@ -747,12 +759,16 @@ async def test_run_async_with_error(
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.ERROR.db_id
     assert larf.result is None
+    mock_metrics.incr.assert_called_with(
+        "label_analysis_task.failed_to_calculate.exception"
+    )
 
 
 @pytest.mark.asyncio
 async def test_calculate_result_no_report(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
+    mock_metrics = mocker.patch("tasks.label_analysis.metrics")
     larf: LabelAnalysisRequest = LabelAnalysisRequestFactory.create(
         # This being not-ordered is important in the test
         # TO make sure we go through the warning at the bottom of run_async
@@ -791,6 +807,9 @@ async def test_calculate_result_no_report(
             }
         ],
     }
+    mock_metrics.incr.assert_called_with(
+        "label_analysis_task.failed_to_calculate.missing_info"
+    )
 
 
 @pytest.mark.asyncio

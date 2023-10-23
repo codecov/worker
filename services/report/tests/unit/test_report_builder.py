@@ -150,6 +150,119 @@ def test_report_builder_session(mocker):
     ]
 
 
+def test_report_builder_session_only_all_labels(mocker):
+    current_yaml, sessionid, ignored_lines, path_fixer = (
+        {},
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
+    filepath = "filepath"
+    builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
+    builder_session = builder.create_report_builder_session(filepath)
+    first_file = ReportFile("filename.py")
+    first_file.append(2, ReportLine.create(coverage=0))
+    first_file.append(
+        3,
+        ReportLine.create(
+            coverage=0,
+            datapoints=[
+                CoverageDatapoint(
+                    sessionid=0,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=[SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER],
+                )
+            ],
+        ),
+    )
+    first_file.append(
+        10,
+        ReportLine.create(
+            coverage=1,
+            type=None,
+            sessions=[
+                (
+                    LineSession(
+                        id=0,
+                        coverage=1,
+                    )
+                )
+            ],
+            datapoints=[
+                CoverageDatapoint(
+                    sessionid=0,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=[SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER],
+                ),
+                CoverageDatapoint(
+                    sessionid=0,
+                    coverage=1,
+                    coverage_type=None,
+                    labels=None,
+                ),
+            ],
+            complexity=None,
+        ),
+    )
+    builder_session.append(first_file)
+    final_report = builder_session.output_report()
+    assert final_report.files == ["filename.py"]
+    assert sorted(final_report.get("filename.py").lines) == [
+        (
+            2,
+            ReportLine.create(
+                coverage=0, type=None, sessions=None, datapoints=None, complexity=None
+            ),
+        ),
+        (
+            3,
+            ReportLine.create(
+                coverage=0,
+                type=None,
+                sessions=None,
+                datapoints=[
+                    CoverageDatapoint(
+                        sessionid=0,
+                        coverage=1,
+                        coverage_type=None,
+                        labels=["Th2dMtk4M_codecov"],
+                    ),
+                ],
+                complexity=None,
+            ),
+        ),
+        (
+            10,
+            ReportLine.create(
+                coverage=1,
+                type=None,
+                sessions=[
+                    LineSession(
+                        id=0, coverage=1, branches=None, partials=None, complexity=None
+                    )
+                ],
+                datapoints=[
+                    CoverageDatapoint(
+                        sessionid=0,
+                        coverage=1,
+                        coverage_type=None,
+                        labels=["Th2dMtk4M_codecov"],
+                    ),
+                    CoverageDatapoint(
+                        sessionid=0,
+                        coverage=1,
+                        coverage_type=None,
+                        labels=None,
+                    ),
+                ],
+                complexity=None,
+            ),
+        ),
+    ]
+
+
 def test_report_builder_session_create_line(mocker):
     current_yaml, sessionid, ignored_lines, path_fixer = (
         {

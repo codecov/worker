@@ -1,3 +1,4 @@
+import datetime
 import xml.etree.cElementTree as etree
 from time import time
 
@@ -161,7 +162,15 @@ class TestCloverProcessor(BaseTestCase):
 
         assert processed_report == expected_result
 
-    @pytest.mark.parametrize("date", [(int(time()) - 172800), "01-01-2014"])
+    @pytest.mark.parametrize(
+        "date",
+        [
+            (datetime.datetime.now() - datetime.timedelta(seconds=172800))
+            .replace(minute=0, second=0)
+            .strftime("%s"),
+            "01-01-2014",
+        ],
+    )
     def test_expired(self, date):
         with pytest.raises(ReportExpiredException, match="Clover report expired"):
             report_builder = ReportBuilder(

@@ -1,5 +1,4 @@
 from app import celery_app
-from tasks.add_to_sendgrid_list import add_to_sendgrid_list_task
 from tasks.backfill_commit_data_to_storage import backfill_commit_data_to_storage_task
 from tasks.brolly_stats_rollup import brolly_stats_rollup_task
 from tasks.commit_update import commit_update_task

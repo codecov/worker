@@ -66,7 +66,7 @@ class NotificationService(object):
                         decoration_type=self.decoration_type,
                     )
         checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
-        current_flags = [rf.flag_name for rf in self.repository.flags]
+        current_flags = [rf.flag_name for rf in self.repository.flags if not rf.deleted]
         for key, title, status_config in self.get_statuses(current_flags):
             status_notifier_class = get_status_notifier_class(key, "status")
             if (

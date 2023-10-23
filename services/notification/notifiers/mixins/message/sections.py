@@ -5,14 +5,9 @@ from decimal import Decimal
 from itertools import starmap
 from typing import List
 
-from shared.analytics_tracking import (
-    track_critical_files_sent,
-    track_related_entrypoints_sent,
-)
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
 
-from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
 from services.comparison import ComparisonProxy
 from services.comparison.overlays import OverlayType
@@ -20,10 +15,10 @@ from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
     ellipsis,
     escape_markdown,
-    get_metrics_function,
     get_table_header,
     get_table_layout,
     make_metrics,
+    make_patch_only_metrics,
     sort_by_importance,
 )
 from services.urls import get_commit_url_from_commit_sha, get_pull_graph_url
@@ -55,6 +50,8 @@ def get_section_class_from_layout_name(layout_name):
         return NewFooterSectionWriter
     if layout_name.startswith("component"):
         return ComponentsSectionWriter
+    if layout_name == "newfiles":
+        return NewFilesSectionWriter
 
 
 class BaseSectionWriter(object):
@@ -114,99 +111,53 @@ class NewHeaderSectionWriter(BaseSectionWriter):
         pull_dict = comparison.enriched_pull.provider_pull
         repo_service = comparison.repository_service.service
 
-        change = (
-            Decimal(head_report.totals.coverage) - Decimal(base_report.totals.coverage)
-            if base_report and head_report
-            else Decimal(0)
-        )
-        rounded_change = Decimal(round_number(yaml, change))
         diff_totals = head_report.apply_diff(diff)
-        if diff_totals and diff_totals.coverage is not None:
-            patch_cov = round_number(yaml, Decimal(diff_totals.coverage))
+        if diff_totals:
+            misses_and_partials = diff_totals.misses + diff_totals.partials
         else:
-            patch_cov = None
+            misses_and_partials = None
+
+        if misses_and_partials:
+            yield (
+                f"Attention: `{misses_and_partials} lines` in your changes are missing coverage. Please review."
+            )
+        else:
+            yield "All modified and coverable lines are covered by tests :white_check_mark:"
+
         hide_project_coverage = self.settings.get("hide_project_coverage", False)
         if hide_project_coverage:
-            diff_totals = head_report.apply_diff(diff)
-            if patch_cov:
-                yield (f"Patch coverage is **`{patch_cov}%`** of modified lines.")
-            else:
-                yield "Patch has no changes to coverable lines."
+            return
+
+        if base_report and head_report:
+            yield (
+                "> Comparison is base [(`{commitid_base}`)]({links[base]}?el=desc) {base_cov}% compared to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) {head_cov}%.".format(
+                    pull=pull.pullid,
+                    base=pull_dict["base"]["branch"],
+                    commitid_head=comparison.head.commit.commitid[:7],
+                    commitid_base=comparison.base.commit.commitid[:7],
+                    links=links,
+                    base_cov=round_number(yaml, Decimal(base_report.totals.coverage)),
+                    head_cov=round_number(yaml, Decimal(head_report.totals.coverage)),
+                )
+            )
         else:
-            if base_report and head_report:
-                patch_cov_msg = (
-                    f"Patch coverage: **`{patch_cov}%`**"
-                    if patch_cov
-                    else "Patch coverage has no change"
+            yield (
+                "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
+                    what="base" if not base_report else "head",
+                    branch=pull_dict["base" if not base_report else "head"]["branch"],
+                    commit=pull_dict["base" if not base_report else "head"]["commitid"][
+                        :7
+                    ],
+                    request_type="merge request"
+                    if repo_service == "gitlab"
+                    else "pull request",
                 )
+            )
 
-                if rounded_change > 0:
-                    project_cov_change_msg = (
-                        f"project coverage change: **`+{rounded_change}%`** :tada:"
-                    )
-                elif rounded_change < 0:
-                    project_cov_change_msg = (
-                        f"project coverage change: **`{rounded_change}%`** :warning:"
-                    )
-                else:
-                    project_cov_change_msg = "no project coverage change."
-
-                if not patch_cov and rounded_change == 0:
-                    yield (f"Patch and project coverage have no change.")
-                else:
-                    yield (f"{patch_cov_msg} and {project_cov_change_msg}")
-
-                yield (
-                    "> Comparison is base [(`{commitid_base}`)]({links[base]}?el=desc) {base_cov}% compared to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) {head_cov}%.".format(
-                        pull=pull.pullid,
-                        base=pull_dict["base"]["branch"],
-                        commitid_head=comparison.head.commit.commitid[:7],
-                        commitid_base=comparison.base.commit.commitid[:7],
-                        links=links,
-                        base_cov=round_number(
-                            yaml, Decimal(base_report.totals.coverage)
-                        ),
-                        head_cov=round_number(
-                            yaml, Decimal(head_report.totals.coverage)
-                        ),
-                    )
-                )
-
-            else:
-                yield (
-                    "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
-                        what="base" if not base_report else "head",
-                        branch=pull_dict["base" if not base_report else "head"][
-                            "branch"
-                        ],
-                        commit=pull_dict["base" if not base_report else "head"][
-                            "commitid"
-                        ][:7],
-                        request_type="merge request"
-                        if repo_service == "gitlab"
-                        else "pull request",
-                    )
-                )
-
-                diff_totals = head_report.apply_diff(diff)
-                if diff_totals and diff_totals.coverage is not None:
-                    yield (
-                        "> Patch coverage: {percentage}% of modified lines in {request_type} are covered.".format(
-                            percentage=round_number(
-                                yaml, Decimal(diff_totals.coverage)
-                            ),
-                            request_type="merge request"
-                            if repo_service == "gitlab"
-                            else "pull request",
-                        )
-                    )
-                else:
-                    yield "> Patch has no changes to coverable lines."
-
-            if behind_by:
-                yield (
-                    f"> Report is {behind_by} commits behind head on {pull_dict['base']['branch']}."
-                )
+        if behind_by:
+            yield (
+                f"> Report is {behind_by} commits behind head on {pull_dict['base']['branch']}."
+            )
         if (
             comparison.enriched_pull.provider_pull is not None
             and comparison.head.commit.commitid
@@ -247,13 +198,6 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 yield ("")
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
-                )
-                track_critical_files_sent(
-                    self.repository.repoid,
-                    self.repository.ownerid,
-                    comparison.head.commit.commitid,
-                    pull.pullid,
-                    is_enterprise(),
                 )
 
 
@@ -361,13 +305,6 @@ class HeaderSectionWriter(BaseSectionWriter):
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
                 )
-                track_critical_files_sent(
-                    self.repository.repoid,
-                    self.repository.ownerid,
-                    comparison.head.commit.commitid,
-                    pull.pullid,
-                    is_enterprise(),
-                )
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):
@@ -393,13 +330,6 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
             yield "|---|"
             for endpoint in impacted_endpoints:
                 yield (f"|{endpoint['group_name']}|")
-            track_related_entrypoints_sent(
-                self.repository.repoid,
-                self.repository.ownerid,
-                comparison.head.commit.commitid,
-                comparison.pull.pullid,
-                is_enterprise(),
-            )
         elif impacted_endpoints is not None:
             yield "This change has been scanned for critical changes. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
 
@@ -469,29 +399,26 @@ class DiffSectionWriter(BaseSectionWriter):
         yield ("```")
 
 
-class FileSectionWriter(BaseSectionWriter):
+class NewFilesSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # create list of files changed in diff
         base_report = comparison.base.report
         head_report = comparison.head.report
         if base_report is None:
             base_report = Report()
-        hide_project_coverage = self.settings.get("hide_project_coverage", False)
-        make_metrics_fn = get_metrics_function(hide_project_coverage)
         files_in_diff = [
             (
                 _diff["type"],
                 path,
-                make_metrics_fn(
+                make_patch_only_metrics(
                     get_totals_from_file_in_reports(base_report, path) or False,
                     get_totals_from_file_in_reports(head_report, path) or False,
                     _diff["totals"],
                     self.show_complexity,
                     self.current_yaml,
+                    links["pull"],
                 ),
-                Decimal(_diff["totals"].coverage)
-                if _diff["totals"].coverage is not None
-                else None,
+                int(_diff["totals"].misses + _diff["totals"].partials),
             )
             for path, _diff in (diff["files"] if diff else {}).items()
             if _diff.get("totals")
@@ -501,15 +428,8 @@ class FileSectionWriter(BaseSectionWriter):
             c.path for c in changes or []
         )
         if files_in_diff:
-            table_header = get_table_header(hide_project_coverage, self.show_complexity)
-            table_layout = get_table_layout(hide_project_coverage, self.show_complexity)
-            # add table headers
-            yield (
-                "| [Files Changed]({0}?src=pr&el=tree) {1}".format(
-                    links["pull"], table_header
-                )
-            )
-            yield (table_layout)
+            table_header = "| Patch % | Lines |"
+            table_layout = "|---|---|---|"
 
             # get limit of results to show
             limit = int(self.layout.split(":")[1] if ":" in self.layout else 10)
@@ -534,13 +454,97 @@ class FileSectionWriter(BaseSectionWriter):
                         file_tags=" **Critical**" if path in files_in_critical else "",
                     )
 
-            # add to comment
+            remaining_files = 0
+            printed_files = 0
+            changed_files = sorted(
+                files_in_diff, key=lambda a: a[3] or Decimal("0"), reverse=True
+            )
+            changed_files_with_missing_lines = [f for f in changed_files if f[3] > 0]
+            if changed_files_with_missing_lines:
+                yield (
+                    "| [Files]({0}?src=pr&el=tree) {1}".format(
+                        links["pull"], table_header
+                    )
+                )
+                yield (table_layout)
+            for file in changed_files_with_missing_lines:
+                if printed_files == limit:
+                    remaining_files += 1
+                else:
+                    printed_files += 1
+                    yield (tree_cell(file[0], file[1], file[2]))
+            if remaining_files:
+                yield (
+                    "| ... and [{n} more]({href}?src=pr&el=tree-more) | |".format(
+                        n=remaining_files, href=links["pull"]
+                    )
+                )
+
+
+class FileSectionWriter(BaseSectionWriter):
+    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+        # create list of files changed in diff
+        base_report = comparison.base.report
+        head_report = comparison.head.report
+        if base_report is None:
+            base_report = Report()
+        files_in_diff = [
+            (
+                _diff["type"],
+                path,
+                make_metrics(
+                    get_totals_from_file_in_reports(base_report, path) or False,
+                    get_totals_from_file_in_reports(head_report, path) or False,
+                    _diff["totals"],
+                    self.show_complexity,
+                    self.current_yaml,
+                    links["pull"],
+                ),
+                int(_diff["totals"].misses + _diff["totals"].partials),
+            )
+            for path, _diff in (diff["files"] if diff else {}).items()
+            if _diff.get("totals")
+        ]
+
+        all_files = set(f[1] for f in files_in_diff or []) | set(
+            c.path for c in changes or []
+        )
+        if files_in_diff:
+            table_header = get_table_header(self.show_complexity)
+            table_layout = get_table_layout(self.show_complexity)
+
+            # get limit of results to show
+            limit = int(self.layout.split(":")[1] if ":" in self.layout else 10)
+            mentioned = []
+            files_in_critical = set()
+            if self.settings.get("show_critical_paths", False):
+                overlay = comparison.get_overlay(OverlayType.line_execution_count)
+                files_in_critical = set(
+                    await overlay.search_files_for_critical_changes(all_files)
+                )
+
+            def tree_cell(typ, path, metrics, _=None):
+                if path not in mentioned:
+                    # mentioned: for files that are in diff and changes
+                    mentioned.append(path)
+                    return "| {rm}[{path}]({compare}?src=pr&el=tree#diff-{hash}){rm}{file_tags} {metrics}".format(
+                        rm="~~" if typ == "deleted" else "",
+                        path=escape_markdown(ellipsis(path, 50, False)),
+                        compare=links["pull"],
+                        hash=b64encode(path.encode()).decode(),
+                        metrics=metrics,
+                        file_tags=" **Critical**" if path in files_in_critical else "",
+                    )
+
+            yield (
+                "| [Files]({0}?src=pr&el=tree) {1}".format(links["pull"], table_header)
+            )
+            yield (table_layout)
             for line in starmap(
                 tree_cell,
                 sorted(files_in_diff, key=lambda a: a[3] or Decimal("0"))[:limit],
             ):
                 yield (line)
-
             remaining = len(files_in_diff) - limit
             if remaining > 0:
                 yield (
@@ -549,7 +553,7 @@ class FileSectionWriter(BaseSectionWriter):
                     )
                 )
 
-        if changes and not hide_project_coverage:
+        if changes:
             len_changes_not_in_diff = len(all_files or []) - len(files_in_diff or [])
             if files_in_diff and len_changes_not_in_diff > 0:
                 yield ("")

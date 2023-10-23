@@ -13,6 +13,7 @@ from database.models.labelanalysis import (
 )
 from database.models.staticanalysis import StaticAnalysisSuite
 from helpers.labels import get_all_report_labels, get_labels_per_session
+from helpers.metrics import metrics
 from services.report import Report, ReportService
 from services.report.report_builder import SpecialLabelsEnum
 from services.repository import get_repo_provider_service
@@ -41,6 +42,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             .first()
         )
         if label_analysis_request is None:
+            metrics.incr("label_analysis_task.failed_to_calculate.larq_not_found")
             log.error(
                 "LabelAnalysisRequest not found", extra=dict(request_id=request_id)
             )
@@ -92,6 +94,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 label_analysis_request.state_id = (
                     LabelAnalysisRequestState.FINISHED.db_id
                 )
+                metrics.incr("label_analysis_task.success")
                 return {
                     "success": True,
                     "present_report_labels": result["present_report_labels"],
@@ -102,6 +105,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 }
         except Exception:
             # temporary general catch while we find possible problems on this
+            metrics.incr("label_analysis_task.failed_to_calculate.exception")
             log.exception(
                 "Label analysis failed to calculate",
                 extra=dict(
@@ -126,6 +130,7 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 "global_level_labels": [],
                 "errors": self.errors,
             }
+        metrics.incr("label_analysis_task.failed_to_calculate.missing_info")
         log.warning(
             "We failed to get some information that was important to label analysis",
             extra=dict(
@@ -137,16 +142,16 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
             ),
         )
         label_analysis_request.state_id = LabelAnalysisRequestState.FINISHED.db_id
-        result = {
+        result_to_save = {
             "success": True,
             "present_report_labels": [],
             "present_diff_labels": [],
             "absent_labels": label_analysis_request.requested_labels,
             "global_level_labels": [],
-            "errors": self.errors,
         }
-        label_analysis_request.result = result
-        return result
+        label_analysis_request.result = result_to_save
+        result_to_return = {**result_to_save, "errors": self.errors}
+        return result_to_return
 
     def add_processing_error(
         self,
@@ -195,10 +200,12 @@ class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
                 commit_sha=larq.head_commit.commitid,
             )
             larq.result = result  # Save the new result
+            metrics.incr("label_analysis_task.already_calculated.new_result")
             return {**result, "success": True, "errors": []}
         # No requested labels mean we don't have any new information
         # So we don't need to calculate again
         # This shouldn't actually happen
+        metrics.incr("label_analysis_task.already_calculated.same_result")
         return {**larq.result, "success": True, "errors": []}
 
     def _get_requested_labels(self, label_analysis_request: LabelAnalysisRequest):

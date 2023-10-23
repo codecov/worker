@@ -1,5 +1,7 @@
 import json
 import logging
+import time
+from contextlib import contextmanager
 from functools import lru_cache
 from typing import Any, Callable, Optional
 
@@ -69,11 +71,17 @@ class ArchiveField:
         rehydrate_fn: Callable[[object, object], Any] = lambda self, x: x,
         json_encoder=ReportEncoder,
         default_value_class=lambda: None,
+        read_timeout=60,
     ):
         self.default_value_class = default_value_class
         self.rehydrate_fn = rehydrate_fn
         self.should_write_to_storage_fn = should_write_to_storage_fn
         self.json_encoder = json_encoder
+        self._read_timeout = read_timeout
+
+    @property
+    def read_timeout(self):
+        return self._read_timeout
 
     def __set_name__(self, owner, name):
         # Validate that the owner class has the methods we need
@@ -90,18 +98,39 @@ class ArchiveField:
         archive_service = ArchiveService(repository=repository)
         archive_field = getattr(obj, self.archive_field_name)
         if archive_field:
-            try:
-                file_str = archive_service.read_file(archive_field)
-                return self.rehydrate_fn(obj, json.loads(file_str))
-            except FileNotInStorageError:
-                log.error(
-                    "Archive enabled field not in storage",
-                    extra=dict(
-                        storage_path=archive_field,
-                        object_id=obj.id,
-                        commit=obj.get_commitid(),
-                    ),
-                )
+            start_time = time.time()
+            error = False
+            while time.time() < start_time + self.read_timeout:
+                # we're within the timeout window
+                try:
+                    file_str = archive_service.read_file(archive_field)
+                    result = self.rehydrate_fn(obj, json.loads(file_str))
+                    if error:
+                        # we previously errored and now it succeeded
+                        log.info(
+                            "Archive enabled field found in storage after delay",
+                            extra=dict(
+                                storage_path=archive_field,
+                                object_id=obj.id,
+                                commit=obj.get_commitid(),
+                                delay_seconds=time.time() - start_time,
+                            ),
+                        )
+                    return result
+                except FileNotInStorageError:
+                    log.error(
+                        "Archive enabled field not in storage",
+                        extra=dict(
+                            storage_path=archive_field,
+                            object_id=obj.id,
+                            commit=obj.get_commitid(),
+                        ),
+                    )
+                    error = True
+                    # sleep a little but so we're not hammering the archive service
+                    # in a tight loop
+                    time.sleep(self.read_timeout / 20)
+
         else:
             log.debug(
                 "Both db_field and archive_field are None",

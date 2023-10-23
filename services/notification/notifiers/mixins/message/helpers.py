@@ -10,7 +10,7 @@ from services.yaml.reader import get_minimum_precision, round_number
 zero_change_regex = re.compile("0.0+%?")
 
 
-def make_metrics(before, after, relative, show_complexity, yaml):
+def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
     coverage_good = None
     icon = " |"
     if after is None:
@@ -116,51 +116,50 @@ def make_metrics(before, after, relative, show_complexity, yaml):
     return "".join(("|", coverage, complexity, icon))
 
 
-def make_patch_only_metrics(before, after, relative, show_complexity, yaml):
+def make_patch_only_metrics(before, after, relative, show_complexity, yaml, pull_url):
     if after is None:
         # e.g. missing flags
         coverage = " `?` |"
+        missing_line_str = " `?` |"
 
     elif after is False:
         # e.g. file deleted
         coverage = " |"
+        missing_line_str = " |"
 
     else:
-        layout = " `{relative}` |"
-        coverage = layout.format(
-            relative=format_number_to_str(
-                yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xF8"
-            ),
+        patch_cov = format_number_to_str(
+            yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xF8"
         )
-    return "".join(("|", coverage))
-
-
-def get_metrics_function(hide_project_coverage):
-    if hide_project_coverage:
-        metrics = make_patch_only_metrics
-    else:
-        metrics = make_metrics
-    return metrics
-
-
-def get_table_header(hide_project_coverage, show_complexity):
-    if not hide_project_coverage:
-        table_header = (
-            "| Coverage \u0394 |"
-            + (" Complexity \u0394 |" if show_complexity else "")
-            + " |"
+        coverage = f" {patch_cov} |"
+        missing_lines = relative.misses if relative else 0
+        partials = relative.partials if relative else 0
+        s = "s" if partials > 1 else ""
+        partials_str = "{n} partial{s}".format(
+            n=partials,
+            s=s,
         )
-    else:
-        table_header = "| Coverage |"
+        missing_line_str = (
+            " [{m} Missing {partials}:warning: ]({pull_url}?src=pr&el=tree) |".format(
+                m=missing_lines,
+                partials=f"and {partials_str} " if partials else "",
+                pull_url=pull_url,
+            )
+        )
+    return "".join(("|", coverage, missing_line_str))
 
-    return table_header
+
+def get_table_header(show_complexity):
+
+    return (
+        "| Coverage \u0394 |"
+        + (" Complexity \u0394 |" if show_complexity else "")
+        + " |"
+    )
 
 
-def get_table_layout(hide_project_coverage, show_complexity):
-    if hide_project_coverage:
-        return "|---|---|"
-    else:
-        return "|---|---|---|" + ("---|" if show_complexity else "")
+def get_table_layout(show_complexity):
+    return "|---|---|---|" + ("---|" if show_complexity else "")
 
 
 def format_number_to_str(
