@@ -43,7 +43,7 @@ class BaseFlow(str, Enum):
     is_failure: ClassVar[Callable[[T], bool]]
     log_counters: ClassVar[Callable[[T], None]]
 
-    def __new__(cls, value):
+    def __new__(cls: type[T], value: str) -> T:
         """
         Hook into the creation of each enum member and inject the class name
         into the enum's value (e.g. "MEMBER_NAME" -> "MyEnum.MEMBER_NAME")
@@ -51,13 +51,35 @@ class BaseFlow(str, Enum):
         value = f"{cls.__name__}.{value}"
         return super().__new__(cls, value)
 
-    def _generate_next_value_(name, start, count, last_values):
+    def _generate_next_value_(name: str, start: int, count: int, last_values: list[Any]):  # type: ignore[override]
         """
         This powers `enum.auto()`. We want `MyEnum.MEMBER_NAME` as our value but
         we don't have access to the name of `MyEnum` here so just return
         `MEMBER_NAME` for now.
         """
         return name
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self.__class__._member_names_.index(
+                self.name
+            ) == self.__class__._member_names_.index(other.name)
+        return NotImplemented
+
+    def __gt__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self.__class__._member_names_.index(
+                self.name
+            ) > self.__class__._member_names_.index(other.name)
+        return NotImplemented
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return (not self == other) and (not self > other)
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.name)
 
 
 TClassDecorator: TypeAlias = Callable[[type[T]], type[T]]
@@ -346,7 +368,7 @@ class CheckpointLogger(Generic[T]):
         elif end not in self.data:
             self._error(f"Cannot compute duration; missing end checkpoint {end}")
             return None
-        elif end.value <= start.value:
+        elif end <= start:
             # This error is not ignored when `self.strict==False` because it's definitely
             # a code mistake
             raise ValueError(
