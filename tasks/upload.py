@@ -31,6 +31,7 @@ from services.report import NotReadyToBuildReportYetError, ReportService
 from services.repository import (
     create_webhook_on_provider,
     get_repo_provider_service,
+    possibly_update_commit_from_provider_info,
     update_commit_from_provider_info,
 )
 from services.yaml import save_repo_yaml_to_database_if_needed
@@ -297,7 +298,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         was_updated, was_setup = False, False
         try:
             repository_service = get_repo_provider_service(repository, commit)
-            was_updated = await self.possibly_update_commit_from_provider_info(
+            was_updated = await possibly_update_commit_from_provider_info(
                 commit, repository_service
             )
             was_setup = await self.possibly_setup_webhooks(commit, repository_service)
@@ -532,31 +533,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "Failed to create project webhook",
                     extra=dict(repoid=repository.repoid, commit=commit.commitid),
                 )
-        return False
-
-    async def possibly_update_commit_from_provider_info(
-        self, commit, repository_service
-    ):
-        repoid = commit.repoid
-        commitid = commit.commitid
-        try:
-            if not commit.message:
-                log.info(
-                    "Commit does not have all needed info. Reaching provider to fetch info",
-                    extra=dict(repoid=repoid, commit=commitid),
-                )
-                await update_commit_from_provider_info(repository_service, commit)
-                return True
-        except TorngitObjectNotFoundError:
-            log.warning(
-                "Could not update commit with info because it was not found at the provider",
-                extra=dict(repoid=repoid, commit=commitid),
-            )
-            return False
-        log.debug(
-            "Not updating commit because it already seems to be populated",
-            extra=dict(repoid=repoid, commit=commitid),
-        )
         return False
 
     def normalize_upload_arguments(
