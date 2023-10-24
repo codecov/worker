@@ -20,8 +20,9 @@ from shared.yaml import UserYaml
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit
-from helpers.checkpoint_logger import UploadFlow, _kwargs_key
+from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
+from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
@@ -149,7 +150,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
     ):
         # If we're a retry, kwargs will already have our first checkpoint.
         # If not, log it directly into kwargs so we can pass it onto other tasks
-        checkpoints_from_kwargs(UploadFlow, kwargs).log(
+        checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs).log(
             UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
         )
 
@@ -202,6 +203,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "Not retrying since there are likely no jobs that need scheduling",
                     extra=dict(commit=commitid, repoid=repoid),
                 )
+                checkpoints.log(UploadFlow.NO_PENDING_JOBS)
                 return {
                     "was_setup": False,
                     "was_updated": False,
@@ -212,6 +214,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "Not retrying since we already had too many retries",
                     extra=dict(commit=commitid, repoid=repoid),
                 )
+                checkpoints.log(UploadFlow.TOO_MANY_RETRIES)
                 return {
                     "was_setup": False,
                     "was_updated": False,
@@ -278,11 +281,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         try:
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
-            checkpoints.log(UploadFlow.PROCESSING_BEGIN).submit_subflow(
-                "time_before_processing",
-                UploadFlow.UPLOAD_TASK_BEGIN,
-                UploadFlow.PROCESSING_BEGIN,
-            )
+            checkpoints.log(UploadFlow.PROCESSING_BEGIN)
         except ValueError as e:
             log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
 
@@ -377,11 +376,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
         else:
             checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-            checkpoints.submit_subflow(
-                "initial_processing_duration",
-                UploadFlow.PROCESSING_BEGIN,
-                UploadFlow.INITIAL_PROCESSING_COMPLETE,
-            )
             log.info(
                 "Not scheduling task because there were no arguments were found on redis",
                 extra=dict(
@@ -460,11 +454,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             checkpoint_data = None
             if checkpoints:
                 checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-                checkpoints.submit_subflow(
-                    "initial_processing_duration",
-                    UploadFlow.PROCESSING_BEGIN,
-                    UploadFlow.INITIAL_PROCESSING_COMPLETE,
-                )
                 checkpoint_data = checkpoints.data
 
             finish_sig = upload_finisher_task.signature(
