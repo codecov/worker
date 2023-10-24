@@ -19,11 +19,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class CommitUpdateTask(BaseCodecovTask):
-
-    # TODO add this to shared
-    name = commit_update_task_name
-
+class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
     async def run_async(
         self,
         db_session,

@@ -57,7 +57,7 @@ def _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs):
     )
 
 
-class UploadTask(BaseCodecovTask):
+class UploadTask(BaseCodecovTask, name=upload_task_name):
     """The first of a series of tasks designed to process an `upload` made by the user
 
     This task is the first of three tasks, which run whenever a user makes
@@ -108,8 +108,6 @@ class UploadTask(BaseCodecovTask):
         - In the end, the tasks are scheduled (sent to celery), and this task finishes
 
     """
-
-    name = upload_task_name
 
     def has_pending_jobs(self, redis_connection, repoid, commitid) -> bool:
         uploads_locations = [f"uploads/{repoid}/{commitid}"]

@@ -16,12 +16,10 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class StatusSetPendingTask(BaseCodecovTask):
+class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
     """
     Set commit status to pending
     """
-
-    name = status_set_pending_task_name
 
     throws = (AssertionError,)
 

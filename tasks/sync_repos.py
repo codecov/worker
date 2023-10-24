@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 metrics_scope = "worker.SyncReposTask"
 
 
-class SyncReposTask(BaseCodecovTask):
+class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     """This task syncs the repos for a user in the same way as the legacy "refresh" task.
 
     High-level steps:
@@ -37,7 +37,6 @@ class SyncReposTask(BaseCodecovTask):
        service (GitHub, Gitlab, Bitbucket, ...).
     """
 
-    name = sync_repos_task_name
     ignore_result = False
 
     async def run_async(

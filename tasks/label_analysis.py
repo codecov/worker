@@ -30,9 +30,9 @@ GLOBAL_LEVEL_LABEL = (
 )
 
 
-class LabelAnalysisRequestProcessingTask(BaseCodecovTask):
-    name = label_analysis_task_name
-
+class LabelAnalysisRequestProcessingTask(
+    BaseCodecovTask, name=label_analysis_task_name
+):
     async def run_async(self, db_session, request_id, *args, **kwargs):
         self.errors = []
         self.dbsession = db_session

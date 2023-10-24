@@ -9,13 +9,10 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class HTTPRequestTask(BaseCodecovTask):
+class HTTPRequestTask(BaseCodecovTask, name="app.tasks.http_request.HTTPRequest"):
     """
     Task for making generic HTTP requests.
     """
-
-    # TODO: move to `shared`
-    name = "app.tasks.http_request.HTTPRequest"
 
     async def run_async(
         self,

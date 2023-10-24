@@ -21,9 +21,9 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class SaveReportResultsTask(BaseCodecovTask):
-    name = "app.tasks.reports.save_report_results"
-
+class SaveReportResultsTask(
+    BaseCodecovTask, name="app.tasks.reports.save_report_results"
+):
     async def run_async(
         self, db_session, *, repoid, commitid, report_code, current_yaml, **kwargs
     ):

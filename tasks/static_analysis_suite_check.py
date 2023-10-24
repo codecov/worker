@@ -16,9 +16,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class StaticAnalysisSuiteCheckTask(BaseCodecovTask):
-    name = static_analysis_task_name
-
+class StaticAnalysisSuiteCheckTask(BaseCodecovTask, name=static_analysis_task_name):
     async def run_async(
         self,
         db_session,

@@ -14,12 +14,10 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class SyncPlansTask(BaseCodecovTask):
+class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
     """
     Sync GitHub marketplace plans
     """
-
-    name = ghm_sync_plans_task_name
 
     async def run_async(self, db_session, sender=None, account=None, action=None):
         """

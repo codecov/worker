@@ -20,15 +20,13 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class PreProcessUpload(BaseCodecovTask):
+class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"):
 
     """
     The main goal for this task is to carry forward flags from previous uploads
     and save the new carried-forawrded upload in the db,as a pre-step for
     uploading a report to codecov
     """
-
-    name = "app.tasks.upload.PreProcessUpload"
 
     async def run_async(
         self,

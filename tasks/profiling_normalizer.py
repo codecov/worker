@@ -23,10 +23,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class ProfilingNormalizerTask(BaseCodecovTask):
-
-    name = profiling_normalization_task_name
-
+class ProfilingNormalizerTask(BaseCodecovTask, name=profiling_normalization_task_name):
     async def run_async(
         self, db_session: Session, *, profiling_upload_id: int, **kwargs
     ):

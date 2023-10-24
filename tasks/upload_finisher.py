@@ -29,7 +29,7 @@ regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]")
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
 
-class UploadFinisherTask(BaseCodecovTask):
+class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
     """This is the third task of the series of tasks designed to process an `upload` made
     by the user
 
@@ -42,8 +42,6 @@ class UploadFinisherTask(BaseCodecovTask):
         - Schedule notification tasks, depending on the case
         - Invalidating whatever cache is done
     """
-
-    name = upload_finisher_task_name
 
     async def run_async(
         self,

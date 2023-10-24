@@ -22,10 +22,7 @@ from tasks.profiling_summarization import profiling_summarization_task
 log = logging.getLogger(__name__)
 
 
-class ProfilingCollectionTask(BaseCodecovTask):
-
-    name = profiling_collection_task_name
-
+class ProfilingCollectionTask(BaseCodecovTask, name=profiling_collection_task_name):
     async def run_async(self, db_session: Session, *, profiling_id: int, **kwargs):
         redis_connection = get_redis_connection()
         try:

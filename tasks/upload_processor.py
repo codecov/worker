@@ -33,7 +33,7 @@ merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 FIRST_RETRY_DELAY = 20
 
 
-class UploadProcessorTask(BaseCodecovTask):
+class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
     """This is the second task of the series of tasks designed to process an `upload` made
     by the user
 
@@ -51,8 +51,6 @@ class UploadProcessorTask(BaseCodecovTask):
         with as many as possible. But it is not expected that this task will receive a big
         number of `uploads` to be processed
     """
-
-    name = upload_processor_task_name
 
     acks_late = get_config("setup", "tasks", "upload", "acks_late", default=False)
 
