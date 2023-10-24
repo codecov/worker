@@ -234,8 +234,8 @@ class TestUploadTaskIntegration(object):
         mock_redis,
         celery_app,
     ):
-        mock_possibly_update_commit_from_provider_info = mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        mock_possibly_update_commit_from_provider_info = mocker.patch(
+            "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
@@ -281,8 +281,8 @@ class TestUploadTaskIntegration(object):
         mock_redis,
         celery_app,
     ):
-        mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        mocker.patch(
+            "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
@@ -300,9 +300,6 @@ class TestUploadTaskIntegration(object):
         ).timestamp()
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
-        )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mocked_chain = mocker.patch("tasks.upload.chain")
@@ -334,8 +331,8 @@ class TestUploadTaskIntegration(object):
     ):
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        mocker.patch(
+            "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
@@ -713,8 +710,8 @@ class TestUploadTaskIntegration(object):
         mock_storage,
     ):
         mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
-        mock_possibly_update_commit_from_provider_info = mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        mock_possibly_update_commit_from_provider_info = mocker.patch(
+            "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mock_create_upload = mocker.patch.object(ReportService, "create_report_upload")
 

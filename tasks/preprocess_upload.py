@@ -12,7 +12,10 @@ from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.redis import get_redis_connection
 from services.report import ReportService
-from services.repository import get_repo_provider_service
+from services.repository import (
+    get_repo_provider_service,
+    possibly_update_commit_from_provider_info,
+)
 from services.yaml import save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
@@ -82,8 +85,14 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         )
         commit = commits.first()
         assert commit, "Commit not found in database."
+
         repository = commit.repository
         repository_service = self.get_repo_service(commit)
+        # Makes sure that we can properly carry forward reports
+        # By populating the commit info (if needed)
+        updated_commit = await possibly_update_commit_from_provider_info(
+            commit=commit, repository_service=repository_service
+        )
         if repository_service:
             commit_yaml = await self.fetch_commit_yaml_and_possibly_store(
                 commit, repository_service
@@ -99,7 +108,11 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         commit_report = await report_service.initialize_and_save_report(
             commit, report_code
         )
-        return {"preprocessed_upload": True, "reportid": str(commit_report.external_id)}
+        return {
+            "preprocessed_upload": True,
+            "reportid": str(commit_report.external_id),
+            "updated_commit": updated_commit,
+        }
 
     def get_repo_service(self, commit):
         repository_service = None

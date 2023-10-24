@@ -126,6 +126,30 @@ async def fetch_appropriate_parent_for_commit(
     return closest_parent_without_message
 
 
+async def possibly_update_commit_from_provider_info(commit, repository_service):
+    repoid = commit.repoid
+    commitid = commit.commitid
+    try:
+        if not commit.message:
+            log.info(
+                "Commit does not have all needed info. Reaching provider to fetch info",
+                extra=dict(repoid=repoid, commit=commitid),
+            )
+            await update_commit_from_provider_info(repository_service, commit)
+            return True
+    except TorngitObjectNotFoundError:
+        log.warning(
+            "Could not update commit with info because it was not found at the provider",
+            extra=dict(repoid=repoid, commit=commitid),
+        )
+        return False
+    log.debug(
+        "Not updating commit because it already seems to be populated",
+        extra=dict(repoid=repoid, commit=commitid),
+    )
+    return False
+
+
 async def update_commit_from_provider_info(repository_service, commit):
     """
     Takes the result from the torngit commit details, and updates the commit
