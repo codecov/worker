@@ -73,9 +73,19 @@ class BaseFlow(str, Enum):
             ) > self.__class__._member_names_.index(other.name)
         return NotImplemented
 
+    def __ge__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self == other or self > other
+        return NotImplemented
+
     def __lt__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
             return (not self == other) and (not self > other)
+        return NotImplemented
+
+    def __le__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self == other or self < other
         return NotImplemented
 
     def __hash__(self):

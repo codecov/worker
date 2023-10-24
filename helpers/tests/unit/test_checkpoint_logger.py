@@ -377,3 +377,8 @@ class TestCheckpointLogger(unittest.TestCase):
         assert TestEnum1.C > TestEnum1.B
         assert SortOrderEnum.C < SortOrderEnum.B
         assert SortOrderEnum.A > SortOrderEnum.B
+
+        checkpoints = CheckpointLogger(SortOrderEnum)
+        checkpoints.log(SortOrderEnum.C)
+        checkpoints.log(SortOrderEnum.B)
+        checkpoints._subflow_duration(SortOrderEnum.C, SortOrderEnum.B)
