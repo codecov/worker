@@ -443,6 +443,9 @@ class CheckpointLogger(Generic[T]):
             self.data[checkpoint] = _get_milli_timestamp()
         elif not ignore_repeat:
             self._error(f"Already recorded checkpoint {checkpoint}")
+            return self
+        else:
+            return self
 
         if kwargs is not None:
             kwargs[self.kwargs_key] = self.data
