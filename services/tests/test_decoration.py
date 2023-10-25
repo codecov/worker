@@ -516,6 +516,18 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "Testable files got changed."
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    def test_get_decoration_type_processing_upload(
+        self, dbsession, mocker, enriched_pull
+    ):
+        enriched_pull.database_pull.repository.private = False
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull, "processing")
+
+        assert decoration_details.decoration_type == Decoration.processing_upload
+        assert decoration_details.reason == "Upload is still processing."
+        assert decoration_details.should_attempt_author_auto_activation is False
+
 
 class TestDecorationServiceGitLabTestCase(object):
     def test_get_decoration_type_not_pr_plan_gitlab_subgroup(
