@@ -12,10 +12,9 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class SyncTeamsTask(BaseCodecovTask):
+class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
     """This task syncs the orgs/teams that a user belongs to"""
 
-    name = sync_teams_task_name
     ignore_result = False
 
     async def run_async(self, db_session, ownerid, *, username=None, **kwargs):

@@ -13,12 +13,10 @@ log = logging.getLogger(__name__)
 yield_amount = 100
 
 
-class TrialExpirationCronTask(CodecovCronTask):
+class TrialExpirationCronTask(CodecovCronTask, name=trial_expiration_cron_task_name):
     @classmethod
     def get_min_seconds_interval_between_executions(cls):
         return 86100  # 23 hours and 55 minutes
-
-    name = trial_expiration_cron_task_name
 
     async def run_cron_task(self, db_session, *args, **kwargs):
         log.info("Doing trial expiration check")

@@ -10,9 +10,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class TrialExpirationTask(BaseCodecovTask):
-    name = trial_expiration_task_name
-
+class TrialExpirationTask(BaseCodecovTask, name=trial_expiration_task_name):
     async def run_async(self, db_session, ownerid, *args, **kwargs):
         owner = db_session.query(Owner).get(ownerid)
         log_extra = dict(

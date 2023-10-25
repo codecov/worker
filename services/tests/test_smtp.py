@@ -167,7 +167,7 @@ class TestSMTP(object):
 
         smtp.send(email)
 
-        smtp.connection.connect.assert_has_calls([call("testserver", 12345)])
+        smtp.connection.connect.assert_has_calls([call("mailhog", 1025)])
         smtp.connection.starttls.assert_has_calls(
             [call(context=smtp.ssl_context), call(context=smtp.ssl_context)]
         )

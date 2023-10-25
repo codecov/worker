@@ -12,12 +12,10 @@ from tasks.crontasks import CodecovCronTask
 log = logging.getLogger(__name__)
 
 
-class HealthCheckTask(CodecovCronTask):
+class HealthCheckTask(CodecovCronTask, name=health_check_task_name):
     @classmethod
     def get_min_seconds_interval_between_executions(cls):
         return 8  # This task should run every 10s, so this time should be small.
-
-    name = health_check_task_name
 
     def _get_all_queue_names_from_config(self) -> Set[str]:
         """

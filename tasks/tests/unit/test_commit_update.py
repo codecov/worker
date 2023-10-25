@@ -159,7 +159,7 @@ class TestCommitUpdate(object):
     ):
 
         mock_update_commit_from_provider = mocker.patch(
-            "tasks.commit_update.update_commit_from_provider_info"
+            "tasks.commit_update.possibly_update_commit_from_provider_info"
         )
         mock_update_commit_from_provider.side_effect = TorngitObjectNotFoundError(
             "fake_response", "message"

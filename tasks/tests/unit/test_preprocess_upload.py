@@ -155,6 +155,7 @@ class TestPreProcessUpload(object):
         assert result == {
             "preprocessed_upload": True,
             "reportid": str(report.external_id),
+            "updated_commit": False,
         }
         mocked_fetch_yaml.assert_called()
         mock_possibly_shift.assert_called()

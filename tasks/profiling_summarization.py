@@ -15,10 +15,9 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class ProfilingSummarizationTask(BaseCodecovTask):
-
-    name = profiling_summarization_task_name
-
+class ProfilingSummarizationTask(
+    BaseCodecovTask, name=profiling_summarization_task_name
+):
     async def run_async(self, db_session: Session, *, profiling_id: int, **kwargs):
         profiling = db_session.query(ProfilingCommit).filter_by(id=profiling_id).first()
         try:

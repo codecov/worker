@@ -16,7 +16,8 @@ from database.models import Upload
 from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from database.tests.factories.core import ReportFactory
-from helpers.checkpoint_logger import CheckpointLogger, UploadFlow, _kwargs_key
+from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
+from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -121,6 +122,8 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
+        dbsession.refresh(commit)
+        repo_updatestamp = commit.repository.updatestamp
         mock_redis.lists[
             f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
@@ -138,6 +141,7 @@ class TestUploadTaskIntegration(object):
         assert commit.parent_commit_id is None
         assert commit.report is not None
         assert commit.report.details is not None
+        assert commit.repository.updatestamp > repo_updatestamp
         sessions = commit.report.uploads
         assert len(sessions) == 1
         first_session = (
@@ -230,8 +234,8 @@ class TestUploadTaskIntegration(object):
         mock_redis,
         celery_app,
     ):
-        mock_possibly_update_commit_from_provider_info = mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        mock_possibly_update_commit_from_provider_info = mocker.patch(
+            "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
@@ -277,8 +281,8 @@ class TestUploadTaskIntegration(object):
         mock_redis,
         celery_app,
     ):
-        mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        mocker.patch(
+            "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
@@ -296,9 +300,6 @@ class TestUploadTaskIntegration(object):
         ).timestamp()
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
-        )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mocked_chain = mocker.patch("tasks.upload.chain")
@@ -330,8 +331,8 @@ class TestUploadTaskIntegration(object):
     ):
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        mocker.patch(
+            "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
@@ -709,8 +710,8 @@ class TestUploadTaskIntegration(object):
         mock_storage,
     ):
         mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
-        mock_possibly_update_commit_from_provider_info = mocker.patch.object(
-            UploadTask, "possibly_update_commit_from_provider_info", return_value=True
+        mock_possibly_update_commit_from_provider_info = mocker.patch(
+            "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mock_create_upload = mocker.patch.object(ReportService, "create_report_upload")
 

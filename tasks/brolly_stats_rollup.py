@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 DEFAULT_BROLLY_ENDPOINT = "https://codecov.io/self-hosted/telemetry"
 
 
-class BrollyStatsRollupTask(CodecovCronTask):
+class BrollyStatsRollupTask(CodecovCronTask, name=brolly_stats_rollup_task_name):
     """
     By default, this cron task collects anonymous statistics about the Codecov instance
     and submits them to Codecov to give us insight into the size of our self-hosted,
@@ -34,8 +34,6 @@ class BrollyStatsRollupTask(CodecovCronTask):
     @classmethod
     def get_min_seconds_interval_between_executions(cls):
         return 72000  # 20h
-
-    name = brolly_stats_rollup_task_name
 
     def _get_install_id(self, db_session):
         """

@@ -12,6 +12,7 @@ from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.repository import (
     get_repo_provider_service,
+    possibly_update_commit_from_provider_info,
     update_commit_from_provider_info,
 )
 from tasks.base import BaseCodecovTask
@@ -19,11 +20,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class CommitUpdateTask(BaseCodecovTask):
-
-    # TODO add this to shared
-    name = commit_update_task_name
-
+class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
     async def run_async(
         self,
         db_session,
@@ -42,7 +39,7 @@ class CommitUpdateTask(BaseCodecovTask):
         was_updated = False
         try:
             repository_service = get_repo_provider_service(repository, commit)
-            was_updated = await self.possibly_update_commit_from_provider_info(
+            was_updated = await possibly_update_commit_from_provider_info(
                 commit, repository_service
             )
         except RepositoryWithoutValidBotError:
@@ -67,32 +64,6 @@ class CommitUpdateTask(BaseCodecovTask):
                 extra=dict(commitid=commitid, repoid=repoid),
             )
         return {"was_updated": was_updated}
-
-    # TODO move this into services as it is used in upload task also
-    async def possibly_update_commit_from_provider_info(
-        self, commit, repository_service
-    ):
-        repoid = commit.repoid
-        commitid = commit.commitid
-        try:
-            if not commit.message:
-                log.info(
-                    "Commit does not have all needed info. Reaching provider to fetch info",
-                    extra=dict(repoid=repoid, commit=commitid),
-                )
-                await update_commit_from_provider_info(repository_service, commit)
-                return True
-        except TorngitObjectNotFoundError:
-            log.warning(
-                "Could not update commit with info because it was not found at the provider",
-                extra=dict(repoid=repoid, commit=commitid),
-            )
-            return False
-        log.debug(
-            "Not updating commit because it already seems to be populated",
-            extra=dict(repoid=repoid, commit=commitid),
-        )
-        return False
 
 
 RegisteredCommitUpdateTask = celery_app.register_task(CommitUpdateTask())

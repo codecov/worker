@@ -12,15 +12,13 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class DeleteOwnerTask(BaseCodecovTask):
+class DeleteOwnerTask(BaseCodecovTask, name=delete_owner_task_name):
     """
     Delete an owner and their data:
     - Repo archive data for each of their owned repos
     - Owner entry from db
     - Cascading deletes of repos, pulls, and branches for the owner
     """
-
-    name = delete_owner_task_name
 
     async def run_async(self, db_session, ownerid):
         log.info("Delete owner", extra=dict(ownerid=ownerid))

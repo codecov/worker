@@ -25,9 +25,10 @@ class BackfillResult(TypedDict):
     errors: List[BackfillError]
 
 
-class BackfillCommitDataToStorageTask(BaseCodecovTask):
-    name = f"app.tasks.{TaskConfigGroup.archive.value}.BackfillCommitDataToStorage"
-
+class BackfillCommitDataToStorageTask(
+    BaseCodecovTask,
+    name=f"app.tasks.{TaskConfigGroup.archive.value}.BackfillCommitDataToStorage",
+):
     async def run_async(
         self,
         db_session: Session,

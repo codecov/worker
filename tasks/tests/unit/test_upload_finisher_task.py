@@ -12,7 +12,8 @@ from database.tests.factories import (
     RepositoryFactory,
     UploadFactory,
 )
-from helpers.checkpoint_logger import CheckpointLogger, UploadFlow, _kwargs_key
+from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
+from helpers.checkpoint_logger.flows import UploadFlow
 from tasks.upload_finisher import ReportService, UploadFinisherTask
 
 here = Path(__file__)

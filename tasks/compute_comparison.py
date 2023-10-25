@@ -24,9 +24,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class ComputeComparisonTask(BaseCodecovTask):
-    name = compute_comparison_task_name
-
+class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
     async def run_async(self, db_session, comparison_id, *args, **kwargs):
         comparison = db_session.query(CompareCommit).get(comparison_id)
         repo = comparison.compare_commit.repository

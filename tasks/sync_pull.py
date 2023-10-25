@@ -30,7 +30,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class PullSyncTask(BaseCodecovTask):
+class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
 
     """
         This is the task that syncs pull with the information the Git Provider gives us
@@ -48,8 +48,6 @@ class PullSyncTask(BaseCodecovTask):
 
         At the end we call the notify task to do notifications with the new information we have
     """
-
-    name = pulls_task_name
 
     async def run_async(
         self,

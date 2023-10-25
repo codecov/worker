@@ -21,12 +21,10 @@ from tasks.crontasks import CodecovCronTask
 log = logging.getLogger(__name__)
 
 
-class GitHubAppWebhooksCheckTask(CodecovCronTask):
+class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task_name):
     @classmethod
     def get_min_seconds_interval_between_executions(cls):
         return 18000  # 5h
-
-    name = gh_app_webhook_check_task_name
 
     def _apply_time_filter(self, deliveries: List[object]) -> Iterable[object]:
         """

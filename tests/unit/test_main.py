@@ -19,7 +19,8 @@ def test_get_queues_param_from_queue_input():
     )
 
 
-def test_run_empty_config(mock_storage, mock_configuration):
+@mock.patch("main.start_prometheus")
+def test_run_empty_config(mock_prometheus, mock_storage, mock_configuration):
     assert not mock_storage.root_storage_created
     res = setup_worker()
     assert res is None
@@ -27,14 +28,20 @@ def test_run_empty_config(mock_storage, mock_configuration):
     assert mock_storage.config == {}
 
 
-def test_sys_path_append_on_enterprise(mock_storage, mock_configuration):
+@mock.patch("main.start_prometheus")
+def test_sys_path_append_on_enterprise(
+    mock_prometheus, mock_storage, mock_configuration
+):
     sys.frozen = True
     res = setup_worker()
     assert res is None
     assert "./external_deps" in sys.path
 
 
-def test_run_already_existing_root_storage(mock_storage, mock_configuration):
+@mock.patch("main.start_prometheus")
+def test_run_already_existing_root_storage(
+    mock_prometheus, mock_storage, mock_configuration
+):
     mock_storage.root_storage_created = True
     res = setup_worker()
     assert res is None
@@ -42,6 +49,7 @@ def test_run_already_existing_root_storage(mock_storage, mock_configuration):
     assert mock_storage.root_storage_created
 
 
+@mock.patch("main.start_prometheus")
 def test_get_cli_help(mocker):
     runner = CliRunner()
     res = runner.invoke(cli, ["--help"])
@@ -63,6 +71,7 @@ def test_get_cli_help(mocker):
     assert res.output == expected_output
 
 
+@mock.patch("main.start_prometheus")
 def test_deal_unsupported_commands(mocker):
     runner = CliRunner()
     test_res = runner.invoke(test, [])
@@ -71,7 +80,8 @@ def test_deal_unsupported_commands(mocker):
     assert web_res.output == "Error: System not suitable to run WEB mode\n"
 
 
-def test_deal_worker_command_default(mocker, mock_storage):
+@mock.patch("main.start_prometheus")
+def test_deal_worker_command_default(mock_prometheus, mocker, mock_storage):
     mocker.patch.dict(os.environ, {"HOSTNAME": "simpleworker"})
     mocked_get_current_version = mocker.patch(
         "main.get_current_version", return_value="some_version_12.3"
@@ -114,7 +124,8 @@ def test_deal_worker_command_default(mocker, mock_storage):
     )
 
 
-def test_deal_worker_command(mocker, mock_storage):
+@mock.patch("main.start_prometheus")
+def test_deal_worker_command(mock_prometheus, mocker, mock_storage):
     mocker.patch.dict(os.environ, {"HOSTNAME": "simpleworker"})
     mocked_get_current_version = mocker.patch(
         "main.get_current_version", return_value="some_version_12.3"
@@ -157,7 +168,8 @@ def test_deal_worker_command(mocker, mock_storage):
     )
 
 
-def test_main(mocker):
+@mock.patch("main.start_prometheus")
+def test_main(mock_prometheus, mocker):
     mock_cli = mocker.patch("main.cli")
     assert main() is None
     mock_cli.assert_called_with(obj={})

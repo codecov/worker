@@ -1,8 +1,8 @@
 import logging
 import re
-from copy import deepcopy
+from typing import Iterable
 
-import sentry_sdk
+from redis.exceptions import LockError
 from shared.celery_config import (
     compute_comparison_task_name,
     notify_task_name,
@@ -13,8 +13,9 @@ from shared.yaml import UserYaml
 
 from app import celery_app
 from database.models import Commit, Pull
-from helpers.checkpoint_logger import UploadFlow, _kwargs_key
+from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
+from helpers.checkpoint_logger.flows import UploadFlow
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -28,7 +29,7 @@ regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]")
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
 
-class UploadFinisherTask(BaseCodecovTask):
+class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
     """This is the third task of the series of tasks designed to process an `upload` made
     by the user
 
@@ -41,8 +42,6 @@ class UploadFinisherTask(BaseCodecovTask):
         - Schedule notification tasks, depending on the case
         - Invalidating whatever cache is done
     """
-
-    name = upload_finisher_task_name
 
     async def run_async(
         self,
@@ -57,11 +56,7 @@ class UploadFinisherTask(BaseCodecovTask):
     ):
         try:
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
-            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE).submit_subflow(
-                "batch_processing_duration",
-                UploadFlow.INITIAL_PROCESSING_COMPLETE,
-                UploadFlow.BATCH_PROCESSING_COMPLETE,
-            )
+            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
         except ValueError as e:
             log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
 
@@ -82,22 +77,52 @@ class UploadFinisherTask(BaseCodecovTask):
         commit = commits.first()
         assert commit, "Commit not found in database."
         redis_connection = get_redis_connection()
-        with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
-            commit_yaml = UserYaml(commit_yaml)
-            db_session.commit()
-            commit.notified = False
-            db_session.commit()
-            result = await self.finish_reports_processing(
-                db_session,
-                commit,
-                commit_yaml,
-                processing_results,
-                report_code,
-                checkpoints,
+        try:
+            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+                commit_yaml = UserYaml(commit_yaml)
+                db_session.commit()
+                commit.notified = False
+                db_session.commit()
+                result = await self.finish_reports_processing(
+                    db_session,
+                    commit,
+                    commit_yaml,
+                    processing_results,
+                    report_code,
+                    checkpoints,
+                )
+                self._save_commit_measurements(commit)
+                self.invalidate_caches(redis_connection, commit)
+                log.info(
+                    "Finished upload_finisher task",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        parent_task=self.request.parent_id,
+                    ),
+                )
+                return result
+        except LockError:
+            log.warning(
+                "Unable to acquire lock for key %s.",
+                lock_name,
+                extra=dict(
+                    commit=commitid,
+                    repoid=repoid,
+                ),
             )
+
+    def _save_commit_measurements(self, commit: Commit) -> None:
+        try:
             save_commit_measurements(commit)
-            self.invalidate_caches(redis_connection, commit)
-        return result
+        except Exception as e:
+            log.error(
+                "An error happened while saving commit measurements",
+                extra=dict(
+                    commit=commit.commitid,
+                    error=e,
+                ),
+            )
 
     async def finish_reports_processing(
         self,
@@ -183,11 +208,10 @@ class UploadFinisherTask(BaseCodecovTask):
             commit.state = "skipped"
 
         if checkpoints:
-            checkpoints.log(UploadFlow.PROCESSING_COMPLETE).submit_subflow(
-                "total_processing_duration",
-                UploadFlow.PROCESSING_BEGIN,
-                UploadFlow.PROCESSING_COMPLETE,
-            )
+            checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
+            if not notifications_called:
+                checkpoints.log(UploadFlow.SKIPPING_NOTIFICATION)
+
         return {"notifications_called": notifications_called}
 
     def should_call_notifications(
