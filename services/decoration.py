@@ -97,6 +97,12 @@ def determine_decoration_details(
                 reason="Testable files got changed.",
             )
 
+        if empty_upload == "processing":
+            return DecorationDetails(
+                decoration_type=Decoration.processing_upload,
+                reason="Upload is still processing.",
+            )
+
         if db_pull.repository.private is False:
             # public repo or repo we arent certain is private should be standard
             return DecorationDetails(

@@ -7,6 +7,7 @@ class Decoration(Enum):
     upload_limit = "upload_limit"
     passing_empty_upload = "passing_empty_upload"
     failing_empty_upload = "failing_empty_upload"
+    processing_upload = "processing_upload"
 
 
 class Notification(Enum):
