@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, TypedDict
 
 import sentry_sdk
 from shared.celery_config import label_analysis_task_name
@@ -28,6 +28,16 @@ log = logging.getLogger(__name__)
 GLOBAL_LEVEL_LABEL = (
     SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 )
+
+
+class LinesRelevantToChangeInFile(TypedDict):
+    all: bool
+    lines: Set[int]
+
+
+class LinesRelevantToChange(TypedDict):
+    all: bool
+    files: Dict[str, Optional[LinesRelevantToChangeInFile]]
 
 
 class LabelAnalysisRequestProcessingTask(
@@ -75,9 +85,9 @@ class LabelAnalysisRequestProcessingTask(
             return self._handle_larq_already_calculated(label_analysis_request)
 
         try:
-            lines_relevant_to_diff = await self._get_lines_relevant_to_diff(
-                label_analysis_request
-            )
+            lines_relevant_to_diff: Optional[
+                LinesRelevantToChange
+            ] = await self._get_lines_relevant_to_diff(label_analysis_request)
             base_report = self._get_base_report(label_analysis_request)
 
             if lines_relevant_to_diff and base_report:
@@ -217,7 +227,7 @@ class LabelAnalysisRequestProcessingTask(
 
     @sentry_sdk.trace
     def _get_existing_labels(
-        self, report: Report, lines_relevant_to_diff
+        self, report: Report, lines_relevant_to_diff: LinesRelevantToChange
     ) -> Tuple[Set[str], Set[str], Set[str]]:
         all_report_labels = self.get_all_report_labels(report)
         executable_lines_labels, global_level_labels = self.get_executable_lines_labels(
@@ -403,7 +413,9 @@ class LabelAnalysisRequestProcessingTask(
         return static_analysis_comparison_service.get_base_lines_relevant_to_change()
 
     @sentry_sdk.trace
-    def get_executable_lines_labels(self, report: Report, executable_lines) -> set:
+    def get_executable_lines_labels(
+        self, report: Report, executable_lines: LinesRelevantToChange
+    ) -> set:
         if executable_lines["all"]:
             return (self.get_all_report_labels(report), set())
         full_sessions = set()
@@ -412,7 +424,7 @@ class LabelAnalysisRequestProcessingTask(
         # Prime piece of code to be rust-ifyied
         for name, file_executable_lines in executable_lines["files"].items():
             rf = report.get(name)
-            if rf:
+            if rf and file_executable_lines:
                 if file_executable_lines["all"]:
                     for line_number, line in rf.lines:
                         if line and line.datapoints:

@@ -355,6 +355,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     async def build_message(self, comparison: Comparison) -> List[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
+        if self.is_processing_upload():
+            return self._create_processing_upload_message()
         if self.is_empty_upload():
             return self._create_empty_upload_message()
         if self.should_use_upload_limit_decoration():
@@ -423,3 +425,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
                 f"Please contact your Codecov On-Premises installation administrator with any questions.",
             ]
+
+    def _create_processing_upload_message(self):
+        return [
+            "We're currently processing your upload.  This comment will be updated when the results are available.",
+        ]
