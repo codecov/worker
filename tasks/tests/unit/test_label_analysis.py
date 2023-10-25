@@ -400,8 +400,21 @@ def sample_report_with_labels():
             complexity=None,
         ),
     )
+    random_rf = ReportFile("path/from/randomfile_no_static_analysis.html")
+    random_rf.append(
+        1,
+        ReportLine.create(
+            coverage=1,
+            type=None,
+            sessions=[(LineSession(id=1, coverage=1))],
+            datapoints=None,
+            complexity=None,
+        ),
+    )
     r.append(first_rf)
     r.append(second_rf)
+    r.append(random_rf)
+
     return r
 
 
@@ -662,6 +675,55 @@ def test_get_executable_lines_labels_all_labels_in_one_file(sample_report_with_l
             "pineapple",
         },
         {"orangejuice", "justjuice", "applejuice"},
+    )
+
+
+def test_get_executable_lines_labels_some_labels_in_one_file(sample_report_with_labels):
+    executable_lines = {
+        "all": False,
+        "files": {"source.py": {"all": False, "lines": set([5, 6])}},
+    }
+    task = LabelAnalysisRequestProcessingTask()
+    assert task.get_executable_lines_labels(
+        sample_report_with_labels, executable_lines
+    ) == (
+        {"apple", "label_one", "pineapple", "banana"},
+        set(),
+    )
+
+
+def test_get_executable_lines_labels_some_labels_in_one_file_with_globals(
+    sample_report_with_labels,
+):
+    executable_lines = {
+        "all": False,
+        "files": {"source.py": {"all": False, "lines": set([6, 8])}},
+    }
+    task = LabelAnalysisRequestProcessingTask()
+    assert task.get_executable_lines_labels(
+        sample_report_with_labels, executable_lines
+    ) == (
+        {"label_one", "pineapple", "banana", "orangejuice", "applejuice"},
+        {"applejuice", "justjuice", "orangejuice"},
+    )
+
+
+def test_get_executable_lines_labels_some_labels_in_one_file_other_null(
+    sample_report_with_labels,
+):
+    executable_lines = {
+        "all": False,
+        "files": {
+            "source.py": {"all": False, "lines": set([5, 6])},
+            "path/from/randomfile_no_static_analysis.html": None,
+        },
+    }
+    task = LabelAnalysisRequestProcessingTask()
+    assert task.get_executable_lines_labels(
+        sample_report_with_labels, executable_lines
+    ) == (
+        {"apple", "label_one", "pineapple", "banana"},
+        set(),
     )
 
 
