@@ -17,13 +17,52 @@ from typing import (
 )
 
 import sentry_sdk
-from shared.metrics import metrics
+from shared.metrics import Counter, Histogram, metrics
 
 logger = logging.getLogger(__name__)
 
 
 T = TypeVar("T", bound="BaseFlow")
 TSubflows: TypeAlias = Mapping[T, Iterable[tuple[str, T]]]
+
+
+CHECKPOINTS_TOTAL_BEGUN = Counter(
+    "worker_checkpoints_begun",
+    "Total number of times a flow's first checkpoint was logged.",
+    ["flow"],
+)
+CHECKPOINTS_TOTAL_SUCCEEDED = Counter(
+    "worker_checkpoints_succeeded",
+    "Total number of times one of a flow's success checkpoints was logged.",
+    ["flow"],
+)
+CHECKPOINTS_TOTAL_FAILED = Counter(
+    "worker_checkpoints_failed",
+    "Total number of times one of a flow's failure checkpoints was logged.",
+    ["flow"],
+)
+CHECKPOINTS_TOTAL_ENDED = Counter(
+    "worker_checkpoints_ended",
+    "Total number of times one of a flow's terminal checkpoints (success or failure) was logged.",
+    ["flow"],
+)
+CHECKPOINTS_ERRORS = Counter(
+    "worker_checkpoints_errors",
+    "Total number of errors while trying to log checkpoints",
+    ["flow"],
+)
+CHECKPOINTS_EVENTS = Counter(
+    "worker_checkpoints_events",
+    "Total number of checkpoints logged.",
+    ["flow", "checkpoint"],
+)
+
+CHECKPOINTS_SUBFLOW_DURATION = Histogram(
+    "worker_checkpoints_subflow_duration_seconds",
+    "Duration of subflows in seconds.",
+    ["flow", "subflow"],
+    buckets=[0.05, 0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 180, 300, 600, 900],
+)
 
 
 class BaseFlow(str, Enum):
@@ -266,10 +305,12 @@ def reliability_counters(klass: type[T]) -> type[T]:
 
     def log_counters(obj: T) -> None:
         metrics.incr(f"{klass.__name__}.events.{obj.name}")
+        CHECKPOINTS_EVENTS.labels(flow=klass.__name__, checkpoint=obj.name).inc()
 
         # If this is the first checkpoint, increment the number of flows we've begun
         if obj == next(iter(klass.__members__.values())):
             metrics.incr(f"{klass.__name__}.total.begun")
+            CHECKPOINTS_TOTAL_BEGUN.labels(flow=klass.__name__).inc()
             return
 
         is_failure = hasattr(obj, "is_failure") and obj.is_failure()
@@ -278,11 +319,14 @@ def reliability_counters(klass: type[T]) -> type[T]:
 
         if is_failure:
             metrics.incr(f"{klass.__name__}.total.failed")
+            CHECKPOINTS_TOTAL_FAILED.labels(flow=klass.__name__).inc()
         elif is_success:
             metrics.incr(f"{klass.__name__}.total.succeeded")
+            CHECKPOINTS_TOTAL_SUCCEEDED.labels(flow=klass.__name__).inc()
 
         if is_terminal:
             metrics.incr(f"{klass.__name__}.total.ended")
+            CHECKPOINTS_TOTAL_ENDED.labels(flow=klass.__name__).inc()
 
     klass.log_counters = log_counters
     return klass
@@ -356,6 +400,7 @@ class CheckpointLogger(Generic[T]):
         # may have been enqueued by the old worker and be missing checkpoints
         # data. At least for that reason, we want to allow failing softly.
         metrics.incr("worker.checkpoint_logger.error")
+        CHECKPOINTS_ERRORS.labels(flow=self.cls.__name__).inc()
         if self.strict:
             raise ValueError(msg)
         else:
@@ -422,6 +467,10 @@ class CheckpointLogger(Generic[T]):
         duration = self._subflow_duration(start, end)
         if duration:
             sentry_sdk.set_measurement(metric, duration, "milliseconds")
+            duration_in_seconds = duration / 1000
+            CHECKPOINTS_SUBFLOW_DURATION.labels(
+                flow=self.cls.__name__, subflow=metric
+            ).observe(duration_in_seconds)
 
         return self
 
