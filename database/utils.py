@@ -71,7 +71,7 @@ class ArchiveField:
         rehydrate_fn: Callable[[object, object], Any] = lambda self, x: x,
         json_encoder=ReportEncoder,
         default_value_class=lambda: None,
-        read_timeout=60,
+        read_timeout=5,
     ):
         self.default_value_class = default_value_class
         self.rehydrate_fn = rehydrate_fn
@@ -129,7 +129,7 @@ class ArchiveField:
                     error = True
                     # sleep a little but so we're not hammering the archive service
                     # in a tight loop
-                    time.sleep(self.read_timeout / 20)
+                    time.sleep(self.read_timeout / 10)
 
         else:
             log.debug(
