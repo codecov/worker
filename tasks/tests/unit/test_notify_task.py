@@ -927,3 +927,55 @@ class TestNotifyTask(object):
             empty_upload=None,
             **kwargs,
         )
+
+    @pytest.mark.asyncio
+    async def test_checkpoints_not_logged_outside_upload_flow(
+        self, dbsession, mock_redis, mocker, mock_checkpoint_submit, mock_configuration
+    ):
+        fake_notifier = mocker.MagicMock(
+            AbstractBaseNotifier,
+            is_enabled=mocker.MagicMock(return_value=True),
+            title="the_title",
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
+        )
+        fake_notifier.name = "fake_hahaha"
+        fake_notifier.notify.return_value = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation="",
+            data_sent={"all": ["The", 1, "data"]},
+        )
+        mocker.patch.object(
+            NotificationService, "get_notifiers_instances", return_value=[fake_notifier]
+        )
+        mock_configuration.params["setup"][
+            "codecov_dashboard_url"
+        ] = "https://codecov.io"
+        mocker.patch.object(NotifyTask, "app")
+        mocker.patch.object(NotifyTask, "should_send_notifications", return_value=True)
+        fetch_and_update_whether_ci_passed_result = {}
+        mocker.patch.object(
+            NotifyTask,
+            "fetch_and_update_whether_ci_passed",
+            return_value=fetch_and_update_whether_ci_passed_result,
+        )
+        mocked_fetch_pull = mocker.patch(
+            "tasks.notify.fetch_and_update_pull_request_information_from_commit"
+        )
+        mocker.patch.object(
+            ReportService, "get_existing_report_for_commit", return_value=Report()
+        )
+        mocked_fetch_pull.return_value = None
+        commit = CommitFactory.create(message="", pullid=None)
+        dbsession.add(commit)
+        dbsession.flush()
+
+        task = NotifyTask()
+        result = await task.run_async_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml={"coverage": {"status": {"patch": True}}},
+        )
+        assert not mock_checkpoint_submit.called

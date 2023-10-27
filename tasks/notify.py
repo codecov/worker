@@ -92,12 +92,26 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     lock_acquired=lock_acquired,
                 ),
             ),
-            checkpoints_from_kwargs(UploadFlow, kwargs).log(UploadFlow.NOTIF_LOCK_ERROR)
+            self.log_checkpoint(kwargs, UploadFlow.NOTIF_LOCK_ERROR)
             return {
                 "notified": False,
                 "notifications": None,
                 "reason": "unobtainable_lock",
             }
+
+    def log_checkpoint(self, kwargs, checkpoint):
+        """
+        Only log a checkpoint if whoever scheduled us sent checkpoints data from
+        the same flow.
+
+        The notify task is an important part of `UploadFlow`, but it's also used
+        elsewhere. If this instance of the notify task wasn't scheduled as part
+        of upload processing, attempting to log `UploadFlow` checkpoints for it
+        will pollute our metrics.
+        """
+        checkpoints = checkpoints_from_kwargs(checkpoint.__class__, kwargs)
+        if checkpoints.data:
+            checkpoints.log(checkpoint)
 
     async def run_async_within_lock(
         self,
@@ -125,9 +139,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Unable to start notifications because repo doesn't have a valid bot",
                 extra=dict(repoid=repoid, commit=commitid),
             )
-            checkpoints_from_kwargs(UploadFlow, kwargs).log(
-                UploadFlow.NOTIF_NO_VALID_INTEGRATION
-            )
+            self.log_checkpoint(kwargs, UploadFlow.NOTIF_NO_VALID_INTEGRATION)
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         if current_yaml is None:
             current_yaml = await get_current_yaml(commit, repository_service)
@@ -143,9 +155,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Unable to fetch CI results due to a client problem. Not notifying user",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid, code=ex.code),
             )
-            checkpoints_from_kwargs(UploadFlow, kwargs).log(
-                UploadFlow.NOTIF_GIT_CLIENT_ERROR
-            )
+            self.log_checkpoint(kwargs, UploadFlow.NOTIF_GIT_CLIENT_ERROR)
             return {
                 "notified": False,
                 "notifications": None,
@@ -156,9 +166,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Unable to fetch CI results due to server issues. Not notifying user",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            checkpoints_from_kwargs(UploadFlow, kwargs).log(
-                UploadFlow.NOTIF_GIT_SERVICE_ERROR
-            )
+            self.log_checkpoint(kwargs, UploadFlow.NOTIF_GIT_SERVICE_ERROR)
             return {
                 "notified": False,
                 "notifications": None,
@@ -189,9 +197,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                         current_yaml=current_yaml.to_dict(),
                     ),
                 )
-                checkpoints_from_kwargs(UploadFlow, kwargs).log(
-                    UploadFlow.NOTIF_TOO_MANY_RETRIES
-                )
+                self.log_checkpoint(kwargs, UploadFlow.NOTIF_TOO_MANY_RETRIES)
                 return {
                     "notified": False,
                     "notifications": None,
@@ -229,9 +235,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                         pull_head=enriched_pull.provider_pull["head"]["commitid"],
                     ),
                 )
-                checkpoints_from_kwargs(UploadFlow, kwargs).log(
-                    UploadFlow.NOTIF_STALE_HEAD
-                )
+                self.log_checkpoint(kwargs, UploadFlow.NOTIF_STALE_HEAD)
                 return {
                     "notified": False,
                     "notifications": None,
@@ -248,9 +252,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 commit, report_class=ReadOnlyReport
             )
             if head_report is None and empty_upload is None:
-                checkpoints_from_kwargs(UploadFlow, kwargs).log(
-                    UploadFlow.NOTIF_ERROR_NO_REPORT
-                )
+                self.log_checkpoint(kwargs, UploadFlow.NOTIF_ERROR_NO_REPORT)
                 return {
                     "notified": False,
                     "notifications": None,
@@ -273,7 +275,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 enriched_pull,
                 empty_upload,
             )
-            checkpoints_from_kwargs(UploadFlow, kwargs).log(UploadFlow.NOTIFIED)
+            self.log_checkpoint(kwargs, UploadFlow.NOTIFIED)
             log.info(
                 "Notifications done",
                 extra=dict(
