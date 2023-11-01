@@ -12,6 +12,8 @@ analytics-python==1.3.0b1
     #   shared
 anyio==3.6.1
     # via httpcore
+asgiref==3.7.2
+    # via django
 async-timeout==4.0.2
     # via redis
 attrs==20.3.0
@@ -80,8 +82,20 @@ deprecated==1.2.12
     # via opentelemetry-api
 distlib==0.3.7
     # via virtualenv
+django==4.2.6
+    # via shared
+django-admin==2.0.2
+    # via -r requirements.in
+django-excel-response2==3.0.6
+    # via django-admin
+django-six==1.0.5
+    # via
+    #   django-admin
+    #   django-excel-response2
 ecdsa==0.16.1
     # via tlslite-ng
+excel-base==1.0.4
+    # via django-excel-response2
 exceptiongroup==1.1.3
     # via pytest
 factory-boy==3.2.0
@@ -126,6 +140,7 @@ grpcio==1.58.0
     # via
     #   google-api-core
     #   google-cloud-pubsub
+    #   googleapis-common-protos
     #   grpc-google-iam-v1
     #   grpcio-status
 grpcio-status==1.58.0
@@ -153,6 +168,8 @@ idna==2.10
     #   yarl
 iniconfig==1.1.1
     # via pytest
+isoweek==1.3.3
+    # via timeconvert
 jinja2==3.1.2
     # via -r requirements.in
 jmespath==0.10.0
@@ -266,6 +283,7 @@ python-dateutil==2.8.1
     #   botocore
     #   faker
     #   freezegun
+    #   timeconvert
 python-json-logger==0.1.11
     # via -r requirements.in
 pytz==2022.1
@@ -298,9 +316,11 @@ rsa==4.7.2
     # via google-auth
 s3transfer==0.3.4
     # via boto3
+screen==1.0.1
+    # via excel-base
 sentry-sdk==1.19.1
     # via -r requirements.in
-shared @ https://github.com/codecov/shared/archive/c096c95a612ccc043843c2c773f6a3d83b5e4248.tar.gz
+shared @ https://github.com/codecov/shared/archive/b11921f6db1096fc21609919b2d9ea8a78899d2c.tar.gz
     # via -r requirements.in
 six==1.15.0
     # via
@@ -325,6 +345,8 @@ sqlalchemy-utils==0.36.8
     # via
     #   -r requirements.in
     #   pytest-sqlalchemy
+sqlparse==0.4.4
+    # via django
 statsd==3.3.0
     # via
     #   -r requirements.in
@@ -333,6 +355,8 @@ stripe==2.56.0
     # via -r requirements.in
 text-unidecode==1.3
     # via faker
+timeconvert==3.0.13
+    # via excel-base
 timestring==1.6.4
     # via -r requirements.in
 tlslite-ng==0.8.0a39
@@ -342,7 +366,11 @@ tomli==2.0.1
 typing==3.7.4.3
     # via shared
 typing-extensions==4.6.3
-    # via shared
+    # via
+    #   asgiref
+    #   shared
+tzlocal==5.2
+    # via timeconvert
 urllib3==1.26.13
     # via
     #   botocore
@@ -366,6 +394,8 @@ wrapt==1.12.1
     #   deprecated
     #   opentelemetry-instrumentation
     #   vcrpy
+xlwt==1.3.0
+    # via excel-base
 yarl==1.6.3
     # via vcrpy
 

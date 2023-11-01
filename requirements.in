@@ -1,4 +1,4 @@
-https://github.com/codecov/shared/archive/c096c95a612ccc043843c2c773f6a3d83b5e4248.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/b11921f6db1096fc21609919b2d9ea8a78899d2c.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 boto3
 celery
@@ -36,3 +36,4 @@ timestring
 vcrpy
 opentelemetry-instrumentation-celery
 opentelemetry-sdk
+django-admin

@@ -5,6 +5,7 @@ import sys
 import typing
 
 import click
+import django
 from celery.signals import worker_process_shutdown
 from prometheus_client import REGISTRY, CollectorRegistry, multiprocess
 from shared.celery_config import BaseCeleryConfig
@@ -54,6 +55,9 @@ def mark_process_dead(pid, exitcode, **kwargs):
 
 def setup_worker():
     print(initialization_text.format(version=get_current_version()))
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_scaffold.settings")
+    django.setup()
 
     if getattr(sys, "frozen", False):
         # Only for enterprise builds
