@@ -205,7 +205,9 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.decoration_type == Decoration.upload_limit
         assert decoration_details.reason == "Org has exceeded the upload limit"
 
-    def test_decoration_type_team_plan_upload_limit(self, enriched_pull, dbsession, mocker):
+    def test_decoration_type_team_plan_upload_limit(
+        self, enriched_pull, dbsession, mocker
+    ):
         mocker.patch("services.license.is_enterprise", return_value=False)
         pr_author = OwnerFactory.create(
             service="github",
