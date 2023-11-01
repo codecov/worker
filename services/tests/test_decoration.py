@@ -176,7 +176,9 @@ def gitlab_enriched_pull_root(dbsession, gitlab_root_group):
 
 
 class TestDecorationServiceTestCase(object):
-    def test_decoration_type_limited_upload(self, enriched_pull, dbsession, mocker):
+    def test_decoration_type_basic_plan_upload_limit(
+        self, enriched_pull, dbsession, mocker
+    ):
         mocker.patch("services.license.is_enterprise", return_value=False)
         pr_author = OwnerFactory.create(
             service="github",
@@ -196,9 +198,17 @@ class TestDecorationServiceTestCase(object):
         )
 
         report = ReportFactory.create(commit=commit)
-        for i in range(250):
+        for i in range(249):
             upload = UploadFactory.create(report=report, storage_path="url")
             dbsession.add(upload)
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull)
+        assert decoration_details.decoration_type != Decoration.upload_limit
+        assert decoration_details.reason != "Org has exceeded the upload limit"
+
+        upload = UploadFactory.create(report=report, storage_path="url")
+        dbsession.add(upload)
         dbsession.flush()
 
         decoration_details = determine_decoration_details(enriched_pull)
@@ -238,6 +248,7 @@ class TestDecorationServiceTestCase(object):
 
         upload = UploadFactory.create(report=report, storage_path="url")
         dbsession.add(upload)
+        dbsession.flush()
 
         decoration_details = determine_decoration_details(enriched_pull)
         assert decoration_details.decoration_type == Decoration.upload_limit
