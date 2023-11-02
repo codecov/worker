@@ -82,9 +82,9 @@ class TestEnum1(BaseFlow):
 
 
 class TestEnum2(BaseFlow):
-    A = auto()
-    B = auto()
-    C = auto()
+    D = auto()
+    E = auto()
+    F = auto()
 
 
 class SortOrderEnum(BaseFlow):
@@ -135,7 +135,7 @@ class TestCheckpointLogger(unittest.TestCase):
         checkpoints = CheckpointLogger(TestEnum1, strict=True)
 
         with self.assertRaises(ValueError):
-            checkpoints.log(TestEnum2.A)  # type: ignore[arg-type]
+            checkpoints.log(TestEnum2.D)  # type: ignore[arg-type]
 
     @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337, 9001])
     def test_subflow_duration(self, mocker):
@@ -181,11 +181,11 @@ class TestCheckpointLogger(unittest.TestCase):
 
         # Wrong enum for start checkpoint
         with self.assertRaises(ValueError):
-            checkpoints._subflow_duration(TestEnum2.A, TestEnum1.A)
+            checkpoints._subflow_duration(TestEnum2.D, TestEnum1.A)
 
         # Wrong enum for end checkpoint
         with self.assertRaises(ValueError):
-            checkpoints._subflow_duration(TestEnum1.A, TestEnum2.A)
+            checkpoints._subflow_duration(TestEnum1.A, TestEnum2.D)
 
     @pytest.mark.real_checkpoint_logger
     @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337, 9001])
@@ -221,22 +221,27 @@ class TestCheckpointLogger(unittest.TestCase):
             TestEnum1.A: 1337,
             TestEnum1.B: 9001,
         }
+        deserialized_good_data = json.loads(json.dumps(good_data))
         good_kwargs = {
-            "checkpoints_TestEnum1": good_data,
+            "checkpoints_TestEnum1": deserialized_good_data,
         }
         checkpoints = from_kwargs(TestEnum1, good_kwargs, strict=True)
         assert checkpoints.data == good_data
 
         # Data is from TestEnum2 but we expected TestEnum1
         bad_data = {
-            TestEnum2.A: 1337,
-            TestEnum2.B: 9001,
+            TestEnum2.D: 1337,
+            TestEnum2.E: 9001,
         }
+        deserialized_bad_data = json.loads(json.dumps(bad_data))
         bad_kwargs = {
-            "checkpoints_TestEnum1": bad_data,
+            "checkpoints_TestEnum1": deserialized_bad_data,
         }
         with self.assertRaises(ValueError):
             checkpoints = from_kwargs(TestEnum1, bad_kwargs, strict=True)
+
+        checkpoints = from_kwargs(TestEnum1, bad_kwargs, strict=False)
+        assert checkpoints.data == {}
 
     @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337, 9001])
     def test_log_to_kwargs(self, mock_timestamp):
@@ -514,10 +519,10 @@ class TestCheckpointLogger(unittest.TestCase):
         serialized = json.dumps(original)
         deserialized = json.loads(serialized)
 
-        assert serialized == '{"TestEnum1.A": 1337, "TestEnum1.B": 9001}'
+        assert serialized == '{"A": 1337, "B": 9001}'
         assert deserialized == {
-            "TestEnum1.A": 1337,
-            "TestEnum1.B": 9001,
+            "A": 1337,
+            "B": 9001,
         }
 
     def test_sort_order(self):

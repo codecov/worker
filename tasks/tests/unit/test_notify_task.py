@@ -1,3 +1,4 @@
+import json
 from unittest.mock import call
 
 import pytest
@@ -455,14 +456,6 @@ class TestNotifyTask(object):
         dbsession.refresh(commit)
         assert commit.notified is True
 
-        assert checkpoints.data == {
-            UploadFlow.UPLOAD_TASK_BEGIN: 1337,
-            UploadFlow.PROCESSING_BEGIN: 9001,
-            UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
-            UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
-            UploadFlow.PROCESSING_COMPLETE: 20000,
-            UploadFlow.NOTIFIED: 25000,
-        }
         calls = [
             call(
                 "notification_latency",
@@ -909,7 +902,8 @@ class TestNotifyTask(object):
         task = NotifyTask()
         mock_redis.get.return_value = False
         checkpoints = _create_checkpoint_logger(mocker)
-        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
+        checkpoints_data = json.loads(json.dumps(checkpoints.data))
+        kwargs = {_kwargs_key(UploadFlow): checkpoints_data}
         res = await task.run_async(
             dbsession,
             repoid=commit.repoid,
