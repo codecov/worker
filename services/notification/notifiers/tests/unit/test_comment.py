@@ -4474,6 +4474,47 @@ class TestCommentNotifierInNewLayout(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_build_message_no_project_coverage_condensed_yaml_configs(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        comparison = sample_comparison
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "condensed_header, condensed_files, condensed_footer",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
+        expected_result = [
+            f"## [Codecov]({pull_url}?src=pr&el=h1) Report",
+            f"Attention: `1 lines` in your changes are missing coverage. Please review.",
+            f"",
+            f"| [Files]({pull_url}?src=pr&el=tree) | Patch % | Lines |",
+            f"|---|---|---|",
+            f"| [file\\_1.go]({pull_url}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
+            f"",
+            f"",
+            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
+            f"",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
     async def test_build_message_head_and_pull_head_differ_new_layout(
         self,
         dbsession,

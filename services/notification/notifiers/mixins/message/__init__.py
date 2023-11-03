@@ -193,20 +193,40 @@ class MessageMixin(object):
         return [
             section
             for section in sections
-            if section not in ["header", "newheader", "newfooter", "newfiles"]
+            if section
+            not in [
+                "header",
+                "newheader",
+                "newfooter",
+                "newfiles",
+                "condensed_header",
+                "condensed_footer",
+                "condensed_files",
+            ]
         ]
 
     def get_upper_section_names(self, settings):
         sections = list(map(lambda l: l.strip(), (settings["layout"] or "").split(",")))
-        if "newheader" not in sections and "header" not in sections:
+        headers = ["newheader", "header", "condensed_header"]
+        if all(not x in sections for x in headers):
             sections.insert(0, "header")
 
         return [
             section
             for section in sections
-            if section in ["header", "newheader", "newfiles"]
+            if section
+            in [
+                "header",
+                "newheader",
+                "condensed_header",
+                "newfiles",
+                "condensed_files",
+            ]
         ]
 
     def get_lower_section_name(self, settings):
-        if "newfooter" in settings["layout"]:
+        if (
+            "newfooter" in settings["layout"]
+            or "condensed_footer" in settings["layout"]
+        ):
             return "newfooter"
