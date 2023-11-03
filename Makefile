@@ -22,7 +22,7 @@ export WORKER_DOCKER_VERSION=${VERSION}
 export CODECOV_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
 # Codecov CLI version to use
-CODECOV_CLI_VERSION := 0.3.8
+CODECOV_CLI_VERSION := 0.4.1
 
 build:
 	$(MAKE) build.requirements
