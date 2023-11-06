@@ -346,15 +346,12 @@ class AnnouncementSectionWriter(BaseSectionWriter):
                 # we're using the total chunks size as a proxy for potential CI
                 # runtime - assuming that if you have more files + uploads then
                 # perhaps your CI is running longer
-                approx_size = 0
-                for chunk in report._chunks:
-                    approx_size += len(chunk)
-
+                #
                 # this value was just chosen empirically by looking at some of our
                 # own repos and relating chunks size to CI time - ideally we'd like
                 # to target repos w/ CI time > 20 min but we don't really have that
                 # info available
-                if approx_size > 80_000_000:
+                if report.size > 80_000_000:
                     return True
 
         return False
