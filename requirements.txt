@@ -348,7 +348,7 @@ typing==3.7.4.3
     # via shared
 typing-extensions==4.6.3
     # via shared
-urllib3==1.26.13
+urllib3==1.26.18
     # via
     #   botocore
     #   google-auth
