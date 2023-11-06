@@ -4106,7 +4106,7 @@ class TestNewFooterSectionWriter(object):
         )
         assert res == [
             "",
-            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
         ]
 
 
@@ -4441,7 +4441,7 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\\_1.go]({pull_url}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
             f"",
             f"",
-            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
+            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
             f"",
         ]
         for exp, res in zip(expected_result, result):
