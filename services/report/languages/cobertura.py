@@ -123,12 +123,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                     ]
                     if read_yaml_field(
                         repo_yaml,
-                        (
-                            "codecov",
-                            "parsers",
-                            "cobertura",
-                            "handle_missing_conditions",
-                        ),
+                        ("parsers", "cobertura", "handle_missing_conditions"),
                         False,
                     ):
                         if type(coverage) is str:
@@ -173,6 +168,19 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                             )
                     if conditions:
                         missing_branches = conditions
+                if (
+                    type(coverage) is str
+                    and not coverage[0] == "0"
+                    and read_yaml_field(
+                        repo_yaml,
+                        ("parsers", "cobertura", "partials_as_hits"),
+                        False,
+                    )
+                ):  # if coverage[0] is 0 this is a miss
+                    missing_branches = None
+                    coverage = 1
+                    _type = CoverageType.line
+
                 _file.append(
                     ln,
                     report_builder_session.create_coverage_line(
