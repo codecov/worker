@@ -3,6 +3,7 @@ import logging.config
 
 from celery import Celery, signals
 
+import database.events
 from helpers.logging_config import get_logging_config_dict
 from helpers.sentry import initialize_sentry, is_sentry_enabled
 
