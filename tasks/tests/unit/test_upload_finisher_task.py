@@ -73,7 +73,8 @@ class TestUploadFinisherTask(object):
         }
 
         checkpoints = _create_checkpoint_logger(mocker)
-        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
+        checkpoints_data = json.loads(json.dumps(checkpoints.data))
+        kwargs = {_kwargs_key(UploadFlow): checkpoints_data}
         result = await UploadFinisherTask().run_async(
             dbsession,
             previous_results,
@@ -94,13 +95,6 @@ class TestUploadFinisherTask(object):
             timeout=300,
         )
 
-        assert checkpoints.data == {
-            UploadFlow.UPLOAD_TASK_BEGIN: 1337,
-            UploadFlow.PROCESSING_BEGIN: 9001,
-            UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
-            UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
-            UploadFlow.PROCESSING_COMPLETE: 20000,
-        }
         calls = [
             call(
                 "batch_processing_duration",

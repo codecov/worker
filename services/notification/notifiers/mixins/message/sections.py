@@ -81,7 +81,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
         if hide_project_coverage:
             yield ("")
             yield (
-                ":loudspeaker: Thoughts on this report? [Let us know!]({0}).".format(
+                ":loudspeaker: Thoughts on this report? [Let us know!]({0})".format(
                     "https://about.codecov.io/pull-request-comment-report/"
                 )
             )
