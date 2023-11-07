@@ -1,4 +1,5 @@
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -12,6 +13,7 @@ from shared.torngit.exceptions import (
     TorngitServerUnreachableError,
 )
 from shared.utils.sessions import Session
+from shared.yaml import UserYaml
 
 import services.notification.notifiers.mixins.message.sections as sections
 from database.tests.factories import RepositoryFactory
@@ -4010,12 +4012,35 @@ class TestAnnouncementsSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
         )
-        res = list(await writer.write_section())
+        res = list(await writer.write_section(mocker.MagicMock()))
         assert len(res) == 1
         line = res[0]
         assert line.startswith(":mega: ")
         message = line[7:]
         assert message in AnnouncementSectionWriter.current_active_messages
+
+    @pytest.mark.asyncio
+    async def test_announcement_section_writer_ats(
+        self, mocker, create_sample_comparison
+    ):
+        comparison = create_sample_comparison()
+        current_yaml = UserYaml({})
+
+        writer = AnnouncementSectionWriter(
+            repository=comparison.head.commit.repository,
+            layout=mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings=mocker.MagicMock(),
+            current_yaml=current_yaml,
+        )
+        writer.repository.language = "python"
+        comparison.head.report._chunks = ["xx"] * 80_000_000
+
+        res = list(await writer.write_section(comparison))
+        assert len(res) == 1
+        line = res[0]
+        assert line.startswith(":mega: ")
+        assert "smart automated test selection" in line
 
 
 class TestNewFooterSectionWriter(object):
@@ -4106,7 +4131,7 @@ class TestNewFooterSectionWriter(object):
         )
         assert res == [
             "",
-            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
         ]
 
 
@@ -4441,7 +4466,7 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\\_1.go]({pull_url}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
             f"",
             f"",
-            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/).",
+            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
             f"",
         ]
         for exp, res in zip(expected_result, result):

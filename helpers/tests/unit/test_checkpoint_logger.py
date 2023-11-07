@@ -5,6 +5,7 @@ from unittest.mock import ANY, patch
 
 import pytest
 import sentry_sdk
+from prometheus_client import REGISTRY
 from shared.utils.test_utils import mock_metrics
 
 from helpers.checkpoint_logger import (
@@ -17,6 +18,42 @@ from helpers.checkpoint_logger import (
     subflows,
     success_events,
 )
+
+
+class CounterAssertion:
+    def __init__(self, metric, labels, expected_value):
+        self.metric = metric
+        self.labels = labels
+        self.expected_value = expected_value
+
+        self.before_value = None
+        self.after_value = None
+
+    def __repr__(self):
+        return f"<CounterAssertion: {self.metric} {self.labels}>"
+
+
+class CounterAssertionSet:
+    def __init__(self, counter_assertions):
+        self.counter_assertions = counter_assertions
+
+    def __enter__(self):
+        for assertion in self.counter_assertions:
+            assertion.before_value = (
+                REGISTRY.get_sample_value(assertion.metric, labels=assertion.labels)
+                or 0
+            )
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        for assertion in self.counter_assertions:
+            assertion.after_value = (
+                REGISTRY.get_sample_value(assertion.metric, labels=assertion.labels)
+                or 0
+            )
+            assert (
+                assertion.after_value - assertion.before_value
+                == assertion.expected_value
+            )
 
 
 @failure_events("BRANCH_1_FAIL")
@@ -45,9 +82,9 @@ class TestEnum1(BaseFlow):
 
 
 class TestEnum2(BaseFlow):
-    A = auto()
-    B = auto()
-    C = auto()
+    D = auto()
+    E = auto()
+    F = auto()
 
 
 class SortOrderEnum(BaseFlow):
@@ -98,7 +135,7 @@ class TestCheckpointLogger(unittest.TestCase):
         checkpoints = CheckpointLogger(TestEnum1, strict=True)
 
         with self.assertRaises(ValueError):
-            checkpoints.log(TestEnum2.A)  # type: ignore[arg-type]
+            checkpoints.log(TestEnum2.D)  # type: ignore[arg-type]
 
     @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337, 9001])
     def test_subflow_duration(self, mocker):
@@ -144,11 +181,11 @@ class TestCheckpointLogger(unittest.TestCase):
 
         # Wrong enum for start checkpoint
         with self.assertRaises(ValueError):
-            checkpoints._subflow_duration(TestEnum2.A, TestEnum1.A)
+            checkpoints._subflow_duration(TestEnum2.D, TestEnum1.A)
 
         # Wrong enum for end checkpoint
         with self.assertRaises(ValueError):
-            checkpoints._subflow_duration(TestEnum1.A, TestEnum2.A)
+            checkpoints._subflow_duration(TestEnum1.A, TestEnum2.D)
 
     @pytest.mark.real_checkpoint_logger
     @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337, 9001])
@@ -161,6 +198,13 @@ class TestCheckpointLogger(unittest.TestCase):
         expected_duration = 9001 - 1337
         checkpoints.submit_subflow("metricname", TestEnum1.A, TestEnum1.B)
         mock_sentry.assert_called_with("metricname", expected_duration, "milliseconds")
+        assert (
+            REGISTRY.get_sample_value(
+                "worker_checkpoints_subflow_duration_seconds_sum",
+                labels={"flow": "TestEnum1", "subflow": "metricname"},
+            )
+            == expected_duration / 1000
+        )
 
     @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337])
     def test_log_ignore_repeat(self, mock_timestamp):
@@ -177,22 +221,27 @@ class TestCheckpointLogger(unittest.TestCase):
             TestEnum1.A: 1337,
             TestEnum1.B: 9001,
         }
+        deserialized_good_data = json.loads(json.dumps(good_data))
         good_kwargs = {
-            "checkpoints_TestEnum1": good_data,
+            "checkpoints_TestEnum1": deserialized_good_data,
         }
         checkpoints = from_kwargs(TestEnum1, good_kwargs, strict=True)
         assert checkpoints.data == good_data
 
         # Data is from TestEnum2 but we expected TestEnum1
         bad_data = {
-            TestEnum2.A: 1337,
-            TestEnum2.B: 9001,
+            TestEnum2.D: 1337,
+            TestEnum2.E: 9001,
         }
+        deserialized_bad_data = json.loads(json.dumps(bad_data))
         bad_kwargs = {
-            "checkpoints_TestEnum1": bad_data,
+            "checkpoints_TestEnum1": deserialized_bad_data,
         }
         with self.assertRaises(ValueError):
             checkpoints = from_kwargs(TestEnum1, bad_kwargs, strict=True)
+
+        checkpoints = from_kwargs(TestEnum1, bad_kwargs, strict=False)
+        assert checkpoints.data == {}
 
     @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337, 9001])
     def test_log_to_kwargs(self, mock_timestamp):
@@ -311,7 +360,27 @@ class TestCheckpointLogger(unittest.TestCase):
 
         checkpoints = CheckpointLogger(DecoratedEnum)
 
-        checkpoints.log(DecoratedEnum.BEGIN)
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BEGIN"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 0
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions):
+            checkpoints.log(DecoratedEnum.BEGIN)
         assert metrics.data["DecoratedEnum.events.BEGIN"] == 1
         assert metrics.data["DecoratedEnum.total.begun"] == 1
         assert "DecoratedEnum.total.succeeded" not in metrics.data
@@ -319,7 +388,32 @@ class TestCheckpointLogger(unittest.TestCase):
         assert "DecoratedEnum.total.ended" not in metrics.data
 
         # Nothing special about `CHECKPOINT` - no counters should change
-        checkpoints.log(DecoratedEnum.CHECKPOINT)
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BEGIN"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "CHECKPOINT"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 0
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions):
+            checkpoints.log(DecoratedEnum.CHECKPOINT)
         assert metrics.data["DecoratedEnum.events.CHECKPOINT"] == 1
         assert metrics.data["DecoratedEnum.total.begun"] == 1
         assert "DecoratedEnum.total.succeeded" not in metrics.data
@@ -327,7 +421,27 @@ class TestCheckpointLogger(unittest.TestCase):
         assert "DecoratedEnum.total.ended" not in metrics.data
 
         # Failures should increment both `failed` and `ended`
-        checkpoints.log(DecoratedEnum.BRANCH_1_FAIL)
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BRANCH_1_FAIL"},
+                1,
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions):
+            checkpoints.log(DecoratedEnum.BRANCH_1_FAIL)
         assert metrics.data["DecoratedEnum.events.BRANCH_1_FAIL"] == 1
         assert metrics.data["DecoratedEnum.total.begun"] == 1
         assert metrics.data["DecoratedEnum.total.failed"] == 1
@@ -335,7 +449,27 @@ class TestCheckpointLogger(unittest.TestCase):
         assert "DecoratedEnum.total.succeeded" not in metrics.data
 
         # Successes should increment both `succeeded` and `ended`
-        checkpoints.log(DecoratedEnum.BRANCH_1_SUCCESS)
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BRANCH_1_SUCCESS"},
+                1,
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions):
+            checkpoints.log(DecoratedEnum.BRANCH_1_SUCCESS)
         assert metrics.data["DecoratedEnum.events.BRANCH_1_SUCCESS"] == 1
         assert metrics.data["DecoratedEnum.total.begun"] == 1
         assert metrics.data["DecoratedEnum.total.failed"] == 1
@@ -343,7 +477,27 @@ class TestCheckpointLogger(unittest.TestCase):
         assert metrics.data["DecoratedEnum.total.succeeded"] == 1
 
         # A different success path should also increment `succeeded` and `ended`
-        checkpoints.log(DecoratedEnum.BRANCH_2_SUCCESS)
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BRANCH_2_SUCCESS"},
+                1,
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions):
+            checkpoints.log(DecoratedEnum.BRANCH_2_SUCCESS)
         assert metrics.data["DecoratedEnum.events.BRANCH_2_SUCCESS"] == 1
         assert metrics.data["DecoratedEnum.total.begun"] == 1
         assert metrics.data["DecoratedEnum.total.failed"] == 1
@@ -365,10 +519,10 @@ class TestCheckpointLogger(unittest.TestCase):
         serialized = json.dumps(original)
         deserialized = json.loads(serialized)
 
-        assert serialized == '{"TestEnum1.A": 1337, "TestEnum1.B": 9001}'
+        assert serialized == '{"A": 1337, "B": 9001}'
         assert deserialized == {
-            "TestEnum1.A": 1337,
-            "TestEnum1.B": 9001,
+            "A": 1337,
+            "B": 9001,
         }
 
     def test_sort_order(self):

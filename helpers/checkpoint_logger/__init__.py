@@ -17,13 +17,64 @@ from typing import (
 )
 
 import sentry_sdk
-from shared.metrics import metrics
+from shared.metrics import Counter, Histogram, metrics
 
 logger = logging.getLogger(__name__)
 
 
 T = TypeVar("T", bound="BaseFlow")
 TSubflows: TypeAlias = Mapping[T, Iterable[tuple[str, T]]]
+
+
+CHECKPOINTS_TOTAL_BEGUN = Counter(
+    "worker_checkpoints_begun",
+    "Total number of times a flow's first checkpoint was logged.",
+    ["flow"],
+)
+CHECKPOINTS_TOTAL_SUCCEEDED = Counter(
+    "worker_checkpoints_succeeded",
+    "Total number of times one of a flow's success checkpoints was logged.",
+    ["flow"],
+)
+CHECKPOINTS_TOTAL_FAILED = Counter(
+    "worker_checkpoints_failed",
+    "Total number of times one of a flow's failure checkpoints was logged.",
+    ["flow"],
+)
+CHECKPOINTS_TOTAL_ENDED = Counter(
+    "worker_checkpoints_ended",
+    "Total number of times one of a flow's terminal checkpoints (success or failure) was logged.",
+    ["flow"],
+)
+CHECKPOINTS_ERRORS = Counter(
+    "worker_checkpoints_errors",
+    "Total number of errors while trying to log checkpoints",
+    ["flow"],
+)
+CHECKPOINTS_EVENTS = Counter(
+    "worker_checkpoints_events",
+    "Total number of checkpoints logged.",
+    ["flow", "checkpoint"],
+)
+
+CHECKPOINTS_SUBFLOW_DURATION = Histogram(
+    "worker_checkpoints_subflow_duration_seconds",
+    "Duration of subflows in seconds.",
+    ["flow", "subflow"],
+    buckets=[0.05, 0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 180, 300, 600, 900],
+)
+
+
+def _error(msg, flow, strict=False):
+    # When a new version of worker rolls out, it will pick up tasks that
+    # may have been enqueued by the old worker and be missing checkpoints
+    # data. At least for that reason, we want to allow failing softly.
+    metrics.incr("worker.checkpoint_logger.error")
+    CHECKPOINTS_ERRORS.labels(flow=flow.__name__).inc()
+    if strict:
+        raise ValueError(msg)
+    else:
+        logger.warning(msg)
 
 
 class BaseFlow(str, Enum):
@@ -33,7 +84,8 @@ class BaseFlow(str, Enum):
     decorators to (mostly) appease mypy.
 
     Inherits from `str` so a dictionary of checkpoints data can be serialized
-    between worker tasks.
+    between worker tasks. It overrides sort order functions so that it follows
+    enum declaration order instead of lexicographic order.
     """
 
     _subflows: Callable[[], TSubflows]
@@ -43,19 +95,9 @@ class BaseFlow(str, Enum):
     is_failure: ClassVar[Callable[[T], bool]]
     log_counters: ClassVar[Callable[[T], None]]
 
-    def __new__(cls: type[T], value: str) -> T:
-        """
-        Hook into the creation of each enum member and inject the class name
-        into the enum's value (e.g. "MEMBER_NAME" -> "MyEnum.MEMBER_NAME")
-        """
-        value = f"{cls.__name__}.{value}"
-        return super().__new__(cls, value)
-
     def _generate_next_value_(name: str, start: int, count: int, last_values: list[Any]):  # type: ignore[override]
         """
-        This powers `enum.auto()`. We want `MyEnum.MEMBER_NAME` as our value but
-        we don't have access to the name of `MyEnum` here so just return
-        `MEMBER_NAME` for now.
+        This powers `enum.auto()`. It sets the value of "MyEnum.A" to "A".
         """
         return name
 
@@ -266,10 +308,12 @@ def reliability_counters(klass: type[T]) -> type[T]:
 
     def log_counters(obj: T) -> None:
         metrics.incr(f"{klass.__name__}.events.{obj.name}")
+        CHECKPOINTS_EVENTS.labels(flow=klass.__name__, checkpoint=obj.name).inc()
 
         # If this is the first checkpoint, increment the number of flows we've begun
         if obj == next(iter(klass.__members__.values())):
             metrics.incr(f"{klass.__name__}.total.begun")
+            CHECKPOINTS_TOTAL_BEGUN.labels(flow=klass.__name__).inc()
             return
 
         is_failure = hasattr(obj, "is_failure") and obj.is_failure()
@@ -278,11 +322,14 @@ def reliability_counters(klass: type[T]) -> type[T]:
 
         if is_failure:
             metrics.incr(f"{klass.__name__}.total.failed")
+            CHECKPOINTS_TOTAL_FAILED.labels(flow=klass.__name__).inc()
         elif is_success:
             metrics.incr(f"{klass.__name__}.total.succeeded")
+            CHECKPOINTS_TOTAL_SUCCEEDED.labels(flow=klass.__name__).inc()
 
         if is_terminal:
             metrics.incr(f"{klass.__name__}.total.ended")
+            CHECKPOINTS_TOTAL_ENDED.labels(flow=klass.__name__).inc()
 
     klass.log_counters = log_counters
     return klass
@@ -352,14 +399,7 @@ class CheckpointLogger(Generic[T]):
         self.strict = strict
 
     def _error(self: _Self, msg: str) -> None:
-        # When a new version of worker rolls out, it will pick up tasks that
-        # may have been enqueued by the old worker and be missing checkpoints
-        # data. At least for that reason, we want to allow failing softly.
-        metrics.incr("worker.checkpoint_logger.error")
-        if self.strict:
-            raise ValueError(msg)
-        else:
-            logger.warning(msg)
+        _error(msg, self.cls, self.strict)
 
     def _validate_checkpoint(self: _Self, checkpoint: T) -> None:
         if checkpoint.__class__ != self.cls:
@@ -398,6 +438,9 @@ class CheckpointLogger(Generic[T]):
             self.data[checkpoint] = _get_milli_timestamp()
         elif not ignore_repeat:
             self._error(f"Already recorded checkpoint {checkpoint}")
+            return self
+        else:
+            return self
 
         if kwargs is not None:
             kwargs[self.kwargs_key] = self.data
@@ -422,6 +465,10 @@ class CheckpointLogger(Generic[T]):
         duration = self._subflow_duration(start, end)
         if duration:
             sentry_sdk.set_measurement(metric, duration, "milliseconds")
+            duration_in_seconds = duration / 1000
+            CHECKPOINTS_SUBFLOW_DURATION.labels(
+                flow=self.cls.__name__, subflow=metric
+            ).observe(duration_in_seconds)
 
         return self
 
@@ -431,9 +478,20 @@ def from_kwargs(
 ) -> CheckpointLogger[T]:
     data = kwargs.get(_kwargs_key(cls), {})
 
-    # Make sure these checkpoints were made with the same flow
-    for key in data.keys():
-        if key not in cls.__members__.values():
-            raise ValueError(f"Checkpoint {key} not part of flow `{cls.__name__}`")
+    # kwargs has been deserialized into a Python dictionary, but our enum values
+    # are deserialized as simple strings. We need to ensure the strings are all
+    # proper enum values as best we can, and then downcast to enum instances.
+    deserialized_data = {}
+    for checkpoint, timestamp in data.items():
+        try:
+            deserialized_data[cls(checkpoint)] = timestamp
+        except ValueError:
+            _error(
+                f"Checkpoint {checkpoint} not part of flow `{cls.__name__}`",
+                cls,
+                strict,
+            )
+            deserialized_data = {}
+            break
 
-    return CheckpointLogger(cls, data, strict)
+    return CheckpointLogger(cls, deserialized_data, strict)

@@ -1,4 +1,4 @@
-https://github.com/codecov/shared/archive/c096c95a612ccc043843c2c773f6a3d83b5e4248.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/20d90732b438634213890685d546bcd57aa6d66e.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 boto3
 celery
@@ -37,3 +37,4 @@ urllib3>=1.26.18
 vcrpy
 opentelemetry-instrumentation-celery>=0.41b0
 opentelemetry-sdk>=1.20.0
+google-cloud-pubsub
