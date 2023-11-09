@@ -61,7 +61,26 @@ CHECKPOINTS_SUBFLOW_DURATION = Histogram(
     "worker_checkpoints_subflow_duration_seconds",
     "Duration of subflows in seconds.",
     ["flow", "subflow"],
-    buckets=[0.05, 0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 180, 300, 600, 900],
+    buckets=[
+        0.05,
+        0.1,
+        0.5,
+        1,
+        2,
+        5,
+        10,
+        30,
+        60,
+        120,
+        180,
+        300,
+        600,
+        900,
+        1200,
+        1800,
+        2400,
+        3600,
+    ],
 )
 
 
