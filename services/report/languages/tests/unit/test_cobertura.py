@@ -192,8 +192,8 @@ class TestCobertura(BaseTestCase):
             current_yaml={
                 "codecov": {
                     "max_report_age": None,
-                    "parsers": {"cobertura": {"handle_missing_conditions": True}},
-                }
+                },
+                "parsers": {"cobertura": {"handle_missing_conditions": True}},
             },
         )
         report_builder_session = report_builder.create_report_builder_session(
@@ -282,6 +282,109 @@ class TestCobertura(BaseTestCase):
                 "m": 3,
                 "n": 12,
                 "p": 4,
+                "s": 0,
+            },
+        }
+        assert processed_report["archive"] == expected_result["archive"]
+        assert processed_report["report"] == expected_result["report"]
+        assert processed_report["totals"] == expected_result["totals"]
+        assert processed_report == expected_result
+
+    def test_report_missing_conditions_and_partials_as_hits(self):
+        def fixes(path, *, bases_to_try):
+            if path == "ignore":
+                return None
+            assert path in ("source", "empty", "file", "nolines")
+            return path
+
+        report_builder = ReportBuilder(
+            path_fixer=fixes,
+            ignored_lines={},
+            sessionid=0,
+            current_yaml={
+                "codecov": {
+                    "max_report_age": None,
+                },
+                "parsers": {
+                    "cobertura": {
+                        "handle_missing_conditions": True,
+                        "partials_as_hits": True,
+                    }
+                },
+            },
+        )
+        report_builder_session = report_builder.create_report_builder_session(
+            "filename"
+        )
+        report = cobertura.from_xml(
+            etree.fromstring(xml % ("", int(time()), "", "")), report_builder_session
+        )
+        processed_report = self.convert_report_to_better_readable(report)
+        import pprint
+
+        pprint.pprint(processed_report)
+        expected_result = {
+            "archive": {
+                "file": [
+                    (1, 0, "m", [[0, 0, None, None, None]], None, None),
+                    (2, 1, "b", [[0, 1, None, None, None]], None, None),
+                    (3, 1, None, [[0, 1, None, None, None]], None, None),
+                ],
+                "source": [
+                    (1, 1, None, [[0, 1, None, None, None]], None, None),
+                    (2, "0/2", "b", [[0, "0/2", ["exit"], None, None]], None, None),
+                    (3, 1, None, [[0, 1, None, None, None]], None, None),
+                    (4, 1, None, [[0, 1, None, None, None]], None, None),
+                    (5, 1, None, [[0, 1, None, None, None]], None, None),
+                    (6, 1, None, [[0, 1, None, None, None]], None, None),
+                    (
+                        7,
+                        "0/2",
+                        "b",
+                        [[0, "0/2", ["loop", "exit"], None, None]],
+                        None,
+                        None,
+                    ),
+                    (8, 1, None, [[0, 1, None, None, None]], None, None),
+                    (9, 1, None, [[0, 1, None, None, None]], None, None),
+                ],
+            },
+            "report": {
+                "files": {
+                    "file": [
+                        1,
+                        [0, 3, 2, 1, 0, "66.66667", 1, 1, 0, 0, 0, 0, 0],
+                        {
+                            "0": [0, 3, 2, 1, 0, "66.66667", 1, 1],
+                            "meta": {"session_count": 1},
+                        },
+                        None,
+                    ],
+                    "source": [
+                        0,
+                        [0, 9, 7, 2, 0, "77.77778", 2, 0, 0, 0, 0, 0, 0],
+                        {
+                            "0": [0, 9, 7, 2, 0, "77.77778", 2],
+                            "meta": {"session_count": 1},
+                        },
+                        None,
+                    ],
+                },
+                "sessions": {},
+            },
+            "totals": {
+                "C": 0,
+                "M": 0,
+                "N": 0,
+                "b": 3,
+                "c": "75.00000",
+                "d": 1,
+                "diff": None,
+                "f": 2,
+                "h": 9,
+                "m": 3,
+                "n": 12,
+                "p": 0,
                 "s": 0,
             },
         }
