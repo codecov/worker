@@ -44,13 +44,13 @@ def get_section_class_from_layout_name(layout_name):
         return AnnouncementSectionWriter
     if layout_name == "header":
         return HeaderSectionWriter
-    if layout_name == "newheader":
+    if layout_name == "newheader" or layout_name == "condensed_header":
         return NewHeaderSectionWriter
-    if layout_name == "newfooter":
+    if layout_name == "newfooter" or layout_name == "condensed_footer":
         return NewFooterSectionWriter
     if layout_name.startswith("component"):
         return ComponentsSectionWriter
-    if layout_name == "newfiles":
+    if layout_name == "newfiles" or layout_name == "condensed_files":
         return NewFilesSectionWriter
 
 
