@@ -28,7 +28,7 @@ class TestRepositoryServiceIntegration(object):
         self, dbsession, codecov_vcr, mock_configuration, mocker
     ):
         # this test was done with valid integration_id, pem and then the data was scrubbed
-        mocker.patch("services.github.get_pem", return_value=fake_private_key)
+        mocker.patch("shared.github.get_pem", return_value=fake_private_key)
         mock_configuration._params = {"github": {"integration": {"id": 123}}}
         repo = RepositoryFactory.create(
             owner__username="ThiagoCodecov",
@@ -46,7 +46,7 @@ class TestRepositoryServiceIntegration(object):
     async def test_get_repo_appropriate_bot_token_bad_data(
         self, dbsession, codecov_vcr, mock_configuration, mocker
     ):
-        mocker.patch("services.github.get_pem", return_value=fake_private_key)
+        mocker.patch("shared.github.get_pem", return_value=fake_private_key)
         mock_configuration._params = {"github": {"integration": {"id": 999}}}
         repo = RepositoryFactory.create(
             owner__username="ThiagoCodecov",

@@ -546,7 +546,7 @@ class TestBaseStatusNotifier(object):
         notifier.context = "fake"
 
         mocker.patch(
-            "helpers.cache.NullBackend.get",
+            "shared.helpers.cache.NullBackend.get",
             return_value=payload,
         )
 
