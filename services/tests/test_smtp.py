@@ -41,7 +41,13 @@ def reset_connection_at_start():
 
 
 class TestSMTP(object):
-    def test_correct_init(self, mocker, mock_configuration, set_username_and_password):
+    def test_correct_init(
+        self,
+        mocker,
+        mock_configuration,
+        set_username_and_password,
+        reset_connection_at_start,
+    ):
         mocker.patch("smtplib.SMTP")
 
         m = mocker.patch("ssl.create_default_context", return_value=MagicMock())
@@ -147,7 +153,12 @@ class TestSMTP(object):
         assert smtp.active() == False
 
     def test_smtp_disconnected(
-        self, mocker, mock_configuration, dbsession, set_username_and_password
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        set_username_and_password,
+        reset_connection_at_start,
     ):
         m = MagicMock()
         m.configure_mock(**{"noop.side_effect": SMTPServerDisconnected()})

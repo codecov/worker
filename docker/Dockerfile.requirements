@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
-
+ARG PYTHON_IMAGE=python:3.10.13-alpine3.18
 # BUILD STAGE
-FROM python:3.10.8-alpine3.16 as build
+FROM $PYTHON_IMAGE as build
 
 RUN apk add --upgrade --no-cache apk-tools && \
     apk add --update --no-cache \
@@ -29,7 +29,7 @@ RUN rm -rf /pip-packages/src
 
 
 # RUNTIME STAGE - Copy packages from build stage and install runtime dependencies
-FROM python:3.10.8-alpine3.16
+FROM $PYTHON_IMAGE
 
 RUN apk add --upgrade --no-cache apk-tools busybox expat libretls postgresql-libs gcc libxslt-dev curl make
 
