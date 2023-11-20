@@ -22,9 +22,10 @@ from shared.celery_config import (
     profiling_finding_task_name,
 )
 from shared.config import get_config
+from shared.helpers.cache import RedisBackend
 
 from celery_task_router import route_task
-from helpers.cache import RedisBackend, cache
+from helpers.cache import cache
 from helpers.clock import get_utc_now_as_iso_format
 from helpers.environment import is_enterprise
 from helpers.health_check import get_health_check_interval_seconds
