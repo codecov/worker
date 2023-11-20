@@ -315,7 +315,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 log.warning(
                     "Comment could not be deleted due to client permissions",
                     exc_info=True,
-                    extra=dict(repoid=self.repository.repoid, pullid=pullid, commentid=commentid),
+                    extra=dict(
+                        repoid=self.repository.repoid,
+                        pullid=pullid,
+                        commentid=commentid,
+                    ),
                 )
                 return {
                     "notification_attempted": True,
