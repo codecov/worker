@@ -134,6 +134,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                         log.warning(
                             "Comment could not be deleted due to client permissions",
                             exc_info=True,
+                            extra=dict(
+                                repoid=pull.repoid,
+                                pullid=pull.pullid,
+                                commentid=pull.commentid,
+                            ),
                         )
                         data_received = {"deleted_comment": False}
                 return NotificationResult(
@@ -310,6 +315,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 log.warning(
                     "Comment could not be deleted due to client permissions",
                     exc_info=True,
+                    extra=dict(
+                        repoid=self.repository.repoid,
+                        pullid=pullid,
+                        commentid=commentid,
+                    ),
                 )
                 return {
                     "notification_attempted": True,
@@ -329,7 +339,9 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             log.warning(
                 "Comment could not be posted due to client permissions",
                 exc_info=True,
-                extra=dict(pullid=pullid, commentid=commentid),
+                extra=dict(
+                    repoid=self.repository.repoid, pullid=pullid, commentid=commentid
+                ),
             )
             return {
                 "notification_attempted": True,
