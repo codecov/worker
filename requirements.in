@@ -1,4 +1,4 @@
-https://github.com/codecov/shared/archive/b11921f6db1096fc21609919b2d9ea8a78899d2c.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/a5d86da0d23fb15fbc88183eb5d1934c76766402.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 boto3
 celery
@@ -33,7 +33,9 @@ SQLAlchemy
 statsd
 stripe
 timestring
+urllib3>=1.26.18
 vcrpy
-opentelemetry-instrumentation-celery
-opentelemetry-sdk
+opentelemetry-instrumentation-celery>=0.41b0
+opentelemetry-sdk>=1.20.0
 django-admin
+google-cloud-pubsub

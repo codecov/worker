@@ -25,6 +25,12 @@ BOT_USER_EMAILS = [
 BOT_USER_IDS = ["29139614"]  # renovate[bot] github
 USER_BASIC_LIMIT_UPLOAD = 250
 
+PLANS_WITH_UPLOAD_LIMIT = {
+    "users-basic": 250,
+    "users-teamm": 2500,
+    "users-teamy": 2500,
+}
+
 
 @dataclass
 class DecorationDetails(object):
@@ -64,7 +70,10 @@ def determine_uploads_used(db_session, org: Owner) -> int:
             | (Upload.created_at <= org.trial_start_date)
         )
 
-    return query.limit(USER_BASIC_LIMIT_UPLOAD).count()
+    # Upload limit of the user's plan, default to USER_BASIC_LIMIT_UPLOAD if not found
+    plan_allowed_limit = PLANS_WITH_UPLOAD_LIMIT.get(org.plan, USER_BASIC_LIMIT_UPLOAD)
+
+    return query.limit(plan_allowed_limit).count()
 
 
 def determine_decoration_details(
@@ -157,8 +166,8 @@ def determine_decoration_details(
         uploads_used = determine_uploads_used(db_session=db_session, org=org)
 
         if (
-            org.plan == BillingPlan.users_basic.value
-            and uploads_used >= USER_BASIC_LIMIT_UPLOAD
+            org.plan in PLANS_WITH_UPLOAD_LIMIT
+            and uploads_used >= PLANS_WITH_UPLOAD_LIMIT[org.plan]
             and not requires_license()
         ):
             return DecorationDetails(

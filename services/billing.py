@@ -18,6 +18,8 @@ class BillingPlan(Enum):
     pr_yearly = "users-pr-inappy"
     enterprise_cloud_yearly = "users-enterprisey"
     enterprise_cloud_monthly = "users-enterprisem"
+    team_monthly = "users-teamm"
+    team_yearly = "users-teamy"
 
 
 def is_pr_billing_plan(plan: str) -> bool:
@@ -30,6 +32,8 @@ def is_pr_billing_plan(plan: str) -> bool:
             BillingPlan.users_trial.value,
             BillingPlan.enterprise_cloud_monthly.value,
             BillingPlan.enterprise_cloud_yearly.value,
+            BillingPlan.team_monthly.value,
+            BillingPlan.team_yearly.value,
         ]
     else:
         license = get_current_license()

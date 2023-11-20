@@ -61,8 +61,39 @@ CHECKPOINTS_SUBFLOW_DURATION = Histogram(
     "worker_checkpoints_subflow_duration_seconds",
     "Duration of subflows in seconds.",
     ["flow", "subflow"],
-    buckets=[0.05, 0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 180, 300, 600, 900],
+    buckets=[
+        0.05,
+        0.1,
+        0.5,
+        1,
+        2,
+        5,
+        10,
+        30,
+        60,
+        120,
+        180,
+        300,
+        600,
+        900,
+        1200,
+        1800,
+        2400,
+        3600,
+    ],
 )
+
+
+def _error(msg, flow, strict=False):
+    # When a new version of worker rolls out, it will pick up tasks that
+    # may have been enqueued by the old worker and be missing checkpoints
+    # data. At least for that reason, we want to allow failing softly.
+    metrics.incr("worker.checkpoint_logger.error")
+    CHECKPOINTS_ERRORS.labels(flow=flow.__name__).inc()
+    if strict:
+        raise ValueError(msg)
+    else:
+        logger.warning(msg)
 
 
 class BaseFlow(str, Enum):
@@ -72,7 +103,8 @@ class BaseFlow(str, Enum):
     decorators to (mostly) appease mypy.
 
     Inherits from `str` so a dictionary of checkpoints data can be serialized
-    between worker tasks.
+    between worker tasks. It overrides sort order functions so that it follows
+    enum declaration order instead of lexicographic order.
     """
 
     _subflows: Callable[[], TSubflows]
@@ -82,19 +114,9 @@ class BaseFlow(str, Enum):
     is_failure: ClassVar[Callable[[T], bool]]
     log_counters: ClassVar[Callable[[T], None]]
 
-    def __new__(cls: type[T], value: str) -> T:
-        """
-        Hook into the creation of each enum member and inject the class name
-        into the enum's value (e.g. "MEMBER_NAME" -> "MyEnum.MEMBER_NAME")
-        """
-        value = f"{cls.__name__}.{value}"
-        return super().__new__(cls, value)
-
     def _generate_next_value_(name: str, start: int, count: int, last_values: list[Any]):  # type: ignore[override]
         """
-        This powers `enum.auto()`. We want `MyEnum.MEMBER_NAME` as our value but
-        we don't have access to the name of `MyEnum` here so just return
-        `MEMBER_NAME` for now.
+        This powers `enum.auto()`. It sets the value of "MyEnum.A" to "A".
         """
         return name
 
@@ -396,15 +418,7 @@ class CheckpointLogger(Generic[T]):
         self.strict = strict
 
     def _error(self: _Self, msg: str) -> None:
-        # When a new version of worker rolls out, it will pick up tasks that
-        # may have been enqueued by the old worker and be missing checkpoints
-        # data. At least for that reason, we want to allow failing softly.
-        metrics.incr("worker.checkpoint_logger.error")
-        CHECKPOINTS_ERRORS.labels(flow=self.cls.__name__).inc()
-        if self.strict:
-            raise ValueError(msg)
-        else:
-            logger.warning(msg)
+        _error(msg, self.cls, self.strict)
 
     def _validate_checkpoint(self: _Self, checkpoint: T) -> None:
         if checkpoint.__class__ != self.cls:
@@ -483,9 +497,20 @@ def from_kwargs(
 ) -> CheckpointLogger[T]:
     data = kwargs.get(_kwargs_key(cls), {})
 
-    # Make sure these checkpoints were made with the same flow
-    for key in data.keys():
-        if key not in cls.__members__.values():
-            raise ValueError(f"Checkpoint {key} not part of flow `{cls.__name__}`")
+    # kwargs has been deserialized into a Python dictionary, but our enum values
+    # are deserialized as simple strings. We need to ensure the strings are all
+    # proper enum values as best we can, and then downcast to enum instances.
+    deserialized_data = {}
+    for checkpoint, timestamp in data.items():
+        try:
+            deserialized_data[cls(checkpoint)] = timestamp
+        except ValueError:
+            _error(
+                f"Checkpoint {checkpoint} not part of flow `{cls.__name__}`",
+                cls,
+                strict,
+            )
+            deserialized_data = {}
+            break
 
-    return CheckpointLogger(cls, data, strict)
+    return CheckpointLogger(cls, deserialized_data, strict)

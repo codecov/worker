@@ -46,7 +46,7 @@ class GitHubMarketplaceService(object):
         method = (method or "GET").upper()
 
         if url.startswith("/"):
-            base_url = torngit.Github.api_url
+            base_url = torngit.Github.get_api_url()
             url = base_url + url
 
         if self.use_stubbed:
