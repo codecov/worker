@@ -1,6 +1,6 @@
 # worker
 
-[![CircleCI](https://dl.circleci.com/status-badge/img/gh/codecov/worker/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/codecov/worker/tree/main)
+![Actions](https://github.com/codecov/worker/actions/workflows/ci.yml/badge.svg)
 [![worker](https://codecov.io/github/codecov/worker/coverage.svg?branch=master&token=BWTOrjBaE5)](https://codecov.io/github/codecov/worker)
 
 > We believe that everyone should have access to quality software (like Sentry), that’s why we have always offered Codecov for free to open source maintainers.
