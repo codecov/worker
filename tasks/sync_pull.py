@@ -143,6 +143,10 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "pull_updated": False,
                 "reason": "not_in_provider",
             }
+        if read_yaml_field(current_yaml, ("ai_pr_review", "enabled"), False):
+            self.app.tasks["app.tasks.ai_pr_review.AiPrReview"].apply_async(
+                kwargs=dict(repoid=repoid, pullid=pullid)
+            )
         report_service = ReportService(current_yaml)
         head_commit = pull.get_head_commit()
         if head_commit is None:

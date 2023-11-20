@@ -1,0 +1,835 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://api.github.com/repos/scott-codecov/codecov-test/pulls/40
+  response:
+    content: '{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","id":1609199716,"node_id":"PR_kwDOHO5Jtc5f6nBk","html_url":"https://github.com/scott-codecov/codecov-test/pull/40","diff_url":"https://github.com/scott-codecov/codecov-test/pull/40.diff","patch_url":"https://github.com/scott-codecov/codecov-test/pull/40.patch","issue_url":"https://api.github.com/repos/scott-codecov/codecov-test/issues/40","number":40,"state":"open","locked":false,"title":"Test
+      AI PR review","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":null,"created_at":"2023-11-20T14:17:17Z","updated_at":"2023-11-20T14:56:16Z","closed_at":null,"merged_at":null,"merge_commit_sha":"30103e093dfe0875dcad2b93eb2f2488ece393ea","assignee":null,"assignees":[],"requested_reviewers":[],"requested_teams":[],"labels":[],"milestone":null,"draft":false,"commits_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40/commits","review_comments_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40/comments","review_comment_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments{/number}","comments_url":"https://api.github.com/repos/scott-codecov/codecov-test/issues/40/comments","statuses_url":"https://api.github.com/repos/scott-codecov/codecov-test/statuses/5c64a5143951193dde7b14c14611eebe1025f862","head":{"label":"scott-codecov:scott-codecov-patch-3","ref":"scott-codecov-patch-3","sha":"5c64a5143951193dde7b14c14611eebe1025f862","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"repo":{"id":485378485,"node_id":"R_kgDOHO5JtQ","name":"codecov-test","full_name":"scott-codecov/codecov-test","private":true,"owner":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"html_url":"https://github.com/scott-codecov/codecov-test","description":null,"fork":false,"url":"https://api.github.com/repos/scott-codecov/codecov-test","forks_url":"https://api.github.com/repos/scott-codecov/codecov-test/forks","keys_url":"https://api.github.com/repos/scott-codecov/codecov-test/keys{/key_id}","collaborators_url":"https://api.github.com/repos/scott-codecov/codecov-test/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/scott-codecov/codecov-test/teams","hooks_url":"https://api.github.com/repos/scott-codecov/codecov-test/hooks","issue_events_url":"https://api.github.com/repos/scott-codecov/codecov-test/issues/events{/number}","events_url":"https://api.github.com/repos/scott-codecov/codecov-test/events","assignees_url":"https://api.github.com/repos/scott-codecov/codecov-test/assignees{/user}","branches_url":"https://api.github.com/repos/scott-codecov/codecov-test/branches{/branch}","tags_url":"https://api.github.com/repos/scott-codecov/codecov-test/tags","blobs_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/refs{/sha}","trees_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/trees{/sha}","statuses_url":"https://api.github.com/repos/scott-codecov/codecov-test/statuses/{sha}","languages_url":"https://api.github.com/repos/scott-codecov/codecov-test/languages","stargazers_url":"https://api.github.com/repos/scott-codecov/codecov-test/stargazers","contributors_url":"https://api.github.com/repos/scott-codecov/codecov-test/contributors","subscribers_url":"https://api.github.com/repos/scott-codecov/codecov-test/subscribers","subscription_url":"https://api.github.com/repos/scott-codecov/codecov-test/subscription","commits_url":"https://api.github.com/repos/scott-codecov/codecov-test/commits{/sha}","git_commits_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/commits{/sha}","comments_url":"https://api.github.com/repos/scott-codecov/codecov-test/comments{/number}","issue_comment_url":"https://api.github.com/repos/scott-codecov/codecov-test/issues/comments{/number}","contents_url":"https://api.github.com/repos/scott-codecov/codecov-test/contents/{+path}","compare_url":"https://api.github.com/repos/scott-codecov/codecov-test/compare/{base}...{head}","merges_url":"https://api.github.com/repos/scott-codecov/codecov-test/merges","archive_url":"https://api.github.com/repos/scott-codecov/codecov-test/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/scott-codecov/codecov-test/downloads","issues_url":"https://api.github.com/repos/scott-codecov/codecov-test/issues{/number}","pulls_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls{/number}","milestones_url":"https://api.github.com/repos/scott-codecov/codecov-test/milestones{/number}","notifications_url":"https://api.github.com/repos/scott-codecov/codecov-test/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/scott-codecov/codecov-test/labels{/name}","releases_url":"https://api.github.com/repos/scott-codecov/codecov-test/releases{/id}","deployments_url":"https://api.github.com/repos/scott-codecov/codecov-test/deployments","created_at":"2022-04-25T13:15:44Z","updated_at":"2022-04-29T10:48:46Z","pushed_at":"2023-11-20T14:56:17Z","git_url":"git://github.com/scott-codecov/codecov-test.git","ssh_url":"git@github.com:scott-codecov/codecov-test.git","clone_url":"https://github.com/scott-codecov/codecov-test.git","svn_url":"https://github.com/scott-codecov/codecov-test","homepage":null,"size":239,"stargazers_count":0,"watchers_count":0,"language":"Python","has_issues":true,"has_projects":true,"has_downloads":true,"has_wiki":false,"has_pages":false,"has_discussions":false,"forks_count":0,"mirror_url":null,"archived":false,"disabled":false,"open_issues_count":14,"license":null,"allow_forking":true,"is_template":false,"web_commit_signoff_required":false,"topics":[],"visibility":"private","forks":0,"open_issues":14,"watchers":0,"default_branch":"master"}},"base":{"label":"scott-codecov:master","ref":"master","sha":"ece177a1e98a568a5428751b21e9c2530ab16927","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"repo":{"id":485378485,"node_id":"R_kgDOHO5JtQ","name":"codecov-test","full_name":"scott-codecov/codecov-test","private":true,"owner":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"html_url":"https://github.com/scott-codecov/codecov-test","description":null,"fork":false,"url":"https://api.github.com/repos/scott-codecov/codecov-test","forks_url":"https://api.github.com/repos/scott-codecov/codecov-test/forks","keys_url":"https://api.github.com/repos/scott-codecov/codecov-test/keys{/key_id}","collaborators_url":"https://api.github.com/repos/scott-codecov/codecov-test/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/scott-codecov/codecov-test/teams","hooks_url":"https://api.github.com/repos/scott-codecov/codecov-test/hooks","issue_events_url":"https://api.github.com/repos/scott-codecov/codecov-test/issues/events{/number}","events_url":"https://api.github.com/repos/scott-codecov/codecov-test/events","assignees_url":"https://api.github.com/repos/scott-codecov/codecov-test/assignees{/user}","branches_url":"https://api.github.com/repos/scott-codecov/codecov-test/branches{/branch}","tags_url":"https://api.github.com/repos/scott-codecov/codecov-test/tags","blobs_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/refs{/sha}","trees_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/trees{/sha}","statuses_url":"https://api.github.com/repos/scott-codecov/codecov-test/statuses/{sha}","languages_url":"https://api.github.com/repos/scott-codecov/codecov-test/languages","stargazers_url":"https://api.github.com/repos/scott-codecov/codecov-test/stargazers","contributors_url":"https://api.github.com/repos/scott-codecov/codecov-test/contributors","subscribers_url":"https://api.github.com/repos/scott-codecov/codecov-test/subscribers","subscription_url":"https://api.github.com/repos/scott-codecov/codecov-test/subscription","commits_url":"https://api.github.com/repos/scott-codecov/codecov-test/commits{/sha}","git_commits_url":"https://api.github.com/repos/scott-codecov/codecov-test/git/commits{/sha}","comments_url":"https://api.github.com/repos/scott-codecov/codecov-test/comments{/number}","issue_comment_url":"https://api.github.com/repos/scott-codecov/codecov-test/issues/comments{/number}","contents_url":"https://api.github.com/repos/scott-codecov/codecov-test/contents/{+path}","compare_url":"https://api.github.com/repos/scott-codecov/codecov-test/compare/{base}...{head}","merges_url":"https://api.github.com/repos/scott-codecov/codecov-test/merges","archive_url":"https://api.github.com/repos/scott-codecov/codecov-test/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/scott-codecov/codecov-test/downloads","issues_url":"https://api.github.com/repos/scott-codecov/codecov-test/issues{/number}","pulls_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls{/number}","milestones_url":"https://api.github.com/repos/scott-codecov/codecov-test/milestones{/number}","notifications_url":"https://api.github.com/repos/scott-codecov/codecov-test/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/scott-codecov/codecov-test/labels{/name}","releases_url":"https://api.github.com/repos/scott-codecov/codecov-test/releases{/id}","deployments_url":"https://api.github.com/repos/scott-codecov/codecov-test/deployments","created_at":"2022-04-25T13:15:44Z","updated_at":"2022-04-29T10:48:46Z","pushed_at":"2023-11-20T14:56:17Z","git_url":"git://github.com/scott-codecov/codecov-test.git","ssh_url":"git@github.com:scott-codecov/codecov-test.git","clone_url":"https://github.com/scott-codecov/codecov-test.git","svn_url":"https://github.com/scott-codecov/codecov-test","homepage":null,"size":239,"stargazers_count":0,"watchers_count":0,"language":"Python","has_issues":true,"has_projects":true,"has_downloads":true,"has_wiki":false,"has_pages":false,"has_discussions":false,"forks_count":0,"mirror_url":null,"archived":false,"disabled":false,"open_issues_count":14,"license":null,"allow_forking":true,"is_template":false,"web_commit_signoff_required":false,"topics":[],"visibility":"private","forks":0,"open_issues":14,"watchers":0,"default_branch":"master"}},"_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40"},"issue":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/issues/40"},"comments":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/issues/40/comments"},"review_comments":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40/comments"},"review_comment":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments{/number}"},"commits":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40/commits"},"statuses":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/statuses/5c64a5143951193dde7b14c14611eebe1025f862"}},"author_association":"OWNER","auto_merge":null,"active_lock_reason":null,"merged":false,"mergeable":true,"rebaseable":true,"mergeable_state":"unstable","merged_by":null,"comments":0,"review_comments":16,"maintainer_can_modify":false,"commits":2,"additions":6,"deletions":12,"changed_files":2}'
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 20 Nov 2023 14:56:58 GMT
+      ETag:
+      - W/"296b07aa4eea57ba4a7acd389a2bfada2e39b4cc4030cbb54c9a64dacf5ad366"
+      Last-Modified:
+      - Mon, 20 Nov 2023 14:56:16 GMT
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3
+      X-GitHub-Request-Id:
+      - FA69:9369:200C52D:432C6D9:655B73BA
+      X-OAuth-Scopes:
+      - ''
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4987'
+      X-RateLimit-Reset:
+      - '1700494278'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '13'
+      X-XSS-Protection:
+      - '0'
+      x-accepted-github-permissions:
+      - pull_requests=read; contents=read
+      x-github-api-version-selected:
+      - '2022-11-28'
+      x-oauth-client-id:
+      - Iv1.88e0c58abd4e2e45
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/vnd.github.v3.diff
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://api.github.com/repos/scott-codecov/codecov-test/pulls/40
+  response:
+    content: "diff --git a/main/bar.py b/main/bar.py\nindex 066a224..5991ec6 100644\n---
+      a/main/bar.py\n+++ b/main/bar.py\n@@ -62,4 +62,7 @@ def add6(x, y):\n     return
+      x + y\n \n def sub6(x, y):\n-    return x - y\n\\ No newline at end of file\n+
+      \   return x - y\n+\n+def add7(x, y):\n+    return x + y\n\\ No newline at end
+      of file\ndiff --git a/main/foo.py b/main/foo.py\nindex 9d285a4..41d8fd2 100644\n---
+      a/main/foo.py\n+++ b/main/foo.py\n@@ -54,14 +54,5 @@ def mul4(x, y):\n def div4(x,
+      y):\n     return x / y\n \n-def add5(x, y):\n-    return x + y\n-\n-def sub5(x,
+      y):\n-    return x - y\n-\n-def mul5(x, y):\n-    return x * y\n-\n-def div5(x,
+      y):\n-    return x / y\n+def testing(x, y):\n+    return x % y\n"
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Length:
+      - '666'
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/vnd.github.v3.diff; charset=utf-8
+      Date:
+      - Mon, 20 Nov 2023 14:56:59 GMT
+      ETag:
+      - '"cc2f80a6dfa37a49996d0a1ac913a4b5c35981e3cd3f50fcfde4eb5b197a4f55"'
+      Last-Modified:
+      - Mon, 20 Nov 2023 14:56:16 GMT
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3; param=diff
+      X-GitHub-Request-Id:
+      - FA6A:1AA9:8EA6FF:127DB9A:655B73BB
+      X-OAuth-Scopes:
+      - ''
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4986'
+      X-RateLimit-Reset:
+      - '1700494278'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '14'
+      X-XSS-Protection:
+      - '0'
+      x-accepted-github-permissions:
+      - pull_requests=read; contents=read
+      x-github-api-version-selected:
+      - '2022-11-28'
+      x-oauth-client-id:
+      - Iv1.88e0c58abd4e2e45
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: '{"messages": [{"role": "user", "content": "\n        Your purpose is to
+      act as a highly experienced software engineer and provide a thorough\n        review
+      of code changes and suggest improvements.  Do not comment on minor style issues,\n        missing
+      comments or documentation.  Identify and resolve significant concerns to improve\n        overall
+      code quality.\n\n        You will receive a Git diff where each line has been
+      prefixed with a unique identifer in\n        square brackets.  When referencing
+      lines in this diff use that identifier.\n\n        Format your output as JSON
+      such that there is 1 top-level comment that summarizes your review\n        and
+      multiple additional comments addressing specific lines in the code with the
+      changes you\n        deem appropriate.\n\n        The output should have this
+      JSON form:\n\n        {\n            \"body\": \"This is the summary comment\",\n            \"comments\":
+      [\n                {\n                    \"line_id\": 123,\n                    \"body\":
+      \"This is a comment about the code with line ID 123\",\n                }\n            ]\n        }\n\n        Limit
+      the number of comments to 10 at most.\n\n        Here is the Git diff on which
+      you should base your review:\n\n        [1] diff --git a/main/bar.py b/main/bar.py\n[2]
+      index 066a224..5991ec6 100644\n[3] --- a/main/bar.py\n[4] +++ b/main/bar.py\n[5]
+      @@ -62,4 +62,7 @@ def add6(x, y):\n[6]      return x + y\n[7]  \n[8]  def sub6(x,
+      y):\n[9] -    return x - y\n[10] \\ No newline at end of file\n[11] +    return
+      x - y\n[12] +\n[13] +def add7(x, y):\n[14] +    return x + y\n[15] \\ No newline
+      at end of file\n[16] diff --git a/main/foo.py b/main/foo.py\n[17] index 9d285a4..41d8fd2
+      100644\n[18] --- a/main/foo.py\n[19] +++ b/main/foo.py\n[20] @@ -54,14 +54,5
+      @@ def mul4(x, y):\n[21]  def div4(x, y):\n[22]      return x / y\n[23]  \n[24]
+      -def add5(x, y):\n[25] -    return x + y\n[26] -\n[27] -def sub5(x, y):\n[28]
+      -    return x - y\n[29] -\n[30] -def mul5(x, y):\n[31] -    return x * y\n[32]
+      -\n[33] -def div5(x, y):\n[34] -    return x / y\n[35] +def testing(x, y):\n[36]
+      +    return x % y\n[37] \n    "}], "model": "gpt-4"}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '2165'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 1.2.4
+      x-stainless-arch:
+      - arm64
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.2.4
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.10.8
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    content: "{\n  \"id\": \"chatcmpl-8MzznvBLFYL4gS9jmfv1PAqsYge8n\",\n  \"object\":
+      \"chat.completion\",\n  \"created\": 1700492219,\n  \"model\": \"gpt-4-0613\",\n
+      \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+      \"assistant\",\n        \"content\": \"{\\n    \\\"body\\\": \\\"The code changes
+      reflect transfer of add5, sub5, mul5, div5 functions from main/foo.py to main/bar.py
+      and they are renamed to add7, sub7, mul7, div7, respectively.  There\u2019s
+      also a new testing function added. While these changes do not result in any
+      syntax errors, they introduce potential redundancy and confusion in naming of
+      functions.\\\",\\n    \\\"comments\\\": [\\n        {\\n            \\\"line_id\\\":
+      14,\\n            \\\"body\\\": \\\"add7 function in bar.py is identically implemented
+      as add6. Consider removing redundant code.\\\"\\n        },\\n        {\\n            \\\"line_id\\\":
+      35,\\n            \\\"body\\\": \\\"A new function 'testing' has been added
+      in foo.py file. Please make sure to add a more descriptive name for the function
+      that reflects what it does.\\\"\\n        },\\n        {\\n            \\\"line_id\\\":
+      35,\\n            \\\"body\\\": \\\"The new 'testing' function uses the modulus
+      operation. The name doesn't reflect this, consider renaming it to 'modulus'
+      or a name that better reflects its functionality.\\\"\\n        },\\n        {\\n
+      \           \\\"line_id\\\": 24,\\n            \\\"body\\\": \\\"Upon removal
+      of add5, sub5, mul5, div5 functions from foo.py, remember to update all call
+      sites that reference these functions.\\\"\\n        },\\n        {\\n            \\\"line_id\\\":
+      13,\\n            \\\"body\\\": \\\"The new functions you've added named add7,
+      sub7, mul7, div7 are identical to some existing functions. It is recommended
+      to avoid duplicate functions, perhaps by creating a utility function if the
+      implementation across these functions is expected to remain identical.\\\"\\n
+      \       }\\n    ]\\n}\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n
+      \ ],\n  \"usage\": {\n    \"prompt_tokens\": 605,\n    \"completion_tokens\":
+      343,\n    \"total_tokens\": 948\n  }\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 82918af47f44e20b-ORD
+      Cache-Control:
+      - no-cache, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 20 Nov 2023 14:57:33 GMT
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - __cf_bm=IzLHHOSkb3GsbWdl3ba5gtlo01gyLZUsGH0EywjECiI-1700492253-0-AeVW0HsDY7UprERytxSXL4vBLL4IcY0F2HYgOexbuiTq00GMqueTbmQ67ovaywdnb99xkTKnsOLrK4IHTeZuhd8=;
+        path=/; expires=Mon, 20-Nov-23 15:27:33 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=WSElFoSEEWNWnQwJ.4vWDd2fmWjMrkwEeP2ktZD2EvM-1700492253622-0-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Transfer-Encoding:
+      - chunked
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      openai-model:
+      - gpt-4-0613
+      openai-organization:
+      - functional-software
+      openai-processing-ms:
+      - '33926'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '300000'
+      x-ratelimit-limit-tokens_usage_based:
+      - '300000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '299478'
+      x-ratelimit-remaining-tokens_usage_based:
+      - '299478'
+      x-ratelimit-reset-requests:
+      - 6ms
+      x-ratelimit-reset-tokens:
+      - 104ms
+      x-ratelimit-reset-tokens_usage_based:
+      - 104ms
+      x-request-id:
+      - aad5ef2ac250b9a3b7774bd5cc43e1b1
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://api.github.com/repos/scott-codecov/codecov-test/pulls/40/comments?per_page=100&page=1
+  response:
+    content: '[{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299190","pull_request_review_id":1739975935,"id":1399299190,"node_id":"PRRC_kwDOHO5Jtc5TZ5x2","diff_hunk":"@@
+      -54,14 +54,5 @@ def mul4(x, y):\n def div4(x, y):\n     return x / y\n \n-def
+      add5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"The
+      function `add5` has been removed. If there are any dependencies on this function
+      elsewhere in the codebase, they''ll need to be updated or this can potentially
+      break your code. Please ensure this function is not needed elsewhere or replaced
+      by a similar functionality.","created_at":"2023-11-20T14:39:23Z","updated_at":"2023-11-20T14:39:24Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299190","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299190"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299190"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299190/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":57,"original_line":57,"side":"LEFT","original_position":4,"position":4,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299193","pull_request_review_id":1739975935,"id":1399299193,"node_id":"PRRC_kwDOHO5Jtc5TZ5x5","diff_hunk":"@@
+      -54,14 +54,5 @@\n def div4(x, y):\n     return x / y\n \n-def add5(x, y):\n-    return
+      x + y\n-\n-def sub5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"The
+      function `sub5` has been removed. Please ensure this function is not needed
+      elsewhere or replaced by a similar functionality.","created_at":"2023-11-20T14:39:23Z","updated_at":"2023-11-20T14:39:24Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299193","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299193"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299193"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299193/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":60,"original_line":60,"side":"LEFT","original_position":7,"position":7,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299195","pull_request_review_id":1739975935,"id":1399299195,"node_id":"PRRC_kwDOHO5Jtc5TZ5x7","diff_hunk":"@@
+      -54,14 +54,5 @@\n def div4(x, y):\n     return x / y\n \n-def add5(x, y):\n-    return
+      x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def mul5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"The
+      function `mul5` has been removed. Please ensure this function is not needed
+      elsewhere or replaced by a similar functionality.","created_at":"2023-11-20T14:39:24Z","updated_at":"2023-11-20T14:39:24Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299195","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299195"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299195"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299195/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":63,"original_line":63,"side":"LEFT","original_position":10,"position":10,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299201","pull_request_review_id":1739975935,"id":1399299201,"node_id":"PRRC_kwDOHO5Jtc5TZ5yB","diff_hunk":"@@
+      -54,14 +54,5 @@\n def div4(x, y):\n     return x / y\n \n-def add5(x, y):\n-    return
+      x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def mul5(x, y):\n-    return
+      x * y\n-\n-def div5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"The
+      function `div5` has been removed. Please ensure this function is not needed
+      elsewhere or replaced by a similar functionality.","created_at":"2023-11-20T14:39:24Z","updated_at":"2023-11-20T14:39:24Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299201","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299201"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299201"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299201/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":66,"original_line":66,"side":"LEFT","original_position":13,"position":13,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299203","pull_request_review_id":1739975935,"id":1399299203,"node_id":"PRRC_kwDOHO5Jtc5TZ5yD","diff_hunk":"@@
+      -54,14 +54,5 @@\n def div4(x, y):\n     return x / y\n \n-def add5(x, y):\n-    return
+      x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def mul5(x, y):\n-    return
+      x * y\n-\n-def div5(x, y):\n-    return x / y\n+def testing(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"The
+      new `testing` function introduced gives the modulus of x and y. Make sure to
+      handle the scenario of a divide by zero error when y equals to zero.","created_at":"2023-11-20T14:39:24Z","updated_at":"2023-11-20T14:39:24Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299203","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299203"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299203"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299203/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":57,"original_line":57,"side":"RIGHT","original_position":15,"position":15,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299206","pull_request_review_id":1739975935,"id":1399299206,"node_id":"PRRC_kwDOHO5Jtc5TZ5yG","diff_hunk":"@@
+      -54,14 +54,5 @@\n def div4(x, y):\n     return x / y\n \n-def add5(x, y):\n-    return
+      x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def mul5(x, y):\n-    return
+      x * y\n-\n-def div5(x, y):\n-    return x / y\n+def testing(x, y):\n+    return
+      x % y","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"The
+      new `testing` function does not handle floating point numbers as expected. The
+      modulus operator returns a floating-point result instead of rounding down to
+      the nearest whole number. Make sure to handle this as per the requirements.","created_at":"2023-11-20T14:39:24Z","updated_at":"2023-11-20T14:39:24Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299206","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299206"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399299206"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399299206/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":58,"original_line":58,"side":"RIGHT","original_position":16,"position":16,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316016","pull_request_review_id":1740003613,"id":1399316016,"node_id":"PRRC_kwDOHO5Jtc5TZ94w","diff_hunk":"@@
+      -54,14 +54,5 @@ def mul4(x, y):\n def div4(x, y):\n     return x / y\n \n-def
+      add5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"Check
+      if there is any code that is calling the add5 function before removing it. If
+      there is, make sure those instances are handled appropriately.","created_at":"2023-11-20T14:51:31Z","updated_at":"2023-11-20T14:51:32Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316016","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316016"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316016"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316016/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":57,"original_line":57,"side":"LEFT","original_position":4,"position":4,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316021","pull_request_review_id":1740003613,"id":1399316021,"node_id":"PRRC_kwDOHO5Jtc5TZ941","diff_hunk":"@@
+      -54,14 +54,5 @@\n def div4(x, y):\n     return x / y\n \n-def add5(x, y):\n-    return
+      x + y\n-\n-def sub5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"Ensure
+      that there are no dependencies on the sub5 function before deleting it. Analyze
+      the impact of this deletion before proceeding.","created_at":"2023-11-20T14:51:31Z","updated_at":"2023-11-20T14:51:32Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316021","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316021"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316021"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316021/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":60,"original_line":60,"side":"LEFT","original_position":7,"position":7,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316023","pull_request_review_id":1740003613,"id":1399316023,"node_id":"PRRC_kwDOHO5Jtc5TZ943","diff_hunk":"@@
+      -54,14 +54,5 @@\n def div4(x, y):\n     return x / y\n \n-def add5(x, y):\n-    return
+      x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def mul5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"Removal
+      of the mul5 function might impact existing functionality. If there are dependencies,
+      ensure that they are properly handled.","created_at":"2023-11-20T14:51:31Z","updated_at":"2023-11-20T14:51:32Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316023","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316023"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316023"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316023/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":63,"original_line":63,"side":"LEFT","original_position":10,"position":10,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316026","pull_request_review_id":1740003613,"id":1399316026,"node_id":"PRRC_kwDOHO5Jtc5TZ946","diff_hunk":"@@
+      -54,14 +54,5 @@\n def div4(x, y):\n     return x / y\n \n-def add5(x, y):\n-    return
+      x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def mul5(x, y):\n-    return
+      x * y\n-\n-def div5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"Removal
+      of the div5 function could impact parts of your program that rely on it. Re-evaluate
+      to confirm this is the right course.","created_at":"2023-11-20T14:51:31Z","updated_at":"2023-11-20T14:51:32Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316026","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316026"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316026"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316026/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":66,"original_line":66,"side":"LEFT","original_position":13,"position":13,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316027","pull_request_review_id":1740003613,"id":1399316027,"node_id":"PRRC_kwDOHO5Jtc5TZ947","diff_hunk":"@@
+      -54,14 +54,5 @@\n def div4(x, y):\n     return x / y\n \n-def add5(x, y):\n-    return
+      x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def mul5(x, y):\n-    return
+      x * y\n-\n-def div5(x, y):\n-    return x / y\n+def testing(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"This
+      new function called ''testing'' performs a modulo operation. Consider renaming
+      the function to something more descriptive, e.g., mod or modulo.","created_at":"2023-11-20T14:51:32Z","updated_at":"2023-11-20T14:51:32Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316027","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316027"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399316027"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399316027/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":57,"original_line":57,"side":"RIGHT","original_position":15,"position":15,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319213","pull_request_review_id":1740008775,"id":1399319213,"node_id":"PRRC_kwDOHO5Jtc5TZ-qt","diff_hunk":"@@
+      -54,14 +54,5 @@ def mul4(x, y):\n def div4(x, y):\n     return x / y\n \n-def
+      add5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"It
+      looks like you''ve removed the add5 method. If this is being used elsewhere
+      in the codebase then its removal could cause issues. Please ensure that this
+      method isn''t being used elsewhere before removal.","created_at":"2023-11-20T14:53:54Z","updated_at":"2023-11-20T14:53:55Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319213","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319213"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319213"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319213/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":57,"original_line":57,"side":"LEFT","original_position":4,"position":4,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319214","pull_request_review_id":1740008775,"id":1399319214,"node_id":"PRRC_kwDOHO5Jtc5TZ-qu","diff_hunk":"@@
+      -54,14 +54,5 @@ def mul4(x, y):\n def div4(x, y):\n     return x / y\n \n-def
+      add5(x, y):\n-    return x + y\n-\n-def sub5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"You''ve
+      removed the sub5 method. Like with the add5 method, make sure that it''s not
+      being used in other places in the codebase which could cause runtime issues.","created_at":"2023-11-20T14:53:54Z","updated_at":"2023-11-20T14:53:55Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319214","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319214"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319214"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319214/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":60,"original_line":60,"side":"LEFT","original_position":7,"position":7,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319215","pull_request_review_id":1740008775,"id":1399319215,"node_id":"PRRC_kwDOHO5Jtc5TZ-qv","diff_hunk":"@@
+      -54,14 +54,5 @@ def mul4(x, y):\n def div4(x, y):\n     return x / y\n \n-def
+      add5(x, y):\n-    return x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def
+      mul5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"The
+      mul5 method has been removed. If it is used elsewhere, this could cause potential
+      problems. Validate it before deleting.","created_at":"2023-11-20T14:53:54Z","updated_at":"2023-11-20T14:53:55Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319215","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319215"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319215"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319215/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":63,"original_line":63,"side":"LEFT","original_position":10,"position":10,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319219","pull_request_review_id":1740008775,"id":1399319219,"node_id":"PRRC_kwDOHO5Jtc5TZ-qz","diff_hunk":"@@
+      -54,14 +54,5 @@ def mul4(x, y):\n def div4(x, y):\n     return x / y\n \n-def
+      add5(x, y):\n-    return x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def
+      mul5(x, y):\n-    return x * y\n-\n-def div5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"You''ve
+      also removed div5, again ensure it''s not being used anywhere else to prevent
+      bugs and exceptions.","created_at":"2023-11-20T14:53:54Z","updated_at":"2023-11-20T14:53:55Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319219","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319219"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319219"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319219/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":66,"original_line":66,"side":"LEFT","original_position":13,"position":13,"subject_type":"line"},{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319220","pull_request_review_id":1740008775,"id":1399319220,"node_id":"PRRC_kwDOHO5Jtc5TZ-q0","diff_hunk":"@@
+      -54,14 +54,5 @@ def mul4(x, y):\n def div4(x, y):\n     return x / y\n \n-def
+      add5(x, y):\n-    return x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def
+      mul5(x, y):\n-    return x * y\n-\n-def div5(x, y):\n-    return x / y\n+def
+      testing(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"This
+      new ''testing'' function''s name is not descriptive of its functionality. It
+      looks like it''s performing a modulus operation, not testing. You should name
+      this function appropriately.","created_at":"2023-11-20T14:53:55Z","updated_at":"2023-11-20T14:53:55Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319220","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319220"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319220"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319220/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":57,"original_line":57,"side":"RIGHT","original_position":15,"position":15,"subject_type":"line"}]'
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 20 Nov 2023 14:57:34 GMT
+      ETag:
+      - W/"34bf2a70870a2944dfb55a2babeb2299d1d4add01673eb7b2200f5887a35b4f8"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3
+      X-GitHub-Request-Id:
+      - FA79:2E86:93B1E2:1320300:655B73DD
+      X-OAuth-Scopes:
+      - ''
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4985'
+      X-RateLimit-Reset:
+      - '1700494278'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '15'
+      X-XSS-Protection:
+      - '0'
+      x-accepted-github-permissions:
+      - pull_requests=read
+      x-github-api-version-selected:
+      - '2022-11-28'
+      x-oauth-client-id:
+      - Iv1.88e0c58abd4e2e45
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://api.github.com/repos/scott-codecov/codecov-test/pulls/40/comments?per_page=100&page=2
+  response:
+    content: '[]'
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Length:
+      - '2'
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 20 Nov 2023 14:57:34 GMT
+      ETag:
+      - '"75cdf323b1b22c1c1c5eb1332cd50eaeee03e9a548fea0444f4061d44b44dc0d"'
+      Link:
+      - <https://api.github.com/repositories/485378485/pulls/40/comments?per_page=100&page=1>;
+        rel="prev", <https://api.github.com/repositories/485378485/pulls/40/comments?per_page=100&page=1>;
+        rel="last", <https://api.github.com/repositories/485378485/pulls/40/comments?per_page=100&page=1>;
+        rel="first"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3
+      X-GitHub-Request-Id:
+      - FA79:2E86:93B279:1320448:655B73DE
+      X-OAuth-Scopes:
+      - ''
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4984'
+      X-RateLimit-Reset:
+      - '1700494278'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '16'
+      X-XSS-Protection:
+      - '0'
+      x-accepted-github-permissions:
+      - pull_requests=read
+      x-github-api-version-selected:
+      - '2022-11-28'
+      x-oauth-client-id:
+      - Iv1.88e0c58abd4e2e45
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: '{"body": "Upon removal of add5, sub5, mul5, div5 functions from foo.py,
+      remember to update all call sites that reference these functions."}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '139'
+      content-type:
+      - application/json
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: PATCH
+    uri: https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319213
+  response:
+    content: '{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319213","pull_request_review_id":1740008775,"id":1399319213,"node_id":"PRRC_kwDOHO5Jtc5TZ-qt","diff_hunk":"@@
+      -54,14 +54,5 @@ def mul4(x, y):\n def div4(x, y):\n     return x / y\n \n-def
+      add5(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"Upon
+      removal of add5, sub5, mul5, div5 functions from foo.py, remember to update
+      all call sites that reference these functions.","created_at":"2023-11-20T14:53:54Z","updated_at":"2023-11-20T14:57:34Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319213","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319213"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319213"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319213/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":57,"original_line":57,"side":"LEFT","original_position":4,"position":4,"subject_type":"line"}'
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 20 Nov 2023 14:57:35 GMT
+      ETag:
+      - W/"ee80dc073626d7b6a7c7469e1fe400e969fafccce776eae5b2531d2245a88be8"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3
+      X-GitHub-Request-Id:
+      - FA7A:4171:9023DB:12ACDC0:655B73DE
+      X-OAuth-Scopes:
+      - ''
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4983'
+      X-RateLimit-Reset:
+      - '1700494278'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '17'
+      X-XSS-Protection:
+      - '0'
+      x-accepted-github-permissions:
+      - pull_requests=write
+      x-github-api-version-selected:
+      - '2022-11-28'
+      x-oauth-client-id:
+      - Iv1.88e0c58abd4e2e45
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: '{"body": "The new ''testing'' function uses the modulus operation. The
+      name doesn''t reflect this, consider renaming it to ''modulus'' or a name that
+      better reflects its functionality."}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '181'
+      content-type:
+      - application/json
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: PATCH
+    uri: https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319220
+  response:
+    content: '{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319220","pull_request_review_id":1740008775,"id":1399319220,"node_id":"PRRC_kwDOHO5Jtc5TZ-q0","diff_hunk":"@@
+      -54,14 +54,5 @@ def mul4(x, y):\n def div4(x, y):\n     return x / y\n \n-def
+      add5(x, y):\n-    return x + y\n-\n-def sub5(x, y):\n-    return x - y\n-\n-def
+      mul5(x, y):\n-    return x * y\n-\n-def div5(x, y):\n-    return x / y\n+def
+      testing(x, y):","path":"main/foo.py","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862","original_commit_id":"b607bb0e17e1b8d8699272a26e32986a933f9946","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"The
+      new ''testing'' function uses the modulus operation. The name doesn''t reflect
+      this, consider renaming it to ''modulus'' or a name that better reflects its
+      functionality.","created_at":"2023-11-20T14:53:55Z","updated_at":"2023-11-20T14:57:35Z","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319220","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"self":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319220"},"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#discussion_r1399319220"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"reactions":{"url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/comments/1399319220/reactions","total_count":0,"+1":0,"-1":0,"laugh":0,"hooray":0,"confused":0,"heart":0,"rocket":0,"eyes":0},"start_line":null,"original_start_line":null,"start_side":null,"line":57,"original_line":57,"side":"RIGHT","original_position":15,"position":15,"subject_type":"line"}'
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 20 Nov 2023 14:57:35 GMT
+      ETag:
+      - W/"8e9b3e8922c3274894baa8442d145f1321a199f55ba5dd972c351a3bfa6ecacc"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3
+      X-GitHub-Request-Id:
+      - FA7B:9369:20108A1:4335182:655B73DF
+      X-OAuth-Scopes:
+      - ''
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4982'
+      X-RateLimit-Reset:
+      - '1700494278'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '18'
+      X-XSS-Protection:
+      - '0'
+      x-accepted-github-permissions:
+      - pull_requests=write
+      x-github-api-version-selected:
+      - '2022-11-28'
+      x-oauth-client-id:
+      - Iv1.88e0c58abd4e2e45
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: '{"commit_id": "5c64a5143951193dde7b14c14611eebe1025f862", "body": "CodecovAI
+      submitted a new review for 5c64a5143951193dde7b14c14611eebe1025f862", "event":
+      "COMMENT", "comments": [{"path": "main/bar.py", "position": 9, "body": "add7
+      function in bar.py is identically implemented as add6. Consider removing redundant
+      code."}, {"path": "main/bar.py", "position": 8, "body": "The new functions you''ve
+      added named add7, sub7, mul7, div7 are identical to some existing functions.
+      It is recommended to avoid duplicate functions, perhaps by creating a utility
+      function if the implementation across these functions is expected to remain
+      identical."}]}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '643'
+      content-type:
+      - application/json
+      host:
+      - api.github.com
+      user-agent:
+      - Default
+    method: POST
+    uri: https://api.github.com/repos/scott-codecov/codecov-test/pulls/40/reviews
+  response:
+    content: '{"id":1740017976,"node_id":"PRR_kwDOHO5Jtc5ntpE4","user":{"login":"scott-codecov","id":103445133,"node_id":"U_kgDOBipyjQ","avatar_url":"https://avatars.githubusercontent.com/u/103445133?u=1ea5f79283a26325f56e7cfa9eaca5cff3d538a4&v=4","gravatar_id":"","url":"https://api.github.com/users/scott-codecov","html_url":"https://github.com/scott-codecov","followers_url":"https://api.github.com/users/scott-codecov/followers","following_url":"https://api.github.com/users/scott-codecov/following{/other_user}","gists_url":"https://api.github.com/users/scott-codecov/gists{/gist_id}","starred_url":"https://api.github.com/users/scott-codecov/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/scott-codecov/subscriptions","organizations_url":"https://api.github.com/users/scott-codecov/orgs","repos_url":"https://api.github.com/users/scott-codecov/repos","events_url":"https://api.github.com/users/scott-codecov/events{/privacy}","received_events_url":"https://api.github.com/users/scott-codecov/received_events","type":"User","site_admin":false},"body":"CodecovAI
+      submitted a new review for 5c64a5143951193dde7b14c14611eebe1025f862","state":"COMMENTED","html_url":"https://github.com/scott-codecov/codecov-test/pull/40#pullrequestreview-1740017976","pull_request_url":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40","author_association":"OWNER","_links":{"html":{"href":"https://github.com/scott-codecov/codecov-test/pull/40#pullrequestreview-1740017976"},"pull_request":{"href":"https://api.github.com/repos/scott-codecov/codecov-test/pulls/40"}},"submitted_at":"2023-11-20T14:57:36Z","commit_id":"5c64a5143951193dde7b14c14611eebe1025f862"}'
+    headers:
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 20 Nov 2023 14:57:37 GMT
+      ETag:
+      - W/"a4514ce707ba155eb3dbfeaa0d9ad4da4ff272e8c63a4b61bad6cffd4c1b9f3a"
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Server:
+      - GitHub.com
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Accepted-OAuth-Scopes:
+      - ''
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - deny
+      X-GitHub-Media-Type:
+      - github.v3
+      X-GitHub-Request-Id:
+      - FA7C:7CD2:981A2A:13ABB2E:655B73E0
+      X-OAuth-Scopes:
+      - ''
+      X-RateLimit-Limit:
+      - '5000'
+      X-RateLimit-Remaining:
+      - '4981'
+      X-RateLimit-Reset:
+      - '1700494278'
+      X-RateLimit-Resource:
+      - core
+      X-RateLimit-Used:
+      - '19'
+      X-XSS-Protection:
+      - '0'
+      x-accepted-github-permissions:
+      - pull_requests=write
+      x-github-api-version-selected:
+      - '2022-11-28'
+      x-oauth-client-id:
+      - Iv1.88e0c58abd4e2e45
+    http_version: HTTP/1.1
+    status_code: 200
+version: 1
