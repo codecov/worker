@@ -39,7 +39,7 @@ def test_report_builder_generate_session(mocker):
 
 def test_report_builder_session(mocker):
     current_yaml, sessionid, ignored_lines, path_fixer = (
-        {"beta_groups": ["labels"]},
+        {},
         mocker.MagicMock(),
         mocker.MagicMock(),
         mocker.MagicMock(),
@@ -49,6 +49,12 @@ def test_report_builder_session(mocker):
     builder_session = builder.create_report_builder_session(filepath)
     first_file = ReportFile("filename.py")
     first_file.append(2, ReportLine.create(coverage=0))
+    labels_index = {
+        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+        1: "some_label",
+        2: "other",
+    }
+    builder_session.label_index = labels_index
     first_file.append(
         3,
         ReportLine.create(
@@ -58,7 +64,7 @@ def test_report_builder_session(mocker):
                     sessionid=0,
                     coverage=1,
                     coverage_type=None,
-                    labels=[SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER],
+                    label_ids=[0],
                 )
             ],
         ),
@@ -81,13 +87,13 @@ def test_report_builder_session(mocker):
                     sessionid=0,
                     coverage=1,
                     coverage_type=None,
-                    labels=["some_label", "other"],
+                    label_ids=[1, 2],
                 ),
                 CoverageDatapoint(
                     sessionid=0,
                     coverage=1,
                     coverage_type=None,
-                    labels=None,
+                    label_ids=None,
                 ),
             ],
             complexity=None,
@@ -95,6 +101,7 @@ def test_report_builder_session(mocker):
     )
     builder_session.append(first_file)
     final_report = builder_session.output_report()
+    assert final_report._labels_index == labels_index
     assert final_report.files == ["filename.py"]
     assert sorted(final_report.get("filename.py").lines) == [
         (
@@ -114,7 +121,7 @@ def test_report_builder_session(mocker):
                         sessionid=0,
                         coverage=1,
                         coverage_type=None,
-                        labels=["Th2dMtk4M_codecov"],
+                        label_ids=[0],
                     ),
                 ],
                 complexity=None,
@@ -135,13 +142,13 @@ def test_report_builder_session(mocker):
                         sessionid=0,
                         coverage=1,
                         coverage_type=None,
-                        labels=["some_label", "other"],
+                        label_ids=[1, 2],
                     ),
                     CoverageDatapoint(
                         sessionid=0,
                         coverage=1,
                         coverage_type=None,
-                        labels=None,
+                        label_ids=None,
                     ),
                 ],
                 complexity=None,
@@ -157,9 +164,13 @@ def test_report_builder_session_only_all_labels(mocker):
         mocker.MagicMock(),
         mocker.MagicMock(),
     )
+    labels_index = {
+        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+    }
     filepath = "filepath"
     builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
     builder_session = builder.create_report_builder_session(filepath)
+    builder_session.label_index = labels_index
     first_file = ReportFile("filename.py")
     first_file.append(2, ReportLine.create(coverage=0))
     first_file.append(
@@ -171,7 +182,7 @@ def test_report_builder_session_only_all_labels(mocker):
                     sessionid=0,
                     coverage=1,
                     coverage_type=None,
-                    labels=[SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER],
+                    label_ids=[0],
                 )
             ],
         ),
@@ -194,13 +205,13 @@ def test_report_builder_session_only_all_labels(mocker):
                     sessionid=0,
                     coverage=1,
                     coverage_type=None,
-                    labels=[SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER],
+                    label_ids=[0],
                 ),
                 CoverageDatapoint(
                     sessionid=0,
                     coverage=1,
                     coverage_type=None,
-                    labels=None,
+                    label_ids=None,
                 ),
             ],
             complexity=None,
@@ -208,6 +219,7 @@ def test_report_builder_session_only_all_labels(mocker):
     )
     builder_session.append(first_file)
     final_report = builder_session.output_report()
+    assert final_report._labels_index == labels_index
     assert final_report.files == ["filename.py"]
     assert sorted(final_report.get("filename.py").lines) == [
         (
@@ -227,7 +239,7 @@ def test_report_builder_session_only_all_labels(mocker):
                         sessionid=0,
                         coverage=1,
                         coverage_type=None,
-                        labels=["Th2dMtk4M_codecov"],
+                        label_ids=[0],
                     ),
                 ],
                 complexity=None,
@@ -248,13 +260,13 @@ def test_report_builder_session_only_all_labels(mocker):
                         sessionid=0,
                         coverage=1,
                         coverage_type=None,
-                        labels=["Th2dMtk4M_codecov"],
+                        label_ids=[0],
                     ),
                     CoverageDatapoint(
                         sessionid=0,
                         coverage=1,
                         coverage_type=None,
-                        labels=None,
+                        label_ids=None,
                     ),
                 ],
                 complexity=None,
@@ -292,7 +304,7 @@ def test_report_builder_session_create_line(mocker):
             )
         ],
         datapoints=[
-            CoverageDatapoint(sessionid=45, coverage=1, coverage_type="b", labels=[])
+            CoverageDatapoint(sessionid=45, coverage=1, coverage_type="b", label_ids=[])
         ],
         complexity=None,
     )

@@ -38,7 +38,7 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
-from helpers.labels import get_all_report_labels, get_labels_per_session
+from helpers.labels import get_label_indexes_per_session
 from services.archive import ArchiveService
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
@@ -523,7 +523,7 @@ class ReportService(object):
             # `PARTIALLY_OVERWRITTEN` and `FULLY_OVERWRITTEN` states are being saved
             labels_session = self._is_labels_flags(session.flags)
             if labels_session:
-                labels = get_labels_per_session(report, sid)
+                labels = get_label_indexes_per_session(report, sid)
                 if not labels:
                     sessions_to_delete.append(sid)
 
@@ -786,7 +786,12 @@ class ReportService(object):
         try:
             with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
                 result = process_raw_upload(
-                    self.current_yaml, master, raw_uploaded_report, flags, session
+                    self.current_yaml,
+                    master,
+                    raw_uploaded_report,
+                    flags,
+                    session=session,
+                    upload=upload,
                 )
                 report = result.report
             log.info(

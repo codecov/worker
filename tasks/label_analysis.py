@@ -6,15 +6,17 @@ from shared.celery_config import label_analysis_task_name
 from shared.labelanalysis import LabelAnalysisRequestState
 
 from app import celery_app
+from database.models.core import Commit
 from database.models.labelanalysis import (
     LabelAnalysisProcessingError,
     LabelAnalysisProcessingErrorCode,
     LabelAnalysisRequest,
 )
 from database.models.staticanalysis import StaticAnalysisSuite
-from helpers.labels import get_all_report_labels, get_labels_per_session
+from helpers.labels import get_all_report_label_indexes, get_label_indexes_per_session
 from helpers.metrics import metrics
 from services.report import Report, ReportService
+from services.report.labels_index import LabelsIndexService
 from services.report.report_builder import SpecialLabelsEnum
 from services.repository import get_repo_provider_service
 from services.static_analysis import StaticAnalysisComparisonService
@@ -28,6 +30,8 @@ log = logging.getLogger(__name__)
 GLOBAL_LEVEL_LABEL = (
     SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 )
+
+GLOBAL_LEVEL_LABEL_IDX = 0
 
 
 class LinesRelevantToChangeInFile(TypedDict):
@@ -91,13 +95,30 @@ class LabelAnalysisRequestProcessingTask(
             base_report = self._get_base_report(label_analysis_request)
 
             if lines_relevant_to_diff and base_report:
-                exisisting_labels = self._get_existing_labels(
+                exisisting_label_ids = self._get_existing_label_indexes(
                     base_report, lines_relevant_to_diff
                 )
+
+                # Translate label_ids
+                # Only works with the default report
+                # TODO: Allow the report to be a different one. Likely requires changes to the LabelAnalysisRequest model.
+                label_index_service = LabelsIndexService(
+                    label_analysis_request.base_commit.report
+                )
+                if base_report._labels_index is None:
+                    label_index_service.set_label_idx(base_report)
+
+                partial_fn_to_apply = lambda label_id_set: self._lookup_label_ids(
+                    report=base_report, label_ids=label_id_set
+                )
+                existing_labels = tuple(map(partial_fn_to_apply, exisisting_label_ids))
+                # Don't need the label_index anymore
+                label_index_service.unset_label_idx(base_report)
+
                 requested_labels = self._get_requested_labels(label_analysis_request)
                 result = self.calculate_final_result(
                     requested_labels=requested_labels,
-                    existing_labels=exisisting_labels,
+                    existing_labels=existing_labels,
                     commit_sha=label_analysis_request.head_commit.commitid,
                 )
                 label_analysis_request.result = result
@@ -218,6 +239,16 @@ class LabelAnalysisRequestProcessingTask(
         metrics.incr("label_analysis_task.already_calculated.same_result")
         return {**larq.result, "success": True, "errors": []}
 
+    def _lookup_label_ids(self, report: Report, label_ids: Set[int]) -> Set[str]:
+
+        labels: Set[str] = set()
+        for label_id in label_ids:
+            # This can raise shared.reports.exceptions.LabelNotFoundError
+            # But (1) we shouldn't let that happen and (2) there's no recovering from it
+            # So we should let that happen to surface bugs to us
+            labels.add(report.lookup_label_by_id(label_id))
+        return labels
+
     def _get_requested_labels(self, label_analysis_request: LabelAnalysisRequest):
         if label_analysis_request.requested_labels:
             return label_analysis_request.requested_labels
@@ -226,13 +257,14 @@ class LabelAnalysisRequestProcessingTask(
         return label_analysis_request.requested_labels
 
     @sentry_sdk.trace
-    def _get_existing_labels(
+    def _get_existing_label_indexes(
         self, report: Report, lines_relevant_to_diff: LinesRelevantToChange
-    ) -> Tuple[Set[str], Set[str], Set[str]]:
-        all_report_labels = self.get_all_report_labels(report)
-        executable_lines_labels, global_level_labels = self.get_executable_lines_labels(
-            report, lines_relevant_to_diff
-        )
+    ) -> Tuple[Set[int], Set[int], Set[int]]:
+        all_report_labels = self.get_all_report_label_indexes(report)
+        (
+            executable_lines_labels,
+            global_level_labels,
+        ) = self.get_executable_lines_label_indexes(report, lines_relevant_to_diff)
         return (all_report_labels, executable_lines_labels, global_level_labels)
 
     @sentry_sdk.trace
@@ -413,13 +445,13 @@ class LabelAnalysisRequestProcessingTask(
         return static_analysis_comparison_service.get_base_lines_relevant_to_change()
 
     @sentry_sdk.trace
-    def get_executable_lines_labels(
+    def get_executable_lines_label_indexes(
         self, report: Report, executable_lines: LinesRelevantToChange
-    ) -> set:
+    ) -> Tuple[Set[int], Set[int]]:
         if executable_lines["all"]:
-            return (self.get_all_report_labels(report), set())
+            return (self.get_all_report_label_indexes(report), set())
         full_sessions = set()
-        labels = set()
+        label_ids = set()
         global_level_labels = set()
         # Prime piece of code to be rust-ifyied
         for name, file_executable_lines in executable_lines["files"].items():
@@ -429,28 +461,30 @@ class LabelAnalysisRequestProcessingTask(
                     for line_number, line in rf.lines:
                         if line and line.datapoints:
                             for datapoint in line.datapoints:
-                                dp_labels = datapoint.labels or []
-                                labels.update(dp_labels)
-                                if GLOBAL_LEVEL_LABEL in dp_labels:
+                                dp_label_ids = datapoint.label_ids or []
+                                label_ids.update(dp_label_ids)
+                                if GLOBAL_LEVEL_LABEL_IDX in dp_label_ids:
                                     full_sessions.add(datapoint.sessionid)
                 else:
                     for line_number in file_executable_lines["lines"]:
                         line = rf.get(line_number)
                         if line and line.datapoints:
                             for datapoint in line.datapoints:
-                                dp_labels = datapoint.labels or []
-                                labels.update(dp_labels)
-                                if GLOBAL_LEVEL_LABEL in dp_labels:
+                                dp_labels = datapoint.label_ids or []
+                                label_ids.update(dp_labels)
+                                if GLOBAL_LEVEL_LABEL_IDX in dp_labels:
                                     full_sessions.add(datapoint.sessionid)
         for sess_id in full_sessions:
-            global_level_labels.update(self.get_labels_per_session(report, sess_id))
-        return (labels - set([GLOBAL_LEVEL_LABEL]), global_level_labels)
+            global_level_labels.update(
+                self.get_label_indexes_per_session(report, sess_id)
+            )
+        return (label_ids - set([GLOBAL_LEVEL_LABEL_IDX]), global_level_labels)
 
-    def get_labels_per_session(self, report: Report, sess_id: int):
-        return get_labels_per_session(report, sess_id)
+    def get_label_indexes_per_session(self, report: Report, sess_id: int):
+        return get_label_indexes_per_session(report, sess_id)
 
-    def get_all_report_labels(self, report: Report) -> set:
-        return get_all_report_labels(report)
+    def get_all_report_label_indexes(self, report: Report) -> set:
+        return get_all_report_label_indexes(report)
 
 
 RegisteredLabelAnalysisRequestProcessingTask = celery_app.register_task(

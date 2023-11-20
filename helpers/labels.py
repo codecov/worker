@@ -32,27 +32,23 @@ class SpecialLabelsEnum(Enum):
 
 
 @sentry_sdk.trace
-def get_labels_per_session(report: Report, sess_id: int):
+def get_label_indexes_per_session(report: Report, sess_id: int):
     all_labels = set()
     for rf in report:
         for _, line in rf.lines:
             if line.datapoints:
                 for datapoint in line.datapoints:
                     if datapoint.sessionid == sess_id:
-                        all_labels.update(datapoint.labels or [])
-    return all_labels - set(
-        [SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label]
-    )
+                        all_labels.update(datapoint.label_ids or [])
+    return all_labels - set([0])  # This is always the index for the SpecialLabelsEnum
 
 
 @sentry_sdk.trace
-def get_all_report_labels(report: Report) -> set:
+def get_all_report_label_indexes(report: Report) -> set:
     all_labels = set()
     for rf in report:
         for _, line in rf.lines:
             if line.datapoints:
                 for datapoint in line.datapoints:
-                    all_labels.update(datapoint.labels or [])
-    return all_labels - set(
-        [SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label]
-    )
+                    all_labels.update(datapoint.label_ids or [])
+    return all_labels - set([0])  # This is always the index for the SpecialLabelsEnum
