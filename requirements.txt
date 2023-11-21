@@ -263,6 +263,7 @@ pytest==7.2.0
     #   -r requirements.in
     #   pytest-asyncio
     #   pytest-cov
+    #   pytest-django
     #   pytest-freezegun
     #   pytest-mock
     #   pytest-sqlalchemy
@@ -271,6 +272,8 @@ pytest-asyncio==0.14.0
 pytest-celery==0.0.0
     # via -r requirements.in
 pytest-cov==2.11.1
+    # via -r requirements.in
+pytest-django==4.7.0
     # via -r requirements.in
 pytest-freezegun==0.4.2
     # via -r requirements.in
