@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import json
 import logging
 import random
 import typing
@@ -9,10 +10,12 @@ import sentry_sdk
 from shared.reports.resources import Report
 from shared.utils.sessions import Session, SessionType
 
+from database.models.reports import Upload
 from helpers.exceptions import ReportEmptyError
 from helpers.labels import get_all_report_labels, get_labels_per_session
+from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG, repo_slug
 from services.path_fixer import PathFixer
-from services.report.fixes import get_fixes_from_raw
+from services.report.labels_index import LabelsIndexService
 from services.report.parser.types import ParsedRawReport
 from services.report.report_builder import ReportBuilder, SpecialLabelsEnum
 from services.report.report_processor import process_report
@@ -48,7 +51,12 @@ class UploadProcessingResult(object):
 
 @sentry_sdk.trace
 def process_raw_upload(
-    commit_yaml, original_report, reports: ParsedRawReport, flags, session=None
+    commit_yaml,
+    original_report,
+    reports: ParsedRawReport,
+    flags,
+    session=None,
+    upload: Upload = None,
 ) -> UploadProcessingResult:
     toc, env = None, None
 
@@ -129,7 +137,11 @@ def process_raw_upload(
     if not temporary_report:
         raise ReportEmptyError("No files found in report.")
     session_manipulation_result = _adjust_sessions(
-        original_report, temporary_report, session, commit_yaml
+        original_report,
+        temporary_report,
+        to_merge_session=session,
+        current_yaml=commit_yaml,
+        upload=upload,
     )
     original_report.merge(temporary_report, joined=joined)
     session.totals = temporary_report.totals
@@ -147,7 +159,16 @@ class SessionAdjustmentResult(object):
     partially_deleted_sessions: set
 
 
-def _adjust_sessions(original_report, to_merge_report, to_merge_session, current_yaml):
+# RUSTIFYME
+@sentry_sdk.trace
+def _adjust_sessions(
+    original_report: Report,
+    to_merge_report: Report,
+    to_merge_session,
+    current_yaml,
+    *,
+    upload: Upload = None,
+):
     session_ids_to_fully_delete = []
     session_ids_to_partially_delete = []
     to_merge_flags = to_merge_session.flags or []
@@ -164,6 +185,24 @@ def _adjust_sessions(original_report, to_merge_report, to_merge_session, current
         for f in flags_under_carryforward_rules
         if f not in to_partially_overwrite_flags
     ]
+    if upload is None and to_partially_overwrite_flags:
+        log.warning("Upload is None, but there are partial_overwrite_flags present")
+    if (
+        upload
+        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG.check_value(
+            repo_slug(upload.report.commit.repository), default=False
+        )
+        and to_partially_overwrite_flags
+    ):
+        label_index_service = LabelsIndexService(upload.report)
+        # TODO: Needs shared upload
+        # if original_report._labels_index is None:
+        #     label_index_service.set_label_idx(original_report)
+        # # Make sure that the labels in the reports are in a good state to merge them
+        # make_sure_orginal_report_is_using_label_ids(original_report)
+        # make_sure_label_indexes_match(original_report, to_merge_report)
+        # # After this point we don't need the label index anymore, so we can release it to save memory
+        # label_index_service.unset_label_idx(original_report)
     if to_fully_overwrite_flags or to_partially_overwrite_flags:
         for sess_id, curr_sess in original_report.sessions.items():
             if curr_sess.session_type == SessionType.carriedforward:

@@ -1,4 +1,5 @@
 import pytest
+from mock import MagicMock
 from shared.reports.editable import EditableReport, EditableReportFile
 from shared.reports.resources import (
     LineSession,
@@ -11,6 +12,7 @@ from shared.reports.resources import (
 from shared.reports.types import CoverageDatapoint
 from shared.yaml import UserYaml
 
+from database.tests.factories.core import RepositoryFactory
 from helpers.labels import SpecialLabelsEnum
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
@@ -415,7 +417,40 @@ class TestAdjustSession(BaseTestCase):
             },
         }
 
-    def test_adjust_sessions_partial_cf_only_no_changes(self, sample_first_report):
+    def test_adjust_sessions_partial_cf_only_no_changes(
+        self, sample_first_report, mocker
+    ):
+        first_to_merge_session = Session(flags=["enterprise"], id=3)
+        second_report = Report(
+            sessions={first_to_merge_session.id: first_to_merge_session}
+        )
+        current_yaml = UserYaml(
+            {
+                "flag_management": {
+                    "individual_flags": [
+                        {
+                            "name": "enterprise",
+                            "carryforward_mode": "labels",
+                            "carryforward": True,
+                        }
+                    ]
+                }
+            }
+        )
+        mock_label_index_service = mocker.patch(
+            "services.report.raw_upload_processor.LabelsIndexService"
+        )
+        first_value = self.convert_report_to_better_readable(sample_first_report)
+        assert _adjust_sessions(
+            sample_first_report, second_report, first_to_merge_session, current_yaml
+        ) == SessionAdjustmentResult([], [0])
+        after_result = self.convert_report_to_better_readable(sample_first_report)
+        assert after_result == first_value
+        mock_label_index_service.assert_not_called()
+
+    def test_adjust_sessions_partial_cf_only_no_changes_encoding_labels(
+        self, sample_first_report, mocker
+    ):
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(
             sessions={first_to_merge_session.id: first_to_merge_session}
@@ -434,11 +469,40 @@ class TestAdjustSession(BaseTestCase):
             }
         )
         first_value = self.convert_report_to_better_readable(sample_first_report)
+        upload = MagicMock(
+            name="fake_upload",
+            **{
+                "report": MagicMock(
+                    name="fake_commit_report",
+                    **{
+                        "code": None,
+                        "commit": MagicMock(
+                            name="fake_commit",
+                            **{
+                                "repository": RepositoryFactory(
+                                    name="sentry",
+                                    owner__username="giovanni-guidini",
+                                    owner__service="github",
+                                )
+                            }
+                        ),
+                    }
+                )
+            }
+        )
+        mock_label_index_service = mocker.patch(
+            "services.report.raw_upload_processor.LabelsIndexService"
+        )
         assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+            sample_first_report,
+            second_report,
+            first_to_merge_session,
+            current_yaml,
+            upload=upload,
         ) == SessionAdjustmentResult([], [0])
         after_result = self.convert_report_to_better_readable(sample_first_report)
         assert after_result == first_value
+        assert mock_label_index_service.call_count == 1
 
     def test_adjust_sessions_partial_cf_only_some_changes(self, sample_first_report):
         first_to_merge_session = Session(flags=["enterprise"], id=3)
