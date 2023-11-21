@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -18,6 +18,20 @@ from tasks.base import BaseCodecovRequest, BaseCodecovTask
 from tasks.base import celery_app as base_celery_app
 
 here = Path(__file__)
+
+
+class MockDateTime(datetime):
+    """
+    `@pytest.mark.freeze_time()` is convenient but will freeze time for
+    everything, including timeseries metrics for which a timestamp is
+    a primary key.
+
+    This class can be used to mock time more narrowly.
+    """
+
+    @classmethod
+    def now(cls):
+        return datetime.fromisoformat("2023-06-13T10:01:01.000123")
 
 
 class SampleTask(BaseCodecovTask, name="test.SampleTask"):
@@ -68,6 +82,7 @@ class RetrySampleTask(BaseCodecovTask, name="test.RetrySampleTask"):
         self.retry()
 
 
+@pytest.mark.django_db(databases={"default", "timeseries"})
 class TestBaseCodecovTask(object):
     def test_hard_time_limit_task_with_request_data(self, mocker):
         mocker.patch.object(SampleTask, "request", timelimit=[200, 123])
@@ -79,7 +94,7 @@ class TestBaseCodecovTask(object):
         r = SampleTask()
         assert r.hard_time_limit_task == 480
 
-    @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @patch("tasks.base.datetime", MockDateTime)
     def test_sample_run(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_metrics = mocker.patch("tasks.base.metrics")
@@ -202,6 +217,7 @@ class TestBaseCodecovTask(object):
         assert mocked_get_db_session.remove.call_count == 1
 
 
+@pytest.mark.django_db(databases={"default", "timeseries"})
 class TestBaseCodecovTaskHooks(object):
     def test_sample_task_success(self, celery_app, mocker):
         class SampleTask(BaseCodecovTask, name="test.SampleTask"):
