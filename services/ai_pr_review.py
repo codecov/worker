@@ -11,6 +11,7 @@ from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.base import TokenType, TorngitBaseAdapter
 
 from database.models.core import Repository
+from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.repository import get_repo_provider_service
 
@@ -263,6 +264,7 @@ class Review:
         try:
             data = json.loads(res)
         except json.decoder.JSONDecodeError:
+            metrics.incr("ai_pr_review.non_json_completion")
             log.error(
                 "OpenAI completion was expected to be JSON but wasn't",
                 extra=dict(res=res),
@@ -281,6 +283,7 @@ class Review:
                 },
             )
         except KeyError:
+            metrics.incr("ai_pr_review.malformed_completion")
             log.error(
                 "OpenAI completion JSON was not formed as expected",
                 extra=dict(data=data),
