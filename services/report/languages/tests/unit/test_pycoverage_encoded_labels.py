@@ -1,11 +1,5 @@
-""" Tests for pycoverage language processor that output actual labels.
-    This is going to be deprecated soon.
-    For the tests with encoded labels see services/report/languages/tests/unit/test_pycoverage_encoded_labels.py
-"""
-import json
-import pathlib
-
 from services.report.languages.pycoverage import PyCoverageProcessor
+from services.report.report_builder import SpecialLabelsEnum
 from services.report.report_processor import ReportBuilder
 from test_utils.base import BaseTestCase
 
@@ -193,6 +187,36 @@ class TestPyCoverageProcessor(BaseTestCase):
         assert not p.matches_content({"meta": True}, "", "coverage.json")
         assert not p.matches_content({"meta": {}}, "", "coverage.json")
 
+    def test__get_list_of_label_ids(self):
+        p = PyCoverageProcessor()
+        p.are_labels_already_encoded = False
+        p.reverse_table = {}
+        current_label_idx = {}
+        assert p._get_list_of_label_ids(current_label_idx, [""]) == [1]
+        assert current_label_idx == {
+            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
+        }
+        assert p._get_list_of_label_ids(
+            current_label_idx, ["test_source.py::test_some_code|run"]
+        ) == [2]
+        assert current_label_idx == {
+            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+            2: "test_source.py::test_some_code",
+        }
+        assert p._get_list_of_label_ids(
+            current_label_idx, ["", "test_source.py::test_some_code|run"]
+        ) == [1, 2]
+        assert current_label_idx == {
+            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+            2: "test_source.py::test_some_code",
+        }
+
+    def test__get_list_of_label_ids_already_encoded(self):
+        p = PyCoverageProcessor()
+        p.are_labels_already_encoded = True
+        assert p._get_list_of_label_ids({}, ["2"]) == [2]
+        assert p._get_list_of_label_ids({}, ["2", "3", "1"]) == [1, 2, 3]
+
     def test_process_pycoverage(self):
         content = SAMPLE
         p = PyCoverageProcessor()
@@ -208,8 +232,15 @@ class TestPyCoverageProcessor(BaseTestCase):
             sessionid=0,
             ignored_lines={},
             path_fixer=str,
+            should_use_label_index=True,
         )
         report = p.process("name", content, report_builder)
+        assert report._labels_index == {
+            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+            2: "test_another.py::test_fib_simple_case",
+            3: "test_another.py::test_fib_bigger_cases",
+            4: "test_source.py::test_some_code",
+        }
         processed_report = self.convert_report_to_better_readable(report)
         assert processed_report["archive"]["source.py"][0] == (
             1,
@@ -218,7 +249,7 @@ class TestPyCoverageProcessor(BaseTestCase):
             [[0, 1, None, None, None]],
             None,
             None,
-            [(0, 1, None, ["Th2dMtk4M_codecov"])],
+            [(0, 1, None, [1])],
         )
         assert processed_report == {
             "archive": {
@@ -230,7 +261,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [1])],
                     ),
                     (
                         2,
@@ -240,8 +271,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
+                            (0, 1, None, [2, 3]),
                         ],
                     ),
                     (
@@ -252,8 +282,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (0, 1, None, ["test_another.py::test_fib_simple_case"]),
-                            (0, 1, None, ["test_another.py::test_fib_bigger_cases"]),
+                            (0, 1, None, [2, 3]),
                         ],
                     ),
                     (
@@ -263,7 +292,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["test_another.py::test_fib_bigger_cases"])],
+                        [(0, 1, None, [3])],
                     ),
                 ],
                 "source.py": [
@@ -274,7 +303,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [1])],
                     ),
                     (
                         3,
@@ -283,7 +312,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [1])],
                     ),
                     (
                         4,
@@ -292,7 +321,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["test_source.py::test_some_code"])],
+                        [(0, 1, None, [4])],
                     ),
                     (
                         5,
@@ -301,7 +330,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["test_source.py::test_some_code"])],
+                        [(0, 1, None, [4])],
                     ),
                     (
                         6,
@@ -319,7 +348,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [1])],
                     ),
                     (
                         10,
@@ -339,7 +368,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [1])],
                     ),
                     (
                         3,
@@ -348,7 +377,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [1])],
                     ),
                     (
                         4,
@@ -357,7 +386,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["test_another.py::test_fib_simple_case"])],
+                        [(0, 1, None, [2])],
                     ),
                     (
                         5,
@@ -366,7 +395,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["test_another.py::test_fib_simple_case"])],
+                        [(0, 1, None, [2])],
                     ),
                     (
                         7,
@@ -375,7 +404,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [1])],
                     ),
                     (
                         8,
@@ -384,7 +413,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["test_another.py::test_fib_bigger_cases"])],
+                        [(0, 1, None, [3])],
                     ),
                 ],
                 "test_source.py": [
@@ -395,7 +424,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [1])],
                     ),
                     (
                         4,
@@ -404,7 +433,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [1])],
                     ),
                     (
                         5,
@@ -413,7 +442,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["test_source.py::test_some_code"])],
+                        [(0, 1, None, [4])],
                     ),
                 ],
             },
@@ -481,8 +510,16 @@ class TestPyCoverageProcessor(BaseTestCase):
             sessionid=0,
             ignored_lines={},
             path_fixer=str,
+            should_use_label_index=True,
         )
         report = p.process("name", content, report_builder)
+        assert report._labels_index == {
+            0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+            1: "label_1",
+            2: "label_2",
+            3: "label_3",
+            4: "label_5",
+        }
         processed_report = self.convert_report_to_better_readable(report)
         print(processed_report)
         assert processed_report == {
@@ -495,7 +532,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["Th2dMtk4M_codecov"])],
+                        [(0, 1, None, [0])],
                     ),
                     (
                         2,
@@ -505,8 +542,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (0, 1, None, ["label_1"]),
-                            (0, 1, None, ["label_2"]),
+                            (0, 1, None, [1, 2]),
                         ],
                     ),
                     (
@@ -517,8 +553,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (0, 1, None, ["label_2"]),
-                            (0, 1, None, ["label_3"]),
+                            (0, 1, None, [2, 3]),
                         ],
                     ),
                     (
@@ -537,7 +572,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 1, None, None, None]],
                         None,
                         None,
-                        [(0, 1, None, ["label_5"])],
+                        [(0, 1, None, [4])],
                     ),
                 ],
                 "__init__.py": [

@@ -124,8 +124,18 @@ def process_raw_upload(
             path_fixer_to_use = path_fixer.get_relative_path_aware_pathfixer(
                 current_filename
             )
+            should_use_encoded_labels = (
+                upload
+                and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG.check_value(
+                    repo_slug(upload.report.commit.repository), default=False
+                )
+            )
             report_builder_to_use = ReportBuilder(
-                commit_yaml, sessionid, ignored_lines, path_fixer_to_use
+                commit_yaml,
+                sessionid,
+                ignored_lines,
+                path_fixer_to_use,
+                should_use_encoded_labels,
             )
             report = process_report(
                 report=report_file, report_builder=report_builder_to_use
@@ -157,6 +167,99 @@ def process_raw_upload(
 class SessionAdjustmentResult(object):
     fully_deleted_sessions: set
     partially_deleted_sessions: set
+
+
+# RUSTIFYME
+@sentry_sdk.trace
+def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool:
+    """Makes sure that the original_report (that was pulled from DB)
+    has CoverageDatapoints that encode label_ids and not actual labels.
+    """
+    # Always point the special label to index 0
+    reverse_index_cache = {
+        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label: 0
+    }
+    if 0 not in original_report._labels_index:
+        original_report._labels_index[
+            0
+        ] = SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
+
+    def possibly_translate_label(label_or_id: typing.Union[str, int]) -> int:
+        if type(label_or_id) == int:
+            return label_or_id
+        if label_or_id in reverse_index_cache:
+            return reverse_index_cache[label_or_id]
+        # Search for label in the report index
+        for idx, label in original_report._labels_index.items():
+            if label == label_or_id:
+                reverse_index_cache[label] = idx
+                return idx
+        # Label is not present. Add to index.
+        # Notice that this never picks index 0, that is reserved for the special label
+        new_index = max(original_report._labels_index.keys()) + 1
+        reverse_index_cache[label_or_id] = new_index
+        # It's OK to update this here because it's inside the
+        # UploadProcessing lock, so it's exclusive access
+        original_report._labels_index[new_index] = label_or_id
+        return new_index
+
+    for report_file in original_report:
+        for _, report_line in report_file.lines:
+            if report_line.datapoints:
+                for datapoint in report_line.datapoints:
+                    datapoint.label_ids = [
+                        possibly_translate_label(label_or_id)
+                        for label_or_id in datapoint.label_ids
+                    ]
+                report_line.datapoints.sort(key=lambda x: x.key_sorting_tuple())
+
+
+# RUSTIFYME
+@sentry_sdk.trace
+def make_sure_label_indexes_match(
+    original_report: Report, to_merge_report: Report
+) -> None:
+    """Makes sure that the indexes of both reports point to the same labels.
+    Uses the original_report as reference, and fixes the to_merge_report as needed
+    """
+    if to_merge_report._labels_index is None:
+        # The new report doesn't have labels to fix
+        return
+
+    # Map label --> index_in_original_report
+    reverse_index: typing.Dict[str, int] = {
+        t[1]: t[0] for t in original_report._labels_index.items()
+    }
+    # Map index_in_to_merge_report --> index_in_original_report
+    indexes_to_fix: typing.Dict[int, int] = {}
+    next_idx = max(original_report._labels_index.keys()) + 1
+    for idx, label in to_merge_report._labels_index.items():
+        # Special case for the special label, which is SpecialLabelsEnum in to_merge_report
+        # But in the original_report it points to a string
+        if label == SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER:
+            if idx != 0:
+                indexes_to_fix[idx] = 0
+        if label not in reverse_index:
+            # It's a new label that doesn't exist in the original_report
+            original_report._labels_index[next_idx] = label
+            indexes_to_fix[idx] = next_idx
+            next_idx += 1
+        elif reverse_index[label] == idx:
+            # This label matches the index on the original report
+            continue
+        else:
+            # Here the label doesn't match the index in the original report
+            indexes_to_fix[idx] = reverse_index[label]
+
+    # Fix indexes in to_merge_report.
+    for report_file in to_merge_report:
+        for _, report_line in report_file.lines:
+            if report_line.datapoints:
+                for datapoint in report_line.datapoints:
+                    datapoint.label_ids = [
+                        indexes_to_fix.get(label_id, label_id)
+                        for label_id in datapoint.label_ids
+                    ]
 
 
 # RUSTIFYME
@@ -195,14 +298,13 @@ def _adjust_sessions(
         and to_partially_overwrite_flags
     ):
         label_index_service = LabelsIndexService(upload.report)
-        # TODO: Needs shared upload
-        # if original_report._labels_index is None:
-        #     label_index_service.set_label_idx(original_report)
-        # # Make sure that the labels in the reports are in a good state to merge them
-        # make_sure_orginal_report_is_using_label_ids(original_report)
-        # make_sure_label_indexes_match(original_report, to_merge_report)
-        # # After this point we don't need the label index anymore, so we can release it to save memory
-        # label_index_service.unset_label_idx(original_report)
+        if original_report._labels_index is None:
+            label_index_service.set_label_idx(original_report)
+        # Make sure that the labels in the reports are in a good state to merge them
+        make_sure_orginal_report_is_using_label_ids(original_report)
+        make_sure_label_indexes_match(original_report, to_merge_report)
+        # After this point we don't need the label index anymore, so we can release it to save memory
+        label_index_service.unset_label_idx(original_report)
     if to_fully_overwrite_flags or to_partially_overwrite_flags:
         for sess_id, curr_sess in original_report.sessions.items():
             if curr_sess.session_type == SessionType.carriedforward:
