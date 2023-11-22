@@ -9,6 +9,13 @@ from database.models.core import Commit, Owner, Repository
 
 
 def fire_and_forget(fn):
+    """
+    Decorator for an async function that will throw it in the asyncio queue and
+    return immediately. The caller does not need to await the result.
+
+    Useful for things like telemetry where you don't want to delay the actual
+    logic too long for it and it's not the worst thing if it fails.
+    """
     if not hasattr(fire_and_forget, "background_tasks"):
         fire_and_forget.background_tasks = set()
 
@@ -21,6 +28,25 @@ def fire_and_forget(fn):
 
 
 class MetricContext:
+    """
+    Timeseries metrics can be tagged with context (repo, commit, owner) and this
+    class holds onto that context. It exposes a way to log timeseries metrics
+    with context appended.
+
+    Create it with whatever context you've got (e.g. IDs that were passed in as
+    task arguments) and it will attempt to fetch the rest before logging for the
+    first time.
+
+    `log_simple_metric()` will call `populate()` if it hasn't been called before
+    and then log a simple metric with the pass-in name/value to both Postgres
+    and Timescale. This function is synchronous/blocking.
+
+    `attempt_log_simple_metric()` is the @fire_and_forget version of
+    `log_simple_metric()`, meaning it will throw populating/logging on the
+    asyncio queue and then immediately return without needing to be awaited. Can
+    only be used in an event loop/async function.
+    """
+
     def __init__(
         self,
         repo_id: int = None,
@@ -111,6 +137,18 @@ class MetricContext:
 
 
 class TimeseriesTimer:
+    """
+    Timer class that create timeseries metrics. Used as a context manager:
+
+    metric_context = MetricContext(
+        repo_id=kwargs['repoid'],
+        owner_id=kwargs['ownerid'],
+        commit_sha=kwargs['commitid'],
+    )
+    with TimeseriesTimer(metric_context, "metric_name"):
+        run_task(...)
+    """
+
     def __init__(self, metric_context: MetricContext, name: str, sync=False):
         self.metric_context = metric_context
         self.name = name
