@@ -8,17 +8,16 @@ from database.engine import get_db_session
 from database.models.core import Commit, Owner, Repository
 
 
-class fire_and_forget:
-    background_tasks = set()
+def fire_and_forget(fn):
+    if not hasattr(fire_and_forget, "background_tasks"):
+        fire_and_forget.background_tasks = set()
 
-    def __init__(self, fn):
-        self.fn = fn
+    def wrapper(*args, **kwargs):
+        task = asyncio.create_task(fn(*args, **kwargs))
+        fire_and_forget.background_tasks.add(task)
+        task.add_done_callback(fire_and_forget.background_tasks.discard)
 
-    def __call__(self, *args, **kwargs):
-        print(self, *args, **kwargs)
-        task = asyncio.create_task(self.fn(*args, **kwargs))
-        self.background_tasks.add(task)
-        task.add_done_callback(self.background_tasks.discard)
+    return wrapper
 
 
 class MetricContext:
@@ -74,10 +73,10 @@ class MetricContext:
 
         self.owner_slug = f"{owner.service}/{owner.username}" if owner else None
         self.repo_slug = (
-            f"{owner_slug}/{repo.name}" if self.owner_slug and repo else None
+            f"{self.owner_slug}/{repo.name}" if self.owner_slug and repo else None
         )
         self.commit_slug = (
-            f"{repo_slug}/{commit.commitid}" if self.repo_slug and commit else None
+            f"{self.repo_slug}/{commit.commitid}" if self.repo_slug and commit else None
         )
 
         dbsession.close()

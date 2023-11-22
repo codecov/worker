@@ -7,10 +7,12 @@ import pytest
 from celery import chain
 from celery.contrib.testing.mocks import TaskMessage
 from celery.exceptions import Retry, SoftTimeLimitExceeded
-from mock import call
+from mock import ANY, call
 from prometheus_client import REGISTRY
 from shared.billing import BillingPlan
 from shared.celery_config import sync_repos_task_name, upload_task_name
+from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
+from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetric
 from sqlalchemy.exc import DBAPIError, IntegrityError, InvalidRequestError
 
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
@@ -95,7 +97,8 @@ class TestBaseCodecovTask(object):
         assert r.hard_time_limit_task == 480
 
     @patch("tasks.base.datetime", MockDateTime)
-    def test_sample_run(self, mocker, dbsession):
+    @patch("helpers.telemetry.MetricContext.log_simple_metric")
+    def test_sample_run(self, mock_simple_metric, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mocked_metrics = mocker.patch("tasks.base.metrics")
         mock_task_request = mocker.patch("tasks.base.BaseCodecovTask.request")
@@ -133,6 +136,12 @@ class TestBaseCodecovTask(object):
                 labels={"task": SampleTask.name, "queue": "my-queue"},
             )
             == 61.000123
+        )
+        mock_simple_metric.assert_has_calls(
+            [
+                call("worker.task.test.SampleTask.core_runtime", ANY),
+                call("worker.task.test.SampleTask.full_runtime", ANY),
+            ]
         )
 
     @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")
