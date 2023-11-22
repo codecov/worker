@@ -145,14 +145,22 @@ class ReportService(object):
         """
         db_session = commit.get_db_session()
         current_report_row = (
-            db_session.query(CommitReport)
-            .filter_by(commit_id=commit.id_, code=report_code)
+            db_session.query(CommitReport).filter_by(
+                commit_id=commit.id_, code=report_code
+            )
+            # TODO: column does not exist yet
+            # .filter_by(report_type="coverage")
             .first()
         )
         if not current_report_row:
             # This happens if the commit report is being created for the first time
             # or backfilled
-            current_report_row = CommitReport(commit_id=commit.id_, code=report_code)
+            current_report_row = CommitReport(
+                commit_id=commit.id_,
+                # TODO: column does not exist yet
+                # report_type="coverage",
+                code=report_code,
+            )
             db_session.add(current_report_row)
             db_session.flush()
             report_details = (

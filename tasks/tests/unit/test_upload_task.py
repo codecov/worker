@@ -21,7 +21,7 @@ from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
-from tasks.upload import UploadTask
+from tasks.upload import UploadArgs, UploadTask
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
 
@@ -475,9 +475,7 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocked_3 = mocker.patch.object(
-            UploadTask, "lists_of_arguments", return_value=[]
-        )
+        mocked_3 = mocker.patch.object(UploadArgs, "arguments_list", return_value=[])
 
         owner = OwnerFactory.create(
             service="github",
@@ -668,8 +666,14 @@ class TestUploadTaskIntegration(object):
         mock_redis.lists[
             f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
+        upload_args = UploadArgs(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            redis_connection=mock_redis,
+        )
         result = await UploadTask().run_async_within_lock(
-            dbsession, mock_redis, commit.repoid, commit.commitid, None
+            dbsession,
+            upload_args,
         )
         assert {"was_setup": False, "was_updated": False} == result
         assert commit.message == ""
@@ -761,8 +765,14 @@ class TestUploadTaskIntegration(object):
         mock_redis.lists[
             f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
+        upload_args = UploadArgs(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            redis_connection=mock_redis,
+        )
         result = await UploadTask().run_async_within_lock(
-            dbsession, mock_redis, commit.repoid, commit.commitid, None
+            dbsession,
+            upload_args,
         )
         assert {"was_setup": True, "was_updated": True} == result
         assert commit.message == ""
@@ -788,6 +798,11 @@ class TestUploadTaskIntegration(object):
 class TestUploadTaskUnit(object):
     def test_list_of_arguments(self, mock_redis):
         task = UploadTask()
+        upload_args = UploadArgs(
+            repoid=542,
+            commitid="commitid",
+            redis_connection=mock_redis,
+        )
         first_redis_queue = [
             {"url": "http://example.first.com"},
             {"and_another": "one"},
@@ -795,7 +810,7 @@ class TestUploadTaskUnit(object):
         mock_redis.lists["uploads/542/commitid"] = [
             json.dumps(x) for x in first_redis_queue
         ]
-        res = list(task.lists_of_arguments(mock_redis, 542, "commitid"))
+        res = list(upload_args.arguments_list())
         assert res == [{"url": "http://example.first.com"}, {"and_another": "one"}]
 
     def test_normalize_upload_arguments_no_changes(
@@ -806,8 +821,14 @@ class TestUploadTaskUnit(object):
         dbsession.flush()
         reportid = "5fbeee8b-5a41-4925-b59d-470b9d171235"
         arguments_with_redis_key = {"reportid": reportid, "random": "argument"}
-        result = UploadTask().normalize_upload_arguments(
-            commit, arguments_with_redis_key, mock_redis
+        upload_args = UploadArgs(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            redis_connection=mock_redis,
+        )
+        result = upload_args.normalize_arguments(
+            commit,
+            arguments_with_redis_key,
         )
         expected_result = {
             "reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235",
@@ -823,8 +844,14 @@ class TestUploadTaskUnit(object):
         dbsession.flush()
         reportid = "5fbeee8b-5a41-4925-b59d-470b9d171235"
         previous_arguments = {"reportid": reportid, "token": "value"}
-        result = UploadTask().normalize_upload_arguments(
-            commit, previous_arguments, mock_redis
+        upload_args = UploadArgs(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            redis_connection=mock_redis,
+        )
+        result = upload_args.normalize_arguments(
+            commit,
+            previous_arguments,
         )
         expected_result = {"reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235"}
         assert expected_result == result
@@ -845,8 +872,14 @@ class TestUploadTaskUnit(object):
             "reportid": reportid,
             "random": "argument",
         }
-        result = UploadTask().normalize_upload_arguments(
-            commit, arguments_with_redis_key, mock_redis
+        upload_args = UploadArgs(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            redis_connection=mock_redis,
+        )
+        result = upload_args.normalize_arguments(
+            commit,
+            arguments_with_redis_key,
         )
         expected_result = {
             "url": f"v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt",
@@ -956,7 +989,7 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         mocked_is_currently_processing = mocker.patch.object(
-            UploadTask, "is_currently_processing", return_value=True
+            UploadArgs, "is_currently_processing", return_value=True
         )
         mocked_run_async_within_lock = mocker.patch.object(
             UploadTask, "run_async_within_lock", return_value=True
@@ -965,9 +998,7 @@ class TestUploadTaskUnit(object):
         task.request.retries = 0
         with pytest.raises(Retry):
             await task.run_async(dbsession, commit.repoid, commit.commitid)
-        mocked_is_currently_processing.assert_called_with(
-            mock_redis, commit.repoid, commit.commitid
-        )
+        mocked_is_currently_processing.assert_called_with()
         assert not mocked_run_async_within_lock.called
 
     @pytest.mark.asyncio
@@ -978,7 +1009,7 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         mocked_is_currently_processing = mocker.patch.object(
-            UploadTask, "is_currently_processing", return_value=True
+            UploadArgs, "is_currently_processing", return_value=True
         )
         mocked_run_async_within_lock = mocker.patch.object(
             UploadTask, "run_async_within_lock", return_value={"some": "value"}
@@ -986,9 +1017,7 @@ class TestUploadTaskUnit(object):
         task = UploadTask()
         task.request.retries = 1
         result = await task.run_async(dbsession, commit.repoid, commit.commitid)
-        mocked_is_currently_processing.assert_called_with(
-            mock_redis, commit.repoid, commit.commitid
-        )
+        mocked_is_currently_processing.assert_called_with()
         assert mocked_run_async_within_lock.called
         assert result == {"some": "value"}
 
@@ -997,9 +1026,18 @@ class TestUploadTaskUnit(object):
         commitid = "adsdadsadfdsjnskgiejrw"
         lock_name = f"upload_processing_lock_{repoid}_{commitid}"
         mock_redis.keys[lock_name] = "val"
-        task = UploadTask()
-        assert task.is_currently_processing(mock_redis, repoid, commitid)
-        assert not task.is_currently_processing(mock_redis, repoid, "pol")
+        upload_args = UploadArgs(
+            repoid=repoid,
+            commitid=commitid,
+            redis_connection=mock_redis,
+        )
+        assert upload_args.is_currently_processing()
+        upload_args = UploadArgs(
+            repoid=repoid,
+            commitid="pol",
+            redis_connection=mock_redis,
+        )
+        assert not upload_args.is_currently_processing()
 
     @pytest.mark.asyncio
     async def test_run_async_unobtainable_lock_retry(
@@ -1270,7 +1308,7 @@ class TestUploadTaskUnit(object):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
-        mocker.patch.object(UploadTask, "has_pending_jobs", return_value=True)
+        mocker.patch.object(UploadArgs, "has_pending_jobs", return_value=True)
         task = UploadTask()
         mock_repo_provider.data = mocker.MagicMock()
         mock_repo_provider.service = "github"
@@ -1279,7 +1317,10 @@ class TestUploadTaskUnit(object):
             "initialize_and_save_report",
             side_effect=NotReadyToBuildReportYetError(),
         )
+        upload_args = UploadArgs(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            redis_connection=mock_redis,
+        )
         with pytest.raises(Retry):
-            await task.run_async_within_lock(
-                dbsession, mock_redis, commit.repoid, commit.commitid, None
-            )
+            await task.run_async_within_lock(dbsession, upload_args)
