@@ -38,3 +38,4 @@ vcrpy
 opentelemetry-instrumentation-celery>=0.41b0
 opentelemetry-sdk>=1.20.0
 google-cloud-pubsub
+openai
