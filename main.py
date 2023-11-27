@@ -56,14 +56,14 @@ def mark_process_dead(pid, exitcode, **kwargs):
 def setup_worker():
     print(initialization_text.format(version=get_current_version()))
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_scaffold.settings")
-    django.setup()
-
     if getattr(sys, "frozen", False):
         # Only for enterprise builds
         external_deps_folder = get_external_dependencies_folder()
         log.info(f"External dependencies folder configured to {external_deps_folder}")
         sys.path.append(external_deps_folder)
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_scaffold.settings")
+    django.setup()
 
     registry = REGISTRY
     if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
