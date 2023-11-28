@@ -525,8 +525,14 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     assert res == expected_result
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
     # It's zero because the report has the _labels_index already
-    assert mock_label_index_service.return_value.set_label_idx.call_count == 0
-    assert mock_label_index_service.return_value.unset_label_idx.call_count == 1
+    assert (
+        mock_label_index_service.from_CommitReport.return_value.set_label_idx.call_count
+        == 0
+    )
+    assert (
+        mock_label_index_service.from_CommitReport.return_value.unset_label_idx.call_count
+        == 1
+    )
     dbsession.flush()
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id

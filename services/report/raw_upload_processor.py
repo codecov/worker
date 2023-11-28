@@ -315,7 +315,7 @@ def _adjust_sessions(
         )
         and to_partially_overwrite_flags
     ):
-        label_index_service = LabelsIndexService(upload.report)
+        label_index_service = LabelsIndexService.from_CommitReport(upload.report)
         if original_report._labels_index is None:
             label_index_service.set_label_idx(original_report)
         # Make sure that the labels in the reports are in a good state to merge them

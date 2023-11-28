@@ -1,3 +1,4 @@
+import json
 import pprint
 from asyncio import Future
 from decimal import Decimal
@@ -22,6 +23,7 @@ from database.tests.factories import (
     UploadLevelTotalsFactory,
 )
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.labels import SpecialLabelsEnum
 from services.archive import ArchiveService
 from services.report import (
     NotReadyToBuildReportYetError,
@@ -241,6 +243,27 @@ def sample_commit_with_report_big(dbsession, mock_storage):
         chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
         mock_storage.write_file("archive", chunks_url, content)
     return commit
+
+
+@pytest.fixture
+def attach_labels_index_to_sample_commit_with_report_big(
+    dbsession, mock_storage, sample_commit_with_report_big
+):
+    labels_index = {
+        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
+        1: "some_label",
+        2: "some_other_label",
+        3: "3rd_time_is_the_charm",
+    }
+    archive_hash = ArchiveService.get_archive_hash(
+        sample_commit_with_report_big.repository
+    )
+    labels_index_path = f"v4/repos/{archive_hash}/commits/{sample_commit_with_report_big.commitid}/labels_index.json"
+    mock_storage.write_file("archive", labels_index_path, json.dumps(labels_index))
+    yield labels_index
+    # Clean up by removign the saved file
+    # To avoid issues with other tests
+    mock_storage.delete_file("archive", labels_index_path)
 
 
 @pytest.fixture
@@ -811,9 +834,16 @@ class TestReportService(BaseTestCase):
 
     @pytest.mark.asyncio
     async def test_create_new_report_for_commit(
-        self, dbsession, sample_commit_with_report_big
+        self,
+        dbsession,
+        sample_commit_with_report_big,
+        attach_labels_index_to_sample_commit_with_report_big,
+        mock_storage,
     ):
         parent_commit = sample_commit_with_report_big
+        labels_index_parent_commit = (
+            attach_labels_index_to_sample_commit_with_report_big
+        )
         commit = CommitFactory.create(
             repository=parent_commit.repository,
             parent_commit_id=parent_commit.commitid,
@@ -828,6 +858,9 @@ class TestReportService(BaseTestCase):
             commit
         )
         assert report is not None
+        # The labels get written to storage and removed from memory
+        # We check further down that it was written to storage
+        assert report._labels_index is None
         assert sorted(report.files) == sorted(
             [
                 "file_00.py",
@@ -1874,6 +1907,14 @@ class TestReportService(BaseTestCase):
         assert expected_results["report"]["files"] == readable_report["report"]["files"]
         assert expected_results["report"] == readable_report["report"]
         assert expected_results == readable_report
+        # Check that labels index was written to storage
+        archive_hash = ArchiveService.get_archive_hash(commit.repository)
+        labels_index_path = (
+            f"v4/repos/{archive_hash}/commits/{commit.commitid}/labels_index.json"
+        )
+        saved_info = mock_storage.read_file("archive", labels_index_path)
+        loaded_index = {int(k): v for k, v in json.loads(saved_info).items()}
+        assert loaded_index == labels_index_parent_commit
 
     @pytest.mark.asyncio
     async def test_create_new_report_for_commit_is_called_as_generate(
@@ -4466,7 +4507,7 @@ class TestReportService(BaseTestCase):
 
     @pytest.mark.asyncio
     async def test_create_new_report_for_commit_and_shift(
-        self, dbsession, sample_report, mocker, mock_repo_provider
+        self, dbsession, sample_report, mocker, mock_repo_provider, mock_storage
     ):
         parent_commit = CommitFactory()
         parent_commit_report = CommitReport(commit_id=parent_commit.id_)

@@ -40,6 +40,7 @@ from helpers.exceptions import (
 )
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from services.archive import ArchiveService
+from services.report.labels_index import LabelsIndexService
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.raw_upload_processor import process_raw_upload
@@ -193,7 +194,7 @@ class ReportService(object):
             db_session.add(report_details)
             db_session.flush()
         if not self.has_initialized_report(commit):
-            report = await self.create_new_report_for_commit(commit)
+            report = await self.create_new_report_for_commit(commit, report_code)
             if not report.is_empty():
                 # This means there is a report to carryforward
                 self.save_full_report(commit, report, report_code)
@@ -546,7 +547,7 @@ class ReportService(object):
         report = self.get_existing_report_for_commit(commit)
         if report is not None:
             return report
-        return await self.create_new_report_for_commit(commit)
+        return await self.create_new_report_for_commit(commit, None)
 
     @metrics.timer(
         f"services.report.ReportService.get_appropriate_commit_to_carryforward_from"
@@ -662,7 +663,9 @@ class ReportService(object):
                 )
             return carryforward_report
 
-    async def create_new_report_for_commit(self, commit: Commit) -> Report:
+    async def create_new_report_for_commit(
+        self, commit: Commit, report_code: str = None
+    ) -> Report:
         with metrics.timer(
             f"services.report.ReportService.create_new_report_for_commit"
         ):
@@ -719,6 +722,30 @@ class ReportService(object):
                 paths_to_carryforward,
                 session_extras=dict(carriedforward_from=parent_commit.commitid),
             )
+            # If the parent report has labels we also need to carryforward the label index
+            # Considerations:
+            #   1. It's necessary for labels flags to be carryforward, so it's ok to carryforward the entire index
+            #   2. As tests are renamed the index might start to be filled with stale labels. This is not good.
+            #      but I'm unsure if we should try to clean it up at this point. Cleaning it up requires going through
+            #      all lines of the report. It might be better suited for an offline job.
+            #   3. It's a bad idea to reuse the file for the old commit.
+            #   4. The parent_commit always uses the default report to carryforward (i.e. report_code for parent_commit is None)
+            #      There might still be changes to the new one
+            # TODO: Do something about point 2 above
+            parent_label_service = LabelsIndexService(
+                repository=parent_commit.repository,
+                commit_sha=parent_commit.commitid,
+                commit_report_code=None,
+            )
+            parent_label_service.caryforward_label_idx(carryforward_report)
+            # Saves the copied index to GCS and unloads it from memory
+            new_report_label_service = LabelsIndexService(
+                repository=commit.repository,
+                commit_sha=commit.commitid,
+                commit_report_code=report_code,
+            )
+            new_report_label_service.unset_label_idx(carryforward_report)
+
             await self._possibly_shift_carryforward_report(
                 carryforward_report, parent_commit, commit
             )

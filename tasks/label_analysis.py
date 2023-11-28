@@ -118,9 +118,7 @@ class LabelAnalysisRequestProcessingTask(
                 )
                 if existing_labels.are_labels_encoded:
                     # Translate label_ids
-                    # Only works with the default report
-                    # TODO: Allow the report to be a different one. Likely requires changes to the LabelAnalysisRequest model.
-                    label_index_service = LabelsIndexService(
+                    label_index_service = LabelsIndexService.from_CommitReport(
                         label_analysis_request.base_commit.report
                     )
                     if base_report._labels_index is None:
