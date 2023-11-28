@@ -29,7 +29,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
             # But the labels_table keys are strings, because of JSON format
             testname = self.labels_table[str(testname)]
         if testname == "":
-            return SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
+            return SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
         return testname.split("|", 1)[0]
 
     def _get_list_of_label_ids(

@@ -194,20 +194,20 @@ class TestPyCoverageProcessor(BaseTestCase):
         current_label_idx = {}
         assert p._get_list_of_label_ids(current_label_idx, [""]) == [1]
         assert current_label_idx == {
-            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
+            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
         }
         assert p._get_list_of_label_ids(
             current_label_idx, ["test_source.py::test_some_code|run"]
         ) == [2]
         assert current_label_idx == {
-            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             2: "test_source.py::test_some_code",
         }
         assert p._get_list_of_label_ids(
             current_label_idx, ["", "test_source.py::test_some_code|run"]
         ) == [1, 2]
         assert current_label_idx == {
-            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             2: "test_source.py::test_some_code",
         }
 
@@ -236,7 +236,7 @@ class TestPyCoverageProcessor(BaseTestCase):
         )
         report = p.process("name", content, report_builder)
         assert report._labels_index == {
-            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+            1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             2: "test_another.py::test_fib_simple_case",
             3: "test_another.py::test_fib_bigger_cases",
             4: "test_source.py::test_some_code",
@@ -514,7 +514,7 @@ class TestPyCoverageProcessor(BaseTestCase):
         )
         report = p.process("name", content, report_builder)
         assert report._labels_index == {
-            0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+            0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             1: "label_1",
             2: "label_2",
             3: "label_3",

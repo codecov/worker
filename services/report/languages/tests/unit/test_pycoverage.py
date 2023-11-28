@@ -2,8 +2,6 @@
     This is going to be deprecated soon.
     For the tests with encoded labels see services/report/languages/tests/unit/test_pycoverage_encoded_labels.py
 """
-import json
-import pathlib
 
 from services.report.languages.pycoverage import PyCoverageProcessor
 from services.report.report_processor import ReportBuilder
