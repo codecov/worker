@@ -99,11 +99,21 @@ def process_raw_upload(
 
     skip_files = set()
 
+    should_use_encoded_labels = (
+        upload
+        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG.check_value(
+            repo_slug(upload.report.commit.repository), default=False
+        )
+    )
     # [javascript] check for both coverage.json and coverage/coverage.lcov
     for report_file in reports.get_uploaded_files():
         if report_file.filename == "coverage/coverage.json":
             skip_files.add("coverage/coverage.lcov")
     temporary_report = Report()
+    if should_use_encoded_labels:
+        # This is necessary if the reports to merge contain labels
+        # _labels_index will be ignored otherwise before merging to the original report
+        temporary_report._labels_index = LabelsIndexService.default_labels_index()
     joined = True
     for flag in flags or []:
         if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
@@ -124,12 +134,6 @@ def process_raw_upload(
             path_fixer_to_use = path_fixer.get_relative_path_aware_pathfixer(
                 current_filename
             )
-            should_use_encoded_labels = (
-                upload
-                and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG.check_value(
-                    repo_slug(upload.report.commit.repository), default=False
-                )
-            )
             report_builder_to_use = ReportBuilder(
                 commit_yaml,
                 sessionid,
@@ -141,11 +145,24 @@ def process_raw_upload(
                 report=report_file, report_builder=report_builder_to_use
             )
             if report:
+                if should_use_encoded_labels:
+                    # Copies the labels from report into temporary_report
+                    # If needed
+                    make_sure_label_indexes_match(temporary_report, report)
                 temporary_report.merge(report, joined=True)
             path_fixer_to_use.log_abnormalities()
     _possibly_log_pathfixer_unusual_results(path_fixer, sessionid)
     if not temporary_report:
         raise ReportEmptyError("No files found in report.")
+
+    if (
+        should_use_encoded_labels
+        and temporary_report._labels_index == LabelsIndexService.default_labels_index()
+    ):
+        # This means that, even though this report _could_ use encoded labels,
+        # none of the reports processed contributed any new labels to it.
+        # So we assume there are no labels and just remove the _labels_index of temporary_report
+        temporary_report._labels_index = None
     session_manipulation_result = _adjust_sessions(
         original_report,
         temporary_report,
@@ -221,6 +238,7 @@ def make_sure_label_indexes_match(
 ) -> None:
     """Makes sure that the indexes of both reports point to the same labels.
     Uses the original_report as reference, and fixes the to_merge_report as needed
+    it also extendes the original_report._labels_index with new labels as needed.
     """
     if to_merge_report._labels_index is None:
         # The new report doesn't have labels to fix
