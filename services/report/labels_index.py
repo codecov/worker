@@ -1,3 +1,5 @@
+import hashlib
+import json
 from typing import Dict
 
 from shared.reports.resources import Report
@@ -12,6 +14,7 @@ class LabelsIndexService(object):
     _archive_client: ArchiveService
     commit_report_code: str
     commit_sha: str
+    loaded_hash: str
 
     @classmethod
     def default_labels_index(cls):
@@ -31,6 +34,7 @@ class LabelsIndexService(object):
         self._archive_client = ArchiveService(repository=repository)
         self.commit_report_code = commit_report_code
         self.commit_sha = commit_sha
+        self.loaded_hash = None
 
     def carryforward_label_idx(self, new_report: Report):
         """Sets the labels_index for this commit in another report.
@@ -50,6 +54,9 @@ class LabelsIndexService(object):
         map_with_str_keys = self._archive_client.read_label_index(
             self.commit_sha, self.commit_report_code
         )
+        self.loaded_hash = hashlib.sha1(
+            json.dumps(map_with_str_keys).encode()
+        ).hexdigest()
         return {int(k): v for k, v in map_with_str_keys.items()}
 
     def set_label_idx(self, report: Report) -> None:
@@ -62,9 +69,14 @@ class LabelsIndexService(object):
 
     def save_and_unset_label_idx(self, report: Report) -> None:
         # Write the updated index back into storage
-        self._archive_client.write_label_index(
-            self.commit_sha, report.labels_index, self.commit_report_code
-        )
+        # ! Only if there are changes to it
+        current_hash = hashlib.sha1(
+            json.dumps(report.labels_index).encode()
+        ).hexdigest()
+        if current_hash != self.loaded_hash:
+            self._archive_client.write_label_index(
+                self.commit_sha, report.labels_index, self.commit_report_code
+            )
         # Remove reference to label index in the report
         # so it is collected by the garbage collector
         report.unset_label_idx()
