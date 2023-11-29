@@ -22,7 +22,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
             and "files" in content
         )
 
-    def _convert_testname_to_label(self, testname) -> str:
+    def _normalize_label(self, testname) -> str:
         if type(testname) == int or type(testname) == float:
             # This is from a compressed report.
             # Pull label from the labels_table
@@ -45,7 +45,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
         # In this case we do need to fix the labels
         label_ids_for_line = set()
         for testname in line_contexts:
-            clean_label = self._convert_testname_to_label(testname)
+            clean_label = self._normalize_label(testname)
             if clean_label in self.reverse_table:
                 label_ids_for_line.add(self.reverse_table[clean_label])
             else:
@@ -67,7 +67,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
             self.labels_table = content["labels_table"]
             # We can pre-populate some of the indexes that will be used
             for idx, testname in self.labels_table.items():
-                clean_label = self._convert_testname_to_label(testname)
+                clean_label = self._normalize_label(testname)
                 report_builder_session.label_index[int(idx)] = clean_label
             self.are_labels_already_encoded = True
         for filename, file_coverage in content["files"].items():
@@ -80,14 +80,15 @@ class PyCoverageProcessor(BaseLanguageProcessor):
                 for cov, ln in lines_and_coverage:
                     if report_builder_session.should_use_label_index:
                         label_list_of_lists = [
-                            self._get_list_of_label_ids(
+                            [single_id]
+                            for single_id in self._get_list_of_label_ids(
                                 report_builder_session.label_index,
                                 file_coverage.get("contexts", {}).get(str(ln), []),
                             )
                         ]
                     else:
                         label_list_of_lists = [
-                            [self._convert_testname_to_label(testname)]
+                            [self._normalize_label(testname)]
                             for testname in file_coverage.get("contexts", {}).get(
                                 str(ln), []
                             )
@@ -103,7 +104,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
                             ),
                         )
                 report_builder_session.append(report_file)
-        # I don't know if we reuse this processor, but just to be sure
-        # Erase the reverse table
+        # We don't need these anymore, so let them be removed by the garbage collector
         self.reverse_table = None
+        self.labels_table = None
         return report_builder_session.output_report()

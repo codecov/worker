@@ -235,7 +235,7 @@ class TestPyCoverageProcessor(BaseTestCase):
             should_use_label_index=True,
         )
         report = p.process("name", content, report_builder)
-        assert report._labels_index == {
+        assert report.labels_index == {
             1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             2: "test_another.py::test_fib_simple_case",
             3: "test_another.py::test_fib_bigger_cases",
@@ -271,7 +271,8 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (0, 1, None, [2, 3]),
+                            (0, 1, None, [2]),
+                            (0, 1, None, [3]),
                         ],
                     ),
                     (
@@ -282,7 +283,8 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (0, 1, None, [2, 3]),
+                            (0, 1, None, [2]),
+                            (0, 1, None, [3]),
                         ],
                     ),
                     (
@@ -513,7 +515,7 @@ class TestPyCoverageProcessor(BaseTestCase):
             should_use_label_index=True,
         )
         report = p.process("name", content, report_builder)
-        assert report._labels_index == {
+        assert report.labels_index == {
             0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             1: "label_1",
             2: "label_2",
@@ -542,7 +544,8 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (0, 1, None, [1, 2]),
+                            (0, 1, None, [1]),
+                            (0, 1, None, [2]),
                         ],
                     ),
                     (
@@ -553,7 +556,8 @@ class TestPyCoverageProcessor(BaseTestCase):
                         None,
                         None,
                         [
-                            (0, 1, None, [2, 3]),
+                            (0, 1, None, [2]),
+                            (0, 1, None, [3]),
                         ],
                     ),
                     (
