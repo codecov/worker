@@ -84,7 +84,7 @@ class Upload(CodecovBaseModel, MixinBaseClass):
     name = Column(types.String(100))
     provider = Column(types.String(50))
     report_id = Column(types.BigInteger, ForeignKey("reports_commitreport.id"))
-    report = relationship(
+    report: CommitReport = relationship(
         "CommitReport", foreign_keys=[report_id], back_populates="uploads"
     )
     state = Column(types.String(100), nullable=False)
