@@ -331,18 +331,20 @@ class ChecksNotifier(StatusNotifier):
         lines_to_annotate = self.get_lines_to_annotate(comparison, file_additions)
         annotations = []
         for line in lines_to_annotate:
+            message = (
+                "Added lines #L{} - L{} were not covered by tests".format(
+                    line["line"], line["end_line"]
+                )
+                if line["line"] != line["end_line"]
+                else "Added line #L{} was not covered by tests".format(line["line"])
+            )
+            message += "<sup><sub>[Disable these annotations](https://docs.codecov.com/docs/common-recipe-list#disable-github-check-run-annotations)</sub></sup>"
             annotation = {
                 "path": line["path"],
                 "start_line": line["line"],
                 "end_line": line["end_line"],
                 "annotation_level": "warning",
-                "message": (
-                    "Added lines #L{} - L{} were not covered by tests".format(
-                        line["line"], line["end_line"]
-                    )
-                    if line["line"] != line["end_line"]
-                    else "Added line #L{} was not covered by tests".format(line["line"])
-                ),
+                "message": message,
             }
             annotations.append(annotation)
         return annotations
