@@ -620,7 +620,7 @@ class TestAdjustSession(BaseTestCase):
         )
         mock_archive = mocker.patch("services.report.labels_index.ArchiveService")
         mock_archive.return_value.read_label_index.return_value = json.loads(
-            json.dumps(report_under_test._labels_index or {})
+            json.dumps(report_under_test.labels_index or {})
         )
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(
@@ -674,7 +674,7 @@ class TestAdjustSession(BaseTestCase):
         second_report = Report(
             sessions={first_to_merge_session.id: first_to_merge_session}
         )
-        second_report._labels_index = {
+        second_report.labels_index = {
             0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             # Different from the original report
             2: "one_label",
@@ -718,7 +718,7 @@ class TestAdjustSession(BaseTestCase):
                 ),
             ]
         }
-        assert sample_first_report._labels_index == {
+        assert sample_first_report.labels_index == {
             0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             1: "one_label",
             2: "another_label",
@@ -727,7 +727,7 @@ class TestAdjustSession(BaseTestCase):
         # So when we merge them we can be sure the indexes point to the same labels
         # And all labels are accounted for
         make_sure_label_indexes_match(sample_first_report, second_report)
-        assert sample_first_report._labels_index == {
+        assert sample_first_report.labels_index == {
             0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             1: "one_label",
             2: "another_label",
@@ -763,7 +763,7 @@ class TestAdjustSession(BaseTestCase):
     ):
         mock_archive = mocker.patch("services.report.labels_index.ArchiveService")
         mock_archive.return_value.read_label_index.return_value = json.dumps(
-            sample_first_report._labels_index
+            sample_first_report.labels_index
         )
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(
@@ -1025,7 +1025,7 @@ class TestAdjustSession(BaseTestCase):
     ):
         mock_archive = mocker.patch("services.report.labels_index.ArchiveService")
         mock_archive.return_value.read_label_index.return_value = json.dumps(
-            sample_first_report._labels_index
+            sample_first_report.labels_index
         )
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(sessions={3: first_to_merge_session})

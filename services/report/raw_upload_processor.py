@@ -113,7 +113,7 @@ def process_raw_upload(
     if should_use_encoded_labels:
         # This is necessary if the reports to merge contain labels
         # _labels_index will be ignored otherwise before merging to the original report
-        temporary_report._labels_index = LabelsIndexService.default_labels_index()
+        temporary_report.labels_index = LabelsIndexService.default_labels_index()
     joined = True
     for flag in flags or []:
         if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
@@ -157,12 +157,12 @@ def process_raw_upload(
 
     if (
         should_use_encoded_labels
-        and temporary_report._labels_index == LabelsIndexService.default_labels_index()
+        and temporary_report.labels_index == LabelsIndexService.default_labels_index()
     ):
         # This means that, even though this report _could_ use encoded labels,
         # none of the reports processed contributed any new labels to it.
         # So we assume there are no labels and just remove the _labels_index of temporary_report
-        temporary_report._labels_index = None
+        temporary_report.labels_index = None
     session_manipulation_result = _adjust_sessions(
         original_report,
         temporary_report,
@@ -196,8 +196,8 @@ def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool
     reverse_index_cache = {
         SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label: 0
     }
-    if 0 not in original_report._labels_index:
-        original_report._labels_index[
+    if 0 not in original_report.labels_index:
+        original_report.labels_index[
             0
         ] = SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 
@@ -207,17 +207,17 @@ def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool
         if label_or_id in reverse_index_cache:
             return reverse_index_cache[label_or_id]
         # Search for label in the report index
-        for idx, label in original_report._labels_index.items():
+        for idx, label in original_report.labels_index.items():
             if label == label_or_id:
                 reverse_index_cache[label] = idx
                 return idx
         # Label is not present. Add to index.
         # Notice that this never picks index 0, that is reserved for the special label
-        new_index = max(original_report._labels_index.keys()) + 1
+        new_index = max(original_report.labels_index.keys()) + 1
         reverse_index_cache[label_or_id] = new_index
         # It's OK to update this here because it's inside the
         # UploadProcessing lock, so it's exclusive access
-        original_report._labels_index[new_index] = label_or_id
+        original_report.labels_index[new_index] = label_or_id
         return new_index
 
     for report_file in original_report:
@@ -238,20 +238,20 @@ def make_sure_label_indexes_match(
 ) -> None:
     """Makes sure that the indexes of both reports point to the same labels.
     Uses the original_report as reference, and fixes the to_merge_report as needed
-    it also extendes the original_report._labels_index with new labels as needed.
+    it also extendes the original_report.labels_index with new labels as needed.
     """
-    if to_merge_report._labels_index is None:
+    if to_merge_report.labels_index is None:
         # The new report doesn't have labels to fix
         return
 
     # Map label --> index_in_original_report
     reverse_index: typing.Dict[str, int] = {
-        t[1]: t[0] for t in original_report._labels_index.items()
+        t[1]: t[0] for t in original_report.labels_index.items()
     }
     # Map index_in_to_merge_report --> index_in_original_report
     indexes_to_fix: typing.Dict[int, int] = {}
-    next_idx = max(original_report._labels_index.keys()) + 1
-    for idx, label in to_merge_report._labels_index.items():
+    next_idx = max(original_report.labels_index.keys()) + 1
+    for idx, label in to_merge_report.labels_index.items():
         # Special case for the special label, which is SpecialLabelsEnum in to_merge_report
         # But in the original_report it points to a string
         if label == SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER:
@@ -259,7 +259,7 @@ def make_sure_label_indexes_match(
                 indexes_to_fix[idx] = 0
         if label not in reverse_index:
             # It's a new label that doesn't exist in the original_report
-            original_report._labels_index[next_idx] = label
+            original_report.labels_index[next_idx] = label
             indexes_to_fix[idx] = next_idx
             next_idx += 1
         elif reverse_index[label] == idx:
@@ -315,14 +315,14 @@ def _adjust_sessions(
         )
         and to_partially_overwrite_flags
     ):
-        label_index_service = LabelsIndexService.from_CommitReport(upload.report)
-        if original_report._labels_index is None:
+        label_index_service = LabelsIndexService.from_commit_report(upload.report)
+        if original_report.labels_index is None:
             label_index_service.set_label_idx(original_report)
         # Make sure that the labels in the reports are in a good state to merge them
         make_sure_orginal_report_is_using_label_ids(original_report)
         make_sure_label_indexes_match(original_report, to_merge_report)
         # After this point we don't need the label index anymore, so we can release it to save memory
-        label_index_service.unset_label_idx(original_report)
+        label_index_service.save_and_unset_label_idx(original_report)
     if to_fully_overwrite_flags or to_partially_overwrite_flags:
         for sess_id, curr_sess in original_report.sessions.items():
             if curr_sess.session_type == SessionType.carriedforward:

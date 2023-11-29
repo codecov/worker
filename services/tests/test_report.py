@@ -860,7 +860,7 @@ class TestReportService(BaseTestCase):
         assert report is not None
         # The labels get written to storage and removed from memory
         # We check further down that it was written to storage
-        assert report._labels_index is None
+        assert report.labels_index is None
         assert sorted(report.files) == sorted(
             [
                 "file_00.py",

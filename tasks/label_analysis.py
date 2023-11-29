@@ -118,10 +118,10 @@ class LabelAnalysisRequestProcessingTask(
                 )
                 if existing_labels.are_labels_encoded:
                     # Translate label_ids
-                    label_index_service = LabelsIndexService.from_CommitReport(
+                    label_index_service = LabelsIndexService.from_commit_report(
                         label_analysis_request.base_commit.report
                     )
-                    if base_report._labels_index is None:
+                    if base_report.labels_index is None:
                         label_index_service.set_label_idx(base_report)
 
                     partial_fn_to_apply = lambda label_id_set: self._lookup_label_ids(
@@ -140,7 +140,7 @@ class LabelAnalysisRequestProcessingTask(
                         are_labels_encoded=False,
                     )
                     # Don't need the label_index anymore
-                    label_index_service.unset_label_idx(base_report)
+                    label_index_service.save_and_unset_label_idx(base_report)
 
                 requested_labels = self._get_requested_labels(label_analysis_request)
                 result = self.calculate_final_result(

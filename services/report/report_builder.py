@@ -71,6 +71,7 @@ class ReportBuilderSession(object):
 
     def append(self, file):
         if not self.should_use_label_index:
+            # TODO: [codecov/engineering-team#869] This behavior can be removed after label indexing is rolled out for all customers
             if file is not None:
                 for line_number, line in file.lines:
                     if line.datapoints:
@@ -115,7 +116,7 @@ class ReportBuilderSession(object):
                 self._report._totals = None
         return self._report
 
-    # TODO: This can be removed after label indexing is rolled out for all customers
+    # TODO: [codecov/engineering-team#869] This behavior can be removed after label indexing is rolled out for all customers
     def _possibly_modify_line_to_account_for_special_labels(
         self, file: ReportFile, line_number: int, line: ReportLine
     ) -> None:

@@ -428,7 +428,7 @@ def sample_report_with_labels():
     r.append(first_rf)
     r.append(second_rf)
     r.append(random_rf)
-    r._labels_index = report_labels_index
+    r.labels_index = report_labels_index
     return r
 
 
@@ -499,6 +499,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     dbsession.flush()
 
     task = LabelAnalysisRequestProcessingTask()
+    assert sample_report_with_labels.labels_index is not None
     res = await task.run_async(dbsession, larf.id)
     expected_present_report_labels = [
         "apple",
@@ -526,11 +527,11 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
     # It's zero because the report has the _labels_index already
     assert (
-        mock_label_index_service.from_CommitReport.return_value.set_label_idx.call_count
+        mock_label_index_service.from_commit_report.return_value.set_label_idx.call_count
         == 0
     )
     assert (
-        mock_label_index_service.from_CommitReport.return_value.unset_label_idx.call_count
+        mock_label_index_service.from_commit_report.return_value.save_and_unset_label_idx.call_count
         == 1
     )
     dbsession.flush()

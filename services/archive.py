@@ -4,7 +4,7 @@ from base64 import b16encode
 from datetime import datetime
 from enum import Enum
 from hashlib import md5
-from typing import Dict
+from typing import Dict, Optional
 from uuid import uuid4
 
 from shared.config import get_config
@@ -230,7 +230,12 @@ class ArchiveService(object):
         self.write_file(path, stringified_data)
         return path
 
-    def write_label_index(self, commit_sha, json_data, report_code=None) -> str:
+    def write_label_index(
+        self,
+        commit_sha: str,
+        json_data: Dict[int, str],
+        report_code: Optional[str] = None,
+    ) -> str:
         label_index_file_name = (
             report_code + "_" if report_code is not None else ""
         ) + "labels_index"
@@ -304,7 +309,9 @@ class ArchiveService(object):
 
         return self.read_file(path).decode(errors="replace")
 
-    def read_label_index(self, commit_sha, report_code=None) -> Dict[str, str]:
+    def read_label_index(
+        self, commit_sha: str, report_code: str = None
+    ) -> Dict[str, str]:
         label_index_file_name = (
             report_code + "_" if report_code is not None else ""
         ) + "labels_index"

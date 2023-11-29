@@ -12,7 +12,7 @@ class TestLabelsIndex(object):
         dbsession.add(commit_report)
         dbsession.flush()
 
-        labels_index_service = LabelsIndexService.from_CommitReport(commit_report)
+        labels_index_service = LabelsIndexService.from_commit_report(commit_report)
         assert labels_index_service._archive_client is not None
         assert labels_index_service.commit_sha == commit_report.commit.commitid
 
@@ -32,10 +32,10 @@ class TestLabelsIndex(object):
             ArchiveService, "read_label_index", return_value=sample_label_index
         )
         report = Report()
-        assert report._labels_index == None
-        label_service = LabelsIndexService.from_CommitReport(commit_report)
+        assert report.labels_index == None
+        label_service = LabelsIndexService.from_commit_report(commit_report)
         label_service.set_label_idx(report)
-        assert report._labels_index == {
+        assert report.labels_index == {
             0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             1: "some_label",
             2: "another_label",
@@ -52,9 +52,9 @@ class TestLabelsIndex(object):
             2: "another_label",
         }
         report = Report()
-        report._labels_index = sample_label_index
+        report.labels_index = sample_label_index
         with pytest.raises(Exception) as exp:
-            label_service = LabelsIndexService.from_CommitReport(commit_report)
+            label_service = LabelsIndexService.from_commit_report(commit_report)
             label_service.set_label_idx(report)
         mock_read.assert_not_called()
         assert (
@@ -73,10 +73,10 @@ class TestLabelsIndex(object):
         }
         mock_write = mocker.patch.object(ArchiveService, "write_label_index")
         report = Report()
-        report._labels_index = sample_label_index
-        label_service = LabelsIndexService.from_CommitReport(commit_report)
-        label_service.unset_label_idx(report)
-        assert report._labels_index == None
+        report.labels_index = sample_label_index
+        label_service = LabelsIndexService.from_commit_report(commit_report)
+        label_service.save_and_unset_label_idx(report)
+        assert report.labels_index == None
         mock_write.assert_called_with(
             commit_report.commit.commitid, sample_label_index, commit_report.code
         )

@@ -729,22 +729,18 @@ class ReportService(object):
             #      but I'm unsure if we should try to clean it up at this point. Cleaning it up requires going through
             #      all lines of the report. It might be better suited for an offline job.
             #   3. It's a bad idea to reuse the file for the old commit.
-            #   4. The parent_commit always uses the default report to carryforward (i.e. report_code for parent_commit is None)
             #      There might still be changes to the new one
+            #   4. The parent_commit always uses the default report to carryforward (i.e. report_code for parent_commit is None)
             # TODO: Do something about point 2 above
-            parent_label_service = LabelsIndexService(
-                repository=parent_commit.repository,
-                commit_sha=parent_commit.commitid,
-                commit_report_code=None,
+            # parent_commit and commit should belong to the same repository
+            archive_service = ArchiveService(commit.repository)
+            parent_labels_index = archive_service.read_label_index(
+                parent_commit.commitid
             )
-            parent_label_service.caryforward_label_idx(carryforward_report)
-            # Saves the copied index to GCS and unloads it from memory
-            new_report_label_service = LabelsIndexService(
-                repository=commit.repository,
-                commit_sha=commit.commitid,
-                commit_report_code=report_code,
-            )
-            new_report_label_service.unset_label_idx(carryforward_report)
+            if parent_labels_index:
+                archive_service.write_label_index(
+                    commit.commitid, parent_labels_index, report_code=report_code
+                )
 
             await self._possibly_shift_carryforward_report(
                 carryforward_report, parent_commit, commit

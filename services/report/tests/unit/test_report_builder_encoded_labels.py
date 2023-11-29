@@ -105,7 +105,7 @@ def test_report_builder_session(mocker):
     )
     builder_session.append(first_file)
     final_report = builder_session.output_report()
-    assert final_report._labels_index == labels_index
+    assert final_report.labels_index == labels_index
     assert final_report.files == ["filename.py"]
     assert sorted(final_report.get("filename.py").lines) == [
         (
@@ -225,7 +225,7 @@ def test_report_builder_session_only_all_labels(mocker):
     )
     builder_session.append(first_file)
     final_report = builder_session.output_report()
-    assert final_report._labels_index == labels_index
+    assert final_report.labels_index == labels_index
     assert final_report.files == ["filename.py"]
     assert sorted(final_report.get("filename.py").lines) == [
         (

@@ -18,7 +18,7 @@ class LabelsIndexService(object):
         return {0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label}
 
     @classmethod
-    def from_CommitReport(cls, commit_report: CommitReport):
+    def from_commit_report(cls, commit_report: CommitReport):
         return cls(
             repository=commit_report.commit.repository,
             commit_sha=commit_report.commit.commitid,
@@ -32,14 +32,14 @@ class LabelsIndexService(object):
         self.commit_report_code = commit_report_code
         self.commit_sha = commit_sha
 
-    def caryforward_label_idx(self, new_report: Report):
+    def carryforward_label_idx(self, new_report: Report):
         """Sets the labels_index for this commit in another report.
         The other report can then save this index by creating
         a LabelsIndexService instance for itself.
         """
         my_index = self._get_label_idx()
 
-        if my_index != dict():
+        if my_index:
             # The current report has labels in the index
             # And we will copy the index to the new commit
             new_report.set_label_idx(my_index)
@@ -53,17 +53,18 @@ class LabelsIndexService(object):
         return {int(k): v for k, v in map_with_str_keys.items()}
 
     def set_label_idx(self, report: Report) -> None:
-        if report._labels_index is not None:
+        if report.labels_index is not None:
             raise Exception(
                 "Trying to set labels_index of Report, but it's already set"
             )
         loaded_index = self._get_label_idx()
         report.set_label_idx(loaded_index)
 
-    def unset_label_idx(self, report: Report) -> None:
+    def save_and_unset_label_idx(self, report: Report) -> None:
         # Write the updated index back into storage
         self._archive_client.write_label_index(
-            self.commit_sha, report._labels_index, self.commit_report_code
+            self.commit_sha, report.labels_index, self.commit_report_code
         )
-        # Remove reference to it
+        # Remove reference to label index in the report
+        # so it is collected by the garbage collector
         report.unset_label_idx()
