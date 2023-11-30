@@ -311,14 +311,16 @@ requests==2.31.0
 respx==0.20.2
     # via -r requirements.in
 rfc3986[idna2008]==1.4.0
-    # via httpx
+    # via
+    #   httpx
+    #   rfc3986
 rsa==4.7.2
     # via google-auth
 s3transfer==0.3.4
     # via boto3
 sentry-sdk==1.19.1
     # via -r requirements.in
-shared @ https://github.com/codecov/shared/archive/70039b5b9e5cc1466041da351a07ebf9546fe89a.tar.gz
+shared @ https://github.com/codecov/shared/archive/9246e757c553be8b0e9eff28f038308914ec925c.tar.gz
     # via -r requirements.in
 six==1.15.0
     # via
