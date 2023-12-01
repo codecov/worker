@@ -7,8 +7,9 @@
 >
 > By making our code public, we’re not only joining the community that’s supported us from the start — but also want to make sure that every developer can contribute to and build on the Codecov experience.
 
+Code for Background Workers of Codecov. This is built on top of the `celery` async framework.
 
-Code for Background Workers of Codecov. This is built on top of the `celery` async framework
+The Codecov Worker supports Python 3.12. Updates to requirements are expected to be run on this version.
 
 ## Quickstart
 
