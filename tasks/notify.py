@@ -328,11 +328,19 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         enriched_pull: EnrichedPull,
         empty_upload=None,
     ):
+        if enriched_pull and enriched_pull.database_pull:
+            original_base_commitid = enriched_pull.database_pull.base
+        elif base_commit is not None:
+            original_base_commitid = base_commit.commitid
+        else:
+            original_base_commitid = None
+
         comparison = ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=commit, report=head_report),
                 enriched_pull=enriched_pull,
                 base=FullCommit(commit=base_commit, report=base_report),
+                original_base_commitid=original_base_commitid,
                 current_yaml=current_yaml,
             )
         )

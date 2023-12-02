@@ -45,7 +45,8 @@ class ComparisonProxy(object):
     def __init__(self, comparison: Comparison):
         self.comparison = comparison
         self._repository_service = None
-        self._diff = None
+        self._adjusted_base_diff = None
+        self._original_base_diff = None
         self._changes = None
         self._existing_statuses = None
         self._behind_by = None
@@ -100,18 +101,43 @@ class ComparisonProxy(object):
     def pull(self):
         return self.comparison.pull
 
-    async def get_diff(self):
+    async def get_diff(self, use_original_base=False):
         async with self._diff_lock:
-            if self._diff is None:
-                head = self.comparison.head.commit
-                base = self.comparison.base.commit
-                if base is None:
+            head = self.comparison.head.commit
+            base = self.comparison.base.commit
+            original_base_commitid = self.comparison.original_base_commitid
+            bases_match = original_base_commitid == (base.commitid if base else "")
+
+            populate_original_base_diff = use_original_base and (
+                not self._original_base_diff
+            )
+            populate_adjusted_base_diff = (not use_original_base) and (
+                not self._adjusted_base_diff
+            )
+            if populate_original_base_diff:
+                if bases_match and self._adjusted_base_diff:
+                    self._original_base_diff = self._adjusted_base_diff
+                else:
+                    pull_diff = await self.repository_service.get_compare(
+                        original_base_commitid, head.commitid, with_commits=False
+                    )
+                    self._original_base_diff = pull_diff["diff"]
+                    pass
+            elif populate_adjusted_base_diff:
+                if bases_match and self._original_base_diff:
+                    self._adjusted_base_diff = self._original_base_diff
+                elif base is not None:
+                    pull_diff = await self.repository_service.get_compare(
+                        base.commitid, head.commitid, with_commits=False
+                    )
+                    self._adjusted_base_diff = pull_diff["diff"]
+                else:
                     return None
-                pull_diff = await self.repository_service.get_compare(
-                    base.commitid, head.commitid, with_commits=False
-                )
-                self._diff = pull_diff["diff"]
-            return self._diff
+
+            if use_original_base:
+                return self._original_base_diff
+            else:
+                return self._adjusted_base_diff
 
     async def get_changes(self) -> Optional[List[Change]]:
         # Just make sure to not cause a deadlock between this and get_diff
@@ -247,8 +273,8 @@ class FilteredComparison(object):
     async def get_impacted_files(self):
         return await self.real_comparison.get_impacted_files()
 
-    async def get_diff(self):
-        return await self.real_comparison.get_diff()
+    async def get_diff(self, use_original_base=False):
+        return await self.real_comparison.get_diff(use_original_base=use_original_base)
 
     async def get_existing_statuses(self):
         return await self.real_comparison.get_existing_statuses()
