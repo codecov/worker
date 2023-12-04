@@ -106,6 +106,9 @@ class ComparisonProxy(object):
             head = self.comparison.head.commit
             base = self.comparison.base.commit
             original_base_commitid = self.comparison.original_base_commitid
+
+            # If the original and adjusted bases are the same commit, then if we
+            # already fetched the diff for one we can return it for the other.
             bases_match = original_base_commitid == (base.commitid if base else "")
 
             populate_original_base_diff = use_original_base and (
@@ -117,12 +120,13 @@ class ComparisonProxy(object):
             if populate_original_base_diff:
                 if bases_match and self._adjusted_base_diff:
                     self._original_base_diff = self._adjusted_base_diff
-                else:
+                elif original_base_commitid is not None:
                     pull_diff = await self.repository_service.get_compare(
                         original_base_commitid, head.commitid, with_commits=False
                     )
                     self._original_base_diff = pull_diff["diff"]
-                    pass
+                else:
+                    return None
             elif populate_adjusted_base_diff:
                 if bases_match and self._original_base_diff:
                     self._adjusted_base_diff = self._original_base_diff
