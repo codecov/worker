@@ -246,24 +246,48 @@ def sample_commit_with_report_big(dbsession, mock_storage):
 
 
 @pytest.fixture
-def attach_labels_index_to_sample_commit_with_report_big(
-    dbsession, mock_storage, sample_commit_with_report_big
-):
-    labels_index = {
-        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
-        1: "some_label",
-        2: "some_other_label",
-        3: "3rd_time_is_the_charm",
+def sample_commit_with_report_big_with_labels(dbsession, mock_storage):
+    sessions_dict = {
+        "0": {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": ["enterprise"],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "uploaded",
+            "t": None,
+            "u": None,
+        },
     }
-    archive_hash = ArchiveService.get_archive_hash(
-        sample_commit_with_report_big.repository
+    file_headers = {
+        "file_00.py": [
+            0,
+            [0, 4, 0, 4, 0, "0", 0, 0, 0, 0, 0, 0, 0],
+            [[0, 4, 0, 4, 0, "0", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_01.py": [
+            1,
+            [0, 32, 32, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
+            [[0, 32, 32, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+    }
+    commit = CommitFactory.create(
+        _report_json={"sessions": sessions_dict, "files": file_headers}
     )
-    labels_index_path = f"v4/repos/{archive_hash}/commits/{sample_commit_with_report_big.commitid}/labels_index.json"
-    mock_storage.write_file("archive", labels_index_path, json.dumps(labels_index))
-    yield labels_index
-    # Clean up by removign the saved file
-    # To avoid issues with other tests
-    mock_storage.delete_file("archive", labels_index_path)
+    dbsession.add(commit)
+    dbsession.flush()
+    with open("tasks/tests/samples/sample_chunks_with_header.txt") as f:
+        content = f.read().encode()
+        archive_hash = ArchiveService.get_archive_hash(commit.repository)
+        chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
+        mock_storage.write_file("archive", chunks_url, content)
+    return commit
 
 
 @pytest.fixture
@@ -837,13 +861,9 @@ class TestReportService(BaseTestCase):
         self,
         dbsession,
         sample_commit_with_report_big,
-        attach_labels_index_to_sample_commit_with_report_big,
         mock_storage,
     ):
         parent_commit = sample_commit_with_report_big
-        labels_index_parent_commit = (
-            attach_labels_index_to_sample_commit_with_report_big
-        )
         commit = CommitFactory.create(
             repository=parent_commit.repository,
             parent_commit_id=parent_commit.commitid,
@@ -858,9 +878,6 @@ class TestReportService(BaseTestCase):
             commit
         )
         assert report is not None
-        # The labels get written to storage and removed from memory
-        # We check further down that it was written to storage
-        assert report.labels_index is None
         assert sorted(report.files) == sorted(
             [
                 "file_00.py",
@@ -1907,14 +1924,451 @@ class TestReportService(BaseTestCase):
         assert expected_results["report"]["files"] == readable_report["report"]["files"]
         assert expected_results["report"] == readable_report["report"]
         assert expected_results == readable_report
-        # Check that labels index was written to storage
-        archive_hash = ArchiveService.get_archive_hash(commit.repository)
-        labels_index_path = (
-            f"v4/repos/{archive_hash}/commits/{commit.commitid}/labels_index.json"
+
+    @pytest.mark.asyncio
+    async def test_create_new_report_for_commit_with_labels(
+        self, dbsession, sample_commit_with_report_big_with_labels
+    ):
+        parent_commit = sample_commit_with_report_big_with_labels
+        commit = CommitFactory.create(
+            repository=parent_commit.repository,
+            parent_commit_id=parent_commit.commitid,
+            _report_json=None,
         )
-        saved_info = mock_storage.read_file("archive", labels_index_path)
-        loaded_index = {int(k): v for k, v in json.loads(saved_info).items()}
-        assert loaded_index == labels_index_parent_commit
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.add(CommitReport(commit_id=commit.id_))
+        dbsession.flush()
+        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
+        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
+            commit
+        )
+        assert report is not None
+        assert report.labels_index == {
+            0: "Th2dMtk4M_codecov",
+            1: "core/tests/test_menu_interface.py::TestMenuInterface::test_init",
+            2: "core/tests/test_main.py::TestMainMenu::test_init_values",
+            3: "core/tests/test_main.py::TestMainMenu::test_invalid_menu_choice",
+            4: "core/tests/test_menu_interface.py::TestMenuInterface::test_menu_options",
+            5: "core/tests/test_menu_interface.py::TestMenuInterface::test_set_loop",
+            6: "core/tests/test_main.py::TestMainMenu::test_menu_choice_emotions",
+            7: "core/tests/test_menu_interface.py::TestMenuInterface::test_name",
+            8: "core/tests/test_menu_interface.py::TestMenuInterface::test_parent",
+            9: "core/tests/test_main.py::TestMainMenu::test_menu_choice_fruits",
+            10: "core/tests/test_main.py::TestMainMenu::test_menu_options",
+        }
+        assert sorted(report.files) == sorted(
+            [
+                "file_00.py",
+                "file_01.py",
+            ]
+        )
+        assert report.totals == ReportTotals(
+            files=2,
+            lines=36,
+            hits=32,
+            misses=4,
+            partials=0,
+            coverage="88.88889",
+            branches=0,
+            methods=0,
+            messages=0,
+            sessions=1,
+            complexity=0,
+            complexity_total=0,
+            diff=0,
+        )
+        readable_report = self.convert_report_to_better_readable(report)
+        expected_results = {
+            "archive": {
+                "file_00.py": [
+                    (
+                        1,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                    (
+                        3,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                    (
+                        4,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                    (
+                        5,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                ],
+                "file_01.py": [
+                    (
+                        1,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        2,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        5,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        6,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        7,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        8,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        9,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        12,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        13,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        14,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        16,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        17,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])],
+                    ),
+                    (
+                        18,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])],
+                    ),
+                    (
+                        19,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])],
+                    ),
+                    (
+                        21,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        22,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        23,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [1, 3, 5, 6, 9])],
+                    ),
+                    (
+                        25,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        26,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        27,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [1, 2, 8])],
+                    ),
+                    (
+                        29,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        30,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        31,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [1, 2, 7])],
+                    ),
+                    (
+                        33,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        34,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [3, 5, 6, 9])],
+                    ),
+                    (
+                        36,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        37,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        38,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [3, 4, 6, 9, 10])],
+                    ),
+                    (
+                        39,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [4])],
+                    ),
+                    (
+                        41,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [3, 4, 6, 9, 10])],
+                    ),
+                    (
+                        43,
+                        1,
+                        None,
+                        [[0, 1, None, None, None]],
+                        None,
+                        None,
+                        [(0, 1, None, [0])],
+                    ),
+                    (
+                        44,
+                        0,
+                        None,
+                        [[0, 0, None, None, None]],
+                        None,
+                        None,
+                        [(0, 0, None, [])],
+                    ),
+                ],
+            },
+            "report": {
+                "files": {
+                    "file_00.py": [
+                        0,
+                        [0, 4, 0, 4, 0, "0", 0, 0, 0, 0, 0, 0, 0],
+                        {
+                            "meta": {"session_count": 1},
+                            "0": [0, 4, 0, 4],
+                        },
+                        None,
+                    ],
+                    "file_01.py": [
+                        1,
+                        [0, 32, 32, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
+                        {
+                            "meta": {"session_count": 1},
+                            "0": [0, 32, 32, 0, 0, "100"],
+                        },
+                        None,
+                    ],
+                },
+                "sessions": {
+                    "0": {
+                        "N": "Carriedforward",
+                        "a": None,
+                        "c": None,
+                        "d": None,
+                        "e": None,
+                        "f": ["enterprise"],
+                        "j": None,
+                        "n": None,
+                        "p": None,
+                        "se": {"carriedforward_from": parent_commit.commitid},
+                        "st": "carriedforward",
+                        "t": None,
+                        "u": None,
+                    }
+                },
+            },
+            "totals": {
+                "C": 0,
+                "M": 0,
+                "N": 0,
+                "b": 0,
+                "c": "88.88889",
+                "d": 0,
+                "diff": None,
+                "f": 2,
+                "h": 32,
+                "m": 4,
+                "n": 36,
+                "p": 0,
+                "s": 1,
+            },
+        }
+        print(readable_report["archive"])
+        assert expected_results["report"]["files"] == readable_report["report"]["files"]
+        assert expected_results["report"] == readable_report["report"]
+        assert expected_results == readable_report
 
     @pytest.mark.asyncio
     async def test_create_new_report_for_commit_is_called_as_generate(
@@ -3414,7 +3868,10 @@ class TestReportService(BaseTestCase):
         }
         assert commit.report_json == {"files": {}, "sessions": {}}
         assert res["url"] in mock_storage.storage["archive"]
-        assert mock_storage.storage["archive"][res["url"]].decode() == ""
+        assert (
+            mock_storage.storage["archive"][res["url"]].decode()
+            == "{}\n<<<<< end_of_header >>>>>\n"
+        )
 
     def test_save_report(self, dbsession, mock_storage, sample_report):
         commit = CommitFactory.create()
@@ -3576,6 +4033,8 @@ class TestReportService(BaseTestCase):
         print(mock_storage.storage["archive"][res["url"]])
         expected_content = "\n".join(
             [
+                "{}",
+                "<<<<< end_of_header >>>>>",
                 "{}",
                 "[1, null, [[0, 1]], null, [10, 2]]",
                 "[0, null, [[0, 1]]]",
@@ -3822,6 +4281,8 @@ class TestReportService(BaseTestCase):
         print(mock_storage.storage["archive"][res["url"]])
         expected_content = "\n".join(
             [
+                "{}",
+                "<<<<< end_of_header >>>>>",
                 "{}",
                 "[1, null, [[0, 1]], null, [10, 2]]",
                 "[0, null, [[0, 1]]]",

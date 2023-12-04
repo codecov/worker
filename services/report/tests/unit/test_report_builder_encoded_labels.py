@@ -299,7 +299,10 @@ def test_report_builder_session_create_line(mocker):
     builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
     builder_session = builder.create_report_builder_session(filepath)
     line = builder_session.create_coverage_line(
-        "filename.py", 1, coverage_type=CoverageType.branch
+        "filename.py",
+        1,
+        coverage_type=CoverageType.branch,
+        labels_list_of_lists=[[], [0], [1]],
     )
     assert line == ReportLine.create(
         coverage=1,
@@ -310,7 +313,12 @@ def test_report_builder_session_create_line(mocker):
             )
         ],
         datapoints=[
-            CoverageDatapoint(sessionid=45, coverage=1, coverage_type="b", label_ids=[])
+            CoverageDatapoint(
+                sessionid=45, coverage=1, coverage_type="b", label_ids=[0]
+            ),
+            CoverageDatapoint(
+                sessionid=45, coverage=1, coverage_type="b", label_ids=[1]
+            ),
         ],
         complexity=None,
     )

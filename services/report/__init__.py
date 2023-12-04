@@ -1,3 +1,4 @@
+import copy
 import itertools
 import logging
 import sys
@@ -38,9 +39,8 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
-from helpers.labels import get_all_report_labels, get_labels_per_session
+from helpers.labels import get_labels_per_session
 from services.archive import ArchiveService
-from services.report.labels_index import LabelsIndexService
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.raw_upload_processor import process_raw_upload
@@ -727,20 +727,11 @@ class ReportService(object):
             #   1. It's necessary for labels flags to be carryforward, so it's ok to carryforward the entire index
             #   2. As tests are renamed the index might start to be filled with stale labels. This is not good.
             #      but I'm unsure if we should try to clean it up at this point. Cleaning it up requires going through
-            #      all lines of the report. It might be better suited for an offline job.
-            #   3. It's a bad idea to reuse the file for the old commit.
-            #      There might still be changes to the new one
+            #      all lines of the report. It will be handled by a dedicated task that is encoded by the UploadFinisher
+            #   3. We deepcopy the header so we can change them independently
             #   4. The parent_commit always uses the default report to carryforward (i.e. report_code for parent_commit is None)
-            # TODO: Do something about point 2 above
             # parent_commit and commit should belong to the same repository
-            archive_service = ArchiveService(commit.repository)
-            parent_labels_index = archive_service.read_label_index(
-                parent_commit.commitid
-            )
-            if parent_labels_index:
-                archive_service.write_label_index(
-                    commit.commitid, parent_labels_index, report_code=report_code
-                )
+            carryforward_report.header = copy.deepcopy(parent_report.header)
 
             await self._possibly_shift_carryforward_report(
                 carryforward_report, parent_commit, commit

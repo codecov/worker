@@ -15,7 +15,6 @@ from helpers.exceptions import ReportEmptyError
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG, repo_slug
 from services.path_fixer import PathFixer
-from services.report.labels_index import LabelsIndexService
 from services.report.parser.types import ParsedRawReport
 from services.report.report_builder import ReportBuilder, SpecialLabelsEnum
 from services.report.report_processor import process_report
@@ -26,6 +25,11 @@ log = logging.getLogger(__name__)
 GLOBAL_LEVEL_LABEL = (
     SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 )
+
+# This is a lambda function to return different objects
+DEFAULT_LABEL_INDEX = lambda: {
+    0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
+}
 
 
 def invert_pattern(string: str) -> str:
@@ -111,9 +115,9 @@ def process_raw_upload(
             skip_files.add("coverage/coverage.lcov")
     temporary_report = Report()
     if should_use_encoded_labels:
-        # This is necessary if the reports to merge contain labels
-        # _labels_index will be ignored otherwise before merging to the original report
-        temporary_report.labels_index = LabelsIndexService.default_labels_index()
+        # We initialize the labels_index (which defaults to {}) to force the special label
+        # to always be index 0
+        temporary_report.labels_index = DEFAULT_LABEL_INDEX()
     joined = True
     for flag in flags or []:
         if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
@@ -157,11 +161,11 @@ def process_raw_upload(
 
     if (
         should_use_encoded_labels
-        and temporary_report.labels_index == LabelsIndexService.default_labels_index()
+        and temporary_report.labels_index == DEFAULT_LABEL_INDEX()
     ):
         # This means that, even though this report _could_ use encoded labels,
         # none of the reports processed contributed any new labels to it.
-        # So we assume there are no labels and just remove the _labels_index of temporary_report
+        # So we assume there are no labels and just reset the _labels_index of temporary_report
         temporary_report.labels_index = None
     session_manipulation_result = _adjust_sessions(
         original_report,
@@ -196,6 +200,9 @@ def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool
     reverse_index_cache = {
         SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label: 0
     }
+    if original_report.labels_index is None:
+        original_report.labels_index = {}
+
     if 0 not in original_report.labels_index:
         original_report.labels_index[
             0
@@ -315,14 +322,9 @@ def _adjust_sessions(
         )
         and to_partially_overwrite_flags
     ):
-        label_index_service = LabelsIndexService.from_commit_report(upload.report)
-        if original_report.labels_index is None:
-            label_index_service.set_label_idx(original_report)
         # Make sure that the labels in the reports are in a good state to merge them
         make_sure_orginal_report_is_using_label_ids(original_report)
         make_sure_label_indexes_match(original_report, to_merge_report)
-        # After this point we don't need the label index anymore, so we can release it to save memory
-        label_index_service.save_and_unset_label_idx(original_report)
     if to_fully_overwrite_flags or to_partially_overwrite_flags:
         for sess_id, curr_sess in original_report.sessions.items():
             if curr_sess.session_type == SessionType.carriedforward:
