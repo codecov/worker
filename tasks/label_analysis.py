@@ -30,7 +30,9 @@ GLOBAL_LEVEL_LABEL = (
     SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 )
 
-GLOBAL_LEVEL_LABEL_IDX = 0
+GLOBAL_LEVEL_LABEL_IDX = (
+    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
+)
 
 
 class LinesRelevantToChangeInFile(TypedDict):

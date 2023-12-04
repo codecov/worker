@@ -54,7 +54,7 @@ def test_report_builder_session(mocker):
     first_file = ReportFile("filename.py")
     first_file.append(2, ReportLine.create(coverage=0))
     labels_index = {
-        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
         1: "some_label",
         2: "other",
     }
@@ -169,7 +169,7 @@ def test_report_builder_session_only_all_labels(mocker):
         mocker.MagicMock(),
     )
     labels_index = {
-        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
     }
     filepath = "filepath"
     builder = ReportBuilder(

@@ -28,7 +28,7 @@ GLOBAL_LEVEL_LABEL = (
 
 # This is a lambda function to return different objects
 DEFAULT_LABEL_INDEX = lambda: {
-    0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
+    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 }
 
 
@@ -198,14 +198,17 @@ def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool
     """
     # Always point the special label to index 0
     reverse_index_cache = {
-        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label: 0
+        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
     }
     if original_report.labels_index is None:
         original_report.labels_index = {}
 
-    if 0 not in original_report.labels_index:
+    if (
+        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
+        not in original_report.labels_index
+    ):
         original_report.labels_index[
-            0
+            SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
         ] = SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 
     def possibly_translate_label(label_or_id: typing.Union[str, int]) -> int:
@@ -262,8 +265,13 @@ def make_sure_label_indexes_match(
         # Special case for the special label, which is SpecialLabelsEnum in to_merge_report
         # But in the original_report it points to a string
         if label == SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER:
-            if idx != 0:
-                indexes_to_fix[idx] = 0
+            if (
+                idx
+                != SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
+            ):
+                indexes_to_fix[
+                    idx
+                ] = SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
         if label not in reverse_index:
             # It's a new label that doesn't exist in the original_report
             original_report.labels_index[next_idx] = label
