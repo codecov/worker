@@ -194,7 +194,7 @@ class ReportService(object):
             db_session.add(report_details)
             db_session.flush()
         if not self.has_initialized_report(commit):
-            report = await self.create_new_report_for_commit(commit, report_code)
+            report = await self.create_new_report_for_commit(commit)
             if not report.is_empty():
                 # This means there is a report to carryforward
                 self.save_full_report(commit, report, report_code)
@@ -547,7 +547,7 @@ class ReportService(object):
         report = self.get_existing_report_for_commit(commit)
         if report is not None:
             return report
-        return await self.create_new_report_for_commit(commit, None)
+        return await self.create_new_report_for_commit(commit)
 
     @metrics.timer(
         f"services.report.ReportService.get_appropriate_commit_to_carryforward_from"
@@ -663,9 +663,7 @@ class ReportService(object):
                 )
             return carryforward_report
 
-    async def create_new_report_for_commit(
-        self, commit: Commit, report_code: str = None
-    ) -> Report:
+    async def create_new_report_for_commit(self, commit: Commit) -> Report:
         with metrics.timer(
             f"services.report.ReportService.create_new_report_for_commit"
         ):
