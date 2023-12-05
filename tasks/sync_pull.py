@@ -144,6 +144,9 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "reason": "not_in_provider",
             }
         if read_yaml_field(current_yaml, ("ai_pr_review", "enabled"), False):
+            log.info(
+                "Triggering AI PR review task", extra=dict(repoid=repoid, pullid=pullid)
+            )
             self.app.tasks["app.tasks.ai_pr_review.AiPrReview"].apply_async(
                 kwargs=dict(repoid=repoid, pullid=pullid)
             )
