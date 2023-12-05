@@ -9,6 +9,7 @@ from shared.torngit.base import TorngitBaseAdapter
 from shared.utils.enums import TaskConfigGroup
 from shared.yaml import UserYaml
 
+from app import celery_app
 from database.models.core import Commit
 from database.models.reports import CommitReport
 from services.redis import get_redis_connection
@@ -33,11 +34,11 @@ def _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs):
 
 class ReadOnlyArgs(TypedDict):
     commit: Commit
-    commit_report: CommitReport
+    report_code: str
     commit_yaml: Optional[Dict]
 
 
-class CleanLabelsIndex(
+class CleanLabelsIndexTask(
     BaseCodecovTask,
     name=f"app.tasks.{TaskConfigGroup.upload.value}.UploadCleanLabelsIndex",
 ):
@@ -47,18 +48,12 @@ class CleanLabelsIndex(
         redis_connection = get_redis_connection()
         repoid = int(repoid)
         lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
-        if (
-            self.is_currently_processing(redis_connection, lock_name)
-            and self.request.retries == 0
-        ):
+        if self._is_currently_processing(redis_connection, lock_name):
             log.info(
                 "Currently processing upload. Retrying in 300s.",
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
-                    has_pending_jobs=self.has_pending_jobs(
-                        redis_connection, repoid, commitid
-                    ),
                 ),
             )
             _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
@@ -66,13 +61,12 @@ class CleanLabelsIndex(
         # Collect as much info as possible outside the lock
         # so that the time we stay with the lock is as small as possible
         commit = self._get_commit_or_fail(db_session, repoid, commitid)
-        commit_report = self._get_commit_report_or_fail(db_session, commit, report_code)
         repository_service = get_repo_provider_service(commit.repository, commit)
         commit_yaml = await self._get_best_effort_commit_yaml(
             commit, repository_service
         )
         read_only_args = ReadOnlyArgs(
-            commit=commit, commit_yaml=commit_yaml, commit_report=commit_report
+            commit=commit, commit_yaml=commit_yaml, report_code=report_code
         )
         try:
             with redis_connection.lock(
@@ -92,23 +86,28 @@ class CleanLabelsIndex(
                 lock_name,
                 extra=dict(commit=commitid, repoid=repoid),
             )
-        # TODO: retry logic
+        retry_countdown = 20 * 2**self.request.retries + 280
+        log.warning(
+            "Retrying clean labels index task",
+            extra=dict(commit=commitid, repoid=repoid, countdown=int(retry_countdown)),
+        )
+        _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+        self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
     async def run_async_within_lock(
         self,
-        db_session,
         read_only_args: ReadOnlyArgs,
         *args,
         **kwargs,
     ):
         commit = read_only_args["commit"]
-        commit_report = read_only_args["commit_report"]
+        report_code = read_only_args["report_code"]
         log.info(
             "Starting cleanup of labels index",
             extra=dict(
                 repoid=commit.repository.repoid,
                 commit=commit.commitid,
-                report_code=commit_report.code,
+                report_code=report_code,
             ),
         )
 
@@ -116,19 +115,19 @@ class CleanLabelsIndex(
         report_service = ReportService(read_only_args["commit_yaml"])
 
         report = report_service.get_existing_report_for_commit(
-            commit, report_code=commit_report.code
+            commit, report_code=report_code
         )
         if report is None:
             log.error(
                 "Report not found",
-                extra=dict(commit=commit.commitid, report_code=commit_report.code),
+                extra=dict(commit=commit.commitid, report_code=report_code),
             )
             return {"success": False, "error": "Report not found"}
         # Get the labels index and prep report for changes
         if not report.labels_index:
             log.error(
                 "Labels index is empty, nothing to do",
-                extra=dict(commit=commit.commitid, report_code=commit_report.code),
+                extra=dict(commit=commit.commitid, report_code=report_code),
             )
             return {"success": False, "error": "Labels index is empty, nothing to do"}
         # Make the changes
@@ -200,18 +199,13 @@ class CleanLabelsIndex(
         )
         commit = commits.first()
         assert commit, "Commit not found in database."
+        return commit
 
-    def _get_commit_report_or_fail(
-        self, db_session, commit: Commit, report_code
-    ) -> CommitReport:
-        commit_report = (
-            db_session.query(CommitReport)
-            .filter(commit_id=commit.id, code=report_code)
-            .first()
-        )
-        assert commit_report, "CommitReport not found in database."
-
-    def _is_currently_processing(self, redis_connection, lock_name):
+    def _is_currently_processing(self, redis_connection, lock_name: str):
         if redis_connection.get(lock_name):
             return True
         return False
+
+
+RegisteredCleanLabelsIndexTask = celery_app.register_task(CleanLabelsIndexTask())
+clean_labels_index_task = celery_app.tasks[RegisteredCleanLabelsIndexTask.name]
