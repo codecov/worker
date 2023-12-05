@@ -54,7 +54,7 @@ def test_report_builder_session(mocker):
     first_file = ReportFile("filename.py")
     first_file.append(2, ReportLine.create(coverage=0))
     labels_index = {
-        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
         1: "some_label",
         2: "other",
     }
@@ -169,7 +169,7 @@ def test_report_builder_session_only_all_labels(mocker):
         mocker.MagicMock(),
     )
     labels_index = {
-        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER,
+        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
     }
     filepath = "filepath"
     builder = ReportBuilder(
@@ -299,7 +299,10 @@ def test_report_builder_session_create_line(mocker):
     builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
     builder_session = builder.create_report_builder_session(filepath)
     line = builder_session.create_coverage_line(
-        "filename.py", 1, coverage_type=CoverageType.branch
+        "filename.py",
+        1,
+        coverage_type=CoverageType.branch,
+        labels_list_of_lists=[[], [0], [1]],
     )
     assert line == ReportLine.create(
         coverage=1,
@@ -310,7 +313,12 @@ def test_report_builder_session_create_line(mocker):
             )
         ],
         datapoints=[
-            CoverageDatapoint(sessionid=45, coverage=1, coverage_type="b", label_ids=[])
+            CoverageDatapoint(
+                sessionid=45, coverage=1, coverage_type="b", label_ids=[0]
+            ),
+            CoverageDatapoint(
+                sessionid=45, coverage=1, coverage_type="b", label_ids=[1]
+            ),
         ],
         complexity=None,
     )

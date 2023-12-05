@@ -450,8 +450,6 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
         "get_existing_report_for_commit",
         return_value=sample_report_with_labels,
     )
-    # The report already has the labels_index assigned to it
-    mock_label_index_service = mocker.patch("tasks.label_analysis.LabelsIndexService")
     repository = RepositoryFactory.create()
     larf = LabelAnalysisRequestFactory.create(
         base_commit__repository=repository, head_commit__repository=repository
@@ -526,14 +524,6 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     assert res == expected_result
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
     # It's zero because the report has the _labels_index already
-    assert (
-        mock_label_index_service.from_commit_report.return_value.set_label_idx.call_count
-        == 0
-    )
-    assert (
-        mock_label_index_service.from_commit_report.return_value.save_and_unset_label_idx.call_count
-        == 1
-    )
     dbsession.flush()
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id

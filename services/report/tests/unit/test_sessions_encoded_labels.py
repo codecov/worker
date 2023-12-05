@@ -199,7 +199,7 @@ class TestAdjustSession(BaseTestCase):
                 ),
             ]
         }
-        first_report.set_label_idx(report_label_idx)
+        first_report.labels_index = report_label_idx
         return first_report
 
     @pytest.fixture
@@ -618,10 +618,6 @@ class TestAdjustSession(BaseTestCase):
             "check_value",
             retur_value=True,
         )
-        mock_archive = mocker.patch("services.report.labels_index.ArchiveService")
-        mock_archive.return_value.read_label_index.return_value = json.loads(
-            json.dumps(report_under_test.labels_index or {})
-        )
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(
             sessions={first_to_merge_session.id: first_to_merge_session}
@@ -664,7 +660,6 @@ class TestAdjustSession(BaseTestCase):
             current_yaml,
             upload=upload,
         ) == SessionAdjustmentResult([], [0])
-        mock_archive.return_value.write_label_index.assert_called()
         # The after result should always be the encoded labels one
         after_result = self.convert_report_to_better_readable(report_under_test)
         assert after_result == first_value
@@ -761,10 +756,6 @@ class TestAdjustSession(BaseTestCase):
         sample_first_report,
         mocker,
     ):
-        mock_archive = mocker.patch("services.report.labels_index.ArchiveService")
-        mock_archive.return_value.read_label_index.return_value = json.dumps(
-            sample_first_report.labels_index
-        )
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(
             sessions={first_to_merge_session.id: first_to_merge_session}
@@ -818,7 +809,6 @@ class TestAdjustSession(BaseTestCase):
             upload=upload,
         ) == SessionAdjustmentResult([], [0])
         print(self.convert_report_to_better_readable(sample_first_report))
-        mock_archive.return_value.write_label_index.assert_called()
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
                 "first_file.py": [
@@ -1023,10 +1013,6 @@ class TestAdjustSession(BaseTestCase):
     def test_adjust_sessions_partial_cf_only_full_deletion_due_to_lost_labels(
         self, sample_first_report, mocker
     ):
-        mock_archive = mocker.patch("services.report.labels_index.ArchiveService")
-        mock_archive.return_value.read_label_index.return_value = json.dumps(
-            sample_first_report.labels_index
-        )
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(sessions={3: first_to_merge_session})
         current_yaml = UserYaml(
@@ -1091,7 +1077,6 @@ class TestAdjustSession(BaseTestCase):
             current_yaml,
             upload=upload,
         ) == SessionAdjustmentResult([0], [])
-        mock_archive.return_value.write_label_index.assert_called()
         res = self.convert_report_to_better_readable(sample_first_report)
         # print(res["report"]["sessions"])
         assert res["report"]["sessions"] == {

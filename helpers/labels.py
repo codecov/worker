@@ -26,10 +26,11 @@ from shared.reports.resources import Report
 
 
 class SpecialLabelsEnum(Enum):
-    CODECOV_ALL_LABELS_PLACEHOLDER = "Th2dMtk4M_codecov"
+    CODECOV_ALL_LABELS_PLACEHOLDER = ("Th2dMtk4M_codecov", 0)
 
-    def __init__(self, val):
-        self.corresponding_label = val
+    def __init__(self, label, index):
+        self.corresponding_label = label
+        self.corresponding_index = index
 
 
 @sentry_sdk.trace
@@ -50,7 +51,7 @@ def get_labels_per_session(report: Report, sess_id: int) -> Union[Set[str], Set[
     return all_labels - set(
         [
             SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
-            0,  # This is always the index for the SpecialLabelsEnum
+            SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index,
         ]
     )
 
@@ -72,6 +73,6 @@ def get_all_report_labels(report: Report) -> Union[Set[str], Set[int]]:
     return all_labels - set(
         [
             SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
-            0,  # This is always the index for the SpecialLabelsEnum
+            SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index,
         ]
     )

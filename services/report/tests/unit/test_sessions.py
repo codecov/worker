@@ -437,16 +437,12 @@ class TestAdjustSession(BaseTestCase):
                 }
             }
         )
-        mock_label_index_service = mocker.patch(
-            "services.report.raw_upload_processor.LabelsIndexService"
-        )
         first_value = self.convert_report_to_better_readable(sample_first_report)
         assert _adjust_sessions(
             sample_first_report, second_report, first_to_merge_session, current_yaml
         ) == SessionAdjustmentResult([], [0])
         after_result = self.convert_report_to_better_readable(sample_first_report)
         assert after_result == first_value
-        mock_label_index_service.assert_not_called()
 
     def test_adjust_sessions_partial_cf_only_no_changes_encoding_labels(
         self, sample_first_report, mocker
@@ -484,9 +480,6 @@ class TestAdjustSession(BaseTestCase):
                 )
             }
         )
-        mock_label_index_service = mocker.patch(
-            "services.report.raw_upload_processor.LabelsIndexService"
-        )
         assert _adjust_sessions(
             sample_first_report,
             second_report,
@@ -496,7 +489,6 @@ class TestAdjustSession(BaseTestCase):
         ) == SessionAdjustmentResult([], [0])
         after_result = self.convert_report_to_better_readable(sample_first_report)
         assert after_result == first_value
-        assert mock_label_index_service.call_count == 0
 
     def test_adjust_sessions_partial_cf_only_some_changes(self, sample_first_report):
         first_to_merge_session = Session(flags=["enterprise"], id=3)

@@ -99,7 +99,7 @@ class ReportBuilderSession(object):
                         "Report only has SpecialLabels. Might indicate it was not generated with contexts"
                     )
                 self._report._totals = None
-                self._report.set_label_idx(self.label_index)
+                self._report.labels_index = self.label_index
         else:
             if self._present_labels:
                 if self._present_labels and self._present_labels == {
@@ -200,6 +200,10 @@ class ReportBuilderSession(object):
         complexity=None
     ) -> ReportLine:
         coverage_type_str = coverage_type.map_to_string()
+        if labels_list_of_lists is not None:
+            # Removes empty lists from the lists of labels
+            # To avoid datapoints with no labels.
+            labels_list_of_lists = list(filter(None, labels_list_of_lists))
         datapoints = (
             [
                 CoverageDatapoint(
@@ -208,6 +212,8 @@ class ReportBuilderSession(object):
                     coverage_type=coverage_type_str,
                     label_ids=label_ids,
                 )
+                # TODO [codecov/engineering-team#885]: Putting the default as [[]] causes datapoints with no labels
+                # This seems stupid. We should investigate if that can be removed.
                 for label_ids in (labels_list_of_lists or [[]])
             ]
             if self._report_builder.supports_labels()

@@ -16,7 +16,6 @@ from database.models.staticanalysis import StaticAnalysisSuite
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from helpers.metrics import metrics
 from services.report import Report, ReportService
-from services.report.labels_index import LabelsIndexService
 from services.report.report_builder import SpecialLabelsEnum
 from services.repository import get_repo_provider_service
 from services.static_analysis import StaticAnalysisComparisonService
@@ -31,7 +30,9 @@ GLOBAL_LEVEL_LABEL = (
     SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 )
 
-GLOBAL_LEVEL_LABEL_IDX = 0
+GLOBAL_LEVEL_LABEL_IDX = (
+    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
+)
 
 
 class LinesRelevantToChangeInFile(TypedDict):
@@ -118,12 +119,6 @@ class LabelAnalysisRequestProcessingTask(
                 )
                 if existing_labels.are_labels_encoded:
                     # Translate label_ids
-                    label_index_service = LabelsIndexService.from_commit_report(
-                        label_analysis_request.base_commit.report
-                    )
-                    if base_report.labels_index is None:
-                        label_index_service.set_label_idx(base_report)
-
                     partial_fn_to_apply = lambda label_id_set: self._lookup_label_ids(
                         report=base_report, label_ids=label_id_set
                     )
@@ -139,8 +134,6 @@ class LabelAnalysisRequestProcessingTask(
                         ),
                         are_labels_encoded=False,
                     )
-                    # Don't need the label_index anymore
-                    label_index_service.save_and_unset_label_idx(base_report)
 
                 requested_labels = self._get_requested_labels(label_analysis_request)
                 result = self.calculate_final_result(
