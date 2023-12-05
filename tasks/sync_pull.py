@@ -143,7 +143,9 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "pull_updated": False,
                 "reason": "not_in_provider",
             }
-        if read_yaml_field(current_yaml, ("ai_pr_review", "enabled"), False):
+        if pull.state == "open" and read_yaml_field(
+            current_yaml, ("ai_pr_review", "enabled"), False
+        ):
             log.info(
                 "Triggering AI PR review task", extra=dict(repoid=repoid, pullid=pullid)
             )
