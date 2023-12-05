@@ -368,6 +368,7 @@ def create_sample_comparison(dbsession, request, sample_report, mocker):
             Comparison(
                 head=head_full_commit,
                 base=base_full_commit,
+                original_base_commitid=base_commit.commitid,
                 enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
             )
         )
@@ -411,6 +412,7 @@ def sample_comparison(dbsession, request, sample_report, mocker):
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -468,6 +470,7 @@ async def sample_comparison_coverage_carriedforward(
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -521,6 +524,7 @@ def sample_comparison_negative_change(dbsession, request, sample_report, mocker)
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -574,6 +578,7 @@ def sample_comparison_no_change(dbsession, request, sample_report, mocker):
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -625,6 +630,7 @@ def sample_comparison_without_pull(dbsession, request, sample_report, mocker):
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(database_pull=None, provider_pull=None),
         )
     )
@@ -665,6 +671,7 @@ def sample_comparison_database_pull_without_provider(
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(database_pull=pull, provider_pull=None),
         )
     )
@@ -697,6 +704,7 @@ def generate_sample_comparison(username, dbsession, base_report, head_report):
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -749,6 +757,7 @@ def sample_comparison_without_base_report(dbsession, request, sample_report, moc
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -806,6 +815,7 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report, 
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid="cdf9aa4bd2c6bcd8a662864097cb62a85a2fd55b",
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -872,6 +882,7 @@ def sample_comparison_head_and_pull_head_differ(
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
