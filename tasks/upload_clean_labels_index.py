@@ -13,7 +13,6 @@ from database.models.core import Commit
 from database.models.reports import CommitReport
 from services.redis import get_redis_connection
 from services.report import ReportService
-from services.report.labels_index import LabelsIndexService
 from services.repository import get_repo_provider_service
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
@@ -126,9 +125,7 @@ class CleanLabelsIndex(
             )
             return {"success": False, "error": "Report not found"}
         # Get the labels index and prep report for changes
-        labels_index_service = LabelsIndexService.from_commit_report(commit_report)
-        labels_index_service.set_label_idx(report)
-        if report.labels_index == dict():
+        if not report.labels_index:
             log.error(
                 "Labels index is empty, nothing to do",
                 extra=dict(commit=commit.commitid, report_code=commit_report.code),
@@ -137,10 +134,7 @@ class CleanLabelsIndex(
         # Make the changes
         self.cleanup_report_labels_index(report)
         # Save changes
-        # If one of these operations succeed and the other fail we are TOAST
-        # TODO: Create error-recovery mechanism in the Report
         report_service.save_report(report)
-        labels_index_service.save_and_unset_label_idx(report)
         return {"success": True}
 
     def cleanup_report_labels_index(self, report: Report):
