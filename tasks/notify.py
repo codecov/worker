@@ -349,7 +349,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         else:
             log.warning(
                 "Neither the original nor updated base commit are known",
-                extra=dict(repoid=repoid, commit=commitid),
+                extra=dict(repoid=commit.repository.repoid, commit=commit.commitid),
             )
             original_base_commitid = None
 
