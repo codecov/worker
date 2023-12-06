@@ -10,6 +10,7 @@ from shared.torngit.exceptions import TorngitClientError
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.repository import EnrichedPull
+from services.yaml import UserYaml
 from tasks.sync_pull import PullSyncTask
 
 here = Path(__file__)
@@ -365,3 +366,83 @@ class TestPullSyncTask(object):
             json.dumps(["f.py"]),
             ex=86400,
         )
+
+    def test_trigger_ai_pr_review(self, dbsession, mocker):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        base_commit = CommitFactory.create(repository=repository)
+        head_commit = CommitFactory.create(repository=repository)
+        pull = PullFactory.create(
+            repository=repository,
+            base=base_commit.commitid,
+            head=head_commit.commitid,
+        )
+        pullid = pull.pullid
+        base_commit.pullid = pullid
+        head_commit.pullid = pullid
+        dbsession.add(pull)
+        dbsession.add(base_commit)
+        dbsession.add(head_commit)
+        dbsession.flush()
+        task = PullSyncTask()
+        apply_async = mocker.patch.object(
+            task.app.tasks["app.tasks.ai_pr_review.AiPrReview"], "apply_async"
+        )
+        enriched_pull = EnrichedPull(
+            database_pull=pull,
+            provider_pull=dict(base=dict(branch="lookatthis"), labels=["ai-pr-review"]),
+        )
+        current_yaml = UserYaml.from_dict(
+            {
+                "ai_pr_review": {
+                    "enabled": True,
+                    "method": "label",
+                    "label_name": "ai-pr-review",
+                }
+            }
+        )
+        task.trigger_ai_pr_review(enriched_pull, current_yaml)
+        apply_async.assert_called_once_with(
+            kwargs=dict(repoid=pull.repoid, pullid=pull.pullid)
+        )
+
+        apply_async.reset_mock()
+        current_yaml = UserYaml.from_dict(
+            {
+                "ai_pr_review": {
+                    "enabled": True,
+                }
+            }
+        )
+        task.trigger_ai_pr_review(enriched_pull, current_yaml)
+        apply_async.assert_called_once_with(
+            kwargs=dict(repoid=pull.repoid, pullid=pull.pullid)
+        )
+
+        apply_async.reset_mock()
+        current_yaml = UserYaml.from_dict(
+            {
+                "ai_pr_review": {
+                    "enabled": True,
+                    "method": "auto",
+                }
+            }
+        )
+        task.trigger_ai_pr_review(enriched_pull, current_yaml)
+        apply_async.assert_called_once_with(
+            kwargs=dict(repoid=pull.repoid, pullid=pull.pullid)
+        )
+
+        apply_async.reset_mock()
+        current_yaml = UserYaml.from_dict(
+            {
+                "ai_pr_review": {
+                    "enabled": True,
+                    "method": "label",
+                    "label_name": "other",
+                }
+            }
+        )
+        task.trigger_ai_pr_review(enriched_pull, current_yaml)
+        assert not apply_async.called
