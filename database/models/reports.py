@@ -26,6 +26,7 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_commitreport"
     commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
     code = Column(types.String(100), nullable=True)
+    report_type = Column(types.String(100), nullable=True)
     commit: Commit = relationship(
         "Commit",
         foreign_keys=[commit_id],

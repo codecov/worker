@@ -21,7 +21,7 @@ from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
-from tasks.upload import UploadArgs, UploadTask
+from tasks.upload import UploadContext, UploadTask
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
 
@@ -475,7 +475,7 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch("tasks.upload.chain")
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocked_3 = mocker.patch.object(UploadArgs, "arguments_list", return_value=[])
+        mocked_3 = mocker.patch.object(UploadContext, "arguments_list", return_value=[])
 
         owner = OwnerFactory.create(
             service="github",
@@ -666,7 +666,7 @@ class TestUploadTaskIntegration(object):
         mock_redis.lists[
             f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
-        upload_args = UploadArgs(
+        upload_args = UploadContext(
             repoid=commit.repoid,
             commitid=commit.commitid,
             redis_connection=mock_redis,
@@ -765,7 +765,7 @@ class TestUploadTaskIntegration(object):
         mock_redis.lists[
             f"uploads/{commit.repoid}/{commit.commitid}"
         ] = jsonified_redis_queue
-        upload_args = UploadArgs(
+        upload_args = UploadContext(
             repoid=commit.repoid,
             commitid=commit.commitid,
             redis_connection=mock_redis,
@@ -798,7 +798,7 @@ class TestUploadTaskIntegration(object):
 class TestUploadTaskUnit(object):
     def test_list_of_arguments(self, mock_redis):
         task = UploadTask()
-        upload_args = UploadArgs(
+        upload_args = UploadContext(
             repoid=542,
             commitid="commitid",
             redis_connection=mock_redis,
@@ -821,7 +821,7 @@ class TestUploadTaskUnit(object):
         dbsession.flush()
         reportid = "5fbeee8b-5a41-4925-b59d-470b9d171235"
         arguments_with_redis_key = {"reportid": reportid, "random": "argument"}
-        upload_args = UploadArgs(
+        upload_args = UploadContext(
             repoid=commit.repoid,
             commitid=commit.commitid,
             redis_connection=mock_redis,
@@ -844,7 +844,7 @@ class TestUploadTaskUnit(object):
         dbsession.flush()
         reportid = "5fbeee8b-5a41-4925-b59d-470b9d171235"
         previous_arguments = {"reportid": reportid, "token": "value"}
-        upload_args = UploadArgs(
+        upload_args = UploadContext(
             repoid=commit.repoid,
             commitid=commit.commitid,
             redis_connection=mock_redis,
@@ -872,7 +872,7 @@ class TestUploadTaskUnit(object):
             "reportid": reportid,
             "random": "argument",
         }
-        upload_args = UploadArgs(
+        upload_args = UploadContext(
             repoid=commit.repoid,
             commitid=commit.commitid,
             redis_connection=mock_redis,
@@ -989,7 +989,7 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         mocked_is_currently_processing = mocker.patch.object(
-            UploadArgs, "is_currently_processing", return_value=True
+            UploadContext, "is_currently_processing", return_value=True
         )
         mocked_run_async_within_lock = mocker.patch.object(
             UploadTask, "run_async_within_lock", return_value=True
@@ -1009,7 +1009,7 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         mocked_is_currently_processing = mocker.patch.object(
-            UploadArgs, "is_currently_processing", return_value=True
+            UploadContext, "is_currently_processing", return_value=True
         )
         mocked_run_async_within_lock = mocker.patch.object(
             UploadTask, "run_async_within_lock", return_value={"some": "value"}
@@ -1026,13 +1026,13 @@ class TestUploadTaskUnit(object):
         commitid = "adsdadsadfdsjnskgiejrw"
         lock_name = f"upload_processing_lock_{repoid}_{commitid}"
         mock_redis.keys[lock_name] = "val"
-        upload_args = UploadArgs(
+        upload_args = UploadContext(
             repoid=repoid,
             commitid=commitid,
             redis_connection=mock_redis,
         )
         assert upload_args.is_currently_processing()
-        upload_args = UploadArgs(
+        upload_args = UploadContext(
             repoid=repoid,
             commitid="pol",
             redis_connection=mock_redis,
@@ -1308,7 +1308,7 @@ class TestUploadTaskUnit(object):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
-        mocker.patch.object(UploadArgs, "has_pending_jobs", return_value=True)
+        mocker.patch.object(UploadContext, "has_pending_jobs", return_value=True)
         task = UploadTask()
         mock_repo_provider.data = mocker.MagicMock()
         mock_repo_provider.service = "github"
@@ -1317,7 +1317,7 @@ class TestUploadTaskUnit(object):
             "initialize_and_save_report",
             side_effect=NotReadyToBuildReportYetError(),
         )
-        upload_args = UploadArgs(
+        upload_args = UploadContext(
             repoid=commit.repoid,
             commitid=commit.commitid,
             redis_connection=mock_redis,

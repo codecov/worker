@@ -56,3 +56,9 @@ class TrialStatus(Enum):
     ONGOING = "ongoing"
     EXPIRED = "expired"
     CANNOT_TRIAL = "cannot_trial"
+
+
+class ReportType(Enum):
+    COVERAGE = "coverage"
+    TEST_RESULTS = "test_results"
+    BUNDLE_ANALYIS = "bundle_analysis"

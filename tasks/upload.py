@@ -19,8 +19,8 @@ from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 
 from app import celery_app
-from database.enums import CommitErrorTypes
-from database.models import Commit
+from database.enums import CommitErrorTypes, ReportType
+from database.models import Commit, CommitReport
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
@@ -49,7 +49,7 @@ merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 CHUNK_SIZE = 3
 
 
-class UploadArgs:
+class UploadContext:
     """
     Encapsulates the arguments passed to an upload task. This includes both the
     Celery task arguments as well as the arguments list passed via Redis.
@@ -59,8 +59,7 @@ class UploadArgs:
         self,
         repoid: int,
         commitid: str,
-        # TODO: make this a proper enum
-        report_type: str = "coverage",
+        report_type: ReportType = ReportType.COVERAGE,
         report_code: Optional[str] = None,
         redis_connection: Optional[Redis] = None,
     ):
@@ -71,19 +70,19 @@ class UploadArgs:
         self.redis_connection = redis_connection or get_redis_connection()
 
     def lock_name(self, lock_type: str):
-        if self.report_type == "coverage":
+        if self.report_type == ReportType.COVERAGE:
             # for backward compat this does not include the report type
             return f"{lock_type}_lock_{self.repoid}_{self.commitid}"
         else:
-            return f"{lock_type}_lock_{self.repoid}_{self.commitid}_{self.report_type}"
+            return f"{lock_type}_lock_{self.repoid}_{self.commitid}_{self.report_type.value}"
 
     @property
     def upload_location(self):
-        if self.report_type == "coverage":
+        if self.report_type == ReportType.COVERAGE:
             # for backward compat this does not include the report type
             return f"uploads/{self.repoid}/{self.commitid}"
         else:
-            return f"uploads/{self.repoid}/{self.commitid}/{self.report_type}"
+            return f"uploads/{self.repoid}/{self.commitid}/{self.report_type.value}"
 
     def is_locked(self, lock_type: str) -> bool:
         lock_name = self.lock_name(lock_type)
@@ -100,12 +99,12 @@ class UploadArgs:
         return False
 
     def last_upload_timestamp(self):
-        if self.report_type == "coverage":
+        if self.report_type == ReportType.COVERAGE:
             # for backward compat this does not include the report type
             redis_key = f"latest_upload/{self.repoid}/{self.commitid}"
         else:
             redis_key = (
-                f"latest_upload/{self.repoid}/{self.commitid}/{self.report_type}"
+                f"latest_upload/{self.repoid}/{self.commitid}/{self.report_type.value}"
             )
         return self.redis_connection.get(redis_key)
 
@@ -114,7 +113,7 @@ class UploadArgs:
             {
                 "repoid": self.repoid,
                 "commitid": self.commitid,
-                "report_type": self.report_type,
+                "report_type": self.report_type.value,
                 "report_code": self.report_code,
             }
         )
@@ -250,36 +249,36 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 report_code=report_code,
             ),
         )
-        upload_args = UploadArgs(
+        upload_context = UploadContext(
             repoid=repoid,
             commitid=commitid,
-            report_type=report_type,
+            report_type=ReportType(report_type),
             report_code=report_code,
         )
-        lock_name = upload_args.lock_name("upload")
+        lock_name = upload_context.lock_name("upload")
 
-        if upload_args.is_currently_processing() and self.request.retries == 0:
+        if upload_context.is_currently_processing() and self.request.retries == 0:
             log.info(
                 "Currently processing upload. Retrying in 60s.",
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
                     report_type=report_type,
-                    has_pending_jobs=upload_args.has_pending_jobs(),
+                    has_pending_jobs=upload_context.has_pending_jobs(),
                 ),
             )
-            upload_args.prepare_kwargs_for_retry(kwargs)
+            upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(countdown=60, kwargs=kwargs)
 
         try:
-            with upload_args.redis_connection.lock(
+            with upload_context.redis_connection.lock(
                 lock_name,
                 timeout=max(300, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
                 return await self.run_async_within_lock(
                     db_session,
-                    upload_args,
+                    upload_context,
                     *args,
                     **kwargs,
                 )
@@ -289,7 +288,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 lock_name,
                 extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
             )
-            if not upload_args.has_pending_jobs():
+            if not upload_context.has_pending_jobs():
                 log.info(
                     "Not retrying since there are likely no jobs that need scheduling",
                     extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
@@ -322,26 +321,26 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     countdown=int(retry_countdown),
                 ),
             )
-            upload_args.prepare_kwargs_for_retry(kwargs)
+            upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
     async def run_async_within_lock(
         self,
         db_session,
-        upload_args: UploadArgs,
+        upload_context: UploadContext,
         *args,
         **kwargs,
     ):
         log.info(
             "Starting processing of report",
             extra=dict(
-                repoid=upload_args.repoid,
-                commit=upload_args.commitid,
-                report_type=upload_args.report_type,
-                report_code=upload_args.report_code,
+                repoid=upload_context.repoid,
+                commit=upload_context.commitid,
+                report_type=upload_context.report_type.value,
+                report_code=upload_context.report_code,
             ),
         )
-        if not upload_args.has_pending_jobs():
+        if not upload_context.has_pending_jobs():
             log.info("No pending jobs. Upload task is done.")
             return {
                 "was_setup": False,
@@ -352,7 +351,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         upload_processing_delay = get_config("setup", "upload_processing_delay")
         if upload_processing_delay is not None:
             upload_processing_delay = int(upload_processing_delay)
-            last_upload_timestamp = upload_args.last_upload_timestamp()
+            last_upload_timestamp = upload_context.last_upload_timestamp()
             if last_upload_timestamp is not None:
                 last_upload = datetime.fromtimestamp(float(last_upload_timestamp))
                 if (
@@ -363,13 +362,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     log.info(
                         "Retrying due to very recent uploads.",
                         extra=dict(
-                            repoid=upload_args.repoid,
-                            commit=upload_args.commitid,
-                            report_type=upload_args.report_type,
+                            repoid=upload_context.repoid,
+                            commit=upload_context.commitid,
+                            report_type=upload_context.report_type.value,
                             countdown=retry_countdown,
                         ),
                     )
-                    upload_args.prepare_kwargs_for_retry(kwargs)
+                    upload_context.prepare_kwargs_for_retry(kwargs)
                     self.retry(countdown=retry_countdown, kwargs=kwargs)
 
         try:
@@ -378,9 +377,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         except ValueError as e:
             log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
 
-        repoid = upload_args.repoid
-        commitid = upload_args.commitid
-        report_type = upload_args.report_type
+        repoid = upload_context.repoid
+        commitid = upload_context.commitid
+        report_type = upload_context.report_type
+        report_code = upload_context.report_code
 
         commit = None
         commits = db_session.query(Commit).filter(
@@ -442,21 +442,19 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         # `def fetch_report_upload(commit_report: CommitReport, upload_id: int) -> Upload`
         # `def create_report_upload(normalized_arguments, commit_report: CommitReport) -> Upload`
 
-        if report_type == "coverage":
+        if report_type == ReportType.COVERAGE:
             # TODO: consider renaming class to `CoverageReportService`
             report_service = ReportService(commit_yaml)
         else:
             raise NotImplementedError(f"no report service for: {report_code}")
 
-        report_type = upload_args.report_type
-        report_code = upload_args.report_code
         try:
             log.info(
                 "Initializing and saving report",
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
-                    report_type=report_type,
+                    report_type=report_type.value,
                     report_code=report_code,
                 ),
             )
@@ -469,11 +467,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "Commit not yet ready to build its initial report. Retrying in 60s.",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            upload_args.prepare_kwargs_for_retry(kwargs)
+            upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(countdown=60, kwargs=kwargs)
         argument_list = []
-        for arguments in upload_args.arguments_list():
-            normalized_arguments = upload_args.normalize_arguments(commit, arguments)
+        for arguments in upload_context.arguments_list():
+            normalized_arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" in normalized_arguments:
                 upload = report_service.fetch_report_upload(
                     commit_report, normalized_arguments["upload_id"]
@@ -547,16 +545,29 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         )
 
     def schedule_task(
-        self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
+        self,
+        commit,
+        commit_yaml,
+        argument_list,
+        commit_report: CommitReport,
+        checkpoints=None,
     ):
         commit_yaml = commit_yaml.to_dict()
-        res = None
 
-        # TODO: if commit_report.report_type == "coverage":
-        res = self._schedule_coverage_processing_task(
-            commit, commit_yaml, argument_list, commit_report, checkpoints=checkpoints
-        )
-        # TODO: else schedule other types of tasks
+        res = None
+        if (
+            commit_report.report_type is None
+            or commit_report.report_type == ReportType.COVERAGE.value
+        ):
+            res = self._schedule_coverage_processing_task(
+                commit,
+                commit_yaml,
+                argument_list,
+                commit_report,
+                checkpoints=checkpoints,
+            )
+        else:
+            raise NotImplementedError()
 
         if res:
             return res
