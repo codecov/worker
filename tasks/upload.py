@@ -3,7 +3,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 from json import loads
-from typing import Any, Mapping, Optional
+from typing import Any, List, Mapping, Optional
 
 from celery import chain
 from redis import Redis
@@ -27,6 +27,7 @@ from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
+from services.bundle_analysis import BundleAnalysisReportService
 from services.redis import Redis, download_archive_from_redis, get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
 from services.repository import (
@@ -38,6 +39,7 @@ from services.repository import (
 from services.yaml import save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
+from tasks.bundle_analysis_processor import bundle_analysis_processor_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, upload_processor_task
 
@@ -437,21 +439,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 ownerid=repository.owner.ownerid,
             )
 
-        # TODO: implement report services for other report types.
-        # Note that other report services must at least implement the following interfaces:
-        #
-        # `async def initialize_and_save_report(commit, report_code) -> CommitReport``
-        #
-        # These seem generic and could be implemented in the base class:
-        #
-        # `def fetch_report_upload(commit_report: CommitReport, upload_id: int) -> Upload`
-        # `def create_report_upload(normalized_arguments, commit_report: CommitReport) -> Upload`
-
         if report_type == ReportType.COVERAGE:
             # TODO: consider renaming class to `CoverageReportService`
             report_service = ReportService(commit_yaml)
+        elif report_type == ReportType.BUNDLE_ANALYSIS:
+            report_service = BundleAnalysisReportService(commit_yaml)
         else:
-            raise NotImplementedError(f"no report service for: {report_code}")
+            raise NotImplementedError(f"no report service for: {report_type.value}")
 
         try:
             log.info(
@@ -571,8 +565,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit_report,
                 checkpoints=checkpoints,
             )
-        else:
-            raise NotImplementedError()
+        elif commit_report.report_type == ReportType.BUNDLE_ANALYSIS.value:
+            res = self._schedule_bundle_analysis_processing_task(
+                commit,
+                commit_yaml,
+                argument_list,
+            )
 
         if res:
             return res
@@ -635,6 +633,38 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 ),
             )
             return res
+
+    def _schedule_bundle_analysis_processing_task(
+        self,
+        commit: Commit,
+        commit_yaml: UserYaml,
+        argument_list: List[dict],
+    ):
+        processor_tasks = [
+            bundle_analysis_processor_task.signature(
+                args=({},) if i == 0 else (),  # to support Celery `chain`
+                kwargs=dict(
+                    repoid=commit.repoid,
+                    commitid=commit.commitid,
+                    commit_yaml=commit_yaml,
+                    params=params,
+                ),
+            )
+            for i, params in enumerate(argument_list)
+        ]
+
+        res = chain(*processor_tasks).apply_async()
+        log.info(
+            "Scheduling bundle analysis processor tasks",
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid,
+                argument_list=argument_list,
+                number_arguments=len(argument_list),
+                scheduled_task_ids=res.as_tuple(),
+            ),
+        )
+        return res
 
     async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository

@@ -221,6 +221,22 @@ class Commit(CodecovBaseModel):
             .first()
         )
 
+    def commit_report(self, report_type: ReportType):
+        db_session = self.get_db_session()
+        CommitReport = database.models.reports.CommitReport
+        if report_type == ReportType.COVERAGE:
+            return self.report
+        else:
+            return (
+                db_session.query(CommitReport)
+                .filter(
+                    (CommitReport.commit_id == self.id_)
+                    & (CommitReport.code == None)
+                    & (CommitReport.report_type == report_type.value)
+                )
+                .first()
+            )
+
     @property
     def id(self):
         return self.id_

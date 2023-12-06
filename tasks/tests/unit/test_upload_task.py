@@ -12,6 +12,7 @@ from shared.torngit.gitlab import Gitlab
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
+from database.enums import ReportType
 from database.models import Upload
 from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
@@ -21,6 +22,7 @@ from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
+from tasks.bundle_analysis_processor import bundle_analysis_processor_task
 from tasks.upload import UploadContext, UploadTask
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
@@ -188,6 +190,68 @@ class TestUploadTaskIntegration(object):
             ),
         ]
         mock_checkpoint_submit.assert_has_calls(calls)
+
+    @pytest.mark.asyncio
+    async def test_upload_task_call_bundle_analysis(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+    ):
+        chain = mocker.patch("tasks.upload.chain")
+        storage_path = (
+            "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+        )
+        redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mocker.patch.object(UploadTask, "app", celery_app)
+
+        commit = CommitFactory.create(
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="ThiagoCodecov",
+            repository__owner__service="github",
+            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+            repository__name="example-python",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}/bundle_analysis"
+        ] = jsonified_redis_queue
+
+        await UploadTask().run_async(
+            dbsession,
+            commit.repoid,
+            commit.commitid,
+            report_type="bundle_analysis",
+        )
+        commit_report = commit.commit_report(report_type=ReportType.BUNDLE_ANALYSIS)
+        assert commit_report
+        uploads = commit_report.uploads
+        assert len(uploads) == 1
+        upload = dbsession.query(Upload).filter_by(report_id=commit_report.id).first()
+        sig = bundle_analysis_processor_task.signature(
+            args=({},),
+            kwargs=dict(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+                params={
+                    "url": storage_path,
+                    "build_code": "some_random_build",
+                    "upload_pk": upload.id,
+                },
+            ),
+        )
+        chain.assert_called_with(sig)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_no_jobs(
