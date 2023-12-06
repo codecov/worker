@@ -48,6 +48,11 @@ class SaveReportResultsTask(
             current_yaml, commit, base_commit, report_code
         )
 
+        if enriched_pull and enriched_pull.database_pull:
+            original_base_commitid = enriched_pull.database_pull.base
+        else:
+            original_base_commitid = base_commit.commitid if base_commit else None
+
         if head_report is None:
             log.warning(
                 "Not saving report results because no head report found.",
@@ -60,6 +65,7 @@ class SaveReportResultsTask(
                 head=FullCommit(commit=commit, report=head_report),
                 enriched_pull=enriched_pull,
                 base=FullCommit(commit=base_commit, report=base_report),
+                original_base_commitid=original_base_commitid,
             )
         )
 

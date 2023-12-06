@@ -136,6 +136,7 @@ def sample_comparison(dbsession, request, sample_report):
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={

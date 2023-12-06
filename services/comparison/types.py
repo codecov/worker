@@ -17,7 +17,19 @@ class FullCommit(object):
 @dataclass
 class Comparison(object):
     head: FullCommit
+
+    # To see how a patch changes project coverage, we compare the branch head's
+    # report against the base's report, or if the base isn't in our database,
+    # the next-oldest commit that is. Be aware that this base commit may not be
+    # the true base that, for example, a PR is based on.
     base: FullCommit
+
+    # Computing patch coverage doesn't require an old report to compare against,
+    # so doing the "next-oldest" adjustment described above is unnecessary and
+    # makes the results less correct. All it requires is a head report and the
+    # patch diff, and the original base's commit SHA is enough to get that.
+    original_base_commitid: str
+
     enriched_pull: EnrichedPull
     current_yaml: Optional[UserYaml] = None
 

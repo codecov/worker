@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 class StatusPatchMixin(object):
     async def get_patch_status(self, comparison) -> Tuple[str, str]:
         threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")
-        diff = await self.get_diff(comparison)
+        diff = await comparison.get_diff(use_original_base=True)
         totals = comparison.head.report.apply_diff(diff)
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
             target_coverage = Decimal(
@@ -233,7 +233,7 @@ class StatusProjectMixin(object):
                 extra=dict(commit=comparison.head.commit.commitid),
             )
             return None
-        diff = await self.get_diff(comparison)
+        diff = await comparison.get_diff(use_original_base=True)
         patch_totals = comparison.head.report.apply_diff(diff)
         if patch_totals is None or patch_totals.lines == 0:
             # Coverage was not changed by patch

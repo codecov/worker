@@ -59,6 +59,7 @@ def codecove2e_comparison(dbsession, request, sample_report, small_report):
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -121,6 +122,7 @@ def sample_comparison(dbsession, request, sample_report, small_report):
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -184,6 +186,7 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -246,6 +249,7 @@ def sample_comparison_for_upgrade(dbsession, request, sample_report, small_repor
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -306,6 +310,7 @@ def sample_comparison_for_limited_upload(
         Comparison(
             head=head_full_commit,
             base=base_full_commit,
+            original_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={

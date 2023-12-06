@@ -66,7 +66,7 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
                         "summary": "\n\n".join([codecov_link, message]),
                     },
                 }
-            diff = await self.get_diff(comparison)
+            diff = await comparison.get_diff(use_original_base=True)
             #  TODO: Look into why the apply diff in get_patch_status is not saving state at this point
             comparison.head.report.apply_diff(diff)
             annotations = self.create_annotations(comparison, diff)
