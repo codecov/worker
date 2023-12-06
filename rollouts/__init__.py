@@ -28,5 +28,8 @@ LIST_REPOS_GENERATOR_BY_OWNER_SLUG = Feature(
 USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG = Feature(
     "use_label_index_in_report_processing",
     0.0,
-    overrides={"github/giovanni-guidini/sentry": "enabled"},
+    overrides={
+        "github/giovanni-guidini/sentry": "enabled",
+        "github/giovanni-guidini/components-demo": "enabled",
+    },
 )

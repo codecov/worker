@@ -4,7 +4,7 @@ from base64 import b16encode
 from datetime import datetime
 from enum import Enum
 from hashlib import md5
-from typing import Dict
+from typing import Dict, Optional
 from uuid import uuid4
 
 from shared.config import get_config
@@ -20,9 +20,6 @@ log = logging.getLogger(__name__)
 
 class MinioEndpoints(Enum):
     chunks = "{version}/repos/{repo_hash}/commits/{commitid}/{chunks_file_name}.txt"
-    label_index = (
-        "{version}/repos/{repo_hash}/commits/{commitid}/{label_index_file_name}.json"
-    )
     json_data = "{version}/repos/{repo_hash}/commits/{commitid}/json_data/{table}/{field}/{external_id}.json"
     json_data_no_commit = (
         "{version}/repos/{repo_hash}/json_data/{table}/{field}/{external_id}.json"
@@ -230,20 +227,6 @@ class ArchiveService(object):
         self.write_file(path, stringified_data)
         return path
 
-    def write_label_index(self, commit_sha, json_data, report_code=None) -> str:
-        label_index_file_name = (
-            report_code + "_" if report_code is not None else ""
-        ) + "labels_index"
-        path = MinioEndpoints.label_index.get_path(
-            version="v4",
-            repo_hash=self.storage_hash,
-            commitid=commit_sha,
-            label_index_file_name=label_index_file_name,
-        )
-        string_data = json.dumps(json_data)
-        self.write_file(path, string_data)
-        return path
-
     """
     Convenience method to write a chunks.txt file to storage.
     """
@@ -303,22 +286,6 @@ class ArchiveService(object):
         )
 
         return self.read_file(path).decode(errors="replace")
-
-    def read_label_index(self, commit_sha, report_code=None) -> Dict[str, str]:
-        label_index_file_name = (
-            report_code + "_" if report_code is not None else ""
-        ) + "labels_index"
-        path = MinioEndpoints.label_index.get_path(
-            version="v4",
-            repo_hash=self.storage_hash,
-            commitid=commit_sha,
-            label_index_file_name=label_index_file_name,
-        )
-
-        try:
-            return json.loads(self.read_file(path).decode(errors="replace"))
-        except FileNotInStorageError:
-            return dict()
 
     """
     Delete a chunk file from the archive
