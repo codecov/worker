@@ -20,6 +20,7 @@ from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
+from services.billing import BillingPlan
 from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
@@ -328,11 +329,36 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         enriched_pull: EnrichedPull,
         empty_upload=None,
     ):
+        # base_commit is an "adjusted" base commit; for project coverage, we
+        # compare a PR head's report against its base's report, or if the base
+        # doesn't exist in our database, the next-oldest commit that does. That
+        # is unnecessary/incorrect for patch coverage, for which we want to
+        # compare against the original PR base.
+        #
+        # For now, fix this for the patch-coverage-focused team plan and avoid
+        # maybe perturbing anything for project coverage. For other plans, set
+        # `original_base_commitid` to the adjusted base commitid.
+        # Follow-up: https://github.com/codecov/engineering-team/issues/887
+        plan = commit.repository.owner.plan
+        pull = enriched_pull.database_pull if enriched_pull else None
+
+        if pull and plan in (BillingPlan.team_monthly, BillingPlan.team_yearly):
+            original_base_commitid = pull.base
+        elif base_commit is not None:
+            original_base_commitid = base_commit.commitid
+        else:
+            log.warning(
+                "Neither the original nor updated base commit are known",
+                extra=dict(repoid=commit.repository.repoid, commit=commit.commitid),
+            )
+            original_base_commitid = None
+
         comparison = ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=commit, report=head_report),
                 enriched_pull=enriched_pull,
                 base=FullCommit(commit=base_commit, report=base_report),
+                original_base_commitid=original_base_commitid,
                 current_yaml=current_yaml,
             )
         )

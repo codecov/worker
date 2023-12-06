@@ -794,7 +794,12 @@ class ReportService(object):
         try:
             with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
                 result = process_raw_upload(
-                    self.current_yaml, master, raw_uploaded_report, flags, session
+                    self.current_yaml,
+                    master,
+                    raw_uploaded_report,
+                    flags,
+                    session,
+                    upload=upload,
                 )
                 report = result.report
             log.info(
