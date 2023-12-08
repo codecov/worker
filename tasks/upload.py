@@ -38,7 +38,7 @@ from services.yaml import save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 from tasks.upload_finisher import upload_finisher_task
-from tasks.upload_processor import upload_processor_task
+from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, upload_processor_task
 
 log = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     yield loads(arguments)
 
     def is_currently_processing(self, redis_connection, repoid, commitid):
-        upload_processing_lock_name = f"upload_processing_lock_{repoid}_{commitid}"
+        upload_processing_lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
         if redis_connection.get(upload_processing_lock_name):
             return True
         return False
