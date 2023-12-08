@@ -257,11 +257,15 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         compare_report = report_service.get_existing_report_for_commit(
             compare_commit, report_class=ReadOnlyReport
         )
+        # No access to the PR so we have to assume the base commit did not need
+        # to be adjusted.
+        original_base_commitid = base_commit.commitid
         return ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=compare_commit, report=compare_report),
                 enriched_pull=None,
                 base=FullCommit(commit=base_commit, report=base_report),
+                original_base_commitid=original_base_commitid,
             )
         )
 

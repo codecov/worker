@@ -143,10 +143,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "pull_updated": False,
                 "reason": "not_in_provider",
             }
-        if read_yaml_field(current_yaml, ("ai_pr_review", "enabled"), False):
-            self.app.tasks["app.tasks.ai_pr_review.AiPrReview"].apply_async(
-                kwargs=dict(repoid=repoid, pullid=pullid)
-            )
+        self.trigger_ai_pr_review(enriched_pull, current_yaml)
         report_service = ReportService(current_yaml)
         head_commit = pull.get_head_commit()
         if head_commit is None:
@@ -402,6 +399,35 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
             ),
         )
         return True
+
+    def trigger_ai_pr_review(self, enriched_pull: EnrichedPull, current_yaml: UserYaml):
+        pull = enriched_pull.database_pull
+        if pull.state == "open" and read_yaml_field(
+            current_yaml, ("ai_pr_review", "enabled"), False
+        ):
+            review_method = read_yaml_field(
+                current_yaml, ("ai_pr_review", "method"), "auto"
+            )
+            label_name = read_yaml_field(
+                current_yaml, ("ai_pr_review", "label_name"), None
+            )
+            pull_labels = enriched_pull.provider_pull.get("labels", [])
+            if review_method == "auto" or (
+                review_method == "label" and label_name in pull_labels
+            ):
+                log.info(
+                    "Triggering AI PR review task",
+                    extra=dict(
+                        repoid=pull.repoid,
+                        pullid=pull.pullid,
+                        review_method=review_method,
+                        lbale_name=label_name,
+                        pull_labels=pull_labels,
+                    ),
+                )
+                self.app.tasks["app.tasks.ai_pr_review.AiPrReview"].apply_async(
+                    kwargs=dict(repoid=pull.repoid, pullid=pull.pullid)
+                )
 
 
 RegisteredPullSyncTask = celery_app.register_task(PullSyncTask())

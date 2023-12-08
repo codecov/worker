@@ -223,9 +223,6 @@ class ChecksNotifier(StatusNotifier):
                 data_sent=payload,
             )
 
-    async def get_diff(self, comparison: Comparison):
-        return await comparison.get_diff()
-
     def get_line_diff(self, file_diff):
         """
         This method traverses a git file diff and returns the lines (as line numbers) that where chnaged

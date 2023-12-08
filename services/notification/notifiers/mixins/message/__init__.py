@@ -38,7 +38,7 @@ class MessageMixin(object):
 
         """
         changes = await comparison.get_changes()
-        diff = await comparison.get_diff()
+        diff = await comparison.get_diff(use_original_base=True)
         behind_by = await comparison.get_behind_by()
         base_report = comparison.base.report
         head_report = comparison.head.report
