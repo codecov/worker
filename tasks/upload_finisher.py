@@ -22,6 +22,7 @@ from services.report import ReportService
 from services.timeseries import save_commit_measurements
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
+from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
 
 log = logging.getLogger(__name__)
 
@@ -207,12 +208,46 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         else:
             commit.state = "skipped"
 
+        if self.should_clean_labels_index(commit_yaml, processing_results):
+            task = self.app.tasks[clean_labels_index_task_name].apply_async(
+                kwargs={
+                    "repoid": repoid,
+                    "commitid": commitid,
+                    "report_code": report_code,
+                },
+            )
+            log.info(
+                "Scheduling clean_labels_index task",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    clean_labels_index_task_id=task.id,
+                    parent_task=self.request.parent_id,
+                ),
+            )
+
         if checkpoints:
             checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
             if not notifications_called:
                 checkpoints.log(UploadFlow.SKIPPING_NOTIFICATION)
 
         return {"notifications_called": notifications_called}
+
+    def should_clean_labels_index(self, commit_yaml: UserYaml, processing_results):
+        """Returns True if any of the successful processings was uploaded using a flag
+        that implies labels were uploaded with the report.
+        """
+        actual_processing_results = processing_results.get("processings_so_far", [])
+        for result in actual_processing_results:
+            if result["successful"]:
+                flags_str: str = result.get("arguments", {}).get("flags", "")
+                if flags_str:
+                    individual_flags = flags_str.split(",")
+                    for flag in individual_flags:
+                        config = commit_yaml.get_flag_configuration(flag)
+                        if config and config.get("carryforward_mode") == "labels":
+                            return True
+        return False
 
     def should_call_notifications(
         self, commit, commit_yaml, processing_results, report_code
