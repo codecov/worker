@@ -209,7 +209,7 @@ class MessageMixin(object):
         sections = list(map(lambda l: l.strip(), (settings["layout"] or "").split(",")))
         headers = ["newheader", "header", "condensed_header"]
         if all(not x in sections for x in headers):
-            sections.insert(0, "header")
+            sections.insert(0, "newheader")
 
         return [
             section
