@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from mock import patch
+from mock import MagicMock, patch
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
 
@@ -18,6 +18,7 @@ from helpers.labels import SpecialLabelsEnum
 from services.report import ReportService
 from services.static_analysis import StaticAnalysisComparisonService
 from tasks.label_analysis import (
+    ExistingLabelSetsNotEncoded,
     LabelAnalysisRequestProcessingTask,
     LabelAnalysisRequestState,
 )
@@ -989,3 +990,27 @@ async def test__get_lines_relevant_to_diff_error(
     assert lines == None
     mock_parse_diff.assert_called_with(larq)
     mock_get_relevant_lines.assert_not_called()
+
+
+@patch(
+    "tasks.label_analysis.LabelAnalysisRequestProcessingTask.get_all_report_labels",
+    return_value=set(),
+)
+@patch(
+    "tasks.label_analysis.LabelAnalysisRequestProcessingTask.get_executable_lines_labels",
+    return_value=(set(), set()),
+)
+def test___get_existing_labels_no_labels_in_report(
+    mock_get_executable_lines_labels, mock_get_all_report_labels
+):
+    report = MagicMock(name="fake_report")
+    lines_relevant = MagicMock(name="fake_lines_relevant_to_diff")
+    task = LabelAnalysisRequestProcessingTask()
+    res = task._get_existing_labels(report, lines_relevant)
+    expected = ExistingLabelSetsNotEncoded(
+        all_report_labels=set(),
+        executable_lines_labels=set(),
+        global_level_labels=set(),
+    )
+    assert isinstance(res, ExistingLabelSetsNotEncoded)
+    assert res == expected
