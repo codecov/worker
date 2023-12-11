@@ -82,11 +82,6 @@ class FakeRedis(object):
         self.sismember = mocker.MagicMock()
         self.hdel = mocker.MagicMock()
 
-    def exists(self, key):
-        if self.keys.get(key) is not None:
-            return True
-        return False
-
     def get(self, key):
         res = None
         if self.keys.get(key) is not None:
@@ -160,6 +155,30 @@ class TestCleanLabelsIndexSyncronization(object):
             await task.run_async(dbsession, commit.repository.repoid, commit.commitid)
         mock_currently_processing.assert_called()
         mock_run_async_within_lock.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_call_actual_logic(self, dbsession, mocker, mock_redis):
+        commit = CommitFactory()
+        dbsession.add(commit)
+        dbsession.flush()
+        mock_currently_processing = mocker.patch.object(
+            CleanLabelsIndexTask, "_is_currently_processing", return_value=False
+        )
+        mock_run_async_within_lock = mocker.patch.object(
+            CleanLabelsIndexTask, "run_async_within_lock", return_value="return_value"
+        )
+        mocker.patch.object(
+            CleanLabelsIndexTask, "_get_best_effort_commit_yaml", return_value={}
+        )
+        task = CleanLabelsIndexTask()
+        await task.run_async(
+            dbsession, commit.repository.repoid, commit.commitid, report_code="code"
+        )
+        mock_currently_processing.assert_called()
+        mock_run_async_within_lock.assert_called_with(
+            dbsession,
+            ReadOnlyArgs(commit=commit, commit_yaml={}, report_code="code"),
+        )
 
 
 class TestCleanLabelsIndexReadOnlyArgs(object):
@@ -293,7 +312,7 @@ class TestCleanLabelsIndexLogic(BaseTestCase):
         )
 
     @pytest.mark.asyncio
-    async def test_clean_labels_with_renames_no_change_needed(
+    async def test_clean_labels_with_renames(
         self, dbsession, mocker, sample_report_with_labels_and_renames
     ):
         commit = CommitFactory()
