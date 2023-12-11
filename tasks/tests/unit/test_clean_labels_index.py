@@ -69,6 +69,7 @@ def sample_report_with_labels_and_renames():
     return report
 
 
+# Simplified version of the FakeRedis class defined in tasks/tests/unit/test_upload_task.py
 class FakeRedis(object):
     """
     This is a fake, very rudimentary redis implementation to ease the managing
@@ -76,16 +77,12 @@ class FakeRedis(object):
     """
 
     def __init__(self, mocker):
-        self.lists = {}
         self.keys = {}
         self.lock = mocker.MagicMock()
-        self.delete = mocker.MagicMock()
         self.sismember = mocker.MagicMock()
         self.hdel = mocker.MagicMock()
 
     def exists(self, key):
-        if self.lists.get(key):
-            return True
         if self.keys.get(key) is not None:
             return True
         return False
@@ -94,8 +91,6 @@ class FakeRedis(object):
         res = None
         if self.keys.get(key) is not None:
             res = self.keys.get(key)
-        if self.lists.get(key):
-            res = self.lists.get(key)
         if res is None:
             return None
         if not isinstance(res, (str, bytes)):
@@ -103,9 +98,6 @@ class FakeRedis(object):
         if not isinstance(res, bytes):
             return res.encode()
         return res
-
-    def delete(self, key):
-        del self.lists[key]
 
 
 @pytest.fixture
@@ -301,7 +293,7 @@ class TestCleanLabelsIndexLogic(BaseTestCase):
         )
 
     @pytest.mark.asyncio
-    async def test_clean_labels_no_change_needed(
+    async def test_clean_labels_with_renames_no_change_needed(
         self, dbsession, mocker, sample_report_with_labels_and_renames
     ):
         commit = CommitFactory()
