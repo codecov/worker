@@ -19,9 +19,9 @@ class StatusPatchMixin(object):
             )
         else:
             target_coverage = (
-                Decimal(comparison.base.report.totals.coverage)
-                if comparison.has_base_report()
-                and comparison.base.report.totals.coverage is not None
+                Decimal(comparison.project_coverage_base.report.totals.coverage)
+                if comparison.has_project_coverage_base_report()
+                and comparison.project_coverage_base.report.totals.coverage is not None
                 else None
             )
         if totals and totals.lines > 0:
@@ -47,9 +47,10 @@ class StatusPatchMixin(object):
                     target_str = round_number(self.current_yaml, target_coverage)
                     message = f"{coverage_str}% of diff hit (target {target_str}%)"
             return (state, message)
-        if comparison.base.commit:
+        if comparison.project_coverage_base.commit:
             description = "Coverage not affected when comparing {0}...{1}".format(
-                comparison.base.commit.commitid[:7], comparison.head.commit.commitid[:7]
+                comparison.project_coverage_base.commit.commitid[:7],
+                comparison.head.commit.commitid[:7],
             )
         else:
             description = "Coverage not affected"
@@ -69,7 +70,7 @@ class StatusChangesMixin(object):
     async def get_changes_status(self, comparison) -> Tuple[str, str]:
         pull = comparison.pull
         if self.notifier_yaml_settings.get("base") in ("auto", None, "pr") and pull:
-            if not comparison.has_base_report():
+            if not comparison.has_project_coverage_base_report():
                 description = (
                     "Unable to determine changes, no report found at pull request base"
                 )
@@ -182,7 +183,7 @@ class StatusProjectMixin(object):
                     removed_diff_coverage_list, lambda item: 1 if item[1] == "p" else 0
                 )
 
-        base_totals = comparison.base.report.totals
+        base_totals = comparison.project_coverage_base.report.totals
         base_adjusted_hits = base_totals.hits - hits_removed
         base_adjusted_misses = base_totals.misses - misses_removed
         base_adjusted_partials = base_totals.partials - partials_removed
@@ -255,7 +256,7 @@ class StatusProjectMixin(object):
 
         # Possibly pass the status check via removed_code_behavior
         # We need both reports to be able to get the diff and apply the removed_code behavior
-        if comparison.base.report and comparison.head.report:
+        if comparison.project_coverage_base.report and comparison.head.report:
             removed_code_behavior = self.notifier_yaml_settings.get(
                 "removed_code_behavior", self.DEFAULT_REMOVED_CODE_BEHAVIOR
             )
@@ -309,21 +310,23 @@ class StatusProjectMixin(object):
             expected_coverage_str = round_number(self.current_yaml, target_coverage)
             message = f"{head_coverage_rounded}% (target {expected_coverage_str}%)"
             return (state, message)
-        if comparison.base.report is None:
+        if comparison.project_coverage_base.report is None:
             # No base report - can't pass by offset coverage
             state = self.notifier_yaml_settings.get("if_not_found", "success")
             message = "No report found to compare against"
             return (state, message)
-        if comparison.base.report.totals.coverage is None:
+        if comparison.project_coverage_base.report.totals.coverage is None:
             # Base report, no coverage on base report - can't pass by offset coverage
             state = self.notifier_yaml_settings.get("if_not_found", "success")
             message = "No coverage information found on base report"
             return (state, message)
         # Proper comparison head vs base report
-        target_coverage = Decimal(comparison.base.report.totals.coverage)
+        target_coverage = Decimal(
+            comparison.project_coverage_base.report.totals.coverage
+        )
         state = "success" if head_coverage + threshold >= target_coverage else "failure"
         change_coverage = round_number(
             self.current_yaml, head_coverage - target_coverage
         )
-        message = f"{head_coverage_rounded}% ({change_coverage:+}%) compared to {comparison.base.commit.commitid[:7]}"
+        message = f"{head_coverage_rounded}% ({change_coverage:+}%) compared to {comparison.project_coverage_base.commit.commitid[:7]}"
         return (state, message)

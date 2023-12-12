@@ -56,8 +56,8 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
 
     def build_payload(self, comparison: Comparison):
         head_full_commit = comparison.head
-        base_full_commit = comparison.base
-        if comparison.has_base_report():
+        base_full_commit = comparison.project_coverage_base
+        if comparison.has_project_coverage_base_report():
             difference = None
             head_report_coverage = head_full_commit.report.totals.coverage
             base_report_coverage = base_full_commit.report.totals.coverage
@@ -94,7 +94,9 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
                 comparison.head.commit if comparison.head else None
             ),
             "base_commit": self.serialize_commit(
-                comparison.base.commit if comparison.base else None
+                comparison.project_coverage_base.commit
+                if comparison.project_coverage_base
+                else None
             ),
             "head_totals_c": str(comparison.head.report.totals.coverage),
         }

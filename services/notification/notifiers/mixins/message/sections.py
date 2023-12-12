@@ -105,7 +105,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
 class NewHeaderSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         yaml = self.current_yaml
-        base_report = comparison.base.report
+        base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         pull = comparison.pull
         pull_dict = comparison.enriched_pull.provider_pull
@@ -134,7 +134,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     pull=pull.pullid,
                     base=pull_dict["base"]["branch"],
                     commitid_head=comparison.head.commit.commitid[:7],
-                    commitid_base=comparison.base.commit.commitid[:7],
+                    commitid_base=comparison.project_coverage_base.commit.commitid[:7],
                     links=links,
                     base_cov=round_number(yaml, Decimal(base_report.totals.coverage)),
                     head_cov=round_number(yaml, Decimal(head_report.totals.coverage)),
@@ -204,7 +204,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
 class HeaderSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         yaml = self.current_yaml
-        base_report = comparison.base.report
+        base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         pull = comparison.pull
         pull_dict = comparison.enriched_pull.provider_pull
@@ -225,7 +225,7 @@ class HeaderSectionWriter(BaseSectionWriter):
                     pull=pull.pullid,
                     base=pull_dict["base"]["branch"],
                     commitid_head=comparison.head.commit.commitid[:7],
-                    commitid_base=comparison.base.commit.commitid[:7],
+                    commitid_base=comparison.project_coverage_base.commit.commitid[:7],
                     # ternary operator, see https://stackoverflow.com/questions/394809/does-python-have-a-ternary-conditional-operator
                     message={False: "decrease", "na": "not change", True: "increase"}[
                         (change > 0) if change != 0 else "na"
@@ -416,7 +416,7 @@ class ReachSectionWriter(BaseSectionWriter):
 
 class DiffSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
-        base_report = comparison.base.report
+        base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         if base_report is None:
             base_report = Report()
@@ -438,7 +438,7 @@ class DiffSectionWriter(BaseSectionWriter):
 class NewFilesSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # create list of files changed in diff
-        base_report = comparison.base.report
+        base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         if base_report is None:
             base_report = Report()
@@ -520,7 +520,7 @@ class NewFilesSectionWriter(BaseSectionWriter):
 class FileSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # create list of files changed in diff
-        base_report = comparison.base.report
+        base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         if base_report is None:
             base_report = Report()
@@ -613,7 +613,7 @@ class FileSectionWriter(BaseSectionWriter):
 class FlagSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # flags
-        base_report = comparison.base.report
+        base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         if base_report is None:
             base_report = Report()
@@ -754,8 +754,8 @@ class ComponentsSectionWriter(BaseSectionWriter):
             component_data.append(
                 {
                     "name": component.get_display_name(),
-                    "before": filtered_comparison.base.report.totals
-                    if filtered_comparison.base.report is not None
+                    "before": filtered_comparison.project_coverage_base.report.totals
+                    if filtered_comparison.project_coverage_base.report is not None
                     else None,
                     "after": filtered_comparison.head.report.totals,
                     "diff": filtered_comparison.head.report.apply_diff(

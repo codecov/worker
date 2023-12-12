@@ -35,7 +35,7 @@ class HipchatNotifier(RequestsYamlBasedNotifier):
         comparison_dict = self.generate_compare_dict(comparison)
         if self.notifier_yaml_settings.get("card"):
             compare = []
-            if comparison.base.report is not None:
+            if comparison.project_coverage_base.report is not None:
                 compare = [
                     {
                         "label": "Compare",

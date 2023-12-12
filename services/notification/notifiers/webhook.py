@@ -45,7 +45,7 @@ class WebhookNotifier(RequestsYamlBasedNotifier):
 
     def build_payload(self, comparison: Comparison):
         head_full_commit = comparison.head
-        base_full_commit = comparison.base
+        base_full_commit = comparison.project_coverage_base
         pull = comparison.pull
         head_commit = head_full_commit.commit
         repository = head_commit.repository

@@ -338,28 +338,30 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         #
         # For now, fix this for the patch-coverage-focused team plan and avoid
         # maybe perturbing anything for project coverage. For other plans, set
-        # `original_base_commitid` to the adjusted base commitid.
+        # `patch_coverage_base_commitid` to the adjusted base commitid.
         # Follow-up: https://github.com/codecov/engineering-team/issues/887
         plan = commit.repository.owner.plan
         pull = enriched_pull.database_pull if enriched_pull else None
 
         if pull and plan in (BillingPlan.team_monthly, BillingPlan.team_yearly):
-            original_base_commitid = pull.base
+            patch_coverage_base_commitid = pull.base
         elif base_commit is not None:
-            original_base_commitid = base_commit.commitid
+            patch_coverage_base_commitid = base_commit.commitid
         else:
             log.warning(
                 "Neither the original nor updated base commit are known",
                 extra=dict(repoid=commit.repository.repoid, commit=commit.commitid),
             )
-            original_base_commitid = None
+            patch_coverage_base_commitid = None
 
         comparison = ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=commit, report=head_report),
                 enriched_pull=enriched_pull,
-                base=FullCommit(commit=base_commit, report=base_report),
-                original_base_commitid=original_base_commitid,
+                project_coverage_base=FullCommit(
+                    commit=base_commit, report=base_report
+                ),
+                patch_coverage_base_commitid=patch_coverage_base_commitid,
                 current_yaml=current_yaml,
             )
         )

@@ -179,8 +179,8 @@ class NotificationService(object):
             f"Notifying with decoration type {self.decoration_type}",
             extra=dict(
                 head_commit=comparison.head.commit.commitid,
-                base_commit=comparison.base.commit.commitid
-                if comparison.base.commit is not None
+                base_commit=comparison.project_coverage_base.commit.commitid
+                if comparison.project_coverage_base.commit is not None
                 else "NO_BASE",
                 repoid=comparison.head.commit.repoid,
             ),
@@ -204,7 +204,7 @@ class NotificationService(object):
         self, notifier, comparison
     ) -> NotificationResult:
         commit = comparison.head.commit
-        base_commit = comparison.base.commit
+        base_commit = comparison.project_coverage_base.commit
         log.info(
             "Attempting individual notification",
             extra=dict(

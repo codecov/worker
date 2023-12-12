@@ -15,14 +15,14 @@ def make_sample_comparison(adjusted_base=False):
 
     if adjusted_base:
         # Just getting a random commitid, doesn't need to be in the db
-        original_base_commitid = CommitFactory.create(repository=repo).commitid
+        patch_coverage_base_commitid = CommitFactory.create(repository=repo).commitid
     else:
-        original_base_commitid = adjusted_base_commit.commitid
+        patch_coverage_base_commitid = adjusted_base_commit.commitid
 
     pull = PullFactory.create(
         repository=repo,
         head=head_commit.commitid,
-        base=original_base_commitid,
+        base=patch_coverage_base_commitid,
         compared_to=adjusted_base_commit.commitid,
     )
 
@@ -31,8 +31,8 @@ def make_sample_comparison(adjusted_base=False):
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
-            original_base_commitid=original_base_commitid,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=patch_coverage_base_commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={},
@@ -56,13 +56,13 @@ class TestComparisonProxy(object):
         assert comparison._adjusted_base_diff == "magic string"
         assert not comparison._original_base_diff
         assert (
-            comparison.comparison.original_base_commitid
-            != comparison.base.commit.commitid
+            comparison.comparison.patch_coverage_base_commitid
+            != comparison.project_coverage_base.commit.commitid
         )
 
         assert mock_get_compare.call_args_list == [
             call(
-                comparison.base.commit.commitid,
+                comparison.project_coverage_base.commit.commitid,
                 comparison.head.commit.commitid,
                 with_commits=False,
             ),
@@ -79,13 +79,13 @@ class TestComparisonProxy(object):
         assert comparison._original_base_diff == "magic string"
         assert not comparison._adjusted_base_diff
         assert (
-            comparison.comparison.original_base_commitid
-            != comparison.base.commit.commitid
+            comparison.comparison.patch_coverage_base_commitid
+            != comparison.project_coverage_base.commit.commitid
         )
 
         assert mock_get_compare.call_args_list == [
             call(
-                comparison.comparison.original_base_commitid,
+                comparison.comparison.patch_coverage_base_commitid,
                 comparison.head.commit.commitid,
                 with_commits=False,
             ),
@@ -101,8 +101,8 @@ class TestComparisonProxy(object):
         assert result == "magic string"
         assert comparison._original_base_diff == "magic string"
         assert (
-            comparison.comparison.original_base_commitid
-            == comparison.base.commit.commitid
+            comparison.comparison.patch_coverage_base_commitid
+            == comparison.project_coverage_base.commit.commitid
         )
 
         # In this test case, the adjusted and original base commits are the
@@ -113,7 +113,7 @@ class TestComparisonProxy(object):
         # Make sure we only called the Git provider API once
         assert mock_get_compare.call_args_list == [
             call(
-                comparison.comparison.original_base_commitid,
+                comparison.comparison.patch_coverage_base_commitid,
                 comparison.head.commit.commitid,
                 with_commits=False,
             ),
@@ -129,8 +129,8 @@ class TestComparisonProxy(object):
         assert result == "magic string"
         assert comparison._adjusted_base_diff == "magic string"
         assert (
-            comparison.comparison.original_base_commitid
-            == comparison.base.commit.commitid
+            comparison.comparison.patch_coverage_base_commitid
+            == comparison.project_coverage_base.commit.commitid
         )
 
         # In this test case, the adjusted and original base commits are the
@@ -141,7 +141,7 @@ class TestComparisonProxy(object):
         # Make sure we only called the Git provider API once
         assert mock_get_compare.call_args_list == [
             call(
-                comparison.comparison.original_base_commitid,
+                comparison.comparison.patch_coverage_base_commitid,
                 comparison.head.commit.commitid,
                 with_commits=False,
             ),
