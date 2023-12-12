@@ -155,6 +155,17 @@ def process_raw_upload(
                     make_sure_label_indexes_match(temporary_report, report)
                 temporary_report.merge(report, joined=True)
             path_fixer_to_use.log_abnormalities()
+
+    actual_path_fixes = {
+        after: before
+        for (after, before) in path_fixer.calculated_paths.items()
+        if after is not None
+    }
+    if len(actual_path_fixes) > 0:
+        log.info(
+            "Example path fixes for this raw upload",
+            extra={"fixes": actual_path_fixes.items()},
+        )
     _possibly_log_pathfixer_unusual_results(path_fixer, sessionid)
     if not temporary_report:
         raise ReportEmptyError("No files found in report.")
