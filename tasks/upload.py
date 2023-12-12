@@ -39,7 +39,7 @@ from services.yaml import save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 from tasks.upload_finisher import upload_finisher_task
-from tasks.upload_processor import upload_processor_task
+from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, upload_processor_task
 
 log = logging.getLogger(__name__)
 
@@ -72,7 +72,10 @@ class UploadContext:
     def lock_name(self, lock_type: str):
         if self.report_type == ReportType.COVERAGE:
             # for backward compat this does not include the report type
-            return f"{lock_type}_lock_{self.repoid}_{self.commitid}"
+            if lock_type == "upload_processing":
+                return UPLOAD_PROCESSING_LOCK_NAME(self.repoid, self.commitid)
+            else:
+                return f"{lock_type}_lock_{self.repoid}_{self.commitid}"
         else:
             return f"{lock_type}_lock_{self.repoid}_{self.commitid}_{self.report_type.value}"
 
@@ -233,11 +236,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         *args,
         **kwargs,
     ):
-        # If we're a retry, kwargs will already have our first checkpoint.
-        # If not, log it directly into kwargs so we can pass it onto other tasks
-        checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs).log(
-            UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
-        )
+        # TODO: setup checkpoint flows for other coverage types
+        if report_type == "coverage":
+            # If we're a retry, kwargs will already have our first checkpoint.
+            # If not, log it directly into kwargs so we can pass it onto other tasks
+            checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs).log(
+                UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
+            )
 
         repoid = int(repoid)
         log.info(

@@ -35,6 +35,7 @@ from services.repository import (
 )
 from services.yaml import get_current_yaml, read_yaml_field
 from tasks.base import BaseCodecovTask
+from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME
 
 log = logging.getLogger(__name__)
 
@@ -314,7 +315,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             repoid (int): The repoid of the commit
             commitid (str): The commitid of the commit
         """
-        upload_processing_lock_name = f"upload_processing_lock_{repoid}_{commitid}"
+        upload_processing_lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
         if redis_connection.get(upload_processing_lock_name):
             return True
         return False

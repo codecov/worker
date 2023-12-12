@@ -284,9 +284,14 @@ class LabelAnalysisRequestProcessingTask(
             global_level_labels,
         ) = self.get_executable_lines_labels(report, lines_relevant_to_diff)
 
-        test_label = all_report_labels.pop()
-        are_labels_encoded = type(test_label) == int
-        all_report_labels.add(test_label)
+        if len(all_report_labels) > 0:
+            # Check if report labels are encoded or not
+            test_label = all_report_labels.pop()
+            are_labels_encoded = type(test_label) == int
+            all_report_labels.add(test_label)
+        else:
+            # There are no labels in the report
+            are_labels_encoded = False
 
         class_to_use = (
             ExistingLabelSetsEncoded
