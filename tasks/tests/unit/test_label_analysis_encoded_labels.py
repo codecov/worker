@@ -1,21 +1,24 @@
 import json
 
 import pytest
-from mock import patch
+from mock import MagicMock, patch
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
 
 from database.models.labelanalysis import LabelAnalysisRequest
 from database.tests.factories import RepositoryFactory
+from database.tests.factories.core import ReportFactory
 from database.tests.factories.labelanalysis import LabelAnalysisRequestFactory
 from database.tests.factories.staticanalysis import (
     StaticAnalysisSingleFileSnapshotFactory,
     StaticAnalysisSuiteFactory,
     StaticAnalysisSuiteFilepathFactory,
 )
+from helpers.labels import SpecialLabelsEnum
 from services.report import ReportService
 from services.static_analysis import StaticAnalysisComparisonService
 from tasks.label_analysis import (
+    ExistingLabelSetsNotEncoded,
     LabelAnalysisRequestProcessingTask,
     LabelAnalysisRequestState,
 )
@@ -218,6 +221,18 @@ sample_base_static_analysis_dict = {
 @pytest.fixture
 def sample_report_with_labels():
     r = Report()
+    report_labels_index = {
+        0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
+        1: "apple",
+        2: "label_one",
+        3: "pineapple",
+        4: "banana",
+        5: "orangejuice",
+        6: "justjuice",
+        7: "whatever",
+        8: "here",
+        9: "applejuice",
+    }
     first_rf = ReportFile("source.py")
     first_rf.append(
         5,
@@ -237,7 +252,7 @@ def sample_report_with_labels():
                     sessionid=1,
                     coverage=1,
                     coverage_type=None,
-                    label_ids=["apple", "label_one", "pineapple", "banana"],
+                    label_ids=[1, 2, 3, 4],
                 )
             ],
             complexity=None,
@@ -261,7 +276,7 @@ def sample_report_with_labels():
                     sessionid=1,
                     coverage=1,
                     coverage_type=None,
-                    label_ids=["label_one", "pineapple", "banana"],
+                    label_ids=[2, 3, 4],
                 )
             ],
             complexity=None,
@@ -285,7 +300,7 @@ def sample_report_with_labels():
                     sessionid=1,
                     coverage=1,
                     coverage_type=None,
-                    label_ids=["banana"],
+                    label_ids=[4],
                 )
             ],
             complexity=None,
@@ -309,13 +324,13 @@ def sample_report_with_labels():
                     sessionid=1,
                     coverage=1,
                     coverage_type=None,
-                    label_ids=["banana"],
+                    label_ids=[4],
                 ),
                 CoverageDatapoint(
                     sessionid=5,
                     coverage=1,
                     coverage_type=None,
-                    label_ids=["orangejuice"],
+                    label_ids=[5],
                 ),
             ],
             complexity=None,
@@ -339,7 +354,7 @@ def sample_report_with_labels():
                     sessionid=5,
                     coverage=1,
                     coverage_type=None,
-                    label_ids=["justjuice"],
+                    label_ids=[6],
                 ),
             ],
             complexity=None,
@@ -363,13 +378,13 @@ def sample_report_with_labels():
                     sessionid=1,
                     coverage=1,
                     coverage_type=None,
-                    label_ids=["label_one", "pineapple", "banana"],
+                    label_ids=[2, 3, 4],
                 ),
                 CoverageDatapoint(
                     sessionid=5,
                     coverage=1,
                     coverage_type=None,
-                    label_ids=["Th2dMtk4M_codecov", "applejuice"],
+                    label_ids=[0, 9],
                 ),
             ],
             complexity=None,
@@ -394,7 +409,7 @@ def sample_report_with_labels():
                     sessionid=1,
                     coverage=1,
                     coverage_type=None,
-                    label_ids=["whatever", "here"],
+                    label_ids=[7, 8],
                 )
             ],
             complexity=None,
@@ -414,7 +429,7 @@ def sample_report_with_labels():
     r.append(first_rf)
     r.append(second_rf)
     r.append(random_rf)
-
+    r.labels_index = report_labels_index
     return r
 
 
@@ -483,6 +498,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     dbsession.flush()
 
     task = LabelAnalysisRequestProcessingTask()
+    assert sample_report_with_labels.labels_index is not None
     res = await task.run_async(dbsession, larf.id)
     expected_present_report_labels = [
         "apple",
@@ -508,6 +524,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     }
     assert res == expected_result
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
+    # It's zero because the report has the _labels_index already
     dbsession.flush()
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id
@@ -566,6 +583,7 @@ async def test_simple_call_with_requested_labels(
     larf = LabelAnalysisRequestFactory.create(
         requested_labels=["tangerine", "pear", "banana", "apple"]
     )
+    ReportFactory(commit=larf.base_commit)
     dbsession.add(larf)
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
@@ -642,15 +660,15 @@ def test_get_executable_lines_labels_all_labels(sample_report_with_labels):
         sample_report_with_labels, executable_lines
     ) == (
         {
-            "banana",
-            "justjuice",
-            "here",
-            "pineapple",
-            "applejuice",
-            "apple",
-            "whatever",
-            "label_one",
-            "orangejuice",
+            4,
+            6,
+            8,
+            3,
+            9,
+            1,
+            7,
+            2,
+            5,
         },
         set(),
     )
@@ -666,15 +684,15 @@ def test_get_executable_lines_labels_all_labels_in_one_file(sample_report_with_l
         sample_report_with_labels, executable_lines
     ) == (
         {
-            "apple",
-            "justjuice",
-            "applejuice",
-            "label_one",
-            "banana",
-            "orangejuice",
-            "pineapple",
+            1,
+            6,
+            9,
+            2,
+            4,
+            5,
+            3,
         },
-        {"orangejuice", "justjuice", "applejuice"},
+        {5, 6, 9},
     )
 
 
@@ -687,7 +705,7 @@ def test_get_executable_lines_labels_some_labels_in_one_file(sample_report_with_
     assert task.get_executable_lines_labels(
         sample_report_with_labels, executable_lines
     ) == (
-        {"apple", "label_one", "pineapple", "banana"},
+        {1, 2, 3, 4},
         set(),
     )
 
@@ -703,8 +721,8 @@ def test_get_executable_lines_labels_some_labels_in_one_file_with_globals(
     assert task.get_executable_lines_labels(
         sample_report_with_labels, executable_lines
     ) == (
-        {"label_one", "pineapple", "banana", "orangejuice", "applejuice"},
-        {"applejuice", "justjuice", "orangejuice"},
+        {2, 3, 4, 5, 9},
+        {9, 6, 5},
     )
 
 
@@ -722,7 +740,7 @@ def test_get_executable_lines_labels_some_labels_in_one_file_other_null(
     assert task.get_executable_lines_labels(
         sample_report_with_labels, executable_lines
     ) == (
-        {"apple", "label_one", "pineapple", "banana"},
+        {1, 2, 3, 4},
         set(),
     )
 
@@ -730,18 +748,18 @@ def test_get_executable_lines_labels_some_labels_in_one_file_other_null(
 def test_get_all_labels_one_session(sample_report_with_labels):
     task = LabelAnalysisRequestProcessingTask()
     assert task.get_labels_per_session(sample_report_with_labels, 1) == {
-        "apple",
-        "banana",
-        "here",
-        "label_one",
-        "pineapple",
-        "whatever",
+        1,
+        4,
+        8,
+        2,
+        3,
+        7,
     }
     assert task.get_labels_per_session(sample_report_with_labels, 2) == set()
     assert task.get_labels_per_session(sample_report_with_labels, 5) == {
-        "orangejuice",
-        "justjuice",
-        "applejuice",
+        5,
+        6,
+        9,
     }
 
 
@@ -972,3 +990,27 @@ async def test__get_lines_relevant_to_diff_error(
     assert lines == None
     mock_parse_diff.assert_called_with(larq)
     mock_get_relevant_lines.assert_not_called()
+
+
+@patch(
+    "tasks.label_analysis.LabelAnalysisRequestProcessingTask.get_all_report_labels",
+    return_value=set(),
+)
+@patch(
+    "tasks.label_analysis.LabelAnalysisRequestProcessingTask.get_executable_lines_labels",
+    return_value=(set(), set()),
+)
+def test___get_existing_labels_no_labels_in_report(
+    mock_get_executable_lines_labels, mock_get_all_report_labels
+):
+    report = MagicMock(name="fake_report")
+    lines_relevant = MagicMock(name="fake_lines_relevant_to_diff")
+    task = LabelAnalysisRequestProcessingTask()
+    res = task._get_existing_labels(report, lines_relevant)
+    expected = ExistingLabelSetsNotEncoded(
+        all_report_labels=set(),
+        executable_lines_labels=set(),
+        global_level_labels=set(),
+    )
+    assert isinstance(res, ExistingLabelSetsNotEncoded)
+    assert res == expected

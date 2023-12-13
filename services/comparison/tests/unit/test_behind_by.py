@@ -24,7 +24,7 @@ class TestGetBehindBy(object):
     @pytest.mark.asyncio
     async def test_get_behind_by_no_base_commit(self, mocker):
         comparison = ComparisonProxy(mocker.MagicMock())
-        del comparison.comparison.base.commit.commitid
+        del comparison.comparison.project_coverage_base.commit.commitid
         res = await comparison.get_behind_by()
         assert res is None
 

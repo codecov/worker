@@ -15,7 +15,7 @@ class TestWebhookNotifier(object):
         )
         dbsession.add(repository)
         dbsession.flush()
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         pull = sample_comparison.pull
         dbsession.add(base_commit)
@@ -75,7 +75,7 @@ class TestWebhookNotifier(object):
         )
 
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "codecov.io"
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         pull = sample_comparison.pull
         dbsession.add(base_commit)
@@ -181,7 +181,7 @@ class TestWebhookNotifier(object):
         )
         dbsession.add(repository)
         dbsession.flush()
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         pull = sample_comparison.pull
         dbsession.add(base_commit)
@@ -304,7 +304,7 @@ class TestWebhookNotifier(object):
         )
         dbsession.add(repository)
         dbsession.flush()
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         pull = sample_comparison.pull
         dbsession.add(base_commit)
@@ -424,7 +424,7 @@ class TestWebhookNotifier(object):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_pull
         commit = sample_comparison_without_pull.head.commit
-        base_commit = comparison.base.commit
+        base_commit = comparison.project_coverage_base.commit
         head_commit = comparison.head.commit
         repository = commit.repository
         notifier = WebhookNotifier(
@@ -541,7 +541,7 @@ class TestWebhookNotifier(object):
         )
         result = notifier.build_payload(comparison)
         head_commit = comparison.head.commit
-        base_commit = comparison.base.commit
+        base_commit = comparison.project_coverage_base.commit
         pull = comparison.pull
         expected_result = {
             "repo": {

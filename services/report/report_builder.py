@@ -1,7 +1,7 @@
 import dataclasses
 import logging
-import typing
 from enum import Enum
+from typing import Callable, List, Union
 
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
@@ -26,11 +26,15 @@ class CoverageType(Enum):
 
 
 class ReportBuilderSession(object):
-    def __init__(self, report_builder, report_filepath):
+    def __init__(
+        self, report_builder, report_filepath, should_use_label_index: bool = False
+    ):
         self._report_builder = report_builder
         self._report_filepath = report_filepath
         self._report = Report()
+        self.label_index = {}
         self._present_labels = set()
+        self.should_use_label_index = should_use_label_index
 
     @property
     def file_class(self):
@@ -66,13 +70,15 @@ class ReportBuilderSession(object):
         return self._report.get(filename)
 
     def append(self, file):
-        if file is not None:
-            for line_number, line in file.lines:
-                if line.datapoints:
-                    for datapoint in line.datapoints:
-                        if datapoint.labels:
-                            for label in datapoint.labels:
-                                self._present_labels.add(label)
+        if not self.should_use_label_index:
+            # TODO: [codecov/engineering-team#869] This behavior can be removed after label indexing is rolled out for all customers
+            if file is not None:
+                for line_number, line in file.lines:
+                    if line.datapoints:
+                        for datapoint in line.datapoints:
+                            if datapoint.label_ids:
+                                for label in datapoint.label_ids:
+                                    self._present_labels.add(label)
         return self._report.append(file)
 
     def output_report(self) -> Report:
@@ -84,21 +90,33 @@ class ReportBuilderSession(object):
         Returns:
             Report: The legacy report desired
         """
-        if self._present_labels:
-            if self._present_labels == {
-                SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
-            }:
-                log.warning(
-                    "Report only has SpecialLabels. Might indicate it was not generated with contexts"
-                )
-            for file in self._report:
-                for line_number, line in file.lines:
-                    self._possibly_modify_line_to_account_for_special_labels(
-                        file, line_number, line
+        if self.should_use_label_index:
+            if len(self.label_index) > 0:
+                if len(self.label_index) == 1 and self.label_index.values() == [
+                    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
+                ]:
+                    log.warning(
+                        "Report only has SpecialLabels. Might indicate it was not generated with contexts"
                     )
-            self._report._totals = None
+                self._report._totals = None
+                self._report.labels_index = self.label_index
+        else:
+            if self._present_labels:
+                if self._present_labels and self._present_labels == {
+                    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
+                }:
+                    log.warning(
+                        "Report only has SpecialLabels. Might indicate it was not generated with contexts"
+                    )
+                for file in self._report:
+                    for line_number, line in file.lines:
+                        self._possibly_modify_line_to_account_for_special_labels(
+                            file, line_number, line
+                        )
+                self._report._totals = None
         return self._report
 
+    # TODO: [codecov/engineering-team#869] This behavior can be removed after label indexing is rolled out for all customers
     def _possibly_modify_line_to_account_for_special_labels(
         self, file: ReportFile, line_number: int, line: ReportLine
     ) -> None:
@@ -133,18 +151,19 @@ class ReportBuilderSession(object):
                 )
                 file._totals = None
 
+    # TODO: This can be removed after label indexing is rolled out for all customers
     def _possibly_convert_datapoints(
         self, datapoint: CoverageDatapoint
-    ) -> typing.List[CoverageDatapoint]:
+    ) -> List[CoverageDatapoint]:
         """Possibly convert datapoints
             The datapoint that might need to be converted
 
         Args:
             datapoint (CoverageDatapoint): The datapoint to convert
         """
-        if datapoint.labels and any(
+        if datapoint.label_ids and any(
             label == SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
-            for label in datapoint.labels
+            for label in datapoint.label_ids
         ):
             new_label = (
                 SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
@@ -152,11 +171,11 @@ class ReportBuilderSession(object):
             return [
                 dataclasses.replace(
                     datapoint,
-                    labels=sorted(
+                    label_ids=sorted(
                         set(
                             [
                                 label
-                                for label in datapoint.labels
+                                for label in datapoint.label_ids
                                 if label
                                 != SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
                             ]
@@ -173,21 +192,29 @@ class ReportBuilderSession(object):
         coverage,
         *,
         coverage_type: CoverageType,
-        labels_list_of_lists: typing.List[typing.Union[str, SpecialLabelsEnum]] = None,
+        labels_list_of_lists: Union[
+            List[Union[str, SpecialLabelsEnum]], List[int]
+        ] = None,
         partials=None,
         missing_branches=None,
         complexity=None
     ) -> ReportLine:
         coverage_type_str = coverage_type.map_to_string()
+        if labels_list_of_lists is not None:
+            # Removes empty lists from the lists of labels
+            # To avoid datapoints with no labels.
+            labels_list_of_lists = list(filter(None, labels_list_of_lists))
         datapoints = (
             [
                 CoverageDatapoint(
                     sessionid=self.sessionid,
                     coverage=coverage,
                     coverage_type=coverage_type_str,
-                    labels=labels,
+                    label_ids=label_ids,
                 )
-                for labels in (labels_list_of_lists or [[]])
+                # TODO [codecov/engineering-team#885]: Putting the default as [[]] causes datapoints with no labels
+                # This seems stupid. We should investigate if that can be removed.
+                for label_ids in (labels_list_of_lists or [[]])
             ]
             if self._report_builder.supports_labels()
             else None
@@ -217,12 +244,14 @@ class ReportBuilder(object):
         current_yaml: UserYaml,
         sessionid: int,
         ignored_lines,
-        path_fixer: typing.Callable,
+        path_fixer: Callable,
+        should_use_label_index: bool = False,
     ):
         self.current_yaml = current_yaml
         self.sessionid = sessionid
         self.ignored_lines = ignored_lines
         self.path_fixer = path_fixer
+        self.shoud_use_label_index = should_use_label_index
 
     @property
     def repo_yaml(self) -> UserYaml:
@@ -230,9 +259,12 @@ class ReportBuilder(object):
         return self.current_yaml
 
     def create_report_builder_session(self, filepath) -> ReportBuilderSession:
-        return ReportBuilderSession(self, filepath)
+        return ReportBuilderSession(self, filepath, self.shoud_use_label_index)
 
     def supports_labels(self) -> bool:
+        """Returns wether a report supports labels.
+        This is true if the client has configured some flag with carryforward_mode == "labels"
+        """
         if self.current_yaml is None or self.current_yaml == {}:
             return False
         old_flag_style = self.current_yaml.get("flags")

@@ -367,7 +367,8 @@ def create_sample_comparison(dbsession, request, sample_report, mocker):
         return ComparisonProxy(
             Comparison(
                 head=head_full_commit,
-                base=base_full_commit,
+                project_coverage_base=base_full_commit,
+                patch_coverage_base_commitid=base_commit.commitid,
                 enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
             )
         )
@@ -410,7 +411,8 @@ def sample_comparison(dbsession, request, sample_report, mocker):
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -467,7 +469,8 @@ async def sample_comparison_coverage_carriedforward(
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -520,7 +523,8 @@ def sample_comparison_negative_change(dbsession, request, sample_report, mocker)
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -573,7 +577,8 @@ def sample_comparison_no_change(dbsession, request, sample_report, mocker):
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -624,7 +629,8 @@ def sample_comparison_without_pull(dbsession, request, sample_report, mocker):
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(database_pull=None, provider_pull=None),
         )
     )
@@ -664,7 +670,8 @@ def sample_comparison_database_pull_without_provider(
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(database_pull=pull, provider_pull=None),
         )
     )
@@ -696,7 +703,8 @@ def generate_sample_comparison(username, dbsession, base_report, head_report):
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -748,7 +756,8 @@ def sample_comparison_without_base_report(dbsession, request, sample_report, moc
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -805,7 +814,8 @@ def sample_comparison_without_base_with_pull(dbsession, request, sample_report, 
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid="cdf9aa4bd2c6bcd8a662864097cb62a85a2fd55b",
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -871,7 +881,8 @@ def sample_comparison_head_and_pull_head_differ(
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={

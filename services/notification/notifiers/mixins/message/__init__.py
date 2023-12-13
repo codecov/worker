@@ -38,9 +38,9 @@ class MessageMixin(object):
 
         """
         changes = await comparison.get_changes()
-        diff = await comparison.get_diff()
+        diff = await comparison.get_diff(use_original_base=True)
         behind_by = await comparison.get_behind_by()
-        base_report = comparison.base.report
+        base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         pull = comparison.pull
 
@@ -51,8 +51,8 @@ class MessageMixin(object):
 
         links = {
             "pull": get_pull_url(pull),
-            "base": get_commit_url(comparison.base.commit)
-            if comparison.base.commit is not None
+            "base": get_commit_url(comparison.project_coverage_base.commit)
+            if comparison.project_coverage_base.commit is not None
             else None,
         }
 
@@ -209,7 +209,7 @@ class MessageMixin(object):
         sections = list(map(lambda l: l.strip(), (settings["layout"] or "").split(",")))
         headers = ["newheader", "header", "condensed_header"]
         if all(not x in sections for x in headers):
-            sections.insert(0, "header")
+            sections.insert(0, "condensed_header")
 
         return [
             section

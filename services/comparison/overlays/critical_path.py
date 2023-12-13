@@ -18,7 +18,7 @@ def _get_latest_profiling_commit(comparison):
     return (
         db_session.query(ProfilingCommit)
         .filter(
-            ProfilingCommit.repoid == comparison.base.commit.repoid,
+            ProfilingCommit.repoid == comparison.project_coverage_base.commit.repoid,
             ~ProfilingCommit.summarized_location.is_(None),
             ~ProfilingCommit.last_summarized_at.is_(None),
         )
@@ -125,7 +125,7 @@ class CriticalPathOverlay(object):
             return None
         diff = rustify_diff(await self._comparison.get_diff())
         return self.full_analyzer.find_impacted_endpoints(
-            self._comparison.base.report.rust_report.get_report(),
+            self._comparison.project_coverage_base.report.rust_report.get_report(),
             self._comparison.head.report.rust_report.get_report(),
             diff,
         )

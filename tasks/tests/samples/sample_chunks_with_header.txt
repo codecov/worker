@@ -1,0 +1,54 @@
+{"labels_index": {"0": "Th2dMtk4M_codecov", "1": "core/tests/test_menu_interface.py::TestMenuInterface::test_init", "2": "core/tests/test_main.py::TestMainMenu::test_init_values", "3": "core/tests/test_main.py::TestMainMenu::test_invalid_menu_choice", "4": "core/tests/test_menu_interface.py::TestMenuInterface::test_menu_options", "5": "core/tests/test_menu_interface.py::TestMenuInterface::test_set_loop", "6": "core/tests/test_main.py::TestMainMenu::test_menu_choice_emotions", "7": "core/tests/test_menu_interface.py::TestMenuInterface::test_name", "8": "core/tests/test_menu_interface.py::TestMenuInterface::test_parent", "9": "core/tests/test_main.py::TestMainMenu::test_menu_choice_fruits", "10": "core/tests/test_main.py::TestMainMenu::test_menu_options"}}
+<<<<< end_of_header >>>>>
+{"present_sessions":[0]}
+[0, null, [[0, 0]], null, null, [[0, 0, null, []]]]
+
+[0, null, [[0, 0]], null, null, [[0, 0, null, []]]]
+[0, null, [[0, 0]], null, null, [[0, 0, null, []]]]
+[0, null, [[0, 0]], null, null, [[0, 0, null, []]]]
+<<<<< end_of_chunk >>>>>
+{"present_sessions":[0]}
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]]]
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [1, 3, 5, 6, 9]]]]
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [1, 2, 8]]]]
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [1, 2, 7]]]]
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [3, 5, 6, 9]]]]
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [3, 4, 6, 9, 10]]]]
+[1, null, [[0, 1]], null, null, [[0, 1, null, [4]]]]
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [3, 4, 6, 9, 10]]]]
+
+[1, null, [[0, 1]], null, null, [[0, 1, null, [0]]]]
+[0, null, [[0, 0]], null, null, [[0, 0, null, []]]]

@@ -58,7 +58,8 @@ def codecove2e_comparison(dbsession, request, sample_report, small_report):
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -120,7 +121,8 @@ def sample_comparison(dbsession, request, sample_report, small_report):
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -183,7 +185,8 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -245,7 +248,8 @@ def sample_comparison_for_upgrade(dbsession, request, sample_report, small_repor
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -305,7 +309,8 @@ def sample_comparison_for_limited_upload(
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(
                 database_pull=pull,
                 provider_pull={
@@ -350,9 +355,9 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
-            "> Merging [#9](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) (5601846) into [main](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) (5b174c2) will **increase** coverage by `10.00%`.",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "> Comparison is base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 50.00% compared to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 60.00%.",
             "> Report is 2 commits behind head on main.",
-            "> The diff coverage is `n/a`.",
             "",
             ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
             "",
@@ -496,8 +501,8 @@ class TestCommentNotifierIntegration(object):
         assert result.explanation is None
         message = [
             "## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=h1) Report",
-            "> Merging [#1](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=desc) (0b6a213) into [main](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?el=desc) (0fc784a) will **increase** coverage by `10.00%`.",
-            "> The diff coverage is `n/a`.",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "> Comparison is base [(`0fc784a`)](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?el=desc) 50.00% compared to head [(`0b6a213`)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=desc) 60.00%.",
             "",
             "[![Impacted file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=tree)",
             "",

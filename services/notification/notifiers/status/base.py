@@ -105,9 +105,6 @@ class StatusNotifier(AbstractBaseNotifier):
             len(report_uploaded_flags.intersection(flags_included_in_status_check)) > 0
         )
 
-    async def get_diff(self, comparison: Comparison):
-        return await comparison.get_diff()
-
     @property
     def repository_service(self):
         if not self._repository_service:
@@ -265,7 +262,11 @@ class StatusNotifier(AbstractBaseNotifier):
     async def maybe_send_notification(
         self, comparison: Comparison, payload: dict
     ) -> NotificationResult:
-        base_commit = comparison.base.commit if comparison.base else None
+        base_commit = (
+            comparison.project_coverage_base.commit
+            if comparison.project_coverage_base
+            else None
+        )
         head_commit = comparison.head.commit if comparison.head else None
 
         cache_key = make_hash_sha256(

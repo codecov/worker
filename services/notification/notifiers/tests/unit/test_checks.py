@@ -198,7 +198,9 @@ def comparison_with_multiple_changes(sample_comparison):
     second_unrelated_file.append(16, ReportLine.create(coverage=1))
     second_unrelated_file.append(32, ReportLine.create(coverage=0))
     second_report.append(second_unrelated_file)
-    sample_comparison.base.report = ReadOnlyReport.create_from_report(first_report)
+    sample_comparison.project_coverage_base.report = ReadOnlyReport.create_from_report(
+        first_report
+    )
     sample_comparison.head.report = ReadOnlyReport.create_from_report(second_report)
     return sample_comparison
 
@@ -824,7 +826,7 @@ class TestPatchChecksNotifier(object):
         third_file.append(101, ReportLine.create(coverage=1, sessions=[[0, 1]]))
         third_file.append(102, ReportLine.create(coverage=1, sessions=[[0, 1]]))
         third_file.append(103, ReportLine.create(coverage=1, sessions=[[0, 1]]))
-        sample_comparison.base.report.append(third_file)
+        sample_comparison.project_coverage_base.report.append(third_file)
         notifier = PatchChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="default",
@@ -943,7 +945,7 @@ class TestPatchChecksNotifier(object):
         )
         assert notifier.is_enabled()
         notifier.name
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         expected_result = {
             "state": "success",
@@ -1058,7 +1060,7 @@ class TestPatchChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         result = await notifier.notify(sample_comparison)
         assert result.notification_successful == True
@@ -1352,7 +1354,7 @@ class TestProjectChecksNotifier(object):
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "codecov.io"
         repo = sample_comparison.head.commit.repository
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         payload = {
             "state": "success",
@@ -1362,7 +1364,7 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        f"> Merging [#{sample_comparison.pull.pullid}](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](codecov.io/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+                        f"> Merging [#{sample_comparison.pull.pullid}](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](codecov.io/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
                         f"> The diff coverage is `66.67%`.",
                         f"",
                         f"| [Files](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
@@ -1390,7 +1392,7 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) Report",
-                        f"> Merging [#{sample_comparison.pull.pullid}](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) ({head_commit.commitid[:7]}) into [master](codecov.io/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+                        f"> Merging [#{sample_comparison.pull.pullid}](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) ({head_commit.commitid[:7]}) into [master](codecov.io/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
                         f"> The diff coverage is `66.67%`.",
                         f"",
                         f"| [Files](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) | Coverage Δ | Complexity Δ | |",
@@ -1420,7 +1422,7 @@ class TestProjectChecksNotifier(object):
             current_yaml=UserYaml({}),
         )
         result = await notifier.build_payload(sample_comparison)
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             "state": "success",
             "output": {
@@ -1497,7 +1499,7 @@ class TestProjectChecksNotifier(object):
         )
         result = await notifier.build_payload(sample_comparison)
         repo = sample_comparison.head.commit.repository
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         expected_result = {
             "state": "success",
@@ -1507,8 +1509,9 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        f"> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
-                        f"> The diff coverage is `66.67%`.",
+                        "Attention: `1 lines` in your changes are missing coverage. Please review.",
+                        f"> Comparison is base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{base_commit.commitid}?el=desc) 50.00% compared to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) 60.00%."
+                        f"",
                         f"",
                         f"| [Files](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
                         f"|---|---|---|---|",
@@ -1539,7 +1542,7 @@ class TestProjectChecksNotifier(object):
         )
         result = await notifier.build_payload(sample_comparison)
         repo = sample_comparison.head.commit.repository
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         expected_result = {
             "state": "success",
@@ -1549,8 +1552,9 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        f"> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
-                        f"> The diff coverage is `66.67%`.",
+                        "Attention: `1 lines` in your changes are missing coverage. Please review.",
+                        f"> Comparison is base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{base_commit.commitid}?el=desc) 50.00% compared to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) 60.00%."
+                        f"",
                         f"",
                         f"| [Files](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
                         f"|---|---|---|---|",
@@ -1582,7 +1586,7 @@ class TestProjectChecksNotifier(object):
         )
         result = await notifier.build_payload(sample_comparison)
         repo = sample_comparison.head.commit.repository
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         expected_result = {
             "state": "success",
@@ -1592,8 +1596,8 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        f"> Merging [#{sample_comparison.pull.pullid}](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](test.example.br/gh/{test_name}/{repo.name}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
-                        f"> The diff coverage is `66.67%`.",
+                        "Attention: `1 lines` in your changes are missing coverage. Please review.",
+                        f"> Comparison is base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{base_commit.commitid}?el=desc) 50.00% compared to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) 60.00%.",
                         f"",
                         f"| [Files](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
                         f"|---|---|---|---|",
@@ -1631,7 +1635,7 @@ class TestProjectChecksNotifier(object):
         )
         result = await notifier.build_payload(sample_comparison)
         repo = sample_comparison.head.commit.repository
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             "state": "success",
             "output": {
@@ -1655,7 +1659,7 @@ class TestProjectChecksNotifier(object):
         )
         result = await notifier.build_payload(sample_comparison_negative_change)
         repo = sample_comparison_negative_change.head.commit.repository
-        base_commit = sample_comparison_negative_change.base.commit
+        base_commit = sample_comparison_negative_change.project_coverage_base.commit
         expected_result = {
             "state": "failure",
             "output": {
@@ -1735,7 +1739,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         result = await notifier.notify(sample_comparison)
         assert result.notification_successful == True
@@ -1770,7 +1774,7 @@ class TestProjectChecksNotifier(object):
             current_yaml=UserYaml({}),
         )
 
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         result = await notifier.notify(sample_comparison)
         assert result.notification_successful is True
@@ -1811,7 +1815,7 @@ class TestProjectChecksNotifier(object):
             current_yaml=UserYaml({}),
         )
 
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         result = await notifier.notify(sample_comparison)
         assert result.notification_successful == True
@@ -1845,7 +1849,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         result = await notifier.notify(sample_comparison)
         assert result.notification_successful == True
@@ -1879,7 +1883,9 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         head_commit = sample_comparison_coverage_carriedforward.head.commit
 
         expected_result = NotificationResult(
@@ -1923,7 +1929,9 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         head_commit = sample_comparison_coverage_carriedforward.head.commit
         expected_result = NotificationResult(
             notification_attempted=True,
@@ -1961,7 +1969,9 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         head_commit = sample_comparison_coverage_carriedforward.head.commit
 
         expected_result = NotificationResult(
@@ -2030,7 +2040,9 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         head_commit = sample_comparison_coverage_carriedforward.head.commit
 
         expected_result = NotificationResult(
@@ -2073,7 +2085,9 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         head_commit = sample_comparison_coverage_carriedforward.head.commit
 
         expected_result = NotificationResult(
@@ -2112,7 +2126,9 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         head_commit = sample_comparison_coverage_carriedforward.head.commit
 
         # should send the check as normal if there are no flags
@@ -2142,7 +2158,7 @@ class TestProjectChecksNotifier(object):
     async def test_build_payload_comments_true(
         self, sample_comparison, mock_configuration
     ):
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         notifier = ProjectChecksNotifier(
@@ -2165,7 +2181,7 @@ class TestProjectChecksNotifier(object):
     async def test_build_payload_comments_false(
         self, sample_comparison, mock_configuration
     ):
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         notifier = ProjectChecksNotifier(

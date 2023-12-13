@@ -39,7 +39,8 @@ def sample_comparison(dbsession, request):
     return ComparisonProxy(
         Comparison(
             head=head_full_commit,
-            base=base_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
             enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
         )
     )

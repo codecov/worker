@@ -32,6 +32,17 @@ regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]").search
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 FIRST_RETRY_DELAY = 20
 
+""" The upload_processing_lock.
+    Only a single processing task may possess this lock at a time, because merging
+    reports requires exclusive access to the report.
+
+    This is used by the Upload, Notify and UploadCleanLabelsIndex tasks as well to
+    verify if an upload for the commit is currently being processed.
+"""
+UPLOAD_PROCESSING_LOCK_NAME = (
+    lambda repoid, commitid: f"upload_processing_lock_{repoid}_{commitid}"
+)
+
 
 class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
     """This is the second task of the series of tasks designed to process an `upload` made
@@ -75,7 +86,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             "Received upload processor task",
             extra=dict(repoid=repoid, commit=commitid),
         )
-        lock_name = f"upload_processing_lock_{repoid}_{commitid}"
+        lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
         redis_connection = get_redis_connection()
         try:
             log.info(

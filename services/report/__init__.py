@@ -1,3 +1,4 @@
+import copy
 import itertools
 import logging
 import sys
@@ -22,6 +23,7 @@ from shared.torngit.exceptions import TorngitError
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
+from database.enums import ReportType
 from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
     AbstractTotals,
@@ -38,7 +40,7 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
-from helpers.labels import get_all_report_labels, get_labels_per_session
+from helpers.labels import get_labels_per_session
 from services.archive import ArchiveService
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
@@ -147,12 +149,20 @@ class ReportService(object):
         current_report_row = (
             db_session.query(CommitReport)
             .filter_by(commit_id=commit.id_, code=report_code)
+            .filter(
+                (CommitReport.report_type == None)
+                | (CommitReport.report_type == ReportType.COVERAGE.value)
+            )
             .first()
         )
         if not current_report_row:
             # This happens if the commit report is being created for the first time
             # or backfilled
-            current_report_row = CommitReport(commit_id=commit.id_, code=report_code)
+            current_report_row = CommitReport(
+                commit_id=commit.id_,
+                code=report_code,
+                report_type=ReportType.COVERAGE.value,
+            )
             db_session.add(current_report_row)
             db_session.flush()
             report_details = (
@@ -719,6 +729,17 @@ class ReportService(object):
                 paths_to_carryforward,
                 session_extras=dict(carriedforward_from=parent_commit.commitid),
             )
+            # If the parent report has labels we also need to carryforward the label index
+            # Considerations:
+            #   1. It's necessary for labels flags to be carryforward, so it's ok to carryforward the entire index
+            #   2. As tests are renamed the index might start to be filled with stale labels. This is not good.
+            #      but I'm unsure if we should try to clean it up at this point. Cleaning it up requires going through
+            #      all lines of the report. It will be handled by a dedicated task that is encoded by the UploadFinisher
+            #   3. We deepcopy the header so we can change them independently
+            #   4. The parent_commit always uses the default report to carryforward (i.e. report_code for parent_commit is None)
+            # parent_commit and commit should belong to the same repository
+            carryforward_report.header = copy.deepcopy(parent_report.header)
+
             await self._possibly_shift_carryforward_report(
                 carryforward_report, parent_commit, commit
             )

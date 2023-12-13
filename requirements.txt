@@ -88,7 +88,7 @@ distlib==0.3.7
     # via virtualenv
 distro==1.8.0
     # via openai
-django==4.2.6
+django==4.2.7
     # via shared
 django-admin==2.0.2
     # via -r requirements.in
@@ -173,6 +173,8 @@ idna==2.10
     #   requests
     #   rfc3986
     #   yarl
+ijson==3.2.3
+    # via shared
 importlib-metadata==6.8.0
     # via opentelemetry-api
 iniconfig==1.1.1
@@ -338,7 +340,7 @@ screen==1.0.1
     # via excel-base
 sentry-sdk==1.19.1
     # via -r requirements.in
-shared @ https://github.com/codecov/shared/archive/df99a86811ce35ef9fc44b746da379bd1a5cbb2d.tar.gz
+shared @ https://github.com/codecov/shared/archive/954a9ba17722f73f86f3d3bb3367f80d887fc800.tar.gz
     # via -r requirements.in
 six==1.15.0
     # via
@@ -358,6 +360,7 @@ sqlalchemy==1.3.23
     # via
     #   -r requirements.in
     #   pytest-sqlalchemy
+    #   shared
     #   sqlalchemy-utils
 sqlalchemy-utils==0.36.8
     # via
@@ -387,6 +390,7 @@ typing==3.7.4.3
     # via shared
 typing-extensions==4.6.3
     # via
+    #   asgiref
     #   openai
     #   opentelemetry-sdk
     #   pydantic

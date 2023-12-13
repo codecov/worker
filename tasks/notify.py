@@ -20,6 +20,7 @@ from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
+from services.billing import BillingPlan
 from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
@@ -34,6 +35,7 @@ from services.repository import (
 )
 from services.yaml import get_current_yaml, read_yaml_field
 from tasks.base import BaseCodecovTask
+from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME
 
 log = logging.getLogger(__name__)
 
@@ -313,7 +315,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             repoid (int): The repoid of the commit
             commitid (str): The commitid of the commit
         """
-        upload_processing_lock_name = f"upload_processing_lock_{repoid}_{commitid}"
+        upload_processing_lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
         if redis_connection.get(upload_processing_lock_name):
             return True
         return False
@@ -328,11 +330,38 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         enriched_pull: EnrichedPull,
         empty_upload=None,
     ):
+        # base_commit is an "adjusted" base commit; for project coverage, we
+        # compare a PR head's report against its base's report, or if the base
+        # doesn't exist in our database, the next-oldest commit that does. That
+        # is unnecessary/incorrect for patch coverage, for which we want to
+        # compare against the original PR base.
+        #
+        # For now, fix this for the patch-coverage-focused team plan and avoid
+        # maybe perturbing anything for project coverage. For other plans, set
+        # `patch_coverage_base_commitid` to the adjusted base commitid.
+        # Follow-up: https://github.com/codecov/engineering-team/issues/887
+        plan = commit.repository.owner.plan
+        pull = enriched_pull.database_pull if enriched_pull else None
+
+        if pull and plan in (BillingPlan.team_monthly, BillingPlan.team_yearly):
+            patch_coverage_base_commitid = pull.base
+        elif base_commit is not None:
+            patch_coverage_base_commitid = base_commit.commitid
+        else:
+            log.warning(
+                "Neither the original nor updated base commit are known",
+                extra=dict(repoid=commit.repository.repoid, commit=commit.commitid),
+            )
+            patch_coverage_base_commitid = None
+
         comparison = ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=commit, report=head_report),
                 enriched_pull=enriched_pull,
-                base=FullCommit(commit=base_commit, report=base_report),
+                project_coverage_base=FullCommit(
+                    commit=base_commit, report=base_report
+                ),
+                patch_coverage_base_commitid=patch_coverage_base_commitid,
                 current_yaml=current_yaml,
             )
         )

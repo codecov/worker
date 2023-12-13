@@ -1,11 +1,12 @@
 import logging
-from typing import Dict, List, Optional, Set, Tuple, TypedDict
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple, TypedDict, Union
 
 import sentry_sdk
 from shared.celery_config import label_analysis_task_name
 from shared.labelanalysis import LabelAnalysisRequestState
 
 from app import celery_app
+from database.models.core import Commit
 from database.models.labelanalysis import (
     LabelAnalysisProcessingError,
     LabelAnalysisProcessingErrorCode,
@@ -29,6 +30,10 @@ GLOBAL_LEVEL_LABEL = (
     SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 )
 
+GLOBAL_LEVEL_LABEL_IDX = (
+    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
+)
+
 
 class LinesRelevantToChangeInFile(TypedDict):
     all: bool
@@ -38,6 +43,24 @@ class LinesRelevantToChangeInFile(TypedDict):
 class LinesRelevantToChange(TypedDict):
     all: bool
     files: Dict[str, Optional[LinesRelevantToChangeInFile]]
+
+
+class ExistingLabelSetsEncoded(NamedTuple):
+    all_report_labels: Set[int]
+    executable_lines_labels: Set[int]
+    global_level_labels: Set[int]
+    are_labels_encoded: bool = True
+
+
+class ExistingLabelSetsNotEncoded(NamedTuple):
+    all_report_labels: Set[str]
+    executable_lines_labels: Set[str]
+    global_level_labels: Set[str]
+    are_labels_encoded: bool = False
+
+
+ExistingLabelSets = Union[ExistingLabelSetsEncoded, ExistingLabelSetsNotEncoded]
+PossiblyEncodedLabelSet = Union[Set[str], Set[int]]
 
 
 class LabelAnalysisRequestProcessingTask(
@@ -91,13 +114,31 @@ class LabelAnalysisRequestProcessingTask(
             base_report = self._get_base_report(label_analysis_request)
 
             if lines_relevant_to_diff and base_report:
-                exisisting_labels = self._get_existing_labels(
+                existing_labels: ExistingLabelSets = self._get_existing_labels(
                     base_report, lines_relevant_to_diff
                 )
+                if existing_labels.are_labels_encoded:
+                    # Translate label_ids
+                    partial_fn_to_apply = lambda label_id_set: self._lookup_label_ids(
+                        report=base_report, label_ids=label_id_set
+                    )
+                    existing_labels = ExistingLabelSetsNotEncoded(
+                        all_report_labels=partial_fn_to_apply(
+                            existing_labels.all_report_labels
+                        ),
+                        executable_lines_labels=partial_fn_to_apply(
+                            existing_labels.executable_lines_labels
+                        ),
+                        global_level_labels=partial_fn_to_apply(
+                            existing_labels.global_level_labels
+                        ),
+                        are_labels_encoded=False,
+                    )
+
                 requested_labels = self._get_requested_labels(label_analysis_request)
                 result = self.calculate_final_result(
                     requested_labels=requested_labels,
-                    existing_labels=exisisting_labels,
+                    existing_labels=existing_labels,
                     commit_sha=label_analysis_request.head_commit.commitid,
                 )
                 label_analysis_request.result = result
@@ -202,10 +243,8 @@ class LabelAnalysisRequestProcessingTask(
             global_saved_labels = set(saved_result.get("global_level_labels", []))
             result = self.calculate_final_result(
                 requested_labels=larq.requested_labels,
-                existing_labels=(
-                    all_saved_labels,
-                    executable_lines_saved_labels,
-                    global_saved_labels,
+                existing_labels=ExistingLabelSetsNotEncoded(
+                    all_saved_labels, executable_lines_saved_labels, global_saved_labels
                 ),
                 commit_sha=larq.head_commit.commitid,
             )
@@ -218,6 +257,16 @@ class LabelAnalysisRequestProcessingTask(
         metrics.incr("label_analysis_task.already_calculated.same_result")
         return {**larq.result, "success": True, "errors": []}
 
+    def _lookup_label_ids(self, report: Report, label_ids: Set[int]) -> Set[str]:
+
+        labels: Set[str] = set()
+        for label_id in label_ids:
+            # This can raise shared.reports.exceptions.LabelNotFoundError
+            # But (1) we shouldn't let that happen and (2) there's no recovering from it
+            # So we should let that happen to surface bugs to us
+            labels.add(report.lookup_label_by_id(label_id))
+        return labels
+
     def _get_requested_labels(self, label_analysis_request: LabelAnalysisRequest):
         if label_analysis_request.requested_labels:
             return label_analysis_request.requested_labels
@@ -228,12 +277,33 @@ class LabelAnalysisRequestProcessingTask(
     @sentry_sdk.trace
     def _get_existing_labels(
         self, report: Report, lines_relevant_to_diff: LinesRelevantToChange
-    ) -> Tuple[Set[str], Set[str], Set[str]]:
+    ) -> ExistingLabelSets:
         all_report_labels = self.get_all_report_labels(report)
-        executable_lines_labels, global_level_labels = self.get_executable_lines_labels(
-            report, lines_relevant_to_diff
+        (
+            executable_lines_labels,
+            global_level_labels,
+        ) = self.get_executable_lines_labels(report, lines_relevant_to_diff)
+
+        if len(all_report_labels) > 0:
+            # Check if report labels are encoded or not
+            test_label = all_report_labels.pop()
+            are_labels_encoded = type(test_label) == int
+            all_report_labels.add(test_label)
+        else:
+            # There are no labels in the report
+            are_labels_encoded = False
+
+        class_to_use = (
+            ExistingLabelSetsEncoded
+            if are_labels_encoded
+            else ExistingLabelSetsNotEncoded
         )
-        return (all_report_labels, executable_lines_labels, global_level_labels)
+
+        return class_to_use(
+            all_report_labels=all_report_labels,
+            executable_lines_labels=executable_lines_labels,
+            global_level_labels=global_level_labels,
+        )
 
     @sentry_sdk.trace
     async def _get_lines_relevant_to_diff(
@@ -324,14 +394,12 @@ class LabelAnalysisRequestProcessingTask(
         self,
         *,
         requested_labels: List[str],
-        existing_labels: Tuple[Set[str], Set[str], Set[str]],
+        existing_labels: ExistingLabelSetsNotEncoded,
         commit_sha: str,
     ):
-        (
-            all_report_labels,
-            executable_lines_labels,
-            global_level_labels,
-        ) = existing_labels
+        all_report_labels = existing_labels.all_report_labels
+        executable_lines_labels = existing_labels.executable_lines_labels
+        global_level_labels = existing_labels.global_level_labels
         log.info(
             "Final info",
             extra=dict(
@@ -415,11 +483,11 @@ class LabelAnalysisRequestProcessingTask(
     @sentry_sdk.trace
     def get_executable_lines_labels(
         self, report: Report, executable_lines: LinesRelevantToChange
-    ) -> set:
+    ) -> Tuple[PossiblyEncodedLabelSet, PossiblyEncodedLabelSet]:
         if executable_lines["all"]:
             return (self.get_all_report_labels(report), set())
         full_sessions = set()
-        labels = set()
+        labels: PossiblyEncodedLabelSet = set()
         global_level_labels = set()
         # Prime piece of code to be rust-ifyied
         for name, file_executable_lines in executable_lines["files"].items():
@@ -429,22 +497,35 @@ class LabelAnalysisRequestProcessingTask(
                     for line_number, line in rf.lines:
                         if line and line.datapoints:
                             for datapoint in line.datapoints:
-                                dp_labels = datapoint.labels or []
+                                dp_labels = datapoint.label_ids or []
                                 labels.update(dp_labels)
-                                if GLOBAL_LEVEL_LABEL in dp_labels:
+                                if (
+                                    # If labels are encoded
+                                    GLOBAL_LEVEL_LABEL_IDX in dp_labels
+                                    # If labels are NOT encoded
+                                    or GLOBAL_LEVEL_LABEL in dp_labels
+                                ):
                                     full_sessions.add(datapoint.sessionid)
                 else:
                     for line_number in file_executable_lines["lines"]:
                         line = rf.get(line_number)
                         if line and line.datapoints:
                             for datapoint in line.datapoints:
-                                dp_labels = datapoint.labels or []
+                                dp_labels = datapoint.label_ids or []
                                 labels.update(dp_labels)
-                                if GLOBAL_LEVEL_LABEL in dp_labels:
+                                if (
+                                    # If labels are encoded
+                                    GLOBAL_LEVEL_LABEL_IDX in dp_labels
+                                    # If labels are NOT encoded
+                                    or GLOBAL_LEVEL_LABEL in dp_labels
+                                ):
                                     full_sessions.add(datapoint.sessionid)
         for sess_id in full_sessions:
             global_level_labels.update(self.get_labels_per_session(report, sess_id))
-        return (labels - set([GLOBAL_LEVEL_LABEL]), global_level_labels)
+        return (
+            labels - set([GLOBAL_LEVEL_LABEL_IDX, GLOBAL_LEVEL_LABEL]),
+            global_level_labels,
+        )
 
     def get_labels_per_session(self, report: Report, sess_id: int):
         return get_labels_per_session(report, sess_id)

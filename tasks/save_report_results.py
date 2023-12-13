@@ -4,6 +4,7 @@ from shared.reports.readonly import ReadOnlyReport
 from shared.yaml import UserYaml
 
 from app import celery_app
+from database.enums import ReportType
 from database.models import Commit, Pull
 from database.models.reports import CommitReport, ReportResults
 from helpers.exceptions import RepositoryWithoutValidBotError
@@ -48,6 +49,11 @@ class SaveReportResultsTask(
             current_yaml, commit, base_commit, report_code
         )
 
+        if enriched_pull and enriched_pull.database_pull:
+            patch_coverage_base_commitid = enriched_pull.database_pull.base
+        else:
+            patch_coverage_base_commitid = base_commit.commitid if base_commit else None
+
         if head_report is None:
             log.warning(
                 "Not saving report results because no head report found.",
@@ -59,7 +65,10 @@ class SaveReportResultsTask(
             Comparison(
                 head=FullCommit(commit=commit, report=head_report),
                 enriched_pull=enriched_pull,
-                base=FullCommit(commit=base_commit, report=base_report),
+                project_coverage_base=FullCommit(
+                    commit=base_commit, report=base_report
+                ),
+                patch_coverage_base_commitid=patch_coverage_base_commitid,
             )
         )
 
@@ -135,6 +144,10 @@ class SaveReportResultsTask(
         return (
             db_session.query(CommitReport)
             .filter_by(commit_id=commit.id_, code=report_code)
+            .filter(
+                (CommitReport.report_type == None)
+                | (CommitReport.report_type == ReportType.COVERAGE.value)
+            )
             .first()
         )
 
