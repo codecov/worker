@@ -38,9 +38,13 @@ class ReadOnlyArgs(TypedDict):
     commit_yaml: Optional[Dict]
 
 
+# TODO: Move to shared
+task_name = f"app.tasks.{TaskConfigGroup.upload.value}.UploadCleanLabelsIndex"
+
+
 class CleanLabelsIndexTask(
     BaseCodecovTask,
-    name=f"app.tasks.{TaskConfigGroup.upload.value}.UploadCleanLabelsIndex",
+    name=task_name,
 ):
     async def run_async(
         self, db_session, repoid, commitid, report_code=None, *args, **kwargs
