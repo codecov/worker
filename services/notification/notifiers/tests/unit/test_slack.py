@@ -16,7 +16,7 @@ class TestSlackNotifier(object):
         )
         result = notifier.build_payload(comparison)
         commit = comparison.head.commit
-        base_commit = comparison.base.commit
+        base_commit = comparison.project_coverage_base.commit
         repository = commit.repository
         text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* `<test.example.br/gh/{repository.slug}/pull/{comparison.pull.pullid}|+10.00%>` on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
         expected_result = {
@@ -42,7 +42,7 @@ class TestSlackNotifier(object):
         )
         result = notifier.build_payload(comparison)
         commit = comparison.head.commit
-        base_commit = comparison.base.commit
+        base_commit = comparison.project_coverage_base.commit
         repository = commit.repository
         text = f"Coverage for <test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{repository.slug}> *increased* `<test.example.br/gh/{repository.slug}/pull/{comparison.pull.pullid}|+10.00%>` on `new_branch` is `60.00000%` via `<test.example.br/gh/{repository.slug}/commit/{commit.commitid}|{commit.commitid[:7]}>`"
         expected_result = {
@@ -91,7 +91,7 @@ class TestSlackNotifier(object):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_pull
         commit = sample_comparison_without_pull.head.commit
-        base_commit = comparison.base.commit
+        base_commit = comparison.project_coverage_base.commit
         repository = commit.repository
         notifier = SlackNotifier(
             repository=comparison.head.commit.repository,

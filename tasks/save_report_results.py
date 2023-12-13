@@ -50,9 +50,9 @@ class SaveReportResultsTask(
         )
 
         if enriched_pull and enriched_pull.database_pull:
-            original_base_commitid = enriched_pull.database_pull.base
+            patch_coverage_base_commitid = enriched_pull.database_pull.base
         else:
-            original_base_commitid = base_commit.commitid if base_commit else None
+            patch_coverage_base_commitid = base_commit.commitid if base_commit else None
 
         if head_report is None:
             log.warning(
@@ -65,8 +65,10 @@ class SaveReportResultsTask(
             Comparison(
                 head=FullCommit(commit=commit, report=head_report),
                 enriched_pull=enriched_pull,
-                base=FullCommit(commit=base_commit, report=base_report),
-                original_base_commitid=original_base_commitid,
+                project_coverage_base=FullCommit(
+                    commit=base_commit, report=base_report
+                ),
+                patch_coverage_base_commitid=patch_coverage_base_commitid,
             )
         )
 

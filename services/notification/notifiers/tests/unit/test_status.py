@@ -128,7 +128,9 @@ def comparison_100_percent_patch(sample_comparison):
     second_modified_file.append(23, ReportLine.create(coverage=1))
     second_modified_file.append(24, ReportLine.create(coverage=1))
     second_report.append(second_modified_file)
-    sample_comparison.base.report = ReadOnlyReport.create_from_report(first_report)
+    sample_comparison.project_coverage_base.report = ReadOnlyReport.create_from_report(
+        first_report
+    )
     sample_comparison.head.report = ReadOnlyReport.create_from_report(second_report)
     return sample_comparison
 
@@ -213,7 +215,9 @@ def comparison_with_multiple_changes(sample_comparison):
     second_unrelated_file.append(16, ReportLine.create(coverage=1))
     second_unrelated_file.append(32, ReportLine.create(coverage=0))
     second_report.append(second_unrelated_file)
-    sample_comparison.base.report = ReadOnlyReport.create_from_report(first_report)
+    sample_comparison.project_coverage_base.report = ReadOnlyReport.create_from_report(
+        first_report
+    )
     sample_comparison.head.report = ReadOnlyReport.create_from_report(second_report)
     return sample_comparison
 
@@ -786,7 +790,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             "message": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
             "state": "success",
@@ -847,7 +851,7 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
             decoration_type=Decoration.upgrade,
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             "message": "Please activate this user to display a detailed status check",
             "state": "success",
@@ -906,7 +910,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = comparison.base.commit
+        base_commit = comparison.project_coverage_base.commit
         head_commit = comparison.head.commit
         expected_result = {
             "message": "No report found to compare against",
@@ -929,7 +933,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = NotificationResult(
             notification_attempted=True,
             notification_successful=True,
@@ -961,7 +965,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         repo = sample_comparison.head.commit.repository
         expected_result = NotificationResult(
@@ -995,7 +999,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         repo = sample_comparison.head.commit.repository
         expected_result = NotificationResult(
@@ -1029,7 +1033,9 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         expected_result = NotificationResult(
             notification_attempted=True,
             notification_successful=True,
@@ -1060,7 +1066,9 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         expected_result = NotificationResult(
             notification_attempted=True,
             notification_successful=True,
@@ -1091,7 +1099,9 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         expected_result = NotificationResult(
             notification_attempted=True,
             notification_successful=True,
@@ -1147,7 +1157,9 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         expected_result = NotificationResult(
             notification_attempted=True,
             notification_successful=True,
@@ -1182,7 +1194,9 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         expected_result = NotificationResult(
             notification_attempted=True,
             notification_successful=True,
@@ -1213,7 +1227,9 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_coverage_carriedforward.base.commit
+        base_commit = (
+            sample_comparison_coverage_carriedforward.project_coverage_base.commit
+        )
         # should send the check as normal if there are no flags
         expected_result = NotificationResult(
             notification_attempted=True,
@@ -1244,7 +1260,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             "message": f"62.50% (+12.50%) compared to {base_commit.commitid[:7]}",
             "state": "success",
@@ -1269,7 +1285,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             # base report does not have unit flag, so there is no coverage there
             "message": "No coverage information found on base report",
@@ -1299,7 +1315,7 @@ class TestProjectStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison_matching_flags.base.commit
+        base_commit = sample_comparison_matching_flags.project_coverage_base.commit
         expected_result = {
             # base report does not have unit flag, so there is no coverage there
             "message": f"100.00% (+0.00%) compared to {base_commit.commitid[:7]}",
@@ -1395,7 +1411,7 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": f"50.00% (-10.00%) compared to {sample_comparison.base.commit.commitid[:7]}, passed because coverage increased by +0.00% when compared to adjusted base (50.00%)",
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}, passed because coverage increased by +0.00% when compared to adjusted base (50.00%)",
             "state": "success",
         }
         result = await notifier.build_payload(sample_comparison)
@@ -1485,7 +1501,7 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": f"50.00% (-10.00%) compared to {sample_comparison.base.commit.commitid[:7]}",
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}",
             "state": "failure",
         }
         result = await notifier.build_payload(sample_comparison)
@@ -1897,7 +1913,7 @@ class TestPatchStatusNotifier(object):
         third_file.append(101, ReportLine.create(coverage=1, sessions=[[0, 1]]))
         third_file.append(102, ReportLine.create(coverage=1, sessions=[[0, 1]]))
         third_file.append(103, ReportLine.create(coverage=1, sessions=[[0, 1]]))
-        sample_comparison.base.report.append(third_file)
+        sample_comparison.project_coverage_base.report.append(third_file)
         notifier = PatchStatusNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -1953,7 +1969,7 @@ class TestPatchStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         expected_result = {
             "message": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
@@ -2165,7 +2181,7 @@ class TestChangesStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        base_commit = sample_comparison.base.commit
+        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             "message": "No unexpected coverage changes found",
             "state": "success",

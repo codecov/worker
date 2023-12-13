@@ -128,11 +128,11 @@ class StandardNotifier(AbstractBaseNotifier):
 
     def is_above_threshold(self, comparison: Comparison):
         head_full_commit = comparison.head
-        base_full_commit = comparison.base
+        base_full_commit = comparison.project_coverage_base
         threshold = self.notifier_yaml_settings.get("threshold")
         if threshold is None:
             return True
-        if not comparison.has_base_report():
+        if not comparison.has_project_coverage_base_report():
             log.info(
                 "Cannot compare commits because base commit does not have a report",
                 extra=dict(
@@ -165,8 +165,8 @@ class StandardNotifier(AbstractBaseNotifier):
 
     def generate_compare_dict(self, comparison: Comparison):
         head_full_commit = comparison.head
-        base_full_commit = comparison.base
-        if comparison.has_base_report():
+        base_full_commit = comparison.project_coverage_base
+        if comparison.has_project_coverage_base_report():
             difference = Decimal(head_full_commit.report.totals.coverage) - Decimal(
                 base_full_commit.report.totals.coverage
             )
@@ -202,7 +202,7 @@ class StandardNotifier(AbstractBaseNotifier):
             return self.notifier_yaml_settings.get("message")
         commit = comparison.head.commit
         comparison_string = ""
-        if comparison.has_base_report():
+        if comparison.has_project_coverage_base_report():
             compare = self.generate_compare_dict(comparison)
             comparison_string = self.COMPARISON_STRING.format(
                 compare_message=compare["message"],

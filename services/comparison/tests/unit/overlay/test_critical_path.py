@@ -75,7 +75,7 @@ def test_load_critical_path_report(
     mock_storage.write_file("bucket", url, json.dumps(data))
     pc = ProfilingCommitFactory.create(
         summarized_location=url,
-        repository=sample_comparison.base.commit.repository,
+        repository=sample_comparison.project_coverage_base.commit.repository,
         last_summarized_at=datetime(2021, 10, 10),
     )
     dbsession.add(pc)
@@ -105,12 +105,12 @@ def test_load_critical_path_report_not_summarized(
     mock_storage.write_file("bucket", url, json.dumps(data))
     pc = ProfilingCommitFactory.create(
         summarized_location=None,
-        repository=sample_comparison.base.commit.repository,
+        repository=sample_comparison.project_coverage_base.commit.repository,
         last_summarized_at=datetime(2021, 3, 1, 5),
     )
     second_pc = ProfilingCommitFactory.create(
         summarized_location=url,
-        repository=sample_comparison.base.commit.repository,
+        repository=sample_comparison.project_coverage_base.commit.repository,
         last_summarized_at=datetime(2021, 3, 1, 4),
     )
     dbsession.add(pc)
@@ -134,7 +134,7 @@ def test_load_critical_path_report_yes_commit_no_storage(
     url = "v4/banana/abcdef.json"
     pc = ProfilingCommitFactory.create(
         summarized_location=url,
-        repository=sample_comparison.base.commit.repository,
+        repository=sample_comparison.project_coverage_base.commit.repository,
         last_summarized_at=datetime(2021, 3, 1, 5),
     )
     dbsession.add(pc)
@@ -242,7 +242,7 @@ class TestCriticalPathOverlay(object):
         pc = ProfilingCommitFactory.create(
             summarized_location="someurl",
             joined_location=url,
-            repository=sample_comparison.base.commit.repository,
+            repository=sample_comparison.project_coverage_base.commit.repository,
             last_summarized_at=datetime(2021, 3, 1, 4),
         )
         dbsession.add(pc)
