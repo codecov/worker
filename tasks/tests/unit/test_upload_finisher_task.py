@@ -643,8 +643,6 @@ class TestShouldCleanLabelsIndex(object):
                 }
             }
         )
-        instance = (
-            UploadFinisherTask()
-        )  # Replace with the actual class name where the method is defined
-        result = instance.should_clean_labels_index(commit_yaml, processing_results)
+        task = UploadFinisherTask()
+        result = task.should_clean_labels_index(commit_yaml, processing_results)
         assert result == expected
