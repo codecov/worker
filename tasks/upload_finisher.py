@@ -237,17 +237,19 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         """Returns True if any of the successful processings was uploaded using a flag
         that implies labels were uploaded with the report.
         """
+
+        def should_clean_for_flag(flag: str):
+            config = commit_yaml.get_flag_configuration(flag)
+            return config and config.get("carryforward_mode", "") == "labels"
+
+        def should_clean_for_processing_result(results):
+            args = results.get("arguments", {})
+            flags_str = args.get("flags", "")
+            flags = flags_str.split(",") if flags_str else []
+            return results["successful"] and any(map(should_clean_for_flag, flags))
+
         actual_processing_results = processing_results.get("processings_so_far", [])
-        for result in actual_processing_results:
-            if result["successful"]:
-                flags_str: str = result.get("arguments", {}).get("flags", "")
-                if flags_str:
-                    individual_flags = flags_str.split(",")
-                    for flag in individual_flags:
-                        config = commit_yaml.get_flag_configuration(flag)
-                        if config and config.get("carryforward_mode") == "labels":
-                            return True
-        return False
+        return any(map(should_clean_for_processing_result, actual_processing_results))
 
     def should_call_notifications(
         self, commit, commit_yaml, processing_results, report_code
