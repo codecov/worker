@@ -23,6 +23,7 @@ from shared.torngit.exceptions import TorngitError
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
+from database.enums import ReportType
 from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
     AbstractTotals,
@@ -148,12 +149,20 @@ class ReportService(object):
         current_report_row = (
             db_session.query(CommitReport)
             .filter_by(commit_id=commit.id_, code=report_code)
+            .filter(
+                (CommitReport.report_type == None)
+                | (CommitReport.report_type == ReportType.COVERAGE.value)
+            )
             .first()
         )
         if not current_report_row:
             # This happens if the commit report is being created for the first time
             # or backfilled
-            current_report_row = CommitReport(commit_id=commit.id_, code=report_code)
+            current_report_row = CommitReport(
+                commit_id=commit.id_,
+                code=report_code,
+                report_type=ReportType.COVERAGE.value,
+            )
             db_session.add(current_report_row)
             db_session.flush()
             report_details = (

@@ -3,9 +3,10 @@ import re
 import uuid
 from datetime import datetime, timedelta
 from json import loads
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 from celery import chain
+from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
@@ -18,8 +19,8 @@ from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 
 from app import celery_app
-from database.enums import CommitErrorTypes
-from database.models import Commit
+from database.enums import CommitErrorTypes, ReportType
+from database.models import Commit, CommitReport
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
@@ -48,14 +49,129 @@ merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 CHUNK_SIZE = 3
 
 
-def _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs):
-    kwargs.update(
-        {
-            "repoid": repoid,
-            "commitid": commitid,
-            "report_code": report_code,
-        }
-    )
+class UploadContext:
+    """
+    Encapsulates the arguments passed to an upload task. This includes both the
+    Celery task arguments as well as the arguments list passed via Redis.
+    """
+
+    def __init__(
+        self,
+        repoid: int,
+        commitid: str,
+        report_type: ReportType = ReportType.COVERAGE,
+        report_code: Optional[str] = None,
+        redis_connection: Optional[Redis] = None,
+    ):
+        self.repoid = repoid
+        self.commitid = commitid
+        self.report_type = report_type
+        self.report_code = report_code
+        self.redis_connection = redis_connection or get_redis_connection()
+
+    def lock_name(self, lock_type: str):
+        if self.report_type == ReportType.COVERAGE:
+            # for backward compat this does not include the report type
+            if lock_type == "upload_processing":
+                return UPLOAD_PROCESSING_LOCK_NAME(self.repoid, self.commitid)
+            else:
+                return f"{lock_type}_lock_{self.repoid}_{self.commitid}"
+        else:
+            return f"{lock_type}_lock_{self.repoid}_{self.commitid}_{self.report_type.value}"
+
+    @property
+    def upload_location(self):
+        if self.report_type == ReportType.COVERAGE:
+            # for backward compat this does not include the report type
+            return f"uploads/{self.repoid}/{self.commitid}"
+        else:
+            return f"uploads/{self.repoid}/{self.commitid}/{self.report_type.value}"
+
+    def is_locked(self, lock_type: str) -> bool:
+        lock_name = self.lock_name(lock_type)
+        if self.redis_connection.get(lock_name):
+            return True
+        return False
+
+    def is_currently_processing(self) -> bool:
+        return self.is_locked("upload_processing")
+
+    def has_pending_jobs(self) -> bool:
+        if self.redis_connection.exists(self.upload_location):
+            return True
+        return False
+
+    def last_upload_timestamp(self):
+        if self.report_type == ReportType.COVERAGE:
+            # for backward compat this does not include the report type
+            redis_key = f"latest_upload/{self.repoid}/{self.commitid}"
+        else:
+            redis_key = (
+                f"latest_upload/{self.repoid}/{self.commitid}/{self.report_type.value}"
+            )
+        return self.redis_connection.get(redis_key)
+
+    def prepare_kwargs_for_retry(self, kwargs: dict):
+        kwargs.update(
+            {
+                "repoid": self.repoid,
+                "commitid": self.commitid,
+                "report_type": self.report_type.value,
+                "report_code": self.report_code,
+            }
+        )
+
+    def arguments_list(self):
+        """
+        Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
+        and feeds them to the processing code.
+
+        This function doesn't go infinite because it keeps emptying the respective key on redis.
+        It will only go arbitrrily long if someone else keeps uploading more and more arguments
+        to such list
+
+        Args:
+            redis_connection (Redis): An instance of a redis connection
+            uploads_list_key (str): The key where the list is
+
+        Yields:
+            dict: A dict with the parameters to be passed
+        """
+        uploads_locations = [self.upload_location]
+        for uploads_list_key in uploads_locations:
+            log.debug("Fetching arguments from redis %s", uploads_list_key)
+            while self.redis_connection.exists(uploads_list_key):
+                arguments = self.redis_connection.lpop(uploads_list_key)
+                if arguments:
+                    yield loads(arguments)
+
+    def normalize_arguments(self, commit: Commit, arguments: Mapping[str, Any]):
+        """
+        Normalizes and validates the argument list from the user.
+
+        Does things like:
+
+            - replacing a redis-stored value with a storage one (by doing an upload)
+            - Removing unecessary sensitive information for the arguments
+        """
+        commit_sha = commit.commitid
+        reportid = arguments.get("reportid")
+        if arguments.get("redis_key"):
+            archive_service = ArchiveService(commit.repository)
+            redis_key = arguments.pop("redis_key")
+            content = download_archive_from_redis(self.redis_connection, redis_key)
+            written_path = archive_service.write_raw_upload(
+                commit_sha, reportid, content
+            )
+            log.info(
+                "Writing report content from redis to storage",
+                extra=dict(
+                    commit=commit.commitid, repoid=commit.repoid, path=written_path
+                ),
+            )
+            arguments["url"] = written_path
+        arguments.pop("token", None)
+        return arguments
 
 
 class UploadTask(BaseCodecovTask, name=upload_task_name):
@@ -110,86 +226,64 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     """
 
-    def has_pending_jobs(self, redis_connection, repoid, commitid) -> bool:
-        uploads_locations = [f"uploads/{repoid}/{commitid}"]
-        for uploads_list_key in uploads_locations:
-            if redis_connection.exists(uploads_list_key):
-                return True
-        return False
-
-    def lists_of_arguments(self, redis_connection, repoid, commitid):
-        """Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
-            and feeds them to the processing code.
-
-        This function doesn't go infinite because it keeps emptying the respective key on redis.
-        It will only go arbitrrily long if someone else keeps uploading more and more arguments
-        to such list
-
-        Args:
-            redis_connection (Redis): An instance of a redis connection
-            uploads_list_key (str): The key where the list is
-
-        Yields:
-            dict: A dict with the parameters to be passed
-        """
-        uploads_locations = [f"uploads/{repoid}/{commitid}"]
-        for uploads_list_key in uploads_locations:
-            log.debug("Fetching arguments from redis %s", uploads_list_key)
-            while redis_connection.exists(uploads_list_key):
-                arguments = redis_connection.lpop(uploads_list_key)
-                if arguments:
-                    yield loads(arguments)
-
-    def is_currently_processing(self, redis_connection, repoid, commitid):
-        upload_processing_lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
-        if redis_connection.get(upload_processing_lock_name):
-            return True
-        return False
-
     async def run_async(
-        self, db_session, repoid, commitid, report_code=None, *args, **kwargs
+        self,
+        db_session,
+        repoid,
+        commitid,
+        report_type="coverage",
+        report_code=None,
+        *args,
+        **kwargs,
     ):
-        # If we're a retry, kwargs will already have our first checkpoint.
-        # If not, log it directly into kwargs so we can pass it onto other tasks
-        checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs).log(
-            UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
-        )
+        # TODO: setup checkpoint flows for other coverage types
+        if report_type == "coverage":
+            # If we're a retry, kwargs will already have our first checkpoint.
+            # If not, log it directly into kwargs so we can pass it onto other tasks
+            checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs).log(
+                UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
+            )
 
+        repoid = int(repoid)
         log.info(
             "Received upload task",
-            extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
+            extra=dict(
+                repoid=repoid,
+                commit=commitid,
+                report_type=report_type,
+                report_code=report_code,
+            ),
         )
-        repoid = int(repoid)
-        lock_name = f"upload_lock_{repoid}_{commitid}"
-        redis_connection = get_redis_connection()
-        if (
-            self.is_currently_processing(redis_connection, repoid, commitid)
-            and self.request.retries == 0
-        ):
+        upload_context = UploadContext(
+            repoid=repoid,
+            commitid=commitid,
+            report_type=ReportType(report_type),
+            report_code=report_code,
+        )
+        lock_name = upload_context.lock_name("upload")
+
+        if upload_context.is_currently_processing() and self.request.retries == 0:
             log.info(
                 "Currently processing upload. Retrying in 60s.",
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
-                    has_pending_jobs=self.has_pending_jobs(
-                        redis_connection, repoid, commitid
-                    ),
+                    report_type=report_type,
+                    has_pending_jobs=upload_context.has_pending_jobs(),
                 ),
             )
-            _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+            upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(countdown=60, kwargs=kwargs)
+
         try:
-            with redis_connection.lock(
+            with upload_context.redis_connection.lock(
                 lock_name,
                 timeout=max(300, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
                 return await self.run_async_within_lock(
                     db_session,
-                    redis_connection,
-                    repoid,
-                    commitid,
-                    report_code,
+                    upload_context,
                     *args,
                     **kwargs,
                 )
@@ -197,12 +291,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             log.warning(
                 "Unable to acquire lock for key %s.",
                 lock_name,
-                extra=dict(commit=commitid, repoid=repoid),
+                extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
             )
-            if not self.has_pending_jobs(redis_connection, repoid, commitid):
+            if not upload_context.has_pending_jobs():
                 log.info(
                     "Not retrying since there are likely no jobs that need scheduling",
-                    extra=dict(commit=commitid, repoid=repoid),
+                    extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
                 )
                 checkpoints.log(UploadFlow.NO_PENDING_JOBS)
                 return {
@@ -213,7 +307,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             if self.request.retries > 1:
                 log.info(
                     "Not retrying since we already had too many retries",
-                    extra=dict(commit=commitid, repoid=repoid),
+                    extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
                 )
                 checkpoints.log(UploadFlow.TOO_MANY_RETRIES)
                 return {
@@ -226,31 +320,32 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             log.warning(
                 "Retrying upload",
                 extra=dict(
-                    commit=commitid, repoid=repoid, countdown=int(retry_countdown)
+                    commit=commitid,
+                    repoid=repoid,
+                    report_type=report_type,
+                    countdown=int(retry_countdown),
                 ),
             )
-            _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+            upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
     async def run_async_within_lock(
         self,
         db_session,
-        redis_connection,
-        repoid,
-        commitid,
-        report_code,
+        upload_context: UploadContext,
         *args,
         **kwargs,
     ):
         log.info(
             "Starting processing of report",
             extra=dict(
-                repoid=repoid,
-                commit=commitid,
-                report_code=report_code,
+                repoid=upload_context.repoid,
+                commit=upload_context.commitid,
+                report_type=upload_context.report_type.value,
+                report_code=upload_context.report_code,
             ),
         )
-        if not self.has_pending_jobs(redis_connection, repoid, commitid):
+        if not upload_context.has_pending_jobs():
             log.info("No pending jobs. Upload task is done.")
             return {
                 "was_setup": False,
@@ -261,9 +356,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         upload_processing_delay = get_config("setup", "upload_processing_delay")
         if upload_processing_delay is not None:
             upload_processing_delay = int(upload_processing_delay)
-            last_upload_timestamp = redis_connection.get(
-                f"latest_upload/{repoid}/{commitid}"
-            )
+            last_upload_timestamp = upload_context.last_upload_timestamp()
             if last_upload_timestamp is not None:
                 last_upload = datetime.fromtimestamp(float(last_upload_timestamp))
                 if (
@@ -274,10 +367,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     log.info(
                         "Retrying due to very recent uploads.",
                         extra=dict(
-                            repoid=repoid, commit=commitid, countdown=retry_countdown
+                            repoid=upload_context.repoid,
+                            commit=upload_context.commitid,
+                            report_type=upload_context.report_type.value,
+                            countdown=retry_countdown,
                         ),
                     )
-                    _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+                    upload_context.prepare_kwargs_for_retry(kwargs)
                     self.retry(countdown=retry_countdown, kwargs=kwargs)
 
         try:
@@ -285,6 +381,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             checkpoints.log(UploadFlow.PROCESSING_BEGIN)
         except ValueError as e:
             log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
+
+        repoid = upload_context.repoid
+        commitid = upload_context.commitid
+        report_type = upload_context.report_type
+        report_code = upload_context.report_code
 
         commit = None
         commits = db_session.query(Commit).filter(
@@ -335,31 +436,47 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit_yaml=None,
                 ownerid=repository.owner.ownerid,
             )
-        report_service = ReportService(commit_yaml)
+
+        # TODO: implement report services for other report types.
+        # Note that other report services must at least implement the following interfaces:
+        #
+        # `async def initialize_and_save_report(commit, report_code) -> CommitReport``
+        #
+        # These seem generic and could be implemented in the base class:
+        #
+        # `def fetch_report_upload(commit_report: CommitReport, upload_id: int) -> Upload`
+        # `def create_report_upload(normalized_arguments, commit_report: CommitReport) -> Upload`
+
+        if report_type == ReportType.COVERAGE:
+            # TODO: consider renaming class to `CoverageReportService`
+            report_service = ReportService(commit_yaml)
+        else:
+            raise NotImplementedError(f"no report service for: {report_code}")
+
         try:
             log.info(
                 "Initializing and saving report",
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
+                    report_type=report_type.value,
                     report_code=report_code,
                 ),
             )
             commit_report = await report_service.initialize_and_save_report(
-                commit, report_code
+                commit,
+                report_code,
             )
         except NotReadyToBuildReportYetError:
             log.warning(
                 "Commit not yet ready to build its initial report. Retrying in 60s.",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
+            upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(countdown=60, kwargs=kwargs)
         argument_list = []
-        for arguments in self.lists_of_arguments(redis_connection, repoid, commitid):
-            normalized_arguments = self.normalize_upload_arguments(
-                commit, arguments, redis_connection
-            )
+        for arguments in upload_context.arguments_list():
+            normalized_arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" in normalized_arguments:
                 upload = report_service.fetch_report_upload(
                     commit_report, normalized_arguments["upload_id"]
@@ -433,9 +550,46 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         )
 
     def schedule_task(
-        self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
+        self,
+        commit,
+        commit_yaml,
+        argument_list,
+        commit_report: CommitReport,
+        checkpoints=None,
     ):
         commit_yaml = commit_yaml.to_dict()
+
+        res = None
+        if (
+            commit_report.report_type is None
+            or commit_report.report_type == ReportType.COVERAGE.value
+        ):
+            res = self._schedule_coverage_processing_task(
+                commit,
+                commit_yaml,
+                argument_list,
+                commit_report,
+                checkpoints=checkpoints,
+            )
+        else:
+            raise NotImplementedError()
+
+        if res:
+            return res
+
+        log.info(
+            "Not scheduling task because there were no reports to be processed found",
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid,
+                argument_list=argument_list,
+            ),
+        )
+        return None
+
+    def _schedule_coverage_processing_task(
+        self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
+    ):
         chain_to_call = []
         for i in range(0, len(argument_list), CHUNK_SIZE):
             chunk = argument_list[i : i + CHUNK_SIZE]
@@ -481,15 +635,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 ),
             )
             return res
-        log.info(
-            "Not scheduling task because there were no reports to be processed found",
-            extra=dict(
-                repoid=commit.repoid,
-                commit=commit.commitid,
-                argument_list=argument_list,
-            ),
-        )
-        return None
 
     async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
@@ -534,36 +679,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     extra=dict(repoid=repository.repoid, commit=commit.commitid),
                 )
         return False
-
-    def normalize_upload_arguments(
-        self, commit: Commit, arguments: Mapping[str, Any], redis_connection: Redis
-    ):
-        """
-        Normalizes and validates the argument list from the user.
-
-        Does things like:
-
-            - replacing a redis-stored value with a storage one (by doing an upload)
-            - Removing unecessary sensitive information for the arguments
-        """
-        commit_sha = commit.commitid
-        reportid = arguments.get("reportid")
-        if arguments.get("redis_key"):
-            archive_service = ArchiveService(commit.repository)
-            redis_key = arguments.pop("redis_key")
-            content = download_archive_from_redis(redis_connection, redis_key)
-            written_path = archive_service.write_raw_upload(
-                commit_sha, reportid, content
-            )
-            log.info(
-                "Writing report content from redis to storage",
-                extra=dict(
-                    commit=commit.commitid, repoid=commit.repoid, path=written_path
-                ),
-            )
-            arguments["url"] = written_path
-        arguments.pop("token", None)
-        return arguments
 
 
 RegisteredUploadTask = celery_app.register_task(UploadTask())

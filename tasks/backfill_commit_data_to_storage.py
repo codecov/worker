@@ -6,6 +6,7 @@ from shared.utils.enums import TaskConfigGroup
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
+from database.enums import ReportType
 from database.models.core import Commit
 from database.models.reports import CommitReport, ReportDetails
 from services.report import ReportService
@@ -78,10 +79,20 @@ class BackfillCommitDataToStorageTask(
         self, db_session: Session, commit: Commit
     ) -> BackfillResult:
         report_rows = (
-            db_session.query(CommitReport).filter_by(commit_id=commit.id_).all()
+            db_session.query(CommitReport)
+            .filter_by(commit_id=commit.id_)
+            .filter(
+                (CommitReport.report_type == None)
+                | (CommitReport.report_type == ReportType.COVERAGE.value)
+            )
+            .all()
         )
         if report_rows == []:
-            new_report_row = CommitReport(commit_id=commit.id_, code=None)
+            new_report_row = CommitReport(
+                commit_id=commit.id_,
+                code=None,
+                report_type=ReportType.COVERAGE.value,
+            )
             db_session.add(new_report_row)
             db_session.flush()
             report_rows = [new_report_row]

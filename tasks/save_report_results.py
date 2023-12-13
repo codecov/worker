@@ -4,6 +4,7 @@ from shared.reports.readonly import ReadOnlyReport
 from shared.yaml import UserYaml
 
 from app import celery_app
+from database.enums import ReportType
 from database.models import Commit, Pull
 from database.models.reports import CommitReport, ReportResults
 from helpers.exceptions import RepositoryWithoutValidBotError
@@ -143,6 +144,10 @@ class SaveReportResultsTask(
         return (
             db_session.query(CommitReport)
             .filter_by(commit_id=commit.id_, code=report_code)
+            .filter(
+                (CommitReport.report_type == None)
+                | (CommitReport.report_type == ReportType.COVERAGE.value)
+            )
             .first()
         )
 
