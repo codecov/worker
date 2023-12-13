@@ -33,7 +33,7 @@ class TestHipchatkNotifier(object):
     def test_build_payload_without_base_report(
         self, sample_comparison, mock_configuration
     ):
-        sample_comparison.base.report = None
+        sample_comparison.project_coverage_base.report = None
         url = "test.example.br"
         mock_configuration.params["setup"]["codecov_dashboard_url"] = url
         comparison = sample_comparison

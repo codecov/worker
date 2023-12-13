@@ -61,7 +61,7 @@ class ComparisonProxy(object):
     def get_archive_service(self):
         if self._archive_service is None:
             self._archive_service = ArchiveService(
-                self.comparison.base.commit.repository
+                self.comparison.project_coverage_base.commit.repository
             )
         return self._archive_service
 
@@ -79,8 +79,8 @@ class ComparisonProxy(object):
             )
         return self._repository_service
 
-    def has_base_report(self):
-        return self.comparison.has_base_report()
+    def has_project_coverage_base_report(self):
+        return self.comparison.has_project_coverage_base_report()
 
     def has_head_report(self):
         return self.comparison.has_head_report()
@@ -90,8 +90,8 @@ class ComparisonProxy(object):
         return self.comparison.head
 
     @property
-    def base(self):
-        return self.comparison.base
+    def project_coverage_base(self):
+        return self.comparison.project_coverage_base
 
     @property
     def enriched_pull(self):
@@ -104,12 +104,14 @@ class ComparisonProxy(object):
     async def get_diff(self, use_original_base=False):
         async with self._diff_lock:
             head = self.comparison.head.commit
-            base = self.comparison.base.commit
-            original_base_commitid = self.comparison.original_base_commitid
+            base = self.comparison.project_coverage_base.commit
+            patch_coverage_base_commitid = self.comparison.patch_coverage_base_commitid
 
             # If the original and adjusted bases are the same commit, then if we
             # already fetched the diff for one we can return it for the other.
-            bases_match = original_base_commitid == (base.commitid if base else "")
+            bases_match = patch_coverage_base_commitid == (
+                base.commitid if base else ""
+            )
 
             populate_original_base_diff = use_original_base and (
                 not self._original_base_diff
@@ -120,9 +122,9 @@ class ComparisonProxy(object):
             if populate_original_base_diff:
                 if bases_match and self._adjusted_base_diff:
                     self._original_base_diff = self._adjusted_base_diff
-                elif original_base_commitid is not None:
+                elif patch_coverage_base_commitid is not None:
                     pull_diff = await self.repository_service.get_compare(
-                        original_base_commitid, head.commitid, with_commits=False
+                        patch_coverage_base_commitid, head.commitid, with_commits=False
                     )
                     self._original_base_diff = pull_diff["diff"]
                 else:
@@ -152,19 +154,22 @@ class ComparisonProxy(object):
                     "internal.worker.services.comparison.changes.get_changes_python"
                 ):
                     self._changes = get_changes(
-                        self.comparison.base.report, self.comparison.head.report, diff
+                        self.comparison.project_coverage_base.report,
+                        self.comparison.head.report,
+                        diff,
                     )
                 if (
-                    self.comparison.base.report is not None
+                    self.comparison.project_coverage_base.report is not None
                     and self.comparison.head.report is not None
-                    and self.comparison.base.report.rust_report is not None
+                    and self.comparison.project_coverage_base.report.rust_report
+                    is not None
                     and self.comparison.head.report.rust_report is not None
                 ):
                     with metrics.timer(
                         "internal.worker.services.comparison.changes.get_changes_rust"
                     ):
                         rust_changes = get_changes_using_rust(
-                            self.comparison.base.report,
+                            self.comparison.project_coverage_base.report,
                             self.comparison.head.report,
                             diff,
                         )
@@ -186,7 +191,9 @@ class ComparisonProxy(object):
     async def get_behind_by(self):
         async with self._behind_by_lock:
             if self._behind_by is None:
-                if not getattr(self.comparison.base.commit, "commitid", None):
+                if not getattr(
+                    self.comparison.project_coverage_base.commit, "commitid", None
+                ):
                     log.info(
                         "Comparison base commit does not have commitid, unable to get behind_by"
                     )
@@ -224,7 +231,7 @@ class ComparisonProxy(object):
 
                 distance = await self.repository_service.get_distance_in_commits(
                     self._branch["sha"],
-                    self.comparison.base.commit.commitid,
+                    self.comparison.project_coverage_base.commit.commitid,
                     with_commits=False,
                 )
                 self._behind_by = distance["behind_by"]
@@ -252,7 +259,9 @@ class ComparisonProxy(object):
     async def get_impacted_files(self):
         files_in_diff = await self.get_diff()
         return run_comparison_using_rust(
-            self.comparison.base.report, self.comparison.head.report, files_in_diff
+            self.comparison.project_coverage_base.report,
+            self.comparison.head.report,
+            files_in_diff,
         )
 
 
@@ -262,10 +271,12 @@ class FilteredComparison(object):
         self.path_patterns = path_patterns
         self.real_comparison = real_comparison
         self._changes = None
-        self.base = FullCommit(
-            commit=real_comparison.base.commit,
-            report=real_comparison.base.report.filter(flags=flags, paths=path_patterns)
-            if self.has_base_report()
+        self.project_coverage_base = FullCommit(
+            commit=real_comparison.project_coverage_base.commit,
+            report=real_comparison.project_coverage_base.report.filter(
+                flags=flags, paths=path_patterns
+            )
+            if self.has_project_coverage_base_report()
             else None,
         )
         self.head = FullCommit(
@@ -283,8 +294,8 @@ class FilteredComparison(object):
     async def get_existing_statuses(self):
         return await self.real_comparison.get_existing_statuses()
 
-    def has_base_report(self):
-        return self.real_comparison.has_base_report()
+    def has_project_coverage_base_report(self):
+        return self.real_comparison.has_project_coverage_base_report()
 
     @property
     def enriched_pull(self):
@@ -295,7 +306,9 @@ class FilteredComparison(object):
         async with self._changes_lock:
             if self._changes is None:
                 diff = await self.get_diff()
-                self._changes = get_changes(self.base.report, self.head.report, diff)
+                self._changes = get_changes(
+                    self.project_coverage_base.report, self.head.report, diff
+                )
             return self._changes
 
     @property

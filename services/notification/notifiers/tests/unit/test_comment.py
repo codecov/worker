@@ -182,7 +182,7 @@ def mock_repo_provider(mock_repo_provider):
         },
         "commits": [
             {
-                "commitid": "{comparison.base.commit[:7]}44fdd29fcc506317cc3ddeae1a723dd08",
+                "commitid": "{comparison.project_coverage_base.commit[:7]}44fdd29fcc506317cc3ddeae1a723dd08",
                 "message": "Update README.rst",
                 "timestamp": "2018-07-09T23:51:16Z",
                 "author": {
@@ -709,7 +709,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{sample_comparison.base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
@@ -866,7 +866,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{sample_comparison.base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
@@ -903,7 +903,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{sample_comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -946,7 +946,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -977,7 +977,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 100.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 100.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 100.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 100.00%.",
             f"",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | |",
             "|---|---|---|",
@@ -1029,7 +1029,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.base.commit.commitid}?el=desc) ({sample_comparison.base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
+            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) ({sample_comparison.project_coverage_base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             f"> The diff coverage is `66.67%`.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -1073,7 +1073,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
             f"",
@@ -1328,7 +1328,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1371,7 +1371,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1402,7 +1402,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1442,7 +1442,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1546,7 +1546,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 60.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 60.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1586,7 +1586,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison_no_change.base.commit.commitid[:7]}...{sample_comparison_no_change.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison_no_change.project_coverage_base.commit.commitid[:7]}...{sample_comparison_no_change.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1621,7 +1621,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 60.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 50.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 60.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 50.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1664,7 +1664,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1703,7 +1703,9 @@ class TestCommentNotifier(object):
         for i in range(6760, 7631):
             new_base_file.append(i, ReportLine.create(coverage=0))
         new_base_report.append(new_base_file)
-        comparison.base.report = ReadOnlyReport.create_from_report(new_base_report)
+        comparison.project_coverage_base.report = ReadOnlyReport.create_from_report(
+            new_base_report
+        )
         new_head_report = Report()
         new_head_file = ReportFile("file.py")
         for i in range(1, 6758):
@@ -1716,7 +1718,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 88.58% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 88.54%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 88.58% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 88.54%.",
             f"",
             f"```diff",
             f"@@            Coverage Diff             @@",
@@ -1770,7 +1772,9 @@ class TestCommentNotifier(object):
         for i in range(6760, 7631):
             new_base_file.append(i, ReportLine.create(coverage=0))
         new_base_report.append(new_base_file)
-        comparison.base.report = ReadOnlyReport.create_from_report(new_base_report)
+        comparison.project_coverage_base.report = ReadOnlyReport.create_from_report(
+            new_base_report
+        )
         new_head_report = Report()
         new_head_file = ReportFile("file.py")
         for i in range(1, 6758):
@@ -1783,7 +1787,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 88.58% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 88.54%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 88.58% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 88.54%.",
             f"",
         ]
         li = 0
@@ -1814,7 +1818,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1855,7 +1859,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison.base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1890,7 +1894,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1919,7 +1923,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1950,7 +1954,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1988,7 +1992,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -2026,7 +2030,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -2064,7 +2068,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -2102,7 +2106,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -2138,7 +2142,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -2203,7 +2207,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -2245,7 +2249,7 @@ class TestCommentNotifier(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -3258,7 +3262,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"<details><summary>Additional details and impacted files</summary>\n",
             f"",
@@ -3293,7 +3297,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             "",
             ":mega: message",
             "",
@@ -3330,7 +3334,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             "Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -3943,7 +3947,7 @@ class TestNewHeaderSectionWriter(object):
         print(res)
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{sample_comparison.base.commit.commitid[:7]}`)](urlurl?el=desc) 0% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc) 0%.",
+            f"> Comparison is base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?el=desc) 0% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc) 0%.",
         ]
 
     @pytest.mark.asyncio
@@ -3973,7 +3977,7 @@ class TestNewHeaderSectionWriter(object):
         print(res)
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{sample_comparison.base.commit.commitid[:7]}`)](urlurl?el=desc) 0% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc) 0%.",
+            f"> Comparison is base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?el=desc) 0% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc) 0%.",
             "> Report is 3 commits behind head on master.",
         ]
 
@@ -4285,7 +4289,7 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
@@ -4395,7 +4399,7 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
             f"<details><summary>Additional details and impacted files</summary>\n",
             f"",
@@ -4546,7 +4550,7 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"> :exclamation: Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}. Consider uploading reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results",
             f"",
@@ -4621,7 +4625,7 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"Attention: `1 lines` in your changes are missing coverage. Please review.",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"> :exclamation: Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}. Consider uploading reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results",
             f"",
@@ -4692,7 +4696,7 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
             f"All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Comparison is base [(`{comparison.base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
+            f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 65.38% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 65.38%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -4728,7 +4732,7 @@ class TestCommentNotifierInNewLayout(object):
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -4899,8 +4903,8 @@ class TestComponentWriterSection(object):
         sample_comparison,
     ):
         comparison = sample_comparison
-        comparison.base.report = None
-        comparison.base.commit = None
+        comparison.project_coverage_base.report = None
+        comparison.project_coverage_base.commit = None
         section_writer = ComponentsSectionWriter(
             repository=comparison.head.commit.repository,
             layout="layout",
@@ -5008,8 +5012,8 @@ class TestComponentWriterSection(object):
         sample_comparison,
     ):
         comparison = sample_comparison
-        comparison.base.report = None
-        comparison.base.commit = None
+        comparison.project_coverage_base.report = None
+        comparison.project_coverage_base.commit = None
         section_writer = ComponentsSectionWriter(
             repository=comparison.head.commit.repository,
             layout="layout",

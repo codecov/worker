@@ -34,7 +34,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
 
         with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
             comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
-        if not comparison_proxy.has_base_report():
+        if not comparison_proxy.has_project_coverage_base_report():
             comparison.error = CompareCommitError.missing_base_report.value
         elif not comparison_proxy.has_head_report():
             comparison.error = CompareCommitError.missing_head_report.value
@@ -154,7 +154,11 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         comparison_proxy: ComparisonProxy,
     ):
         flag_head_report = comparison_proxy.comparison.head.report.flags.get(flag_name)
-        flag_base_report = comparison_proxy.comparison.base.report.flags.get(flag_name)
+        flag_base_report = (
+            comparison_proxy.comparison.project_coverage_base.report.flags.get(
+                flag_name
+            )
+        )
         head_totals = None if not flag_head_report else flag_head_report.totals.asdict()
         base_totals = None if not flag_base_report else flag_base_report.totals.asdict()
         totals = dict(
@@ -233,7 +237,9 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         )
 
         # component comparison totals
-        component_comparison.base_totals = filtered.base.report.totals.asdict()
+        component_comparison.base_totals = (
+            filtered.project_coverage_base.report.totals.asdict()
+        )
         component_comparison.head_totals = filtered.head.report.totals.asdict()
         diff = await comparison_proxy.get_diff()
         if diff:
@@ -259,13 +265,15 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         )
         # No access to the PR so we have to assume the base commit did not need
         # to be adjusted.
-        original_base_commitid = base_commit.commitid
+        patch_coverage_base_commitid = base_commit.commitid
         return ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=compare_commit, report=compare_report),
                 enriched_pull=None,
-                base=FullCommit(commit=base_commit, report=base_report),
-                original_base_commitid=original_base_commitid,
+                project_coverage_base=FullCommit(
+                    commit=base_commit, report=base_report
+                ),
+                patch_coverage_base_commitid=patch_coverage_base_commitid,
             )
         )
 

@@ -262,7 +262,11 @@ class StatusNotifier(AbstractBaseNotifier):
     async def maybe_send_notification(
         self, comparison: Comparison, payload: dict
     ) -> NotificationResult:
-        base_commit = comparison.base.commit if comparison.base else None
+        base_commit = (
+            comparison.project_coverage_base.commit
+            if comparison.project_coverage_base
+            else None
+        )
         head_commit = comparison.head.commit if comparison.head else None
 
         cache_key = make_hash_sha256(
