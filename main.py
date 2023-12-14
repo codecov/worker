@@ -5,6 +5,7 @@ import sys
 import typing
 
 import click
+import django
 from celery.signals import worker_process_shutdown
 from prometheus_client import REGISTRY, CollectorRegistry, multiprocess
 from shared.celery_config import BaseCeleryConfig
@@ -60,6 +61,9 @@ def setup_worker():
         external_deps_folder = get_external_dependencies_folder()
         log.info(f"External dependencies folder configured to {external_deps_folder}")
         sys.path.append(external_deps_folder)
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_scaffold.settings")
+    django.setup()
 
     registry = REGISTRY
     if "PROMETHEUS_MULTIPROC_DIR" in os.environ:

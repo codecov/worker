@@ -18,6 +18,7 @@ from app import celery_app
 from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
 from helpers.metrics import metrics
+from helpers.telemetry import MetricContext, TimeseriesTimer
 
 log = logging.getLogger("worker")
 
@@ -207,28 +208,43 @@ class BaseCodecovTask(celery_app.Task):
     def run(self, *args, **kwargs):
         self.task_run_counter.inc()
         self._emit_queue_metrics()
-        with self.task_full_runtime.time():  # Timer isn't tested
-            with metrics.timer(f"{self.metrics_prefix}.full"):
-                db_session = get_db_session()
-                try:
-                    with self.task_core_runtime.time():  # Timer isn't tested
-                        with metrics.timer(f"{self.metrics_prefix}.run"):
-                            return asyncio.run(
-                                self.run_async(db_session, *args, **kwargs)
-                            )
-                except (DataError, IntegrityError):
-                    log.exception(
-                        "Errors related to the constraints of database happened",
-                        extra=dict(task_args=args, task_kwargs=kwargs),
-                    )
-                    db_session.rollback()
-                    self.retry()
-                except SQLAlchemyError as ex:
-                    self._analyse_error(ex, args, kwargs)
-                    db_session.rollback()
-                    self.retry()
-                finally:
-                    self.wrap_up_dbsession(db_session)
+
+        metric_context = MetricContext(
+            commit_sha=kwargs.get("commitid"),
+            repo_id=kwargs.get("repoid"),
+            owner_id=kwargs.get("ownerid"),
+        )
+
+        with TimeseriesTimer(
+            metric_context, f"{self.metrics_prefix}.full_runtime", sync=True
+        ):
+            with self.task_full_runtime.time():  # Timer isn't tested
+                with metrics.timer(f"{self.metrics_prefix}.full"):
+                    db_session = get_db_session()
+                    try:
+                        with TimeseriesTimer(
+                            metric_context,
+                            f"{self.metrics_prefix}.core_runtime",
+                            sync=True,
+                        ):
+                            with self.task_core_runtime.time():  # Timer isn't tested
+                                with metrics.timer(f"{self.metrics_prefix}.run"):
+                                    return asyncio.run(
+                                        self.run_async(db_session, *args, **kwargs)
+                                    )
+                    except (DataError, IntegrityError):
+                        log.exception(
+                            "Errors related to the constraints of database happened",
+                            extra=dict(task_args=args, task_kwargs=kwargs),
+                        )
+                        db_session.rollback()
+                        self.retry()
+                    except SQLAlchemyError as ex:
+                        self._analyse_error(ex, args, kwargs)
+                        db_session.rollback()
+                        self.retry()
+                    finally:
+                        self.wrap_up_dbsession(db_session)
 
     def wrap_up_dbsession(self, db_session):
         """
@@ -273,12 +289,24 @@ class BaseCodecovTask(celery_app.Task):
         res = super().on_retry(*args, **kwargs)
         self.task_retry_counter.inc()
         metrics.incr(f"{self.metrics_prefix}.retries")
+        metric_context = MetricContext(
+            commit_sha=kwargs.get("commitid"),
+            repo_id=kwargs.get("repoid"),
+            owner_id=kwargs.get("ownerid"),
+        )
+        metric_context.log_simple_metric(f"{self.metrics_prefix}.retry", 1.0)
         return res
 
     def on_success(self, *args, **kwargs):
         res = super().on_success(*args, **kwargs)
         self.task_success_counter.inc()
         metrics.incr(f"{self.metrics_prefix}.successes")
+        metric_context = MetricContext(
+            commit_sha=kwargs.get("commitid"),
+            repo_id=kwargs.get("repoid"),
+            owner_id=kwargs.get("ownerid"),
+        )
+        metric_context.log_simple_metric(f"{self.metrics_prefix}.success", 1.0)
         return res
 
     def on_failure(self, *args, **kwargs):
@@ -288,4 +316,10 @@ class BaseCodecovTask(celery_app.Task):
         res = super().on_failure(*args, **kwargs)
         self.task_failure_counter.inc()
         metrics.incr(f"{self.metrics_prefix}.failures")
+        metric_context = MetricContext(
+            commit_sha=kwargs.get("commitid"),
+            repo_id=kwargs.get("repoid"),
+            owner_id=kwargs.get("ownerid"),
+        )
+        metric_context.log_simple_metric(f"{self.metrics_prefix}.failure", 1.0)
         return res
