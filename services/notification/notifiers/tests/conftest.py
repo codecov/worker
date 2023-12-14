@@ -11,6 +11,7 @@ from database.tests.factories import (
     RepositoryFactory,
     RepositoryFlagFactory,
     UploadFactory,
+    OwnerFactory,
 )
 from services.archive import ArchiveService
 from services.comparison import ComparisonProxy
@@ -337,7 +338,6 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
 
 @pytest.fixture
 def create_sample_comparison(dbsession, request, sample_report, mocker):
-
     mocker.patch(
         "services.bots.get_github_integration_token",
         return_value="github-integration-token",
@@ -395,7 +395,10 @@ def sample_comparison(dbsession, request, sample_report, mocker):
         repository=repository, branch="new_branch", author__service="github"
     )
     pull = PullFactory.create(
-        repository=repository, base=base_commit.commitid, head=head_commit.commitid
+        repository=repository,
+        base=base_commit.commitid,
+        head=head_commit.commitid,
+        author=OwnerFactory(username="codecov-test-user"),
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
