@@ -11,7 +11,7 @@ from sqlalchemy.schema import FetchedValue
 
 import database.models
 from database.base import CodecovBaseModel, MixinBaseClass
-from database.enums import Decoration, Notification, NotificationState
+from database.enums import Decoration, Notification, NotificationState, ReportType
 from database.utils import ArchiveField
 from helpers.config import should_write_data_to_storage_config_check
 
@@ -207,9 +207,17 @@ class Commit(CodecovBaseModel):
     @property
     def report(self):
         db_session = self.get_db_session()
+        CommitReport = database.models.reports.CommitReport
         return (
-            db_session.query(database.models.reports.CommitReport)
-            .filter_by(commit_id=self.id_, code=None)
+            db_session.query(CommitReport)
+            .filter(
+                (CommitReport.commit_id == self.id_)
+                & (CommitReport.code == None)
+                & (
+                    (CommitReport.report_type == None)
+                    | (CommitReport.report_type == ReportType.COVERAGE.value)
+                )
+            )
             .first()
         )
 
