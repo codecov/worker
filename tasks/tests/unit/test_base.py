@@ -11,8 +11,6 @@ from mock import ANY, call
 from prometheus_client import REGISTRY
 from shared.billing import BillingPlan
 from shared.celery_config import sync_repos_task_name, upload_task_name
-from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
-from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetric
 from sqlalchemy.exc import DBAPIError, IntegrityError, InvalidRequestError
 
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
