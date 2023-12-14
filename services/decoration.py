@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 
 from conftest import dbsession
-from database.enums import Decoration, TrialStatus
+from database.enums import Decoration, ReportType, TrialStatus
 from database.models import Commit, Owner, Repository
 from database.models.reports import CommitReport, Upload
 from services.billing import BillingPlan, is_pr_billing_plan
@@ -57,6 +57,8 @@ def determine_uploads_used(db_session, org: Owner) -> int:
             Repository.private == True,
             Upload.created_at >= (datetime.now() - timedelta(days=30)),
             Commit.timestamp >= (datetime.now() - timedelta(days=60)),
+            (CommitReport.report_type == None)
+            | (CommitReport.report_type == ReportType.COVERAGE.value),
         )
     )
 

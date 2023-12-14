@@ -12,6 +12,7 @@ from shared.celery_config import (
 from shared.reports.enums import UploadState
 
 from app import celery_app
+from database.enums import ReportType
 from database.models import Commit, Pull
 from database.models.reports import CommitReport, Upload
 from services.comparison import get_or_create_comparison
@@ -88,7 +89,12 @@ class ManualTriggerTask(
         uploads = (
             db_session.query(Upload)
             .join(CommitReport)
-            .filter(CommitReport.code == report_code, CommitReport.commit == commit)
+            .filter(
+                CommitReport.code == report_code,
+                CommitReport.commit == commit,
+                (CommitReport.report_type == None)
+                | (CommitReport.report_type == ReportType.COVERAGE.value),
+            )
         )
         still_processing = 0
         for upload in uploads:
