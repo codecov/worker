@@ -33,7 +33,7 @@ class SiteUrls(Enum):
     pull_graph_url = "{base_url}/{service_short}/{username}/{project_name}/pull/{pull_id}/graphs/{graph_filename}"
     org_acccount_url = "{dashboard_base_url}/account/{service_short}/{username}"
     members_url = "{dashboard_base_url}/members/{service_short}/{username}"
-    members_url_self_hosted = "{dashboard_base_url}/internal/users"
+    members_url_self_hosted = "{dashboard_base_url}/account/{service_short}/{username}"
     plan_url = "{dashboard_base_url}/plan/{service_short}/{username}"
 
     def get_url(self, **kwargs) -> str:
@@ -156,6 +156,8 @@ def get_members_url(pull: Pull) -> str:
     else:
         return SiteUrls.members_url_self_hosted.get_url(
             dashboard_base_url=get_dashboard_base_url(),
+            service_short=services_short_dict.get(repository.service),
+            username=pull.author.username,
         )
 
 
