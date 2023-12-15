@@ -643,7 +643,10 @@ class TestRepositoryServiceTestCase(object):
             "parents": [possible_parent_commit.commitid],
             "timestamp": "2018-07-09T23:39:20Z",
         }
-        get_pull_request_result = {"head": {"branch": "newbranchyeah"}}
+        get_pull_request_result = {
+            "head": {"branch": "newbranchyeah"},
+            "base": {"branch": "main"},
+        }
         repository_service = mocker.MagicMock(
             get_commit=mock.AsyncMock(return_value=f),
             get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
@@ -796,7 +799,10 @@ class TestRepositoryServiceTestCase(object):
             "parents": [possible_parent_commit.commitid],
             "timestamp": "2018-07-09T23:39:20Z",
         }
-        get_pull_request_result = {"head": {"branch": "newbranchyeah"}}
+        get_pull_request_result = {
+            "head": {"branch": "newbranchyeah"},
+            "base": {"branch": "main"},
+        }
         repository_service = mocker.MagicMock(
             get_commit=mock.AsyncMock(return_value=f),
             get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
@@ -809,6 +815,61 @@ class TestRepositoryServiceTestCase(object):
         assert commit.totals is None
         assert commit.report_json == {}
         assert commit.branch == "newbranchyeah"
+        assert commit.parent_commit_id == possible_parent_commit.commitid
+        assert commit.state == "complete"
+        assert commit.author is not None
+        assert commit.timestamp == datetime(2018, 7, 9, 23, 39, 20)
+        assert commit.author.username == "author_username"
+
+    @pytest.mark.asyncio
+    async def test_update_commit_from_provider_info_pull_from_fork(
+        self, dbsession, mocker
+    ):
+        possible_parent_commit = CommitFactory.create(
+            message="possible_parent_commit", pullid=None
+        )
+        commit = CommitFactory.create(
+            message="",
+            author=None,
+            pullid=1,
+            totals=None,
+            _report_json=None,
+            repository=possible_parent_commit.repository,
+        )
+        dbsession.add(possible_parent_commit)
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        f = {
+            "author": {
+                "id": "author_id",
+                "username": "author_username",
+                "email": "email@email.com",
+                "name": "Mario",
+            },
+            "message": "This message is brought to you by",
+            "parents": [possible_parent_commit.commitid],
+            "timestamp": "2018-07-09T23:39:20Z",
+        }
+        get_pull_request_result = {
+            "head": {"branch": "main", "slug": f"some-guy/{commit.repository.name}"},
+            "base": {
+                "branch": "main",
+                "slug": f"{commit.repository.owner.username}/{commit.repository.name}",
+            },
+        }
+        repository_service = mocker.MagicMock(
+            get_commit=mock.AsyncMock(return_value=f),
+            get_pull_request=mock.AsyncMock(return_value=get_pull_request_result),
+        )
+        await update_commit_from_provider_info(repository_service, commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        assert commit.message == "This message is brought to you by"
+        assert commit.pullid == 1
+        assert commit.totals is None
+        assert commit.report_json == {}
+        assert commit.branch == f"some-guy/{commit.repository.name}:main"
         assert commit.parent_commit_id == possible_parent_commit.commitid
         assert commit.state == "complete"
         assert commit.author is not None
