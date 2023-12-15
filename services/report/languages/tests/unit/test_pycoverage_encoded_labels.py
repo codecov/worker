@@ -341,7 +341,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 0, None, None, None]],
                         None,
                         None,
-                        [(0, 0, None, [])],
+                        [],
                     ),
                     (
                         9,
@@ -359,7 +359,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 0, None, None, None]],
                         None,
                         None,
-                        [(0, 0, None, [])],
+                        [],
                     ),
                 ],
                 "test_another.py": [
@@ -567,7 +567,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 0, None, None, None]],
                         None,
                         None,
-                        [(0, 0, None, [])],
+                        [],
                     ),
                     (
                         5,
@@ -587,7 +587,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 0, None, None, None]],
                         None,
                         None,
-                        [(0, 0, None, [])],
+                        [],
                     ),
                     (
                         3,
@@ -596,7 +596,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 0, None, None, None]],
                         None,
                         None,
-                        [(0, 0, None, [])],
+                        [],
                     ),
                     (
                         4,
@@ -605,7 +605,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 0, None, None, None]],
                         None,
                         None,
-                        [(0, 0, None, [])],
+                        [],
                     ),
                     (
                         5,
@@ -614,7 +614,7 @@ class TestPyCoverageProcessor(BaseTestCase):
                         [[0, 0, None, None, None]],
                         None,
                         None,
-                        [(0, 0, None, [])],
+                        [],
                     ),
                 ],
             },
