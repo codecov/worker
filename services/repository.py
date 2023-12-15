@@ -198,7 +198,13 @@ async def update_commit_from_provider_info(repository_service, commit):
             commit_updates = await repository_service.get_pull_request(
                 pullid=commit.pullid
             )
-            commit.branch = commit_updates["head"]["branch"]
+            # There's a chance that the commit comes from a fork
+            # so we append the branch name with the fork slug
+            branch_name = commit_updates["head"]["branch"]
+            # TODO: 'slug' is in a `.get` because currently only GitHub returns that info
+            if commit_updates["head"].get("slug") != commit_updates["base"].get("slug"):
+                branch_name = commit_updates["head"]["slug"] + ":" + branch_name
+            commit.branch = branch_name
             commit.merged = False
         else:
             possible_branches = await repository_service.get_best_effort_branches(
