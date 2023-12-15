@@ -5,13 +5,13 @@ from shared.utils.sessions import Session
 
 from database.tests.factories import (
     CommitFactory,
+    OwnerFactory,
     PullFactory,
     ReportDetailsFactory,
     ReportFactory,
     RepositoryFactory,
     RepositoryFlagFactory,
     UploadFactory,
-    OwnerFactory,
 )
 from services.archive import ArchiveService
 from services.comparison import ComparisonProxy
