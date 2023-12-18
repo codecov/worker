@@ -61,4 +61,4 @@ class TrialStatus(Enum):
 class ReportType(Enum):
     COVERAGE = "coverage"
     TEST_RESULTS = "test_results"
-    BUNDLE_ANALYIS = "bundle_analysis"
+    BUNDLE_ANALYSIS = "bundle_analysis"
