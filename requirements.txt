@@ -80,7 +80,7 @@ coverage==5.5
     #   -r requirements.in
     #   codecovopentelem
     #   pytest-cov
-cryptography==41.0.4
+cryptography==41.0.6
     # via shared
 deprecated==1.2.12
     # via opentelemetry-api
@@ -333,7 +333,9 @@ requests==2.31.0
 respx==0.20.2
     # via -r requirements.in
 rfc3986[idna2008]==1.4.0
-    # via httpx
+    # via
+    #   httpx
+    #   rfc3986
 rsa==4.7.2
     # via google-auth
 s3transfer==0.3.4
