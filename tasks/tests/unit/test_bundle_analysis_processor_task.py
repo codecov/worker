@@ -2,7 +2,7 @@ from unittest.mock import ANY
 
 import pytest
 from redis.exceptions import LockError
-from shared.bundle_analysis.storage import BUCKET_NAME
+from shared.bundle_analysis.storage import get_bucket_name
 
 from database.models import CommitReport
 from database.tests.factories import CommitFactory, UploadFactory
@@ -21,7 +21,7 @@ async def test_bundle_analysis_processor_task(
     storage_path = (
         f"v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
-    mock_storage.write_file(BUCKET_NAME, storage_path, "test-content")
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
     mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
 
@@ -77,7 +77,7 @@ async def test_bundle_analysis_processor_task_error(
     storage_path = (
         f"v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
-    mock_storage.write_file(BUCKET_NAME, storage_path, "test-content")
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
     mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
 
@@ -139,7 +139,7 @@ async def test_bundle_analysis_processor_task_general_error(
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
-    mock_storage.write_file(BUCKET_NAME, storage_path, "test-content")
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
     mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
 
@@ -196,7 +196,7 @@ async def test_bundle_analysis_processor_task_locked(
     storage_path = (
         f"v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
-    mock_storage.write_file(BUCKET_NAME, storage_path, "test-content")
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
     mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
     mock_redis.lock.return_value.__enter__.side_effect = LockError()

@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 import sentry_sdk
 from shared.bundle_analysis import BundleAnalysisReport, BundleAnalysisReportLoader
-from shared.bundle_analysis.storage import BUCKET_NAME
+from shared.bundle_analysis.storage import get_bucket_name
 from shared.reports.enums import UploadState
 from shared.storage import get_appropriate_storage_service
 from shared.storage.exceptions import FileNotInStorageError
@@ -116,7 +116,9 @@ class BundleAnalysisReportService(BaseReportService):
         _, local_path = tempfile.mkstemp()
         try:
             with open(local_path, "wb") as f:
-                storage_service.read_file(BUCKET_NAME, upload.storage_path, file_obj=f)
+                storage_service.read_file(
+                    get_bucket_name(), upload.storage_path, file_obj=f
+                )
 
             # load the downloaded data into the bundle report
             session_id = bundle_report.ingest(local_path)
