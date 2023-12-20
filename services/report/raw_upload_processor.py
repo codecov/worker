@@ -164,7 +164,7 @@ def process_raw_upload(
     if len(actual_path_fixes) > 0:
         log.info(
             "Example path fixes for this raw upload",
-            extra=extra={
+            extra={
                 "fixes": actual_path_fixes.items(),
                 "toc": path_fixer.toc,
                 "disable_default_pathfixes": path_fixer.should_disable_default_pathfixes,
