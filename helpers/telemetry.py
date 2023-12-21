@@ -105,7 +105,6 @@ class MetricContext:
             f"{self.repo_slug}/{commit.commitid}" if self.repo_slug and commit else None
         )
 
-        dbsession.close()
         self.populated = True
 
     def log_simple_metric(self, name: str, value: float):
