@@ -69,9 +69,11 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         db_session.commit()
 
         await self.compute_flag_comparison(db_session, comparison, comparison_proxy)
+        db_session.commit()
         await self.compute_component_comparisons(
             db_session, comparison, comparison_proxy
         )
+        db_session.commit()
         return {"successful": True}
 
     async def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
