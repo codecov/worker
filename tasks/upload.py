@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from json import loads
 from typing import Any, List, Mapping, Optional
 
-from celery import chain
+from celery import chain, chord
 from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
@@ -30,6 +30,7 @@ from services.archive import ArchiveService
 from services.bundle_analysis import BundleAnalysisReportService
 from services.redis import Redis, download_archive_from_redis, get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
+from services.test_results import TestResultsReportService
 from services.repository import (
     create_webhook_on_provider,
     get_repo_provider_service,
@@ -41,6 +42,8 @@ from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
+from tasks.test_results_processor import test_results_processor_task
+from tasks.test_results_finisher import test_results_finisher_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, upload_processor_task
 
@@ -445,6 +448,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             report_service = ReportService(commit_yaml)
         elif report_type == ReportType.BUNDLE_ANALYSIS:
             report_service = BundleAnalysisReportService(commit_yaml)
+        elif report_type == ReportType.TEST_RESULTS:
+            report_service = TestResultsReportService(commit_yaml)
         else:
             raise NotImplementedError(f"no report service for: {report_type.value}")
 
@@ -572,6 +577,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit_yaml,
                 argument_list,
             )
+        elif commit_report.report_type == ReportType.TEST_RESULTS.value:
+            res = self._schedule_test_results_processing_task(
+                commit, commit_yaml, argument_list, commit_report, checkpoints
+            )
 
         if res:
             return res
@@ -677,6 +686,71 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             ),
         )
         return res
+
+    def _schedule_test_results_processing_task(
+        self,
+        commit,
+        commit_yaml,
+        argument_list,
+        commit_report,
+        checkpoints=None,
+    ):
+        processor_task_group = []
+        for i in range(0, len(argument_list), CHUNK_SIZE):
+            chunk = argument_list[i : i + CHUNK_SIZE]
+            if chunk:
+                sig = test_results_processor_task.signature(
+                    args=(),
+                    kwargs=dict(
+                        repoid=commit.repoid,
+                        commitid=commit.commitid,
+                        commit_yaml=commit_yaml,
+                        arguments_list=chunk,
+                        report_code=commit_report.code,
+                    ),
+                )
+                processor_task_group.append(sig)
+        if processor_task_group:
+            checkpoint_data = None
+            if checkpoints:
+                checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+                checkpoint_data = checkpoints.data
+
+            res = chord(
+                processor_task_group,
+                test_results_finisher_task.signature(
+                    args=(),
+                    kwargs={
+                        "repoid": commit.repoid,
+                        "commitid": commit.commitid,
+                        "commit_yaml": commit_yaml,
+                        "report_code": commit_report.code,
+                        _kwargs_key(UploadFlow): checkpoint_data,
+                    },
+                ),
+            ).apply_async()
+
+            log.info(
+                "Scheduling task for %s different reports",
+                len(argument_list),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    argument_list=argument_list,
+                    number_arguments=len(argument_list),
+                    scheduled_task_ids=res.as_tuple(),
+                ),
+            )
+            return res
+        log.info(
+            "Not scheduling task because there were no reports to be processed found",
+            extra=dict(
+                repoid=commit.repoid,
+                commit=commit.commitid,
+                argument_list=argument_list,
+            ),
+        )
+        return None
 
     async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
