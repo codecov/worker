@@ -1,6 +1,5 @@
 from typing import Mapping, Sequence
 
-
 from database.enums import ReportType
 from database.models import Commit, CommitReport
 from services.report import BaseReportService
