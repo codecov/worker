@@ -240,3 +240,21 @@ class CompareComponent(MixinBaseClass, CodecovBaseModel):
     patch_totals = Column(postgresql.JSON)
 
     commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
+
+
+class Test(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "reports_test"
+    repoid = Column(types.Integer, ForeignKey("repos.repoid"))
+    repository = relationship("Repository", backref=backref("tests"))
+    name = Column(types.String(256), nullable=False)
+    testsuite = Column(types.String(256), nullable=False)
+
+
+class TestInstance(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "reports_testrun"
+    test_id = Column(types.Integer, ForeignKey("reports_test.id"))
+    test = relationship(Test, backref=backref("testruns"))
+    duration = Column(types.Float, nullable=False)
+    outcome = Column(types.Integer, nullable=False)
+    upload_id = Column(types.Integer, ForeignKey("reports_upload.id"))
+    upload = relationship("Upload", backref=backref("testruns"))
