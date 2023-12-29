@@ -164,7 +164,11 @@ def process_raw_upload(
     if len(actual_path_fixes) > 0:
         log.info(
             "Example path fixes for this raw upload",
-            extra={"fixes": actual_path_fixes.items()},
+            extra={
+                "fixes": actual_path_fixes.items(),
+                "toc": path_fixer.toc,
+                "disable_default_pathfixes": path_fixer.should_disable_default_pathfixes,
+            },
         )
     _possibly_log_pathfixer_unusual_results(path_fixer, sessionid)
     if not temporary_report:

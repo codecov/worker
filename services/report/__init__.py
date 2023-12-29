@@ -93,11 +93,9 @@ class NotReadyToBuildReportYetError(Exception):
     pass
 
 
-class ReportService(object):
-
-    metrics_prefix = "services.report"
-
-    """This is the class that will handle anything report-handling related
+class BaseReportService:
+    """
+    This is the class that will handle anything report-handling related
 
     Attributes:
         current_yaml (Mapping[str, Any]): The configuration we need to follow.
@@ -108,6 +106,75 @@ class ReportService(object):
         if isinstance(current_yaml, dict):
             current_yaml = UserYaml(current_yaml)
         self.current_yaml = current_yaml
+
+    async def initialize_and_save_report(
+        self, commit: Commit, report_code: str = None
+    ) -> CommitReport:
+        raise NotImplementedError()
+
+    def fetch_report_upload(
+        self, commit_report: CommitReport, upload_id: int
+    ) -> Upload:
+        """
+        Fetch Upload by the given upload_id.
+        :raises: Exception if Upload is not found.
+        """
+        db_session = commit_report.get_db_session()
+        upload = db_session.query(Upload).filter_by(id_=int(upload_id)).first()
+        if not upload:
+            raise Exception(
+                f"Failed to find existing upload by ID ({upload_id})",
+                dict(
+                    commit=commit_report.commit_id,
+                    repo=commit_report.commit.repoid,
+                    upload_id=upload_id,
+                ),
+            )
+        return upload
+
+    def create_report_upload(
+        self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
+    ) -> Upload:
+        """
+        Creates an `Upload` from the user-given arguments to a job
+
+        The end goal here is that the `Upload` should have all the information needed to
+            hypothetically redo the job later
+
+        Args:
+            normalized_arguments (Mapping[str, str]): The arguments as given by the user
+            commit_report (CommitReport): The commit_report we will attach this `Uplaod` to
+
+        Returns:
+            Upload
+        """
+        db_session = commit_report.get_db_session()
+        upload = Upload(
+            external_id=normalized_arguments.get("reportid"),
+            build_code=normalized_arguments.get("build"),
+            build_url=normalized_arguments.get("build_url"),
+            env=None,
+            report_id=commit_report.id_,
+            job_code=normalized_arguments.get("job"),
+            name=normalized_arguments.get("name")[:100]
+            if normalized_arguments.get("name")
+            else None,
+            provider=normalized_arguments.get("service"),
+            state="started",
+            storage_path=normalized_arguments.get("url"),
+            order_number=None,
+            upload_extras={},
+            upload_type=SessionType.uploaded.value,
+            state_id=UploadState.UPLOADED.db_id,
+            upload_type_id=UploadType.UPLOADED.db_id,
+        )
+        db_session.add(upload)
+        db_session.flush()
+        return upload
+
+
+class ReportService(BaseReportService):
+    metrics_prefix = "services.report"
 
     def has_initialized_report(self, commit: Commit) -> bool:
         """Says whether a commit has already initialized its report or not
@@ -210,67 +277,13 @@ class ReportService(object):
 
         return current_report_row
 
-    def fetch_report_upload(
-        self, commit_report: CommitReport, upload_id: int
-    ) -> Upload:
-        """
-        Fetch Upload by the given upload_id.
-        :raises: Exception if Upload is not found.
-        """
-        db_session = commit_report.get_db_session()
-        upload = db_session.query(Upload).filter_by(id_=int(upload_id)).first()
-        if not upload:
-            raise Exception(
-                f"Failed to find existing upload by ID ({upload_id})",
-                dict(
-                    commit=commit_report.commit_id,
-                    repo=commit_report.commit.repoid,
-                    upload_id=upload_id,
-                ),
-            )
-        return upload
-
     def create_report_upload(
         self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
     ) -> Upload:
-        """Creates an `Upload` from the user-given arguments to a job
-
-        The end goal here is that the `Upload` should have all the information needed to
-            hypothetically redo the job later
-
-        Args:
-            normalized_arguments (Mapping[str, str]): The arguments as given by the user
-            commit_report (CommitReport): The commit_report we will attach this `Uplaod` to
-
-        Returns:
-            Upload
-        """
-        db_session = commit_report.get_db_session()
-        upload = Upload(
-            external_id=normalized_arguments.get("reportid"),
-            build_code=normalized_arguments.get("build"),
-            build_url=normalized_arguments.get("build_url"),
-            env=None,
-            report_id=commit_report.id_,
-            job_code=normalized_arguments.get("job"),
-            name=normalized_arguments.get("name")[:100]
-            if normalized_arguments.get("name")
-            else None,
-            provider=normalized_arguments.get("service"),
-            state="started",
-            storage_path=normalized_arguments.get("url"),
-            order_number=None,
-            upload_extras={},
-            upload_type=SessionType.uploaded.value,
-            state_id=UploadState.UPLOADED.db_id,
-            upload_type_id=UploadType.UPLOADED.db_id,
-        )
-        db_session.add(upload)
-        db_session.flush()
+        upload = super().create_report_upload(normalized_arguments, commit_report)
         flags = normalized_arguments.get("flags")
         flags = flags.split(",") if flags else []
         self._attach_flags_to_upload(upload, flags)
-        db_session.flush()
         return upload
 
     def _attach_flags_to_upload(self, upload: Upload, flag_names: Sequence[str]):

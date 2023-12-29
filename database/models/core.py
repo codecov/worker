@@ -221,6 +221,22 @@ class Commit(CodecovBaseModel):
             .first()
         )
 
+    def commit_report(self, report_type: ReportType):
+        db_session = self.get_db_session()
+        CommitReport = database.models.reports.CommitReport
+        if report_type == ReportType.COVERAGE:
+            return self.report
+        else:
+            return (
+                db_session.query(CommitReport)
+                .filter(
+                    (CommitReport.commit_id == self.id_)
+                    & (CommitReport.code == None)
+                    & (CommitReport.report_type == report_type.value)
+                )
+                .first()
+            )
+
     @property
     def id(self):
         return self.id_
@@ -300,6 +316,7 @@ class Pull(CodecovBaseModel):
     compared_to = Column(types.Text)
     head = Column(types.Text)
     commentid = Column(types.Text)
+    bundle_analysis_commentid = Column(types.Text)
     diff = Column(postgresql.JSON)
     flare = Column(postgresql.JSON)
     author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))
