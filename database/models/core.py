@@ -316,6 +316,7 @@ class Pull(CodecovBaseModel):
     compared_to = Column(types.Text)
     head = Column(types.Text)
     commentid = Column(types.Text)
+    bundle_analysis_commentid = Column(types.Text)
     diff = Column(postgresql.JSON)
     flare = Column(postgresql.JSON)
     author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))

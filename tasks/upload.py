@@ -39,6 +39,7 @@ from services.repository import (
 from services.yaml import save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
+from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, upload_processor_task
@@ -640,7 +641,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit_yaml: UserYaml,
         argument_list: List[dict],
     ):
-        processor_tasks = [
+        task_signatures = [
             bundle_analysis_processor_task.signature(
                 args=({},) if i == 0 else (),  # to support Celery `chain`
                 kwargs=dict(
@@ -653,7 +654,18 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             for i, params in enumerate(argument_list)
         ]
 
-        res = chain(*processor_tasks).apply_async()
+        # it might make sense to eventually have a "finisher" task that
+        # does whatever extra stuff + enqueues a notify
+        notify_sig = bundle_analysis_notify_task.signature(
+            kwargs={
+                "repoid": commit.repoid,
+                "commitid": commit.commitid,
+                "commit_yaml": commit_yaml,
+            },
+        )
+        task_signatures.append(notify_sig)
+
+        res = chain(*task_signatures).apply_async()
         log.info(
             "Scheduling bundle analysis processor tasks",
             extra=dict(

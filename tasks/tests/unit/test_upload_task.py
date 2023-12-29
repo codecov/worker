@@ -22,6 +22,7 @@ from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
+from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
 from tasks.upload import UploadContext, UploadTask
 from tasks.upload_finisher import upload_finisher_task
@@ -238,7 +239,7 @@ class TestUploadTaskIntegration(object):
         uploads = commit_report.uploads
         assert len(uploads) == 1
         upload = dbsession.query(Upload).filter_by(report_id=commit_report.id).first()
-        sig = bundle_analysis_processor_task.signature(
+        processor_sig = bundle_analysis_processor_task.signature(
             args=({},),
             kwargs=dict(
                 repoid=commit.repoid,
@@ -251,7 +252,14 @@ class TestUploadTaskIntegration(object):
                 },
             ),
         )
-        chain.assert_called_with(sig)
+        notify_sig = bundle_analysis_notify_task.signature(
+            kwargs=dict(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            ),
+        )
+        chain.assert_called_with(processor_sig, notify_sig)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_no_jobs(

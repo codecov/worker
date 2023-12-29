@@ -2,19 +2,32 @@ import logging
 import os
 import tempfile
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any, Dict, Optional
 
 import sentry_sdk
-from shared.bundle_analysis import BundleAnalysisReport, BundleAnalysisReportLoader
+from shared.bundle_analysis import (
+    BundleAnalysisComparison,
+    BundleAnalysisReport,
+    BundleAnalysisReportLoader,
+)
 from shared.bundle_analysis.storage import get_bucket_name
 from shared.reports.enums import UploadState
 from shared.storage import get_appropriate_storage_service
 from shared.storage.exceptions import FileNotInStorageError
+from shared.torngit.base import TorngitBaseAdapter
+from shared.torngit.exceptions import TorngitClientError
+from shared.yaml import UserYaml
 
 from database.enums import ReportType
-from database.models import Commit, CommitReport, Upload, UploadError
+from database.models import Commit, CommitReport, Repository, Upload, UploadError
 from services.archive import ArchiveService
 from services.report import BaseReportService
+from services.repository import (
+    EnrichedPull,
+    fetch_and_update_pull_request_information_from_commit,
+    get_repo_provider_service,
+)
 from services.storage import get_storage_client
 
 log = logging.getLogger(__name__)
@@ -142,3 +155,227 @@ class BundleAnalysisReportService(BaseReportService):
             bundle_report=bundle_report,
             session_id=session_id,
         )
+
+
+class ComparisonError(Exception):
+    pass
+
+
+class MissingBaseCommit(ComparisonError):
+    pass
+
+
+class MissingBaseReport(ComparisonError):
+    pass
+
+
+class MissingHeadCommit(ComparisonError):
+    pass
+
+
+class MissingHeadReport(ComparisonError):
+    pass
+
+
+class ComparisonLoader:
+    def __init__(self, pull: EnrichedPull):
+        self.pull = pull
+
+    @cached_property
+    def repository(self) -> Repository:
+        return self.pull.database_pull.repository
+
+    @cached_property
+    def base_commit(self) -> Commit:
+        commit = self.pull.database_pull.get_comparedto_commit()
+        if commit is None:
+            raise MissingBaseCommit()
+        return commit
+
+    @cached_property
+    def head_commit(self) -> Commit:
+        commit = self.pull.database_pull.get_head_commit()
+        if commit is None:
+            raise MissingHeadCommit()
+        return commit
+
+    @cached_property
+    def base_commit_report(self) -> CommitReport:
+        commit_report = self.base_commit.commit_report(
+            report_type=ReportType.BUNDLE_ANALYSIS
+        )
+        if commit_report is None:
+            raise MissingBaseReport()
+        return commit_report
+
+    @cached_property
+    def head_commit_report(self) -> CommitReport:
+        commit_report = self.head_commit.commit_report(
+            report_type=ReportType.BUNDLE_ANALYSIS
+        )
+        if commit_report is None:
+            raise MissingHeadReport()
+        return commit_report
+
+    def get_comparison(self) -> BundleAnalysisComparison:
+        loader = BundleAnalysisReportLoader(
+            storage_service=get_appropriate_storage_service(),
+            repo_key=ArchiveService.get_archive_hash(self.repository),
+        )
+
+        return BundleAnalysisComparison(
+            loader=loader,
+            base_report_key=self.base_commit_report.external_id,
+            head_report_key=self.head_commit_report.external_id,
+        )
+
+
+class Notifier:
+    def __init__(self, commit: Commit, current_yaml: UserYaml):
+        self.commit = commit
+        self.current_yaml = current_yaml
+
+    @cached_property
+    def repository(self) -> Repository:
+        return self.commit.repository
+
+    @cached_property
+    def commit_report(self) -> Optional[CommitReport]:
+        return self.commit.commit_report(report_type=ReportType.BUNDLE_ANALYSIS)
+
+    @cached_property
+    def repository_service(self) -> TorngitBaseAdapter:
+        return get_repo_provider_service(self.commit.repository)
+
+    @cached_property
+    def bundle_analysis_loader(self):
+        repo_hash = ArchiveService.get_archive_hash(self.repository)
+        storage_service = get_storage_client()
+        return BundleAnalysisReportLoader(storage_service, repo_hash)
+
+    @cached_property
+    def bundle_report(self) -> Optional[BundleAnalysisReport]:
+        return self.bundle_analysis_loader.load(self.commit_report.external_id)
+
+    async def notify(self) -> bool:
+        if self.commit_report is None:
+            log.warning(
+                "Missing commit report", extra=dict(commitid=self.commit.commitid)
+            )
+            return False
+
+        if self.bundle_report is None:
+            log.warning(
+                "Missing bundle report",
+                extra=dict(
+                    commitid=self.commit.commitid,
+                    report_key=self.commit_report.external_id,
+                ),
+            )
+            return False
+
+        pull: Optional[
+            EnrichedPull
+        ] = await fetch_and_update_pull_request_information_from_commit(
+            self.repository_service, self.commit, self.current_yaml
+        )
+        if pull is None:
+            log.warning(
+                "No pull for commit",
+                extra=dict(
+                    commitid=self.commit.commitid,
+                    report_key=self.commit_report.external_id,
+                ),
+            )
+            return False
+
+        pullid = pull.database_pull.pullid
+        message = self._build_message(pull)
+
+        try:
+            comment_id = pull.database_pull.bundle_analysis_commentid
+            if comment_id:
+                await self.repository_service.edit_comment(pullid, comment_id, message)
+            else:
+                res = await self.repository_service.post_comment(pullid, message)
+                pull.database_pull.bundle_analysis_commentid = res["id"]
+            return True
+        except TorngitClientError:
+            log.error(
+                "Error creating/updapting PR comment",
+                extra=dict(
+                    commitid=self.commit.commitid,
+                    report_key=self.commit_report.external_id,
+                    pullid=pullid,
+                ),
+            )
+            return False
+
+    def _build_message(self, pull: EnrichedPull) -> str:
+        comparison = ComparisonLoader(pull).get_comparison()
+        bundle_changes = comparison.bundle_changes()
+
+        lines = [
+            "## Bundle Report",
+            "",
+        ]
+
+        # total bundle size delta
+        total_size_delta = 0
+        for bundle_change in bundle_changes:
+            total_size_delta += bundle_change.size_delta
+        amount = self._bytes_readable(total_size_delta)
+        if total_size_delta > 0:
+            lines.append(
+                f"Changes will increase total bundle size by {amount} :arrow_up:"
+            )
+        elif total_size_delta < 0:
+            lines.append(
+                f"Changes will decrease total bundle size by {amount} :arrow_down:"
+            )
+        else:
+            lines.append("Changes will not impact bundle size")
+        lines.append("")
+
+        # table of bundles
+        lines += [
+            "| Bundle name | Size | Change |",
+            "| ----------- | ---- | ------ |",
+        ]
+        for bundle_change in bundle_changes:
+            bundle_name = bundle_change.bundle_name
+            head_bundle_report = comparison.head_report.bundle_report(bundle_name)
+            size = self._bytes_readable(head_bundle_report.total_size())
+
+            change_size = bundle_change.size_delta
+            icon = ""
+            if change_size > 0:
+                icon = ":arrow_up:"
+            elif change_size < 0:
+                icon = ":arrow_down:"
+            lines.append(
+                f"| {bundle_change.bundle_name} | {size} | {self._bytes_readable(change_size)} {icon} |"
+            )
+        return "\n".join(lines)
+
+    def _bytes_readable(self, bytes: int) -> str:
+        # TODO: this could maybe be a helper method in `shared`
+
+        bytes = abs(bytes)
+
+        if bytes < 1000:
+            bytes = round(bytes, 2)
+            return f"{bytes} bytes"
+
+        kilobytes = bytes / 1000
+        if kilobytes < 1000:
+            kilobytes = round(kilobytes, 2)
+            return f"{kilobytes}KB"
+
+        megabytes = kilobytes / 1000
+        if megabytes < 1000:
+            megabytes = round(megabytes, 2)
+            return f"{megabytes}MB"
+
+        gigabytes = round(megabytes / 1000, 2)
+        return f"{gigabytes}GB"
