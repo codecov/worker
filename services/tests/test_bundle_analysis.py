@@ -11,11 +11,13 @@ from services.repository import EnrichedPull
 
 expected_message_increase = """## Bundle Report
 
-Changes will increase total bundle size by 3.46KB :arrow_up:
+Changes will increase total bundle size by 14.57KB :arrow_up:
 
 | Bundle name | Size | Change |
 | ----------- | ---- | ------ |
-| test-bundle | 123.46KB | 3.46KB :arrow_up: |"""
+| added-bundle | 123.46KB | 12.35KB :arrow_up: |
+| changed-bundle | 123.46KB | 3.46KB :arrow_up: |
+| removed-bundle | (removed) | 1.23KB :arrow_down: |"""
 
 expected_message_decrease = """## Bundle Report
 
@@ -95,7 +97,13 @@ async def test_bundle_analysis_notify(
         "shared.bundle_analysis.comparison.BundleAnalysisComparison.bundle_changes"
     )
     bundle_changes.return_value = [
-        BundleChange("test-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456),
+        BundleChange("added-bundle", BundleChange.ChangeType.ADDED, size_delta=12345),
+        BundleChange(
+            "changed-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456
+        ),
+        BundleChange(
+            "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
+        ),
     ]
 
     bundle_report = mocker.patch(

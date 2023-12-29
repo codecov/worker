@@ -10,6 +10,7 @@ from shared.bundle_analysis import (
     BundleAnalysisComparison,
     BundleAnalysisReport,
     BundleAnalysisReportLoader,
+    BundleChange,
 )
 from shared.bundle_analysis.storage import get_bucket_name
 from shared.reports.enums import UploadState
@@ -344,8 +345,11 @@ class Notifier:
         ]
         for bundle_change in bundle_changes:
             bundle_name = bundle_change.bundle_name
-            head_bundle_report = comparison.head_report.bundle_report(bundle_name)
-            size = self._bytes_readable(head_bundle_report.total_size())
+            if bundle_change.change_type == BundleChange.ChangeType.REMOVED:
+                size = "(removed)"
+            else:
+                head_bundle_report = comparison.head_report.bundle_report(bundle_name)
+                size = self._bytes_readable(head_bundle_report.total_size())
 
             change_size = bundle_change.size_delta
             icon = ""
