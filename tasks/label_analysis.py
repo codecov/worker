@@ -4,9 +4,9 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple, TypedDict, Unio
 import sentry_sdk
 from shared.celery_config import label_analysis_task_name
 from shared.labelanalysis import LabelAnalysisRequestState
+from sqlalchemy.orm import Session
 
 from app import celery_app
-from database.models.core import Commit
 from database.models.labelanalysis import (
     LabelAnalysisProcessingError,
     LabelAnalysisProcessingErrorCode,
@@ -15,6 +15,7 @@ from database.models.labelanalysis import (
 from database.models.staticanalysis import StaticAnalysisSuite
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from helpers.metrics import metrics
+from helpers.telemetry import MetricContext
 from services.report import Report, ReportService
 from services.report.report_builder import SpecialLabelsEnum
 from services.repository import get_repo_provider_service
@@ -66,6 +67,10 @@ PossiblyEncodedLabelSet = Union[Set[str], Set[int]]
 class LabelAnalysisRequestProcessingTask(
     BaseCodecovTask, name=label_analysis_task_name
 ):
+    errors: List[LabelAnalysisProcessingError] = None
+    dbsession: Session = None
+    metrics_context: MetricContext = None
+
     async def run_async(self, db_session, request_id, *args, **kwargs):
         self.errors = []
         self.dbsession = db_session
@@ -100,6 +105,10 @@ class LabelAnalysisRequestProcessingTask(
                 external_id=label_analysis_request.external_id,
                 commit=label_analysis_request.head_commit.commitid,
             ),
+        )
+        self.metrics_context = MetricContext(
+            repo_id=label_analysis_request.head_commit.repository.repoid,
+            commit_id=label_analysis_request.head_commit.id,
         )
 
         if label_analysis_request.state_id == LabelAnalysisRequestState.FINISHED.db_id:
@@ -410,10 +419,16 @@ class LabelAnalysisRequestProcessingTask(
                 commit=commit_sha,
             ),
         )
+        self.metrics_context.log_simple_metric(
+            "label_analysis.tests_saved_count", len(all_report_labels)
+        )
+        self.metrics_context.log_simple_metric(
+            "label_analysis.requests_with_requested_labels",
+            float(requested_labels is not None),
+        )
         if requested_labels is not None:
             requested_labels = set(requested_labels)
-            all_report_labels = all_report_labels
-            return {
+            ans = {
                 "present_report_labels": sorted(all_report_labels & requested_labels),
                 "present_diff_labels": sorted(
                     executable_lines_labels & requested_labels
@@ -421,6 +436,22 @@ class LabelAnalysisRequestProcessingTask(
                 "absent_labels": sorted(requested_labels - all_report_labels),
                 "global_level_labels": sorted(global_level_labels & requested_labels),
             }
+            self.metrics_context.log_simple_metric(
+                "label_analysis.requested_labels_count", len(requested_labels)
+            )
+            self.metrics_context.log_simple_metric(
+                "label_analysis.tests_to_run_count",
+                len(
+                    ans["present_diff_labels"]
+                    + ans["global_level_labels"]
+                    + ans["absent_labels"]
+                ),
+            )
+            return ans
+        self.metrics_context.log_simple_metric(
+            "label_analysis.tests_to_run_count",
+            len(executable_lines_labels | global_level_labels),
+        )
         return {
             "present_report_labels": sorted(all_report_labels),
             "present_diff_labels": sorted(executable_lines_labels),
