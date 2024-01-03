@@ -24,6 +24,7 @@ from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
+from tasks.test_results_processor import test_results_processor_task
 from tasks.upload import UploadContext, UploadTask
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
@@ -260,6 +261,69 @@ class TestUploadTaskIntegration(object):
             ),
         )
         chain.assert_called_with(processor_sig, notify_sig)
+
+    @pytest.mark.asyncio
+    async def test_upload_task_call_test_results(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+    ):
+        group = mocker.patch("tasks.upload.group")
+        storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mocker.patch.object(UploadTask, "app", celery_app)
+
+        commit = CommitFactory.create(
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="ThiagoCodecov",
+            repository__owner__service="github",
+            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+            repository__name="example-python",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}/test_results"
+        ] = jsonified_redis_queue
+
+        await UploadTask().run_async(
+            dbsession,
+            commit.repoid,
+            commit.commitid,
+            report_type="test_results",
+        )
+        commit_report = commit.commit_report(report_type=ReportType.TEST_RESULTS)
+        assert commit_report
+        uploads = commit_report.uploads
+        assert len(uploads) == 1
+        upload = dbsession.query(Upload).filter_by(report_id=commit_report.id).first()
+        processor_sig = test_results_processor_task.signature(
+            kwargs=dict(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+                arguments_list=[
+                    {
+                        "url": storage_path,
+                        "build_code": "some_random_build",
+                        "upload_pk": upload.id,
+                    }
+                ],
+                report_code=None,
+            ),
+        )
+
+        group.assert_called_with([processor_sig])
 
     @pytest.mark.asyncio
     async def test_upload_task_call_no_jobs(
