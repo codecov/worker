@@ -282,7 +282,7 @@ class TestUploadTaskIntegration(object):
         commit = CommitFactory.create(
             message="",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__unencrypted_oauth_token="ghp_testxh25kbya8pcenroaxwqsiq23ff9xzr0u",
             repository__owner__username="ThiagoCodecov",
             repository__owner__service="github",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
