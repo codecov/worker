@@ -116,7 +116,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             db_session.add(
                 TestInstance(
                     test_id=test.id,
-                    duration=testrun.duration,
+                    duration_seconds=testrun.duration,
                     outcome=int(testrun.outcome),
                     upload_id=upload.id,
                 )
@@ -160,7 +160,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             "outcome": str(t.outcome),
             "name": t.name,
             "testsuite": t.testsuite,
-            "duration": t.duration,
+            "duration_seconds": t.duration,
         }
 
     def should_delete_archive(self, commit_yaml):
