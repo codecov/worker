@@ -133,7 +133,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         for file in data["test_results_files"]:
             file = file["data"]
+            print(file)
             file_bytes = BytesIO(zlib.decompress(base64.b64decode(file)))
+            print(file_bytes)
 
             first_line = file_bytes.readline()
             file_bytes.seek(0)
