@@ -58,25 +58,25 @@ class TestUploadTestProcessorTask(object):
             "successful": True,
             "testrun_list": [
                 {
-                    "duration": 0.001,
+                    "duration_seconds": 0.001,
                     "name": "api.temp.calculator.test_calculator::test_add",
                     "outcome": "Outcome.Pass",
                     "testsuite": "pytest",
                 },
                 {
-                    "duration": 0.001,
+                    "duration_seconds": 0.001,
                     "name": "api.temp.calculator.test_calculator::test_subtract",
                     "outcome": "Outcome.Pass",
                     "testsuite": "pytest",
                 },
                 {
-                    "duration": 0.0,
+                    "duration_seconds": 0.0,
                     "name": "api.temp.calculator.test_calculator::test_multiply",
                     "outcome": "Outcome.Pass",
                     "testsuite": "pytest",
                 },
                 {
-                    "duration": 0.001,
+                    "duration_seconds": 0.001,
                     "name": "api.temp.calculator.test_calculator::test_divide",
                     "outcome": "Outcome.Failure",
                     "testsuite": "pytest",
