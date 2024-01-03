@@ -528,13 +528,13 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     mock_metrics_context.assert_called_with(
         repo_id=repository.repoid, commit_id=larf.head_commit.id
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.tests_saved_count", 9
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.requests_with_requested_labels", 0.0
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.tests_to_run_count", 6
     )
     # It's zero because the report has the _labels_index already
@@ -576,16 +576,16 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     mock_metrics.incr.assert_called_with(
         "label_analysis_task.already_calculated.new_result"
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.tests_saved_count", 9
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.requests_with_requested_labels", 1.0
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.requested_labels_count", 4
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.tests_to_run_count", 3
     )
 
@@ -642,13 +642,13 @@ async def test_simple_call_with_requested_labels(
     mock_metrics_context.assert_called_with(
         repo_id=larf.head_commit.repository.repoid, commit_id=larf.head_commit.id
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.tests_saved_count", 9
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.requests_with_requested_labels", 1.0
     )
-    mock_metrics_context.return_value.log_simple_metric.assert_any_call(
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
         "label_analysis.tests_to_run_count", 3
     )
 
