@@ -1,6 +1,6 @@
 https://github.com/codecov/shared/archive/6dd50f436271bc282856786e0bc8980f98b11199.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
-https://github.com/codecov/testing-results-parser/archive/948bb9e02574572dff070ab2c5a25462ccbd398d.tar.gz#egg=testing-result-parsers
+https://github.com/codecov/test-results-parser/archive/39c92f00e282c3f2b5e5c2b2fccb8632bc3323a7.tar.gz#egg=test-results-parser
 boto3
 celery
 click
