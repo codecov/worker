@@ -1,6 +1,7 @@
 import logging
 import typing
 from collections import defaultdict
+from decimal import Decimal
 from io import BytesIO
 
 from shared.reports.resources import Report
@@ -105,7 +106,13 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
             if hit == "undefined" or line == "undefined":
                 continue
 
-            cov = int(hit)
+            if hit.isnumeric():
+                cov = int(hit)
+            else:
+                # Huge ints may be expressed in scientific notation.
+                # int(float(hit)) may lose precision, but Decimal shouldn't.
+                cov = int(Decimal(hit))
+
             if cov < -1:
                 # https://github.com/linux-test-project/lcov/commit/dfec606f3b30e1ac0f4114cfb98b29f91e9edb21
                 if not _already_informed_of_negative_execution_count:
@@ -143,8 +150,11 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
                 skip_lines.append(line)
                 continue
 
-            if hit != "":
-                fh[name] = int(hit)
+            if hit:
+                if hit.isnumeric():
+                    fh[name] = int(hit)
+                else:
+                    fh[name] = int(Decimal(hit))
 
         elif method == "BRDA" and not JS:
             """
