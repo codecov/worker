@@ -98,13 +98,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     def save_report(
         self, db_session: Session, testrun_list: List[Testrun], upload: Upload
     ):
+        repo_tests = (
+            db_session.query(Test).filter_by(repoid=upload.report.commit.repoid).all()
+        )
+        test_set = set()
+        for test in repo_tests:
+            test_set.add(f"{test.testsuite}::{test.name}")
         for testrun in testrun_list:
-            test = (
-                db_session.query(Test)
-                .filter_by(name=testrun.name, testsuite=testrun.testsuite)
-                .first()
-            )
-            if not test:
+            if f"{testrun.testsuite}::{testrun.name}" not in test_set:
                 test = Test(
                     repoid=upload.report.commit.repoid,
                     name=testrun.name,
@@ -145,15 +146,17 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             # TODO: improve report matching capabilities
             # use file extensions?
             # maybe do the matching in the testing result parser lib?
+            first_line = bytes("".join(first_line.decode("utf-8").split()), "utf-8")
             try:
                 if first_line.startswith(b"<?xml"):
                     testrun_list = parse_junit_xml(file_content)
-                elif b"pytest" in first_line:
+                elif first_line.startswith(b'{"pytest_version": "7.4.3'):
                     testrun_list = parse_pytest_reportlog(file_content)
-                else:
+                elif first_line.startswith(b'"{"numTotalTestSuites":'):
                     testrun_list = parse_vitest_json(file_content)
-            except Exception:
+            except Exception as e:
                 log.warning(f"Error parsing: {file_content.decode()}")
+                raise Exception from e
 
         return testrun_list
 
@@ -175,24 +178,20 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     def delete_archive(
         self, commitid, repository, commit_yaml, uploads_to_delete: List[Upload]
     ):
-        if self.should_delete_archive(commit_yaml):
-            archive_service = ArchiveService(repository)
-            for upload in uploads_to_delete:
-                archive_url = upload.storage_path
-                if archive_url and not archive_url.startswith("http"):
-                    log.info(
-                        "Deleting uploaded file as requested",
-                        extra=dict(
-                            archive_url=archive_url,
-                            commit=commitid,
-                            upload=upload.external_id,
-                            parent_task=self.request.parent_id,
-                        ),
-                    )
-                    archive_service.delete_file(archive_url)
-            return True
-
-        return False
+        archive_service = ArchiveService(repository)
+        for upload in uploads_to_delete:
+            archive_url = upload.storage_path
+            if archive_url and not archive_url.startswith("http"):
+                log.info(
+                    "Deleting uploaded file as requested",
+                    extra=dict(
+                        archive_url=archive_url,
+                        commit=commitid,
+                        upload=upload.external_id,
+                        parent_task=self.request.parent_id,
+                    ),
+                )
+                archive_service.delete_file(archive_url)
 
 
 RegisteredTestResultsProcessorTask = celery_app.register_task(
