@@ -51,6 +51,7 @@ DA:0,skipped
 DA:null,skipped
 DA:1,0
 DA:=,=
+DA:2,1e+0
 BRDA:0,0,0,0
 BRDA:1,1,1,1
 end_of_record
@@ -64,13 +65,16 @@ SF:file.cpp
 FN:2,not_hit
 FN:3,_Zalkfjeo
 FN:4,_Gsabebra
+FN:78,_Zalkfjeo2
 FNDA:1,_ln1_is_skipped
 FNDA:,not_hit
 FNDA:2,ignored
 FNDA:3,ignored
 FNDA:4,ignored
+FNDA:78,1+e0
 DA:1,1
 DA:77,0
+DA:78,1
 BRDA:2,1,0,1
 BRDA:2,1,1,-
 BRDA:2,1,3,0
@@ -138,10 +142,21 @@ class TestLcov(BaseTestCase):
                     [[0, "0/4", ["3:0", "3:1", "4:0", "4:1"], None, None]],
                     None,
                     None,
-                )
+                ),
+                (
+                    78,
+                    1,
+                    None,
+                    [[0, 1, None, None, None]],
+                    None,
+                    None,
+                ),
                 # TODO (Thiago): This is out f order compared to the original, verify what happened
             ],
-            "file.js": [(1, 1, None, [[0, 1, None, None, None]], None, None)],
+            "file.js": [
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
+                (2, 1, None, [[0, 1, None, None, None]], None, None),
+            ],
             "file.ts": [(2, 1, None, [[0, 1, None, None, None]], None, None)],
         }
 

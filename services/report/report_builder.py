@@ -200,10 +200,6 @@ class ReportBuilderSession(object):
         complexity=None
     ) -> ReportLine:
         coverage_type_str = coverage_type.map_to_string()
-        if labels_list_of_lists is not None:
-            # Removes empty lists from the lists of labels
-            # To avoid datapoints with no labels.
-            labels_list_of_lists = list(filter(None, labels_list_of_lists))
         datapoints = (
             [
                 CoverageDatapoint(
@@ -212,9 +208,9 @@ class ReportBuilderSession(object):
                     coverage_type=coverage_type_str,
                     label_ids=label_ids,
                 )
-                # TODO [codecov/engineering-team#885]: Putting the default as [[]] causes datapoints with no labels
-                # This seems stupid. We should investigate if that can be removed.
-                for label_ids in (labels_list_of_lists or [[]])
+                # Avoid creating datapoints that don't contain any labels
+                for label_ids in (labels_list_of_lists or [])
+                if label_ids
             ]
             if self._report_builder.supports_labels()
             else None

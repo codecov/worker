@@ -291,8 +291,55 @@ def test_report_builder_session_create_line(mocker):
                 id=45, coverage=1, branches=None, partials=None, complexity=None
             )
         ],
+        datapoints=[],
+        complexity=None,
+    )
+
+
+def test_report_builder_session_create_line_mixed_labels(mocker):
+    current_yaml, sessionid, ignored_lines, path_fixer = (
+        {
+            "flag_management": {
+                "default_rules": {
+                    "carryforward": "true",
+                    "carryforward_mode": "labels",
+                }
+            }
+        },
+        45,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
+    filepath = "filepath"
+    builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
+    builder_session = builder.create_report_builder_session(filepath)
+    line = builder_session.create_coverage_line(
+        "filename.py",
+        1,
+        coverage_type=CoverageType.branch,
+        labels_list_of_lists=[["label1"], [], ["label2"], None],
+    )
+    assert line == ReportLine.create(
+        coverage=1,
+        type="b",
+        sessions=[
+            LineSession(
+                id=45, coverage=1, branches=None, partials=None, complexity=None
+            )
+        ],
         datapoints=[
-            CoverageDatapoint(sessionid=45, coverage=1, coverage_type="b", label_ids=[])
+            CoverageDatapoint(
+                sessionid=45,
+                coverage=1,
+                coverage_type="b",
+                label_ids=["label1"],
+            ),
+            CoverageDatapoint(
+                sessionid=45,
+                coverage=1,
+                coverage_type="b",
+                label_ids=["label2"],
+            ),
         ],
         complexity=None,
     )
