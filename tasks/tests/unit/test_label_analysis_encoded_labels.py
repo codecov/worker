@@ -438,6 +438,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
+    mock_metrics_context = mocker.patch("tasks.label_analysis.MetricContext")
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
         "_get_lines_relevant_to_diff",
@@ -524,6 +525,18 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     }
     assert res == expected_result
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
+    mock_metrics_context.assert_called_with(
+        repo_id=repository.repoid, commit_id=larf.head_commit.id
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.tests_saved_count", 9
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.requests_with_requested_labels", 0.0
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.tests_to_run_count", 6
+    )
     # It's zero because the report has the _labels_index already
     dbsession.flush()
     dbsession.refresh(larf)
@@ -560,6 +573,21 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     mock_metrics.incr.assert_called_with(
         "label_analysis_task.already_calculated.new_result"
     )
+    mock_metrics.incr.assert_called_with(
+        "label_analysis_task.already_calculated.new_result"
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.tests_saved_count", 9
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.requests_with_requested_labels", 1.0
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.requested_labels_count", 4
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.tests_to_run_count", 3
+    )
 
 
 @pytest.mark.asyncio
@@ -567,6 +595,7 @@ async def test_simple_call_with_requested_labels(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
+    mock_metrics_context = mocker.patch("tasks.label_analysis.MetricContext")
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
         "_get_lines_relevant_to_diff",
@@ -609,6 +638,19 @@ async def test_simple_call_with_requested_labels(
         "global_level_labels": [],
     }
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
+    mock_metrics.incr.assert_called_with("label_analysis_task.success")
+    mock_metrics_context.assert_called_with(
+        repo_id=larf.head_commit.repository.repoid, commit_id=larf.head_commit.id
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.tests_saved_count", 9
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.requests_with_requested_labels", 1.0
+    )
+    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+        "label_analysis.tests_to_run_count", 3
+    )
 
 
 def test_get_requested_labels(dbsession, mocker):

@@ -4,9 +4,9 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple, TypedDict, Unio
 import sentry_sdk
 from shared.celery_config import label_analysis_task_name
 from shared.labelanalysis import LabelAnalysisRequestState
+from sqlalchemy.orm import Session
 
 from app import celery_app
-from database.models.core import Commit
 from database.models.labelanalysis import (
     LabelAnalysisProcessingError,
     LabelAnalysisProcessingErrorCode,
@@ -15,6 +15,7 @@ from database.models.labelanalysis import (
 from database.models.staticanalysis import StaticAnalysisSuite
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from helpers.metrics import metrics
+from helpers.telemetry import MetricContext
 from services.report import Report, ReportService
 from services.report.report_builder import SpecialLabelsEnum
 from services.repository import get_repo_provider_service
@@ -66,6 +67,19 @@ PossiblyEncodedLabelSet = Union[Set[str], Set[int]]
 class LabelAnalysisRequestProcessingTask(
     BaseCodecovTask, name=label_analysis_task_name
 ):
+    errors: List[LabelAnalysisProcessingError] = None
+    dbsession: Session = None
+    metrics_context: MetricContext = None
+
+    def reset_task_context(self):
+        """Resets the task's attributes to None to avoid spilling information
+        between task calls in the same process.
+        https://docs.celeryq.dev/en/latest/userguide/tasks.html#instantiation
+        """
+        self.errors = None
+        self.dbsession = None
+        self.metrics_context = None
+
     async def run_async(self, db_session, request_id, *args, **kwargs):
         self.errors = []
         self.dbsession = db_session
@@ -85,7 +99,7 @@ class LabelAnalysisRequestProcessingTask(
                 error_msg="LabelAnalysisRequest not found",
                 error_extra=dict(),
             )
-            return {
+            response = {
                 "success": False,
                 "present_report_labels": [],
                 "present_diff_labels": [],
@@ -93,6 +107,8 @@ class LabelAnalysisRequestProcessingTask(
                 "global_level_labels": [],
                 "errors": self.errors,
             }
+            self.reset_task_context()
+            return response
         log.info(
             "Starting label analysis request",
             extra=dict(
@@ -101,11 +117,17 @@ class LabelAnalysisRequestProcessingTask(
                 commit=label_analysis_request.head_commit.commitid,
             ),
         )
+        self.metrics_context = MetricContext(
+            repo_id=label_analysis_request.head_commit.repository.repoid,
+            commit_id=label_analysis_request.head_commit.id,
+        )
 
         if label_analysis_request.state_id == LabelAnalysisRequestState.FINISHED.db_id:
             # Indicates that this request has been calculated already
             # We might need to update the requested labels
-            return self._handle_larq_already_calculated(label_analysis_request)
+            response = self._handle_larq_already_calculated(label_analysis_request)
+            self.reset_task_context()
+            return response
 
         try:
             lines_relevant_to_diff: Optional[
@@ -146,7 +168,7 @@ class LabelAnalysisRequestProcessingTask(
                     LabelAnalysisRequestState.FINISHED.db_id
                 )
                 metrics.incr("label_analysis_task.success")
-                return {
+                response = {
                     "success": True,
                     "present_report_labels": result["present_report_labels"],
                     "present_diff_labels": result["present_diff_labels"],
@@ -154,6 +176,8 @@ class LabelAnalysisRequestProcessingTask(
                     "global_level_labels": result["global_level_labels"],
                     "errors": self.errors,
                 }
+                self.reset_task_context()
+                return response
         except Exception:
             # temporary general catch while we find possible problems on this
             metrics.incr("label_analysis_task.failed_to_calculate.exception")
@@ -173,7 +197,7 @@ class LabelAnalysisRequestProcessingTask(
                 error_msg="Failed to calculate",
                 error_extra=dict(),
             )
-            return {
+            response = {
                 "success": False,
                 "present_report_labels": [],
                 "present_diff_labels": [],
@@ -181,6 +205,8 @@ class LabelAnalysisRequestProcessingTask(
                 "global_level_labels": [],
                 "errors": self.errors,
             }
+            self.reset_task_context()
+            return response
         metrics.incr("label_analysis_task.failed_to_calculate.missing_info")
         log.warning(
             "We failed to get some information that was important to label analysis",
@@ -202,6 +228,7 @@ class LabelAnalysisRequestProcessingTask(
         }
         label_analysis_request.result = result_to_save
         result_to_return = {**result_to_save, "errors": self.errors}
+        self.reset_task_context()
         return result_to_return
 
     def add_processing_error(
@@ -410,10 +437,16 @@ class LabelAnalysisRequestProcessingTask(
                 commit=commit_sha,
             ),
         )
+        self.metrics_context.attempt_log_simple_metric(
+            "label_analysis.tests_saved_count", len(all_report_labels)
+        )
+        self.metrics_context.attempt_log_simple_metric(
+            "label_analysis.requests_with_requested_labels",
+            float(requested_labels is not None),
+        )
         if requested_labels is not None:
             requested_labels = set(requested_labels)
-            all_report_labels = all_report_labels
-            return {
+            ans = {
                 "present_report_labels": sorted(all_report_labels & requested_labels),
                 "present_diff_labels": sorted(
                     executable_lines_labels & requested_labels
@@ -421,6 +454,22 @@ class LabelAnalysisRequestProcessingTask(
                 "absent_labels": sorted(requested_labels - all_report_labels),
                 "global_level_labels": sorted(global_level_labels & requested_labels),
             }
+            self.metrics_context.attempt_log_simple_metric(
+                "label_analysis.requested_labels_count", len(requested_labels)
+            )
+            self.metrics_context.attempt_log_simple_metric(
+                "label_analysis.tests_to_run_count",
+                len(
+                    ans["present_diff_labels"]
+                    + ans["global_level_labels"]
+                    + ans["absent_labels"]
+                ),
+            )
+            return ans
+        self.metrics_context.attempt_log_simple_metric(
+            "label_analysis.tests_to_run_count",
+            len(executable_lines_labels | global_level_labels),
+        )
         return {
             "present_report_labels": sorted(all_report_labels),
             "present_diff_labels": sorted(executable_lines_labels),

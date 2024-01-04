@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from shared.celery_config import static_analysis_task_name
 from shared.staticanalysis import StaticAnalysisSingleFileSnapshotState
@@ -10,6 +11,7 @@ from database.models.staticanalysis import (
     StaticAnalysisSuite,
     StaticAnalysisSuiteFilepath,
 )
+from helpers.telemetry import MetricContext
 from services.archive import ArchiveService
 from tasks.base import BaseCodecovTask
 
@@ -24,7 +26,9 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask, name=static_analysis_task_na
         suite_id,
         **kwargs,
     ):
-        suite = db_session.query(StaticAnalysisSuite).filter_by(id_=suite_id).first()
+        suite: Optional[StaticAnalysisSuite] = (
+            db_session.query(StaticAnalysisSuite).filter_by(id_=suite_id).first()
+        )
         if suite is None:
             log.warning("Checking Static Analysis that does not exist yet")
             return {"successful": False, "changed_count": None}
@@ -45,6 +49,9 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask, name=static_analysis_task_na
                 == StaticAnalysisSingleFileSnapshotState.CREATED.db_id,
             )
         )
+        metrics_context = MetricContext(
+            repo_id=suite.commit.repository.repoid, commit_id=suite.commit.id
+        )
         archive_service = ArchiveService(suite.commit.repository)
         # purposefully iteration when an update would suffice,
         # because we actually want to validate different stuff
@@ -61,6 +68,12 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask, name=static_analysis_task_na
                 )
 
         db_session.commit()
+        metrics_context.attempt_log_simple_metric(
+            "static_analysis.data_sent_for_commit", float(True)
+        )
+        metrics_context.attempt_log_simple_metric(
+            "static_analysis.files_changed", changed_count
+        )
         return {"successful": True, "changed_count": changed_count}
 
 

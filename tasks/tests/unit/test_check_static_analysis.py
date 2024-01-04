@@ -17,8 +17,11 @@ class TestStaticAnalysisCheckTask(object):
 
     @pytest.mark.asyncio
     async def test_simple_call_with_suite_all_created(
-        self, dbsession, mock_storage, mock_configuration
+        self, dbsession, mock_storage, mock_configuration, mocker
     ):
+        mock_metric_context = mocker.patch(
+            "tasks.static_analysis_suite_check.MetricContext"
+        )
         obj = StaticAnalysisSuiteFactory.create()
         dbsession.add(obj)
         dbsession.flush()
@@ -42,6 +45,15 @@ class TestStaticAnalysisCheckTask(object):
         dbsession.add(fp_obj)
         dbsession.flush()
         res = await task.run_async(dbsession, suite_id=obj.id_)
+        mock_metric_context.assert_called_with(
+            repo_id=obj.commit.repository.repoid, commit_id=obj.commit.id
+        )
+        mock_metric_context.return_value.attempt_log_simple_metric.assert_any_call(
+            "static_analysis.data_sent_for_commit", float(True)
+        )
+        mock_metric_context.return_value.attempt_log_simple_metric.assert_any_call(
+            "static_analysis.files_changed", 8
+        )
         assert res == {"changed_count": 8, "successful": True}
 
     @pytest.mark.asyncio
