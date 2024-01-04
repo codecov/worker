@@ -87,7 +87,6 @@ class TestUploadTestProcessorTask(object):
         }
         assert expected_result == result
         assert commit.message == "hello world"
-        assert 0 == 1
 
     @pytest.mark.asyncio
     @pytest.mark.integration

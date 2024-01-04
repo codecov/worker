@@ -139,6 +139,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             print(file_bytes)
 
             first_line = file_bytes.readline()
+            second_line = file_bytes.readline()
             file_bytes.seek(0)
 
             file_content = file_bytes.read()
@@ -147,13 +148,20 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             # use file extensions?
             # maybe do the matching in the testing result parser lib?
             first_line = bytes("".join(first_line.decode("utf-8").split()), "utf-8")
+            second_line = bytes("".join(second_line.decode("utf-8").split()), "utf-8")
+            first_two_lines = first_line + second_line
             try:
-                if first_line.startswith(b"<?xml"):
+                if first_two_lines.startswith(b"<?xml"):
                     testrun_list = parse_junit_xml(file_content)
-                elif first_line.startswith(b'{"pytest_version": "7.4.3'):
+                elif first_two_lines.startswith(b'{"pytest_version":'):
                     testrun_list = parse_pytest_reportlog(file_content)
-                elif first_line.startswith(b'"{"numTotalTestSuites":'):
+                elif first_two_lines.startswith(b'{"numTotalTestSuites"'):
                     testrun_list = parse_vitest_json(file_content)
+                else:
+                    log.warning(
+                        "Test result file does not match any of the parsers. Not supported."
+                    )
+                    raise Exception()
             except Exception as e:
                 log.warning(f"Error parsing: {file_content.decode()}")
                 raise Exception from e
