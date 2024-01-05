@@ -195,8 +195,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         else:
             raise ParserNotSupportedError()
 
-        log.error(parser)
-
         return parser, parsing_function
 
     def remove_space_from_line(self, line):
