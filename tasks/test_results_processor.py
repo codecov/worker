@@ -132,6 +132,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     duration_seconds=testrun.duration,
                     outcome=int(testrun.outcome),
                     upload_id=upload.id,
+                    failure_message=testrun.failure_message,
                 )
             )
             db_session.flush()
