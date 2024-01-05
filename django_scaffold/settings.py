@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from shared.django_apps.db_settings import *
@@ -9,9 +10,12 @@ ALLOWED_HOSTS = []
 
 DATABASES["default"]["AUTOCOMMIT"] = True
 
+IS_DEV = os.getenv("RUN_ENV") == "DEV"
+
 # Application definition
 
 INSTALLED_APPS = [
+    "django_scaffold",  # must be first to override migrate command
     "shared.django_apps.pg_telemetry",
     "shared.django_apps.ts_telemetry",
 ]
