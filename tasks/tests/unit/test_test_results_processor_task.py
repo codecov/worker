@@ -7,8 +7,7 @@ from shared.storage.exceptions import FileNotInStorageError
 from database.models import CommitReport
 from database.models.reports import Test
 from database.tests.factories import CommitFactory, UploadFactory
-from services.archive import ArchiveService
-from tasks.test_results_processor import TestResultsProcessorTask
+from tasks.test_results_processor import ParserFailureError, TestResultsProcessorTask
 
 here = Path(__file__)
 
@@ -247,7 +246,9 @@ class TestUploadTestProcessorTask(object):
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
         mocker.patch.object(
-            TestResultsProcessorTask, "process_individual_arg", side_effect=Exception
+            TestResultsProcessorTask,
+            "process_individual_arg",
+            side_effect=ParserFailureError,
         )
 
         commit = CommitFactory.create(
@@ -407,7 +408,7 @@ class TestUploadTestProcessorTask(object):
         expected_result = {"successful": False}
 
         assert expected_result == result
-        assert "Error parsing: blahblahblah" in caplog.text
+        assert "File did not match any parser format" in caplog.text
 
     @pytest.mark.asyncio
     @pytest.mark.integration

@@ -1,7 +1,6 @@
 import base64
 import json
 import logging
-import random
 import zlib
 from copy import deepcopy
 from datetime import datetime
@@ -9,12 +8,12 @@ from io import BytesIO
 from json import loads
 from typing import List
 
-from redis.exceptions import LockError
 from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
-from testing_result_parsers import (
+from test_results_parser import (
+    ParserError,
     Testrun,
     parse_junit_xml,
     parse_pytest_reportlog,
@@ -29,6 +28,14 @@ from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
+
+
+class ParserFailureError(Exception):
+    ...
+
+
+class ParserNotSupportedError(Exception):
+    ...
 
 
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
@@ -66,8 +73,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 parsed_testruns: List[Testrun] = self.process_individual_arg(
                     upload_obj, upload_obj.report.commit.repository
                 )
-            except Exception:
-                log.warning(f"Error parsing testruns")
+            except ParserFailureError:
+                log.warning(
+                    f"Error parsing testruns",
+                    extra=dict(
+                        repoid=repoid, commitid=commitid, uploadid=upload_obj.id
+                    ),
+                )
                 return {"successful": False}
 
             # concat existing and new test information
@@ -134,39 +146,61 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         for file in data["test_results_files"]:
             file = file["data"]
-            print(file)
             file_bytes = BytesIO(zlib.decompress(base64.b64decode(file)))
-            print(file_bytes)
 
-            first_line = file_bytes.readline()
-            second_line = file_bytes.readline()
-            file_bytes.seek(0)
-
-            file_content = file_bytes.read()
-
-            # TODO: improve report matching capabilities
-            # use file extensions?
-            # maybe do the matching in the testing result parser lib?
-            first_line = bytes("".join(first_line.decode("utf-8").split()), "utf-8")
-            second_line = bytes("".join(second_line.decode("utf-8").split()), "utf-8")
-            first_two_lines = first_line + second_line
             try:
-                if first_two_lines.startswith(b"<?xml"):
-                    testrun_list = parse_junit_xml(file_content)
-                elif first_two_lines.startswith(b'{"pytest_version":'):
-                    testrun_list = parse_pytest_reportlog(file_content)
-                elif first_two_lines.startswith(b'{"numTotalTestSuites"'):
-                    testrun_list = parse_vitest_json(file_content)
-                else:
-                    log.warning(
-                        "Test result file does not match any of the parsers. Not supported."
-                    )
-                    raise Exception()
-            except Exception as e:
-                log.warning(f"Error parsing: {file_content.decode()}")
-                raise Exception from e
+                parser, parsing_function = self.match_report(file_bytes)
+            except ParserNotSupportedError:
+                log.error(
+                    "File did not match any parser format",
+                    extra=dict(
+                        file_content=file_bytes.read().decode(),
+                    ),
+                )
+                raise ParserFailureError()
+            try:
+                file_content = file_bytes.read()
+                testrun_list += parsing_function(file_content)
+            except ParserError as e:
+                log.error(
+                    "Error parsing test result file",
+                    extra=dict(
+                        file_content=file_content.decode(),
+                        parser=parser,
+                        err_msg=str(e),
+                    ),
+                )
+                raise ParserFailureError()
 
         return testrun_list
+
+    def match_report(self, file_bytes):
+        first_line = file_bytes.readline()
+        second_line = file_bytes.readline()
+        file_bytes.seek(0)
+        first_line = self.remove_space_from_line(first_line)
+        second_line = self.remove_space_from_line(second_line)
+        first_two_lines = first_line + second_line
+
+        parser = "no parser"
+        if first_two_lines.startswith(b"<?xml"):
+            parser = "junit_xml"
+            parsing_function = parse_junit_xml
+        elif first_two_lines.startswith(b'{"pytest_version":'):
+            parser = "pytest_reportlog"
+            parsing_function = parse_pytest_reportlog
+        elif first_two_lines.startswith(b'{"numTotalTestSuites"'):
+            parser = "vitest_json"
+            parsing_function = parse_vitest_json
+        else:
+            raise ParserNotSupportedError()
+
+        log.error(parser)
+
+        return parser, parsing_function
+
+    def remove_space_from_line(self, line):
+        return bytes("".join(line.decode("utf-8").split()), "utf-8")
 
     def testrun_to_dict(self, t: Testrun):
         return {
