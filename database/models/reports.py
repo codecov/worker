@@ -18,7 +18,7 @@ class RepositoryFlag(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_repositoryflag"
     repository_id = Column(types.Integer, ForeignKey("repos.repoid"))
     repository = relationship(Repository, backref=backref("flags"))
-    flag_name = Column(types.String(256), nullable=False)
+    flag_name = Column(types.String(1024), nullable=False)
     deleted = Column(types.Boolean, nullable=True)
 
 
