@@ -376,6 +376,83 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "Org not on PR plan"
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    def test_get_decoration_type_users_plan(self, dbsession, mocker, enriched_pull):
+        enriched_pull.database_pull.repository.owner.plan = "users"
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull)
+
+        assert decoration_details.decoration_type == Decoration.standard
+        assert decoration_details.reason == "Org not on PR plan"
+        assert decoration_details.should_attempt_author_auto_activation is False
+
+    def test_get_decoration_type_for_whitelisted_org_with_pr_author(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__username="drazisil-org",
+            owner__service="github",
+            owner__unencrypted_oauth_token="testtfasdfasdflxuu2kfer2ef23",
+            owner__plan="users",
+            private=True,
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        base_commit = CommitFactory.create(
+            repository=repository,
+            author__service="github",
+        )
+        head_commit = CommitFactory.create(
+            repository=repository,
+            author__service="github",
+        )
+        pull = PullFactory.create(
+            author__service="github",
+            repository=repository,
+            base=base_commit.commitid,
+            head=head_commit.commitid,
+            state="merged",
+        )
+        dbsession.add(base_commit)
+        dbsession.add(head_commit)
+        dbsession.add(pull)
+        dbsession.flush()
+        provider_pull = {
+            "author": {"id": "7123", "username": "tomcat"},
+            "base": {
+                "branch": "master",
+                "commitid": "b92edba44fdd29fcc506317cc3ddeae1a723dd08",
+            },
+            "head": {
+                "branch": "reason/some-testing",
+                "commitid": "a06aef4356ca35b34c5486269585288489e578db",
+            },
+            "number": "1",
+            "id": "1",
+            "state": "open",
+            "title": "Creating new code for reasons no one knows",
+        }
+        enriched_pull_whitelisted = EnrichedPull(
+            database_pull=pull, provider_pull=provider_pull
+        )
+
+        pr_author = OwnerFactory.create(
+            service="github",
+            username=enriched_pull_whitelisted.provider_pull["author"]["username"],
+            service_id=enriched_pull_whitelisted.provider_pull["author"]["id"],
+        )
+        dbsession.add(pr_author)
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(enriched_pull_whitelisted)
+        dbsession.commit()
+
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "User must be manually activated"
+        assert decoration_details.should_attempt_author_auto_activation is False
+        assert (
+            pr_author.ownerid
+            not in enriched_pull_whitelisted.database_pull.repository.owner.plan_activated_users
+        )
+
     def test_get_decoration_type_pr_author_not_in_db(self, mocker, enriched_pull):
         enriched_pull.provider_pull["author"]["id"] = "190"
 
