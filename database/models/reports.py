@@ -251,7 +251,7 @@ class Test(CodecovBaseModel, MixinBaseClass):
 
 
 class TestInstance(CodecovBaseModel, MixinBaseClass):
-    __tablename__ = "reports_testrun"
+    __tablename__ = "reports_testinstance"
     test_id = Column(types.Integer, ForeignKey("reports_test.id"))
     test = relationship(Test, backref=backref("testruns"))
     duration_seconds = Column(types.Float, nullable=False)
