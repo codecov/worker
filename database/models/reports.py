@@ -253,9 +253,9 @@ class Test(CodecovBaseModel, MixinBaseClass):
 class TestInstance(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_testinstance"
     test_id = Column(types.Integer, ForeignKey("reports_test.id"))
-    test = relationship(Test, backref=backref("testruns"))
+    test = relationship(Test, backref=backref("testinstances"))
     duration_seconds = Column(types.Float, nullable=False)
     outcome = Column(types.Integer, nullable=False)
     upload_id = Column(types.Integer, ForeignKey("reports_upload.id"))
-    upload = relationship("Upload", backref=backref("testruns"))
+    upload = relationship("Upload", backref=backref("testinstances"))
     failure_message = Column(types.Text)
