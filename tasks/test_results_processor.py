@@ -6,11 +6,10 @@ from io import BytesIO
 from json import loads
 from typing import List
 
-from django.db.utils import IntegrityError
 from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from test_results_parser import (
     ParserError,
@@ -134,12 +133,17 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         testsuite=testrun.testsuite,
                     )
                     db_session.add(test)
-                    db_session.flush()
+                    db_session.commit()
                 except IntegrityError:
-                    test = db_session.query(Test).filter(
-                        repoid=upload.report.commit.repoid,
-                        name=testrun.name,
-                        testsuite=testrun.testsuite,
+                    db_session.rollback()
+                    test = (
+                        db_session.query(Test)
+                        .filter_by(
+                            repoid=upload.report.commit.repoid,
+                            name=testrun.name,
+                            testsuite=testrun.testsuite,
+                        )
+                        .first()
                     )
 
             db_session.add(

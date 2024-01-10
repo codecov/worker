@@ -254,7 +254,7 @@ class Test(CodecovBaseModel, MixinBaseClass):
             "repoid",
             "name",
             "testsuite",
-            name="commit_notifications_commit_id_notification_type",
+            name="reports_test_repoid_name_testsuite",
         ),
     )
 
