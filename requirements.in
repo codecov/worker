@@ -24,7 +24,6 @@ pytest-freezegun
 pytest
 python-dateutil
 python-json-logger
-python-redis-lock
 PyYAML
 redis>=4.4.4
 requests>=2.31.0
