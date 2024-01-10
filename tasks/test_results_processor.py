@@ -155,7 +155,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 log.error(
                     "File did not match any parser format",
                     extra=dict(
-                        file_content=file_bytes.read().decode(),
+                        file_content=file_bytes.read().decode()[:300],
                     ),
                 )
                 raise ParserFailureError()
@@ -166,7 +166,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 log.error(
                     "Error parsing test result file",
                     extra=dict(
-                        file_content=file_content.decode(),
+                        file_content=file_content.decode()[:300],
                         parser=parser,
                         err_msg=str(e),
                     ),
