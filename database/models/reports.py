@@ -2,7 +2,7 @@ import logging
 from functools import cached_property
 
 from shared.reports.types import ReportTotals, SessionTotalsArray
-from sqlalchemy import Column, ForeignKey, Table, types
+from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import backref, relationship
 
@@ -248,6 +248,15 @@ class Test(CodecovBaseModel, MixinBaseClass):
     repository = relationship("Repository", backref=backref("tests"))
     name = Column(types.String(256), nullable=False)
     testsuite = Column(types.String(256), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "repoid",
+            "name",
+            "testsuite",
+            name="commit_notifications_commit_id_notification_type",
+        ),
+    )
 
 
 class TestInstance(CodecovBaseModel, MixinBaseClass):

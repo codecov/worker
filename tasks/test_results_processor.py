@@ -2,15 +2,15 @@ import base64
 import json
 import logging
 import zlib
-from copy import deepcopy
-from datetime import datetime
 from io import BytesIO
 from json import loads
 from typing import List
 
+from django.db.utils import IntegrityError
 from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from test_results_parser import (
     ParserError,
@@ -113,18 +113,34 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         repo_tests = (
             db_session.query(Test).filter_by(repoid=upload.report.commit.repoid).all()
         )
-        test_set = set()
+        # Issue here is that the test result processing tasks are running in parallel
+        # The idea is that we can first get a list of existing tests from the database
+        # if a test is not found in that list we try to insert it has already inserted the test
+        # so we should just fetch it
+
+        # however, this may cause significant performance issues the first time a user runs test
+        # result ingestion on a large project
+
+        test_dict = dict()
         for test in repo_tests:
-            test_set.add(f"{test.testsuite}::{test.name}")
+            test_dict[f"{test.testsuite}::{test.name}"] = test
         for testrun in testrun_list:
-            if f"{testrun.testsuite}::{testrun.name}" not in test_set:
-                test = Test(
-                    repoid=upload.report.commit.repoid,
-                    name=testrun.name,
-                    testsuite=testrun.testsuite,
-                )
-                db_session.add(test)
-                db_session.flush()
+            test = test_dict.get(f"{testrun.testsuite}::{testrun.name}", None)
+            if not test:
+                try:
+                    test = Test(
+                        repoid=upload.report.commit.repoid,
+                        name=testrun.name,
+                        testsuite=testrun.testsuite,
+                    )
+                    db_session.add(test)
+                    db_session.flush()
+                except IntegrityError:
+                    test = db_session.query(Test).filter(
+                        repoid=upload.report.commit.repoid,
+                        name=testrun.name,
+                        testsuite=testrun.testsuite,
+                    )
 
             db_session.add(
                 TestInstance(
