@@ -31,6 +31,7 @@ PLANS_WITH_UPLOAD_LIMIT = {
     "users-teamy": 2500,
 }
 
+# Temporary org to test custom GHM changes
 WHITELISTED_ORGS = ["drazisil-org"]
 
 
