@@ -31,6 +31,9 @@ PLANS_WITH_UPLOAD_LIMIT = {
     "users-teamy": 2500,
 }
 
+# Temporary org to test custom GHM changes
+WHITELISTED_ORGS = ["drazisil-org"]
+
 
 @dataclass
 class DecorationDetails(object):
@@ -137,9 +140,10 @@ def determine_decoration_details(
             )
 
         if not is_pr_billing_plan(org.plan):
-            return DecorationDetails(
-                decoration_type=Decoration.standard, reason="Org not on PR plan"
-            )
+            if org.username not in WHITELISTED_ORGS:
+                return DecorationDetails(
+                    decoration_type=Decoration.standard, reason="Org not on PR plan"
+                )
 
         pr_author = (
             db_session.query(Owner)
