@@ -86,8 +86,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
             upload_list.append(upload_obj)
 
-        # save relevant stuff to database
-        self.save_report(db_session, testrun_list, upload_obj)
+        testrun_dict_list = []
+
+        for test in testrun_list:
+            testrun_dict_list.append(self.testrun_to_dict(test))
 
         # kick off notification task stuff
 
@@ -103,59 +105,8 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         return {
             "successful": True,
-            "testrun_list": [self.testrun_to_dict(t) for t in testrun_list],
+            "testrun_list": testrun_dict_list,
         }
-
-    def save_report(
-        self, db_session: Session, testrun_list: List[Testrun], upload: Upload
-    ):
-        repo_tests = (
-            db_session.query(Test).filter_by(repoid=upload.report.commit.repoid).all()
-        )
-        # Issue here is that the test result processing tasks are running in parallel
-        # The idea is that we can first get a list of existing tests from the database
-        # if a test is not found in that list we try to insert it has already inserted the test
-        # so we should just fetch it
-
-        # however, this may cause significant performance issues the first time a user runs test
-        # result ingestion on a large project
-
-        test_dict = dict()
-        for test in repo_tests:
-            test_dict[f"{test.testsuite}::{test.name}"] = test
-        for testrun in testrun_list:
-            test = test_dict.get(f"{testrun.testsuite}::{testrun.name}", None)
-            if not test:
-                try:
-                    test = Test(
-                        repoid=upload.report.commit.repoid,
-                        name=testrun.name,
-                        testsuite=testrun.testsuite,
-                    )
-                    db_session.add(test)
-                    db_session.commit()
-                except IntegrityError:
-                    db_session.rollback()
-                    test = (
-                        db_session.query(Test)
-                        .filter_by(
-                            repoid=upload.report.commit.repoid,
-                            name=testrun.name,
-                            testsuite=testrun.testsuite,
-                        )
-                        .first()
-                    )
-
-            db_session.add(
-                TestInstance(
-                    test_id=test.id,
-                    duration_seconds=testrun.duration,
-                    outcome=int(testrun.outcome),
-                    upload_id=upload.id,
-                    failure_message=testrun.failure_message,
-                )
-            )
-            db_session.flush()
 
     def process_individual_arg(self, upload: Upload, repository) -> List[Testrun]:
         archive_service = ArchiveService(repository)
@@ -227,6 +178,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             "name": t.name,
             "testsuite": t.testsuite,
             "duration_seconds": t.duration,
+            "failure_message": t.failure_message,
         }
 
     def should_delete_archive(self, commit_yaml):
