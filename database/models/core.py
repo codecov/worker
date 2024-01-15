@@ -133,6 +133,8 @@ class Repository(CodecovBaseModel):
         ),
     )
     language = Column(types.Text)
+    languages = Column(postgresql.ARRAY(types.String), nullable=True, default=[])
+    languages_last_updated = Column(types.DateTime, server_default=FetchedValue())
     hookid = Column(types.Text)
     webhook_secret = Column(types.Text)
     activated = Column(types.Boolean, default=False)
