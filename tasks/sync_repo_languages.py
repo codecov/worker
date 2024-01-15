@@ -7,7 +7,7 @@ from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models.core import Repository
-from helpers.clock import get_utc_now
+from helpers.clock import get_utc_now, get_utc_now_as_iso_format
 from services.repository import get_repo_provider_service
 from tasks.base import BaseCodecovTask
 
@@ -28,7 +28,9 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
         now = get_utc_now()
         days_since_sync = REPOSITORY_LANGUAGE_SYNC_THRESHOLD
         if repository.languages_last_updated:
-            days_since_sync = abs((now - repository.languages_last_updated).days)
+            days_since_sync = abs(
+                (now.replace(tzinfo=None) - repository.languages_last_updated).days
+            )
 
         desired_languages_intersection = set(BUNDLE_ANALYSIS_LANGUAGES).intersection(
             repository.languages
