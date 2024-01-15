@@ -22,41 +22,36 @@ REPOSITORY_LANGUAGE_SYNC_THRESHOLD = 7
 
 class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name):
     async def run_async(
-        self,
-        db_session: Session,
-        repoid: String,
-        manual_trigger: bool = False,
-        *args,
-        **kwargs
+        self, db_session: Session, repoid: String, manual_trigger=False, *args, **kwargs
     ):
         repository = db_session.query(Repository).get(repoid)
         now = get_utc_now()
         days_since_sync = REPOSITORY_LANGUAGE_SYNC_THRESHOLD
         if repository.languages_last_updated:
-            print("should have not entered here")
             days_since_sync = abs((now - repository.languages_last_updated).days)
 
         desired_languages_intersection = set(BUNDLE_ANALYSIS_LANGUAGES).intersection(
             repository.languages
         )
+
         should_sync_languages = (
             days_since_sync >= REPOSITORY_LANGUAGE_SYNC_THRESHOLD
             and len(desired_languages_intersection) == 0
         ) or manual_trigger
+
         try:
             if should_sync_languages:
-                print("should start syncing now!")
                 log_extra = dict(
                     owner_id=repository.ownerid,
                     repository_id=repository.repoid,
                 )
                 log.info("Syncing repository languages", extra=log_extra)
                 repository_service = get_repo_provider_service(repository)
-
-                if (
+                is_bitbucket_call = (
                     repository.owner.service == "bitbucket"
                     or repository.owner.service == "bitbucket_server"
-                ):
+                )
+                if is_bitbucket_call:
                     languages = await repository_service.get_repo_languages(
                         token=None, language=repository.language
                     )
