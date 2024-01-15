@@ -431,7 +431,6 @@ class TestSyncReposTaskUnit(object):
         assert new_repo.branch == repo_data.get("branch")
         assert new_repo.private is True
 
-
     @pytest.mark.asyncio
     async def test_only_public_repos_already_in_db(
         self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis

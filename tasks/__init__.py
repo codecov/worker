@@ -28,9 +28,9 @@ from tasks.static_analysis_suite_check import static_analysis_suite_check_task
 from tasks.status_set_error import status_set_error_task
 from tasks.status_set_pending import status_set_pending_task
 from tasks.sync_pull import pull_sync_task
+from tasks.sync_repo_languages import sync_repo_language_task
 from tasks.sync_repos import sync_repos_task
 from tasks.sync_teams import sync_teams_task
-from tasks.sync_repo_languages import sync_repo_language_task
 from tasks.timeseries_backfill import (
     timeseries_backfill_commits_task,
     timeseries_backfill_dataset_task,

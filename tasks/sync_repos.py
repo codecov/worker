@@ -3,7 +3,7 @@ from datetime import datetime
 
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
-from shared.celery_config import sync_repos_task_name, sync_repo_languages_task_name
+from shared.celery_config import sync_repo_languages_task_name, sync_repos_task_name
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
@@ -84,7 +84,11 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                             db_session, git, owner, username, using_integration
                         )
 
-                self.sync_repos_languages(ownerid=owner.ownerid, db_session=db_session, manual_trigger=manual_trigger)
+                self.sync_repos_languages(
+                    ownerid=owner.ownerid,
+                    db_session=db_session,
+                    manual_trigger=manual_trigger,
+                )
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 
@@ -445,7 +449,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         db_session.flush()
         return new_repo.repoid
 
-    def sync_repos_languages(self, ownerid: int, db_session: Session, manual_trigger: bool):
+    def sync_repos_languages(
+        self, ownerid: int, db_session: Session, manual_trigger: bool
+    ):
         repositories = db_session.query(Repository).filter(
             Repository.ownerid == ownerid
         )
