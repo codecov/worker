@@ -1,14 +1,17 @@
 import logging
+import uuid
 from functools import cached_property
 
 from shared.reports.types import ReportTotals, SessionTotalsArray
 from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import backref, relationship
 
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.models.core import Commit, CompareCommit, Repository
 from database.utils import ArchiveField
+from helpers.clock import get_utc_now
 from helpers.config import should_write_data_to_storage_config_check
 
 log = logging.getLogger(__name__)
@@ -244,24 +247,39 @@ class CompareComponent(MixinBaseClass, CodecovBaseModel):
 
 class Test(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_test"
+    id_ = Column("id", types.Text, primary_key=True)
+    external_id = Column(
+        UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False
+    )
+    created_at = Column(types.DateTime(timezone=True), default=get_utc_now)
+    updated_at = Column(
+        types.DateTime(timezone=True), onupdate=get_utc_now, default=get_utc_now
+    )
+
+    @property
+    def id(self):
+        return self.id_
+
     repoid = Column(types.Integer, ForeignKey("repos.repoid"))
     repository = relationship("Repository", backref=backref("tests"))
     name = Column(types.String(256), nullable=False)
     testsuite = Column(types.String(256), nullable=False)
+    env = Column(types.String(256), nullable=False)
 
     __table_args__ = (
         UniqueConstraint(
             "repoid",
             "name",
             "testsuite",
-            name="reports_test_repoid_name_testsuite",
+            "env",
+            name="reports_test_repoid_name_testsuite_env",
         ),
     )
 
 
 class TestInstance(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_testinstance"
-    test_id = Column(types.Integer, ForeignKey("reports_test.id"))
+    test_id = Column(types.Text, ForeignKey("reports_test.id"))
     test = relationship(Test, backref=backref("testinstances"))
     duration_seconds = Column(types.Float, nullable=False)
     outcome = Column(types.Integer, nullable=False)

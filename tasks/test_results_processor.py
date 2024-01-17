@@ -3,14 +3,12 @@ import json
 import logging
 import zlib
 from io import BytesIO
-from json import loads
 from typing import List
 
 from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import insert
 from test_results_parser import (
     ParserError,
     Testrun,
@@ -20,9 +18,9 @@ from test_results_parser import (
 )
 
 from app import celery_app
-from database.models import Repository, Upload
-from database.models.reports import Test, TestInstance
+from database.models import Repository, Test, TestInstance, Upload
 from services.archive import ArchiveService
+from services.test_results import generate_env, generate_test_id
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -59,7 +57,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             extra=dict(repoid=repoid, commit=commitid),
         )
 
-        testrun_list = []
+        testrun_dict_list = []
         upload_list = []
 
         # process each report session's test information
@@ -68,28 +66,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 db_session.query(Upload).filter_by(id_=args.get("upload_pk")).first()
             )
 
-            try:
-                parsed_testruns: List[Testrun] = self.process_individual_arg(
-                    upload_obj, upload_obj.report.commit.repository
-                )
-            except ParserFailureError:
-                log.warning(
-                    f"Error parsing testruns",
-                    extra=dict(
-                        repoid=repoid, commitid=commitid, uploadid=upload_obj.id
-                    ),
-                )
-                return {"successful": False}
+            res = self.process_individual_upload(
+                db_session, repoid, commitid, upload_obj
+            )
 
             # concat existing and new test information
-            testrun_list += parsed_testruns
+            testrun_dict_list.append(res)
 
             upload_list.append(upload_obj)
-
-        testrun_dict_list = []
-
-        for test in testrun_list:
-            testrun_dict_list.append(self.testrun_to_dict(test))
 
         # kick off notification task stuff
 
@@ -103,9 +87,56 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 commitid, repository, commit_yaml, uploads_to_delete=upload_list
             )
 
+        return testrun_dict_list
+
+    def process_individual_upload(
+        self, db_session, repoid, commitid, upload_obj: Upload
+    ):
+        try:
+            parsed_testruns: List[Testrun] = self.process_individual_arg(
+                upload_obj, upload_obj.report.commit.repository
+            )
+        except ParserFailureError:
+            log.warning(
+                f"Error parsing testruns",
+                extra=dict(repoid=repoid, commitid=commitid, uploadid=upload_obj.id),
+            )
+            return {
+                "successful": False,
+            }
+        env = generate_env(upload_obj.flag_names)
+        upload_id = upload_obj.id
+
+        for testrun in parsed_testruns:
+            name = testrun.name
+            testsuite = testrun.testsuite
+            timestamp = testrun.timestamp
+            outcome = int(testrun.outcome)
+            duration_seconds = testrun.duration
+            failure_message = testrun.failure_message
+            test_id = generate_test_id(repoid, testsuite, name, env)
+            insert_on_conflict_do_nothing = (
+                insert(Test.__table__)
+                .values(
+                    id=test_id, repoid=repoid, name=name, testsuite=testsuite, env=env
+                )
+                .on_conflict_do_nothing()
+            )
+            db_session.execute(insert_on_conflict_do_nothing)
+            db_session.flush()
+
+            ti = TestInstance(
+                test_id=test_id,
+                upload_id=upload_id,
+                duration_seconds=duration_seconds,
+                outcome=outcome,
+                failure_message=failure_message,
+            )
+            db_session.add(ti)
+            db_session.flush()
+
         return {
             "successful": True,
-            "testrun_list": testrun_dict_list,
         }
 
     def process_individual_arg(self, upload: Upload, repository) -> List[Testrun]:
@@ -119,32 +150,36 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         for file in data["test_results_files"]:
             file = file["data"]
             file_bytes = BytesIO(zlib.decompress(base64.b64decode(file)))
-
-            try:
-                parser, parsing_function = self.match_report(file_bytes)
-            except ParserNotSupportedError:
-                log.error(
-                    "File did not match any parser format",
-                    extra=dict(
-                        file_content=file_bytes.read().decode()[:300],
-                    ),
-                )
-                raise ParserFailureError()
-            try:
-                file_content = file_bytes.read()
-                testrun_list += parsing_function(file_content)
-            except ParserError as e:
-                log.error(
-                    "Error parsing test result file",
-                    extra=dict(
-                        file_content=file_content.decode()[:300],
-                        parser=parser,
-                        err_msg=str(e),
-                    ),
-                )
-                raise ParserFailureError()
-
+            testrun_list += self.parse_single_file(file_bytes)
         return testrun_list
+
+    def parse_single_file(self, file_bytes):
+        try:
+            parser, parsing_function = self.match_report(file_bytes)
+        except ParserNotSupportedError as e:
+            log.error(
+                "File did not match any parser format",
+                extra=dict(
+                    file_content=file_bytes.read().decode()[:300],
+                ),
+            )
+            raise ParserFailureError() from e
+
+        try:
+            file_content = file_bytes.read()
+            res = parsing_function(file_content)
+        except ParserError as e:
+            log.error(
+                "Error parsing test result file",
+                extra=dict(
+                    file_content=file_content.decode()[:300],
+                    parser=parser,
+                    err_msg=str(e),
+                ),
+            )
+            raise ParserFailureError() from e
+
+        return res
 
     def match_report(self, file_bytes):
         first_line = file_bytes.readline()
@@ -171,15 +206,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
     def remove_space_from_line(self, line):
         return bytes("".join(line.decode("utf-8").split()), "utf-8")
-
-    def testrun_to_dict(self, t: Testrun):
-        return {
-            "outcome": str(t.outcome),
-            "name": t.name,
-            "testsuite": t.testsuite,
-            "duration_seconds": t.duration,
-            "failure_message": t.failure_message,
-        }
 
     def should_delete_archive(self, commit_yaml):
         if get_config("services", "minio", "expire_raw_after_n_days"):
