@@ -80,7 +80,7 @@ coverage==5.5
     #   -r requirements.in
     #   codecovopentelem
     #   pytest-cov
-cryptography==41.0.4
+cryptography==41.0.6
     # via shared
 deprecated==1.2.12
     # via opentelemetry-api
