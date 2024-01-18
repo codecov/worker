@@ -110,7 +110,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         for testrun in parsed_testruns:
             name = testrun.name
             testsuite = testrun.testsuite
-            timestamp = testrun.timestamp
             outcome = int(testrun.outcome)
             duration_seconds = testrun.duration
             failure_message = testrun.failure_message
