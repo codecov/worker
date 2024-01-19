@@ -3,7 +3,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import sentry_sdk
 from shared.bundle_analysis import (
@@ -323,16 +323,18 @@ class Notifier:
         comparison = ComparisonLoader(pull).get_comparison()
         bundle_changes = comparison.bundle_changes()
 
-        bundle_rows = self._create_bundle_rows(
+        bundle_rows, total_size_delta = self._create_bundle_rows(
             bundle_changes=bundle_changes, comparison=comparison
         )
-        return self._write_lines(bundle_rows=bundle_rows)
+        return self._write_lines(
+            bundle_rows=bundle_rows, total_size_delta=total_size_delta
+        )
 
     def _create_bundle_rows(
         self,
         bundle_changes: Iterator[BundleChange],
         comparison: BundleAnalysisComparison,
-    ) -> List[BundleRows]:
+    ) -> Tuple[List[BundleRows], int]:
         bundle_rows = []
         total_size_delta = 0
 
@@ -364,10 +366,9 @@ class Notifier:
                 )
             )
 
-        return bundle_rows
+        return (bundle_rows, total_size_delta)
 
-    def _write_lines(self, bundle_rows: List[BundleRows]) -> str:
-        total_size_delta = 0
+    def _write_lines(self, bundle_rows: List[BundleRows], total_size_delta: int) -> str:
         # Write lines
         lines = [
             "## Bundle Report",
