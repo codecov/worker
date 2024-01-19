@@ -31,6 +31,7 @@ expected_message_unchanged = """## Bundle Report
 
 Bundle size has no change :white_check_mark:"""
 
+
 class MockBundleReport:
     def total_size(self):
         return 123456
@@ -213,6 +214,7 @@ async def test_bundle_analysis_notify_size_decrease(
     mock_repo_provider.post_comment.assert_called_once_with(
         pull.pullid, expected_message_decrease
     )
+
 
 @pytest.mark.asyncio
 async def test_bundle_analysis_notify_size_unchanged(
