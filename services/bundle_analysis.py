@@ -375,17 +375,19 @@ class Notifier:
             "",
         ]
 
+        if total_size_delta == 0:
+            lines.append("Bundle size has no change :white_check_mark:")
+            return "\n".join(lines)
+
         bundles_total_size = self._bytes_readable(total_size_delta)
         if total_size_delta > 0:
             lines.append(
                 f"Changes will increase total bundle size by {bundles_total_size} :arrow_up:"
             )
-        elif total_size_delta < 0:
+        else:
             lines.append(
                 f"Changes will decrease total bundle size by {bundles_total_size} :arrow_down:"
             )
-        else:
-            lines.append("Changes will not impact bundle size")
         lines.append("")
 
         # table of bundles
