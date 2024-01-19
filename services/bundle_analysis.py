@@ -3,7 +3,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import sentry_sdk
 from shared.bundle_analysis import (
@@ -231,6 +231,13 @@ class ComparisonLoader:
         )
 
 
+@dataclass
+class BundleRows:
+    bundle_name: str
+    size: str
+    change: str
+
+
 class Notifier:
     def __init__(self, commit: Commit, current_yaml: UserYaml):
         self.commit = commit
@@ -316,34 +323,25 @@ class Notifier:
         comparison = ComparisonLoader(pull).get_comparison()
         bundle_changes = comparison.bundle_changes()
 
-        lines = [
-            "## Bundle Report",
-            "",
-        ]
+        bundle_rows = self._create_bundle_rows(
+            bundle_changes=bundle_changes, comparison=comparison
+        )
+        return self._write_lines(bundle_rows=bundle_rows)
 
-        # total bundle size delta
+    def _create_bundle_rows(
+        self,
+        bundle_changes: Iterator[BundleChange],
+        comparison: BundleAnalysisComparison,
+    ) -> List[BundleRows]:
+        bundle_rows = []
         total_size_delta = 0
-        for bundle_change in bundle_changes:
-            total_size_delta += bundle_change.size_delta
-        amount = self._bytes_readable(total_size_delta)
-        if total_size_delta > 0:
-            lines.append(
-                f"Changes will increase total bundle size by {amount} :arrow_up:"
-            )
-        elif total_size_delta < 0:
-            lines.append(
-                f"Changes will decrease total bundle size by {amount} :arrow_down:"
-            )
-        else:
-            lines.append("Changes will not impact bundle size")
-        lines.append("")
 
-        # table of bundles
-        lines += [
-            "| Bundle name | Size | Change |",
-            "| ----------- | ---- | ------ |",
-        ]
+        # Calculate bundle change data in one loop since bundle_changes is a generator
         for bundle_change in bundle_changes:
+            # TODO: make this a ComparisonReport property
+            total_size_delta += bundle_change.size_delta
+
+            # Define row table data
             bundle_name = bundle_change.bundle_name
             if bundle_change.change_type == BundleChange.ChangeType.REMOVED:
                 size = "(removed)"
@@ -357,9 +355,48 @@ class Notifier:
                 icon = ":arrow_up:"
             elif change_size < 0:
                 icon = ":arrow_down:"
-            lines.append(
-                f"| {bundle_change.bundle_name} | {size} | {self._bytes_readable(change_size)} {icon} |"
+
+            bundle_rows.append(
+                BundleRows(
+                    bundle_name=bundle_name,
+                    size=size,
+                    change=f"{self._bytes_readable(change_size)} {icon}",
+                )
             )
+
+        return bundle_rows
+
+    def _write_lines(self, bundle_rows: List[BundleRows]) -> str:
+        total_size_delta = 0
+        # Write lines
+        lines = [
+            "## Bundle Report",
+            "",
+        ]
+
+        bundles_total_size = self._bytes_readable(total_size_delta)
+        if total_size_delta > 0:
+            lines.append(
+                f"Changes will increase total bundle size by {bundles_total_size} :arrow_up:"
+            )
+        elif total_size_delta < 0:
+            lines.append(
+                f"Changes will decrease total bundle size by {bundles_total_size} :arrow_down:"
+            )
+        else:
+            lines.append("Changes will not impact bundle size")
+        lines.append("")
+
+        # table of bundles
+        lines += [
+            "| Bundle name | Size | Change |",
+            "| ----------- | ---- | ------ |",
+        ]
+        for bundle_row in bundle_rows:
+            lines.append(
+                f"| {bundle_row.bundle_name} | {bundle_row.size} | {bundle_row.change} |"
+            )
+
         return "\n".join(lines)
 
     def _bytes_readable(self, bytes: int) -> str:
