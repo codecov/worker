@@ -23,7 +23,7 @@ class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
         if ownerid is not None:
             log.info(
                 "Owner id was specified, only updating branches in the repo of that owner",
-                extra=dict(repoids=repoids, branch_name=branch_name, ownerid=ownerid),
+                extra=dict(branch_name=branch_name, ownerid=ownerid),
             )
             repoids = (
                 db_session.query(Repository.repoid)
