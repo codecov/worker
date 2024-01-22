@@ -99,6 +99,8 @@ daily_plan_manager_task_name = "app.cron.daily.PlanManagerTask"
 trial_expiration_task_name = "app.tasks.plan.TrialExpirationTask"
 trial_expiration_cron_task_name = "app.cron.plan.TrialExpirationCronTask"
 
+update_branches_task_name = "app.cron.branches.UpdateBranchesTask"
+
 
 def _beat_schedule():
     beat_schedule = {
