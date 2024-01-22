@@ -42,7 +42,7 @@ class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
         else:
             log.info(
                 "No owner id specified updating for branches in all orgs' repos",
-                extra=dict(repoids=repoids, branch_name=branch_name, ownerid=ownerid),
+                extra=dict(branch_name=branch_name, ownerid=ownerid),
             )
             query = (
                 db_session.query(Branch)
