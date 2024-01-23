@@ -1,11 +1,16 @@
 import pytest
 
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.tests.factories import OwnerFactory, RepositoryFactory
 from services.bots import (
     OwnerWithoutValidBotError,
     RepositoryWithoutValidBotError,
     TokenType,
     get_owner_appropriate_bot_token,
+    get_owner_installation_id,
     get_repo_appropriate_bot_token,
     get_repo_particular_bot_token,
     get_token_type_mapping,
@@ -277,6 +282,37 @@ class TestBotsService(BaseTestCase):
         expected_result = ({"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}, None)
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
+    def test_get_repo_appropriate_bot_token_via_installation_covered_repo(
+        self, mock_configuration, dbsession, mocker
+    ):
+        owner = OwnerFactory.create(
+            service="github",
+            integration_id=None,
+            unencrypted_oauth_token="owner_token",
+        )
+        repo = RepositoryFactory(owner=owner, using_integration=False)
+        installation = GithubAppInstallation(
+            installation_id=12341234,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            repository_service_ids=None,  # all repos covered
+            owner=owner,
+        )
+        dbsession.add(installation)
+        dbsession.flush()
+
+        assert owner.github_app_installations == [installation]
+        assert installation.is_repo_covered_by_integration(repo)
+
+        mock_get_github_integration_token = mocker.patch(
+            "services.bots.get_github_integration_token",
+            return_value="installation_token",
+        )
+        assert get_repo_appropriate_bot_token(repo) == (
+            {"key": "installation_token"},
+            None,
+        )
+        mock_get_github_integration_token.assert_called_with("github", 12341234)
+
     def test_get_owner_appropriate_bot_token_owner_no_bot_no_integration(self):
         owner = OwnerFactory.create(
             unencrypted_oauth_token="owner_token", integration_id=None, bot=None
@@ -330,6 +366,72 @@ class TestBotsService(BaseTestCase):
         assert (
             get_owner_appropriate_bot_token(owner, using_integration=True)
             == expected_result
+        )
+
+    def test_get_owner_installation_id_no_installation_no_legacy_integration(
+        self, mocker, dbsession
+    ):
+        owner = OwnerFactory(service="github", integration_id=None)
+        assert owner.github_app_installations == []
+        assert get_owner_installation_id(owner, True) is None
+
+    def test_get_owner_installation_id_no_installation_yes_legacy_integration(
+        self, mocker, dbsession
+    ):
+        owner = OwnerFactory(service="github", integration_id=12341234)
+        assert owner.github_app_installations == []
+        assert get_owner_installation_id(owner, True) == 12341234
+
+    def test_get_owner_installation_id_yes_installation_yes_legacy_integration(
+        self, mocker, dbsession
+    ):
+        owner = OwnerFactory(service="github", integration_id=12341234)
+        installation = GithubAppInstallation(
+            owner=owner,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            repository_service_ids=None,
+            installation_id=123456,
+        )
+        dbsession.add(installation)
+        dbsession.flush()
+        assert owner.github_app_installations == [installation]
+        assert get_owner_installation_id(owner, True) == 123456
+
+    def test_get_owner_installation_id_yes_installation_yes_legacy_integration_specific_repos(
+        self, mocker, dbsession
+    ):
+        owner = OwnerFactory(service="github", integration_id=12341234)
+        repo_covered_by_installation = RepositoryFactory(
+            owner=owner, using_integration=True
+        )
+        repo_not_covered_by_installation = RepositoryFactory(
+            owner=owner, using_integration=True
+        )
+        installation = GithubAppInstallation(
+            owner=owner,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            repository_service_ids=[repo_covered_by_installation.service_id],
+            installation_id=123456,
+        )
+        dbsession.add(installation)
+        dbsession.flush()
+        assert owner.github_app_installations == [installation]
+        assert (
+            get_owner_installation_id(
+                owner,
+                repo_covered_by_installation.using_integration,
+                repository=repo_covered_by_installation,
+            )
+            == 123456
+        )
+        # Notice that the installation object overrides the `Repository.using_integration` column completely
+        assert (
+            get_owner_installation_id(
+                owner,
+                repo_not_covered_by_installation.using_integration,
+                repository=repo_not_covered_by_installation,
+            )
+            is None
         )
 
     def test_get_token_type_mapping_public_repo_no_configuration_no_particular_bot(

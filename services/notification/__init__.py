@@ -14,6 +14,7 @@ from shared.config import get_config
 from shared.helpers.yaml import default_if_true
 from shared.yaml import UserYaml
 
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.metrics import metrics
 from services.comparison.types import Comparison
 from services.decoration import Decoration
@@ -48,6 +49,30 @@ class NotificationService(object):
         self.current_yaml = current_yaml
         self.decoration_type = decoration_type
 
+    def _should_use_checks_notifier(self) -> bool:
+        checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
+        if checks_yaml_field is False:
+            return False
+
+        owner = self.repository.owner
+        default_app_installation_filter = filter(
+            lambda obj: obj.name == GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            owner.github_app_installations or [],
+        )
+        # filter is an Iterator, so we need to scan matches
+        # in practice we only consider the 1st one
+        for app_installation in default_app_installation_filter:
+            return app_installation.is_repo_covered_by_integration(self.repository)
+        # DEPRECATED FLOW
+        return (
+            self.repository.using_integration
+            and self.repository.owner.integration_id
+            and (
+                self.repository.owner.service == "github"
+                or self.repository.owner.service == "github_enterprise"
+            )
+        )
+
     def get_notifiers_instances(self) -> Iterator[AbstractBaseNotifier]:
         mapping = get_all_notifier_classes_mapping()
         yaml_field = read_yaml_field(self.current_yaml, ("coverage", "notify"))
@@ -65,19 +90,11 @@ class NotificationService(object):
                         current_yaml=self.current_yaml,
                         decoration_type=self.decoration_type,
                     )
-        checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
+
         current_flags = [rf.flag_name for rf in self.repository.flags if not rf.deleted]
         for key, title, status_config in self.get_statuses(current_flags):
             status_notifier_class = get_status_notifier_class(key, "status")
-            if (
-                self.repository.using_integration
-                and self.repository.owner.integration_id
-                and (
-                    self.repository.owner.service == "github"
-                    or self.repository.owner.service == "github_enterprise"
-                )
-                and checks_yaml_field is not False
-            ):
+            if self._should_use_checks_notifier():
                 checks_notifier = get_status_notifier_class(key, "checks")
                 yield ChecksWithFallback(
                     checks_notifier=checks_notifier(

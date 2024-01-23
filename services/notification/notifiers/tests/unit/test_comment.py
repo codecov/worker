@@ -16,6 +16,7 @@ from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
 import services.notification.notifiers.mixins.message.sections as sections
+from database.models.core import GithubAppInstallation
 from database.tests.factories import RepositoryFactory
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.decoration import Decoration
@@ -460,6 +461,38 @@ class TestCommentNotifierHelpers(object):
             owner__service="github", owner__integration_id="10000"
         )  # Using integration
         dbsession.add(repository)
+        dbsession.flush()
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.is_enterprise",
+            return_value=False,
+        )
+        mock_write = mocker.MagicMock()
+
+        notifier = CommentNotifier(
+            repository=repository,
+            title="some_title",
+            notifier_yaml_settings=False,
+            notifier_site_settings=None,
+            current_yaml={},
+        )
+        fake_comparison = mocker.MagicMock()
+        fake_comparison.head.commit.repository = repository
+        await notifier._possibly_write_gh_app_login_announcement(
+            fake_comparison, mock_write
+        )
+        assert mock_write.call_count == 0
+
+    @pytest.mark.asyncio
+    async def test__possibly_write_gh_app_login_announcement_has_ghapp_installation(
+        self, dbsession, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__integration_id=None
+        )
+        ghapp_installation = GithubAppInstallation(
+            owner=repository.owner, installation_id=12345, repository_service_ids=None
+        )
+        dbsession.add_all([repository, ghapp_installation])
         dbsession.flush()
         mocker.patch(
             "services.notification.notifiers.mixins.message.is_enterprise",
