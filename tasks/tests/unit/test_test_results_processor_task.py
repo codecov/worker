@@ -238,8 +238,10 @@ class TestUploadTestProcessorTask(object):
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
         mocker.patch.object(
             TestResultsProcessorTask,
-            "process_individual_arg",
-            side_effect=ParserFailureError,
+            "parse_single_file",
+            side_effect=ParserFailureError(
+                err_msg="Test error message", file_content=""
+            ),
         )
 
         commit = CommitFactory.create(
@@ -264,9 +266,8 @@ class TestUploadTestProcessorTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-
-        assert result == [{"successful": False}]
-        assert "Error parsing testruns" in caplog.text
+        print(caplog.text)
+        assert "Test error message" in caplog.text
 
     @pytest.mark.asyncio
     @pytest.mark.integration

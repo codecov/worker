@@ -28,7 +28,11 @@ log = logging.getLogger(__name__)
 
 
 class ParserFailureError(Exception):
-    ...
+    def __init__(self, err_msg, file_content, parser="", parser_err_msg=""):
+        self.err_msg = err_msg
+        self.file_content = file_content
+        self.parser = parser
+        self.parser_err_msg = parser_err_msg
 
 
 class ParserNotSupportedError(Exception):
@@ -90,14 +94,18 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     def process_individual_upload(
         self, db_session, repoid, commitid, upload_obj: Upload
     ):
-        try:
-            parsed_testruns: List[Testrun] = self.process_individual_arg(
-                upload_obj, upload_obj.report.commit.repository
-            )
-        except ParserFailureError:
-            log.warning(
-                f"Error parsing testruns",
-                extra=dict(repoid=repoid, commitid=commitid, uploadid=upload_obj.id),
+        upload_id = upload_obj.id
+        parsed_testruns: List[Testrun] = self.process_individual_arg(
+            upload_obj, upload_obj.report.commit.repository
+        )
+        if not parsed_testruns:
+            log.error(
+                "No test result files were successfully parsed for this upload",
+                extra=dict(
+                    repoid=repoid,
+                    commitid=commitid,
+                    upload_id=upload_id,
+                ),
             )
             return {
                 "successful": False,
@@ -151,34 +159,45 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         for file in data["test_results_files"]:
             file = file["data"]
             file_bytes = BytesIO(zlib.decompress(base64.b64decode(file)))
-            testrun_list += self.parse_single_file(file_bytes)
+            try:
+                testrun_list += self.parse_single_file(file_bytes)
+            except ParserFailureError as exc:
+                log.error(
+                    exc.err_msg,
+                    extra=dict(
+                        repoid=upload.report.commit.repoid,
+                        commitid=upload.report.commit_id,
+                        uploadid=upload.id,
+                        file_content=exc.file_content,
+                        parser=exc.parser,
+                        parser_err_msg=exc.parser_err_msg,
+                    ),
+                )
+
         return testrun_list
 
-    def parse_single_file(self, file_bytes):
+    def parse_single_file(
+        self,
+        file_bytes,
+    ):
         try:
             parser, parsing_function = self.match_report(file_bytes)
         except ParserNotSupportedError as e:
-            log.error(
-                "File did not match any parser format",
-                extra=dict(
-                    file_content=file_bytes.read().decode()[:300],
-                ),
-            )
-            raise ParserFailureError() from e
+            raise ParserFailureError(
+                err_msg="File did not match any parser format",
+                file_content=file_bytes.read().decode()[:300],
+            ) from e
 
         try:
             file_content = file_bytes.read()
             res = parsing_function(file_content)
         except ParserError as e:
-            log.error(
-                "Error parsing test result file",
-                extra=dict(
-                    file_content=file_content.decode()[:300],
-                    parser=parser,
-                    err_msg=str(e),
-                ),
-            )
-            raise ParserFailureError() from e
+            raise ParserFailureError(
+                err_msg="Error parsing file",
+                file_content=file_content.decode()[:300],
+                parser=parser,
+                parser_err_msg=str(e),
+            ) from e
 
         return res
 
