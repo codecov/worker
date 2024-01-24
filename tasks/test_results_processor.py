@@ -75,8 +75,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
             upload_list.append(upload_obj)
 
-        # kick off notification task stuff
-
         if self.should_delete_archive(commit_yaml):
             repository = (
                 db_session.query(Repository)

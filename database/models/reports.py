@@ -245,8 +245,13 @@ class CompareComponent(MixinBaseClass, CodecovBaseModel):
     commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
 
 
-class Test(CodecovBaseModel, MixinBaseClass):
+class Test(CodecovBaseModel):
     __tablename__ = "reports_test"
+    # the reason we aren't using the regular primary key
+    # in this case is because we want to be able to compute/predict
+    # the primary key of a Test object ourselves in the processor
+    # so we can easily do concurrent writes to the database
+    # this is a hash of the repoid, name, testsuite and env
     id_ = Column("id", types.Text, primary_key=True)
     external_id = Column(
         UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False
@@ -264,7 +269,11 @@ class Test(CodecovBaseModel, MixinBaseClass):
     repository = relationship("Repository", backref=backref("tests"))
     name = Column(types.String(256), nullable=False)
     testsuite = Column(types.String(256), nullable=False)
-    env = Column(types.String(256), nullable=False)
+    # this is a hash of the flags associated with this test
+    # users will use flags to distinguish the same test being run
+    # in a different environment
+    # for example: the same test being run on windows vs. mac
+    flags_hash = Column(types.String(256), nullable=False)
 
     __table_args__ = (
         UniqueConstraint(
