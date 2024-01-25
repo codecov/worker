@@ -1,14 +1,18 @@
 import logging
+import uuid
 from functools import cached_property
 
 from shared.reports.types import ReportTotals, SessionTotalsArray
-from sqlalchemy import Column, ForeignKey, Table, types
+from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import backref, relationship
+from test_results_parser import Outcome
 
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.models.core import Commit, CompareCommit, Repository
 from database.utils import ArchiveField
+from helpers.clock import get_utc_now
 from helpers.config import should_write_data_to_storage_config_check
 
 log = logging.getLogger(__name__)
@@ -240,3 +244,55 @@ class CompareComponent(MixinBaseClass, CodecovBaseModel):
     patch_totals = Column(postgresql.JSON)
 
     commit_comparison = relationship(CompareCommit, foreign_keys=[commit_comparison_id])
+
+
+class Test(CodecovBaseModel):
+    __tablename__ = "reports_test"
+    # the reason we aren't using the regular primary key
+    # in this case is because we want to be able to compute/predict
+    # the primary key of a Test object ourselves in the processor
+    # so we can easily do concurrent writes to the database
+    # this is a hash of the repoid, name, testsuite and env
+    id_ = Column("id", types.Text, primary_key=True)
+    external_id = Column(
+        UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False
+    )
+    created_at = Column(types.DateTime(timezone=True), default=get_utc_now)
+    updated_at = Column(
+        types.DateTime(timezone=True), onupdate=get_utc_now, default=get_utc_now
+    )
+
+    @property
+    def id(self):
+        return self.id_
+
+    repoid = Column(types.Integer, ForeignKey("repos.repoid"))
+    repository = relationship("Repository", backref=backref("tests"))
+    name = Column(types.String(256), nullable=False)
+    testsuite = Column(types.String(256), nullable=False)
+    # this is a hash of the flags associated with this test
+    # users will use flags to distinguish the same test being run
+    # in a different environment
+    # for example: the same test being run on windows vs. mac
+    flags_hash = Column(types.String(256), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "repoid",
+            "name",
+            "testsuite",
+            "flags_hash",
+            name="reports_test_repoid_name_testsuite_flags_hash",
+        ),
+    )
+
+
+class TestInstance(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "reports_testinstance"
+    test_id = Column(types.Text, ForeignKey("reports_test.id"))
+    test = relationship(Test, backref=backref("testinstances"))
+    duration_seconds = Column(types.Float, nullable=False)
+    outcome = Column(types.String(100), nullable=False)
+    upload_id = Column(types.Integer, ForeignKey("reports_upload.id"))
+    upload = relationship("Upload", backref=backref("testinstances"))
+    failure_message = Column(types.Text)

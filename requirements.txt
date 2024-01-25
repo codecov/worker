@@ -376,6 +376,8 @@ statsd==3.3.0
     #   shared
 stripe==2.56.0
     # via -r requirements.in
+test-results-parser @ https://github.com/codecov/test-results-parser/archive/5515e960d5d38881036e9127f86320efca649f13.tar.gz
+    # via -r requirements.in
 text-unidecode==1.3
     # via faker
 timeconvert==3.0.13
