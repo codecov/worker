@@ -196,6 +196,17 @@ class StatusProjectMixin(object):
             * 100
         )
         head_coverage = Decimal(comparison.head.report.totals.coverage)
+        log.info(
+            "Adjust base applied to project status",
+            extra=dict(
+                commit=comparison.head.commit.commitid,
+                base_adjusted_coverage=base_adjusted_coverage,
+                head_coverage=head_coverage,
+                hits_removed=hits_removed,
+                misses_removed=misses_removed,
+                partials_removed=partials_removed,
+            ),
+        )
         if base_adjusted_coverage <= head_coverage:
             rounded_difference = round_number(
                 self.current_yaml, head_coverage - base_adjusted_coverage
