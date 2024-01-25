@@ -80,11 +80,7 @@ coverage==5.5
     #   -r requirements.in
     #   codecovopentelem
     #   pytest-cov
-<<<<<<< HEAD
-cryptography==41.0.7
-=======
 cryptography==42.0.0
->>>>>>> d686ff98101291d70de0a15a6906d6a285216e90
     # via shared
 deprecated==1.2.12
     # via opentelemetry-api
@@ -346,11 +342,7 @@ screen==1.0.1
     # via excel-base
 sentry-sdk==1.19.1
     # via -r requirements.in
-<<<<<<< HEAD
-https://github.com/codecov/shared/archive/b76990f2e59490547072350539304e7fb99bed1e.tar.gz#egg=shared
-=======
 shared @ https://github.com/codecov/shared/archive/6dd50f436271bc282856786e0bc8980f98b11199.tar.gz
->>>>>>> d686ff98101291d70de0a15a6906d6a285216e90
     # via -r requirements.in
 six==1.15.0
     # via
