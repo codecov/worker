@@ -28,6 +28,7 @@ from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
+from tasks.test_results_finisher import test_results_finisher_task
 from tasks.test_results_processor import test_results_processor_task
 from tasks.upload import UploadContext, UploadTask
 from tasks.upload_finisher import upload_finisher_task
@@ -277,7 +278,7 @@ class TestUploadTaskIntegration(object):
         mock_redis,
         celery_app,
     ):
-        group = mocker.patch("tasks.upload.group")
+        chord = mocker.patch("tasks.upload.chord")
         storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
@@ -327,7 +328,15 @@ class TestUploadTaskIntegration(object):
             ),
         )
 
-        group.assert_called_with([processor_sig])
+        notify_sig = test_results_finisher_task.signature(
+            kwargs=dict(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            )
+        )
+
+        chord.assert_called_with([processor_sig], notify_sig)
 
     @pytest.mark.asyncio
     async def test_upload_task_call_no_jobs(

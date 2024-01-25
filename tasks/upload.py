@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from json import loads
 from typing import Any, List, Mapping, Optional
 
-from celery import chain, group
+from celery import chain, chord
 from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
@@ -43,6 +43,7 @@ from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
+from tasks.test_results_finisher import test_results_finisher_task
 from tasks.test_results_processor import test_results_processor_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, upload_processor_task
@@ -716,8 +717,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
                 checkpoint_data = checkpoints.data
 
-            res = group(
+            res = chord(
                 processor_task_group,
+                test_results_finisher_task.signature(
+                    args=(),
+                    kwargs=dict(
+                        repoid=commit.repoid,
+                        commitid=commit.commitid,
+                        commit_yaml=commit_yaml,
+                    ),
+                ),
             ).apply_async()
 
             log.info(
