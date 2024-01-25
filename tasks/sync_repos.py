@@ -3,10 +3,11 @@ from datetime import datetime
 
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
-from shared.celery_config import sync_repos_task_name
+from shared.celery_config import sync_repo_languages_task_name, sync_repos_task_name
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
+from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Owner, Repository
@@ -35,6 +36,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     4. Set the bot for owners (teams/orgs/groups) that have private repos. This is so
        we have a link to a valid token through the bot user for calls to the provider
        service (GitHub, Gitlab, Bitbucket, ...).
+
+    5. Fire off a task to sync every repository's available languages with its provider
+       after finishing the sync.
     """
 
     ignore_result = False
@@ -47,6 +51,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         ownerid,
         username=None,
         using_integration=False,
+        manual_trigger=False,
         **kwargs,
     ):
         log.info(
@@ -78,6 +83,12 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                         await self.sync_repos(
                             db_session, git, owner, username, using_integration
                         )
+
+                self.sync_repos_languages(
+                    ownerid=owner.ownerid,
+                    db_session=db_session,
+                    manual_trigger=manual_trigger,
+                )
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 
@@ -437,6 +448,18 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         db_session.add(new_repo)
         db_session.flush()
         return new_repo.repoid
+
+    def sync_repos_languages(
+        self, ownerid: int, db_session: Session, manual_trigger: bool
+    ):
+        repositories = db_session.query(Repository).filter(
+            Repository.ownerid == ownerid
+        )
+
+        for repository in repositories:
+            self.app.tasks[sync_repo_languages_task_name].apply_async(
+                kwargs=dict(repoid=repository.repoid, manual_trigger=manual_trigger)
+            )
 
 
 RegisteredSyncReposTask = celery_app.register_task(SyncReposTask())

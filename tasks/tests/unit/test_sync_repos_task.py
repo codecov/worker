@@ -7,6 +7,7 @@ import respx
 import vcr
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
+from shared.celery_config import sync_repo_languages_task_name
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import Owner, Repository
@@ -813,3 +814,63 @@ class TestSyncReposTaskUnit(object):
         assert user.permission == sorted(
             [r.repoid for r in repos]
         )  # repos were removed
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
+    @reuse_cassette(
+        "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_only_public_repos_not_in_db.yaml"
+    )
+    @respx.mock
+    async def test_insert_repo_and_call_repo_sync_languages(
+        self, mocker, mock_configuration, dbsession, mock_redis, use_generator
+    ):
+        mocked_app = mocker.patch.object(
+            SyncReposTask,
+            "app",
+            tasks={
+                sync_repo_languages_task_name: mocker.MagicMock(),
+            },
+        )
+
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
+            respx.post("https://api.github.com/graphql").mock(
+                httpx.Response(
+                    status_code=200,
+                    content='{"data":{"viewer":{"repositories":{"totalCount": 1}}}}',
+                    headers={"Content-Type": "application/json"},
+                )
+            )
+
+        token = "ecd73a086eadc85db68747a66bdbd662a785a072"
+        user = OwnerFactory.create(
+            organizations=[],
+            service="github",
+            username="1nf1n1t3l00p",
+            unencrypted_oauth_token=token,
+            permission=[],
+            service_id="45343385",
+        )
+        dbsession.add(user)
+        dbsession.flush()
+        await SyncReposTask().run_async(
+            dbsession, ownerid=user.ownerid, using_integration=False
+        )
+
+        public_repo_service_id = "159090647"
+        expected_repo_service_ids = (public_repo_service_id,)
+        assert user.permission == []  # there were no private repos to add
+        repos = (
+            dbsession.query(Repository)
+            .filter(Repository.service_id.in_(expected_repo_service_ids))
+            .all()
+        )
+        assert len(repos) == 1
+        assert repos[0].service_id == public_repo_service_id
+        assert repos[0].ownerid == user.ownerid
+
+        mocked_app.tasks[sync_repo_languages_task_name].apply_async.assert_any_call(
+            kwargs={"repoid": repos[0].repoid, "manual_trigger": False}
+        )
