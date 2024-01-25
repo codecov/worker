@@ -64,7 +64,7 @@ class TestUploadTestProcessorTask(object):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
-            dbsession.query(TestInstance).filter_by(outcome=int(Outcome.Failure)).all()
+            dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
 
         assert len(tests) == 4
@@ -132,7 +132,7 @@ class TestUploadTestProcessorTask(object):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
-            dbsession.query(TestInstance).filter_by(outcome=int(Outcome.Failure)).all()
+            dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
 
         assert len(tests) == 2
@@ -198,7 +198,7 @@ class TestUploadTestProcessorTask(object):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
-            dbsession.query(TestInstance).filter_by(outcome=int(Outcome.Failure)).all()
+            dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
 
         assert len(tests) == 1
@@ -324,7 +324,7 @@ class TestUploadTestProcessorTask(object):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
-            dbsession.query(TestInstance).filter_by(outcome=int(Outcome.Failure)).all()
+            dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
 
         assert len(tests) == 1
@@ -462,7 +462,7 @@ class TestUploadTestProcessorTask(object):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
-            dbsession.query(TestInstance).filter_by(outcome=int(Outcome.Failure)).all()
+            dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
 
         assert len(tests) == 4
@@ -549,7 +549,9 @@ class TestUploadTestProcessorTask(object):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
-            dbsession.query(TestInstance).filter_by(outcome=int(Outcome.Failure)).all()
+            dbsession.query(TestInstance)
+            .filter(TestInstance.outcome == str(Outcome.Failure))
+            .all()
         )
 
         assert len(tests) == 5

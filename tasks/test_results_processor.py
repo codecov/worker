@@ -108,7 +108,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         for testrun in parsed_testruns:
             name = testrun.name
             testsuite = testrun.testsuite
-            outcome = int(testrun.outcome)
+            outcome = str(testrun.outcome)
             duration_seconds = testrun.duration
             failure_message = testrun.failure_message
             test_id = generate_test_id(repoid, testsuite, name, flags_hash)
