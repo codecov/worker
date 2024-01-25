@@ -10,7 +10,9 @@ from shared.celery_config import (
 from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from shared.yaml import UserYaml
+from sqlalchemy import desc
 from sqlalchemy.orm.session import Session
+from test_results_parser import Outcome
 
 from app import celery_app
 from database.enums import CommitErrorTypes, Decoration
@@ -26,6 +28,7 @@ from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import determine_decoration_details
+from services.lock_manager import LockManager, LockType
 from services.notification import NotificationService
 from services.redis import Redis, get_redis_connection
 from services.report import ReportService
@@ -68,13 +71,18 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "notifications": None,
                 "reason": "has_other_notifies_coming",
             }
-        notify_lock_name = f"notify_lock_{repoid}_{commitid}"
+
+        lock_manager = LockManager(
+            repoid=repoid,
+            commitid=commitid,
+            report_type=ReportType.COVERAGE,
+            lock_timeout=max(80, self.hard_time_limit_task),
+        )
+
         try:
             lock_acquired = False
-            with redis_connection.lock(
-                notify_lock_name,
-                timeout=max(80, self.hard_time_limit_task),
-                blocking_timeout=10,
+            with lock_manager.locked(
+                lock_type=LockType.NOTIFICATION, retry_num=self.request.retries
             ):
                 lock_acquired = True
                 return await self.run_async_within_lock(
@@ -131,6 +139,30 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             Commit.repoid == repoid, Commit.commitid == commitid
         )
         commit = commits_query.first()
+
+        # check if there were any test failures
+        latest_test_instances = (
+            db_session.query(TestInstance)
+            .join(Upload)
+            .join(CommitReport)
+            .filter(
+                CommitReport.commit_id == commit.id_,
+            )
+            .order_by(TestInstance.test_id)
+            .order_by(desc(Upload.created_at))
+            .distinct(TestInstance.test_id)
+            .all()
+        )
+
+        if any(
+            [test.outcome == int(Outcome.Failure) for test in latest_test_instances]
+        ):
+            return {
+                "notify_attempted": False,
+                "notifications": None,
+                "reason": "test_failures",
+            }
+
         try:
             repository_service = get_repo_provider_service(commit.repository)
         except RepositoryWithoutValidBotError:
