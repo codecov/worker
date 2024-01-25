@@ -108,7 +108,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="a",
+            flags_hash="a",
         )
         dbsession.add(test1)
         dbsession.flush()
@@ -117,7 +117,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="b",
+            flags_hash="b",
         )
         dbsession.add(test2)
         dbsession.flush()
@@ -262,7 +262,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="a",
+            flags_hash="a",
         )
         dbsession.add(test1)
         dbsession.flush()
@@ -271,7 +271,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="b",
+            flags_hash="b",
         )
         dbsession.add(test2)
         dbsession.flush()
@@ -420,7 +420,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="a",
+            flags_hash="a",
         )
         dbsession.add(test1)
         dbsession.flush()
@@ -429,7 +429,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="b",
+            flags_hash="b",
         )
         dbsession.add(test2)
         dbsession.flush()
@@ -572,7 +572,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="a",
+            flags_hash="a",
         )
         dbsession.add(test1)
         dbsession.flush()
@@ -581,7 +581,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="b",
+            flags_hash="b",
         )
         dbsession.add(test2)
         dbsession.flush()
@@ -729,7 +729,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="a",
+            flags_hash="a",
         )
         dbsession.add(test1)
         dbsession.flush()
@@ -738,7 +738,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             name="test_name",
             testsuite="test_testsuite",
-            env="b",
+            flags_hash="b",
         )
         dbsession.add(test2)
         dbsession.flush()
