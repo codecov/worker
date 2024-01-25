@@ -140,7 +140,7 @@ class TestUploadTestProcessorTask(object):
         assert len(failures) == 0
 
         assert (
-            tests[0].env
+            tests[0].flags_hash
             == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         )
         assert test_instances[0].test.id == tests[0].id
@@ -206,7 +206,7 @@ class TestUploadTestProcessorTask(object):
         assert len(failures) == 4
 
         assert (
-            tests[0].env
+            tests[0].flags_hash
             == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         )
         assert test_instances[0].test.id == tests[0].id
@@ -332,7 +332,7 @@ class TestUploadTestProcessorTask(object):
         assert len(failures) == 4
 
         assert (
-            tests[0].env
+            tests[0].flags_hash
             == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         )
         assert test_instances[0].test.id == tests[0].id
@@ -439,7 +439,7 @@ class TestUploadTestProcessorTask(object):
         )
         existing_test = Test(
             repoid=repoid,
-            env="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            flags_hash="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
             name="api.temp.calculator.test_calculator::test_divide",
             testsuite="pytest",
             id_=test_id,
@@ -481,7 +481,7 @@ class TestUploadTestProcessorTask(object):
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_processor_task_call_existing_test_diff_env(
+    async def test_upload_processor_task_call_existing_test_diff_flags_hash(
         self,
         mocker,
         mock_configuration,
@@ -526,7 +526,7 @@ class TestUploadTestProcessorTask(object):
         )
         existing_test = Test(
             repoid=repoid,
-            env="",
+            flags_hash="",
             name="api.temp.calculator.test_calculator::test_divide",
             testsuite="pytest",
             id_=test_id,

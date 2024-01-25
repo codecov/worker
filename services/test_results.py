@@ -84,11 +84,13 @@ class TestResultsReportService(BaseReportService):
         return all_flags
 
 
-def generate_env(flag_names):
+def generate_flags_hash(flag_names):
     return sha256((" ".join(sorted(flag_names))).encode("utf-8")).hexdigest()
 
 
-def generate_test_id(repoid, testsuite, name, env):
+def generate_test_id(repoid, testsuite, name, flags_hash):
     return sha256(
-        (" ".join([str(x) for x in [repoid, testsuite, name, env]])).encode("utf-8")
+        (" ".join([str(x) for x in [repoid, testsuite, name, flags_hash]])).encode(
+            "utf-8"
+        )
     ).hexdigest()

@@ -20,7 +20,7 @@ from test_results_parser import (
 from app import celery_app
 from database.models import Repository, Test, TestInstance, Upload
 from services.archive import ArchiveService
-from services.test_results import generate_env, generate_test_id
+from services.test_results import generate_flags_hash, generate_test_id
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
@@ -102,7 +102,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             return {
                 "successful": False,
             }
-        env = generate_env(upload_obj.flag_names)
+        flags_hash = generate_flags_hash(upload_obj.flag_names)
         upload_id = upload_obj.id
 
         for testrun in parsed_testruns:
@@ -111,11 +111,15 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             outcome = int(testrun.outcome)
             duration_seconds = testrun.duration
             failure_message = testrun.failure_message
-            test_id = generate_test_id(repoid, testsuite, name, env)
+            test_id = generate_test_id(repoid, testsuite, name, flags_hash)
             insert_on_conflict_do_nothing = (
                 insert(Test.__table__)
                 .values(
-                    id=test_id, repoid=repoid, name=name, testsuite=testsuite, env=env
+                    id=test_id,
+                    repoid=repoid,
+                    name=name,
+                    testsuite=testsuite,
+                    flags_hash=flags_hash,
                 )
                 .on_conflict_do_nothing()
             )
