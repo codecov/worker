@@ -16,7 +16,6 @@ log = logging.getLogger(__name__)
 BUNDLE_ANALYSIS_LANGUAGES = ["javascript", "typescript"]
 
 # We sync on repos that don't have the desired BA languages every 7 days
-# TODO: make this number also tweakable by infra
 REPOSITORY_LANGUAGE_SYNC_THRESHOLD = 7
 
 
