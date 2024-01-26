@@ -25,6 +25,10 @@ component_management:
           - "!**/conftest.py"
           - "!**tests**/test_*.py"
           - "!database/tests/factories/**"
+      statuses:
+        - removed_code_behaviour: "adjust_base"
+          target: "auto"
+          type: "project"
     - component_id: no_tasks
       name: OutsideTasks
       paths:
