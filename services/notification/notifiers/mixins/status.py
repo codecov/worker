@@ -207,7 +207,13 @@ class StatusProjectMixin(object):
                 partials_removed=partials_removed,
             ),
         )
-        if base_adjusted_coverage <= head_coverage:
+        # the head coverage is rounded to five digits after the dot, using shared.helpers.numeric.ratio
+        # so we should round the base adjusted coverage to the same amount of digits after the dot
+        # Decimal.quantize: https://docs.python.org/3/library/decimal.html#decimal.Decimal.quantize
+        quantized_base_adjusted_coverage = base_adjusted_coverage.quantize(
+            Decimal("0.00000")
+        )
+        if quantized_base_adjusted_coverage <= head_coverage:
             rounded_difference = round_number(
                 self.current_yaml, head_coverage - base_adjusted_coverage
             )
