@@ -7,7 +7,8 @@ from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models.core import Repository
-from helpers.clock import get_utc_now, get_utc_now_as_iso_format
+from helpers.clock import get_utc_now
+from helpers.exceptions import RepositoryWithoutValidBotError
 from services.repository import get_repo_provider_service
 from tasks.base import BaseCodecovTask
 
@@ -32,7 +33,7 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
             )
 
         desired_languages_intersection = set(BUNDLE_ANALYSIS_LANGUAGES).intersection(
-            repository.languages
+            repository.languages or {}
         )
 
         should_sync_languages = (
@@ -65,9 +66,15 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
         except TorngitError:
             log.warning(
                 "Unable to find languages for this repository",
-                dict(repository_id=repository.repoid),
+                extra=dict(repository_id=repository.repoid),
             )
             return {"successful": False, "error": "no_repo"}
+        except RepositoryWithoutValidBotError:
+            log.warning(
+                "No valid bot found for repo",
+                extra=dict(repoid=repoid),
+            )
+            return {"successful": False, "error": "no_bot"}
 
 
 RegisteredSyncRepoLanguagesTask = celery_app.register_task(SyncRepoLanguagesTask())
