@@ -5,8 +5,13 @@ from mock import MagicMock, patch
 from shared.reports.types import ReportTotals, SessionTotalsArray
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
+from sqlalchemy.orm import Session
 
 from database.models import Branch, Commit, CommitNotification, Owner, Pull, Repository
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.models.reports import ReportDetails
 from database.tests.factories import (
     BranchFactory,
@@ -518,3 +523,68 @@ class TestCommitModel(object):
         assert fetched.report_json == {}
         mock_archive.assert_called()
         mock_read_file.assert_called_with(storage_path)
+
+
+class TestGithubAppInstallationModel(object):
+    def test_covers_all_repos(self, dbsession: Session):
+        owner = OwnerFactory.create()
+        other_owner = OwnerFactory.create()
+        repo1 = RepositoryFactory.create(owner=owner)
+        repo2 = RepositoryFactory.create(owner=owner)
+        repo3 = RepositoryFactory.create(owner=owner)
+        other_repo_different_owner = RepositoryFactory.create(owner=other_owner)
+        installation_obj = GithubAppInstallation(
+            owner=owner,
+            repository_service_ids=None,
+            installation_id=100,
+            # name would be set by the API
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        )
+        dbsession.add_all([owner, other_owner, repo1, repo2, repo3, installation_obj])
+        dbsession.flush()
+        assert installation_obj.covers_all_repos() == True
+        assert installation_obj.is_repo_covered_by_integration(repo1) == True
+        assert other_repo_different_owner.ownerid != repo1.ownerid
+        assert (
+            installation_obj.is_repo_covered_by_integration(other_repo_different_owner)
+            == False
+        )
+        assert owner.github_app_installations == [installation_obj]
+        assert installation_obj.repository_queryset(dbsession).count() == 3
+        assert set(installation_obj.repository_queryset(dbsession).all()) == set(
+            [repo1, repo2, repo3]
+        )
+
+    def test_covers_some_repos(self, dbsession: Session):
+        owner = OwnerFactory()
+        repo = RepositoryFactory(owner=owner)
+        same_owner_other_repo = RepositoryFactory(owner=owner)
+        other_repo_different_owner = RepositoryFactory()
+        installation_obj = GithubAppInstallation(
+            owner=owner,
+            repository_service_ids=[repo.service_id],
+            installation_id=100,
+        )
+        dbsession.add_all(
+            [
+                owner,
+                repo,
+                same_owner_other_repo,
+                other_repo_different_owner,
+                installation_obj,
+            ]
+        )
+        dbsession.flush()
+        assert installation_obj.covers_all_repos() == False
+        assert installation_obj.is_repo_covered_by_integration(repo) == True
+        assert (
+            installation_obj.is_repo_covered_by_integration(other_repo_different_owner)
+            == False
+        )
+        assert (
+            installation_obj.is_repo_covered_by_integration(same_owner_other_repo)
+            == False
+        )
+        assert owner.github_app_installations == [installation_obj]
+        assert installation_obj.repository_queryset(dbsession).count() == 1
+        assert list(installation_obj.repository_queryset(dbsession).all()) == [repo]
