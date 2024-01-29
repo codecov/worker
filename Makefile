@@ -22,7 +22,7 @@ export WORKER_DOCKER_VERSION=${VERSION}
 export CODECOV_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
 # Codecov CLI version to use
-CODECOV_CLI_VERSION := 0.4.1
+CODECOV_CLI_VERSION := 0.4.6
 
 build:
 	$(MAKE) build.requirements
@@ -48,13 +48,13 @@ lint:
 	make lint.run
 
 test:
-	python -m pytest --cov=./
+	python -m pytest --cov=./ --junitxml=junit.xml
 
 test.unit:
-	python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml
+	python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml --junitxml=unit.junit.xml
 
 test.integration:
-	python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml
+	python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml
 
 
 update-requirements:
@@ -220,11 +220,15 @@ test_env.run_integration:
 
 test_env.upload:
 	docker-compose exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
+	docker-compose exec worker make test_env.container_upload_test_results CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
 
 test_env.container_upload:
 	codecovcli -u ${CODECOV_URL} do-upload --flag latest-uploader-overall
 	codecovcli -u ${CODECOV_URL} do-upload --flag unit --file unit.coverage.xml
 	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml
+
+test_env.container_upload_test_results:
+	codecovcli -v -u ${CODECOV_URL} do-upload --report-type test_results || true
 
 test_env.static_analysis:
 	docker-compose exec worker make test_env.container_static_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}

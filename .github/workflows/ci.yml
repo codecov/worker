@@ -51,10 +51,31 @@ jobs:
   test:
     name: Test
     needs: [build]
-    uses: codecov/gha-workflows/.github/workflows/run-tests.yml@v1.2.12
+    uses: codecov/gha-workflows/.github/workflows/run-tests.yml@v1.2.15
     secrets: inherit
     with:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
+
+  print:
+    name: print
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: print git stuff
+        if: ${{ !cancelled() }}
+        run: |
+          git log
+      - name: print env vars
+        if: ${{ !cancelled() }}
+        run: |
+          echo $GITHUB_SHA
+          echo $GITHUB_HEAD_REF
+          echo $GITHUB_REF
+
 
   build-self-hosted:
     name: Build Self Hosted Worker
