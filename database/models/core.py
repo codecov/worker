@@ -6,7 +6,7 @@ from functools import cached_property
 
 from sqlalchemy import Column, ForeignKey, Index, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import backref, relationship, validates
+from sqlalchemy.orm import Session, backref, relationship, validates
 from sqlalchemy.schema import FetchedValue
 
 import database.models
@@ -63,6 +63,8 @@ class Owner(CodecovBaseModel):
     free = Column(
         types.Integer, nullable=False, default=0, server_default=FetchedValue()
     )
+
+    # DEPRECATED - Prefer GithubAppInstallation
     integration_id = Column(types.Integer, server_default=FetchedValue())
     yaml = Column(postgresql.JSON, server_default=FetchedValue())
     oauth_token = Column(types.Text, server_default=FetchedValue())
@@ -93,6 +95,13 @@ class Owner(CodecovBaseModel):
         "Repository",
         back_populates="owner",
         foreign_keys="Repository.ownerid",
+        cascade="all, delete",
+        passive_deletes=True,
+    )
+    github_app_installations = relationship(
+        "GithubAppInstallation",
+        back_populates="owner",
+        foreign_keys="GithubAppInstallation.ownerid",
         cascade="all, delete",
         passive_deletes=True,
     )
@@ -138,6 +147,8 @@ class Repository(CodecovBaseModel):
     hookid = Column(types.Text)
     webhook_secret = Column(types.Text)
     activated = Column(types.Boolean, default=False)
+
+    # DEPRECATED - prefer GithubAppInstallation.is_repo_covered_by_isntallation
     using_integration = Column(types.Boolean)
 
     owner = relationship(Owner, foreign_keys=[ownerid], back_populates="repositories")
@@ -158,6 +169,49 @@ class Repository(CodecovBaseModel):
 
     def __repr__(self):
         return f"Repo<{self.repoid}>"
+
+
+GITHUB_APP_INSTALLATION_DEFAULT_NAME = "codecov_app_installation"
+
+
+class GithubAppInstallation(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "codecov_auth_githubappinstallation"
+
+    # replacement for owner.integration_id
+    # installation id GitHub sends us in the installation-related webhook events
+    installation_id = Column(types.Integer, server_default=FetchedValue())
+    name = Column(types.Text, server_default=FetchedValue())
+    # if null, all repos are covered by this installation
+    # otherwise, it's a list of repo.id values
+    repository_service_ids = Column(
+        postgresql.ARRAY(types.Text), server_default=FetchedValue()
+    )
+
+    ownerid = Column("owner_id", types.Integer, ForeignKey("owners.ownerid"))
+    owner = relationship(
+        Owner, foreign_keys=[ownerid], back_populates="github_app_installations"
+    )
+
+    def repository_queryset(self, dbsession: Session):
+        """Returns a query set of repositories covered by this installation"""
+        if self.repository_service_ids is None:
+            # All repos covered
+            return dbsession.query(Repository).filter(
+                Repository.ownerid == self.ownerid
+            )
+        # Some repos covered
+        return dbsession.query(Repository).filter(
+            Repository.service_id.in_(self.repository_service_ids),
+            Repository.ownerid == self.ownerid,
+        )
+
+    def covers_all_repos(self) -> bool:
+        return self.repository_service_ids is None
+
+    def is_repo_covered_by_integration(self, repo: Repository) -> bool:
+        if self.covers_all_repos():
+            return repo.ownerid == self.ownerid
+        return repo.service_id in self.repository_service_ids
 
 
 class Commit(CodecovBaseModel):
