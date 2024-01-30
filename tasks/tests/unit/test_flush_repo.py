@@ -1,8 +1,5 @@
 import pytest
-from sqlalchemy import null
-from sqlalchemy.dialects import postgresql
 
-from database.models import Repository
 from database.tests.factories import (
     BranchFactory,
     CommitFactory,
@@ -12,7 +9,7 @@ from database.tests.factories import (
 )
 from database.tests.factories.reports import CompareFlagFactory, RepositoryFlagFactory
 from services.archive import ArchiveService
-from tasks.flush_repo import FlushRepoTask
+from tasks.flush_repo import FlushRepoTask, FlushRepoTaskReturnType
 
 
 class TestFlushRepo(object):
@@ -23,12 +20,14 @@ class TestFlushRepo(object):
         dbsession.add(repo)
         dbsession.flush()
         res = await task.run_async(dbsession, repoid=repo.repoid)
-        assert res == {
-            "delete_branches_count": 0,
-            "deleted_archives": 0,
-            "deleted_commits_count": 0,
-            "deleted_pulls_count": 0,
-        }
+        assert res == FlushRepoTaskReturnType(
+            **{
+                "delete_branches_count": 0,
+                "deleted_archives_count": 0,
+                "deleted_commits_count": 0,
+                "deleted_pulls_count": 0,
+            }
+        )
 
     @pytest.mark.asyncio
     async def test_flush_repo_few_of_each_only_db_objects(
@@ -65,12 +64,14 @@ class TestFlushRepo(object):
             dbsession.add(branch)
         dbsession.flush()
         res = await task.run_async(dbsession, repoid=repo.repoid)
-        assert res == {
-            "delete_branches_count": 23,
-            "deleted_archives": 0,
-            "deleted_commits_count": 16,
-            "deleted_pulls_count": 17,
-        }
+        assert res == FlushRepoTaskReturnType(
+            **{
+                "delete_branches_count": 23,
+                "deleted_archives_count": 0,
+                "deleted_commits_count": 16,
+                "deleted_pulls_count": 17,
+            }
+        )
 
     @pytest.mark.asyncio
     async def test_flush_repo_only_archives(self, dbsession, mock_storage):
@@ -82,12 +83,14 @@ class TestFlushRepo(object):
             archive_service.write_chunks(f"commit_sha{i}", f"data{i}")
         task = FlushRepoTask()
         res = await task.run_async(dbsession, repoid=repo.repoid)
-        assert res == {
-            "delete_branches_count": 0,
-            "deleted_archives": 4,
-            "deleted_commits_count": 0,
-            "deleted_pulls_count": 0,
-        }
+        assert res == FlushRepoTaskReturnType(
+            **{
+                "delete_branches_count": 0,
+                "deleted_archives_count": 4,
+                "deleted_commits_count": 0,
+                "deleted_pulls_count": 0,
+            }
+        )
 
     @pytest.mark.asyncio
     async def test_flush_repo_little_bit_of_everything(self, dbsession, mock_storage):
@@ -109,12 +112,14 @@ class TestFlushRepo(object):
             archive_service.write_chunks(f"commit_sha{i}", f"data{i}")
         task = FlushRepoTask()
         res = await task.run_async(dbsession, repoid=repo.repoid)
-        assert res == {
-            "delete_branches_count": 23,
-            "deleted_archives": 4,
-            "deleted_commits_count": 8,
-            "deleted_pulls_count": 17,
-        }
+        assert res == FlushRepoTaskReturnType(
+            **{
+                "delete_branches_count": 23,
+                "deleted_archives_count": 4,
+                "deleted_commits_count": 8,
+                "deleted_pulls_count": 17,
+            }
+        )
         dbsession.flush()
         dbsession.refresh(repo)
         # Those assertions are almost tautological. If they start being a
