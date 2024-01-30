@@ -66,7 +66,7 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
         except TorngitError:
             log.warning(
                 "Unable to find languages for this repository",
-                extra=dict(repository_id=repository.repoid),
+                extra=dict(repoid=repoid),
             )
             return {"successful": False, "error": "no_repo"}
         except RepositoryWithoutValidBotError:
