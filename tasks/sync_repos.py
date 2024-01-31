@@ -100,6 +100,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         )
 
         total_missing_repos = []
+        repoids = []
         # We're testing processing repos a page at a time and this helper
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
@@ -144,7 +145,8 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                         using_integration=True,
                     )
                     db_session.add(new_repo)
-                db_session.flush()
+                    db_session.flush()
+                    repoids.append(new_repo.repoid)
                 total_missing_repos.extend(missing_repos)
 
         # Here comes the actual function
@@ -179,7 +181,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             extra=dict(repoids=total_missing_repos),
         )
 
-        return total_missing_repos
+        return repoids
 
     async def sync_repos(self, db_session, git, owner, username, using_integration):
         service = owner.service
