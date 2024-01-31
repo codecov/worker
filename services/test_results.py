@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from hashlib import sha256
 from typing import Mapping, Sequence
 
@@ -180,7 +181,7 @@ class TestResultsNotifier:
         passed_tests = 0
         skipped_tests = 0
 
-        failures = dict()
+        failures = defaultdict(lambda: defaultdict(list))
 
         for test_instance in test_instances:
             if test_instance.outcome == str(
@@ -191,10 +192,10 @@ class TestResultsNotifier:
                 flag_names = sorted(test_instance.upload.flag_names)
                 suffix = ""
                 if job_code or flag_names:
-                    suffix = f"[{''.join(flag_names) or ''} {job_code or ''}]"
-                failures[
-                    f"{test_instance.test.testsuite}::{test_instance.test.name}{suffix}"
-                ] = test_instance.failure_message
+                    suffix = f"{''.join(flag_names) or ''} {job_code or ''}"
+                failures[test_instance.failure_message][
+                    f"{test_instance.test.testsuite}::{test_instance.test.name}"
+                ].append(suffix)
             elif test_instance.outcome == str(Outcome.Skip):
                 skipped_tests += 1
             elif test_instance.outcome == str(Outcome.Pass):
@@ -212,15 +213,19 @@ class TestResultsNotifier:
         ]
 
         message += details
-
+        for failure_message, failed_test_to_env_list in failures.items():
+            print(failure_message, failed_test_to_env_list)
         failure_table = [
             "| {0} | <pre>{1}</pre> |".format(
-                self.insert_breaks(failed_test_name),
+                (
+                    "<br>".join(
+                        self.insert_breaks(f"{test_name}[{','.join(test_env_list)}]")
+                        for test_name, test_env_list in failed_test_to_env_list.items()
+                    )
+                ),
                 failure_message.replace("\n", "<br>"),
             )
-            for failed_test_name, failure_message in sorted(
-                failures.items(), key=lambda failure: failure[0]
-            )
+            for failure_message, failed_test_to_env_list in failures.items()
         ]
 
         message += failure_table
