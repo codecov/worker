@@ -216,10 +216,9 @@ class TestResultsNotifier:
         return "\n".join(message)
 
     def insert_breaks(self, table_value):
-        len_of_table_value = len(table_value)
-        for i in range((len_of_table_value) // 70):
-            table_value = (
-                table_value[: (i + 1) * 70] + "<br>" + table_value[(i + 1) * 70 :]
-            )
-
-        return table_value
+        line_size = 70
+        lines = [
+            table_value[i : i + line_size]
+            for i in range(0, len(table_value), line_size)
+        ]
+        return "<br>".join(lines)
