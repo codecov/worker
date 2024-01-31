@@ -188,11 +188,10 @@ class TestResultsNotifier:
                 Outcome.Failure
             ) or test_instance.outcome == str(Outcome.Error):
                 failed_tests += 1
-                job_code = test_instance.upload.job_code
                 flag_names = sorted(test_instance.upload.flag_names)
                 suffix = ""
-                if job_code or flag_names:
-                    suffix = f"{''.join(flag_names) or ''} {job_code or ''}"
+                if flag_names:
+                    suffix = f"{''.join(flag_names) or ''}"
                 failures[test_instance.failure_message][
                     f"{test_instance.test.testsuite}::{test_instance.test.name}"
                 ].append(suffix)
