@@ -218,8 +218,13 @@ class TestResultsNotifier:
             "| {0} | <pre>{1}</pre> |".format(
                 (
                     "<br>".join(
-                        self.insert_breaks(f"{test_name}[{','.join(test_env_list)}]")
-                        for test_name, test_env_list in failed_test_to_env_list.items()
+                        self.insert_breaks(
+                            f"{test_name}[{','.join(sorted(test_env_list))}]"
+                        )
+                        for test_name, test_env_list in sorted(
+                            failed_test_to_env_list.items(),
+                            key=lambda failure: failure[0],
+                        )
                     )
                 ),
                 failure_message.replace("\n", "<br>"),
