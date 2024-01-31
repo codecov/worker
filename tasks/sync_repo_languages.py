@@ -25,8 +25,12 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
         self, db_session: Session, repoid: String, manual_trigger=False, *args, **kwargs
     ):
         repository = db_session.query(Repository).get(repoid)
+        if repository is None:
+            return {"successful": False, "error": "no_repo_in_db"}
+
         now = get_utc_now()
         days_since_sync = REPOSITORY_LANGUAGE_SYNC_THRESHOLD
+
         if repository.languages_last_updated:
             days_since_sync = abs(
                 (now.replace(tzinfo=None) - repository.languages_last_updated).days
@@ -44,7 +48,7 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
         try:
             if should_sync_languages:
                 log_extra = dict(
-                    owner_id=repository.ownerid,
+                    owner_id=repository.ownerid or "",
                     repository_id=repository.repoid,
                 )
                 log.info("Syncing repository languages", extra=log_extra)
@@ -68,7 +72,7 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
                 "Unable to find languages for this repository",
                 extra=dict(repoid=repoid),
             )
-            return {"successful": False, "error": "no_repo"}
+            return {"successful": False, "error": "no_repo_in_provider"}
         except RepositoryWithoutValidBotError:
             log.warning(
                 "No valid bot found for repo",
