@@ -196,7 +196,24 @@ class StatusProjectMixin(object):
             * 100
         )
         head_coverage = Decimal(comparison.head.report.totals.coverage)
-        if base_adjusted_coverage <= head_coverage:
+        log.info(
+            "Adjust base applied to project status",
+            extra=dict(
+                commit=comparison.head.commit.commitid,
+                base_adjusted_coverage=base_adjusted_coverage,
+                head_coverage=head_coverage,
+                hits_removed=hits_removed,
+                misses_removed=misses_removed,
+                partials_removed=partials_removed,
+            ),
+        )
+        # the head coverage is rounded to five digits after the dot, using shared.helpers.numeric.ratio
+        # so we should round the base adjusted coverage to the same amount of digits after the dot
+        # Decimal.quantize: https://docs.python.org/3/library/decimal.html#decimal.Decimal.quantize
+        quantized_base_adjusted_coverage = base_adjusted_coverage.quantize(
+            Decimal("0.00000")
+        )
+        if quantized_base_adjusted_coverage <= head_coverage:
             rounded_difference = round_number(
                 self.current_yaml, head_coverage - base_adjusted_coverage
             )

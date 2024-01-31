@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from typing import List
 
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
@@ -7,7 +8,6 @@ from shared.celery_config import sync_repo_languages_task_name, sync_repos_task_
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
-from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Owner, Repository
@@ -73,20 +73,20 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 blocking_timeout=5,
             ):
                 git = get_owner_provider_service(owner, using_integration)
+                synced_repoids = []
                 if using_integration:
                     with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
-                        await self.sync_repos_using_integration(
+                        synced_repoids = await self.sync_repos_using_integration(
                             db_session, git, owner, username
                         )
                 else:
                     with metrics.timer(f"{metrics_scope}.sync_repos"):
-                        await self.sync_repos(
+                        synced_repoids = await self.sync_repos(
                             db_session, git, owner, username, using_integration
                         )
 
                 self.sync_repos_languages(
-                    ownerid=owner.ownerid,
-                    db_session=db_session,
+                    synced_repoids=synced_repoids or [],
                     manual_trigger=manual_trigger,
                 )
         except LockError:
@@ -178,6 +178,8 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             "Repo sync using integration done",
             extra=dict(repoids=total_missing_repos),
         )
+
+        return total_missing_repos
 
     async def sync_repos(self, db_session, git, owner, username, using_integration):
         service = owner.service
@@ -306,6 +308,8 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         owner.permission = sorted(set(private_project_ids))
 
         log.info("Repo sync done", extra=dict(repoids=repoids))
+
+        return repoids
 
     def upsert_owner(self, db_session, service, service_id, username):
         log.info(
@@ -449,16 +453,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         db_session.flush()
         return new_repo.repoid
 
-    def sync_repos_languages(
-        self, ownerid: int, db_session: Session, manual_trigger: bool
-    ):
-        repositories = db_session.query(Repository).filter(
-            Repository.ownerid == ownerid
-        )
-
-        for repository in repositories:
+    def sync_repos_languages(self, synced_repoids: List[int], manual_trigger: bool):
+        for repoid in synced_repoids:
             self.app.tasks[sync_repo_languages_task_name].apply_async(
-                kwargs=dict(repoid=repository.repoid, manual_trigger=manual_trigger)
+                kwargs=dict(repoid=repoid, manual_trigger=manual_trigger)
             )
 
 
