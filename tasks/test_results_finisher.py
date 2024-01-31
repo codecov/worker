@@ -91,8 +91,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         )
         assert commit, "commit not found"
 
-        notify = True
-
         if self.check_if_no_success(previous_result):
             # every processor errored, nothing to notify on
             return {"notify_attempted": False, "notify_succeeded": False}
@@ -132,7 +130,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             ),
         )
 
-        return {"notify_attempted": notify, "notify_succeeded": success}
+        return {"notify_attempted": True, "notify_succeeded": success}
 
     def check_if_no_success(self, previous_result):
         return all(
