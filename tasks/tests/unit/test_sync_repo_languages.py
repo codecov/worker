@@ -31,6 +31,17 @@ def setup_with_languages(mocker, mock_repo_provider):
 
 
 @pytest.fixture
+def setup_with_null_languages(mocker, mock_repo_provider):
+    setup_now(mocker)
+
+    mock_repo_provider.get_repo_languages.return_value = None
+    mocker.patch(
+        f"tasks.{TaskConfigGroup.sync_repo_languages.value}.get_repo_provider_service",
+        return_value=mock_repo_provider,
+    )
+
+
+@pytest.fixture
 def setup_with_languages_bitbucket(mocker, mock_repo_provider):
     setup_now(mocker)
 
@@ -49,8 +60,6 @@ def setup_with_torngit_error(mocker, mock_repo_provider):
 
 
 class TestSyncRepoLanguages(object):
-    # Torngit error
-
     @pytest.mark.asyncio
     async def test_languages_no_intersection_and_not_synced_github(
         self, dbsession, setup_with_languages
@@ -168,6 +177,24 @@ class TestSyncRepoLanguages(object):
 
     @pytest.mark.asyncio
     async def test_languages_intersection_and_synced_beyond_threshold(
+        self, dbsession, setup_with_null_languages
+    ):
+        mocked_beyond_threshold = MOCKED_NOW + timedelta(days=-10)
+
+        repo = RepositoryFactory.create(
+            languages_last_updated=mocked_beyond_threshold, languages=["javascript"]
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+
+        task = SyncRepoLanguagesTask()
+        assert (
+            await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=False)
+            == None
+        )
+
+    @pytest.mark.asyncio
+    async def test_languages_intersection_and_synced_beyond_threshold(
         self, dbsession, setup_with_languages
     ):
         mocked_beyond_threshold = MOCKED_NOW + timedelta(days=-10)
@@ -213,6 +240,5 @@ class TestSyncRepoLanguages(object):
 
         task = SyncRepoLanguagesTask()
         res = await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=True)
-        print("asdfasdf", res)
         assert res["successful"] == False
         assert res["error"] == "no_repo"

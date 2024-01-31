@@ -874,3 +874,126 @@ class TestSyncReposTaskUnit(object):
         mocked_app.tasks[sync_repo_languages_task_name].apply_async.assert_any_call(
             kwargs={"repoid": repos[0].repoid, "manual_trigger": False}
         )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("use_generator", [False, True])
+    @respx.mock
+    @reuse_cassette(
+        "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration.yaml"
+    )
+    async def test_insert_repo_and_call_repo_sync_languages_using_integration(
+        self,
+        mocker,
+        dbsession,
+        mock_owner_provider,
+        mock_redis,
+        use_generator,
+    ):
+        mocked_app = mocker.patch.object(
+            SyncReposTask,
+            "app",
+            tasks={
+                sync_repo_languages_task_name: mocker.MagicMock(),
+            },
+        )
+
+        if use_generator:
+            mocker.patch.object(
+                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+            )
+            respx.post("https://api.github.com/graphql").mock(
+                httpx.Response(
+                    status_code=200,
+                    content='{"data":{"viewer":{"repositories":{"totalCount": 4}}}}',
+                    headers={"Content-Type": "application/json"},
+                )
+            )
+
+        token = "ecd73a086eadc85db68747a66bdbd662a785a072"
+        user = OwnerFactory.create(
+            organizations=[],
+            service="github",
+            username="1nf1n1t3l00p",
+            unencrypted_oauth_token=token,
+            permission=[],
+            service_id="45343385",
+        )
+        dbsession.add(user)
+
+        def repo_obj(service_id, name, language, private, branch, using_integration):
+            return {
+                "owner": {
+                    "service_id": "test-owner-service-id",
+                    "username": "test-owner-username",
+                },
+                "repo": {
+                    "service_id": service_id,
+                    "name": name,
+                    "language": language,
+                    "private": private,
+                    "branch": branch,
+                },
+                "_using_integration": using_integration,
+            }
+
+        mock_repos = [
+            repo_obj("159089634", "pytest", "python", False, "main", True),
+            repo_obj("164948070", "spack", "python", False, "develop", False),
+            repo_obj("213786132", "pub", "dart", False, "master", None),
+            repo_obj("555555555", "soda", "python", False, "main", None),
+        ]
+
+        # Mock GitHub response for repos that are visible to our app
+        if use_generator:
+            mock_owner_provider.list_repos_using_installation_generator.return_value = (
+                AsyncIterator([mock_repos])
+            )
+        else:
+            mock_owner_provider.list_repos_using_installation.return_value = mock_repos
+
+        # Three of the four repositories we can see are already in the database.
+        # Will we update `using_integration` correctly?
+        preseeded_repos = []
+        for repo in mock_repos[:-1]:
+            preseeded_repos.append(
+                RepositoryFactory.create(
+                    private=repo["repo"]["private"],
+                    name=repo["repo"]["name"],
+                    using_integration=repo["_using_integration"],
+                    service_id=repo["repo"]["service_id"],
+                    owner=user,
+                )
+            )
+
+        for repo in preseeded_repos:
+            dbsession.add(repo)
+        dbsession.flush()
+
+        await SyncReposTask().run_async(
+            dbsession, ownerid=user.ownerid, using_integration=True
+        )
+        dbsession.commit()
+
+        repos = (
+            dbsession.query(Repository)
+            .filter(
+                Repository.service_id.in_(
+                    (repo["repo"]["service_id"] for repo in mock_repos)
+                )
+            )
+            .all()
+        )
+
+        # We pre-seeded 3 repos in the database, but we should have added the
+        # 4th based on our GitHub response
+        assert len(repos) == 4
+
+        assert user.permission == []  # there were no private repos
+        for repo in repos:
+            assert repo.using_integration is True
+
+        new_repo_list = list(set(repos) - set(preseeded_repos))
+
+        mocked_app.tasks[sync_repo_languages_task_name].apply_async.assert_any_call(
+            kwargs={"repoid": new_repo_list[0].repoid, "manual_trigger": False}
+        )
