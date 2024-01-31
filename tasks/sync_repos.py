@@ -147,7 +147,6 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.add(new_repo)
                     db_session.flush()
                     repoids.append(new_repo.repoid)
-                db_session.flush()
                 total_missing_repos.extend(missing_repos)
 
         # Here comes the actual function
