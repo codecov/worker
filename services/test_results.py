@@ -212,8 +212,6 @@ class TestResultsNotifier:
         ]
 
         message += details
-        for failure_message, failed_test_to_env_list in failures.items():
-            print(failure_message, failed_test_to_env_list)
         failure_table = [
             "| {0} | <pre>{1}</pre> |".format(
                 (
