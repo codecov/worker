@@ -155,7 +155,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance4 = TestInstance(
             test_id=test_id2,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="not that bad",
             duration_seconds=2,
             upload_id=upload_id1,
@@ -177,7 +177,7 @@ class TestUploadTestFinisherTask(object):
         expected_result = {"notify_attempted": True, "notify_succeeded": True}
         m.post_comment.assert_called_with(
             pull.pullid,
-            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/{pull.pullid}) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| test_testsuite::test_name[a] | <pre>okay i guess</pre> |\n| test_testsuite::test_name[b] | <pre>not that bad</pre> |",
+            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/{pull.pullid}) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| test_testsuite::test_name[b] | <pre>not that bad</pre> |\n| test_testsuite::test_name[a] | <pre>okay i guess</pre> |",
         )
 
         assert expected_result == result
@@ -216,7 +216,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.flush()
 
         upload2 = UploadFactory.create()
-        upload2.created_at = upload2.created_at + datetime.timedelta(0, 3)
+        upload2.created_at = upload1.created_at + datetime.timedelta(0, 3)
         dbsession.add(upload2)
         dbsession.flush()
 
@@ -299,7 +299,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance1 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="bad",
             duration_seconds=1,
             upload_id=upload_id1,
@@ -309,7 +309,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance2 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="not that bad",
             duration_seconds=1,
             upload_id=upload_id2,
@@ -319,7 +319,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance3 = TestInstance(
             test_id=test_id2,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="not that bad",
             duration_seconds=2,
             upload_id=upload_id1,
@@ -330,7 +330,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance4 = TestInstance(
             test_id=test_id3,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="not that bad",
             duration_seconds=2,
             upload_id=upload_id1,
@@ -699,7 +699,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.flush()
 
         upload2 = UploadFactory.create()
-        upload2.created_at = upload2.created_at + datetime.timedelta(0, 3)
+        upload2.created_at = upload1.created_at + datetime.timedelta(0, 3)
         dbsession.add(upload2)
         dbsession.flush()
 
@@ -818,7 +818,7 @@ class TestUploadTestFinisherTask(object):
         m.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/1) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| test_testsuite::test_name[a] | <pre>okay i guess</pre> |\n| test_testsuite::test_name[b] | <pre>not that bad</pre> |",
+            "##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/1) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| test_testsuite::test_name[b] | <pre>not that bad</pre> |\n| test_testsuite::test_name[a] | <pre>okay i guess</pre> |",
         )
 
         assert expected_result == result

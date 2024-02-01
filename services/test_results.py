@@ -229,7 +229,9 @@ class TestResultsNotifier:
                 ),
                 failure_message.replace("\n", "<br>"),
             )
-            for failure_message, failed_test_to_env_list in failures.items()
+            for failure_message, failed_test_to_env_list in sorted(
+                failures.items(), key=lambda x: x[0]
+            )
         ]
 
         message += failure_table
