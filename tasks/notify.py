@@ -15,7 +15,7 @@ from sqlalchemy.orm.session import Session
 from test_results_parser import Outcome
 
 from app import celery_app
-from database.enums import CommitErrorTypes, Decoration
+from database.enums import CommitErrorTypes, Decoration, ReportType
 from database.models import Commit, Pull
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
@@ -37,6 +37,7 @@ from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
+from services.test_results import latest_test_instances_for_a_given_commit
 from services.yaml import get_current_yaml, read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME
@@ -141,21 +142,12 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         commit = commits_query.first()
 
         # check if there were any test failures
-        latest_test_instances = (
-            db_session.query(TestInstance)
-            .join(Upload)
-            .join(CommitReport)
-            .filter(
-                CommitReport.commit_id == commit.id_,
-            )
-            .order_by(TestInstance.test_id)
-            .order_by(desc(Upload.created_at))
-            .distinct(TestInstance.test_id)
-            .all()
+        latest_test_instances = latest_test_instances_for_a_given_commit(
+            db_session, commit.id_
         )
 
         if any(
-            [test.outcome == int(Outcome.Failure) for test in latest_test_instances]
+            [test.outcome == str(Outcome.Failure) for test in latest_test_instances]
         ):
             return {
                 "notify_attempted": False,

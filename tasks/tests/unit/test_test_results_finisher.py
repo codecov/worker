@@ -51,7 +51,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.flush()
 
         upload2 = UploadFactory.create()
-        upload2.created_at = upload2.created_at + datetime.timedelta(0, 3)
+        upload2.created_at = upload1.created_at + datetime.timedelta(0, 3)
         dbsession.add(upload2)
         dbsession.flush()
 
@@ -124,7 +124,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance1 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="bad",
             duration_seconds=1,
             upload_id=upload_id1,
@@ -134,7 +134,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance2 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="not that bad",
             duration_seconds=1,
             upload_id=upload_id2,
@@ -144,7 +144,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance3 = TestInstance(
             test_id=test_id2,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="okay i guess",
             duration_seconds=2,
             upload_id=upload_id1,
@@ -278,7 +278,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance1 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Pass),
+            outcome=str(Outcome.Pass),
             failure_message="bad",
             duration_seconds=1,
             upload_id=upload_id1,
@@ -288,7 +288,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance2 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Pass),
+            outcome=str(Outcome.Pass),
             failure_message="not that bad",
             duration_seconds=1,
             upload_id=upload_id2,
@@ -298,7 +298,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance3 = TestInstance(
             test_id=test_id2,
-            outcome=int(Outcome.Pass),
+            outcome=str(Outcome.Pass),
             failure_message="okay i guess",
             duration_seconds=2,
             upload_id=upload_id1,
@@ -436,7 +436,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance1 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Pass),
+            outcome=str(Outcome.Pass),
             failure_message="bad",
             duration_seconds=1,
             upload_id=upload_id1,
@@ -446,7 +446,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance2 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Pass),
+            outcome=str(Outcome.Pass),
             failure_message="not that bad",
             duration_seconds=1,
             upload_id=upload_id2,
@@ -456,7 +456,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance3 = TestInstance(
             test_id=test_id2,
-            outcome=int(Outcome.Pass),
+            outcome=str(Outcome.Pass),
             failure_message="okay i guess",
             duration_seconds=2,
             upload_id=upload_id1,
@@ -588,7 +588,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance1 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="bad",
             duration_seconds=1,
             upload_id=upload_id1,
@@ -598,7 +598,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance2 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="not that bad",
             duration_seconds=1,
             upload_id=upload_id2,
@@ -608,7 +608,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance3 = TestInstance(
             test_id=test_id2,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="okay i guess",
             duration_seconds=2,
             upload_id=upload_id1,
@@ -745,7 +745,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance1 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="bad",
             duration_seconds=1,
             upload_id=upload_id1,
@@ -755,7 +755,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance2 = TestInstance(
             test_id=test_id1,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="not that bad",
             duration_seconds=1,
             upload_id=upload_id2,
@@ -765,7 +765,7 @@ class TestUploadTestFinisherTask(object):
 
         test_instance3 = TestInstance(
             test_id=test_id2,
-            outcome=int(Outcome.Failure),
+            outcome=str(Outcome.Failure),
             failure_message="okay i guess",
             duration_seconds=2,
             upload_id=upload_id1,

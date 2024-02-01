@@ -2,14 +2,16 @@ import logging
 from typing import Any, Dict
 
 from shared.yaml import UserYaml
-from sqlalchemy import desc
 from test_results_parser import Outcome
 
 from app import celery_app
 from database.enums import ReportType
 from database.models import Commit, CommitReport, Test, TestInstance, Upload
 from services.lock_manager import LockManager, LockRetry, LockType
-from services.test_results import TestResultsNotifier
+from services.test_results import (
+    TestResultsNotifier,
+    latest_test_instances_for_a_given_commit,
+)
 from tasks.base import BaseCodecovTask
 from tasks.notify import notify_task_name
 
@@ -95,16 +97,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             # every processor errored, nothing to notify on
             return {"notify_attempted": False, "notify_succeeded": False}
 
-        test_instances = (
-            db_session.query(TestInstance)
-            .join(Upload)
-            .join(CommitReport)
-            .join(Commit)
-            .filter(Commit.id_ == commit.id_)
-            .order_by(TestInstance.test_id)
-            .order_by(desc(Upload.created_at))
-            .distinct(TestInstance.test_id)
-            .all()
+        test_instances = latest_test_instances_for_a_given_commit(
+            db_session, commit.id_
         )
 
         if self.check_if_no_failures(test_instances):
@@ -116,7 +110,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             )
             return {"notify_attempted": False, "notify_succeeded": False}
 
-        success = None
         notifier = TestResultsNotifier(commit, commit_yaml, test_instances)
         success = await notifier.notify()
 
@@ -143,7 +136,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
     def check_if_no_failures(self, testrun_list):
         return all(
-            [instance.outcome != int(Outcome.Failure) for instance in testrun_list]
+            [instance.outcome != str(Outcome.Failure) for instance in testrun_list]
         )
 
 
