@@ -241,4 +241,16 @@ class TestSyncRepoLanguages(object):
         task = SyncRepoLanguagesTask()
         res = await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=True)
         assert res["successful"] == False
-        assert res["error"] == "no_repo"
+        assert res["error"] == "no_repo_in_provider"
+
+    @pytest.mark.asyncio
+    async def test_languages_no_repository(self, dbsession):
+        owner = OwnerFactory.create(service="github")
+        dbsession.add(owner)
+        dbsession.flush()
+
+        task = SyncRepoLanguagesTask()
+        assert await task.run_async(dbsession, repoid=123, manual_trigger=False) == {
+            "successful": False,
+            "error": "no_repo_in_db",
+        }

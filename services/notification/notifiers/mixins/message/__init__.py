@@ -169,6 +169,7 @@ class MessageMixin(object):
         if (
             owner.service == "github"
             and not owner.integration_id
+            and owner.github_app_installations == []
             and not is_enterprise()
         ):
             message_to_display = "Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality."
