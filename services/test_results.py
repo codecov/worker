@@ -191,7 +191,7 @@ class TestResultsNotifier:
                 flag_names = sorted(test_instance.upload.flag_names)
                 suffix = ""
                 if flag_names:
-                    suffix = f"{''.join(flag_names) or ''}"
+                    suffix = f"({','.join(flag_names) or ''})"
                 failures[test_instance.failure_message][
                     f"{test_instance.test.testsuite}::{test_instance.test.name}"
                 ].append(suffix)
