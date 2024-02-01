@@ -14,6 +14,10 @@ from shared.yaml import UserYaml
 
 from database.enums import ReportType
 from database.models import Upload
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from database.tests.factories.core import ReportFactory
@@ -1392,6 +1396,29 @@ class TestUploadTaskUnit(object):
             "ab164bf3f7d947f2a0681b215404873e",
             token=None,
         )
+
+    @pytest.mark.asyncio
+    async def test_possibly_setup_webhooks_owner_has_ghapp(
+        self, mocker, dbsession, mock_configuration, mock_repo_provider
+    ):
+        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
+        commit = CommitFactory.create(
+            repository__using_integration=False, repository__hookid=None
+        )
+        ghapp = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=1234,
+            repository_service_ids=None,
+            owner=commit.repository.owner,
+        )
+        dbsession.add(ghapp)
+        dbsession.flush()
+        task = UploadTask()
+        mock_repo_provider.data = mocker.MagicMock()
+        mock_repo_provider.service = "github"
+        res = await task.possibly_setup_webhooks(commit, mock_repo_provider)
+        assert res is False
+        mock_repo_provider.post_webhook.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_possibly_setup_webhooks_gitlab(

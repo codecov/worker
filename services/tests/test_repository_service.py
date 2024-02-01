@@ -12,6 +12,10 @@ from shared.torngit.exceptions import (
 )
 
 from database.models import Owner
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
@@ -19,6 +23,7 @@ from database.tests.factories import (
     RepositoryFactory,
 )
 from services.repository import (
+    _is_repo_using_integration,
     _pick_best_base_comparedto_pair,
     fetch_and_update_pull_request_information,
     fetch_and_update_pull_request_information_from_commit,
@@ -28,6 +33,50 @@ from services.repository import (
     get_repo_provider_service_by_id,
     update_commit_from_provider_info,
 )
+
+
+@pytest.mark.parametrize("using_integration", [True, False])
+def test__is_repo_using_integration_deprecated_flow(using_integration, dbsession):
+    repo = RepositoryFactory.create(using_integration=using_integration)
+    assert _is_repo_using_integration(repo) == using_integration
+
+
+def test__is_repo_using_integration_ghapp_covers_all_repos(dbsession):
+    owner = OwnerFactory.create(service="github")
+    repo = RepositoryFactory.create(owner=owner)
+    other_repo_same_owner = RepositoryFactory.create(owner=owner)
+    repo_different_owner = RepositoryFactory.create()
+    assert repo.owner != repo_different_owner.owner
+    ghapp_installation = GithubAppInstallation(
+        name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        owner=owner,
+        repository_service_ids=None,
+        installation_id=12345,
+    )
+    dbsession.add(ghapp_installation)
+    dbsession.flush()
+    assert _is_repo_using_integration(repo) == True
+    assert _is_repo_using_integration(other_repo_same_owner) == True
+    assert _is_repo_using_integration(repo_different_owner) == False
+
+
+def test__is_repo_using_integration_ghapp_covers_some_repos(dbsession):
+    owner = OwnerFactory.create(service="github")
+    repo = RepositoryFactory.create(owner=owner)
+    other_repo_same_owner = RepositoryFactory.create(owner=owner)
+    repo_different_owner = RepositoryFactory.create()
+    assert repo.owner != repo_different_owner.owner
+    ghapp_installation = GithubAppInstallation(
+        name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        owner=owner,
+        repository_service_ids=[repo.service_id],
+        installation_id=12345,
+    )
+    dbsession.add(ghapp_installation)
+    dbsession.flush()
+    assert _is_repo_using_integration(repo) == True
+    assert _is_repo_using_integration(other_repo_same_owner) == False
+    assert _is_repo_using_integration(repo_different_owner) == False
 
 
 class TestRepositoryServiceTestCase(object):

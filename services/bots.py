@@ -5,6 +5,7 @@ from shared.config import get_config
 from shared.torngit.base import TokenType
 
 from database.models import Owner, Repository
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.environment import is_enterprise
 from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
 from services.encryption import encryptor
@@ -13,15 +14,46 @@ from services.github import get_github_integration_token
 log = logging.getLogger(__name__)
 
 
+def get_owner_installation_id(
+    owner: Owner,
+    deprecated_using_integration: bool,
+    *,
+    repository: Optional[Repository] = None,
+    installation_name: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+) -> Optional[int]:
+    default_app_installation_filter = filter(
+        lambda obj: obj.name == installation_name, owner.github_app_installations or []
+    )
+    # filter is an Iterator, so we need to scan matches
+    # in practice we only consider the 1st one
+    for app_installation in default_app_installation_filter:
+        if repository:
+            if app_installation.is_repo_covered_by_integration(repository):
+                return app_installation.installation_id
+            # The repo we want to get a token for is not covered by the installation
+            return None
+        else:
+            # Getting owner installation - not tied to any particular repo
+            return app_installation.installation_id
+    # DEPRECATED FLOW - begin
+    if owner.integration_id and deprecated_using_integration:
+        return owner.integration_id
+    # DEPRECATED FLOW - end
+    return None
+
+
 def get_repo_appropriate_bot_token(repo: Repository) -> Tuple[Dict, Optional[Owner]]:
     if is_enterprise() and get_config(repo.service, "bot"):
         return get_public_bot_token(repo)
-    if repo.using_integration and repo.owner.integration_id:
-        github_token = get_github_integration_token(
-            repo.owner.service, repo.owner.integration_id
-        )
+
+    installation_id = get_owner_installation_id(
+        repo.owner, repo.using_integration, repository=repo
+    )
+    if installation_id:
+        github_token = get_github_integration_token(repo.owner.service, installation_id)
+        installation_token = dict(key=github_token)
         # The token is not owned by an Owner object, so 2nd arg is None
-        return dict(key=github_token), None
+        return installation_token, None
     try:
         token_dict, appropriate_bot = get_repo_particular_bot_token(repo)
         return token_dict, appropriate_bot
@@ -55,7 +87,10 @@ def get_repo_particular_bot_token(repo) -> Tuple[Dict, Owner]:
 def get_token_type_mapping(repo: Repository):
     if repo.private:
         return None
-    if repo.using_integration and repo.owner.integration_id:
+    installation_id = get_owner_installation_id(
+        repo.owner, repo.using_integration, repository=repo
+    )
+    if installation_id:
         return None
     admin_bot = None
     try:
@@ -101,9 +136,11 @@ def _get_repo_appropriate_bot(repo: Repository) -> Owner:
 
 
 def get_owner_appropriate_bot_token(owner, using_integration) -> Dict:
-    if owner.integration_id and using_integration:
-        github_token = get_github_integration_token(owner.service, owner.integration_id)
+    installation_id = get_owner_installation_id(owner, using_integration)
+    if installation_id:
+        github_token = get_github_integration_token(owner.service, installation_id)
         return dict(key=github_token)
+
     return encryptor.decrypt_token(_get_owner_or_appropriate_bot(owner).oauth_token)
 
 

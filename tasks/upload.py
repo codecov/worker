@@ -21,6 +21,7 @@ from shared.yaml import UserYaml
 from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
 from database.models import Commit, CommitReport
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
@@ -744,8 +745,24 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
     async def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
         repo_data = repository_service.data
+
+        ghapp_default_installations = list(
+            filter(
+                lambda obj: obj.name == GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+                commit.repository.owner.github_app_installations or [],
+            )
+        )
+        should_post_ghapp = not (
+            ghapp_default_installations != []
+            and ghapp_default_installations[0].is_repo_covered_by_integration(
+                commit.repository
+            )
+        )
+        should_post_legacy = not repository.using_integration
+
         should_post_webhook = (
-            not repository.using_integration
+            should_post_legacy
+            and should_post_ghapp
             and not repository.hookid
             and hasattr(repository_service, "post_webhook")
         )

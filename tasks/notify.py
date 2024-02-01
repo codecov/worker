@@ -15,6 +15,7 @@ from sqlalchemy.orm.session import Session
 from app import celery_app
 from database.enums import CommitErrorTypes, Decoration
 from database.models import Commit, Pull
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
@@ -179,7 +180,24 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Not sending notifications yet because we are waiting for CI to finish",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            if commit.repository.using_integration or commit.repository.hookid:
+            ghapp_default_installations = list(
+                filter(
+                    lambda obj: obj.name == GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+                    commit.repository.owner.github_app_installations or [],
+                )
+            )
+            rely_on_webhook_ghapp = (
+                ghapp_default_installations != []
+                and ghapp_default_installations[0].is_repo_covered_by_integration(
+                    commit.repository
+                )
+            )
+            rely_on_webhook_legacy = commit.repository.using_integration
+            if (
+                rely_on_webhook_ghapp
+                or rely_on_webhook_legacy
+                or commit.repository.hookid
+            ):
                 # rely on the webhook, but still retry in case we miss the webhook
                 max_retries = 5
                 countdown = (60 * 3) * 2**self.request.retries

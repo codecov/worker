@@ -9,6 +9,10 @@ from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.yaml import UserYaml
 
 from database.enums import Decoration, Notification, NotificationState
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
@@ -47,6 +51,91 @@ def sample_comparison(dbsession, request):
 
 
 class TestNotificationService(object):
+    def test_should_use_checks_notifier_yaml_field_false(self, dbsession):
+        repository = RepositoryFactory.create()
+        current_yaml = {"github_checks": False}
+        service = NotificationService(repository, current_yaml)
+        assert service._should_use_checks_notifier() == False
+
+    @pytest.mark.parametrize(
+        "repo_data,outcome",
+        [
+            (
+                dict(
+                    using_integration=True,
+                    owner__integration_id=12341234,
+                    owner__service="github",
+                ),
+                True,
+            ),
+            (
+                dict(
+                    using_integration=True,
+                    owner__integration_id=12341234,
+                    owner__service="gitlab",
+                ),
+                False,
+            ),
+            (
+                dict(
+                    using_integration=True,
+                    owner__integration_id=12341234,
+                    owner__service="github_enterprise",
+                ),
+                True,
+            ),
+            (
+                dict(
+                    using_integration=False,
+                    owner__integration_id=None,
+                    owner__service="github",
+                ),
+                False,
+            ),
+        ],
+    )
+    def test_should_use_checks_notifier_deprecated_flow(
+        self, repo_data, outcome, dbsession
+    ):
+        repository = RepositoryFactory.create(**repo_data)
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == []
+        service = NotificationService(repository, current_yaml)
+        assert service._should_use_checks_notifier() == outcome
+
+    def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
+        repository = RepositoryFactory.create()
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml)
+        assert service._should_use_checks_notifier() == True
+
+    def test_should_use_checks_notifier_ghapp_some_repos_covered(self, dbsession):
+        repository = RepositoryFactory.create()
+        other_repo_same_owner = RepositoryFactory.create(owner=repository.owner)
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=[repository.service_id],
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml)
+        assert service._should_use_checks_notifier() == True
+        service = NotificationService(other_repo_same_owner, current_yaml)
+        assert service._should_use_checks_notifier() == False
+
     def test_get_notifiers_instances_only_third_party(
         self, dbsession, mock_configuration
     ):

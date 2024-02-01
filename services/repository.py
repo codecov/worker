@@ -15,6 +15,10 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
 from database.models import Commit, Owner, Pull, Repository
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from helpers.token_refresh import get_token_refresh_callback
 from services.bots import get_repo_appropriate_bot_token, get_token_type_mapping
 from services.yaml import read_yaml_field
@@ -22,6 +26,20 @@ from services.yaml import read_yaml_field
 log = logging.getLogger(__name__)
 
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
+
+
+def _is_repo_using_integration(repo: Repository) -> bool:
+    owner = repo.owner
+    default_ghapp_installation = list(
+        filter(
+            lambda obj: obj.name == GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            owner.github_app_installations or [],
+        )
+    )
+    if default_ghapp_installation:
+        ghapp_installation = owner.github_app_installations[0]
+        return ghapp_installation.is_repo_covered_by_integration(repo)
+    return repo.using_integration
 
 
 def get_repo_provider_service(
@@ -36,7 +54,7 @@ def get_repo_provider_service(
     adapter_params = dict(
         repo=dict(
             name=repository.name,
-            using_integration=repository.using_integration or False,
+            using_integration=_is_repo_using_integration(repository),
             service_id=repository.service_id,
             repoid=repository.repoid,
         ),
