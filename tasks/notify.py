@@ -10,10 +10,12 @@ from shared.celery_config import (
 from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from shared.yaml import UserYaml
+from sqlalchemy import desc
 from sqlalchemy.orm.session import Session
+from test_results_parser import Outcome
 
 from app import celery_app
-from database.enums import CommitErrorTypes, Decoration
+from database.enums import CommitErrorTypes, Decoration, ReportType
 from database.models import Commit, Pull
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
@@ -26,6 +28,7 @@ from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import determine_decoration_details
+from services.lock_manager import LockManager, LockType
 from services.notification import NotificationService
 from services.redis import Redis, get_redis_connection
 from services.report import ReportService
@@ -34,6 +37,7 @@ from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
+from services.test_results import latest_test_instances_for_a_given_commit
 from services.yaml import get_current_yaml, read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME
@@ -68,13 +72,18 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "notifications": None,
                 "reason": "has_other_notifies_coming",
             }
-        notify_lock_name = f"notify_lock_{repoid}_{commitid}"
+
+        lock_manager = LockManager(
+            repoid=repoid,
+            commitid=commitid,
+            report_type=ReportType.COVERAGE,
+            lock_timeout=max(80, self.hard_time_limit_task),
+        )
+
         try:
             lock_acquired = False
-            with redis_connection.lock(
-                notify_lock_name,
-                timeout=max(80, self.hard_time_limit_task),
-                blocking_timeout=10,
+            with lock_manager.locked(
+                lock_type=LockType.NOTIFICATION, retry_num=self.request.retries
             ):
                 lock_acquired = True
                 return await self.run_async_within_lock(
@@ -131,6 +140,21 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             Commit.repoid == repoid, Commit.commitid == commitid
         )
         commit = commits_query.first()
+
+        # check if there were any test failures
+        latest_test_instances = latest_test_instances_for_a_given_commit(
+            db_session, commit.id_
+        )
+
+        if any(
+            [test.outcome == str(Outcome.Failure) for test in latest_test_instances]
+        ):
+            return {
+                "notify_attempted": False,
+                "notifications": None,
+                "reason": "test_failures",
+            }
+
         try:
             repository_service = get_repo_provider_service(commit.repository)
         except RepositoryWithoutValidBotError:

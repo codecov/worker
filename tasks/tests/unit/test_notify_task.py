@@ -841,19 +841,25 @@ class TestNotifyTask(object):
         mocked_run_async_within_lock = mocker.patch.object(
             NotifyTask, "run_async_within_lock"
         )
+        mocked_has_upcoming_notifies_according_to_redis = mocker.patch.object(
+            NotifyTask, "has_upcoming_notifies_according_to_redis", return_value=False
+        )
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
-        mock_redis.lock.side_effect = LockError()
-        mock_redis.get.return_value = None
+        m = mocker.MagicMock()
+        m.return_value.locked.return_value.__enter__.side_effect = LockError()
+        mocker.patch("tasks.notify.LockManager", m)
+
         res = await task.run_async(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
             current_yaml=current_yaml,
         )
+
         assert res == {
             "notifications": None,
             "notified": False,
