@@ -391,7 +391,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         report_code = upload_context.report_code
 
         checkpoints = None
-        if report_type == "coverage":
+        if report_type == ReportType.COVERAGE:
             try:
                 checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
                 checkpoints.log(UploadFlow.PROCESSING_BEGIN)
