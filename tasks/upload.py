@@ -244,7 +244,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         **kwargs,
     ):
         # TODO: setup checkpoint flows for other coverage types
-        if report_type == "coverage":
+        if report_type == ReportType.COVERAGE.value:
             # If we're a retry, kwargs will already have our first checkpoint.
             # If not, log it directly into kwargs so we can pass it onto other tasks
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs).log(
@@ -305,7 +305,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "Not retrying since there are likely no jobs that need scheduling",
                     extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
                 )
-                checkpoints.log(UploadFlow.NO_PENDING_JOBS)
+                if checkpoints:
+                    checkpoints.log(UploadFlow.NO_PENDING_JOBS)
                 return {
                     "was_setup": False,
                     "was_updated": False,
@@ -316,7 +317,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "Not retrying since we already had too many retries",
                     extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
                 )
-                checkpoints.log(UploadFlow.TOO_MANY_RETRIES)
+                if checkpoints:
+                    checkpoints.log(UploadFlow.TOO_MANY_RETRIES)
                 return {
                     "was_setup": False,
                     "was_updated": False,
@@ -383,16 +385,20 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     upload_context.prepare_kwargs_for_retry(kwargs)
                     self.retry(countdown=retry_countdown, kwargs=kwargs)
 
-        try:
-            checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
-            checkpoints.log(UploadFlow.PROCESSING_BEGIN)
-        except ValueError as e:
-            log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
-
         repoid = upload_context.repoid
         commitid = upload_context.commitid
         report_type = upload_context.report_type
         report_code = upload_context.report_code
+
+        checkpoints = None
+        if report_type == ReportType.COVERAGE:
+            try:
+                checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
+                checkpoints.log(UploadFlow.PROCESSING_BEGIN)
+            except ValueError as e:
+                log.warning(
+                    f"CheckpointLogger failed to log/submit", extra=dict(error=e)
+                )
 
         commit = None
         commits = db_session.query(Commit).filter(
@@ -494,7 +500,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit, commit_yaml, argument_list, commit_report, checkpoints
             )
         else:
-            checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+            if checkpoints:
+                checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
             log.info(
                 "Not scheduling task because there were no arguments were found on redis",
                 extra=dict(
@@ -580,7 +587,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
         elif commit_report.report_type == ReportType.TEST_RESULTS.value:
             res = self._schedule_test_results_processing_task(
-                commit, commit_yaml, argument_list, commit_report, checkpoints
+                commit, commit_yaml, argument_list, commit_report
             )
 
         if res:
@@ -694,7 +701,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit_yaml,
         argument_list,
         commit_report,
-        checkpoints=None,
     ):
         processor_task_group = []
         for i in range(0, len(argument_list), CHUNK_SIZE):
@@ -712,10 +718,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 )
                 processor_task_group.append(sig)
         if processor_task_group:
-            checkpoint_data = None
-            if checkpoints:
-                checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-                checkpoint_data = checkpoints.data
 
             res = chord(
                 processor_task_group,
