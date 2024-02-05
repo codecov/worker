@@ -244,7 +244,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         **kwargs,
     ):
         # TODO: setup checkpoint flows for other coverage types
-        if report_type == "coverage":
+        if report_type == ReportType.COVERAGE.value:
             # If we're a retry, kwargs will already have our first checkpoint.
             # If not, log it directly into kwargs so we can pass it onto other tasks
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs).log(
@@ -390,6 +390,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         report_type = upload_context.report_type
         report_code = upload_context.report_code
 
+        checkpoints = None
         if report_type == "coverage":
             try:
                 checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
