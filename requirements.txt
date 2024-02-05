@@ -342,7 +342,7 @@ s3transfer==0.3.4
     # via boto3
 screen==1.0.1
     # via excel-base
-sentry-sdk==1.19.1
+sentry-sdk==1.40.0
     # via -r requirements.in
 shared @ https://github.com/codecov/shared/archive/55c9af294031d3027fed9b49a83153cacf437bdb.tar.gz
     # via -r requirements.in
