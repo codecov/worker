@@ -547,7 +547,7 @@ class TestUploadTestFinisherTask(object):
         expected_result = {"notify_attempted": True, "notify_succeeded": True}
         m.post_comment.assert_called_with(
             pull.pullid,
-            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/17) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| test_testsuite::test_name[a ] | <pre>not that bad</pre> |\n| test_testsuite::test_name[b ] | <pre>not that bad</pre> |\n| test_testsuite::test_name_2[a ] | <pre>not that bad</pre> |",
+            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/{pull.pullid}) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| test_testsuite::test_name[a ] | <pre>not that bad</pre> |\n| test_testsuite::test_name[b ] | <pre>not that bad</pre> |\n| test_testsuite::test_name_2[a ] | <pre>not that bad</pre> |",
         )
 
         assert expected_result == result
