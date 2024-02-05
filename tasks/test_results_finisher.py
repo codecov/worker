@@ -120,6 +120,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 commit=commitid,
                 commit_yaml=commit_yaml,
                 parent_task=self.request.parent_id,
+                success=success,
             ),
         )
 
