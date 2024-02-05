@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from mock import call
 from shared.storage.exceptions import FileNotInStorageError
 from test_results_parser import Outcome
 
@@ -8,7 +9,11 @@ from database.models import CommitReport, Repository
 from database.models.reports import Test, TestInstance
 from database.tests.factories import CommitFactory, UploadFactory
 from services.test_results import generate_test_id
-from tasks.test_results_processor import ParserFailureError, TestResultsProcessorTask
+from tasks.test_results_processor import (
+    ParserError,
+    ParserNotSupportedError,
+    TestResultsProcessorTask,
+)
 
 here = Path(__file__)
 
@@ -35,6 +40,10 @@ class TestUploadTestProcessorTask(object):
         dbsession.flush()
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
+        mock_metrics = mocker.patch(
+            "tasks.test_results_processor.metrics",
+            mocker.MagicMock(),
+        )
 
         commit = CommitFactory.create(
             message="hello world",
@@ -80,6 +89,23 @@ class TestUploadTestProcessorTask(object):
         )
         assert expected_result == result
         assert commit.message == "hello world"
+
+        mock_metrics.incr.assert_has_calls(
+            [
+                call(
+                    "test_results.processor.parsing",
+                    tags={"status": "success", "parser": "junit_xml"},
+                )
+            ]
+        )
+        calls = [
+            call("test_results.processor"),
+            call("test_results.processor.process_individual_arg"),
+            call("test_results.processor.file_parsing"),
+            call("test_results.processor.write_to_db"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -216,7 +242,7 @@ class TestUploadTestProcessorTask(object):
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_test_result_processor_task_error_parsing(
+    async def test_test_result_processor_task_error_report_matching(
         self,
         caplog,
         mocker,
@@ -238,10 +264,12 @@ class TestUploadTestProcessorTask(object):
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
         mocker.patch.object(
             TestResultsProcessorTask,
-            "parse_single_file",
-            side_effect=ParserFailureError(
-                err_msg="Test error message", file_content=""
-            ),
+            "match_report",
+            side_effect=ParserNotSupportedError(),
+        )
+        mock_metrics = mocker.patch(
+            "tasks.test_results_processor.metrics",
+            mocker.MagicMock(),
         )
 
         commit = CommitFactory.create(
@@ -267,7 +295,92 @@ class TestUploadTestProcessorTask(object):
             arguments_list=redis_queue,
         )
         print(caplog.text)
-        assert "Test error message" in caplog.text
+        assert "File did not match any parser format" in caplog.text
+        mock_metrics.incr.assert_has_calls(
+            [
+                call(
+                    "test_results.processor.parsing",
+                    tags={"status": "failure", "reason": "match_report_failure"},
+                )
+            ]
+        )
+        calls = [
+            call("test_results.processor"),
+            call("test_results.processor.process_individual_arg"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_test_result_processor_task_error_parsing_file(
+        self,
+        caplog,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+    ):
+        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        with open(here.parent.parent / "samples" / "sample_vitest.txt") as f:
+            content = f.read()
+            mock_storage.write_file("archive", url, content)
+        upload = UploadFactory.create(storage_path=url)
+        dbsession.add(upload)
+        dbsession.flush()
+        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
+        mocker.patch.object(
+            TestResultsProcessorTask,
+            "match_report",
+            return_value=("test_parser", mocker.MagicMock(side_effect=ParserError)),
+        )
+        mock_metrics = mocker.patch(
+            "tasks.test_results_processor.metrics",
+            mocker.MagicMock(),
+        )
+
+        commit = CommitFactory.create(
+            message="hello world",
+            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="joseph-sentry",
+            repository__owner__service="github",
+            repository__name="codecov-demo",
+        )
+
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+
+        result = await TestResultsProcessorTask().run_async(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+            arguments_list=redis_queue,
+        )
+        print(caplog.text)
+        assert "Error parsing file" in caplog.text
+        mock_metrics.incr.assert_has_calls(
+            [
+                call(
+                    "test_results.processor.parsing",
+                    tags={"status": "failure", "reason": "failed_to_parse_test_parser"},
+                )
+            ]
+        )
+        calls = [
+            call("test_results.processor"),
+            call("test_results.processor.process_individual_arg"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls
 
     @pytest.mark.asyncio
     @pytest.mark.integration
