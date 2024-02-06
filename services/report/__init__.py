@@ -156,9 +156,11 @@ class BaseReportService:
             env=None,
             report_id=commit_report.id_,
             job_code=normalized_arguments.get("job"),
-            name=normalized_arguments.get("name")[:100]
-            if normalized_arguments.get("name")
-            else None,
+            name=(
+                normalized_arguments.get("name")[:100]
+                if normalized_arguments.get("name")
+                else None
+            ),
             provider=normalized_arguments.get("service"),
             state="started",
             storage_path=normalized_arguments.get("url"),
@@ -299,22 +301,26 @@ class ReportService(BaseReportService):
         all_flags = []
         db_session = upload.get_db_session()
         repoid = upload.report.commit.repoid
+
+        existing_flag_dict = self.get_existing_flag_dict(db_session, repoid)
         for individual_flag in flag_names:
-            existing_flag = (
-                db_session.query(RepositoryFlag)
-                .filter_by(repository_id=repoid, flag_name=individual_flag)
-                .first()
-            )
-            if not existing_flag:
-                existing_flag = RepositoryFlag(
+            flag_obj = existing_flag_dict.get(individual_flag, None)
+            if flag_obj is None:
+                flag_obj = RepositoryFlag(
                     repository_id=repoid, flag_name=individual_flag
                 )
-                db_session.add(existing_flag)
+                db_session.add(flag_obj)
                 db_session.flush()
-            upload.flags.append(existing_flag)
-            db_session.flush()
-            all_flags.append(existing_flag)
+            all_flags.append(flag_obj)
+        upload.flags = all_flags
+        db_session.flush()
         return all_flags
+
+    def get_existing_flag_dict(self, db_session, repoid):
+        existing_flags_on_repo = (
+            db_session.query(RepositoryFlag).filter_by(repository_id=repoid).all()
+        )
+        return {flag.flag_name: flag for flag in existing_flags_on_repo}
 
     def build_files(
         self, report_details: ReportDetails
@@ -1015,9 +1021,11 @@ class ReportService(BaseReportService):
                 state="complete",
                 storage_path=session.archive if session.archive is not None else "",
                 upload_extras=session.session_extras or {},
-                upload_type=session.session_type.value
-                if session.session_type is not None
-                else "unknown",
+                upload_type=(
+                    session.session_type.value
+                    if session.session_type is not None
+                    else "unknown"
+                ),
             )
             db_session.add(upload)
             db_session.flush()
