@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from shared.config import get_config
 from sqlalchemy import func
 
 from conftest import dbsession
@@ -49,6 +50,11 @@ def _is_bot_account(author: Owner) -> bool:
 
 
 def determine_uploads_used(db_session, org: Owner) -> int:
+    # This query takes an absurdly long time to run and in some environments we
+    # would like to disable it
+    if not get_config("setup", "upload_throttling_enabled", default=True):
+        return 0
+
     query = (
         db_session.query(Upload)
         .join(CommitReport)

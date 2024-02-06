@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 import pytest
+from shared.utils.test_utils import mock_config_helper
 
 from database.enums import TrialStatus
 from database.models.reports import Upload
@@ -292,7 +293,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.decoration_type != Decoration.upload_limit
         assert decoration_details.reason != "Org has exceeded the upload limit"
 
-    def test_uploads_used_with_expired_trial(self, dbsession):
+    def test_uploads_used_with_expired_trial(self, mocker, dbsession):
         owner = OwnerFactory.create(
             service="github",
             trial_status=TrialStatus.EXPIRED.value,
@@ -333,6 +334,7 @@ class TestDecorationServiceTestCase(object):
         uploads_present = dbsession.query(Upload).all()
         assert len(uploads_present) == 3
 
+        mock_config_helper(mocker, configs={"setup.upload_throttling_enabled": True})
         uploads_used = determine_uploads_used(dbsession, owner)
 
         assert uploads_used == 2
@@ -807,3 +809,43 @@ class TestDecorationServiceGitLabTestCase(object):
         )
         assert decoration_details.activation_author_ownerid == pr_author.ownerid
         assert enriched_pull.database_pull.repository.owner.plan_activated_users is None
+
+    def test_uploads_used_with_expired_trial(self, mocker, dbsession):
+        owner = OwnerFactory.create(
+            service="github",
+            trial_status=TrialStatus.EXPIRED.value,
+            trial_start_date=datetime.now() + timedelta(days=-10),
+            trial_end_date=datetime.now() + timedelta(days=-2),
+        )
+        dbsession.add(owner)
+        dbsession.flush()
+
+        repository = RepositoryFactory.create(
+            owner=owner,
+            private=True,
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+
+        commit = CommitFactory.create(
+            repository=repository,
+            author__service="github",
+            timestamp=datetime.now(),
+        )
+
+        report = ReportFactory.create(commit=commit)
+        upload_1 = UploadFactory.create(report=report, storage_path="url")
+        dbsession.add(upload_1)
+        dbsession.flush()
+
+        upload_2 = UploadFactory.create(report=report, storage_path="url")
+        dbsession.add(upload_2)
+        dbsession.flush()
+
+        uploads_present = dbsession.query(Upload).all()
+        assert len(uploads_present) == 2
+
+        mock_config_helper(mocker, configs={"setup.upload_throttling_enabled": False})
+        uploads_used = determine_uploads_used(dbsession, owner)
+
+        assert uploads_used == 0
