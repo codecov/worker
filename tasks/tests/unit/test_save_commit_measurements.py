@@ -43,3 +43,29 @@ class TestSaveCommitMeasurements(object):
             "successful": False,
             "error": "no_commit_in_db",
         }
+
+    @pytest.mark.asyncio
+    async def test_save_commit_measurements_exception(self, mocker, dbsession):
+        save_commit_measurements_mock = mocker.patch(
+            "tasks.save_commit_measurements.save_commit_measurements"
+        )
+        save_commit_measurements_mock.side_effect = Exception("Muy malo")
+        owner = OwnerFactory.create(service="github")
+        dbsession.add(owner)
+
+        repository = RepositoryFactory.create(
+            owner=owner, languages_last_updated=None, languages=[]
+        )
+        dbsession.add(repository)
+
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+
+        task = SaveCommitMeasurementsTask()
+        assert await task.run_async(
+            dbsession, commitid=commit.commitid, repoid=commit.repoid
+        ) == {
+            "successful": False,
+            "error": "exception",
+        }
