@@ -26,7 +26,7 @@ class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
 
         log.info(
             "Doing update branches for branch",
-            extra=dict(branch_name=branch_name),
+            extra=dict(branch_name=branch_name, incorrect_commitid=incorrect_commitid),
         )
 
         branches_to_update = (
@@ -67,14 +67,22 @@ class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
             for branch in chunk:
                 log.info(
                     "Updating branch on repo",
-                    extra=dict(branch_name=branch_name, repoid=branch.repoid),
+                    extra=dict(
+                        branch_name=branch_name,
+                        repoid=branch.repoid,
+                        incorrect_commitid=incorrect_commitid,
+                    ),
                 )
 
                 latest_commit_on_branch = commit_dict.get(branch.repoid, None)
                 if latest_commit_on_branch is None:
                     log.info(
                         "No existing commits on this branch in this repo",
-                        extra=dict(branch_name=branch_name, repoid=branch.repoid),
+                        extra=dict(
+                            branch_name=branch_name,
+                            repoid=branch.repoid,
+                            incorrect_commitid=incorrect_commitid,
+                        ),
                     )
                     continue
 
@@ -85,6 +93,7 @@ class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
                         branch_name=branch_name,
                         repoid=branch.repoid,
                         latest_commit=new_branch_head,
+                        incorrect_commitid=incorrect_commitid,
                     ),
                 )
 
@@ -92,7 +101,12 @@ class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
                     branch.head = new_branch_head
 
             if not dry_run:
-                log.info("flushing and commiting changes to chunk")
+                log.info(
+                    "flushing and commiting changes to chunk",
+                    extra=dict(
+                        branch_name=branch_name, incorrect_commitid=incorrect_commitid
+                    ),
+                )
                 db_session.commit()
 
         return {"successful": True}
