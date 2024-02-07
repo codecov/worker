@@ -1,8 +1,10 @@
 import logging
 
+from sqlalchemy import desc
+
 from app import celery_app
 from celery_config import update_branches_task_name
-from database.models.core import Branch, Commit, Repository
+from database.models.core import Branch, Commit
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -43,21 +45,32 @@ class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
         ]
 
         for chunk in chunks:
+            relevant_repos = [branch.repoid for branch in chunk]
+            # query similar to what we do to fetch the latest test instances
+            # this time there is no need to join
+            # this will fetch the commits in all the repos and group them together
+            # and order them by timestamp descending
+            # then only select one commit per repo starting with the first one
+            # it sees, thus it will select the latest commit for that repo
+            relevant_commits = (
+                db_session.query(Commit)
+                .filter(
+                    Commit.branch == branch_name,
+                    Commit.repoid.in_(relevant_repos),
+                )
+                .order_by(Commit.repoid)
+                .order_by(desc(Commit.timestamp))
+                .distinct(Commit.repoid)
+                .all()
+            )
+            commit_dict = {commit.repoid: commit for commit in relevant_commits}
             for branch in chunk:
                 log.info(
                     "Updating branch on repo",
                     extra=dict(branch_name=branch_name, repoid=branch.repoid),
                 )
 
-                latest_commit_on_branch = (
-                    db_session.query(Commit)
-                    .filter(
-                        Commit.branch == branch_name,
-                        Commit.repoid == branch.repoid,
-                    )
-                    .order_by(Commit.updatestamp.desc())
-                    .first()
-                )
+                latest_commit_on_branch = commit_dict.get(branch.repoid, None)
                 if latest_commit_on_branch is None:
                     log.info(
                         "No existing commits on this branch in this repo",
