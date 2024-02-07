@@ -3,15 +3,10 @@ from pathlib import Path
 from unittest.mock import ANY, call
 
 import pytest
+from shared.celery_config import save_commit_measurements_task_name
 from shared.yaml import UserYaml
 
-from database.tests.factories import (
-    CommitFactory,
-    PullFactory,
-    ReportFactory,
-    RepositoryFactory,
-    UploadFactory,
-)
+from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from tasks.upload_finisher import ReportService, UploadFinisherTask
@@ -553,11 +548,15 @@ class TestUploadFinisherTask(object):
         assert not mocked_app.tasks["app.tasks.notify.Notify"].apply_async.called
 
     @pytest.mark.asyncio
-    async def test_upload_finisher_task_calls_save_commit_measurements(
+    async def test_upload_finisher_task_calls_save_commit_measurements_task(
         self, mocker, dbsession, mock_redis
     ):
-        mocked_save_commit_measurements = mocker.patch(
-            "tasks.upload_finisher.save_commit_measurements"
+        mocked_app = mocker.patch.object(
+            UploadFinisherTask,
+            "app",
+            tasks={
+                save_commit_measurements_task_name: mocker.MagicMock(),
+            },
         )
 
         commit = CommitFactory.create()
@@ -572,7 +571,15 @@ class TestUploadFinisherTask(object):
             commit_yaml={},
         )
 
-        mocked_save_commit_measurements.assert_called_once_with(commit)
+        mocked_app.tasks[
+            save_commit_measurements_task_name
+        ].apply_async.assert_called_once_with(
+            kwargs={
+                "commitid": commit.commitid,
+                "repoid": commit.repoid,
+                "dataset_names": None,
+            }
+        )
 
 
 class TestShouldCleanLabelsIndex(object):
