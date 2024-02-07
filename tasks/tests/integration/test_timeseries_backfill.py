@@ -70,27 +70,3 @@ async def test_backfill_dataset_run_async(dbsession, mocker, mock_storage):
             "dataset_names": dataset_names,
         }
     )
-
-    # coverage_measurement = (
-    #     dbsession.query(Measurement)
-    #     .filter_by(
-    #         name=MeasurementName.coverage.value,
-    #         commit_sha=commit.commitid,
-    #     )
-    #     .one_or_none()
-    # )
-
-    # assert coverage_measurement
-    # assert coverage_measurement.value == 85.0
-
-    # flag_coverage_measurement = (
-    #     dbsession.query(Measurement)
-    #     .filter_by(
-    #         name=MeasurementName.flag_coverage.value,
-    #         commit_sha=commit.commitid,
-    #     )
-    #     .one_or_none()
-    # )
-
-    # assert flag_coverage_measurement
-    # assert flag_coverage_measurement.value == 85.0

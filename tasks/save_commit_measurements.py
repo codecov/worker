@@ -24,7 +24,6 @@ class SaveCommitMeasurementsTask(
         *args,
         **kwargs
     ):
-        print("aslso here!")
         log.info(
             "Received save_commit_measurements task",
             extra=dict(

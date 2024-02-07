@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 def save_commit_measurements(
     commit: Commit, dataset_names: Iterable[str] = None
 ) -> None:
-    print("inside")
     if not timeseries_enabled():
         return
 

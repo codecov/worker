@@ -45,7 +45,7 @@ async def test_backfill_commits_run_async(dbsession, mocker):
 
     mocked_app.tasks[
         save_commit_measurements_task_name
-    ].apply_async.assert_any_call(  # mocked_app.tasks[save_commit_measurements_task_name].apply_async.assert_called_once_with(
+    ].apply_async.assert_any_call(
         kwargs={
             "commitid": commit1.commitid,
             "repoid": commit1.repoid,
@@ -54,7 +54,7 @@ async def test_backfill_commits_run_async(dbsession, mocker):
     )
     mocked_app.tasks[
         save_commit_measurements_task_name
-    ].apply_async.assert_any_call(  # mocked_app.tasks[save_commit_measurements_task_name].apply_async.assert_called_once_with(
+    ].apply_async.assert_any_call(
         kwargs={
             "commitid": commit2.commitid,
             "repoid": commit2.repoid,
