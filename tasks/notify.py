@@ -139,15 +139,13 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         commits_query = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
         )
-        commit = commits_query.first()
+        commit: Commit = commits_query.first()
 
-        # check if there were any test failures
-        latest_test_instances = latest_test_instances_for_a_given_commit(
-            db_session, commit.id_
-        )
-
-        if any(
-            [test.outcome == str(Outcome.Failure) for test in latest_test_instances]
+        test_result_commit_report = commit.commit_report(ReportType.TEST_RESULTS)
+        if (
+            test_result_commit_report is not None
+            and test_result_commit_report.totals is not None
+            and test_result_commit_report.totals.failed > 0
         ):
             return {
                 "notify_attempted": False,
