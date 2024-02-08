@@ -3,6 +3,7 @@ from hashlib import sha256
 from typing import Mapping, Sequence
 
 from shared.torngit.exceptions import TorngitClientError
+from shared.yaml import UserYaml
 from sqlalchemy import desc
 from test_results_parser import Outcome
 
@@ -19,6 +20,10 @@ log = logging.getLogger(__name__)
 
 
 class TestResultsReportService(BaseReportService):
+    def __init__(self, current_yaml: UserYaml):
+        super().__init__(current_yaml)
+        self.flag_dict = None
+
     async def initialize_and_save_report(
         self, commit: Commit, report_code: str = None
     ) -> CommitReport:
@@ -69,25 +74,28 @@ class TestResultsReportService(BaseReportService):
         db_session = upload.get_db_session()
         repoid = upload.report.commit.repoid
 
-        existing_flag_dict = self.get_existing_flag_dict(db_session, repoid)
+        if self.flag_dict is None:
+            self.fetch_repo_flags(db_session, repoid)
+
         for individual_flag in flag_names:
-            flag_obj = existing_flag_dict.get(individual_flag, None)
+            flag_obj = self.flag_dict.get(individual_flag, None)
             if flag_obj is None:
                 flag_obj = RepositoryFlag(
                     repository_id=repoid, flag_name=individual_flag
                 )
                 db_session.add(flag_obj)
                 db_session.flush()
+                self.flag_dict[individual_flag] = flag_obj
             all_flags.append(flag_obj)
         upload.flags = all_flags
         db_session.flush()
         return all_flags
 
-    def get_existing_flag_dict(self, db_session, repoid):
+    def fetch_repo_flags(self, db_session, repoid):
         existing_flags_on_repo = (
             db_session.query(RepositoryFlag).filter_by(repository_id=repoid).all()
         )
-        return {flag.flag_name: flag for flag in existing_flags_on_repo}
+        self.flag_dict = {flag.flag_name: flag for flag in existing_flags_on_repo}
 
 
 def generate_flags_hash(flag_names):
