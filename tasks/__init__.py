@@ -22,6 +22,7 @@ from tasks.plan_manager_task import daily_plan_manager_task_name
 from tasks.preprocess_upload import preprocess_upload_task
 from tasks.profiling_find_uncollected import find_untotalized_profilings_task
 from tasks.profiling_normalizer import profiling_normalizer_task
+from tasks.save_commit_measurements import save_commit_measurements_task
 from tasks.save_report_results import save_report_results_task
 from tasks.send_email import send_email
 from tasks.static_analysis_suite_check import static_analysis_suite_check_task

@@ -1,12 +1,12 @@
 import logging
 import re
-from typing import Iterable
 
 from redis.exceptions import LockError
 from shared.celery_config import (
     compute_comparison_task_name,
     notify_task_name,
     pulls_task_name,
+    timeseries_save_commit_measurements_task_name,
     upload_finisher_task_name,
 )
 from shared.yaml import UserYaml
@@ -19,7 +19,6 @@ from helpers.checkpoint_logger.flows import UploadFlow
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
-from services.timeseries import save_commit_measurements
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
@@ -92,7 +91,11 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     report_code,
                     checkpoints,
                 )
-                self._save_commit_measurements(commit)
+                self.app.tasks[
+                    timeseries_save_commit_measurements_task_name
+                ].apply_async(
+                    kwargs=dict(commitid=commitid, repoid=repoid, dataset_names=None)
+                )
                 self.invalidate_caches(redis_connection, commit)
                 log.info(
                     "Finished upload_finisher task",
@@ -110,18 +113,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 extra=dict(
                     commit=commitid,
                     repoid=repoid,
-                ),
-            )
-
-    def _save_commit_measurements(self, commit: Commit) -> None:
-        try:
-            save_commit_measurements(commit)
-        except Exception as e:
-            log.error(
-                "An error happened while saving commit measurements",
-                extra=dict(
-                    commit=commit.commitid,
-                    error=e,
                 ),
             )
 

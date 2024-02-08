@@ -4,17 +4,14 @@ from typing import Iterable, Optional
 
 from celery import group
 from celery.canvas import Signature
+from shared.celery_config import timeseries_save_commit_measurements_task_name
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Commit, Repository
 from database.models.timeseries import Dataset
 from helpers.timeseries import timeseries_enabled
-from services.timeseries import (
-    backfill_batch_size,
-    repository_commits_query,
-    save_commit_measurements,
-)
+from services.timeseries import backfill_batch_size, repository_commits_query
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -38,7 +35,13 @@ class TimeseriesBackfillCommitsTask(
 
         commits = db_session.query(Commit).filter(Commit.id_.in_(commit_ids))
         for commit in commits:
-            save_commit_measurements(commit, dataset_names=dataset_names)
+            self.app.tasks[timeseries_save_commit_measurements_task_name].apply_async(
+                kwargs=dict(
+                    commitid=commit.commitid,
+                    repoid=commit.repoid,
+                    dataset_names=dataset_names,
+                )
+            )
         return {"successful": True}
 
 
