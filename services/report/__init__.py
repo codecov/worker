@@ -178,6 +178,10 @@ class BaseReportService:
 class ReportService(BaseReportService):
     metrics_prefix = "services.report"
 
+    def __init__(self, current_yaml: UserYaml):
+        super().__init__(current_yaml)
+        self.flag_dict = None
+
     def has_initialized_report(self, commit: Commit) -> bool:
         """Says whether a commit has already initialized its report or not
 
@@ -302,25 +306,28 @@ class ReportService(BaseReportService):
         db_session = upload.get_db_session()
         repoid = upload.report.commit.repoid
 
-        existing_flag_dict = self.get_existing_flag_dict(db_session, repoid)
+        if self.flag_dict is None:
+            self.fetch_repo_flags(db_session, repoid)
+
         for individual_flag in flag_names:
-            flag_obj = existing_flag_dict.get(individual_flag, None)
+            flag_obj = self.flag_dict.get(individual_flag, None)
             if flag_obj is None:
                 flag_obj = RepositoryFlag(
                     repository_id=repoid, flag_name=individual_flag
                 )
                 db_session.add(flag_obj)
                 db_session.flush()
+                self.flag_dict[individual_flag] = flag_obj
             all_flags.append(flag_obj)
         upload.flags = all_flags
         db_session.flush()
         return all_flags
 
-    def get_existing_flag_dict(self, db_session, repoid):
+    def fetch_repo_flags(self, db_session, repoid):
         existing_flags_on_repo = (
             db_session.query(RepositoryFlag).filter_by(repository_id=repoid).all()
         )
-        return {flag.flag_name: flag for flag in existing_flags_on_repo}
+        self.flag_dict = {flag.flag_name: flag for flag in existing_flags_on_repo}
 
     def build_files(
         self, report_details: ReportDetails

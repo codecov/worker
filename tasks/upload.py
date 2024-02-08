@@ -482,6 +482,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(countdown=60, kwargs=kwargs)
         argument_list = []
+
         for arguments in upload_context.arguments_list():
             normalized_arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" in normalized_arguments:
@@ -492,6 +493,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 upload = report_service.create_report_upload(
                     normalized_arguments, commit_report
                 )
+
             normalized_arguments["upload_pk"] = upload.id_
             argument_list.append(normalized_arguments)
         if argument_list:
