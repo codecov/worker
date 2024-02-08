@@ -363,7 +363,7 @@ class TestUploadTestFinisherTask(object):
 
         mock_metrics.incr.assert_has_calls(
             [
-                call("test_results.notify", tags={"status": "failures_exist"}),
+                call("test_results.finisher", tags={"status": "failures_exist"}),
                 call(
                     "test_results.finisher",
                     tags={"status": True, "reason": "notified"},
@@ -1209,7 +1209,7 @@ class TestUploadTestFinisherTask(object):
 
         mock_metrics.incr.assert_has_calls(
             [
-                call("test_results.notify", tags={"status": "failures_exist"}),
+                call("test_results.finisher", tags={"status": "failures_exist"}),
                 call(
                     "test_results.finisher",
                     tags={"status": False, "reason": "notified"},
