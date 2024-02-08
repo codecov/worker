@@ -45,9 +45,7 @@ class SaveCommitMeasurementsTask(
 
         try:
             # TODO: We should improve on the error handling/logs inside this fn
-            print("asdfasdf")
             save_commit_measurements(commit=commit, dataset_names=dataset_names)
-            print("asdfasdf123")
             return {"successful": True}
         except Exception:
             log.exception(
