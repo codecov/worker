@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import ANY, call
 
 import pytest
-from shared.celery_config import save_commit_measurements_task_name
+from shared.celery_config import timeseries_save_commit_measurements_task_name
 from shared.yaml import UserYaml
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
@@ -555,7 +555,7 @@ class TestUploadFinisherTask(object):
             UploadFinisherTask,
             "app",
             tasks={
-                save_commit_measurements_task_name: mocker.MagicMock(),
+                timeseries_save_commit_measurements_task_name: mocker.MagicMock(),
             },
         )
 
@@ -572,7 +572,7 @@ class TestUploadFinisherTask(object):
         )
 
         mocked_app.tasks[
-            save_commit_measurements_task_name
+            timeseries_save_commit_measurements_task_name
         ].apply_async.assert_called_once_with(
             kwargs={
                 "commitid": commit.commitid,

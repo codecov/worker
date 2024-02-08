@@ -6,7 +6,7 @@ from shared.celery_config import (
     compute_comparison_task_name,
     notify_task_name,
     pulls_task_name,
-    save_commit_measurements_task_name,
+    timeseries_save_commit_measurements_task_name,
     upload_finisher_task_name,
 )
 from shared.yaml import UserYaml
@@ -91,7 +91,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     report_code,
                     checkpoints,
                 )
-                self.app.tasks[save_commit_measurements_task_name].apply_async(
+                self.app.tasks[
+                    timeseries_save_commit_measurements_task_name
+                ].apply_async(
                     kwargs=dict(commitid=commitid, repoid=repoid, dataset_names=None)
                 )
                 self.invalidate_caches(redis_connection, commit)

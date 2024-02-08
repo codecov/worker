@@ -1,5 +1,5 @@
 import pytest
-from shared.celery_config import save_commit_measurements_task_name
+from shared.celery_config import timeseries_save_commit_measurements_task_name
 
 from database.models import MeasurementName
 from database.tests.factories import RepositoryFactory
@@ -15,7 +15,7 @@ async def test_backfill_commits_run_async(dbsession, mocker):
         TimeseriesBackfillCommitsTask,
         "app",
         tasks={
-            save_commit_measurements_task_name: mocker.MagicMock(),
+            timeseries_save_commit_measurements_task_name: mocker.MagicMock(),
         },
     )
 
@@ -43,14 +43,18 @@ async def test_backfill_commits_run_async(dbsession, mocker):
     )
     assert res == {"successful": True}
 
-    mocked_app.tasks[save_commit_measurements_task_name].apply_async.assert_any_call(
+    mocked_app.tasks[
+        timeseries_save_commit_measurements_task_name
+    ].apply_async.assert_any_call(
         kwargs={
             "commitid": commit1.commitid,
             "repoid": commit1.repoid,
             "dataset_names": [dataset.name],
         }
     )
-    mocked_app.tasks[save_commit_measurements_task_name].apply_async.assert_any_call(
+    mocked_app.tasks[
+        timeseries_save_commit_measurements_task_name
+    ].apply_async.assert_any_call(
         kwargs={
             "commitid": commit2.commitid,
             "repoid": commit2.repoid,

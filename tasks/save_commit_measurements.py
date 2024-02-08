@@ -1,7 +1,7 @@
 import logging
 from typing import Iterable
 
-from shared.celery_config import save_commit_measurements_task_name
+from shared.celery_config import timeseries_save_commit_measurements_task_name
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class SaveCommitMeasurementsTask(
-    BaseCodecovTask, name=save_commit_measurements_task_name
+    BaseCodecovTask, name=timeseries_save_commit_measurements_task_name
 ):
     async def run_async(
         self,

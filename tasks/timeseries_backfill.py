@@ -4,7 +4,7 @@ from typing import Iterable, Optional
 
 from celery import group
 from celery.canvas import Signature
-from shared.celery_config import save_commit_measurements_task_name
+from shared.celery_config import timeseries_save_commit_measurements_task_name
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
@@ -35,7 +35,7 @@ class TimeseriesBackfillCommitsTask(
 
         commits = db_session.query(Commit).filter(Commit.id_.in_(commit_ids))
         for commit in commits:
-            self.app.tasks[save_commit_measurements_task_name].apply_async(
+            self.app.tasks[timeseries_save_commit_measurements_task_name].apply_async(
                 kwargs=dict(
                     commitid=commit.commitid,
                     repoid=commit.repoid,
