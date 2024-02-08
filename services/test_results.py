@@ -221,14 +221,14 @@ class TestResultsNotifier:
                         )
                         for test_name, test_env_list in sorted(
                             failed_test_to_env_list.items(),
-                            key=lambda failure: failure[0],
+                            key=lambda failed_test: failed_test[0],
                         )
                     )
                 ),
                 failure_message.replace("\n", "<br>"),
             )
             for failure_message, failed_test_to_env_list in sorted(
-                failures.items(), key=lambda x: x[0]
+                failures.items(), key=lambda failure: failure[0]
             )
         ]
 
