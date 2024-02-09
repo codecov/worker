@@ -72,7 +72,11 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 timeout=max(300, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
-                git = get_owner_provider_service(owner, using_integration)
+                git = get_owner_provider_service(
+                    owner,
+                    using_integration,
+                    ignore_installation=(not using_integration),
+                )
                 synced_repoids = []
                 if using_integration:
                     with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):

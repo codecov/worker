@@ -425,13 +425,14 @@ class TestBotsService(BaseTestCase):
             == 123456
         )
         # Notice that the installation object overrides the `Repository.using_integration` column completely
+        # ^ Not true anymore. We decided against it because there are some edge cases in filling up the list
         assert (
             get_owner_installation_id(
                 owner,
                 repo_not_covered_by_installation.using_integration,
                 repository=repo_not_covered_by_installation,
             )
-            is None
+            == 12341234
         )
 
     def test_get_token_type_mapping_public_repo_no_configuration_no_particular_bot(
