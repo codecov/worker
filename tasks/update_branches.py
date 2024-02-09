@@ -41,7 +41,7 @@ class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
         chunk_size = 1000
         chunks = [
             branches_to_update[i : i + chunk_size]
-            for i in range(len(branches_to_update), chunk_size)
+            for i in range(0, len(branches_to_update), chunk_size)
         ]
 
         for chunk in chunks:
