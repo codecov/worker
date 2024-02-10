@@ -9,13 +9,17 @@ from services.bots import get_owner_appropriate_bot_token
 log = logging.getLogger(__name__)
 
 
-def get_owner_provider_service(owner, using_integration=False):
+def get_owner_provider_service(
+    owner, using_integration=False, ignore_installation=False
+):
     _timeouts = [
         get_config("setup", "http", "timeouts", "connect", default=15),
         get_config("setup", "http", "timeouts", "receive", default=30),
     ]
     service = owner.service
-    token = get_owner_appropriate_bot_token(owner, using_integration)
+    token = get_owner_appropriate_bot_token(
+        owner, using_integration, ignore_installation=ignore_installation
+    )
     adapter_params = dict(
         owner=dict(
             service_id=owner.service_id, ownerid=owner.ownerid, username=owner.username

@@ -20,25 +20,50 @@ def get_owner_installation_id(
     *,
     repository: Optional[Repository] = None,
     installation_name: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    # This is used for SyncTeams and SyncRepos if we are not
+    # using the installations to list these values
+    # We have this secondary value because `deprecated_using_integration` is... deprecated
+    # And might get out-of-sync soon
+    ignore_installation: bool = False
 ) -> Optional[int]:
-    default_app_installation_filter = filter(
-        lambda obj: obj.name == installation_name, owner.github_app_installations or []
-    )
-    # filter is an Iterator, so we need to scan matches
-    # in practice we only consider the 1st one
-    for app_installation in default_app_installation_filter:
-        if repository:
-            if app_installation.is_repo_covered_by_integration(repository):
+
+    if not ignore_installation or deprecated_using_integration:
+        default_app_installation_filter = filter(
+            lambda obj: obj.name == installation_name,
+            owner.github_app_installations or [],
+        )
+        # filter is an Iterator, so we need to scan matches
+        # in practice we only consider the 1st one
+        for app_installation in default_app_installation_filter:
+            if repository:
+                if app_installation.is_repo_covered_by_integration(repository):
+                    return app_installation.installation_id
+                # The repo we want to get a token for is not covered by the installation
+                log.warning(
+                    "owner has ghapp installation but repo is not covered",
+                    extra=dict(
+                        repoid=(repository.repoid if repository else "no_repo"),
+                        ownerid=owner.ownerid,
+                    ),
+                )
+                # Not returning None here because we found situations where ghapp installations will mark the
+                # the repo as NOT covered but it is, in fact, covered.
+                # We need to backfill some things.
+            else:
+                # Getting owner installation - not tied to any particular repo
                 return app_installation.installation_id
-            # The repo we want to get a token for is not covered by the installation
-            return None
-        else:
-            # Getting owner installation - not tied to any particular repo
-            return app_installation.installation_id
     # DEPRECATED FLOW - begin
     if owner.integration_id and deprecated_using_integration:
         return owner.integration_id
     # DEPRECATED FLOW - end
+    log.warning(
+        "(owner has no ghapp installation AND no integration_id) OR not using integration",
+        extra=dict(
+            repoid=(repository.repoid if repository else "no_repo"),
+            ownerid=owner.ownerid,
+            using_integration=deprecated_using_integration,
+        ),
+    )
     return None
 
 
@@ -47,7 +72,7 @@ def get_repo_appropriate_bot_token(repo: Repository) -> Tuple[Dict, Optional[Own
         return get_public_bot_token(repo)
 
     installation_id = get_owner_installation_id(
-        repo.owner, repo.using_integration, repository=repo
+        repo.owner, repo.using_integration, repository=repo, ignore_installation=False
     )
     if installation_id:
         github_token = get_github_integration_token(repo.owner.service, installation_id)
@@ -88,7 +113,7 @@ def get_token_type_mapping(repo: Repository):
     if repo.private:
         return None
     installation_id = get_owner_installation_id(
-        repo.owner, repo.using_integration, repository=repo
+        repo.owner, repo.using_integration, repository=repo, ignore_installation=False
     )
     if installation_id:
         return None
@@ -135,8 +160,12 @@ def _get_repo_appropriate_bot(repo: Repository) -> Owner:
     raise RepositoryWithoutValidBotError()
 
 
-def get_owner_appropriate_bot_token(owner, using_integration) -> Dict:
-    installation_id = get_owner_installation_id(owner, using_integration)
+def get_owner_appropriate_bot_token(
+    owner, using_integration, ignore_installation: bool = False
+) -> Dict:
+    installation_id = get_owner_installation_id(
+        owner, using_integration, ignore_installation=ignore_installation
+    )
     if installation_id:
         github_token = get_github_integration_token(owner.service, installation_id)
         return dict(key=github_token)
