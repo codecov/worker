@@ -11,7 +11,7 @@ from database.models import CommitReport, RepositoryFlag, Test, TestInstance
 from database.tests.factories import CommitFactory, PullFactory, UploadFactory
 from services.repository import EnrichedPull
 from services.test_results import generate_test_id
-from tasks.test_results_finisher import TestResultsFinisherTask
+from tasks.test_results_finisher import QUEUE_NOTIFY_KEY, TestResultsFinisherTask
 
 here = Path(__file__)
 
@@ -220,7 +220,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": True}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
@@ -278,7 +282,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": False, "notify_succeeded": False}
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: True,
+        }
         test_results_mock_app.tasks[
             "app.tasks.notify.Notify"
         ].apply_async.assert_called_with(
@@ -336,7 +344,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": False, "notify_succeeded": False}
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         assert expected_result == result
 
@@ -380,7 +392,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": True}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
@@ -419,7 +435,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": False}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         assert expected_result == result
 
