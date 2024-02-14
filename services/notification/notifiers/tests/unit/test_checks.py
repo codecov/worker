@@ -1509,7 +1509,7 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        "Attention: `1 lines` in your changes are missing coverage. Please review.",
+                        "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
                         f"> Comparison is base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{base_commit.commitid}?el=desc) 50.00% compared to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) 60.00%."
                         f"",
                         f"",
@@ -1552,7 +1552,7 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        "Attention: `1 lines` in your changes are missing coverage. Please review.",
+                        "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
                         f"> Comparison is base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{base_commit.commitid}?el=desc) 50.00% compared to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) 60.00%."
                         f"",
                         f"",
@@ -1596,7 +1596,7 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        "Attention: `1 lines` in your changes are missing coverage. Please review.",
+                        "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
                         f"> Comparison is base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{base_commit.commitid}?el=desc) 50.00% compared to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) 60.00%.",
                         f"",
                         f"| [Files](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",

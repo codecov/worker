@@ -935,7 +935,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -1360,7 +1360,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -1434,7 +1434,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -1505,7 +1505,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -1578,7 +1578,7 @@ class TestCommentNotifier(object):
 
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 60.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -1850,7 +1850,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -2239,7 +2239,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(sample_comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -3294,7 +3294,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"<details><summary>Additional details and impacted files</summary>\n",
@@ -3329,7 +3329,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             "",
             ":mega: message",
@@ -3366,7 +3366,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            "Attention: `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -4365,7 +4365,7 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Attention: `1 lines` in your changes are missing coverage. Please review.",
+            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
@@ -4431,7 +4431,7 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Attention: `1 lines` in your changes are missing coverage. Please review.",
+            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
             f"<details><summary>Additional details and impacted files</summary>\n",
@@ -4501,7 +4501,7 @@ class TestCommentNotifierInNewLayout(object):
         pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
             f"## [Codecov]({pull_url}?src=pr&el=h1) Report",
-            f"Attention: `1 lines` in your changes are missing coverage. Please review.",
+            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"",
             f"| [Files]({pull_url}?src=pr&el=tree) | Patch % | Lines |",
             f"|---|---|---|",
@@ -4542,7 +4542,7 @@ class TestCommentNotifierInNewLayout(object):
         pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
             f"## [Codecov]({pull_url}?src=pr&el=h1) Report",
-            f"Attention: `1 lines` in your changes are missing coverage. Please review.",
+            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"",
             f"| [Files]({pull_url}?src=pr&el=tree) | Patch % | Lines |",
             f"|---|---|---|",
@@ -4582,7 +4582,7 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Attention: `1 lines` in your changes are missing coverage. Please review.",
+            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"> :exclamation: Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}. Consider uploading reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results",
@@ -4657,7 +4657,7 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
-            f"Attention: `1 lines` in your changes are missing coverage. Please review.",
+            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Comparison is base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) 50.00% compared to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) 60.00%.",
             f"",
             f"> :exclamation: Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}. Consider uploading reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results",

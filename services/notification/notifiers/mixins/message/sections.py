@@ -114,12 +114,13 @@ class NewHeaderSectionWriter(BaseSectionWriter):
         diff_totals = head_report.apply_diff(diff)
         if diff_totals:
             misses_and_partials = diff_totals.misses + diff_totals.partials
+            patch_coverage = diff_totals.coverage
         else:
             misses_and_partials = None
-
+            patch_coverage = None
         if misses_and_partials:
             yield (
-                f"Attention: `{misses_and_partials} lines` in your changes are missing coverage. Please review."
+                f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} lines` in your changes are missing coverage. Please review."
             )
         else:
             yield "All modified and coverable lines are covered by tests :white_check_mark:"
@@ -148,9 +149,9 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     commit=pull_dict["base" if not base_report else "head"]["commitid"][
                         :7
                     ],
-                    request_type="merge request"
-                    if repo_service == "gitlab"
-                    else "pull request",
+                    request_type=(
+                        "merge request" if repo_service == "gitlab" else "pull request"
+                    ),
                 )
             )
 
@@ -634,9 +635,9 @@ class FlagSectionWriter(BaseSectionWriter):
                         "name": name,
                         "before": get_totals_from_file_in_reports(base_flags, name),
                         "after": flag.totals,
-                        "diff": flag.apply_diff(diff)
-                        if walk(diff, ("files",))
-                        else None,
+                        "diff": (
+                            flag.apply_diff(diff) if walk(diff, ("files",)) else None
+                        ),
                         "carriedforward": flag.carriedforward,
                         "carriedforward_from": flag.carriedforward_from,
                     }
@@ -754,9 +755,11 @@ class ComponentsSectionWriter(BaseSectionWriter):
             component_data.append(
                 {
                     "name": component.get_display_name(),
-                    "before": filtered_comparison.project_coverage_base.report.totals
-                    if filtered_comparison.project_coverage_base.report is not None
-                    else None,
+                    "before": (
+                        filtered_comparison.project_coverage_base.report.totals
+                        if filtered_comparison.project_coverage_base.report is not None
+                        else None
+                    ),
                     "after": filtered_comparison.head.report.totals,
                     "diff": filtered_comparison.head.report.apply_diff(
                         diff, _save=False
