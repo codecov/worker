@@ -360,10 +360,10 @@ def _adjust_sessions(
                         session_ids_to_partially_delete.append(sess_id)
     actually_fully_deleted_sessions = set()
     if session_ids_to_fully_delete:
-        extra=dict(
-                deleted_sessions=session_ids_to_fully_delete,
-            )
-        if upload:
+        extra = dict(
+            deleted_sessions=session_ids_to_fully_delete,
+        )
+        if upload is not None:
             extra["commit_id"] = commit_id
         log.info(
             "Deleted multiple sessions due to carriedforward overwrite",
@@ -372,10 +372,10 @@ def _adjust_sessions(
         original_report.delete_multiple_sessions(session_ids_to_fully_delete)
         actually_fully_deleted_sessions.update(session_ids_to_fully_delete)
     if session_ids_to_partially_delete:
-        extra=dict(
-                deleted_sessions=session_ids_to_partially_delete,
-            )
-        if upload:
+        extra = dict(
+            deleted_sessions=session_ids_to_partially_delete,
+        )
+        if upload is not None:
             extra["commit_id"] = commit_id
         log.info(
             "Partially deleting sessions due to label carryforward overwrite",
@@ -388,7 +388,7 @@ def _adjust_sessions(
             if not labels_now:
                 log.info(
                     "Session has now no new labels, deleting whole session",
-                    extra=dict(commit_id=commit_id) if upload else dict(),
+                    extra=dict(commit_id=commit_id) if upload is not None else dict(),
                 )
                 actually_fully_deleted_sessions.add(s)
                 original_report.delete_session(s)
