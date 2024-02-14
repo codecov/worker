@@ -1,5 +1,4 @@
 import logging
-from gettext import install
 
 import shared.torngit as torngit
 from sqlalchemy import String
@@ -28,9 +27,12 @@ class BackfillGHAppInstallationsTask(
         repos = await owner_service.list_repos_using_installation()
         if repos:
             # Fetching all repos service ids we have for that owner in the DB
-            all_repos_service_ids = (
-                db_session.query(Repository.service_id).filter_by(ownerid=ownerid).all()
-            )
+            repo_service_ids_in_db = [
+                repo.service_id
+                for repo in db_session.query(Repository.service_id)
+                .filter_by(ownerid=ownerid)
+                .all()
+            ]
 
             # Add service ids from provider that we have DB records for to a list
             new_repo_service_ids = set()
@@ -40,7 +42,7 @@ class BackfillGHAppInstallationsTask(
             for repo in repos:
                 repo_data = repo["repo"]
                 service_id = repo_data["service_id"]
-                if service_id and service_id in all_repos_service_ids:
+                if service_id and service_id in repo_service_ids_in_db:
                     new_repo_service_ids.add(service_id)
             log.info(
                 "Added the following repo service ids to this gh app installation",
@@ -58,10 +60,19 @@ class BackfillGHAppInstallationsTask(
     async def run_async(
         self, db_session: Session, ownerid: String, service: String, *args, **kwargs
     ):
+        # Check if service isn't github
+        if service != "github":
+            log.info(
+                "No installation work needed for non-github orgs",
+                extra=dict(ownerid=ownerid),
+            )
+            return {"successful": True, "reason": "no installation needed"}
+
         # Check if the owner exists
-        owner: Owner = db_session.query(Owner).filter_by(
-            ownerid=ownerid, service=service
+        owner: Owner = (
+            db_session.query(Owner).filter_by(ownerid=ownerid, service=service).first()
         )
+
         if not owner:
             log.exception(
                 "There is no owner DB record",
@@ -71,14 +82,14 @@ class BackfillGHAppInstallationsTask(
 
         # Check if owner any sort of integration
         if not owner.integration_id:
-            log.info("No integration work needed", extra=dict(ownerid=ownerid))
-            return {"successful": True}
+            log.info("No installation work needed", extra=dict(ownerid=ownerid))
+            return {"successful": True, "reason": "no installation needed"}
 
         # Check if owner has a gh app installation entry
         gh_app_installation: GithubAppInstallation = (
             db_session.query(GithubAppInstallation).filter_by(ownerid=ownerid).first()
         )
-        owner_service = get_owner_provider_service(owner=owner)
+        owner_service = get_owner_provider_service(owner=owner, using_integration=True)
 
         if gh_app_installation:
             # Check if gh app has 'all' repositories selected
@@ -93,7 +104,7 @@ class BackfillGHAppInstallationsTask(
             if repository_selection == "all":
                 gh_app_installation.repository_service_ids = None
                 db_session.commit()
-                return {"successful": True}
+                return {"successful": True, "reason": "selection is set to all"}
 
             # Otherwise, find and add all repos the gh app has access to
             await self.add_repos_service_ids_from_provider(
@@ -102,15 +113,15 @@ class BackfillGHAppInstallationsTask(
                 owner_service=owner_service,
                 gh_app_installation=gh_app_installation,
             )
-            return {"successful": True}
+            return {"successful": True, "reason": "successful backfill"}
         else:
             # Create new GH app installation and add all repos the gh app has access to
-            log.exception(
+            log.info(
                 "This owner has no Github App Installation",
                 extra=dict(ownerid=ownerid),
             )
             new_gh_app_installation = GithubAppInstallation(
-                owner=owner, installation_id=owner.installation_id
+                owner=owner, installation_id=owner.integration_id
             )
             db_session.add(new_gh_app_installation)
             db_session.commit()
@@ -122,7 +133,7 @@ class BackfillGHAppInstallationsTask(
                 owner_service=owner_service,
                 gh_app_installation=new_gh_app_installation,
             )
-            return {"successful": True}
+            return {"successful": True, "reason": "successful backfill"}
 
 
 RegisteredBackfillGHAppInstallationsTask = celery_app.register_task(
