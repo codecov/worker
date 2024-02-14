@@ -107,7 +107,6 @@ class NewHeaderSectionWriter(BaseSectionWriter):
         yaml = self.current_yaml
         base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
-        pull = comparison.pull
         pull_dict = comparison.enriched_pull.provider_pull
         repo_service = comparison.repository_service.service
 
@@ -131,13 +130,10 @@ class NewHeaderSectionWriter(BaseSectionWriter):
 
         if base_report and head_report:
             yield (
-                "> Comparison is base [(`{commitid_base}`)]({links[base]}?el=desc) {base_cov}% compared to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) {head_cov}%.".format(
-                    pull=pull.pullid,
-                    base=pull_dict["base"]["branch"],
+                "> Project coverage is {head_cov}%. Comparing base [(`{commitid_base}`)]({links[base]}?el=desc) to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc).".format(
                     commitid_head=comparison.head.commit.commitid[:7],
                     commitid_base=comparison.project_coverage_base.commit.commitid[:7],
                     links=links,
-                    base_cov=round_number(yaml, Decimal(base_report.totals.coverage)),
                     head_cov=round_number(yaml, Decimal(head_report.totals.coverage)),
                 )
             )
