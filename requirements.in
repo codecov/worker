@@ -29,7 +29,7 @@ PyYAML
 redis>=4.4.4
 requests>=2.31.0
 respx
-sentry-sdk
+sentry-sdk>=1.40.0
 SQLAlchemy-Utils
 SQLAlchemy
 statsd

@@ -5,6 +5,7 @@ import zlib
 from io import BytesIO
 from typing import List
 
+from sentry_sdk import metrics
 from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
@@ -65,19 +66,22 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         upload_list = []
 
         # process each report session's test information
-        for args in arguments_list:
-            upload_obj: Upload = (
-                db_session.query(Upload).filter_by(id_=args.get("upload_pk")).first()
-            )
+        with metrics.timing("test_results.processor"):
+            for args in arguments_list:
+                upload_obj: Upload = (
+                    db_session.query(Upload)
+                    .filter_by(id_=args.get("upload_pk"))
+                    .first()
+                )
 
-            res = self.process_individual_upload(
-                db_session, repoid, commitid, upload_obj
-            )
+                res = self.process_individual_upload(
+                    db_session, repoid, commitid, upload_obj
+                )
 
-            # concat existing and new test information
-            testrun_dict_list.append(res)
+                # concat existing and new test information
+                testrun_dict_list.append(res)
 
-            upload_list.append(upload_obj)
+                upload_list.append(upload_obj)
 
         if self.should_delete_archive(commit_yaml):
             repository = (
@@ -95,9 +99,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         self, db_session, repoid, commitid, upload_obj: Upload
     ):
         upload_id = upload_obj.id
-        parsed_testruns: List[Testrun] = self.process_individual_arg(
-            upload_obj, upload_obj.report.commit.repository
-        )
+        with metrics.timing("test_results.processor.process_individual_arg"):
+            parsed_testruns: List[Testrun] = self.process_individual_arg(
+                upload_obj, upload_obj.report.commit.repository
+            )
         if not parsed_testruns:
             log.error(
                 "No test result files were successfully parsed for this upload",
@@ -112,37 +117,37 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             }
         flags_hash = generate_flags_hash(upload_obj.flag_names)
         upload_id = upload_obj.id
-
-        for testrun in parsed_testruns:
-            name = testrun.name
-            testsuite = testrun.testsuite
-            outcome = str(testrun.outcome)
-            duration_seconds = testrun.duration
-            failure_message = testrun.failure_message
-            test_id = generate_test_id(repoid, testsuite, name, flags_hash)
-            insert_on_conflict_do_nothing = (
-                insert(Test.__table__)
-                .values(
-                    id=test_id,
-                    repoid=repoid,
-                    name=name,
-                    testsuite=testsuite,
-                    flags_hash=flags_hash,
+        with metrics.timing("test_results.processor.write_to_db"):
+            for testrun in parsed_testruns:
+                name = testrun.name
+                testsuite = testrun.testsuite
+                outcome = str(testrun.outcome)
+                duration_seconds = testrun.duration
+                failure_message = testrun.failure_message
+                test_id = generate_test_id(repoid, testsuite, name, flags_hash)
+                insert_on_conflict_do_nothing = (
+                    insert(Test.__table__)
+                    .values(
+                        id=test_id,
+                        repoid=repoid,
+                        name=name,
+                        testsuite=testsuite,
+                        flags_hash=flags_hash,
+                    )
+                    .on_conflict_do_nothing()
                 )
-                .on_conflict_do_nothing()
-            )
-            db_session.execute(insert_on_conflict_do_nothing)
-            db_session.flush()
+                db_session.execute(insert_on_conflict_do_nothing)
+                db_session.flush()
 
-            ti = TestInstance(
-                test_id=test_id,
-                upload_id=upload_id,
-                duration_seconds=duration_seconds,
-                outcome=outcome,
-                failure_message=failure_message,
-            )
-            db_session.add(ti)
-            db_session.flush()
+                ti = TestInstance(
+                    test_id=test_id,
+                    upload_id=upload_id,
+                    duration_seconds=duration_seconds,
+                    outcome=outcome,
+                    failure_message=failure_message,
+                )
+                db_session.add(ti)
+                db_session.flush()
 
         return {
             "successful": True,
@@ -180,9 +185,15 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         self,
         file_bytes,
     ):
+
         try:
-            parser, parsing_function = self.match_report(file_bytes)
+            with metrics.timing("test_results.processor.parser_matching"):
+                parser, parsing_function = self.match_report(file_bytes)
         except ParserNotSupportedError as e:
+            metrics.incr(
+                "test_results.processor.parsing",
+                tags={"status": "failure", "reason": "match_report_failure"},
+            )
             raise ParserFailureError(
                 err_msg="File did not match any parser format",
                 file_content=file_bytes.read().decode()[:300],
@@ -190,14 +201,26 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         try:
             file_content = file_bytes.read()
-            res = parsing_function(file_content)
+            with metrics.timing("test_results.processor.file_parsing"):
+                res = parsing_function(file_content)
         except ParserError as e:
+            # aware of cardinality issues with using a variable here in the reason field but
+            # parser is defined by us and limited to the amount of different parsers we will
+            # write, so I don't expect this to be a problem for us
+            metrics.incr(
+                "test_results.processor.parsing",
+                tags={"status": "failure", "reason": f"failed_to_parse_{parser}"},
+            )
             raise ParserFailureError(
                 err_msg="Error parsing file",
                 file_content=file_content.decode()[:300],
                 parser=parser,
                 parser_err_msg=str(e),
             ) from e
+        metrics.incr(
+            "test_results.processor.parsing",
+            tags={"status": "success", "parser": parser},
+        )
 
         return res
 

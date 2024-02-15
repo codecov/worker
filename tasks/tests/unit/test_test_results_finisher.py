@@ -2,7 +2,7 @@ import datetime
 from pathlib import Path
 
 import pytest
-from mock import AsyncMock
+from mock import AsyncMock, call
 from shared.torngit.exceptions import TorngitClientError
 from test_results_parser import Outcome
 
@@ -72,6 +72,10 @@ class TestUploadTestFinisherTask(object):
                 database_pull=pull,
                 provider_pull={},
             ),
+        )
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
         )
 
         mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
@@ -198,6 +202,11 @@ class TestUploadTestFinisherTask(object):
             TestResultsFinisherTask,
             "app",
             tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
+        )
+
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
         )
 
         commit = CommitFactory.create(
@@ -357,6 +366,22 @@ class TestUploadTestFinisherTask(object):
 
         assert expected_result == result
 
+        mock_metrics.incr.assert_has_calls(
+            [
+                call("test_results.finisher", tags={"status": "failures_exist"}),
+                call(
+                    "test_results.finisher",
+                    tags={"status": True, "reason": "notified"},
+                ),
+            ]
+        )
+        calls = [
+            call("test_results.finisher.fetch_latest_test_instances"),
+            call("test_results.finisher.notification"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls
+
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_upload_finisher_task_call_no_failures(
@@ -423,6 +448,10 @@ class TestUploadTestFinisherTask(object):
         mocked_repo_provider = mocker.patch(
             "services.test_results.get_repo_provider_service",
             return_value=m,
+        )
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
         )
 
         repoid = upload1.report.commit.repoid
@@ -515,6 +544,20 @@ class TestUploadTestFinisherTask(object):
 
         assert expected_result == result
 
+        mock_metrics.incr.assert_has_calls(
+            [
+                call(
+                    "test_results.finisher",
+                    tags={"status": "success", "reason": "no_failures"},
+                ),
+            ]
+        )
+        calls = [
+            call("test_results.finisher.fetch_latest_test_instances"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls
+
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_upload_finisher_task_call_no_success(
@@ -581,6 +624,11 @@ class TestUploadTestFinisherTask(object):
         mocked_repo_provider = mocker.patch(
             "services.test_results.get_repo_provider_service",
             return_value=m,
+        )
+
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
         )
 
         repoid = upload1.report.commit.repoid
@@ -664,6 +712,16 @@ class TestUploadTestFinisherTask(object):
         expected_result = {"notify_attempted": False, "notify_succeeded": False}
 
         assert expected_result == result
+
+        mock_metrics.incr.assert_has_calls(
+            [
+                call(
+                    "test_results.finisher",
+                    tags={"status": "failure", "reason": "no_success"},
+                ),
+            ]
+        )
+        assert mock_metrics.timing.mock_calls == []
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -892,6 +950,11 @@ class TestUploadTestFinisherTask(object):
             return_value=m,
         )
 
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
+        )
+
         repoid = upload1.report.commit.repoid
         upload2.report.commit.repoid = repoid
         dbsession.flush()
@@ -973,3 +1036,19 @@ class TestUploadTestFinisherTask(object):
         expected_result = {"notify_attempted": True, "notify_succeeded": False}
 
         assert expected_result == result
+
+        mock_metrics.incr.assert_has_calls(
+            [
+                call("test_results.finisher", tags={"status": "failures_exist"}),
+                call(
+                    "test_results.finisher",
+                    tags={"status": False, "reason": "notified"},
+                ),
+            ]
+        )
+        calls = [
+            call("test_results.finisher.fetch_latest_test_instances"),
+            call("test_results.finisher.notification"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls
