@@ -56,14 +56,6 @@ def get_owner_installation_id(
     if owner.integration_id and deprecated_using_integration:
         return owner.integration_id
     # DEPRECATED FLOW - end
-    log.warning(
-        "(owner has no ghapp installation AND no integration_id) OR not using integration",
-        extra=dict(
-            repoid=(repository.repoid if repository else "no_repo"),
-            ownerid=owner.ownerid,
-            using_integration=deprecated_using_integration,
-        ),
-    )
     return None
 
 
