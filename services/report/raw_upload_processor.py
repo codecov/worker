@@ -336,6 +336,8 @@ def _adjust_sessions(
         for f in flags_under_carryforward_rules
         if f not in to_partially_overwrite_flags
     ]
+    if upload is not None:
+        commit_id = upload.report.commit_id
     if upload is None and to_partially_overwrite_flags:
         log.warning("Upload is None, but there are partial_overwrite_flags present")
     if (
@@ -358,23 +360,36 @@ def _adjust_sessions(
                         session_ids_to_partially_delete.append(sess_id)
     actually_fully_deleted_sessions = set()
     if session_ids_to_fully_delete:
+        extra = dict(
+            deleted_sessions=session_ids_to_fully_delete,
+        )
+        if upload is not None:
+            extra["commit_id"] = commit_id
         log.info(
             "Deleted multiple sessions due to carriedforward overwrite",
-            extra=dict(deleted_sessions=session_ids_to_fully_delete),
+            extra=extra,
         )
         original_report.delete_multiple_sessions(session_ids_to_fully_delete)
         actually_fully_deleted_sessions.update(session_ids_to_fully_delete)
     if session_ids_to_partially_delete:
+        extra = dict(
+            deleted_sessions=session_ids_to_partially_delete,
+        )
+        if upload is not None:
+            extra["commit_id"] = commit_id
         log.info(
             "Partially deleting sessions due to label carryforward overwrite",
-            extra=dict(deleted_sessions=session_ids_to_partially_delete),
+            extra=extra,
         )
         all_labels = get_all_report_labels(to_merge_report)
         original_report.delete_labels(session_ids_to_partially_delete, all_labels)
         for s in session_ids_to_partially_delete:
             labels_now = get_labels_per_session(original_report, s)
             if not labels_now:
-                log.info("Session has now no new labels, deleting whole session")
+                log.info(
+                    "Session has now no new labels, deleting whole session",
+                    extra=dict(commit_id=commit_id) if upload is not None else dict(),
+                )
                 actually_fully_deleted_sessions.add(s)
                 original_report.delete_session(s)
     return SessionAdjustmentResult(
