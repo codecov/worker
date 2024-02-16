@@ -117,10 +117,28 @@ def get_token_type_mapping(repo: Repository):
             "Repository has no good bot for admin, but still continuing operations in case it is not doing an admin call anyway",
             extra=dict(repoid=repo.repoid),
         )
+
+    if get_config("github", "integration", "id") and get_config(
+        "github",
+        "integration",
+        "default_installation_id",  # this is different from the integration id,
+        # the integration id on github is the App ID of the "Codecov" App, this is the installation ID of the installation that is to be used for
+    ):
+        comment_token = dict(
+            key=get_github_integration_token(
+                service="github",
+                integration_id=get_config(
+                    "github", "integration", "default_installation_id"
+                ),
+            )
+        )
+    else:
+        comment_token = get_config(repo.service, "bots", "comment")
+
     return {
         TokenType.read: admin_bot or get_config(repo.service, "bots", "read"),
         TokenType.admin: admin_bot,
-        TokenType.comment: get_config(repo.service, "bots", "comment"),
+        TokenType.comment: comment_token,
         TokenType.status: admin_bot or get_config(repo.service, "bots", "status"),
         TokenType.tokenless: admin_bot or get_config(repo.service, "bots", "tokenless"),
     }

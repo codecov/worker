@@ -15,6 +15,7 @@ from services.bots import (
     get_repo_particular_bot_token,
     get_token_type_mapping,
 )
+from services.github import get_github_integration_token
 from test_utils.base import BaseTestCase
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
@@ -667,6 +668,55 @@ class TestBotsService(BaseTestCase):
             TokenType.comment: {"key": "bibu", "username": "cket"},
             TokenType.status: None,
             TokenType.tokenless: {"key": "tokenlessKey", "username": "aa"},
+        }
+        assert expected_result == get_token_type_mapping(repo)
+
+    def test_get_token_type_mapping_public_repo_some_configuration_not_github_no_particular_bot_2(
+        self, mock_configuration, dbsession, codecov_vcr
+    ):
+        mock_configuration.set_params(
+            {
+                "github": {
+                    "bot": {"key": "somekey"},
+                    "bots": {
+                        "read": {"key": "aaaa", "username": "aaaa"},
+                        "status": {"key": "status", "username": "status"},
+                        "comment": {"key": "nada"},
+                        "tokenless": {"key": "nada"},
+                    },
+                    "integration": {
+                        "pem": "/test.pem",
+                        "id": 123456,  # Fake integration id, tested with a real one
+                        "default_installation_id": 12345678,
+                    },
+                },
+            }
+        )
+        mock_configuration.loaded_files[
+            ("github", "integration", "pem")
+        ] = fake_private_key
+
+        repo = RepositoryFactory.create(
+            private=False,
+            using_integration=False,
+            bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            owner=OwnerFactory.create(
+                service="github",
+                unencrypted_oauth_token=None,
+                bot=OwnerFactory.create(unencrypted_oauth_token=None),
+            ),
+        )
+
+        dbsession.add(repo)
+        dbsession.flush()
+        expected_result = {
+            TokenType.admin: None,
+            TokenType.read: {"key": "aaaa", "username": "aaaa"},
+            TokenType.comment: {
+                "key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp",
+            },
+            TokenType.status: {"key": "status", "username": "status"},
+            TokenType.tokenless: {"key": "nada"},
         }
         assert expected_result == get_token_type_mapping(repo)
 
