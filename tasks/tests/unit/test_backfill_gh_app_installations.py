@@ -240,8 +240,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             .first()
         )
         assert gh_app_installation.owner == owner
-        # The +1 comes from the preexisting one, so we don't overwrite, we append
-        assert len(gh_app_installation.repository_service_ids) == len(mock_repos) + 1
+        assert len(gh_app_installation.repository_service_ids) == len(mock_repos)
 
         for repo in mock_repos:
             assert (
@@ -329,10 +328,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             .first()
         )
         assert gh_app_installation_one.owner == owner_one
-        # The +1 comes from the preexisting one, so we don't overwrite, we append
-        assert (
-            len(gh_app_installation_one.repository_service_ids) == len(mock_repos) + 1
-        )
+        assert len(gh_app_installation_one.repository_service_ids) == len(mock_repos)
 
         for repo in mock_repos:
             assert (
