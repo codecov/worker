@@ -107,19 +107,19 @@ class NewHeaderSectionWriter(BaseSectionWriter):
         yaml = self.current_yaml
         base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
-        pull = comparison.pull
         pull_dict = comparison.enriched_pull.provider_pull
         repo_service = comparison.repository_service.service
 
         diff_totals = head_report.apply_diff(diff)
         if diff_totals:
             misses_and_partials = diff_totals.misses + diff_totals.partials
+            patch_coverage = diff_totals.coverage
         else:
             misses_and_partials = None
-
+            patch_coverage = None
         if misses_and_partials:
             yield (
-                f"Attention: `{misses_and_partials} lines` in your changes are missing coverage. Please review."
+                f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} lines` in your changes are missing coverage. Please review."
             )
         else:
             yield "All modified and coverable lines are covered by tests :white_check_mark:"
@@ -130,13 +130,10 @@ class NewHeaderSectionWriter(BaseSectionWriter):
 
         if base_report and head_report:
             yield (
-                "> Comparison is base [(`{commitid_base}`)]({links[base]}?el=desc) {base_cov}% compared to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc) {head_cov}%.".format(
-                    pull=pull.pullid,
-                    base=pull_dict["base"]["branch"],
+                "> Project coverage is {head_cov}%. Comparing base [(`{commitid_base}`)]({links[base]}?el=desc) to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc).".format(
                     commitid_head=comparison.head.commit.commitid[:7],
                     commitid_base=comparison.project_coverage_base.commit.commitid[:7],
                     links=links,
-                    base_cov=round_number(yaml, Decimal(base_report.totals.coverage)),
                     head_cov=round_number(yaml, Decimal(head_report.totals.coverage)),
                 )
             )
@@ -148,9 +145,9 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                     commit=pull_dict["base" if not base_report else "head"]["commitid"][
                         :7
                     ],
-                    request_type="merge request"
-                    if repo_service == "gitlab"
-                    else "pull request",
+                    request_type=(
+                        "merge request" if repo_service == "gitlab" else "pull request"
+                    ),
                 )
             )
 
@@ -634,9 +631,9 @@ class FlagSectionWriter(BaseSectionWriter):
                         "name": name,
                         "before": get_totals_from_file_in_reports(base_flags, name),
                         "after": flag.totals,
-                        "diff": flag.apply_diff(diff)
-                        if walk(diff, ("files",))
-                        else None,
+                        "diff": (
+                            flag.apply_diff(diff) if walk(diff, ("files",)) else None
+                        ),
                         "carriedforward": flag.carriedforward,
                         "carriedforward_from": flag.carriedforward_from,
                     }
@@ -754,9 +751,11 @@ class ComponentsSectionWriter(BaseSectionWriter):
             component_data.append(
                 {
                     "name": component.get_display_name(),
-                    "before": filtered_comparison.project_coverage_base.report.totals
-                    if filtered_comparison.project_coverage_base.report is not None
-                    else None,
+                    "before": (
+                        filtered_comparison.project_coverage_base.report.totals
+                        if filtered_comparison.project_coverage_base.report is not None
+                        else None
+                    ),
                     "after": filtered_comparison.head.report.totals,
                     "diff": filtered_comparison.head.report.apply_diff(
                         diff, _save=False
