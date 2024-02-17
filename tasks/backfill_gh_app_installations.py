@@ -25,6 +25,7 @@ class BackfillGHAppInstallationsTask(
         gh_app_installation: GithubAppInstallation,
     ):
         repos = await owner_service.list_repos_using_installation()
+
         if repos:
             # Fetching all repos service ids we have for that owner in the DB
             repo_service_ids_in_db = [
@@ -46,7 +47,7 @@ class BackfillGHAppInstallationsTask(
                 extra=dict(
                     ownerid=ownerid,
                     installation_id=gh_app_installation.installation_id,
-                    new_repo_service_ids=list(new_repo_service_ids),
+                    new_repo_service_ids=new_repo_service_ids,
                 ),
             )
             gh_app_installation.repository_service_ids = new_repo_service_ids
@@ -58,10 +59,9 @@ class BackfillGHAppInstallationsTask(
         # Get owners that have installations, and installations queries
         owners_query = (
             db_session.query(Owner)
-            .join(GithubAppInstallation)
+            .join(GithubAppInstallation, Owner.ownerid == GithubAppInstallation.ownerid)
             .filter(
                 Owner.service == "github",
-                Owner.ownerid == GithubAppInstallation.ownerid,
             )
         )
         gh_app_installations_query = db_session.query(GithubAppInstallation)
@@ -120,11 +120,13 @@ class BackfillGHAppInstallationsTask(
     ):
         owners_with_integration_id_without_gh_app_query = (
             db_session.query(Owner)
-            .join(GithubAppInstallation)
+            .join(
+                GithubAppInstallation,
+                Owner.ownerid != GithubAppInstallation.ownerid,
+            )
             .filter(
                 Owner.integration_id.isnot(None),
                 Owner.service == "github",
-                Owner.ownerid != GithubAppInstallation.ownerid,
             )
         )
 
@@ -170,11 +172,12 @@ class BackfillGHAppInstallationsTask(
         *args,
         **kwargs
     ):
+
         # Backfill gh apps we already have
         await self.backfill_existing_gh_apps(db_session=db_session, owner_ids=owner_ids)
 
         # Backfill owners with legacy integration + adding new gh app
-        self.backfill_owners_with_integration_without_gh_app(
+        await self.backfill_owners_with_integration_without_gh_app(
             db_session=db_session, owner_ids=owner_ids
         )
 
