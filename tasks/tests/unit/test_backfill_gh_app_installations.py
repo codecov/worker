@@ -194,7 +194,13 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
         self, mocker, mock_repo_provider, dbsession: Session
     ):
         owner = OwnerFactory(service="github", integration_id=12345)
-        dbsession.add(owner)
+        unrelated_app = GithubAppInstallation(
+            owner=OwnerFactory(service="github", integration_id=12442),
+            repository_service_ids=None,
+            installation_id=2131,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        )
+        dbsession.add_all([owner, unrelated_app])
 
         # Create repos for mock endpoint and for DB
         mock_repos = [
@@ -248,6 +254,12 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
         self, mocker, mock_repo_provider, dbsession: Session
     ):
         owner = OwnerFactory(service="github", integration_id=12345)
+        unrelated_app = GithubAppInstallation(
+            owner=OwnerFactory(service="github", integration_id=12442),
+            repository_service_ids=None,
+            installation_id=2131,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        )
 
         # Only one of the two mock repos is stored in the DB
         repo_name = "test-456"
@@ -261,7 +273,7 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
             repo_obj(repo_service_id, repo_name, "python", False, "develop", False),
         ]
 
-        dbsession.add_all([owner, repo])
+        dbsession.add_all([owner, repo, unrelated_app])
         dbsession.commit()
 
         # Mock fn return values

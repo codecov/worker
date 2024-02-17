@@ -56,6 +56,7 @@ class BackfillGHAppInstallationsTask(
     async def backfill_existing_gh_apps(
         self, db_session: Session, owner_ids: List[int] = None
     ):
+        print("backfill existing apps")
         # Get owners that have installations, and installations queries
         owners_query = (
             db_session.query(Owner)
@@ -118,6 +119,7 @@ class BackfillGHAppInstallationsTask(
     async def backfill_owners_with_integration_without_gh_app(
         self, db_session: Session, owner_ids: List[int] = None
     ):
+        print("backfill new apps")
         owners_with_integration_id_without_gh_app_query = (
             db_session.query(Owner)
             .join(
@@ -138,6 +140,7 @@ class BackfillGHAppInstallationsTask(
             )
 
         owners: List[Owner] = owners_with_integration_id_without_gh_app_query.all()
+        print("owners affected", owners)
 
         for owner in owners:
             ownerid = owner.ownerid
@@ -172,7 +175,7 @@ class BackfillGHAppInstallationsTask(
         *args,
         **kwargs
     ):
-
+        print("starting test")
         # Backfill gh apps we already have
         await self.backfill_existing_gh_apps(db_session=db_session, owner_ids=owner_ids)
 
