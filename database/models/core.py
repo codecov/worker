@@ -186,6 +186,9 @@ class GithubAppInstallation(CodecovBaseModel, MixinBaseClass):
     repository_service_ids = Column(
         postgresql.ARRAY(types.Text), server_default=FetchedValue()
     )
+    # Data required to get a token from gh
+    app_id = Column(types.Text, server_default=FetchedValue())
+    pem_path = Column(types.Text, server_default=FetchedValue())
 
     ownerid = Column("owner_id", types.Integer, ForeignKey("owners.ownerid"))
     owner = relationship(
