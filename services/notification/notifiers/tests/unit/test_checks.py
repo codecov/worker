@@ -1653,7 +1653,7 @@ class TestProjectChecksNotifier(object):
         notifier = ProjectChecksNotifier(
             repository=sample_comparison_negative_change.head.commit.repository,
             title="default",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"removed_code_behavior": "removals_only"},
             notifier_site_settings=True,
             current_yaml={"comment": False},
         )
