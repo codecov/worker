@@ -124,7 +124,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     ):
         repoids_added = []
         # Casting to str in case celery interprets the service ID as a integer for some reason
-        # As that as coused issues testing locally before
+        # As that has caused issues with testing locally
         service_ids = set(str(x[0]) for x in repository_service_ids)
         # Check what repos we already have in the DB
         existing_repos = set(
