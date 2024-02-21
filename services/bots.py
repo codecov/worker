@@ -118,11 +118,15 @@ def get_token_type_mapping(repo: Repository):
             extra=dict(repoid=repo.repoid),
         )
 
-    if get_config("github", "integration", "id") and get_config(
-        "github",
-        "integration",
-        "default_installation_id",  # this is different from the integration id,
-        # the integration id on github is the App ID of the "Codecov" App, this is the installation ID of the installation that is to be used for
+    if (
+        repo.service == "github"
+        and get_config("github", "integration", "id")
+        and get_config(
+            "github",
+            "integration",
+            "default_installation_id",  # this is different from the integration id,
+            # the integration id on github is the App ID of the "Codecov" App, this is the installation ID of the installation that is to be used for
+        )
     ):
         comment_token = dict(
             key=get_github_integration_token(
