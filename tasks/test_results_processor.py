@@ -184,8 +184,8 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
     def parse_single_file(
         self,
-        filename,
-        file_bytes,
+        filename: str,
+        file_bytes: BytesIO,
     ):
 
         try:
@@ -226,7 +226,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         return res
 
-    def match_report(self, filename: str, file_bytes):
+    def match_report(self, filename: str, file_bytes: BytesIO):
         first_line = file_bytes.readline()
         second_line = file_bytes.readline()
         file_bytes.seek(0)
