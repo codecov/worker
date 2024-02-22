@@ -1231,8 +1231,8 @@ class TestChangesChecksNotifier(object):
         expected_result = {
             "state": "success",
             "output": {
-                "title": "No unexpected coverage changes found",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo unexpected coverage changes found",
+                "title": "No indirect coverage changes found",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo indirect coverage changes found",
             },
         }
         result = await notifier.build_payload(sample_comparison)
@@ -1287,8 +1287,8 @@ class TestChangesChecksNotifier(object):
         expected_result = {
             "state": "failure",
             "output": {
-                "title": "3 files have unexpected coverage changes not visible in diff",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_with_multiple_changes/{comparison_with_multiple_changes.head.commit.repository.name}/pull/{comparison_with_multiple_changes.pull.pullid}?src=pr&el=h1)\n\n3 files have unexpected coverage changes not visible in diff",
+                "title": "3 files have indirect coverage changes not visible in diff",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_with_multiple_changes/{comparison_with_multiple_changes.head.commit.repository.name}/pull/{comparison_with_multiple_changes.pull.pullid}?src=pr&el=h1)\n\n3 files have indirect coverage changes not visible in diff",
             },
         }
         result = await notifier.build_payload(comparison_with_multiple_changes)
@@ -1653,7 +1653,7 @@ class TestProjectChecksNotifier(object):
         notifier = ProjectChecksNotifier(
             repository=sample_comparison_negative_change.head.commit.repository,
             title="default",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"removed_code_behavior": "removals_only"},
             notifier_site_settings=True,
             current_yaml={"comment": False},
         )
