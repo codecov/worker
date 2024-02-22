@@ -213,7 +213,7 @@ class TestResultsNotifier:
 
         message += details
         failure_table = [
-            "| {0} | <pre>{1}</pre> |".format(
+            "| <pre>{0}</pre> | <pre>{1}</pre> |".format(
                 (
                     "<br>".join(
                         self.insert_breaks(
