@@ -43,14 +43,18 @@ def _is_repo_using_integration(repo: Repository) -> bool:
 
 
 def get_repo_provider_service(
-    repository, commit=None
+    repository,
+    commit=None,
+    installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> torngit.base.TorngitBaseAdapter:
     _timeouts = [
         get_config("setup", "http", "timeouts", "connect", default=30),
         get_config("setup", "http", "timeouts", "receive", default=60),
     ]
     service = repository.owner.service
-    token, token_owner = get_repo_appropriate_bot_token(repository)
+    token, token_owner = get_repo_appropriate_bot_token(
+        repository, installation_name_to_use=installation_name_to_use
+    )
     adapter_params = dict(
         repo=dict(
             name=repository.name,
@@ -64,7 +68,9 @@ def get_repo_provider_service(
             username=repository.owner.username,
         ),
         token=token,
-        token_type_mapping=get_token_type_mapping(repository),
+        token_type_mapping=get_token_type_mapping(
+            repository, installation_name=installation_name_to_use
+        ),
         verify_ssl=get_verify_ssl(service),
         timeouts=_timeouts,
         oauth_consumer_token=dict(
