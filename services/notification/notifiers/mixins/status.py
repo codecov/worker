@@ -101,7 +101,7 @@ class StatusChangesMixin(object):
 
 
 class StatusProjectMixin(object):
-    DEFAULT_REMOVED_CODE_BEHAVIOR = "fully_covered_patch"
+    DEFAULT_REMOVED_CODE_BEHAVIOR = "adjust_base"
 
     async def _apply_removals_only_behavior(
         self, comparison: Union[ComparisonProxy, FilteredComparison]
