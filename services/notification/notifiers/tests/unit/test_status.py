@@ -1656,7 +1656,7 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": "28.57% (target 70.00%), passed because patch was fully covered by tests with no unexpected coverage changes",
+            "message": "28.57% (target 70.00%), passed because patch was fully covered by tests, and no indirect coverage changes",
             "state": "success",
         }
         result = await notifier.build_payload(comparison_100_percent_patch)
@@ -2091,7 +2091,7 @@ class TestChangesStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": "No unexpected coverage changes found",
+            "message": "No indirect coverage changes found",
             "state": "success",
         }
         result = await notifier.build_payload(sample_comparison)
@@ -2137,7 +2137,7 @@ class TestChangesStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": "3 files have unexpected coverage changes not visible in diff",
+            "message": "3 files have indirect coverage changes not visible in diff",
             "state": "failure",
         }
         result = await notifier.build_payload(comparison_with_multiple_changes)
@@ -2183,7 +2183,7 @@ class TestChangesStatusNotifier(object):
         )
         base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
-            "message": "No unexpected coverage changes found",
+            "message": "No indirect coverage changes found",
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
         }
