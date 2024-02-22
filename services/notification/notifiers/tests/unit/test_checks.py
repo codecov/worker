@@ -1231,8 +1231,8 @@ class TestChangesChecksNotifier(object):
         expected_result = {
             "state": "success",
             "output": {
-                "title": "No unexpected coverage changes found",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo unexpected coverage changes found",
+                "title": "No indirect coverage changes found",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1)\n\nNo indirect coverage changes found",
             },
         }
         result = await notifier.build_payload(sample_comparison)
@@ -1287,8 +1287,8 @@ class TestChangesChecksNotifier(object):
         expected_result = {
             "state": "failure",
             "output": {
-                "title": "3 files have unexpected coverage changes not visible in diff",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_with_multiple_changes/{comparison_with_multiple_changes.head.commit.repository.name}/pull/{comparison_with_multiple_changes.pull.pullid}?src=pr&el=h1)\n\n3 files have unexpected coverage changes not visible in diff",
+                "title": "3 files have indirect coverage changes not visible in diff",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_with_multiple_changes/{comparison_with_multiple_changes.head.commit.repository.name}/pull/{comparison_with_multiple_changes.pull.pullid}?src=pr&el=h1)\n\n3 files have indirect coverage changes not visible in diff",
             },
         }
         result = await notifier.build_payload(comparison_with_multiple_changes)
@@ -1509,8 +1509,8 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        "Attention: `1 lines` in your changes are missing coverage. Please review.",
-                        f"> Comparison is base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{base_commit.commitid}?el=desc) 50.00% compared to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) 60.00%."
+                        "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
+                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{base_commit.commitid}?el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc)."
                         f"",
                         f"",
                         f"| [Files](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
@@ -1552,8 +1552,8 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        "Attention: `1 lines` in your changes are missing coverage. Please review.",
-                        f"> Comparison is base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{base_commit.commitid}?el=desc) 50.00% compared to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) 60.00%."
+                        "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
+                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{base_commit.commitid}?el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc)."
                         f"",
                         f"",
                         f"| [Files](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
@@ -1596,8 +1596,8 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=h1) Report",
-                        "Attention: `1 lines` in your changes are missing coverage. Please review.",
-                        f"> Comparison is base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{base_commit.commitid}?el=desc) 50.00% compared to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) 60.00%.",
+                        "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
+                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{base_commit.commitid}?el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc).",
                         f"",
                         f"| [Files](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
                         f"|---|---|---|---|",
@@ -1653,7 +1653,7 @@ class TestProjectChecksNotifier(object):
         notifier = ProjectChecksNotifier(
             repository=sample_comparison_negative_change.head.commit.repository,
             title="default",
-            notifier_yaml_settings={},
+            notifier_yaml_settings={"removed_code_behavior": "removals_only"},
             notifier_site_settings=True,
             current_yaml={"comment": False},
         )

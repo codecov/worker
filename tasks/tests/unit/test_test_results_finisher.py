@@ -2,7 +2,7 @@ import datetime
 from pathlib import Path
 
 import pytest
-from mock import AsyncMock
+from mock import AsyncMock, call
 from shared.torngit.exceptions import TorngitClientError
 from test_results_parser import Outcome
 
@@ -72,6 +72,10 @@ class TestUploadTestFinisherTask(object):
                 database_pull=pull,
                 provider_pull={},
             ),
+        )
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
         )
 
         mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
@@ -181,7 +185,7 @@ class TestUploadTestFinisherTask(object):
         }
         m.post_comment.assert_called_with(
             pull.pullid,
-            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/{pull.pullid}) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| test_testsuite::test_name[(b)] | <pre>not that bad</pre> |\n| test_testsuite::test_name[(a)] | <pre>okay i guess</pre> |",
+            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/{pull.pullid}) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| <pre>test_testsuite::test_name[(b)]</pre> | <pre>not that bad</pre> |\n| <pre>test_testsuite::test_name[(a)]</pre> | <pre>okay i guess</pre> |",
         )
 
         assert expected_result == result
@@ -202,6 +206,11 @@ class TestUploadTestFinisherTask(object):
             TestResultsFinisherTask,
             "app",
             tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
+        )
+
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
         )
 
         commit = CommitFactory.create(
@@ -360,10 +369,26 @@ class TestUploadTestFinisherTask(object):
         }
         m.post_comment.assert_called_with(
             pull.pullid,
-            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/{pull.pullid}) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| test_testsuite::test_name[(a),(b)]<br>test_testsuite::test_name_2[(a)] | <pre>not that bad</pre> |",
+            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/{pull.pullid}) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| <pre>test_testsuite::test_name[(a),(b)]<br>test_testsuite::test_name_2[(a)]</pre> | <pre>not that bad</pre> |",
         )
 
         assert expected_result == result
+
+        mock_metrics.incr.assert_has_calls(
+            [
+                call("test_results.finisher", tags={"status": "failures_exist"}),
+                call(
+                    "test_results.finisher",
+                    tags={"status": True, "reason": "notified"},
+                ),
+            ]
+        )
+        calls = [
+            call("test_results.finisher.fetch_latest_test_instances"),
+            call("test_results.finisher.notification"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -431,6 +456,10 @@ class TestUploadTestFinisherTask(object):
         mocked_repo_provider = mocker.patch(
             "services.test_results.get_repo_provider_service",
             return_value=m,
+        )
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
         )
 
         repoid = upload1.report.commit.repoid
@@ -527,6 +556,20 @@ class TestUploadTestFinisherTask(object):
 
         assert expected_result == result
 
+        mock_metrics.incr.assert_has_calls(
+            [
+                call(
+                    "test_results.finisher",
+                    tags={"status": "success", "reason": "no_failures"},
+                ),
+            ]
+        )
+        calls = [
+            call("test_results.finisher.fetch_latest_test_instances"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls
+
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_upload_finisher_task_call_no_success(
@@ -593,6 +636,11 @@ class TestUploadTestFinisherTask(object):
         mocked_repo_provider = mocker.patch(
             "services.test_results.get_repo_provider_service",
             return_value=m,
+        )
+
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
         )
 
         repoid = upload1.report.commit.repoid
@@ -680,6 +728,16 @@ class TestUploadTestFinisherTask(object):
         }
 
         assert expected_result == result
+
+        mock_metrics.incr.assert_has_calls(
+            [
+                call(
+                    "test_results.finisher",
+                    tags={"status": "failure", "reason": "no_success"},
+                ),
+            ]
+        )
+        assert mock_metrics.timing.mock_calls == []
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -838,7 +896,7 @@ class TestUploadTestFinisherTask(object):
         m.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/1) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| test_testsuite::test_name[(b)] | <pre>not that bad</pre> |\n| test_testsuite::test_name[(a)] | <pre>okay i guess</pre> |",
+            "##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/1) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| <pre>test_testsuite::test_name[(b)]</pre> | <pre>not that bad</pre> |\n| <pre>test_testsuite::test_name[(a)]</pre> | <pre>okay i guess</pre> |",
         )
 
         assert expected_result == result
@@ -910,6 +968,11 @@ class TestUploadTestFinisherTask(object):
         mocked_repo_provider = mocker.patch(
             "services.test_results.get_repo_provider_service",
             return_value=m,
+        )
+
+        mock_metrics = mocker.patch(
+            "tasks.test_results_finisher.metrics",
+            mocker.MagicMock(),
         )
 
         repoid = upload1.report.commit.repoid
@@ -997,3 +1060,19 @@ class TestUploadTestFinisherTask(object):
         }
 
         assert expected_result == result
+
+        mock_metrics.incr.assert_has_calls(
+            [
+                call("test_results.finisher", tags={"status": "failures_exist"}),
+                call(
+                    "test_results.finisher",
+                    tags={"status": False, "reason": "notified"},
+                ),
+            ]
+        )
+        calls = [
+            call("test_results.finisher.fetch_latest_test_instances"),
+            call("test_results.finisher.notification"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls

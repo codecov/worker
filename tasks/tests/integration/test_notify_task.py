@@ -436,7 +436,7 @@ class TestNotifyTask(object):
                         "data_sent": {
                             "title": "codecov/changes",
                             "state": "failure",
-                            "message": "1 file has unexpected coverage changes not visible in diff",
+                            "message": "1 file has indirect coverage changes not visible in diff",
                         },
                         "data_received": {"id": 9333281703},
                     },
@@ -664,7 +664,7 @@ class TestNotifyTask(object):
                         "data_sent": {
                             "title": "codecov/changes",
                             "state": "success",
-                            "message": "No unexpected coverage changes found",
+                            "message": "No indirect coverage changes found",
                         },
                         "data_received": {"id": 9333363801},
                     },
@@ -1039,15 +1039,15 @@ class TestNotifyTask(object):
                     "notifier": "status-changes",
                     "title": "default",
                     "result": {
-                        "notification_attempted": False,
-                        "notification_successful": None,
-                        "explanation": "already_done",
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": None,
                         "data_sent": {
                             "title": "codecov/changes",
                             "state": "success",
-                            "message": "No unexpected coverage changes found",
+                            "message": "No indirect coverage changes found",
                         },
-                        "data_received": None,
+                        "data_received": {"id": 24846000025},
                     },
                 },
                 {
@@ -1158,7 +1158,7 @@ class TestNotifyTask(object):
                             "message": [
                                 "## [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
                                 "All modified and coverable lines are covered by tests :white_check_mark:",
-                                "> Comparison is base [(`5b174c2`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 85.00% compared to head [(`5601846`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 85.00%.",
+                                f"> Project coverage is 85.00%. Comparing base [(`5b174c2`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) to head [(`5601846`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc).",
                                 "> Report is 2 commits behind head on main.",
                                 "",
                                 ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",

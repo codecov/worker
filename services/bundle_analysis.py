@@ -414,7 +414,7 @@ class Notifier:
         kilobytes = bytes / 1000
         if kilobytes < 1000:
             kilobytes = round(kilobytes, 2)
-            return f"{kilobytes}KB"
+            return f"{kilobytes}kB"
 
         megabytes = kilobytes / 1000
         if megabytes < 1000:

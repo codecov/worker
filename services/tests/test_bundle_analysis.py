@@ -11,21 +11,21 @@ from services.repository import EnrichedPull
 
 expected_message_increase = """## Bundle Report
 
-Changes will increase total bundle size by 14.57KB :arrow_up:
+Changes will increase total bundle size by 14.57kB :arrow_up:
 
 | Bundle name | Size | Change |
 | ----------- | ---- | ------ |
-| added-bundle | 123.46KB | 12.35KB :arrow_up: |
-| changed-bundle | 123.46KB | 3.46KB :arrow_up: |
-| removed-bundle | (removed) | 1.23KB :arrow_down: |"""
+| added-bundle | 123.46kB | 12.35kB :arrow_up: |
+| changed-bundle | 123.46kB | 3.46kB :arrow_up: |
+| removed-bundle | (removed) | 1.23kB :arrow_down: |"""
 
 expected_message_decrease = """## Bundle Report
 
-Changes will decrease total bundle size by 3.46KB :arrow_down:
+Changes will decrease total bundle size by 3.46kB :arrow_down:
 
 | Bundle name | Size | Change |
 | ----------- | ---- | ------ |
-| test-bundle | 123.46KB | 3.46KB :arrow_down: |"""
+| test-bundle | 123.46kB | 3.46kB :arrow_down: |"""
 
 expected_message_unchanged = """## Bundle Report
 
@@ -40,8 +40,8 @@ class MockBundleReport:
 def test_bytes_readable():
     notifier = Notifier(None, UserYaml.from_dict({}))
     assert notifier._bytes_readable(999) == "999 bytes"
-    assert notifier._bytes_readable(1234) == "1.23KB"
-    assert notifier._bytes_readable(123456) == "123.46KB"
+    assert notifier._bytes_readable(1234) == "1.23kB"
+    assert notifier._bytes_readable(123456) == "123.46kB"
     assert notifier._bytes_readable(1234567) == "1.23MB"
     assert notifier._bytes_readable(1234567890) == "1.23GB"
 

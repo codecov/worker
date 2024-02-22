@@ -377,15 +377,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         # doesn't exist in our database, the next-oldest commit that does. That
         # is unnecessary/incorrect for patch coverage, for which we want to
         # compare against the original PR base.
-        #
-        # For now, fix this for the patch-coverage-focused team plan and avoid
-        # maybe perturbing anything for project coverage. For other plans, set
-        # `patch_coverage_base_commitid` to the adjusted base commitid.
-        # Follow-up: https://github.com/codecov/engineering-team/issues/887
-        plan = commit.repository.owner.plan
         pull = enriched_pull.database_pull if enriched_pull else None
-
-        if pull and plan in (BillingPlan.team_monthly, BillingPlan.team_yearly):
+        if pull:
             patch_coverage_base_commitid = pull.base
         elif base_commit is not None:
             patch_coverage_base_commitid = base_commit.commitid
