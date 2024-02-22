@@ -112,7 +112,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             return {
                 "notify_attempted": False,
                 "notify_succeeded": False,
-                QUEUE_NOTIFY_KEY: False,
+                QUEUE_NOTIFY_KEY: True,
             }
 
         test_instances = latest_test_instances_for_a_given_commit(
