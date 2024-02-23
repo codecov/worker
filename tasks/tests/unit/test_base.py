@@ -288,6 +288,8 @@ class TestBaseCodecovTask(object):
             "tasks.base.get_db_session", return_value=dbsession
         )
 
+        # IntegrityError and DataError are subclasses of SQLAlchemyError that
+        # have their own `except` clause.
         task = SampleTaskWithArbitraryError(IntegrityError("", {}, None))
         registered_task = celery_app.register_task(task)
         task = celery_app.tasks[registered_task.name]
@@ -310,6 +312,9 @@ class TestBaseCodecovTask(object):
             "tasks.base.get_db_session", return_value=dbsession
         )
 
+        # StatementError is a subclass of SQLAlchemyError just like
+        # IntegrityError and DataError, but this test case is different because
+        # it is caught by a different except clause.
         task = SampleTaskWithArbitraryError(StatementError("", "", None, None))
         registered_task = celery_app.register_task(task)
         task = celery_app.tasks[registered_task.name]
