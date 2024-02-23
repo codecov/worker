@@ -133,16 +133,15 @@ class TestResultsNotifier:
         pull = await fetch_and_update_pull_request_information_from_commit(
             repo_service, self.commit, self.commit_yaml
         )
-        pullid = pull.database_pull.pullid
         if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
                 extra=dict(
                     commitid=self.commit.commitid,
                     report_key=commit_report.external_id,
-                    pullid=pullid,
                 ),
             )
+        pullid = pull.database_pull.pullid
 
         pull_url = get_pull_url(pull.database_pull)
 
@@ -225,7 +224,7 @@ class TestResultsNotifier:
                         )
                     )
                 ),
-                failure_message.replace("\n", "<br>"),
+                failure_message.replace("\r", "").replace("\n", "<br>"),
             )
             for failure_message, failed_test_to_env_list in sorted(
                 failures.items(), key=lambda failure: failure[0]
