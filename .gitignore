@@ -126,3 +126,6 @@ background_app/.report.json
 # Vim temporary files
 *.swp
 *.swo
+
+# GH App local webhooks
+*.pem
