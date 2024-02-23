@@ -10,6 +10,7 @@ from test_results_parser import Outcome
 
 from database.enums import ReportType
 from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from helpers.string import EscapeEnum, Replacement, StringEscaper
 from services.report import BaseReportService
 from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
@@ -18,6 +19,13 @@ from services.repository import (
 from services.urls import get_pull_url
 
 log = logging.getLogger(__name__)
+
+
+ESCAPE_FAILURE_MESSAGE_DEFN = {
+    Replacement(r"\'*_`[]{}()#+-.!|<>&", "\\", EscapeEnum.PREPEND),
+    Replacement("\r", "", EscapeEnum.REPLACE),
+    Replacement("\n", "<br>", EscapeEnum.REPLACE),
+}
 
 
 class TestResultsReportService(BaseReportService):
@@ -182,6 +190,8 @@ class TestResultsNotifier:
 
         failures = defaultdict(lambda: defaultdict(list))
 
+        escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
+
         for test_instance in test_instances:
             if test_instance.outcome == str(
                 Outcome.Failure
@@ -191,7 +201,10 @@ class TestResultsNotifier:
                 suffix = ""
                 if flag_names:
                     suffix = f"({','.join(flag_names) or ''})"
-                failures[test_instance.failure_message][
+                formatted_failure_message = escaper.replace(
+                    test_instance.failure_message
+                )
+                failures[formatted_failure_message][
                     f"{test_instance.test.testsuite}::{test_instance.test.name}"
                 ].append(suffix)
             elif test_instance.outcome == str(Outcome.Skip):
@@ -224,7 +237,7 @@ class TestResultsNotifier:
                         )
                     )
                 ),
-                failure_message.replace("\r", "").replace("\n", "<br>"),
+                failure_message,
             )
             for failure_message, failed_test_to_env_list in sorted(
                 failures.items(), key=lambda failure: failure[0]
