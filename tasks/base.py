@@ -4,6 +4,7 @@ from datetime import datetime
 
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
+from django.db import transaction as django_transaction
 from prometheus_client import REGISTRY
 from shared.celery_router import route_tasks_based_on_user_plan
 from shared.metrics import Counter, Histogram
@@ -19,6 +20,7 @@ from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
 from helpers.metrics import metrics
 from helpers.telemetry import MetricContext, TimeseriesTimer
+from helpers.timeseries import timeseries_enabled
 
 log = logging.getLogger("worker")
 
@@ -159,6 +161,46 @@ class BaseCodecovTask(celery_app.Task):
         }
         return super().apply_async(args=args, kwargs=kwargs, headers=headers, **options)
 
+    def _commit_django(self):
+        try:
+            django_transaction.commit()
+        except Exception as e:
+            log.warning(
+                "Django transaction failed to commit.",
+                exc_info=True,
+                extra=dict(e=e),
+            )
+
+        if timeseries_enabled():
+            try:
+                django_transaction.commit("timeseries")
+            except Exception as e:
+                log.warning(
+                    "Django transaction failed to commit in the timeseries database.",
+                    exc_info=True,
+                    extra=dict(e=e),
+                )
+
+    def _rollback_django(self):
+        try:
+            django_transaction.rollback()
+        except Exception as e:
+            log.warning(
+                "Django transaction failed to roll back.",
+                exc_info=True,
+                extra=dict(e=e),
+            )
+
+        if timeseries_enabled():
+            try:
+                django_transaction.rollback("timeseries")
+            except Exception as e:
+                log.warning(
+                    "Django transaction failed to roll back in the timeseries database.",
+                    exc_info=True,
+                    extra=dict(e=e),
+                )
+
     def _analyse_error(self, exception: SQLAlchemyError, *args, **kwargs):
         try:
             import psycopg2
@@ -238,13 +280,16 @@ class BaseCodecovTask(celery_app.Task):
                             extra=dict(task_args=args, task_kwargs=kwargs),
                         )
                         db_session.rollback()
+                        self._rollback_django()
                         self.retry()
                     except SQLAlchemyError as ex:
                         self._analyse_error(ex, args, kwargs)
                         db_session.rollback()
+                        self._rollback_django()
                         self.retry()
                     finally:
                         self.wrap_up_dbsession(db_session)
+                        self._commit_django()
 
     def wrap_up_dbsession(self, db_session):
         """
