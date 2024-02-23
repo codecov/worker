@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     "django_scaffold",  # must be first to override migrate command
     "shared.django_apps.pg_telemetry",
     "shared.django_apps.ts_telemetry",
+    "shared.django_apps.rollouts",
 ]
 
 TELEMETRY_VANILLA_DB = "default"
