@@ -101,6 +101,8 @@ trial_expiration_cron_task_name = "app.cron.plan.TrialExpirationCronTask"
 
 update_branches_task_name = "app.cron.branches.UpdateBranchesTask"
 
+backfill_gh_app_installations = "app.tasks.gh_app.BackfillGHAppInstallationsTask"
+
 
 def _beat_schedule():
     beat_schedule = {
