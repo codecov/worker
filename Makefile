@@ -204,7 +204,7 @@ test_env.install_cli:
 	pip install --no-cache-dir codecov-cli==$(CODECOV_CLI_VERSION)
 
 test_env.container_prepare:
-	apk add -U curl git build-base jq
+	apt-get install -y git build-essential netcat-traditional
 	make test_env.install_cli
 	git config --global --add safe.directory /worker
 
