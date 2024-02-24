@@ -252,7 +252,7 @@ test_env.run_mutation:
 	docker-compose exec worker make test_env.container_mutation
 
 test_env.container_mutation:
-	apk add git
+	apt-get install -y git
 	git diff origin/main ${full_sha} > data.patch
 	pip install mutmut[patch]
 	mutmut run --use-patch-file data.patch || true
