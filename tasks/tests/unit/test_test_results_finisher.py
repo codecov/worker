@@ -139,7 +139,7 @@ class TestUploadTestFinisherTask(object):
         test_instance2 = TestInstance(
             test_id=test_id1,
             outcome=str(Outcome.Failure),
-            failure_message="not that bad",
+            failure_message="<pre>not that bad</pre> | hello | goodbye |",
             duration_seconds=1,
             upload_id=upload_id2,
         )
@@ -160,7 +160,7 @@ class TestUploadTestFinisherTask(object):
         test_instance4 = TestInstance(
             test_id=test_id2,
             outcome=str(Outcome.Failure),
-            failure_message="not that bad",
+            failure_message="<pre>not that bad</pre> | hello | goodbye |",
             duration_seconds=2,
             upload_id=upload_id1,
         )
@@ -181,7 +181,7 @@ class TestUploadTestFinisherTask(object):
         expected_result = {"notify_attempted": True, "notify_succeeded": True}
         m.post_comment.assert_called_with(
             pull.pullid,
-            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/{pull.pullid}) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| <pre>test_testsuite::test_name[(b)]</pre> | <pre>not that bad</pre> |\n| <pre>test_testsuite::test_name[(a)]</pre> | <pre>okay i guess</pre> |",
+            f"##  [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/{pull.pullid}) Report\n\n**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **File path** | **Failure message** |\n| :-- | :-- |\n| <pre>test_testsuite::test_name[(b)]</pre> | <pre>\\<pre\\>not that bad\\</pre\\> \\| hello \\| goodbye \\|</pre> |\n| <pre>test_testsuite::test_name[(a)]</pre> | <pre>okay i guess</pre> |",
         )
 
         assert expected_result == result
