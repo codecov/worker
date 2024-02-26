@@ -112,6 +112,7 @@ class MetricContext:
 
         self.populate()
 
+        """
         PgSimpleMetric.objects.create(
             timestamp=timestamp,
             name=name,
@@ -129,6 +130,7 @@ class MetricContext:
             owner_slug=self.owner_slug,
             commit_slug=self.commit_slug,
         )
+        """
 
     @fire_and_forget
     async def attempt_log_simple_metric(self, name: str, value: float):
