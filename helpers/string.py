@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 from typing import List
 
@@ -8,11 +9,11 @@ class EscapeEnum(Enum):
     REPLACE = "replace"
 
 
+@dataclass
 class Replacement:
-    def __init__(self, chars: str, output: str, method: EscapeEnum):
-        self.chars = chars
-        self.output = output
-        self.method = method
+    chars: str
+    output: str
+    method: EscapeEnum
 
 
 class StringEscaper:
@@ -29,14 +30,16 @@ class StringEscaper:
 
         for example:
             escape_def = [
-                Replacement(chars="<>", output="\\", method=EscapeEnum.PREPEND),
-                Replacement(chars="pre", output="div", method=EscapeEnum.REPLACE)
+                Replacement("1", "2", EscapeEnum.APPEND),
+                Replacement("3", "4", EscapeEnum.PREPEND),
+                Replacement("5", "6", EscapeEnum.REPLACE),
             ]
-            StringEscaper(escape_def)
 
-            replace("<pre></pre>")
+            escaper = StringEscaper(escape_def)
 
-            will give: \<div\>\</div\>
+            escaper.replace("123456")
+
+            will give: "12243466"
     """
 
     def __init__(self, escape_def: List[Replacement]):

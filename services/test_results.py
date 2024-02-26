@@ -21,11 +21,11 @@ from services.urls import get_pull_url
 log = logging.getLogger(__name__)
 
 
-ESCAPE_FAILURE_MESSAGE_DEFN = {
+ESCAPE_FAILURE_MESSAGE_DEFN = [
     Replacement(r"\'*_`[]{}()#+-.!|<>&", "\\", EscapeEnum.PREPEND),
     Replacement("\r", "", EscapeEnum.REPLACE),
     Replacement("\n", "<br>", EscapeEnum.REPLACE),
-}
+]
 
 
 class TestResultsReportService(BaseReportService):
