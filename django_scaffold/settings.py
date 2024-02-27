@@ -24,10 +24,12 @@ INSTALLED_APPS = [
 TELEMETRY_VANILLA_DB = "default"
 TELEMETRY_TIMESCALE_DB = "timeseries"
 
-# DATABASE_ROUTERS = [
-#    "database.TelemetryDatabaseRouter",
-#    "shared.django_apps.db_routers.MultiDatabaseRouter",
-# ]
+DATABASE_ROUTERS = [
+    "shared.django_apps.db_routers.TelemetryDatabaseRouter",
+    "shared.django_apps.db_routers.MultiDatabaseRouter",
+]
+
+SKIP_RISKY_MIGRATION_STEPS = get_config("migrations", "skip_risky_steps", default=False)
 
 MIDDLEWARE = []
 

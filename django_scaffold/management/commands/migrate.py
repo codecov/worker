@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.core.management.commands.migrate import Command as MigrateCommand
 from django.db import connections
+from django.db import transaction as django_transaction
 from django.db.utils import IntegrityError, ProgrammingError
 
 from services.redis import get_redis_connection
@@ -71,6 +72,9 @@ class Command(MigrateCommand):
 
         try:
             super().handle(*args, **options)
+
+            # Autocommit is disabled in worker
+            django_transaction.commit(database)
         except:
             log.info("Codecov migrations failed.")
             raise
