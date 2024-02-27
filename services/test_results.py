@@ -180,13 +180,17 @@ class TestResultsNotifier:
 
         message = self.build_message(pull_url, self.test_instances)
 
-        try:
-            comment_id = pull.database_pull.commentid
-            if comment_id:
+        # try to edit, if that doesn't work try making a new comment
+        comment_id = pull.database_pull.commentid
+        if comment_id:
+            try:
                 await repo_service.edit_comment(pullid, comment_id, message)
-            else:
-                res = await repo_service.post_comment(pullid, message)
-                pull.database_pull.commentid = res["id"]
+                return True
+            except TorngitClientError:
+                pass
+        try:
+            res = await repo_service.post_comment(pullid, message)
+            pull.database_pull.commentid = res["id"]
             return True
         except TorngitClientError:
             log.error(
