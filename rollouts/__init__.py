@@ -2,15 +2,6 @@ from shared.rollouts import Feature
 
 from database.models import Owner, Repository
 
-
-def owner_slug(owner: Owner) -> str:
-    return f"{owner.service}/{owner.username}"
-
-
-def repo_slug(repo: Repository) -> str:
-    return f"{repo.service}/{repo.owner.username}/{repo.name}"
-
-
 # Declare the feature variants via Django Admin
 LIST_REPOS_GENERATOR_BY_OWNER_ID = Feature(
     "list_repos_generator",

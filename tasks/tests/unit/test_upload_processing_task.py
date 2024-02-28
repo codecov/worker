@@ -16,6 +16,7 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
+from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
 from services.report import ReportService
 from services.report.parser.legacy import LegacyReportParser
@@ -58,6 +59,12 @@ class TestUploadProcessorTask(object):
         mock_redis,
         celery_app,
     ):
+        mocker.patch.object(
+            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
+            "check_value",
+            return_value=False,
+        )
+
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
@@ -175,6 +182,12 @@ class TestUploadProcessorTask(object):
         mock_redis,
         celery_app,
     ):
+        mocker.patch.object(
+            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
+            "check_value",
+            return_value=False,
+        )
+
         mock_configuration.set_params(
             {"services": {"minio": {"expire_raw_after_n_days": True}}}
         )
@@ -293,6 +306,12 @@ class TestUploadProcessorTask(object):
     async def test_upload_processor_call_with_upload_obj(
         self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
     ):
+        mocker.patch.object(
+            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
+            "check_value",
+            return_value=False,
+        )
+
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
         commit = CommitFactory.create(
@@ -414,6 +433,12 @@ class TestUploadProcessorTask(object):
         mock_redis,
         celery_app,
     ):
+        mocker.patch.object(
+            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
+            "check_value",
+            return_value=False,
+        )
+
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         with open(here.parent.parent / "samples" / "sample_chunks_1.txt") as f:
             content = f.read()
