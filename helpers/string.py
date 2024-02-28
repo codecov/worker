@@ -11,7 +11,7 @@ class EscapeEnum(Enum):
 
 @dataclass
 class Replacement:
-    chars: str
+    strings: List[str]
     output: str
     method: EscapeEnum
 
@@ -30,9 +30,9 @@ class StringEscaper:
 
         for example:
             escape_def = [
-                Replacement("1", "2", EscapeEnum.APPEND),
-                Replacement("3", "4", EscapeEnum.PREPEND),
-                Replacement("5", "6", EscapeEnum.REPLACE),
+                Replacement(["1"], "2", EscapeEnum.APPEND),
+                Replacement(["3"], "4", EscapeEnum.PREPEND),
+                Replacement(["5", "6"], "6", EscapeEnum.REPLACE),
             ]
 
             escaper = StringEscaper(escape_def)
@@ -45,13 +45,19 @@ class StringEscaper:
     def __init__(self, escape_def: List[Replacement]):
         self.escape_def = escape_def
 
-    def replace(self, string):
+    def replace(self, replacement_target):
         for replacement in self.escape_def:
-            for char in replacement.chars:
+            for string in replacement.strings:
                 if replacement.method == EscapeEnum.PREPEND:
-                    string = string.replace(char, f"{replacement.output}{char}")
+                    replacement_target = replacement_target.replace(
+                        string, f"{replacement.output}{string}"
+                    )
                 elif replacement.method == EscapeEnum.APPEND:
-                    string = string.replace(char, f"{char}{replacement.output}")
+                    replacement_target = replacement_target.replace(
+                        string, f"{string}{replacement.output}"
+                    )
                 elif replacement.method == EscapeEnum.REPLACE:
-                    string = string.replace(char, replacement.output)
-        return string
+                    replacement_target = replacement_target.replace(
+                        string, replacement.output
+                    )
+        return replacement_target

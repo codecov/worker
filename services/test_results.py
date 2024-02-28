@@ -22,9 +22,34 @@ log = logging.getLogger(__name__)
 
 
 ESCAPE_FAILURE_MESSAGE_DEFN = [
-    Replacement(r"\'*_`[]{}()#+-.!|<>&", "\\", EscapeEnum.PREPEND),
-    Replacement("\r", "", EscapeEnum.REPLACE),
-    Replacement("\n", "<br>", EscapeEnum.REPLACE),
+    Replacement(
+        [
+            "\\",
+            "'",
+            "*",
+            "_",
+            "`",
+            "[",
+            "]",
+            "{",
+            "}",
+            "(",
+            ")",
+            "#",
+            "+",
+            "-",
+            ".",
+            "!",
+            "|",
+            "<",
+            ">",
+            "&",
+            '"',
+        ],
+        "\\",
+        EscapeEnum.PREPEND,
+    ),
+    Replacement(["\n"], "<br>", EscapeEnum.REPLACE),
 ]
 
 
@@ -201,9 +226,10 @@ class TestResultsNotifier:
                 suffix = ""
                 if flag_names:
                     suffix = f"({','.join(flag_names) or ''})"
-                formatted_failure_message = escaper.replace(
-                    test_instance.failure_message
+                normalized_new_lines = "\n".join(
+                    test_instance.failure_message.splitlines()
                 )
+                formatted_failure_message = escaper.replace(normalized_new_lines)
                 failures[formatted_failure_message][
                     f"{test_instance.test.testsuite}::{test_instance.test.name}"
                 ].append(suffix)

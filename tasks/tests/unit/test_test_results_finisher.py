@@ -160,7 +160,7 @@ class TestUploadTestFinisherTask(object):
         test_instance4 = TestInstance(
             test_id=test_id2,
             outcome=str(Outcome.Failure),
-            failure_message="<pre>not that bad</pre> | hello | goodbye |",
+            failure_message="<pre>not that\r\n\r\n bad</pre> | hello | goodbye |",
             duration_seconds=2,
             upload_id=upload_id1,
         )
