@@ -493,6 +493,11 @@ class TestUploadProcessorTask(object):
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_3 = mocker.patch.object(UploadProcessorTask, "retry")
         mocked_3.side_effect = celery.exceptions.Retry()
+        mocked_4 = mocker.patch.object(ReportService, "parse_raw_report_from_storage")
+        mocked_4.return_value = "ParsedRawReport()"
+        mocked_5 = mocker.patch.object(
+            UploadProcessorTask, "_rewrite_raw_report_readable"
+        )
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
             message="",
@@ -523,6 +528,8 @@ class TestUploadProcessorTask(object):
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
         assert not mocked_3.called
+        mocked_4.assert_called_with(commit.repository, upload)
+        mocked_5.assert_called()
 
     @pytest.mark.asyncio
     async def test_upload_task_call_with_redis_lock_unobtainable(
