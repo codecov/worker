@@ -1,9 +1,10 @@
-https://github.com/codecov/shared/archive/34d1dc00bdc22811933b6424337b642bdeb0b4e0.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/5c6de0f898bfa32ef64a23b3519e44fa99028845.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 https://github.com/codecov/test-results-parser/archive/5515e960d5d38881036e9127f86320efca649f13.tar.gz#egg=test-results-parser
 boto3
 celery>=5.3.6
 click
+codecov-ribs
 coverage
 factory-boy
 google-cloud-storage>=2.10.0

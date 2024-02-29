@@ -13,7 +13,7 @@ from shared.utils.sessions import Session, SessionType
 from database.models.reports import Upload
 from helpers.exceptions import ReportEmptyError
 from helpers.labels import get_all_report_labels, get_labels_per_session
-from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG, repo_slug
+from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.path_fixer import PathFixer
 from services.report.parser.types import ParsedRawReport
 from services.report.report_builder import ReportBuilder, SpecialLabelsEnum
@@ -105,8 +105,8 @@ def process_raw_upload(
 
     should_use_encoded_labels = (
         upload
-        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG.check_value(
-            repo_slug(upload.report.commit.repository), default=False
+        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
+            upload.report.commit.repository.repoid, default=False
         )
     )
     # [javascript] check for both coverage.json and coverage/coverage.lcov
@@ -342,8 +342,8 @@ def _adjust_sessions(
         log.warning("Upload is None, but there are partial_overwrite_flags present")
     if (
         upload
-        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG.check_value(
-            repo_slug(upload.report.commit.repository), default=False
+        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
+            upload.report.commit.repository.repoid, default=False
         )
         and to_partially_overwrite_flags
     ):

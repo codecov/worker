@@ -2,8 +2,8 @@ import json
 import re
 from typing import Sequence
 
+from cc_rustyribs import rustify_diff
 from shared.profiling import ProfilingDataFullAnalyzer, ProfilingSummaryDataAnalyzer
-from shared.ribs import rustify_diff
 from shared.storage.exceptions import FileNotInStorageError
 
 from database.models.profiling import ProfilingCommit

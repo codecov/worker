@@ -11,7 +11,7 @@ from sqlalchemy import and_
 
 from app import celery_app
 from database.models import Owner, Repository
-from rollouts import LIST_REPOS_GENERATOR_BY_OWNER_SLUG, owner_slug
+from rollouts import LIST_REPOS_GENERATOR_BY_OWNER_ID
 from services.owner import get_owner_provider_service
 from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
@@ -239,9 +239,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added
-        elif LIST_REPOS_GENERATOR_BY_OWNER_SLUG.check_value(
-            owner_slug(owner), default=False
-        ):
+        elif LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
             ):
@@ -339,9 +337,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.commit()
 
         try:
-            if LIST_REPOS_GENERATOR_BY_OWNER_SLUG.check_value(
-                owner_slug(owner), default=False
-            ):
+            if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
                 with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
                     async for page in git.list_repos_generator():
                         process_repos(page)

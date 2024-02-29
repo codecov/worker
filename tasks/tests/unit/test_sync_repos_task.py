@@ -13,7 +13,7 @@ from shared.torngit.exceptions import TorngitClientError
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
-from tasks.sync_repos import LIST_REPOS_GENERATOR_BY_OWNER_SLUG, SyncReposTask
+from tasks.sync_repos import LIST_REPOS_GENERATOR_BY_OWNER_ID, SyncReposTask
 
 here = Path(__file__)
 
@@ -122,7 +122,7 @@ class TestSyncReposTaskUnit(object):
     ):
         if use_generator:
             mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+                LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=True
             )
         service = "gitlab"
         repo_service_id = "12071992"
@@ -180,7 +180,7 @@ class TestSyncReposTaskUnit(object):
     ):
         if use_generator:
             mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+                LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=True
             )
         service = "gitlab"
         repo_service_id = "12071992"
@@ -244,7 +244,7 @@ class TestSyncReposTaskUnit(object):
     ):
         if use_generator:
             mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+                LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=True
             )
         # It is unclear what situation leads to this
         # The most likely sitaution is that there was a repo abc on both owners kay and jay
@@ -320,7 +320,7 @@ class TestSyncReposTaskUnit(object):
     ):
         if use_generator:
             mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+                LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=True
             )
         service = "gitlab"
         repo_service_id = "12071992"
@@ -389,7 +389,7 @@ class TestSyncReposTaskUnit(object):
     ):
         if use_generator:
             mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+                LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=True
             )
         service = "gitlab"
         repo_service_id = "12071992"
@@ -433,9 +433,15 @@ class TestSyncReposTaskUnit(object):
         assert new_repo.private is True
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default"})
     async def test_only_public_repos_already_in_db(
         self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
     ):
+
+        mocker.patch.object(
+            LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=False
+        )
+
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -492,7 +498,7 @@ class TestSyncReposTaskUnit(object):
     ):
         if use_generator:
             mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
+                LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=True
             )
         user = OwnerFactory.create(
             organizations=[],
@@ -515,13 +521,15 @@ class TestSyncReposTaskUnit(object):
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_only_public_repos_not_in_db.yaml"
     )
     @respx.mock
+    @pytest.mark.django_db(databases={"default"})
     async def test_only_public_repos_not_in_db(
         self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
+        mocker.patch.object(
+            LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
+        )
+
         if use_generator:
-            mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
-            )
             respx.post("https://api.github.com/graphql").mock(
                 httpx.Response(
                     status_code=200,
@@ -563,6 +571,7 @@ class TestSyncReposTaskUnit(object):
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration.yaml"
     )
+    @pytest.mark.django_db(databases={"default"})
     async def test_sync_repos_using_integration(
         self,
         mocker,
@@ -571,10 +580,11 @@ class TestSyncReposTaskUnit(object):
         mock_redis,
         use_generator,
     ):
+        mocker.patch.object(
+            LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
+        )
+
         if use_generator:
-            mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
-            )
             respx.post("https://api.github.com/graphql").mock(
                 httpx.Response(
                     status_code=200,
@@ -675,10 +685,10 @@ class TestSyncReposTaskUnit(object):
     async def test_sync_repos_using_integration_no_repos(
         self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
+        mocker.patch.object(
+            LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
+        )
         if use_generator:
-            mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
-            )
             respx.post("https://api.github.com/graphql").mock(
                 httpx.Response(
                     status_code=200,
@@ -749,10 +759,9 @@ class TestSyncReposTaskUnit(object):
         mock_redis,
         use_generator,
     ):
-        if use_generator:
-            mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
-            )
+        mocker.patch.object(
+            LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
+        )
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         repos = [RepositoryFactory.create(private=True) for _ in range(10)]
         dbsession.add_all(repos)
@@ -787,10 +796,10 @@ class TestSyncReposTaskUnit(object):
         mock_redis,
         use_generator,
     ):
-        if use_generator:
-            mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
-            )
+        mocker.patch.object(
+            LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
+        )
+
         repos = [RepositoryFactory.create(private=True) for _ in range(10)]
         dbsession.add_all(repos)
         dbsession.flush()
@@ -833,10 +842,12 @@ class TestSyncReposTaskUnit(object):
             },
         )
 
+        mocker.patch.object(
+            LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
+        )
+
         if use_generator:
-            mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
-            )
+
             respx.post("https://api.github.com/graphql").mock(
                 httpx.Response(
                     status_code=200,
@@ -898,10 +909,11 @@ class TestSyncReposTaskUnit(object):
             },
         )
 
+        mocker.patch.object(
+            LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
+        )
+
         if use_generator:
-            mocker.patch.object(
-                LIST_REPOS_GENERATOR_BY_OWNER_SLUG, "check_value", return_value=True
-            )
             respx.post("https://api.github.com/graphql").mock(
                 httpx.Response(
                     status_code=200,
