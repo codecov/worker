@@ -5090,7 +5090,7 @@ class TestCommentNotifierWelcome:
         expected_result = [
             "## Welcome to [Codecov](https://codecov.io) :tada:",
             "",
-            "Once merged to your default branch, Codecov will compare your coverage reports and display the results in this comment.",
+            "Once you merge this PR into your default branch, you're all set! Codecov will compare coverage reports and display results in all future pull requests.",
             "",
             "Thanks for integrating Codecov - We've got you covered :open_umbrella:",
         ]
