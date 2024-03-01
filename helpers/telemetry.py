@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 
+import django
 from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
 from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetric
 
@@ -108,7 +109,8 @@ class MetricContext:
         self.populated = True
 
     def log_simple_metric(self, name: str, value: float):
-        timestamp = datetime.now()
+        # Timezone-aware timestamp in UTC
+        timestamp = django.utils.timezone.now()
 
         self.populate()
 
