@@ -106,7 +106,7 @@ def process_raw_upload(
     should_use_encoded_labels = (
         upload
         and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
-            upload.report.commit.repository.repoid, default=False
+            repo_id=upload.report.commit.repository.repoid, default=False
         )
     )
     # [javascript] check for both coverage.json and coverage/coverage.lcov
@@ -343,7 +343,7 @@ def _adjust_sessions(
     if (
         upload
         and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
-            upload.report.commit.repository.repoid, default=False
+            repo_id=upload.report.commit.repository.repoid, default=False
         )
         and to_partially_overwrite_flags
     ):
