@@ -20,38 +20,6 @@ from services.urls import get_pull_url
 log = logging.getLogger(__name__)
 
 
-ESCAPE_FAILURE_MESSAGE_DEFN = [
-    Replacement(
-        [
-            "\\",
-            "'",
-            "*",
-            "_",
-            "`",
-            "[",
-            "]",
-            "{",
-            "}",
-            "(",
-            ")",
-            "#",
-            "+",
-            "-",
-            ".",
-            "!",
-            "|",
-            "<",
-            ">",
-            "&",
-            '"',
-        ],
-        "\\",
-        EscapeEnum.PREPEND,
-    ),
-    Replacement(["\n"], "<br>", EscapeEnum.REPLACE),
-]
-
-
 class TestResultsReportService(BaseReportService):
     def __init__(self, current_yaml: UserYaml):
         super().__init__(current_yaml)

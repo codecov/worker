@@ -9,6 +9,7 @@ from test_results_parser import Outcome
 from app import celery_app
 from database.enums import ReportType
 from database.models import Commit, TestResultReportTotals
+from helpers.string import EscapeEnum, Replacement, StringEscaper
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
     TestResultsNotifier,
@@ -20,6 +21,37 @@ from tasks.notify import notify_task_name
 log = logging.getLogger(__name__)
 
 test_results_finisher_task_name = "app.tasks.test_results.TestResultsFinisherTask"
+
+ESCAPE_FAILURE_MESSAGE_DEFN = [
+    Replacement(
+        [
+            "\\",
+            "'",
+            "*",
+            "_",
+            "`",
+            "[",
+            "]",
+            "{",
+            "}",
+            "(",
+            ")",
+            "#",
+            "+",
+            "-",
+            ".",
+            "!",
+            "|",
+            "<",
+            ">",
+            "&",
+            '"',
+        ],
+        "\\",
+        EscapeEnum.PREPEND,
+    ),
+    Replacement(["\n"], "<br>", EscapeEnum.REPLACE),
+]
 
 
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
@@ -115,6 +147,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         failures = defaultdict(lambda: defaultdict(list))
 
+        escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
+
         for test_instance in test_instances:
             if test_instance.outcome == str(
                 Outcome.Failure
@@ -123,9 +157,10 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 flag_names = sorted(test_instance.upload.flag_names)
                 suffix = ""
                 if flag_names:
-                    suffix = f"({','.join(flag_names) or ''})"
-                failures[test_instance.failure_message][
-                    f"{test_instance.test.testsuite}::{test_instance.test.name}"
+                    suffix = f"{''.join(flag_names) or ''}"
+                failure_message = escaper.replace(test_instance.failure_message)
+                failures[failure_message][
+                    f"{test_instance.test.testsuite}//////////{test_instance.test.name}"
                 ].append(suffix)
             elif test_instance.outcome == str(Outcome.Skip):
                 skipped_tests += 1
