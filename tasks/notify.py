@@ -145,8 +145,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         test_result_commit_report = commit.commit_report(ReportType.TEST_RESULTS)
         if (
             test_result_commit_report is not None
-            and test_result_commit_report.totals is not None
-            and test_result_commit_report.totals.failed > 0
+            and test_result_commit_report.test_result_totals is not None
+            and test_result_commit_report.test_result_totals.failed > 0
         ):
             return {
                 "notify_attempted": False,
