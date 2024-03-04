@@ -141,6 +141,8 @@ class TestResultsNotifier:
                     report_key=commit_report.external_id,
                 ),
             )
+            return False
+
         pullid = pull.database_pull.pullid
 
         pull_url = get_pull_url(pull.database_pull)

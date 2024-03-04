@@ -305,12 +305,10 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     failure_message = Column(types.Text)
 
 
-class TestResultReportTotals(CodecovBaseModel, AbstractTotals):
+class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_testresultreporttotals"
-
     report_id = Column(types.Integer, ForeignKey("reports_commitreport.id"))
     report = relationship("CommitReport", foreign_keys=[report_id])
-
     passed = Column(types.Integer)
     skipped = Column(types.Integer)
     failed = Column(types.Integer)
