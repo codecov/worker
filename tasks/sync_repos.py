@@ -239,7 +239,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added
-        elif LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
+        elif await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
+            ownerid, default=False
+        ):
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
             ):
@@ -337,7 +339,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.commit()
 
         try:
-            if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
+            if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
+                ownerid, default=False
+            ):
                 with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
                     async for page in git.list_repos_generator():
                         process_repos(page)
