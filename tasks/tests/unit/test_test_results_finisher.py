@@ -11,7 +11,7 @@ from database.models import CommitReport, RepositoryFlag, Test, TestInstance
 from database.tests.factories import CommitFactory, PullFactory, UploadFactory
 from services.repository import EnrichedPull
 from services.test_results import generate_test_id
-from tasks.test_results_finisher import TestResultsFinisherTask
+from tasks.test_results_finisher import QUEUE_NOTIFY_KEY, TestResultsFinisherTask
 
 here = Path(__file__)
 
@@ -178,7 +178,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": True}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            QUEUE_NOTIFY_KEY: False,
+        }
         m.post_comment.assert_called_with(
             pull.pullid,
             f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- b</pre> | <pre>\\<pre\\>not that bad\\</pre\\> \\| hello \\| goodbye \\|</pre> |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- a</pre> | <pre>okay i guess</pre> |",
@@ -358,7 +362,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": True}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            QUEUE_NOTIFY_KEY: False,
+        }
         m.post_comment.assert_called_with(
             pull.pullid,
             f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- a<br><br>- b<br>Testsuite: test_testsuite<br>Test name: test_name_2<br>Envs: <br>- a</pre> | <pre>not that bad</pre> |",
@@ -532,7 +540,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": False, "notify_succeeded": False}
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: True,
+        }
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
             args=None,
             kwargs={
@@ -709,7 +721,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": False, "notify_succeeded": False}
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         assert expected_result == result
 
@@ -871,7 +887,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": True}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         m.edit_comment.assert_called_with(
             pull.pullid,
@@ -1033,7 +1053,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": False}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         assert expected_result == result
 

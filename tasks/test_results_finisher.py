@@ -20,6 +20,8 @@ log = logging.getLogger(__name__)
 
 test_results_finisher_task_name = "app.tasks.test_results.TestResultsFinisherTask"
 
+QUEUE_NOTIFY_KEY = "queue_notify"
+
 
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
     async def run_async(
@@ -58,7 +60,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 LockType.NOTIFICATION,
                 retry_num=self.request.retries,
             ):
-                return await self.process_async_within_lock(
+                finisher_result = await self.process_async_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -66,6 +68,18 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     previous_result=chord_result,
                     **kwargs,
                 )
+            if finisher_result[QUEUE_NOTIFY_KEY]:
+                self.app.tasks[notify_task_name].apply_async(
+                    args=None,
+                    kwargs=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        current_yaml=commit_yaml.to_dict(),
+                    ),
+                )
+
+            return finisher_result
+
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
@@ -96,6 +110,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         if self.check_if_no_success(previous_result):
             # every processor errored, nothing to notify on
+            return {
+                "notify_attempted": False,
+                "notify_succeeded": False,
+                QUEUE_NOTIFY_KEY: True,
+            }
             metrics.incr(
                 "test_results.finisher",
                 tags={"status": "failure", "reason": "no_success"},
@@ -108,6 +127,12 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             )
 
         if self.check_if_no_failures(test_instances):
+
+            return {
+                "notify_attempted": False,
+                "notify_succeeded": False,
+                QUEUE_NOTIFY_KEY: True,
+            }
             metrics.incr(
                 "test_results.finisher",
                 tags={"status": "success", "reason": "no_failures"},
@@ -137,6 +162,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             ),
         )
 
+        return {
+            "notify_attempted": True,
+            "notify_succeeded": success,
+            QUEUE_NOTIFY_KEY: False,
+        }
         # using a var as a tag here will be fine as it's a boolean
         metrics.incr(
             "test_results.finisher",
