@@ -105,9 +105,12 @@ def process_raw_upload(
 
     should_use_encoded_labels = (
         upload
-        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
-            upload.report.commit.repository.repoid, default=False
-        )
+        and False
+        #####################################TEMP##########################################
+        # and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
+        #     upload.report.commit.repository.repoid, default=False
+        # )
+        #####################################TEMP##########################################
     )
     # [javascript] check for both coverage.json and coverage/coverage.lcov
     for report_file in reports.get_uploaded_files():
@@ -342,9 +345,12 @@ def _adjust_sessions(
         log.warning("Upload is None, but there are partial_overwrite_flags present")
     if (
         upload
-        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
-            upload.report.commit.repository.repoid, default=False
-        )
+        and False
+        #####################################TEMP##########################################
+        # USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
+        #     upload.report.commit.repository.repoid, default=False
+        # )
+        #####################################TEMP##########################################
         and to_partially_overwrite_flags
     ):
         # Make sure that the labels in the reports are in a good state to merge them
