@@ -1,383 +1,379 @@
 interactions:
-  - request:
-      body: ""
-      headers:
-        accept:
-          - application/json
-        accept-encoding:
-          - gzip, deflate
-        connection:
-          - keep-alive
-        host:
-          - gitlab.com
-        user-agent:
-          - Default
-      method: GET
-      uri: https://gitlab.com/api/v4/projects/47404140/repository/compare/?from=0fc784af11c401449e56b24a174bae7b9af86c98&to=0b6a213fc300cd328c0625f38f30432ee6e066e5
-    response:
-      content:
-        '{"commit":{"id":"0b6a213fc300cd328c0625f38f30432ee6e066e5","short_id":"0b6a213f","created_at":"2023-06-27T12:30:01.000-04:00","parent_ids":["0c11f75d3f08db4bdf9a9f077e9e513990cd7a18"],"title":"5","message":"5\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:14:35.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T12:30:01.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0b6a213fc300cd328c0625f38f30432ee6e066e5"},"commits":[{"id":"0c11f75d3f08db4bdf9a9f077e9e513990cd7a18","short_id":"0c11f75d","created_at":"2023-06-27T12:30:00.000-04:00","parent_ids":["5ad8e6ce797491865e815667384f93c87b1c7245"],"title":"4","message":"4\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:13:52.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T12:30:00.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0c11f75d3f08db4bdf9a9f077e9e513990cd7a18"},{"id":"0b6a213fc300cd328c0625f38f30432ee6e066e5","short_id":"0b6a213f","created_at":"2023-06-27T12:30:01.000-04:00","parent_ids":["0c11f75d3f08db4bdf9a9f077e9e513990cd7a18"],"title":"5","message":"5\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:14:35.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T12:30:01.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0b6a213fc300cd328c0625f38f30432ee6e066e5"}],"diffs":[{"diff":"","new_path":"4.txt","old_path":"4.txt","a_mode":"0","b_mode":"100644","new_file":true,"renamed_file":false,"deleted_file":false},{"diff":"@@
-        -24,7 +24,4 @@ def test_multiply():\n     assert Calculator.multiply(-4, 2.0)
-        == -8.0\n \n def test_divide():\n-    assert Calculator.divide(1, 2) == 0.5\n-    assert
-        Calculator.divide(1.0, 2.0) == 0.5\n-    assert Calculator.divide(0, 2.0) ==
-        0\n-    assert Calculator.divide(-4, 2.0) == -2.0\n\\ No newline at end of file\n+    assert
-        Calculator.divide(1, 2) == 0.5\n\\ No newline at end of file\n","new_path":"api/calculator/test_calculator.py","old_path":"api/calculator/test_calculator.py","a_mode":"100644","b_mode":"100644","new_file":false,"renamed_file":false,"deleted_file":false}],"compare_timeout":false,"compare_same_ref":false,"web_url":"https://gitlab.com/joseph-sentry/example-python/-/compare/5ad8e6ce797491865e815667384f93c87b1c7245...0b6a213fc300cd328c0625f38f30432ee6e066e5"}'
-      headers:
-        CF-Cache-Status:
-          - MISS
-        CF-RAY:
-          - 7e193b306ca136d8-YYZ
-        Cache-Control:
-          - max-age=0, private, must-revalidate
-        Connection:
-          - keep-alive
-        Content-Encoding:
-          - gzip
-        Content-Security-Policy:
-          - default-src 'none'
-        Content-Type:
-          - application/json
-        Date:
-          - Tue, 04 Jul 2023 17:54:03 GMT
-        Etag:
-          - W/"bb9ffde5bcafb3a779105cac464ca1f3"
-        GitLab-LB:
-          - fe-09-lb-gprd
-        GitLab-SV:
-          - api-gke-us-east1-b
-        NEL:
-          - '{"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}'
-        Referrer-Policy:
-          - strict-origin-when-cross-origin
-        Report-To:
-          - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=JC6qR2pHaLG0QU%2B32UiLFIzlAktwMU3phdIK9YHtb%2Fqwb9VQUDg5NhBlrT0w%2BNxE4bI3xYU5sLUX4A6p9xGLx%2FqhSUOIbv6k6QbBDZSXrzl00VpN79NU90RWuvJdan8yD%2BTkrjaFAc0%3D"}],"group":"cf-nel","max_age":604800}'
-        Server:
-          - cloudflare
-        Set-Cookie:
-          - _cfuvid=3EG7MrO_vdP3KgZ_aLy9NpP3MSknAnAoW5OFYhLqsAQ-1688493243130-0-604800000;
-            path=/; domain=.gitlab.com; HttpOnly; Secure; SameSite=None
-        Strict-Transport-Security:
-          - max-age=31536000
-        Transfer-Encoding:
-          - chunked
-        Vary:
-          - Origin, Accept-Encoding
-        X-Content-Type-Options:
-          - nosniff
-        X-Frame-Options:
-          - SAMEORIGIN
-        X-Gitlab-Meta:
-          - '{"correlation_id":"6a5cbc836eac371c289f44dbc2313eb3","version":"1"}'
-        X-Request-Id:
-          - 6a5cbc836eac371c289f44dbc2313eb3
-        X-Runtime:
-          - "0.090368"
-      http_version: HTTP/1.1
-      status_code: 200
-  - request:
-      body: ""
-      headers:
-        accept:
-          - application/json
-        accept-encoding:
-          - gzip, deflate
-        connection:
-          - keep-alive
-        host:
-          - gitlab.com
-        user-agent:
-          - Default
-      method: GET
-      uri: https://gitlab.com/api/v4/projects/47404140/repository/branches
-    response:
-      content:
-        '[{"name":"behind","commit":{"id":"0b6a213fc300cd328c0625f38f30432ee6e066e5","short_id":"0b6a213f","created_at":"2023-06-27T12:30:01.000-04:00","parent_ids":["0c11f75d3f08db4bdf9a9f077e9e513990cd7a18"],"title":"5","message":"5\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:14:35.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T12:30:01.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0b6a213fc300cd328c0625f38f30432ee6e066e5"},"merged":false,"protected":false,"developers_can_push":false,"developers_can_merge":false,"can_push":true,"default":false,"web_url":"https://gitlab.com/joseph-sentry/example-python/-/tree/behind"},{"name":"main","commit":{"id":"0fc784af11c401449e56b24a174bae7b9af86c98","short_id":"0fc784af","created_at":"2023-06-27T11:13:34.000-04:00","parent_ids":["b64b9b4c25c6c088781ead5eae424f156ee98d8c"],"title":"3","message":"3\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:13:34.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T11:13:34.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0fc784af11c401449e56b24a174bae7b9af86c98"},"merged":false,"protected":true,"developers_can_push":false,"developers_can_merge":false,"can_push":true,"default":true,"web_url":"https://gitlab.com/joseph-sentry/example-python/-/tree/main"},{"name":"step3","commit":{"id":"61089a89aa216c556a17f5648bd89ef17cb54f63","short_id":"61089a89","created_at":"2023-06-13T12:17:26.000-04:00","parent_ids":["50e2fabc371fa2c8ba66295862df53deec038ac8"],"title":"use
-        token?","message":"use token?\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-13T12:17:26.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-13T12:17:26.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/61089a89aa216c556a17f5648bd89ef17cb54f63"},"merged":false,"protected":false,"developers_can_push":false,"developers_can_merge":false,"can_push":true,"default":false,"web_url":"https://gitlab.com/joseph-sentry/example-python/-/tree/step3"}]'
-      headers:
-        CF-Cache-Status:
-          - MISS
-        CF-RAY:
-          - 7e193b32190236d5-YYZ
-        Cache-Control:
-          - max-age=0, private, must-revalidate
-        Connection:
-          - keep-alive
-        Content-Encoding:
-          - gzip
-        Content-Security-Policy:
-          - default-src 'none'
-        Content-Type:
-          - application/json
-        Date:
-          - Tue, 04 Jul 2023 17:54:03 GMT
-        Etag:
-          - W/"ed688f50c71ff83cb17dadf6e336e69a"
-        GitLab-LB:
-          - fe-12-lb-gprd
-        GitLab-SV:
-          - api-gke-us-east1-b
-        Link:
-          - <https://gitlab.com/api/v4/projects/47404140/repository/branches?id=47404140&page=1&per_page=20>;
-            rel="first", <https://gitlab.com/api/v4/projects/47404140/repository/branches?id=47404140&page=1&per_page=20>;
-            rel="last"
-        NEL:
-          - '{"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}'
-        Referrer-Policy:
-          - strict-origin-when-cross-origin
-        Report-To:
-          - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=TDqA%2Fh0ao1DGnX2YxEo3WW0wN13XAfEDbtjDd87%2BsNBpIUZULCm47m9y887VfLIIo1jDoPDoK3OQrs5d%2F2oSBAoU3%2F6JCkaJPlCssfBTfIoxt%2Ffr5RxsTf9TOJtqWSyu50Pi6fYBQ%2BU%3D"}],"group":"cf-nel","max_age":604800}'
-        Server:
-          - cloudflare
-        Set-Cookie:
-          - _cfuvid=lQx4LdgHz2oZpgnFLpvobY2Y.1L_u3FR11V.jRGMEY0-1688493243431-0-604800000;
-            path=/; domain=.gitlab.com; HttpOnly; Secure; SameSite=None
-        Strict-Transport-Security:
-          - max-age=31536000
-        Transfer-Encoding:
-          - chunked
-        Vary:
-          - Origin, Accept-Encoding
-        X-Content-Type-Options:
-          - nosniff
-        X-Frame-Options:
-          - SAMEORIGIN
-        X-Gitlab-Meta:
-          - '{"correlation_id":"4353ac9cc0ef373e12b71a68f1612cb6","version":"1"}'
-        X-Next-Page:
-          - ""
-        X-Page:
-          - "1"
-        X-Per-Page:
-          - "20"
-        X-Prev-Page:
-          - ""
-        X-Request-Id:
-          - 4353ac9cc0ef373e12b71a68f1612cb6
-        X-Runtime:
-          - "0.113054"
-        X-Total:
-          - "3"
-        X-Total-Pages:
-          - "1"
-      http_version: HTTP/1.1
-      status_code: 200
-  - request:
-      body:
-        '{"body": "## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=h1&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)
-        Report\n> Merging [#1](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=desc&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)
-        (0b6a213) into [main](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?el=desc&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)
-        (0fc784a) will **increase** coverage by `10.00%`.\n> The diff coverage is `n/a`.\n\n[![Impacted
-        file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=tree&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)\n\n```diff\n@@              Coverage
-        Diff              @@\n##               main       #1       +/-   ##\n=============================================\n+
-        Coverage     50.00%   60.00%   +10.00%     \n+ Complexity       11       10        -1     \n=============================================\n  Files             2        2               \n  Lines             6       10        +4     \n  Branches          0        1        +1     \n=============================================\n+
-        Hits              3        6        +3     \n  Misses            3        3               \n-
-        Partials          0        1        +1     \n```\n\n| Flag | Coverage \u0394
-        | Complexity \u0394 | |\n|---|---|---|---|\n| integration | `?` | `?` | |\n|
-        unit | `100.00% <\u00f8> (?)` | `0.00 <\u00f8> (?)` | |\n\nFlags with carried
-        forward coverage won''t be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French#carryforward-flags-in-the-pull-request-comment)
-        to find out more.\n\n[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/indirect-changes?src=pr&el=tree-more&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)\n\n------\n\n[Continue
-        to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=continue&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French).\n>
-        **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta?utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)\n>
-        `\u0394 = absolute <relative> (impact)`, `\u00f8 = not affected`, `? = missing
-        data`\n> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=footer&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French).
-        Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=lastupdated&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French).
-        Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments?utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French).\n"}'
-      headers:
-        accept:
-          - application/json
-        accept-encoding:
-          - gzip, deflate
-        connection:
-          - keep-alive
-        content-length:
-          - "3644"
-        content-type:
-          - application/json
-        host:
-          - gitlab.com
-        user-agent:
-          - Default
-      method: POST
-      uri: https://gitlab.com/api/v4/projects/47404140/merge_requests/1/notes
-    response:
-      content:
-        "{\"id\":1457135397,\"type\":null,\"body\":\"## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
-        u0026el=h1\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
-        u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French) Report\\n\\u003e Merging\
-        \ [#1](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
-        u0026el=desc\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
-        u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French) (0b6a213) into [main](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?el=desc\\\
-        u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
-        u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French) (0fc784a) will **increase**\
-        \ coverage by `10.00%`.\\n\\u003e The diff coverage is `n/a`.\\n\\n[![Impacted\
-        \ file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/graphs/tree.svg?width=650\\\
-        u0026height=150\\u0026src=pr\\u0026token=abcdefghij\\u0026utm_medium=referral\\\
-        u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
-        u0026utm_term=Gina+French)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
-        u0026el=tree\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
-        u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)\\n\\n```diff\\n@@\
-        \              Coverage Diff              @@\\n##               main       #1\
-        \       +/-   ##\\n=============================================\\n+ Coverage\
-        \     50.00%   60.00%   +10.00%     \\n+ Complexity       11       10      \
-        \  -1     \\n=============================================\\n  Files       \
-        \      2        2               \\n  Lines             6       10        +4\
-        \     \\n  Branches          0        1        +1     \\n=============================================\\\
-        n+ Hits              3        6        +3     \\n  Misses            3     \
-        \   3               \\n- Partials          0        1        +1     \\n```\\\
-        n\\n| Flag | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n|\
-        \ integration | `?` | `?` | |\\n| unit | `100.00% \\u003c\xF8\\u003e (?)` |\
-        \ `0.00 \\u003c\xF8\\u003e (?)` | |\\n\\nFlags with carried forward coverage\
-        \ won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral\\\
-        u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
-        u0026utm_term=Gina+French#carryforward-flags-in-the-pull-request-comment) to\
-        \ find out more.\\n\\n[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/indirect-changes?src=pr\\\
-        u0026el=tree-more\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
-        u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)\\n\\n------\\n\\n[Continue\
-        \ to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
-        u0026el=continue\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
-        u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French).\\n\\u003e **Legend**\
-        \ - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta?utm_medium=referral\\\
-        u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
-        u0026utm_term=Gina+French)\\n\\u003e `\u0394 = absolute \\u003crelative\\u003e\
-        \ (impact)`, `\xF8 = not affected`, `? = missing data`\\n\\u003e Powered by\
-        \ [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
-        u0026el=footer\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
-        u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
-        u0026el=lastupdated\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
-        u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French). Read the [comment\
-        \ docs](https://docs.codecov.io/docs/pull-request-comments?utm_medium=referral\\\
-        u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
-        u0026utm_term=Gina+French).\",\"attachment\":null,\"author\":{\"id\":15014576,\"\
-        username\":\"joseph-sentry\",\"name\":\"joseph-sentry\",\"state\":\"active\"\
-        ,\"avatar_url\":\"https://secure.gravatar.com/avatar/b8db468edebbae1ffa228d3095c230c5?s=80\\\
-        u0026d=identicon\",\"web_url\":\"https://gitlab.com/joseph-sentry\"},\"created_at\"\
-        :\"2023-07-04T17:54:03.693Z\",\"updated_at\":\"2023-07-04T17:54:03.693Z\",\"\
-        system\":false,\"noteable_id\":234535703,\"noteable_type\":\"MergeRequest\"\
-        ,\"project_id\":47404140,\"resolvable\":false,\"confidential\":false,\"internal\"\
-        :false,\"noteable_iid\":1,\"commands_changes\":{}}"
-      headers:
-        CF-Cache-Status:
-          - DYNAMIC
-        CF-RAY:
-          - 7e193b34483fa1d8-YYZ
-        Cache-Control:
-          - max-age=0, private, must-revalidate
-        Connection:
-          - keep-alive
-        Content-Length:
-          - "4563"
-        Content-Security-Policy:
-          - default-src 'none'
-        Content-Type:
-          - application/json
-        Date:
-          - Tue, 04 Jul 2023 17:54:03 GMT
-        Etag:
-          - W/"c385bbb79f9cd8c8ef5c8c20956b1d23"
-        GitLab-LB:
-          - fe-13-lb-gprd
-        GitLab-SV:
-          - gke-cny-api
-        NEL:
-          - '{"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}'
-        Referrer-Policy:
-          - strict-origin-when-cross-origin
-        Report-To:
-          - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=ddX79d3f6rJGXEtRolagciIjbg9zjjbYpg65sv%2FAUNyXUtdEJIuthFhXPuYZVDi8byimBpfkor6ypIrXF07bWt331SxRnOdeKU6Imreqkfkite2Nx8%2FqRVRiMrH9r8vBFGe167NFSmc%3D"}],"group":"cf-nel","max_age":604800}'
-        Server:
-          - cloudflare
-        Set-Cookie:
-          - _cfuvid=YKIxWaDzvazpjHge8Q9AjvELoaYcqF5jWIN.5ym_YyQ-1688493243878-0-604800000;
-            path=/; domain=.gitlab.com; HttpOnly; Secure; SameSite=None
-        Strict-Transport-Security:
-          - max-age=31536000
-        Vary:
-          - Origin
-        X-Content-Type-Options:
-          - nosniff
-        X-Frame-Options:
-          - SAMEORIGIN
-        X-Gitlab-Meta:
-          - '{"correlation_id":"a6cddfff67cb7349491082b18e233049","version":"1"}'
-        X-Request-Id:
-          - a6cddfff67cb7349491082b18e233049
-        X-Runtime:
-          - "0.228506"
-      http_version: HTTP/1.1
-      status_code: 201
-  - request:
-      body: ""
-      headers:
-        accept:
-          - application/json
-        accept-encoding:
-          - gzip, deflate
-        connection:
-          - keep-alive
-        host:
-          - gitlab.com
-        user-agent:
-          - Default
-      method: GET
-      uri: https://gitlab.com/api/v4/projects/47404140/repository/branches/main
-    response:
-      content: '{"message":"401 Unauthorized"}'
-      headers:
-        CF-Cache-Status:
-          - MISS
-        CF-RAY:
-          - 7fef2fd0182436fe-YYZ
-        Cache-Control:
-          - no-cache
-        Connection:
-          - keep-alive
-        Content-Length:
-          - "30"
-        Content-Security-Policy:
-          - default-src 'none'
-        Content-Type:
-          - application/json
-        Date:
-          - Wed, 30 Aug 2023 18:44:44 GMT
-        GitLab-LB:
-          - fe-05-lb-gprd
-        GitLab-SV:
-          - localhost
-        NEL:
-          - '{"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}'
-        RateLimit-Limit:
-          - "2000"
-        RateLimit-Observed:
-          - "2"
-        RateLimit-Remaining:
-          - "1998"
-        RateLimit-Reset:
-          - "1693421144"
-        RateLimit-ResetTime:
-          - Wed, 30 Aug 2023 18:45:44 GMT
-        Referrer-Policy:
-          - strict-origin-when-cross-origin
-        Report-To:
-          - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=lBgieih4yF%2BSFqCVeTidu8Y1w18hb7BV63ktECkxzQPrULx2APCFXvtqQDV6ZmRnfTxppDY%2F15MRyjs064ja6G4RylNKxJlsQ8C7GUpx67j3H%2BfnNW7ugAHn574%3D"}],"group":"cf-nel","max_age":604800}'
-        Server:
-          - cloudflare
-        Set-Cookie:
-          - _cfuvid=0RVizv.CnCUUI1sQDhOigxGHiJY1v6BbpkmTQn7RUNM-1693421084336-0-604800000;
-            path=/; domain=.gitlab.com; HttpOnly; Secure; SameSite=None
-        Strict-Transport-Security:
-          - max-age=31536000
-        Vary:
-          - Origin, Accept-Encoding
-        X-Content-Type-Options:
-          - nosniff
-        X-Frame-Options:
-          - SAMEORIGIN
-        X-Gitlab-Meta:
-          - '{"correlation_id":"0a55ef3f31f3613df4edf90f82a78c20","version":"1"}'
-        X-Request-Id:
-          - 0a55ef3f31f3613df4edf90f82a78c20
-        X-Runtime:
-          - "0.034387"
-      http_version: HTTP/1.1
-      status_code: 401
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - gitlab.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/47404140/repository/compare/?from=0fc784af11c401449e56b24a174bae7b9af86c98&to=0b6a213fc300cd328c0625f38f30432ee6e066e5
+  response:
+    content: '{"commit":{"id":"0b6a213fc300cd328c0625f38f30432ee6e066e5","short_id":"0b6a213f","created_at":"2023-06-27T12:30:01.000-04:00","parent_ids":["0c11f75d3f08db4bdf9a9f077e9e513990cd7a18"],"title":"5","message":"5\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:14:35.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T12:30:01.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0b6a213fc300cd328c0625f38f30432ee6e066e5"},"commits":[{"id":"0c11f75d3f08db4bdf9a9f077e9e513990cd7a18","short_id":"0c11f75d","created_at":"2023-06-27T12:30:00.000-04:00","parent_ids":["5ad8e6ce797491865e815667384f93c87b1c7245"],"title":"4","message":"4\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:13:52.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T12:30:00.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0c11f75d3f08db4bdf9a9f077e9e513990cd7a18"},{"id":"0b6a213fc300cd328c0625f38f30432ee6e066e5","short_id":"0b6a213f","created_at":"2023-06-27T12:30:01.000-04:00","parent_ids":["0c11f75d3f08db4bdf9a9f077e9e513990cd7a18"],"title":"5","message":"5\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:14:35.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T12:30:01.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0b6a213fc300cd328c0625f38f30432ee6e066e5"}],"diffs":[{"diff":"","new_path":"4.txt","old_path":"4.txt","a_mode":"0","b_mode":"100644","new_file":true,"renamed_file":false,"deleted_file":false},{"diff":"@@
+      -24,7 +24,4 @@ def test_multiply():\n     assert Calculator.multiply(-4, 2.0)
+      == -8.0\n \n def test_divide():\n-    assert Calculator.divide(1, 2) == 0.5\n-    assert
+      Calculator.divide(1.0, 2.0) == 0.5\n-    assert Calculator.divide(0, 2.0) ==
+      0\n-    assert Calculator.divide(-4, 2.0) == -2.0\n\\ No newline at end of file\n+    assert
+      Calculator.divide(1, 2) == 0.5\n\\ No newline at end of file\n","new_path":"api/calculator/test_calculator.py","old_path":"api/calculator/test_calculator.py","a_mode":"100644","b_mode":"100644","new_file":false,"renamed_file":false,"deleted_file":false}],"compare_timeout":false,"compare_same_ref":false,"web_url":"https://gitlab.com/joseph-sentry/example-python/-/compare/5ad8e6ce797491865e815667384f93c87b1c7245...0b6a213fc300cd328c0625f38f30432ee6e066e5"}'
+    headers:
+      CF-Cache-Status:
+      - MISS
+      CF-RAY:
+      - 7e193b306ca136d8-YYZ
+      Cache-Control:
+      - max-age=0, private, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 04 Jul 2023 17:54:03 GMT
+      Etag:
+      - W/"bb9ffde5bcafb3a779105cac464ca1f3"
+      GitLab-LB:
+      - fe-09-lb-gprd
+      GitLab-SV:
+      - api-gke-us-east1-b
+      NEL:
+      - '{"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}'
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Report-To:
+      - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=JC6qR2pHaLG0QU%2B32UiLFIzlAktwMU3phdIK9YHtb%2Fqwb9VQUDg5NhBlrT0w%2BNxE4bI3xYU5sLUX4A6p9xGLx%2FqhSUOIbv6k6QbBDZSXrzl00VpN79NU90RWuvJdan8yD%2BTkrjaFAc0%3D"}],"group":"cf-nel","max_age":604800}'
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - _cfuvid=3EG7MrO_vdP3KgZ_aLy9NpP3MSknAnAoW5OFYhLqsAQ-1688493243130-0-604800000;
+        path=/; domain=.gitlab.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Gitlab-Meta:
+      - '{"correlation_id":"6a5cbc836eac371c289f44dbc2313eb3","version":"1"}'
+      X-Request-Id:
+      - 6a5cbc836eac371c289f44dbc2313eb3
+      X-Runtime:
+      - '0.090368'
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - gitlab.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/47404140/repository/branches
+  response:
+    content: '[{"name":"behind","commit":{"id":"0b6a213fc300cd328c0625f38f30432ee6e066e5","short_id":"0b6a213f","created_at":"2023-06-27T12:30:01.000-04:00","parent_ids":["0c11f75d3f08db4bdf9a9f077e9e513990cd7a18"],"title":"5","message":"5\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:14:35.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T12:30:01.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0b6a213fc300cd328c0625f38f30432ee6e066e5"},"merged":false,"protected":false,"developers_can_push":false,"developers_can_merge":false,"can_push":true,"default":false,"web_url":"https://gitlab.com/joseph-sentry/example-python/-/tree/behind"},{"name":"main","commit":{"id":"0fc784af11c401449e56b24a174bae7b9af86c98","short_id":"0fc784af","created_at":"2023-06-27T11:13:34.000-04:00","parent_ids":["b64b9b4c25c6c088781ead5eae424f156ee98d8c"],"title":"3","message":"3\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-27T11:13:34.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-27T11:13:34.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/0fc784af11c401449e56b24a174bae7b9af86c98"},"merged":false,"protected":true,"developers_can_push":false,"developers_can_merge":false,"can_push":true,"default":true,"web_url":"https://gitlab.com/joseph-sentry/example-python/-/tree/main"},{"name":"step3","commit":{"id":"61089a89aa216c556a17f5648bd89ef17cb54f63","short_id":"61089a89","created_at":"2023-06-13T12:17:26.000-04:00","parent_ids":["50e2fabc371fa2c8ba66295862df53deec038ac8"],"title":"use
+      token?","message":"use token?\n","author_name":"joseph-sentry","author_email":"joseph.sawaya@sentry.io","authored_date":"2023-06-13T12:17:26.000-04:00","committer_name":"joseph-sentry","committer_email":"joseph.sawaya@sentry.io","committed_date":"2023-06-13T12:17:26.000-04:00","trailers":{},"web_url":"https://gitlab.com/joseph-sentry/example-python/-/commit/61089a89aa216c556a17f5648bd89ef17cb54f63"},"merged":false,"protected":false,"developers_can_push":false,"developers_can_merge":false,"can_push":true,"default":false,"web_url":"https://gitlab.com/joseph-sentry/example-python/-/tree/step3"}]'
+    headers:
+      CF-Cache-Status:
+      - MISS
+      CF-RAY:
+      - 7e193b32190236d5-YYZ
+      Cache-Control:
+      - max-age=0, private, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 04 Jul 2023 17:54:03 GMT
+      Etag:
+      - W/"ed688f50c71ff83cb17dadf6e336e69a"
+      GitLab-LB:
+      - fe-12-lb-gprd
+      GitLab-SV:
+      - api-gke-us-east1-b
+      Link:
+      - <https://gitlab.com/api/v4/projects/47404140/repository/branches?id=47404140&page=1&per_page=20>;
+        rel="first", <https://gitlab.com/api/v4/projects/47404140/repository/branches?id=47404140&page=1&per_page=20>;
+        rel="last"
+      NEL:
+      - '{"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}'
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Report-To:
+      - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=TDqA%2Fh0ao1DGnX2YxEo3WW0wN13XAfEDbtjDd87%2BsNBpIUZULCm47m9y887VfLIIo1jDoPDoK3OQrs5d%2F2oSBAoU3%2F6JCkaJPlCssfBTfIoxt%2Ffr5RxsTf9TOJtqWSyu50Pi6fYBQ%2BU%3D"}],"group":"cf-nel","max_age":604800}'
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - _cfuvid=lQx4LdgHz2oZpgnFLpvobY2Y.1L_u3FR11V.jRGMEY0-1688493243431-0-604800000;
+        path=/; domain=.gitlab.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Gitlab-Meta:
+      - '{"correlation_id":"4353ac9cc0ef373e12b71a68f1612cb6","version":"1"}'
+      X-Next-Page:
+      - ''
+      X-Page:
+      - '1'
+      X-Per-Page:
+      - '20'
+      X-Prev-Page:
+      - ''
+      X-Request-Id:
+      - 4353ac9cc0ef373e12b71a68f1612cb6
+      X-Runtime:
+      - '0.113054'
+      X-Total:
+      - '3'
+      X-Total-Pages:
+      - '1'
+    http_version: HTTP/1.1
+    status_code: 200
+- request:
+    body: '{"body": "## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=h1&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)
+      Report\n> Merging [#1](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=desc&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)
+      (0b6a213) into [main](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?el=desc&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)
+      (0fc784a) will **increase** coverage by `10.00%`.\n> The diff coverage is `n/a`.\n\n[![Impacted
+      file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=tree&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)\n\n```diff\n@@              Coverage
+      Diff              @@\n##               main       #1       +/-   ##\n=============================================\n+
+      Coverage     50.00%   60.00%   +10.00%     \n+ Complexity       11       10        -1     \n=============================================\n  Files             2        2               \n  Lines             6       10        +4     \n  Branches          0        1        +1     \n=============================================\n+
+      Hits              3        6        +3     \n  Misses            3        3               \n-
+      Partials          0        1        +1     \n```\n\n| Flag | Coverage \u0394
+      | Complexity \u0394 | |\n|---|---|---|---|\n| integration | `?` | `?` | |\n|
+      unit | `100.00% <\u00f8> (?)` | `0.00 <\u00f8> (?)` | |\n\nFlags with carried
+      forward coverage won''t be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French#carryforward-flags-in-the-pull-request-comment)
+      to find out more.\n\n[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/indirect-changes?src=pr&el=tree-more&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)\n\n------\n\n[Continue
+      to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=continue&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French).\n>
+      **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta?utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French)\n>
+      `\u0394 = absolute <relative> (impact)`, `\u00f8 = not affected`, `? = missing
+      data`\n> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=footer&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French).
+      Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=lastupdated&utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French).
+      Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments?utm_medium=referral&utm_source=gitlab&utm_content=comment&utm_campaign=pr+comments&utm_term=Gina+French).\n"}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3644'
+      content-type:
+      - application/json
+      host:
+      - gitlab.com
+      user-agent:
+      - Default
+    method: POST
+    uri: https://gitlab.com/api/v4/projects/47404140/merge_requests/1/notes
+  response:
+    content: "{\"id\":1457135397,\"type\":null,\"body\":\"## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=h1\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French) Report\\n\\u003e Merging\
+      \ [#1](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=desc\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French) (0b6a213) into [main](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?el=desc\\\
+      u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French) (0fc784a) will **increase**\
+      \ coverage by `10.00%`.\\n\\u003e The diff coverage is `n/a`.\\n\\n[![Impacted\
+      \ file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/graphs/tree.svg?width=650\\\
+      u0026height=150\\u0026src=pr\\u0026token=abcdefghij\\u0026utm_medium=referral\\\
+      u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
+      u0026utm_term=Gina+French)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=tree\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)\\n\\n```diff\\n@@\
+      \              Coverage Diff              @@\\n##               main       #1\
+      \       +/-   ##\\n=============================================\\n+ Coverage\
+      \     50.00%   60.00%   +10.00%     \\n+ Complexity       11       10      \
+      \  -1     \\n=============================================\\n  Files       \
+      \      2        2               \\n  Lines             6       10        +4\
+      \     \\n  Branches          0        1        +1     \\n=============================================\\\
+      n+ Hits              3        6        +3     \\n  Misses            3     \
+      \   3               \\n- Partials          0        1        +1     \\n```\\\
+      n\\n| Flag | Coverage \u0394 | Complexity \u0394 | |\\n|---|---|---|---|\\n|\
+      \ integration | `?` | `?` | |\\n| unit | `100.00% \\u003c\xF8\\u003e (?)` |\
+      \ `0.00 \\u003c\xF8\\u003e (?)` | |\\n\\nFlags with carried forward coverage\
+      \ won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral\\\
+      u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
+      u0026utm_term=Gina+French#carryforward-flags-in-the-pull-request-comment) to\
+      \ find out more.\\n\\n[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/indirect-changes?src=pr\\\
+      u0026el=tree-more\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French)\\n\\n------\\n\\n[Continue\
+      \ to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=continue\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French).\\n\\u003e **Legend**\
+      \ - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta?utm_medium=referral\\\
+      u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
+      u0026utm_term=Gina+French)\\n\\u003e `\u0394 = absolute \\u003crelative\\u003e\
+      \ (impact)`, `\xF8 = not affected`, `? = missing data`\\n\\u003e Powered by\
+      \ [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=footer\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr\\\
+      u0026el=lastupdated\\u0026utm_medium=referral\\u0026utm_source=gitlab\\u0026utm_content=comment\\\
+      u0026utm_campaign=pr+comments\\u0026utm_term=Gina+French). Read the [comment\
+      \ docs](https://docs.codecov.io/docs/pull-request-comments?utm_medium=referral\\\
+      u0026utm_source=gitlab\\u0026utm_content=comment\\u0026utm_campaign=pr+comments\\\
+      u0026utm_term=Gina+French).\",\"attachment\":null,\"author\":{\"id\":15014576,\"\
+      username\":\"joseph-sentry\",\"name\":\"joseph-sentry\",\"state\":\"active\"\
+      ,\"avatar_url\":\"https://secure.gravatar.com/avatar/b8db468edebbae1ffa228d3095c230c5?s=80\\\
+      u0026d=identicon\",\"web_url\":\"https://gitlab.com/joseph-sentry\"},\"created_at\"\
+      :\"2023-07-04T17:54:03.693Z\",\"updated_at\":\"2023-07-04T17:54:03.693Z\",\"\
+      system\":false,\"noteable_id\":234535703,\"noteable_type\":\"MergeRequest\"\
+      ,\"project_id\":47404140,\"resolvable\":false,\"confidential\":false,\"internal\"\
+      :false,\"noteable_iid\":1,\"commands_changes\":{}}"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 7e193b34483fa1d8-YYZ
+      Cache-Control:
+      - max-age=0, private, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '4563'
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 04 Jul 2023 17:54:03 GMT
+      Etag:
+      - W/"c385bbb79f9cd8c8ef5c8c20956b1d23"
+      GitLab-LB:
+      - fe-13-lb-gprd
+      GitLab-SV:
+      - gke-cny-api
+      NEL:
+      - '{"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}'
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Report-To:
+      - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=ddX79d3f6rJGXEtRolagciIjbg9zjjbYpg65sv%2FAUNyXUtdEJIuthFhXPuYZVDi8byimBpfkor6ypIrXF07bWt331SxRnOdeKU6Imreqkfkite2Nx8%2FqRVRiMrH9r8vBFGe167NFSmc%3D"}],"group":"cf-nel","max_age":604800}'
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - _cfuvid=YKIxWaDzvazpjHge8Q9AjvELoaYcqF5jWIN.5ym_YyQ-1688493243878-0-604800000;
+        path=/; domain=.gitlab.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000
+      Vary:
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Gitlab-Meta:
+      - '{"correlation_id":"a6cddfff67cb7349491082b18e233049","version":"1"}'
+      X-Request-Id:
+      - a6cddfff67cb7349491082b18e233049
+      X-Runtime:
+      - '0.228506'
+    http_version: HTTP/1.1
+    status_code: 201
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      host:
+      - gitlab.com
+      user-agent:
+      - Default
+    method: GET
+    uri: https://gitlab.com/api/v4/projects/47404140/repository/branches/main
+  response:
+    content: '{"message":"401 Unauthorized"}'
+    headers:
+      CF-Cache-Status:
+      - MISS
+      CF-RAY:
+      - 7fef2fd0182436fe-YYZ
+      Cache-Control:
+      - no-cache
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '30'
+      Content-Security-Policy:
+      - default-src 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 30 Aug 2023 18:44:44 GMT
+      GitLab-LB:
+      - fe-05-lb-gprd
+      GitLab-SV:
+      - localhost
+      NEL:
+      - '{"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}'
+      RateLimit-Limit:
+      - '2000'
+      RateLimit-Observed:
+      - '2'
+      RateLimit-Remaining:
+      - '1998'
+      RateLimit-Reset:
+      - '1693421144'
+      RateLimit-ResetTime:
+      - Wed, 30 Aug 2023 18:45:44 GMT
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
+      Report-To:
+      - '{"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=lBgieih4yF%2BSFqCVeTidu8Y1w18hb7BV63ktECkxzQPrULx2APCFXvtqQDV6ZmRnfTxppDY%2F15MRyjs064ja6G4RylNKxJlsQ8C7GUpx67j3H%2BfnNW7ugAHn574%3D"}],"group":"cf-nel","max_age":604800}'
+      Server:
+      - cloudflare
+      Set-Cookie:
+      - _cfuvid=0RVizv.CnCUUI1sQDhOigxGHiJY1v6BbpkmTQn7RUNM-1693421084336-0-604800000;
+        path=/; domain=.gitlab.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000
+      Vary:
+      - Origin, Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Gitlab-Meta:
+      - '{"correlation_id":"0a55ef3f31f3613df4edf90f82a78c20","version":"1"}'
+      X-Request-Id:
+      - 0a55ef3f31f3613df4edf90f82a78c20
+      X-Runtime:
+      - '0.034387'
+    http_version: HTTP/1.1
+    status_code: 401
 version: 1
