@@ -495,7 +495,7 @@ class NewFilesSectionWriter(BaseSectionWriter):
             changed_files_with_missing_lines = [f for f in changed_files if f[3] > 0]
             if changed_files_with_missing_lines:
                 yield (
-                    "| [Files]({0}?src=pr&el=tree) {1}".format(
+                    "| [Files]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
                         links["pull"], table_header
                     )
                 )
@@ -570,7 +570,9 @@ class FileSectionWriter(BaseSectionWriter):
                     )
 
             yield (
-                "| [Files]({0}?src=pr&el=tree) {1}".format(links["pull"], table_header)
+                "| [Files]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
+                    links["pull"], table_header
+                )
             )
             yield (table_layout)
             for line in starmap(
