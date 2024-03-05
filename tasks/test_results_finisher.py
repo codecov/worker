@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from typing import Any, Dict
 
 from sentry_sdk import metrics
@@ -7,7 +8,8 @@ from test_results_parser import Outcome
 
 from app import celery_app
 from database.enums import ReportType
-from database.models import Commit, CommitReport, Test, TestInstance, Upload
+from database.models import Commit, TestResultReportTotals
+from helpers.string import EscapeEnum, Replacement, StringEscaper
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
     TestResultsNotifier,
@@ -19,6 +21,37 @@ from tasks.notify import notify_task_name
 log = logging.getLogger(__name__)
 
 test_results_finisher_task_name = "app.tasks.test_results.TestResultsFinisherTask"
+
+ESCAPE_FAILURE_MESSAGE_DEFN = [
+    Replacement(
+        [
+            "\\",
+            "'",
+            "*",
+            "_",
+            "`",
+            "[",
+            "]",
+            "{",
+            "}",
+            "(",
+            ")",
+            "#",
+            "+",
+            "-",
+            ".",
+            "!",
+            "|",
+            "<",
+            ">",
+            "&",
+            '"',
+        ],
+        "\\",
+        EscapeEnum.PREPEND,
+    ),
+    Replacement(["\n"], "<br>", EscapeEnum.REPLACE),
+]
 
 
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
@@ -102,10 +135,48 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             )
             return {"notify_attempted": False, "notify_succeeded": False}
 
+        commit_report = commit.commit_report(ReportType.TEST_RESULTS)
         with metrics.timing("test_results.finisher.fetch_latest_test_instances"):
             test_instances = latest_test_instances_for_a_given_commit(
                 db_session, commit.id_
             )
+
+        failed_tests = 0
+        passed_tests = 0
+        skipped_tests = 0
+
+        failures = defaultdict(lambda: defaultdict(list))
+
+        escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
+
+        for test_instance in test_instances:
+            if test_instance.outcome == str(
+                Outcome.Failure
+            ) or test_instance.outcome == str(Outcome.Error):
+                failed_tests += 1
+                flag_names = sorted(test_instance.upload.flag_names)
+                suffix = ""
+                if flag_names:
+                    suffix = f"{''.join(flag_names) or ''}"
+                failure_message = escaper.replace(test_instance.failure_message)
+                failures[failure_message][
+                    f"{test_instance.test.testsuite}//////////{test_instance.test.name}"
+                ].append(suffix)
+            elif test_instance.outcome == str(Outcome.Skip):
+                skipped_tests += 1
+            elif test_instance.outcome == str(Outcome.Pass):
+                passed_tests += 1
+
+        totals = commit_report.test_result_totals
+        if totals is None:
+            totals = TestResultReportTotals(
+                report_id=commit_report.id,
+            )
+            db_session.add(totals)
+        totals.passed = passed_tests
+        totals.skipped = skipped_tests
+        totals.failed = failed_tests
+        db_session.flush()
 
         if self.check_if_no_failures(test_instances):
             metrics.incr(
@@ -124,7 +195,9 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         notifier = TestResultsNotifier(commit, commit_yaml, test_instances)
         with metrics.timing("test_results.finisher.notification"):
-            success = await notifier.notify()
+            success = await notifier.notify(
+                failures, passed_tests, skipped_tests, failed_tests
+            )
 
         log.info(
             "Finished test results notify",

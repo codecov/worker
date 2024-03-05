@@ -161,11 +161,12 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         testrun_list = []
 
-        for file in data["test_results_files"]:
-            file = file["data"]
+        for file_dict in data["test_results_files"]:
+            filename = file_dict["filename"]
+            file = file_dict["data"]
             file_bytes = BytesIO(zlib.decompress(base64.b64decode(file)))
             try:
-                testrun_list += self.parse_single_file(file_bytes)
+                testrun_list += self.parse_single_file(filename, file_bytes)
             except ParserFailureError as exc:
                 log.error(
                     exc.err_msg,
@@ -183,12 +184,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
     def parse_single_file(
         self,
-        file_bytes,
+        filename: str,
+        file_bytes: BytesIO,
     ):
 
         try:
             with metrics.timing("test_results.processor.parser_matching"):
-                parser, parsing_function = self.match_report(file_bytes)
+                parser, parsing_function = self.match_report(filename, file_bytes)
         except ParserNotSupportedError as e:
             metrics.incr(
                 "test_results.processor.parsing",
@@ -224,7 +226,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         return res
 
-    def match_report(self, file_bytes):
+    def match_report(self, filename: str, file_bytes: BytesIO):
         first_line = file_bytes.readline()
         second_line = file_bytes.readline()
         file_bytes.seek(0)
@@ -233,7 +235,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         first_two_lines = first_line + second_line
 
         parser = "no parser"
-        if first_two_lines.startswith(b"<?xml"):
+        if filename.endswith(".xml") or first_two_lines.startswith(b"<?xml"):
             parser = "junit_xml"
             parsing_function = parse_junit_xml
         elif first_two_lines.startswith(b'{"pytest_version":'):

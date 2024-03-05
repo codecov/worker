@@ -1,9 +1,10 @@
-https://github.com/codecov/shared/archive/55c9af294031d3027fed9b49a83153cacf437bdb.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/5c6de0f898bfa32ef64a23b3519e44fa99028845.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 https://github.com/codecov/test-results-parser/archive/5515e960d5d38881036e9127f86320efca649f13.tar.gz#egg=test-results-parser
 boto3
-celery
+celery>=5.3.6
 click
+codecov-ribs
 coverage
 factory-boy
 google-cloud-storage>=2.10.0
@@ -35,7 +36,7 @@ SQLAlchemy-Utils
 SQLAlchemy
 statsd
 stripe
-timestring
+https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
 urllib3>=1.26.18
 vcrpy
 opentelemetry-instrumentation-celery>=0.41b0

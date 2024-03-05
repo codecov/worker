@@ -436,7 +436,7 @@ class TestNotifyTask(object):
                         "data_sent": {
                             "title": "codecov/changes",
                             "state": "failure",
-                            "message": "1 file has unexpected coverage changes not visible in diff",
+                            "message": "1 file has indirect coverage changes not visible in diff",
                         },
                         "data_received": {"id": 9333281703},
                     },
@@ -664,7 +664,7 @@ class TestNotifyTask(object):
                         "data_sent": {
                             "title": "codecov/changes",
                             "state": "success",
-                            "message": "No unexpected coverage changes found",
+                            "message": "No indirect coverage changes found",
                         },
                         "data_received": {"id": 9333363801},
                     },
@@ -1039,15 +1039,15 @@ class TestNotifyTask(object):
                     "notifier": "status-changes",
                     "title": "default",
                     "result": {
-                        "notification_attempted": False,
-                        "notification_successful": None,
-                        "explanation": "already_done",
+                        "notification_attempted": True,
+                        "notification_successful": True,
+                        "explanation": None,
                         "data_sent": {
                             "title": "codecov/changes",
                             "state": "success",
-                            "message": "No unexpected coverage changes found",
+                            "message": "No indirect coverage changes found",
                         },
-                        "data_received": None,
+                        "data_received": {"id": 24846000025},
                     },
                 },
                 {

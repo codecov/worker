@@ -8,7 +8,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 ALLOWED_HOSTS = []
 
-DATABASES["default"]["AUTOCOMMIT"] = True
+DATABASES["default"]["AUTOCOMMIT"] = False
+DATABASES["timeseries"]["AUTOCOMMIT"] = False
 
 IS_DEV = os.getenv("RUN_ENV") == "DEV"
 
@@ -18,15 +19,18 @@ INSTALLED_APPS = [
     "django_scaffold",  # must be first to override migrate command
     "shared.django_apps.pg_telemetry",
     "shared.django_apps.ts_telemetry",
+    "shared.django_apps.rollouts",
 ]
 
 TELEMETRY_VANILLA_DB = "default"
 TELEMETRY_TIMESCALE_DB = "timeseries"
 
-# DATABASE_ROUTERS = [
-#    "database.TelemetryDatabaseRouter",
-#    "shared.django_apps.db_routers.MultiDatabaseRouter",
-# ]
+DATABASE_ROUTERS = [
+    "shared.django_apps.db_routers.TelemetryDatabaseRouter",
+    "shared.django_apps.db_routers.MultiDatabaseRouter",
+]
+
+SKIP_RISKY_MIGRATION_STEPS = get_config("migrations", "skip_risky_steps", default=False)
 
 MIDDLEWARE = []
 

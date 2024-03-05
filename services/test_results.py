@@ -1,5 +1,4 @@
 import logging
-from collections import defaultdict
 from hashlib import sha256
 from typing import Mapping, Sequence
 
@@ -10,6 +9,7 @@ from test_results_parser import Outcome
 
 from database.enums import ReportType
 from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from helpers.string import EscapeEnum, Replacement, StringEscaper
 from services.report import BaseReportService
 from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
@@ -117,7 +117,7 @@ class TestResultsNotifier:
         self.commit_yaml = commit_yaml
         self.test_instances = test_instances
 
-    async def notify(self):
+    async def notify(self, failures, num_passed, num_skipped, num_failed):
         commit_report = self.commit.commit_report(report_type=ReportType.TEST_RESULTS)
         if not commit_report:
             log.warning(
@@ -133,20 +133,23 @@ class TestResultsNotifier:
         pull = await fetch_and_update_pull_request_information_from_commit(
             repo_service, self.commit, self.commit_yaml
         )
-        pullid = pull.database_pull.pullid
         if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
                 extra=dict(
                     commitid=self.commit.commitid,
                     report_key=commit_report.external_id,
-                    pullid=pullid,
                 ),
             )
+            return False
+
+        pullid = pull.database_pull.pullid
 
         pull_url = get_pull_url(pull.database_pull)
 
-        message = self.build_message(pull_url, self.test_instances)
+        message = self.build_message(
+            pull_url, self.test_instances, failures, num_passed, num_skipped, num_failed
+        )
 
         try:
             comment_id = pull.database_pull.commentid
@@ -167,57 +170,35 @@ class TestResultsNotifier:
             )
             return False
 
-    def build_message(self, url, test_instances):
+    def build_message(
+        self, url, test_instances, failures, num_passed, num_skipped, num_failed
+    ):
         message = []
 
         message += [
-            f"##  [Codecov]({url}) Report",
-            "",
             "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.",
             "",
             "### :x: Failed Test Results: ",
         ]
-        failed_tests = 0
-        passed_tests = 0
-        skipped_tests = 0
 
-        failures = defaultdict(lambda: defaultdict(list))
-
-        for test_instance in test_instances:
-            if test_instance.outcome == str(
-                Outcome.Failure
-            ) or test_instance.outcome == str(Outcome.Error):
-                failed_tests += 1
-                flag_names = sorted(test_instance.upload.flag_names)
-                suffix = ""
-                if flag_names:
-                    suffix = f"({','.join(flag_names) or ''})"
-                failures[test_instance.failure_message][
-                    f"{test_instance.test.testsuite}::{test_instance.test.name}"
-                ].append(suffix)
-            elif test_instance.outcome == str(Outcome.Skip):
-                skipped_tests += 1
-            elif test_instance.outcome == str(Outcome.Pass):
-                passed_tests += 1
-
-        results = f"Completed {len(test_instances)} tests with **`{failed_tests} failed`**, {passed_tests} passed and {skipped_tests} skipped."
+        results = f"Completed {len(test_instances)} tests with **`{num_failed} failed`**, {num_passed} passed and {num_skipped} skipped."
 
         message.append(results)
 
         details = [
             "<details><summary>View the full list of failed tests</summary>",
             "",
-            "| **File path** | **Failure message** |",
+            "| **Test Description** | **Failure message** |",
             "| :-- | :-- |",
         ]
 
         message += details
         failure_table = [
-            "| {0} | <pre>{1}</pre> |".format(
+            "| <pre>{0}</pre> | <pre>{1}</pre> |".format(
                 (
                     "<br>".join(
                         self.insert_breaks(
-                            f"{test_name}[{','.join(sorted(test_env_list))}]"
+                            f"Testsuite: {test_name.split('//////////')[0]}<br>Test name: {test_name.split('//////////')[1]}<br>Envs: {''.join(f'<br>- {test_env}' for test_env in sorted(test_env_list))}"
                         )
                         for test_name, test_env_list in sorted(
                             failed_test_to_env_list.items(),
@@ -225,7 +206,7 @@ class TestResultsNotifier:
                         )
                     )
                 ),
-                failure_message.replace("\n", "<br>"),
+                failure_message,
             )
             for failure_message, failed_test_to_env_list in sorted(
                 failures.items(), key=lambda failure: failure[0]

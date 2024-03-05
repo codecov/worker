@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Tuple
 
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
@@ -11,7 +11,7 @@ from sqlalchemy import and_
 
 from app import celery_app
 from database.models import Owner, Repository
-from rollouts import LIST_REPOS_GENERATOR_BY_OWNER_SLUG, owner_slug
+from rollouts import LIST_REPOS_GENERATOR_BY_OWNER_ID
 from services.owner import get_owner_provider_service
 from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
@@ -39,6 +39,14 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     5. Fire off a task to sync every repository's available languages with its provider
        after finishing the sync.
+
+    # About the `using_integration` argument
+    `using_integration` is specific to GitHub users. When `using_integration==True` then this refresh
+    task came from receiving some INSTALLATION event from GitHub indicating that the app installation
+    for the user suffered some change.
+
+    In this case we use the installation token to list repos from github, as opposed to the owner's token
+    (there's possibly a difference in what repos the owner can see and what repos the app installation can see)
     """
 
     ignore_result = False
@@ -46,12 +54,19 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     async def run_async(
         self,
         db_session,
+        # `previous_results`` is added by celery if the task is chained.
+        # It contains the results of tasks that came before this one in the chain
         previous_results=None,
         *,
         ownerid,
         username=None,
         using_integration=False,
         manual_trigger=False,
+        # `repository_service_ids` is optionally passed to the task
+        # when using_integration=True so we know what are the repos affected.
+        # Speeds up getting info from the git provider, but not required
+        # objects are (service_id, node_id)
+        repository_service_ids: Optional[List[Tuple[str, str]]] = None,
         **kwargs,
     ):
         log.info(
@@ -81,7 +96,11 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 if using_integration:
                     with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
                         synced_repoids = await self.sync_repos_using_integration(
-                            db_session, git, owner, username
+                            db_session,
+                            git,
+                            owner,
+                            username,
+                            repository_service_ids=repository_service_ids,
                         )
                 else:
                     with metrics.timer(f"{metrics_scope}.sync_repos"):
@@ -96,14 +115,73 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 
-    async def sync_repos_using_integration(self, db_session, git, owner, username):
+    async def sync_repos_affected_repos_known(
+        self,
+        db_session,
+        git,
+        owner: Owner,
+        repository_service_ids: Optional[List[Tuple[str, str]]],
+    ):
+        repoids_added = []
+        # Casting to str in case celery interprets the service ID as a integer for some reason
+        # As that has caused issues with testing locally
+        service_ids = set(str(x[0]) for x in repository_service_ids)
+        # Check what repos we already have in the DB
+        existing_repos = set(
+            map(
+                lambda row_result: row_result[0],
+                db_session.query(Repository.service_id)
+                .filter(Repository.service_id.in_(service_ids))
+                .all(),
+            )
+        )
+        missing_repo_service_ids = service_ids.difference(existing_repos)
+
+        # Get info from provider on the repos we don't have
+        repos_to_search = [
+            x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
+        ]
+        async for repo_data in git.get_repos_from_nodeids_generator(
+            repos_to_search, owner.username
+        ):
+            # Insert those repos
+            new_repo = Repository(
+                service_id=repo_data["service_id"],
+                name=repo_data["name"],
+                language=repo_data["language"],
+                private=repo_data["private"],
+                branch=repo_data["branch"],
+                using_integration=True,
+            )
+            if repo_data["owner"]["is_expected_owner"]:
+                new_repo.ownerid = owner.ownerid
+            else:
+                upserted_owner_id = self.upsert_owner(
+                    db_session,
+                    git.service,
+                    repo_data["owner"]["service_id"],
+                    repo_data["owner"]["username"],
+                )
+                new_repo.ownerid = upserted_owner_id
+            db_session.add(new_repo)
+            db_session.flush()
+            repoids_added.append(new_repo.repoid)
+        return repoids_added
+
+    async def sync_repos_using_integration(
+        self,
+        db_session,
+        git,
+        owner,
+        username,
+        repository_service_ids: Optional[List[Tuple[str, str]]] = None,
+    ):
         ownerid = owner.ownerid
         log.info(
             "Syncing repos using integration",
             extra=dict(ownerid=ownerid, username=username),
         )
 
-        total_missing_repos = []
         repoids = []
         # We're testing processing repos a page at a time and this helper
         # function avoids duplicating the code in the old and new paths
@@ -151,19 +229,25 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.add(new_repo)
                     db_session.flush()
                     repoids.append(new_repo.repoid)
-                total_missing_repos.extend(missing_repos)
 
         # Here comes the actual function
         received_repos = False
-        if LIST_REPOS_GENERATOR_BY_OWNER_SLUG.check_value(
-            owner_slug(owner), default=False
-        ):
-            with metrics.timer(
-                f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
-            ):
-                async for page in git.list_repos_using_installation_generator(username):
-                    received_repos = True
-                    process_repos(page)
+        if repository_service_ids:
+            # This flow is different from the ones below because the API already informed us the repos affected
+            # So we can update those values directly
+            repoids_added = await self.sync_repos_affected_repos_known(
+                db_session, git, owner, repository_service_ids
+            )
+            repoids = repoids_added
+        #####################################TEMP#########################################
+        # elif LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
+        #     with metrics.timer(
+        #         f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
+        #     ):
+        #         async for page in git.list_repos_using_installation_generator(username):
+        #             received_repos = True
+        #             process_repos(page)
+        #####################################TEMP#########################################
         else:
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos"
@@ -182,7 +266,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         log.info(
             "Repo sync using integration done",
-            extra=dict(repoids=total_missing_repos),
+            extra=dict(repoids_created=repoids, repoids_created_count=len(repoids)),
         )
 
         return repoids
@@ -255,17 +339,17 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.commit()
 
         try:
-            if LIST_REPOS_GENERATOR_BY_OWNER_SLUG.check_value(
-                owner_slug(owner), default=False
-            ):
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
-                    async for page in git.list_repos_generator():
-                        process_repos(page)
-            else:
-                # get my repos (and team repos)
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                    repos = await git.list_repos()
-                    process_repos(repos)
+            #####################################TEMP#########################################
+            # if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
+            #     with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
+            #         async for page in git.list_repos_generator():
+            #             process_repos(page)
+            # else:
+            #####################################TEMP#########################################
+            # get my repos (and team repos)
+            with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
+                repos = await git.list_repos()
+                process_repos(repos)
         except SoftTimeLimitExceeded:
             old_permissions = owner.permission or []
             log.warning(

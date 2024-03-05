@@ -588,3 +588,36 @@ class TestGithubAppInstallationModel(object):
         assert owner.github_app_installations == [installation_obj]
         assert installation_obj.repository_queryset(dbsession).count() == 1
         assert list(installation_obj.repository_queryset(dbsession).all()) == [repo]
+
+    def test_is_configured(self, dbsession: Session):
+        owner = OwnerFactory()
+        installation_obj_default = GithubAppInstallation(
+            owner=owner,
+            repository_service_ids=None,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=100,
+        )
+        installation_obj_configured = GithubAppInstallation(
+            owner=owner,
+            repository_service_ids=None,
+            name="my_installation",
+            installation_id=100,
+            app_id=10,
+            pem_path="some_path",
+        )
+        installation_obj_not_configured = GithubAppInstallation(
+            owner=owner,
+            repository_service_ids=None,
+            installation_id=100,
+            name="my_installation",
+        )
+        dbsession.add_all(
+            [
+                installation_obj_default,
+                installation_obj_configured,
+                installation_obj_not_configured,
+            ]
+        )
+        assert installation_obj_default.is_configured() == True
+        assert installation_obj_configured.is_configured() == True
+        assert installation_obj_not_configured.is_configured() == False

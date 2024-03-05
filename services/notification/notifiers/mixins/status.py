@@ -87,9 +87,7 @@ class StatusChangesMixin(object):
             lpc = len(changes)
             eng = "files have" if lpc > 1 else "file has"
             description = (
-                "{0} {1} unexpected coverage changes not visible in diff".format(
-                    lpc, eng
-                )
+                "{0} {1} indirect coverage changes not visible in diff".format(lpc, eng)
             )
             state = (
                 "success"
@@ -98,12 +96,12 @@ class StatusChangesMixin(object):
             )
             return (state, description)
 
-        description = "No unexpected coverage changes found"
+        description = "No indirect coverage changes found"
         return ("success", description)
 
 
 class StatusProjectMixin(object):
-    DEFAULT_REMOVED_CODE_BEHAVIOR = "fully_covered_patch"
+    DEFAULT_REMOVED_CODE_BEHAVIOR = "adjust_base"
 
     async def _apply_removals_only_behavior(
         self, comparison: Union[ComparisonProxy, FilteredComparison]
@@ -260,7 +258,7 @@ class StatusProjectMixin(object):
         if coverage == 100.0:
             return (
                 "success",
-                ", passed because patch was fully covered by tests with no unexpected coverage changes",
+                ", passed because patch was fully covered by tests, and no indirect coverage changes",
             )
         return None
 
