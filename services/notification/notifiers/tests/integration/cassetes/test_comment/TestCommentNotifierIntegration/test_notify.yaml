@@ -898,7 +898,7 @@ interactions:
         \ | `100.00% <\xF8> (?)` | `0.00 <\xF8> (?)` | |\\n\\nFlags with carried forward\
         \ coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=James+Mitchell#carryforward-flags-in-the-pull-request-comment)\
         \ to find out more.\\n\\n[see 2 files with indirect coverage changes](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/indirect-changes?src=pr&el=tree-more&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=James+Mitchell)\\\
-        n\\n------\\n\\n[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=James+Mitchell).\\\
+        n\\n------\\n\\n[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=James+Mitchell).\\\
         n> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=James+Mitchell)\\\
         n> `\u0394 = absolute <relative> (impact)`, `\xF8 = not affected`, `? = missing\
         \ data`\\n> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=footer&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=James+Mitchell).\
