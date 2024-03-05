@@ -77,7 +77,6 @@ def sample_comparison_bunch_empty_flags(request, dbsession, mocker):
     base_report.add_session(Session(flags=["fourth"]))
     base_report.add_session(Session(flags=["seventh"]))
     base_report.add_session(Session(flags=["eighth"]))
-    print(base_report.sessions)
     # assert False
     file_1 = ReportFile("space.py")
     file_1.append(
@@ -740,7 +739,7 @@ class TestCommentNotifier(object):
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
         expected_result = [
-            f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -751,7 +750,6 @@ class TestCommentNotifier(object):
             f"",
         ]
         res = await notifier.create_message(comparison, pull_dict, {"layout": "files"})
-        print(res)
         assert expected_result == res
 
     @pytest.mark.asyncio
@@ -897,7 +895,7 @@ class TestCommentNotifier(object):
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
         expected_result = [
-            f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             "",
@@ -934,7 +932,7 @@ class TestCommentNotifier(object):
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -1008,7 +1006,7 @@ class TestCommentNotifier(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 100.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -1027,10 +1025,8 @@ class TestCommentNotifier(object):
             "",
         ]
         li = 0
-        print("\n".join(result))
         for exp, res in zip(expected_result, result):
             li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -1061,7 +1057,7 @@ class TestCommentNotifier(object):
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) ({sample_comparison.project_coverage_base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
             f"> The diff coverage is `66.67%`.",
             f"",
@@ -1359,7 +1355,7 @@ class TestCommentNotifier(object):
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -1433,7 +1429,7 @@ class TestCommentNotifier(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
@@ -1504,7 +1500,7 @@ class TestCommentNotifier(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
@@ -1577,7 +1573,7 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
 
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -1623,11 +1619,9 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        print(result)
         li = 0
         for exp, res in zip(expected_result, result):
             li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -1652,7 +1646,7 @@ class TestCommentNotifier(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 50.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -1701,7 +1695,6 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        print(result)
         for exp, res in zip(expected_result, result):
             assert exp == res
         assert result == expected_result
@@ -1749,7 +1742,7 @@ class TestCommentNotifier(object):
         comparison.head.report = ReadOnlyReport.create_from_report(new_head_report)
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 88.54%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -1767,11 +1760,9 @@ class TestCommentNotifier(object):
             f"```",
             f"",
         ]
-        print(result)
         li = 0
         for exp, res in zip(expected_result, result):
             li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -1818,7 +1809,7 @@ class TestCommentNotifier(object):
         comparison.head.report = ReadOnlyReport.create_from_report(new_head_report)
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 88.54%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -1849,7 +1840,7 @@ class TestCommentNotifier(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -1925,7 +1916,7 @@ class TestCommentNotifier(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -1960,11 +1951,9 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        print(result)
         li = 0
         for exp, res in zip(expected_result, result):
             li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -1985,7 +1974,7 @@ class TestCommentNotifier(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -2029,11 +2018,9 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        print(result)
         li = 0
         for exp, res in zip(expected_result, result):
             li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -2061,7 +2048,7 @@ class TestCommentNotifier(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -2105,11 +2092,9 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        print(result)
         li = 0
         for exp, res in zip(expected_result, result):
             li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -2137,7 +2122,7 @@ class TestCommentNotifier(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -2179,11 +2164,9 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
-        print(result)
         li = 0
         for exp, res in zip(expected_result, result):
             li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -2238,7 +2221,7 @@ class TestCommentNotifier(object):
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(sample_comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -3293,7 +3276,7 @@ class TestCommentNotifier(object):
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -3306,7 +3289,6 @@ class TestCommentNotifier(object):
         li = 0
         for exp, res in zip(expected_result, result):
             li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -3328,7 +3310,7 @@ class TestCommentNotifier(object):
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             "",
@@ -3365,7 +3347,7 @@ class TestCommentNotifier(object):
         repository = sample_comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -3375,7 +3357,6 @@ class TestCommentNotifier(object):
         li = 0
         for exp, res in zip(expected_result, result):
             li += 1
-            print(li)
             assert exp == res
         assert result == expected_result
 
@@ -3977,7 +3958,6 @@ class TestNewHeaderSectionWriter(object):
                 links={"pull": "urlurl", "base": "urlurl"},
             )
         )
-        print(res)
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc).",
@@ -4007,7 +3987,6 @@ class TestNewHeaderSectionWriter(object):
                 behind_by=3,
             )
         )
-        print(res)
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?src=pr&el=desc).",
@@ -4320,7 +4299,7 @@ class TestCommentNotifierInNewLayout(object):
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
         expected_result = [
-            f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             "",
@@ -4364,7 +4343,7 @@ class TestCommentNotifierInNewLayout(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
@@ -4430,7 +4409,7 @@ class TestCommentNotifierInNewLayout(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
             f"",
@@ -4500,7 +4479,7 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
-            f"## [Codecov]({pull_url}?src=pr&el=h1) Report",
+            f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"",
             f"| [Files]({pull_url}?src=pr&el=tree) | Patch % | Lines |",
@@ -4541,7 +4520,7 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
-            f"## [Codecov]({pull_url}?src=pr&el=h1) Report",
+            f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"",
             f"| [Files]({pull_url}?src=pr&el=tree) | Patch % | Lines |",
@@ -4581,7 +4560,7 @@ class TestCommentNotifierInNewLayout(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -4656,7 +4635,7 @@ class TestCommentNotifierInNewLayout(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -4727,7 +4706,7 @@ class TestCommentNotifierInNewLayout(object):
         repository = comparison.head.commit.repository
         result = await notifier.build_message(comparison)
         expected_result = [
-            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc).",
             f"",
@@ -4826,7 +4805,6 @@ class TestComponentWriterSection(object):
         component_data = await section_writer._get_table_data_for_components(
             all_components, comparison
         )
-        print(component_data)
         expected_result = [
             {
                 "name": "go_files",
@@ -4957,7 +4935,6 @@ class TestComponentWriterSection(object):
         component_data = await section_writer._get_table_data_for_components(
             all_components, comparison
         )
-        print(component_data)
         expected_result = [
             {
                 "name": "go_files",

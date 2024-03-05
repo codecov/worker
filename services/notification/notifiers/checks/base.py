@@ -278,7 +278,7 @@ class ChecksNotifier(StatusNotifier):
         return file_diff
 
     def get_codecov_pr_link(self, comparison):
-        return f"[View this Pull Request on Codecov]({get_pull_url(comparison.pull)}?src=pr&el=h1)"
+        return f"[View this Pull Request on Codecov]({get_pull_url(comparison.pull)}?dropdown=coverage&src=pr&el=h1)"
 
     def get_lines_to_annotate(self, comparison, files_with_change):
         lines_diff = []
