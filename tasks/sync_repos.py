@@ -242,15 +242,13 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added
-        #####################################TEMP#########################################
-        # elif LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
-        #     with metrics.timer(
-        #         f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
-        #     ):
-        #         async for page in git.list_repos_using_installation_generator(username):
-        #             received_repos = True
-        #             process_repos(page)
-        #####################################TEMP#########################################
+        elif LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
+            with metrics.timer(
+                f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
+            ):
+                async for page in git.list_repos_using_installation_generator(username):
+                    received_repos = True
+                    process_repos(page)
         else:
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos"
@@ -342,17 +340,15 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.commit()
 
         try:
-            #####################################TEMP#########################################
-            # if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
-            #     with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
-            #         async for page in git.list_repos_generator():
-            #             process_repos(page)
-            # else:
-            #####################################TEMP#########################################
-            # get my repos (and team repos)
-            with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                repos = await git.list_repos()
-                process_repos(repos)
+            if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
+                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
+                    async for page in git.list_repos_generator():
+                        process_repos(page)
+            else:
+                # get my repos (and team repos)
+                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
+                    repos = await git.list_repos()
+                    process_repos(repos)
         except SoftTimeLimitExceeded:
             old_permissions = owner.permission or []
             log.warning(
