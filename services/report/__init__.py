@@ -772,6 +772,24 @@ class ReportService(BaseReportService):
             return carryforward_report
 
     @sentry_sdk.trace
+    def parse_raw_report_from_storage(
+        self, repo: Repository, upload: Upload
+    ) -> ParsedRawReport:
+        """Pulls the raw uploaded report from storage and parses it do it's
+        easier to access different parts of the raw upload.
+
+        Raises:
+            shared.storage.exceptions.FileNotInStorageError
+        """
+        archive_service = self.get_archive_service(repo)
+        archive_url = upload.storage_path
+        parser = get_proper_parser(upload)
+        raw_uploaded_report = parser.parse_raw_report_from_bytes(
+            archive_service.read_file(archive_url)
+        )
+        return raw_uploaded_report
+
+    @sentry_sdk.trace
     def build_report_from_raw_content(
         self, master: Optional[Report], upload: Upload
     ) -> ProcessingResult:
@@ -808,12 +826,9 @@ class ReportService(BaseReportService):
             archive=archive_url or url,
             url=build_url,
         )
-        archive_service = self.get_archive_service(commit.repository)
-        archive_url = upload.storage_path
-        parser = get_proper_parser(upload)
         try:
-            raw_uploaded_report = parser.parse_raw_report_from_bytes(
-                archive_service.read_file(archive_url)
+            raw_uploaded_report = self.parse_raw_report_from_storage(
+                commit.repository, upload
             )
         except FileNotInStorageError:
             return ProcessingResult(
@@ -840,7 +855,6 @@ class ReportService(BaseReportService):
                     session,
                     upload=upload,
                 )
-                report = result.report
             log.info(
                 "Successfully processed report",
                 extra=dict(

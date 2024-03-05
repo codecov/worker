@@ -10,6 +10,7 @@ from test_results_parser import Outcome
 
 from database.enums import ReportType
 from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from helpers.string import EscapeEnum, Replacement, StringEscaper
 from services.report import BaseReportService
 from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
@@ -18,6 +19,38 @@ from services.repository import (
 from services.urls import get_pull_url
 
 log = logging.getLogger(__name__)
+
+
+ESCAPE_FAILURE_MESSAGE_DEFN = [
+    Replacement(
+        [
+            "\\",
+            "'",
+            "*",
+            "_",
+            "`",
+            "[",
+            "]",
+            "{",
+            "}",
+            "(",
+            ")",
+            "#",
+            "+",
+            "-",
+            ".",
+            "!",
+            "|",
+            "<",
+            ">",
+            "&",
+            '"',
+        ],
+        "\\",
+        EscapeEnum.PREPEND,
+    ),
+    Replacement(["\n"], "<br>", EscapeEnum.REPLACE),
+]
 
 
 class TestResultsReportService(BaseReportService):
@@ -133,16 +166,15 @@ class TestResultsNotifier:
         pull = await fetch_and_update_pull_request_information_from_commit(
             repo_service, self.commit, self.commit_yaml
         )
-        pullid = pull.database_pull.pullid
         if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
                 extra=dict(
                     commitid=self.commit.commitid,
                     report_key=commit_report.external_id,
-                    pullid=pullid,
                 ),
             )
+        pullid = pull.database_pull.pullid
 
         pull_url = get_pull_url(pull.database_pull)
 
@@ -171,8 +203,6 @@ class TestResultsNotifier:
         message = []
 
         message += [
-            f"##  [Codecov]({url}) Report",
-            "",
             "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.",
             "",
             "### :x: Failed Test Results: ",
@@ -183,6 +213,8 @@ class TestResultsNotifier:
 
         failures = defaultdict(lambda: defaultdict(list))
 
+        escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
+
         for test_instance in test_instances:
             if test_instance.outcome == str(
                 Outcome.Failure
@@ -191,9 +223,13 @@ class TestResultsNotifier:
                 flag_names = sorted(test_instance.upload.flag_names)
                 suffix = ""
                 if flag_names:
-                    suffix = f"({','.join(flag_names) or ''})"
-                failures[test_instance.failure_message][
-                    f"{test_instance.test.testsuite}::{test_instance.test.name}"
+                    suffix = f"{','.join(flag_names) or ''}"
+                normalized_new_lines = "\n".join(
+                    test_instance.failure_message.splitlines()
+                )
+                formatted_failure_message = escaper.replace(normalized_new_lines)
+                failures[formatted_failure_message][
+                    f"{test_instance.test.testsuite}//////////{test_instance.test.name}"
                 ].append(suffix)
             elif test_instance.outcome == str(Outcome.Skip):
                 skipped_tests += 1
@@ -207,7 +243,7 @@ class TestResultsNotifier:
         details = [
             "<details><summary>View the full list of failed tests</summary>",
             "",
-            "| **File path** | **Failure message** |",
+            "| **Test Description** | **Failure message** |",
             "| :-- | :-- |",
         ]
 
@@ -217,7 +253,7 @@ class TestResultsNotifier:
                 (
                     "<br>".join(
                         self.insert_breaks(
-                            f"{test_name}[{','.join(sorted(test_env_list))}]"
+                            f"Testsuite: {test_name.split('//////////')[0]}<br>Test name: {test_name.split('//////////')[1]}<br>Envs: {''.join(f'<br>- {test_env}' for test_env in sorted(test_env_list))}"
                         )
                         for test_name, test_env_list in sorted(
                             failed_test_to_env_list.items(),
@@ -225,7 +261,7 @@ class TestResultsNotifier:
                         )
                     )
                 ),
-                failure_message.replace("\n", "<br>"),
+                failure_message,
             )
             for failure_message, failed_test_to_env_list in sorted(
                 failures.items(), key=lambda failure: failure[0]

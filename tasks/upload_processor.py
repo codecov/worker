@@ -223,6 +223,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     )
                     upload_obj.state_id = UploadState.ERROR.db_id
                     upload_obj.state = "error"
+                    self._attempt_rewrite_raw_report_readable_error_case(
+                        report_service, commit, upload_obj
+                    )
                     raise
                 if individual_info.get("successful"):
                     report = individual_info.pop("report")
@@ -346,6 +349,28 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 archive_service.delete_file(archive_url)
                 return True
         return False
+
+    def _attempt_rewrite_raw_report_readable_error_case(
+        self, report_service: ReportService, commit: Commit, upload: Upload
+    ):
+        log.info(
+            "Attempting to rewrite raw upload in readable format for debugging purposes (processing already failed)",
+            extra=dict(commit=commit.commitid, upload=upload.external_id),
+        )
+        try:
+            raw_report = report_service.parse_raw_report_from_storage(
+                commit.repository, upload
+            )
+            self._rewrite_raw_report_readable(
+                processing_result={"raw_report": raw_report, "upload_object": upload},
+                report_service=report_service,
+                commit=commit,
+            )
+        except FileNotFoundError:
+            log.exception(
+                "Failed to rewrite raw report in readable format",
+                extra=dict(commit=commit.commitid, upload=upload.external_id),
+            )
 
     def _rewrite_raw_report_readable(
         self,

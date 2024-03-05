@@ -16,7 +16,7 @@ from shared.yaml import UserYaml
 
 from database.tests.factories.core import RepositoryFactory
 from helpers.labels import SpecialLabelsEnum
-from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG
+from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
     _adjust_sessions,
@@ -614,9 +614,9 @@ class TestAdjustSession(BaseTestCase):
         ][report_idx]
 
         mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG,
+            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
             "check_value",
-            retur_value=True,
+            return_value=True,
         )
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(
@@ -761,9 +761,9 @@ class TestAdjustSession(BaseTestCase):
             sessions={first_to_merge_session.id: first_to_merge_session}
         )
         mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG,
+            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
             "check_value",
-            retur_value=True,
+            return_value=True,
         )
         upload = MagicMock(
             name="fake_upload",
@@ -1044,9 +1044,9 @@ class TestAdjustSession(BaseTestCase):
             }
         )
         mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG,
+            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
             "check_value",
-            retur_value=True,
+            return_value=True,
         )
 
         second_report_file = ReportFile("unrelatedfile.py")
