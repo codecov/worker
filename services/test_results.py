@@ -1,5 +1,4 @@
 import logging
-from collections import defaultdict
 from hashlib import sha256
 from typing import Mapping, Sequence
 
@@ -19,38 +18,6 @@ from services.repository import (
 from services.urls import get_pull_url
 
 log = logging.getLogger(__name__)
-
-
-ESCAPE_FAILURE_MESSAGE_DEFN = [
-    Replacement(
-        [
-            "\\",
-            "'",
-            "*",
-            "_",
-            "`",
-            "[",
-            "]",
-            "{",
-            "}",
-            "(",
-            ")",
-            "#",
-            "+",
-            "-",
-            ".",
-            "!",
-            "|",
-            "<",
-            ">",
-            "&",
-            '"',
-        ],
-        "\\",
-        EscapeEnum.PREPEND,
-    ),
-    Replacement(["\n"], "<br>", EscapeEnum.REPLACE),
-]
 
 
 class TestResultsReportService(BaseReportService):
@@ -150,7 +117,7 @@ class TestResultsNotifier:
         self.commit_yaml = commit_yaml
         self.test_instances = test_instances
 
-    async def notify(self):
+    async def notify(self, failures, num_passed, num_skipped, num_failed):
         commit_report = self.commit.commit_report(report_type=ReportType.TEST_RESULTS)
         if not commit_report:
             log.warning(
@@ -174,11 +141,15 @@ class TestResultsNotifier:
                     report_key=commit_report.external_id,
                 ),
             )
+            return False
+
         pullid = pull.database_pull.pullid
 
         pull_url = get_pull_url(pull.database_pull)
 
-        message = self.build_message(pull_url, self.test_instances)
+        message = self.build_message(
+            pull_url, self.test_instances, failures, num_passed, num_skipped, num_failed
+        )
 
         try:
             comment_id = pull.database_pull.commentid
@@ -199,7 +170,9 @@ class TestResultsNotifier:
             )
             return False
 
-    def build_message(self, url, test_instances):
+    def build_message(
+        self, url, test_instances, failures, num_passed, num_skipped, num_failed
+    ):
         message = []
 
         message += [
@@ -207,36 +180,8 @@ class TestResultsNotifier:
             "",
             "### :x: Failed Test Results: ",
         ]
-        failed_tests = 0
-        passed_tests = 0
-        skipped_tests = 0
 
-        failures = defaultdict(lambda: defaultdict(list))
-
-        escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
-
-        for test_instance in test_instances:
-            if test_instance.outcome == str(
-                Outcome.Failure
-            ) or test_instance.outcome == str(Outcome.Error):
-                failed_tests += 1
-                flag_names = sorted(test_instance.upload.flag_names)
-                suffix = ""
-                if flag_names:
-                    suffix = f"{','.join(flag_names) or ''}"
-                normalized_new_lines = "\n".join(
-                    test_instance.failure_message.splitlines()
-                )
-                formatted_failure_message = escaper.replace(normalized_new_lines)
-                failures[formatted_failure_message][
-                    f"{test_instance.test.testsuite}//////////{test_instance.test.name}"
-                ].append(suffix)
-            elif test_instance.outcome == str(Outcome.Skip):
-                skipped_tests += 1
-            elif test_instance.outcome == str(Outcome.Pass):
-                passed_tests += 1
-
-        results = f"Completed {len(test_instances)} tests with **`{failed_tests} failed`**, {passed_tests} passed and {skipped_tests} skipped."
+        results = f"Completed {len(test_instances)} tests with **`{num_failed} failed`**, {num_passed} passed and {num_skipped} skipped."
 
         message.append(results)
 
