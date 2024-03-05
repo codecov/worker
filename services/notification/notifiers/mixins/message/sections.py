@@ -373,7 +373,7 @@ class FooterSectionWriter(BaseSectionWriter):
         yield ("------")
         yield ("")
         yield (
-            "[Continue to review full report in Codecov by Sentry]({0}?src=pr&el=continue).".format(
+            "[Continue to review full report in Codecov by Sentry]({0}?dropdown=coverage&src=pr&el=continue).".format(
                 links["pull"]
             )
         )
