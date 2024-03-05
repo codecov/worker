@@ -69,7 +69,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         retry_in = FIRST_RETRY_DELAY * 3**self.request.retries
         self.retry(max_retries=max_retries, countdown=retry_in)
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         previous_results,

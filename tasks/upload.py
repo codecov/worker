@@ -233,7 +233,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         repoid,
@@ -288,7 +288,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 timeout=max(300, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
-                return await self.run_async_within_lock(
+                return await self.run_impl_within_lock(
                     db_session,
                     upload_context,
                     *args,
@@ -338,7 +338,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
-    async def run_async_within_lock(
+    def run_impl_within_lock(
         self,
         db_session,
         upload_context: UploadContext,

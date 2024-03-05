@@ -46,9 +46,7 @@ class CleanLabelsIndexTask(
     BaseCodecovTask,
     name=task_name,
 ):
-    async def run_async(
-        self, db_session, repoid, commitid, report_code=None, *args, **kwargs
-    ):
+    def run_impl(self, db_session, repoid, commitid, report_code=None, *args, **kwargs):
         redis_connection = get_redis_connection()
         repoid = int(repoid)
         lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
@@ -78,7 +76,7 @@ class CleanLabelsIndexTask(
                 timeout=max(300, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
-                return await self.run_async_within_lock(
+                return await self.run_impl_within_lock(
                     db_session,
                     read_only_args,
                     *args,
@@ -98,7 +96,7 @@ class CleanLabelsIndexTask(
         _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
         self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
-    async def run_async_within_lock(
+    def run_impl_within_lock(
         self,
         read_only_args: ReadOnlyArgs,
         *args,

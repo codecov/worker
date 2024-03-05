@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 class ProfilingSummarizationTask(
     BaseCodecovTask, name=profiling_summarization_task_name
 ):
-    async def run_async(self, db_session: Session, *, profiling_id: int, **kwargs):
+    def run_impl(self, db_session: Session, *, profiling_id: int, **kwargs):
         profiling = db_session.query(ProfilingCommit).filter_by(id=profiling_id).first()
         try:
             joined_execution_counts = json.loads(

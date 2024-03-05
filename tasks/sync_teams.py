@@ -17,7 +17,7 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
 
     ignore_result = False
 
-    async def run_async(self, db_session, ownerid, *, username=None, **kwargs):
+    def run_impl(self, db_session, ownerid, *, username=None, **kwargs):
         log.info("Sync teams", extra=dict(ownerid=ownerid, username=username))
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
 

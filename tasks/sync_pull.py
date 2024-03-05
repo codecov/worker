@@ -49,7 +49,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         At the end we call the notify task to do notifications with the new information we have
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session: sqlalchemy.orm.Session,
         *,
@@ -64,7 +64,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         lock_name = f"pullsync_{repoid}_{pullid}"
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
-                return await self.run_async_within_lock(
+                return await self.run_impl_within_lock(
                     db_session,
                     redis_connection,
                     repoid=repoid,
@@ -84,7 +84,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "reason": "unable_fetch_lock",
             }
 
-    async def run_async_within_lock(
+    def run_impl_within_lock(
         self,
         db_session: sqlalchemy.orm.Session,
         redis_connection,

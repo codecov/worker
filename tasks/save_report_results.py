@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 class SaveReportResultsTask(
     BaseCodecovTask, name="app.tasks.reports.save_report_results"
 ):
-    async def run_async(
+    def run_impl(
         self, db_session, *, repoid, commitid, report_code, current_yaml, **kwargs
     ):
         commit = self.fetch_commit(db_session, repoid, commitid)

@@ -7,7 +7,7 @@ from tasks.base import BaseCodecovTask
 
 # TODO: Move task name to shared
 class MutationTestUploadTask(BaseCodecovTask, name="app.tasks.mutation_test.upload"):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         *,

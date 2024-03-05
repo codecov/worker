@@ -17,7 +17,7 @@ bundle_analysis_notify_task_name = "app.tasks.bundle_analysis.BundleAnalysisNoti
 
 
 class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task_name):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         # Celery `chain` injects this argument - it's the returned result

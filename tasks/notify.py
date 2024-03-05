@@ -48,7 +48,7 @@ log = logging.getLogger(__name__)
 class NotifyTask(BaseCodecovTask, name=notify_task_name):
     throws = (SoftTimeLimitExceeded,)
 
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,
@@ -86,7 +86,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 lock_type=LockType.NOTIFICATION, retry_num=self.request.retries
             ):
                 lock_acquired = True
-                return await self.run_async_within_lock(
+                return await self.run_impl_within_lock(
                     db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -125,7 +125,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         if checkpoints.data:
             checkpoints.log(checkpoint)
 
-    async def run_async_within_lock(
+    def run_impl_within_lock(
         self,
         db_session: Session,
         *,

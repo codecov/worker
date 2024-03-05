@@ -32,9 +32,7 @@ class CodecovCronTask(BaseCodecovTask):
         """
         raise NotImplementedError()
 
-    async def run_async(
-        self, db_session, *args, cron_task_generation_time_iso, **kwargs
-    ):
+    def run_impl(self, db_session, *args, cron_task_generation_time_iso, **kwargs):
         lock_name = f"worker.executionlock.{self.name}"
         redis_connection = get_redis_connection()
         generation_time = datetime.fromisoformat(cron_task_generation_time_iso)

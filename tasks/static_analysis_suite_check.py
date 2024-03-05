@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 
 class StaticAnalysisSuiteCheckTask(BaseCodecovTask, name=static_analysis_task_name):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         *,

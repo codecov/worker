@@ -51,7 +51,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     ignore_result = False
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         # `previous_results`` is added by celery if the task is chained.

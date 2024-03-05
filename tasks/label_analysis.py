@@ -80,7 +80,7 @@ class LabelAnalysisRequestProcessingTask(
         self.dbsession = None
         self.metrics_context = None
 
-    async def run_async(self, db_session, request_id, *args, **kwargs):
+    def run_impl(self, db_session, request_id, *args, **kwargs):
         self.errors = []
         self.dbsession = db_session
         label_analysis_request = (

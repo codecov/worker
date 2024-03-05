@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 class AiPrReviewTask(BaseCodecovTask, name="app.tasks.ai_pr_review.AiPrReview"):
     throws = (SoftTimeLimitExceeded,)
 
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,

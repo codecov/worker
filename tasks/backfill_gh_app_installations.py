@@ -166,7 +166,7 @@ class BackfillGHAppInstallationsTask(
             )
             log.info("Successful backfill", extra=dict(ownerid=ownerid))
 
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         owner_ids: Optional[List[int]] = None,

@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 
 class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         repoid: int,

@@ -43,7 +43,7 @@ class ParserNotSupportedError(Exception):
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
     __test__ = False
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         *,

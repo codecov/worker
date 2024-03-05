@@ -820,7 +820,7 @@ class TestUploadTaskIntegration(object):
             commitid=commit.commitid,
             redis_connection=mock_redis,
         )
-        result = await UploadTask().run_async_within_lock(
+        result = await UploadTask().run_impl_within_lock(
             dbsession,
             upload_args,
         )
@@ -919,7 +919,7 @@ class TestUploadTaskIntegration(object):
             commitid=commit.commitid,
             redis_connection=mock_redis,
         )
-        result = await UploadTask().run_async_within_lock(
+        result = await UploadTask().run_impl_within_lock(
             dbsession,
             upload_args,
         )
@@ -1140,15 +1140,15 @@ class TestUploadTaskUnit(object):
         mocked_is_currently_processing = mocker.patch.object(
             UploadContext, "is_currently_processing", return_value=True
         )
-        mocked_run_async_within_lock = mocker.patch.object(
-            UploadTask, "run_async_within_lock", return_value=True
+        mocked_run_impl_within_lock = mocker.patch.object(
+            UploadTask, "run_impl_within_lock", return_value=True
         )
         task = UploadTask()
         task.request.retries = 0
         with pytest.raises(Retry):
             await task.run_async(dbsession, commit.repoid, commit.commitid)
         mocked_is_currently_processing.assert_called_with()
-        assert not mocked_run_async_within_lock.called
+        assert not mocked_run_impl_within_lock.called
 
     @pytest.mark.asyncio
     async def test_run_async_currently_processing_second_retry(
@@ -1160,14 +1160,14 @@ class TestUploadTaskUnit(object):
         mocked_is_currently_processing = mocker.patch.object(
             UploadContext, "is_currently_processing", return_value=True
         )
-        mocked_run_async_within_lock = mocker.patch.object(
-            UploadTask, "run_async_within_lock", return_value={"some": "value"}
+        mocked_run_impl_within_lock = mocker.patch.object(
+            UploadTask, "run_impl_within_lock", return_value={"some": "value"}
         )
         task = UploadTask()
         task.request.retries = 1
         result = await task.run_async(dbsession, commit.repoid, commit.commitid)
         mocked_is_currently_processing.assert_called_with()
-        assert mocked_run_async_within_lock.called
+        assert mocked_run_impl_within_lock.called
         assert result == {"some": "value"}
 
     def test_is_currently_processing(self, mock_redis):
@@ -1495,4 +1495,4 @@ class TestUploadTaskUnit(object):
             redis_connection=mock_redis,
         )
         with pytest.raises(Retry):
-            await task.run_async_within_lock(dbsession, upload_args)
+            await task.run_impl_within_lock(dbsession, upload_args)

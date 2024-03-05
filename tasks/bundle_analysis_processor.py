@@ -24,7 +24,7 @@ bundle_analysis_processor_task_name = (
 class BundleAnalysisProcessorTask(
     BaseCodecovTask, name=bundle_analysis_processor_task_name
 ):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         # Celery `chain` injects this argument - it's the returned result

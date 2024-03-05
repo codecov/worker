@@ -19,7 +19,7 @@ class StatusSetErrorTask(BaseCodecovTask, name=status_set_error_task_name):
     Set commit status upon error
     """
 
-    async def run_async(self, db_session, repoid, commitid, *, message=None, **kwargs):
+    def run_impl(self, db_session, repoid, commitid, *, message=None, **kwargs):
         log.info(
             "Set error",
             extra=dict(repoid=repoid, commitid=commitid, description=message),

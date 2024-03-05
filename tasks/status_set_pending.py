@@ -23,7 +23,7 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
 
     throws = (AssertionError,)
 
-    async def run_async(
+    def run_impl(
         self, db_session, repoid, commitid, branch, on_a_pull_request, *args, **kwargs
     ):
         log.info(

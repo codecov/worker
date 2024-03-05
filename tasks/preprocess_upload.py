@@ -31,7 +31,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
     uploading a report to codecov
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         *,

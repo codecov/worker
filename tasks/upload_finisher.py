@@ -43,7 +43,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         - Invalidating whatever cache is done
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         processing_results,

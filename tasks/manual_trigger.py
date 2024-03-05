@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 class ManualTriggerTask(
     BaseCodecovTask, name=manual_upload_completion_trigger_task_name
 ):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         *,

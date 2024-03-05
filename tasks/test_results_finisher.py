@@ -22,7 +22,7 @@ test_results_finisher_task_name = "app.tasks.test_results.TestResultsFinisherTas
 
 
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         chord_result: Dict[str, Any],

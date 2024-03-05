@@ -14,7 +14,7 @@ class HTTPRequestTask(BaseCodecovTask, name="app.tasks.http_request.HTTPRequest"
     Task for making generic HTTP requests.
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         url,
