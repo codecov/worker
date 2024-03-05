@@ -21,6 +21,7 @@ from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
 from services.billing import BillingPlan
@@ -156,7 +157,14 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             }
 
         try:
-            repository_service = get_repo_provider_service(commit.repository)
+            installation_name_to_use = None
+            if commit.repository.owner.service in ["github", "github_enterprise"]:
+                installation_name_to_use = get_installation_name_for_owner_for_task(
+                    db_session, self.name, commit.repository.owner
+                )
+            repository_service = get_repo_provider_service(
+                commit.repository, installation_name_to_use=installation_name_to_use
+            )
         except RepositoryWithoutValidBotError:
             save_commit_error(
                 commit, error_code=CommitErrorTypes.REPO_BOT_INVALID.value

@@ -307,11 +307,14 @@ class TestBotsService(BaseTestCase):
             "services.bots.get_github_integration_token",
             return_value="installation_token",
         )
-        assert get_repo_appropriate_bot_token(repo) == (
+        response = get_repo_appropriate_bot_token(repo)
+        mock_get_github_integration_token.assert_called_with(
+            "github", 12341234, app_id=None, pem_path=None
+        )
+        assert response == (
             {"key": "installation_token"},
             None,
         )
-        mock_get_github_integration_token.assert_called_with("github", 12341234)
 
     def test_get_owner_appropriate_bot_token_owner_no_bot_no_integration(self):
         owner = OwnerFactory.create(
@@ -380,7 +383,7 @@ class TestBotsService(BaseTestCase):
     ):
         owner = OwnerFactory(service="github", integration_id=12341234)
         assert owner.github_app_installations == []
-        assert get_owner_installation_id(owner, True) == 12341234
+        assert get_owner_installation_id(owner, True) == {"installation_id": 12341234}
 
     def test_get_owner_installation_id_yes_installation_yes_legacy_integration(
         self, mocker, dbsession
@@ -395,7 +398,11 @@ class TestBotsService(BaseTestCase):
         dbsession.add(installation)
         dbsession.flush()
         assert owner.github_app_installations == [installation]
-        assert get_owner_installation_id(owner, True) == 123456
+        assert get_owner_installation_id(owner, True) == {
+            "installation_id": 123456,
+            "app_id": None,
+            "pem_path": None,
+        }
 
     def test_get_owner_installation_id_yes_installation_yes_legacy_integration_specific_repos(
         self, mocker, dbsession
@@ -412,28 +419,24 @@ class TestBotsService(BaseTestCase):
             name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
             repository_service_ids=[repo_covered_by_installation.service_id],
             installation_id=123456,
+            app_id=123,
+            pem_path="some_path",
         )
         dbsession.add(installation)
         dbsession.flush()
         assert owner.github_app_installations == [installation]
-        assert (
-            get_owner_installation_id(
-                owner,
-                repo_covered_by_installation.using_integration,
-                repository=repo_covered_by_installation,
-            )
-            == 123456
-        )
+        assert get_owner_installation_id(
+            owner,
+            repo_covered_by_installation.using_integration,
+            repository=repo_covered_by_installation,
+        ) == {"installation_id": 123456, "app_id": 123, "pem_path": "some_path"}
         # Notice that the installation object overrides the `Repository.using_integration` column completely
         # ^ Not true anymore. We decided against it because there are some edge cases in filling up the list
-        assert (
-            get_owner_installation_id(
-                owner,
-                repo_not_covered_by_installation.using_integration,
-                repository=repo_not_covered_by_installation,
-            )
-            == 12341234
-        )
+        assert get_owner_installation_id(
+            owner,
+            repo_not_covered_by_installation.using_integration,
+            repository=repo_not_covered_by_installation,
+        ) == {"installation_id": 12341234}
 
     def test_get_token_type_mapping_public_repo_no_configuration_no_particular_bot(
         self, mock_configuration, dbsession
