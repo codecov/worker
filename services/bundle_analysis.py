@@ -30,6 +30,7 @@ from services.repository import (
     get_repo_provider_service,
 )
 from services.storage import get_storage_client
+from services.urls import get_bundle_analysis_pull_url
 
 log = logging.getLogger(__name__)
 
@@ -327,7 +328,7 @@ class Notifier:
             bundle_changes=bundle_changes, comparison=comparison
         )
         return self._write_lines(
-            bundle_rows=bundle_rows, total_size_delta=total_size_delta
+            bundle_rows=bundle_rows, total_size_delta=total_size_delta, pull=pull
         )
 
     def _create_bundle_rows(
@@ -368,10 +369,14 @@ class Notifier:
 
         return (bundle_rows, total_size_delta)
 
-    def _write_lines(self, bundle_rows: List[BundleRows], total_size_delta: int) -> str:
+    def _write_lines(
+        self, bundle_rows: List[BundleRows], total_size_delta: int, pull: EnrichedPull
+    ) -> str:
         # Write lines
+        pull_url = get_bundle_analysis_pull_url(pull=pull.database_pull)
+
         lines = [
-            "## Bundle Report",
+            f"## [Bundle]({pull_url}) Report",
             "",
         ]
 
