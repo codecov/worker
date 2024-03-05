@@ -1610,7 +1610,7 @@ class TestProjectChecksNotifier(object):
                         f"[Continue to review full report in Codecov by Sentry](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=continue).",
                         f"> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
                         f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-                        f"> Powered by [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=footer). Last update [{base_commit.commitid[:7]}...{head_commit.commitid[:7]}](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+                        f"> Powered by [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=footer). Last update [{base_commit.commitid[:7]}...{head_commit.commitid[:7]}](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
                         f"",
                     ]
                 ),

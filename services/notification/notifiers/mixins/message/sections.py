@@ -384,7 +384,7 @@ class FooterSectionWriter(BaseSectionWriter):
             "> `\u0394 = absolute <relative> (impact)`, `\xF8 = not affected`, `? = missing data`"
         )
         yield (
-            "> Powered by [Codecov]({pull}?src=pr&el=footer). Last update [{base}...{head}]({pull}?src=pr&el=lastupdated). Read the [comment docs]({comment}).".format(
+            "> Powered by [Codecov]({pull}?dropdown=coverage&src=pr&el=footer). Last update [{base}...{head}]({pull}?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs]({comment}).".format(
                 pull=links["pull"],
                 base=pull_dict["base"]["commitid"][:7],
                 head=pull_dict["head"]["commitid"][:7],

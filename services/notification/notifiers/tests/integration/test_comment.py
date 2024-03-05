@@ -393,7 +393,7 @@ class TestCommentNotifierIntegration(object):
             "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).",
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-            "> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=footer). Last update [5b174c2...5601846](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=footer). Last update [5b174c2...5601846](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
@@ -536,7 +536,7 @@ class TestCommentNotifierIntegration(object):
             "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?dropdown=coverage&src=pr&el=continue).",
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-            "> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=footer). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?dropdown=coverage&src=pr&el=footer). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):

@@ -973,9 +973,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1098,9 +1098,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
             f"",
@@ -1396,9 +1396,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1467,9 +1467,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1538,9 +1538,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[cdf9aa4...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[cdf9aa4...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1611,9 +1611,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison_no_change.project_coverage_base.commit.commitid[:7]}...{sample_comparison_no_change.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison_no_change.project_coverage_base.commit.commitid[:7]}...{sample_comparison_no_change.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1687,9 +1687,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1879,9 +1879,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -1943,9 +1943,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -2010,9 +2010,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -2084,9 +2084,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -2156,9 +2156,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -2261,9 +2261,9 @@ class TestCommentNotifier(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
@@ -4740,9 +4740,9 @@ class TestCommentNotifierInNewLayout(object):
             f"more](https://docs.codecov.io/docs/codecov-delta)",
             f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
-            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=footer). "
+            f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
-            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=lastupdated). "
+            f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             f"",
         ]
