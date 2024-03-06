@@ -4079,7 +4079,7 @@ class TestNewFooterSectionWriter(object):
         )
         assert res == [
             "",
-            "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](pull.link?dropdown=coverage&src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
 
@@ -4101,7 +4101,7 @@ class TestNewFooterSectionWriter(object):
         )
         assert res == [
             "",
-            "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](pull.link?dropdown=coverage&src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
 
@@ -4123,7 +4123,7 @@ class TestNewFooterSectionWriter(object):
         )
         assert res == [
             "",
-            "[:umbrella: View full report in Codecov by Sentry](pull.link?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](pull.link?dropdown=coverage&src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
 
@@ -4374,7 +4374,7 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"",
-            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).   ",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
@@ -4443,7 +4443,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"</details>",
             f"",
-            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).   ",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
@@ -4593,7 +4593,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"</details>",
             f"",
-            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).   ",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]
@@ -4673,7 +4673,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"</details>",
             f"",
-            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=continue).   ",
+            f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).   ",
             f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             f"",
         ]

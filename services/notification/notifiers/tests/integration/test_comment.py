@@ -604,7 +604,7 @@ class TestCommentNotifierIntegration(object):
             "",
             "</details>",
             "",
-            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
@@ -684,7 +684,7 @@ class TestCommentNotifierIntegration(object):
             "",
             "</details>",
             "",
-            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
