@@ -216,6 +216,33 @@ class GithubAppInstallation(CodecovBaseModel, MixinBaseClass):
             return repo.ownerid == self.ownerid
         return repo.service_id in self.repository_service_ids
 
+    def is_configured(self) -> bool:
+        """Returns whether this installation is properly configured and can be used"""
+        if self.name == GITHUB_APP_INSTALLATION_DEFAULT_NAME:
+            # The default app is configured in the installation YAML
+            return True
+        return self.app_id is not None and self.pem_path is not None
+
+
+class OwnerInstallationNameToUseForTask(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "codecov_auth_ownerinstallationnametousefortask"
+
+    ownerid = Column("owner_id", types.Integer, ForeignKey("owners.ownerid"))
+    owner = relationship(
+        Owner,
+        foreign_keys=[ownerid],
+    )
+    installation_name = Column(types.Text, server_default=FetchedValue())
+    task_name = Column(types.Text, server_default=FetchedValue())
+
+    __table_args__ = (
+        UniqueConstraint(
+            "owner_id",
+            "task_name",
+            name="single_task_name_per_owner",
+        ),
+    )
+
 
 class Commit(CodecovBaseModel):
     __tablename__ = "commits"

@@ -22,6 +22,7 @@ from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
 from services.billing import BillingPlan
@@ -140,15 +141,13 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         commits_query = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
         )
-        commit = commits_query.first()
+        commit: Commit = commits_query.first()
 
-        # check if there were any test failures
-        latest_test_instances = latest_test_instances_for_a_given_commit(
-            db_session, commit.id_
-        )
-
-        if any(
-            [test.outcome == str(Outcome.Failure) for test in latest_test_instances]
+        test_result_commit_report = commit.commit_report(ReportType.TEST_RESULTS)
+        if (
+            test_result_commit_report is not None
+            and test_result_commit_report.test_result_totals is not None
+            and test_result_commit_report.test_result_totals.failed > 0
         ):
             return {
                 "notify_attempted": False,
@@ -157,7 +156,14 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             }
 
         try:
-            repository_service = get_repo_provider_service(commit.repository)
+            installation_name_to_use = None
+            if commit.repository.owner.service in ["github", "github_enterprise"]:
+                installation_name_to_use = get_installation_name_for_owner_for_task(
+                    db_session, self.name, commit.repository.owner
+                )
+            repository_service = get_repo_provider_service(
+                commit.repository, installation_name_to_use=installation_name_to_use
+            )
         except RepositoryWithoutValidBotError:
             save_commit_error(
                 commit, error_code=CommitErrorTypes.REPO_BOT_INVALID.value

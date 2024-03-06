@@ -61,6 +61,13 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
         cascade="all, delete",
         passive_deletes=True,
     )
+    test_result_totals = relationship(
+        "TestResultReportTotals",
+        back_populates="report",
+        uselist=False,
+        cascade="all, delete",
+        passive_deletes=True,
+    )
 
 
 uploadflagmembership = Table(
@@ -149,9 +156,9 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
                 "session_totals": SessionTotalsArray.build_from_encoded_data(
                     v.get("session_totals")
                 ),
-                "diff_totals": ReportTotals(*v["diff_totals"])
-                if v["diff_totals"]
-                else None,
+                "diff_totals": (
+                    ReportTotals(*v["diff_totals"]) if v["diff_totals"] else None
+                ),
             }
             for v in json_files_array
         ]
@@ -296,3 +303,12 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     upload_id = Column(types.Integer, ForeignKey("reports_upload.id"))
     upload = relationship("Upload", backref=backref("testinstances"))
     failure_message = Column(types.Text)
+
+
+class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "reports_testresultreporttotals"
+    report_id = Column(types.Integer, ForeignKey("reports_commitreport.id"))
+    report = relationship("CommitReport", foreign_keys=[report_id])
+    passed = Column(types.Integer)
+    skipped = Column(types.Integer)
+    failed = Column(types.Integer)
