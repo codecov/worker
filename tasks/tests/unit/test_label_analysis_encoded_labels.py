@@ -500,7 +500,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
 
     task = LabelAnalysisRequestProcessingTask()
     assert sample_report_with_labels.labels_index is not None
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     expected_present_report_labels = [
         "apple",
         "applejuice",
@@ -552,7 +552,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     # And trigger the task again to save the new results
     larf.requested_labels = ["tangerine", "pear", "banana", "apple"]
     dbsession.flush()
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     expected_present_diff_labels = ["banana"]
     expected_present_report_labels = ["apple", "banana"]
     expected_absent_labels = ["pear", "tangerine"]
@@ -616,7 +616,7 @@ async def test_simple_call_with_requested_labels(
     dbsession.add(larf)
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     expected_present_diff_labels = ["banana"]
     expected_present_report_labels = ["apple", "banana"]
     expected_absent_labels = ["pear", "tangerine"]
@@ -673,7 +673,7 @@ def test_get_requested_labels(dbsession, mocker):
 async def test_call_label_analysis_no_request_object(dbsession, mocker):
     task = LabelAnalysisRequestProcessingTask()
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
-    res = await task.run_async(db_session=dbsession, request_id=-1)
+    res = task.run_impl(db_session=dbsession, request_id=-1)
     assert res == {
         "success": False,
         "present_report_labels": [],
@@ -847,7 +847,7 @@ def test_get_relevant_executable_lines_with_static_analyses(dbsession, mocker):
 
 
 @pytest.mark.asyncio
-async def test_run_async_with_error(
+async def test_run_impl_with_error(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
@@ -862,7 +862,7 @@ async def test_run_async_with_error(
     dbsession.add(larf)
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     expected_result = {
         "absent_labels": [],
         "present_diff_labels": [],
@@ -893,7 +893,7 @@ async def test_calculate_result_no_report(
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
     larf: LabelAnalysisRequest = LabelAnalysisRequestFactory.create(
         # This being not-ordered is important in the test
-        # TO make sure we go through the warning at the bottom of run_async
+        # TO make sure we go through the warning at the bottom of run_impl
         requested_labels=["tangerine", "pear", "banana", "apple"]
     )
     dbsession.add(larf)
@@ -909,7 +909,7 @@ async def test_calculate_result_no_report(
         return_value=(set(), set(), set()),
     )
     task = LabelAnalysisRequestProcessingTask()
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     assert res == {
         "success": True,
         "absent_labels": larf.requested_labels,

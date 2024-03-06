@@ -5,7 +5,7 @@ from tasks.timeseries_delete import TimeseriesDeleteTask
 
 
 @pytest.mark.asyncio
-async def test_timeseries_delete_run_async(dbsession, mocker):
+async def test_timeseries_delete_run_impl(dbsession, mocker):
     mocker.patch("tasks.timeseries_delete.timeseries_enabled", return_value=True)
     delete_repository_data = mocker.patch(
         "tasks.timeseries_delete.delete_repository_data"
@@ -16,7 +16,7 @@ async def test_timeseries_delete_run_async(dbsession, mocker):
     dbsession.flush()
 
     task = TimeseriesDeleteTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         repository_id=repository.repoid,
     )
@@ -26,11 +26,11 @@ async def test_timeseries_delete_run_async(dbsession, mocker):
 
 
 @pytest.mark.asyncio
-async def test_timeseries_delete_run_async_invalid_repository(dbsession, mocker):
+async def test_timeseries_delete_run_impl_invalid_repository(dbsession, mocker):
     mocker.patch("tasks.timeseries_delete.timeseries_enabled", return_value=True)
 
     task = TimeseriesDeleteTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         repository_id=9999,
     )
@@ -38,7 +38,7 @@ async def test_timeseries_delete_run_async_invalid_repository(dbsession, mocker)
 
 
 @pytest.mark.asyncio
-async def test_timeseries_delete_run_async_timeseries_not_enabled(dbsession, mocker):
+async def test_timeseries_delete_run_impl_timeseries_not_enabled(dbsession, mocker):
     mocker.patch("tasks.timeseries_delete.timeseries_enabled", return_value=False)
 
     repository = RepositoryFactory.create()
@@ -46,7 +46,7 @@ async def test_timeseries_delete_run_async_timeseries_not_enabled(dbsession, moc
     dbsession.flush()
 
     task = TimeseriesDeleteTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         repository_id=repository.repoid,
     )

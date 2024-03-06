@@ -267,7 +267,7 @@ class TestBackfillCommitDataToStorageTask(object):
 
         assert dbsession.query(Commit).get(commit.id_) is not None
         task = BackfillCommitDataToStorageTask()
-        result = await task.run_async(dbsession, commitid=commit.id_)
+        result = task.run_impl(dbsession, commitid=commit.id_)
         assert result == {"success": False, "errors": ["missing_data"]}
 
     @patch(
@@ -288,5 +288,5 @@ class TestBackfillCommitDataToStorageTask(object):
 
         assert dbsession.query(Commit).get(-1) is None
         task = BackfillCommitDataToStorageTask()
-        result = await task.run_async(dbsession, commitid=-1)
+        result = task.run_impl(dbsession, commitid=-1)
         assert result == {"success": False, "errors": ["commit_not_found"]}

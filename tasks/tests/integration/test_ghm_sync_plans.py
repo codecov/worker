@@ -62,9 +62,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         action = "purchased"
 
         task = SyncPlansTask()
-        result = await task.run_async(
-            dbsession, sender=sender, account=account, action=action
-        )
+        result = task.run_impl(dbsession, sender=sender, account=account, action=action)
         assert result["plan_type_synced"] == "paid"
 
         assert owner.plan == "users"
@@ -95,9 +93,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         action = "purchased"
 
         task = SyncPlansTask()
-        result = await task.run_async(
-            dbsession, sender=sender, account=account, action=action
-        )
+        result = task.run_impl(dbsession, sender=sender, account=account, action=action)
         assert result["plan_type_synced"] == "paid"
 
         owner = (
@@ -136,9 +132,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         action = "purchased"
 
         task = SyncPlansTask()
-        result = await task.run_async(
-            dbsession, sender=sender, account=account, action=action
-        )
+        result = task.run_impl(dbsession, sender=sender, account=account, action=action)
         assert result["plan_type_synced"] == "free"
 
         owner = (
@@ -214,9 +208,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         action = "cancelled"
 
         task = SyncPlansTask()
-        result = await task.run_async(
-            dbsession, sender=sender, account=account, action=action
-        )
+        result = task.run_impl(dbsession, sender=sender, account=account, action=action)
         assert result["plan_type_synced"] == "free"
 
         dbsession.commit()

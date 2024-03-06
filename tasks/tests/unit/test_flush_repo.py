@@ -19,7 +19,7 @@ class TestFlushRepo(object):
         repo = RepositoryFactory.create()
         dbsession.add(repo)
         dbsession.flush()
-        res = await task.run_async(dbsession, repoid=repo.repoid)
+        res = task.run_impl(dbsession, repoid=repo.repoid)
         assert res == FlushRepoTaskReturnType(
             **{
                 "delete_branches_count": 0,
@@ -63,7 +63,7 @@ class TestFlushRepo(object):
             branch = BranchFactory.create(repository=repo)
             dbsession.add(branch)
         dbsession.flush()
-        res = await task.run_async(dbsession, repoid=repo.repoid)
+        res = task.run_impl(dbsession, repoid=repo.repoid)
         assert res == FlushRepoTaskReturnType(
             **{
                 "delete_branches_count": 23,
@@ -82,7 +82,7 @@ class TestFlushRepo(object):
         for i in range(4):
             archive_service.write_chunks(f"commit_sha{i}", f"data{i}")
         task = FlushRepoTask()
-        res = await task.run_async(dbsession, repoid=repo.repoid)
+        res = task.run_impl(dbsession, repoid=repo.repoid)
         assert res == FlushRepoTaskReturnType(
             **{
                 "delete_branches_count": 0,
@@ -111,7 +111,7 @@ class TestFlushRepo(object):
         for i in range(4):
             archive_service.write_chunks(f"commit_sha{i}", f"data{i}")
         task = FlushRepoTask()
-        res = await task.run_async(dbsession, repoid=repo.repoid)
+        res = task.run_impl(dbsession, repoid=repo.repoid)
         assert res == FlushRepoTaskReturnType(
             **{
                 "delete_branches_count": 23,

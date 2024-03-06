@@ -46,7 +46,7 @@ class TestComputeComparisonTask(object):
         get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
         get_current_yaml.return_value = UserYaml({"coverage": {"status": None}})
 
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
         data_in_storage = mock_storage.read_file(
@@ -113,7 +113,7 @@ class TestComputeComparisonTask(object):
             repository_id=comparison.compare_commit.repository.repoid, flag_name="unit"
         )
         dbsession.add(unit_repositoryflag)
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
         compare_flag_records = dbsession.query(CompareFlag).all()
@@ -209,7 +209,7 @@ class TestComputeComparisonTask(object):
         get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
         get_current_yaml.return_value = UserYaml({"coverage": {"status": None}})
 
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
         data_in_storage = mock_storage.read_file(
@@ -308,7 +308,7 @@ class TestComputeComparisonTask(object):
             base_totals=None,
         )
         dbsession.add(existing_flag_comparison)
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
         compare_flag_records = dbsession.query(CompareFlag).all()
@@ -328,7 +328,7 @@ class TestComputeComparisonTask(object):
         mocker.patch.object(
             ReportService, "get_existing_report_for_commit", return_value=None
         )
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.error.value
         assert comparison.error == CompareCommitError.missing_base_report.value
@@ -349,7 +349,7 @@ class TestComputeComparisonTask(object):
             "get_existing_report_for_commit",
             side_effect=(ReadOnlyReport.create_from_report(sample_report), None),
         )
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.error.value
         assert comparison.error == CompareCommitError.missing_head_report.value
@@ -370,7 +370,7 @@ class TestComputeComparisonTask(object):
             "get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
         )
-        res = await task.run_async(dbsession, comparison.id)
+        res = task.run_impl(dbsession, comparison.id)
         assert res == {"successful": False}
         dbsession.flush()
         assert comparison.state == CompareCommitState.pending.value
@@ -418,7 +418,7 @@ class TestComputeComparisonTask(object):
         dbsession.flush()
 
         task = ComputeComparisonTask()
-        res = await task.run_async(dbsession, comparison.id)
+        res = task.run_impl(dbsession, comparison.id)
         assert res == {"successful": True}
 
         component_comparisons = (
@@ -562,7 +562,7 @@ class TestComputeComparisonTask(object):
         dbsession.flush()
 
         task = ComputeComparisonTask()
-        res = await task.run_async(dbsession, comparison.id)
+        res = task.run_impl(dbsession, comparison.id)
         assert res == {"successful": True}
 
         component_comparisons = (

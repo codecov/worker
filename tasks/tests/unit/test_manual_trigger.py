@@ -41,7 +41,7 @@ class TestUploadCompletionTask(object):
         dbsession.add(pull)
         dbsession.add(compared_to)
         dbsession.flush()
-        result = await ManualTriggerTask().run_async(
+        result = ManualTriggerTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -98,7 +98,7 @@ class TestUploadCompletionTask(object):
         dbsession.add(upload2)
         dbsession.flush()
         with pytest.raises(Retry):
-            result = await ManualTriggerTask().run_async(
+            result = ManualTriggerTask().run_impl(
                 dbsession,
                 repoid=commit.repoid,
                 commitid=commit.commitid,

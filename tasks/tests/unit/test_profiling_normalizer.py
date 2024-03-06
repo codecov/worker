@@ -27,7 +27,7 @@ def sample_open_telemetry_normalized():
 
 
 @pytest.mark.asyncio
-async def test_run_async_simple_normalizing_run(
+async def test_run_impl_simple_normalizing_run(
     dbsession,
     mock_storage,
     mock_configuration,
@@ -50,7 +50,7 @@ async def test_run_async_simple_normalizing_run(
     dbsession.add(puf)
     dbsession.flush()
     task = ProfilingNormalizerTask()
-    res = await task.run_async(dbsession, profiling_upload_id=puf.id)
+    res = task.run_impl(dbsession, profiling_upload_id=puf.id)
     assert res["successful"]
     result = json.loads(mock_storage.read_file("bucket", res["location"]).decode())
     print(mock_storage.read_file("bucket", res["location"]).decode())
@@ -69,5 +69,5 @@ async def test_run_sync_normalizing_run_no_file(
     dbsession.add(puf)
     dbsession.flush()
     task = ProfilingNormalizerTask()
-    res = await task.run_async(dbsession, profiling_upload_id=puf.id)
+    res = task.run_impl(dbsession, profiling_upload_id=puf.id)
     assert res == {"successful": False}

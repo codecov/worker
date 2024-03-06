@@ -46,7 +46,7 @@ class TestSyncReposTaskUnit(object):
     async def test_unknown_owner(self, mocker, mock_configuration, dbsession):
         unknown_ownerid = 10404
         with pytest.raises(AssertionError, match="Owner not found"):
-            await SyncReposTask().run_async(
+            SyncReposTask().run_impl(
                 dbsession,
                 ownerid=unknown_ownerid,
                 username=None,
@@ -474,7 +474,7 @@ class TestSyncReposTaskUnit(object):
         dbsession.add(repo_spack)
         dbsession.flush()
 
-        await SyncReposTask().run_async(
+        SyncReposTask().run_impl(
             dbsession, ownerid=user.ownerid, using_integration=False
         )
         repos = (
@@ -504,7 +504,7 @@ class TestSyncReposTaskUnit(object):
         dbsession.add(user)
         dbsession.flush()
         mock_redis.lock.side_effect = LockError
-        await SyncReposTask().run_async(
+        SyncReposTask().run_impl(
             dbsession, ownerid=user.ownerid, using_integration=False
         )
         assert user.permission == []  # there were no private repos to add
@@ -543,7 +543,7 @@ class TestSyncReposTaskUnit(object):
         )
         dbsession.add(user)
         dbsession.flush()
-        await SyncReposTask().run_async(
+        SyncReposTask().run_impl(
             dbsession, ownerid=user.ownerid, using_integration=False
         )
 
@@ -647,7 +647,7 @@ class TestSyncReposTaskUnit(object):
             dbsession.add(repo)
         dbsession.flush()
 
-        await SyncReposTask().run_async(
+        SyncReposTask().run_impl(
             dbsession, ownerid=user.ownerid, using_integration=True
         )
         dbsession.commit()
@@ -720,7 +720,7 @@ class TestSyncReposTaskUnit(object):
         dbsession.add(repo_spack)
         dbsession.flush()
 
-        await SyncReposTask().run_async(
+        SyncReposTask().run_impl(
             dbsession, ownerid=user.ownerid, using_integration=True
         )
 
@@ -774,7 +774,7 @@ class TestSyncReposTaskUnit(object):
         mock_owner_provider.list_repos.side_effect = TorngitClientError(
             "code", "response", "message"
         )
-        await SyncReposTask().run_async(
+        SyncReposTask().run_impl(
             dbsession, ownerid=user.ownerid, using_integration=False
         )
         assert user.permission == []  # repos were removed
@@ -812,7 +812,7 @@ class TestSyncReposTaskUnit(object):
             mock_owner_provider.list_repos.side_effect = SoftTimeLimitExceeded()
 
         with pytest.raises(SoftTimeLimitExceeded):
-            await SyncReposTask().run_async(
+            SyncReposTask().run_impl(
                 dbsession, ownerid=user.ownerid, using_integration=False
             )
         assert user.permission == sorted(
@@ -861,7 +861,7 @@ class TestSyncReposTaskUnit(object):
         )
         dbsession.add(user)
         dbsession.flush()
-        await SyncReposTask().run_async(
+        SyncReposTask().run_impl(
             dbsession, ownerid=user.ownerid, using_integration=False
         )
 
@@ -976,7 +976,7 @@ class TestSyncReposTaskUnit(object):
             dbsession.add(repo)
         dbsession.flush()
 
-        await SyncReposTask().run_async(
+        SyncReposTask().run_impl(
             dbsession, ownerid=user.ownerid, using_integration=True
         )
         dbsession.commit()
@@ -1121,7 +1121,7 @@ class TestSyncReposTaskUnit(object):
         mock_owner_provider.get_repos_from_nodeids_generator.side_effect = side_effect
         mock_owner_provider.service = "github"
 
-        await SyncReposTask().run_async(
+        SyncReposTask().run_impl(
             dbsession,
             ownerid=user.ownerid,
             using_integration=True,

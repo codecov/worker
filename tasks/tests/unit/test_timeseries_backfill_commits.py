@@ -9,7 +9,7 @@ from tasks.timeseries_backfill import TimeseriesBackfillCommitsTask
 
 
 @pytest.mark.asyncio
-async def test_backfill_commits_run_async(dbsession, mocker):
+async def test_backfill_commits_run_impl(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
     mocked_app = mocker.patch.object(
         TimeseriesBackfillCommitsTask,
@@ -36,7 +36,7 @@ async def test_backfill_commits_run_async(dbsession, mocker):
     dbsession.flush()
 
     task = TimeseriesBackfillCommitsTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         commit_ids=[commit1.id_, commit2.id_],
         dataset_names=[dataset.name],
@@ -64,12 +64,12 @@ async def test_backfill_commits_run_async(dbsession, mocker):
 
 
 @pytest.mark.asyncio
-async def test_backfill_commits_run_async_timeseries_not_enabled(dbsession, mocker):
+async def test_backfill_commits_run_impl_timeseries_not_enabled(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=False)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     task = TimeseriesBackfillCommitsTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         commit_ids=[1, 2, 3],
         dataset_names=["testing"],

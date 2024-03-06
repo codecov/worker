@@ -3,7 +3,6 @@ import datetime
 import uuid
 
 import httpx
-import pytest
 import respx
 from mock import Mock, patch
 
@@ -29,8 +28,7 @@ def _mock_response():
 
 
 class TestBrollyStatsRollupTask(object):
-    @pytest.mark.asyncio
-    async def test_get_min_seconds_interval_between_executions(self, dbsession):
+    def test_get_min_seconds_interval_between_executions(self, dbsession):
         assert isinstance(
             BrollyStatsRollupTask.get_min_seconds_interval_between_executions(),
             int,
@@ -39,9 +37,8 @@ class TestBrollyStatsRollupTask(object):
             BrollyStatsRollupTask.get_min_seconds_interval_between_executions() == 72000
         )
 
-    @pytest.mark.asyncio
     @patch("tasks.brolly_stats_rollup.get_config", return_value=False)
-    async def test_run_cron_task_while_disabled(self, mocker, dbsession):
+    def test_run_cron_task_while_disabled(self, mocker, dbsession):
         task = BrollyStatsRollupTask()
 
         result = await BrollyStatsRollupTask().run_cron_task(dbsession)
@@ -50,9 +47,8 @@ class TestBrollyStatsRollupTask(object):
             "reason": "telemetry disabled in codecov.yml",
         }
 
-    @pytest.mark.asyncio
     @respx.mock
-    async def test_run_cron_task_http_ok(self, mocker, dbsession):
+    def test_run_cron_task_http_ok(self, mocker, dbsession):
         users = [UserFactory.create(name=name) for name in ("foo", "bar", "baz")]
         for user in users:
             dbsession.add(user)
@@ -120,9 +116,8 @@ class TestBrollyStatsRollupTask(object):
             },
         }
 
-    @pytest.mark.asyncio
     @respx.mock
-    async def test_run_cron_task_not_ok(self, mocker, dbsession):
+    def test_run_cron_task_not_ok(self, mocker, dbsession):
         mock_request = respx.post(DEFAULT_BROLLY_ENDPOINT).mock(
             return_value=httpx.Response(500)
         )
@@ -150,11 +145,8 @@ class TestBrollyStatsRollupTask(object):
             },
         }
 
-    @pytest.mark.asyncio
     @respx.mock
-    async def test_run_cron_task_include_admin_email_if_populated(
-        self, mocker, dbsession
-    ):
+    def test_run_cron_task_include_admin_email_if_populated(self, mocker, dbsession):
         mock_request = respx.post(DEFAULT_BROLLY_ENDPOINT).mock(
             return_value=httpx.Response(200)
         )

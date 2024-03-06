@@ -99,7 +99,7 @@ class TestNewUserActivatedTaskUnit(object):
     async def test_org_not_found(self, mocker, dbsession):
         unknown_org_ownerid = 404123
         user_ownerid = 123
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, unknown_org_ownerid, user_ownerid
         )
         assert res == {
@@ -112,7 +112,7 @@ class TestNewUserActivatedTaskUnit(object):
     async def test_org_not_on_pr_plan(self, mocker, dbsession, pull):
         pull.repository.owner.plan = "users-inappm"
         dbsession.flush()
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
         assert res == {
@@ -125,7 +125,7 @@ class TestNewUserActivatedTaskUnit(object):
     async def test_org_not_on_pr_plan(self, mocker, dbsession, pull):
         pull.repository.owner.plan = "users-inappm"
         dbsession.flush()
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
         assert res == {
@@ -139,7 +139,7 @@ class TestNewUserActivatedTaskUnit(object):
         mocked_possibly_resend_notifications = mocker.patch(
             "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications"
         )
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
         assert res == {
@@ -155,7 +155,7 @@ class TestNewUserActivatedTaskUnit(object):
         mocked_possibly_resend_notifications = mocker.patch(
             "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications"
         )
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
         assert res == {
@@ -184,7 +184,7 @@ class TestNewUserActivatedTaskUnit(object):
         dbsession.add(cn2)
         dbsession.flush()
 
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
         assert res == {
@@ -220,7 +220,7 @@ class TestNewUserActivatedTaskUnit(object):
             tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
         )
 
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
 

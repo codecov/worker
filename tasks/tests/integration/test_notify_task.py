@@ -71,7 +71,7 @@ class TestNotifyTask(object):
             )
             mock_storage.write_file("archive", master_chunks_url, content)
         task = NotifyTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
         expected_result = {
@@ -196,7 +196,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_impl_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -383,7 +383,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_impl_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -611,7 +611,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_impl_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -831,7 +831,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_impl_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -1277,7 +1277,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_impl_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,

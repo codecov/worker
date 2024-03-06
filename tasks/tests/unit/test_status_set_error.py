@@ -30,7 +30,7 @@ class TestSetErrorTaskUnit(object):
         dbsession.flush()
         repoid = commit.repoid
         commitid = commit.commitid
-        res = await StatusSetErrorTask().run_async(dbsession, repoid, commitid)
+        res = StatusSetErrorTask().run_impl(dbsession, repoid, commitid)
         assert not repo.set_commit_status.called
         assert res == {"status_set": False}
 
@@ -93,7 +93,7 @@ class TestSetErrorTaskUnit(object):
         dbsession.flush()
         repoid = commit.repoid
         commitid = commit.commitid
-        await StatusSetErrorTask().run_async(dbsession, repoid, commitid)
+        StatusSetErrorTask().run_impl(dbsession, repoid, commitid)
         if cc_status_exists:
             repo.set_commit_status.assert_called_with(
                 commit=commitid,
@@ -153,7 +153,7 @@ class TestSetErrorTaskUnit(object):
         repoid = commit.repoid
         commitid = commit.commitid
         custom_message = "Uh-oh. This is bad."
-        await StatusSetErrorTask().run_async(
+        StatusSetErrorTask().run_impl(
             dbsession, repoid, commitid, message=custom_message
         )
 

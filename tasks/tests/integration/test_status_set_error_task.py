@@ -28,7 +28,7 @@ class TestStatusSetErrorTask(object):
         dbsession.add(commit)
 
         task = StatusSetErrorTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession, repository.repoid, commit.commitid, message="Test err message"
         )
         expected_result = {"status_set": True}

@@ -35,7 +35,7 @@ class TestSetPendingTaskUnit(object):
         commitid = commit.commitid
         branch = "master"
         on_a_pull_request = False
-        res = await StatusSetPendingTask().run_async(
+        res = StatusSetPendingTask().run_impl(
             dbsession, repoid, commitid, branch, on_a_pull_request
         )
         assert res["status_set"] == False
@@ -67,7 +67,7 @@ class TestSetPendingTaskUnit(object):
         with pytest.raises(
             AssertionError, match="Pending disabled. Please request to be in beta."
         ):
-            await StatusSetPendingTask().run_async(
+            StatusSetPendingTask().run_impl(
                 dbsession, repoid, commitid, branch, on_a_pull_request
             )
         mock_redis.sismember.assert_called_with("beta.pending", repoid)
@@ -105,7 +105,7 @@ class TestSetPendingTaskUnit(object):
         commitid = commit.commitid
         branch = "master"
         on_a_pull_request = False
-        res = await StatusSetPendingTask().run_async(
+        res = StatusSetPendingTask().run_impl(
             dbsession, repoid, commitid, branch, on_a_pull_request
         )
         assert not repo.set_commit_status.called
@@ -146,7 +146,7 @@ class TestSetPendingTaskUnit(object):
         commitid = commit.commitid
         branch = None
         on_a_pull_request = False
-        res = await StatusSetPendingTask().run_async(
+        res = StatusSetPendingTask().run_impl(
             dbsession, repoid, commitid, branch, on_a_pull_request
         )
         assert not repo.set_commit_status.called
@@ -227,7 +227,7 @@ class TestSetPendingTaskUnit(object):
         repoid = commit.repoid
         commitid = commit.commitid
         on_a_pull_request = False
-        await StatusSetPendingTask().run_async(
+        StatusSetPendingTask().run_impl(
             dbsession, repoid, commitid, branch, on_a_pull_request
         )
         if branch == "master" and not cc_status_exists:

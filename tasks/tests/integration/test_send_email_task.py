@@ -38,7 +38,7 @@ class TestSendEmailTask:
 
         assert res.status_code == 200
 
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession,
             owner.ownerid,
             "test",

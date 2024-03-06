@@ -284,7 +284,7 @@ class TestSaveReportResultsTask(object):
         )
         mocked_fetch_pull.return_value = None
         task = SaveReportResultsTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession,
             repoid=commit.repository.repoid,
             commitid=commit.commitid,
@@ -318,7 +318,7 @@ class TestSaveReportResultsTask(object):
         )
         mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
         task = SaveReportResultsTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession,
             repoid=commit.repository.repoid,
             commitid=commit.commitid,
@@ -350,7 +350,7 @@ class TestSaveReportResultsTask(object):
         )
         mocked_fetch_pull.return_value = None
         task = SaveReportResultsTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession,
             repoid=commit.repository.repoid,
             commitid=commit.commitid,

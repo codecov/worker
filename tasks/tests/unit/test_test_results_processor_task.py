@@ -58,7 +58,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=upload.report.commit.repoid,
             commitid=commit.commitid,
@@ -142,7 +142,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -208,7 +208,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -287,7 +287,7 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(current_report_row)
         dbsession.flush()
 
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -358,7 +358,7 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(current_report_row)
         dbsession.flush()
 
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -422,7 +422,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -494,7 +494,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -561,7 +561,7 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(existing_test)
         dbsession.flush()
 
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=repoid,
             commitid=commit.commitid,
@@ -648,7 +648,7 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(existing_test)
         dbsession.flush()
 
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=repoid,
             commitid=commit.commitid,

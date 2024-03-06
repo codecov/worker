@@ -20,7 +20,7 @@ async def test_ai_pr_review_task(
 
     task = AiPrReviewTask()
 
-    result = await task.run_async(
+    result = task.run_impl(
         dbsession,
         repoid=repository.repoid,
         pullid=123,

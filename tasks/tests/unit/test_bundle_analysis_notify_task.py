@@ -19,7 +19,7 @@ async def test_bundle_analysis_notify_task(
 
     mocker.patch("services.bundle_analysis.Notifier.notify", return_value=True)
 
-    result = await BundleAnalysisNotifyTask().run_async(
+    result = BundleAnalysisNotifyTask().run_impl(
         dbsession,
         {"results": [{"error": None}]},
         repoid=commit.repoid,

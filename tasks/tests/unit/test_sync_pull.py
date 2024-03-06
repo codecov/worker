@@ -151,7 +151,7 @@ class TestPullSyncTask(object):
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=pull, provider_pull={}
         )
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -166,7 +166,7 @@ class TestPullSyncTask(object):
         dbsession.add(pull)
         dbsession.flush()
         mock_redis.lock.return_value.__enter__.side_effect = LockError
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -188,7 +188,7 @@ class TestPullSyncTask(object):
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=None, provider_pull=None
         )
-        res = await task.run_async(dbsession, repoid=repository.repoid, pullid=99)
+        res = task.run_impl(dbsession, repoid=repository.repoid, pullid=99)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -213,7 +213,7 @@ class TestPullSyncTask(object):
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=pull, provider_pull=None
         )
-        res = await task.run_async(dbsession, repoid=repository.repoid, pullid=99)
+        res = task.run_impl(dbsession, repoid=repository.repoid, pullid=99)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -231,7 +231,7 @@ class TestPullSyncTask(object):
             "tasks.sync_pull.get_repo_provider_service",
             side_effect=RepositoryWithoutValidBotError(),
         )
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -272,7 +272,7 @@ class TestPullSyncTask(object):
         mock_repo_provider.get_pull_request_commits.side_effect = TorngitClientError(
             403, "response", "message"
         )
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": True,
@@ -281,7 +281,7 @@ class TestPullSyncTask(object):
         }
 
     @pytest.mark.asyncio
-    async def test_run_async_unobtainable_lock(self, dbsession, mocker, mock_redis):
+    async def test_run_impl_unobtainable_lock(self, dbsession, mocker, mock_redis):
         pull = PullFactory.create()
         dbsession.add(pull)
         dbsession.flush()
@@ -289,7 +289,7 @@ class TestPullSyncTask(object):
         mock_redis.exists.return_value = True
         task = PullSyncTask()
         task.request.retries = 0
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,

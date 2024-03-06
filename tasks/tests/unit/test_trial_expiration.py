@@ -16,7 +16,7 @@ class TestTrialExpiration(object):
         dbsession.flush()
 
         task = TrialExpirationTask()
-        assert await task.run_async(dbsession, owner.ownerid) == {"successful": True}
+        assert task.run_impl(dbsession, owner.ownerid) == {"successful": True}
 
         assert owner.plan == BillingPlan.users_basic.value
         assert owner.plan_activated_users == None
@@ -33,7 +33,7 @@ class TestTrialExpiration(object):
         dbsession.flush()
 
         task = TrialExpirationTask()
-        assert await task.run_async(dbsession, owner.ownerid) == {"successful": True}
+        assert task.run_impl(dbsession, owner.ownerid) == {"successful": True}
 
         assert owner.plan == BillingPlan.users_basic.value
         assert owner.plan_activated_users == None
@@ -48,7 +48,7 @@ class TestTrialExpiration(object):
         dbsession.flush()
 
         task = TrialExpirationTask()
-        assert await task.run_async(dbsession, owner.ownerid) == {"successful": True}
+        assert task.run_impl(dbsession, owner.ownerid) == {"successful": True}
 
         assert owner.plan == BillingPlan.users_basic.value
         assert owner.plan_activated_users == [9]

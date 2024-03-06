@@ -95,7 +95,7 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(report_details)
         dbsession.flush()
-        result = await UploadProcessorTask().run_async(
+        result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
@@ -222,7 +222,7 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(report_details)
         dbsession.flush()
-        result = await UploadProcessorTask().run_async(
+        result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
@@ -345,7 +345,7 @@ class TestUploadProcessorTask(object):
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
         mocked_3 = mocker.patch.object(UploadProcessorTask, "app")
         mocked_3.send_task.return_value = True
-        result = await UploadProcessorTask().process_async_within_lock(
+        result = await UploadProcessorTask().process_impl_within_lock(
             db_session=dbsession,
             redis_connection=mock_redis,
             previous_results={},
@@ -473,7 +473,7 @@ class TestUploadProcessorTask(object):
         dbsession.add(upload)
         dbsession.flush()
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
-        result = await UploadProcessorTask().run_async(
+        result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
@@ -540,7 +540,7 @@ class TestUploadProcessorTask(object):
         dbsession.flush()
         redis_queue = [{"url": "url", "upload_pk": upload.id_}]
         with pytest.raises(Exception) as exc:
-            await UploadProcessorTask().run_async(
+            UploadProcessorTask().run_impl(
                 dbsession,
                 {},
                 repoid=commit.repoid,
@@ -583,7 +583,7 @@ class TestUploadProcessorTask(object):
         dbsession.flush()
         mocked_random = mocker.patch("random.randint", return_value=179)
         with pytest.raises(celery.exceptions.Retry):
-            await UploadProcessorTask().run_async(
+            UploadProcessorTask().run_impl(
                 dbsession,
                 {},
                 repoid=commit.repoid,
@@ -656,7 +656,7 @@ class TestUploadProcessorTask(object):
             {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
             {"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
         ]
-        result = await UploadProcessorTask().run_async(
+        result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
@@ -844,7 +844,7 @@ class TestUploadProcessorTask(object):
             {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
             {"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
         ]
-        result = await UploadProcessorTask().run_async(
+        result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
@@ -933,7 +933,7 @@ class TestUploadProcessorTask(object):
             {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
             {"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
         ]
-        result = await UploadProcessorTask().run_async(
+        result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
@@ -1013,7 +1013,7 @@ class TestUploadProcessorTask(object):
         dbsession.flush()
         redis_queue = [{"url": "url", "what": "huh", "upload_pk": upload_1.id_}]
         with pytest.raises(celery.exceptions.SoftTimeLimitExceeded, match="banana"):
-            await UploadProcessorTask().run_async(
+            UploadProcessorTask().run_impl(
                 dbsession,
                 {},
                 repoid=commit.repoid,
@@ -1058,7 +1058,7 @@ class TestUploadProcessorTask(object):
         dbsession.flush()
         redis_queue = [{"url": "url", "what": "huh", "upload_pk": upload_1.id_}]
         with pytest.raises(celery.exceptions.Retry, match="banana"):
-            await UploadProcessorTask().run_async(
+            UploadProcessorTask().run_impl(
                 dbsession,
                 {},
                 repoid=commit.repoid,

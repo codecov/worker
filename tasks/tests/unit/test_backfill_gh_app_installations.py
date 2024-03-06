@@ -53,7 +53,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=None) == {
+        assert task.run_impl(dbsession, owner_ids=None) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -101,7 +101,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=[owner.ownerid]) == {
+        assert task.run_impl(dbsession, owner_ids=[owner.ownerid]) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -169,7 +169,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=None) == {
+        assert task.run_impl(dbsession, owner_ids=None) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -223,7 +223,7 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=[owner.ownerid]) == {
+        assert task.run_impl(dbsession, owner_ids=[owner.ownerid]) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -272,7 +272,7 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=None) == {
+        assert task.run_impl(dbsession, owner_ids=None) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -331,7 +331,7 @@ class TestBackfillBothTypesOfOwners(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=None) == {
+        assert task.run_impl(dbsession, owner_ids=None) == {
             "successful": True,
             "reason": "backfill task finished",
         }

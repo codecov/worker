@@ -128,7 +128,7 @@ class TestCleanLabelsIndexSyncronization(object):
         )
         task = CleanLabelsIndexTask()
         with pytest.raises(Retry):
-            await task.run_async(dbsession, commit.repository.repoid, commit.commitid)
+            task.run_impl(dbsession, commit.repository.repoid, commit.commitid)
         lock_name = UPLOAD_PROCESSING_LOCK_NAME(
             commit.repository.repoid, commit.commitid
         )
@@ -152,7 +152,7 @@ class TestCleanLabelsIndexSyncronization(object):
         mock_redis.lock.side_effect = LockError
         task = CleanLabelsIndexTask()
         with pytest.raises(Retry):
-            await task.run_async(dbsession, commit.repository.repoid, commit.commitid)
+            task.run_impl(dbsession, commit.repository.repoid, commit.commitid)
         mock_currently_processing.assert_called()
         mock_run_impl_within_lock.assert_not_called()
 
@@ -171,7 +171,7 @@ class TestCleanLabelsIndexSyncronization(object):
             CleanLabelsIndexTask, "_get_best_effort_commit_yaml", return_value={}
         )
         task = CleanLabelsIndexTask()
-        await task.run_async(
+        task.run_impl(
             dbsession, commit.repository.repoid, commit.commitid, report_code="code"
         )
         mock_currently_processing.assert_called()
@@ -256,7 +256,7 @@ class TestCleanLabelsIndexLogic(BaseTestCase):
         )
         task = CleanLabelsIndexTask()
         read_only_args = ReadOnlyArgs(commit=commit, report_code=None, commit_yaml={})
-        res = await task.run_impl_within_lock(read_only_args)
+        res = task.run_impl_within_lock(read_only_args)
         assert res == {"success": False, "error": "Report not found"}
         mock_get_report.assert_called_with(commit, report_code=None)
 
@@ -271,7 +271,7 @@ class TestCleanLabelsIndexLogic(BaseTestCase):
         )
         task = CleanLabelsIndexTask()
         read_only_args = ReadOnlyArgs(commit=commit, report_code=None, commit_yaml={})
-        res = await task.run_impl_within_lock(read_only_args)
+        res = task.run_impl_within_lock(read_only_args)
         assert res == {
             "success": False,
             "error": "Labels index is empty, nothing to do",
@@ -297,7 +297,7 @@ class TestCleanLabelsIndexLogic(BaseTestCase):
         sample_report_better_read_original = self.convert_report_to_better_readable(
             sample_report_with_labels
         )
-        res = await task.run_impl_within_lock(read_only_args)
+        res = task.run_impl_within_lock(read_only_args)
         assert res == {"success": True}
         mock_get_report.assert_called_with(commit, report_code=None)
         mock_save_report.assert_called()
@@ -327,7 +327,7 @@ class TestCleanLabelsIndexLogic(BaseTestCase):
         )
         task = CleanLabelsIndexTask()
         read_only_args = ReadOnlyArgs(commit=commit, report_code=None, commit_yaml={})
-        res = await task.run_impl_within_lock(read_only_args)
+        res = task.run_impl_within_lock(read_only_args)
         assert res == {"success": True}
         mock_get_report.assert_called_with(commit, report_code=None)
         mock_save_report.assert_called()

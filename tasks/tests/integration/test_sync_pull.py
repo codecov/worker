@@ -88,7 +88,7 @@ class TestPullSyncTask(object):
         dbsession.add(head_commit)
         dbsession.add(pull)
         dbsession.flush()
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert {
             "notifier_called": True,
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},

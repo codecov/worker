@@ -73,9 +73,9 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=False
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True
+        }
         assert repo.languages == LIST_WITH_INTERSECTION
         assert repo.languages_last_updated == MOCKED_NOW
 
@@ -92,9 +92,9 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=False
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True
+        }
         assert repo.languages == LIST_WITH_INTERSECTION
         assert repo.languages_last_updated == MOCKED_NOW
 
@@ -114,9 +114,9 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=False
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True
+        }
         assert repo.languages == ["javascript"]
         assert repo.languages_last_updated == MOCKED_NOW
 
@@ -134,8 +134,7 @@ class TestSyncRepoLanguages(object):
 
         task = SyncRepoLanguagesTask()
         assert (
-            await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=False)
-            == None
+            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == None
         )
 
     @pytest.mark.asyncio
@@ -151,9 +150,9 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=False
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True
+        }
         assert repo.languages == LIST_WITH_INTERSECTION
         assert repo.languages_last_updated == MOCKED_NOW
 
@@ -171,8 +170,7 @@ class TestSyncRepoLanguages(object):
 
         task = SyncRepoLanguagesTask()
         assert (
-            await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=False)
-            == None
+            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == None
         )
 
     @pytest.mark.asyncio
@@ -189,8 +187,7 @@ class TestSyncRepoLanguages(object):
 
         task = SyncRepoLanguagesTask()
         assert (
-            await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=False)
-            == None
+            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == None
         )
 
     @pytest.mark.asyncio
@@ -207,8 +204,7 @@ class TestSyncRepoLanguages(object):
 
         task = SyncRepoLanguagesTask()
         assert (
-            await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=False)
-            == None
+            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == None
         )
 
     @pytest.mark.asyncio
@@ -224,9 +220,9 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=True
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=True) == {
+            "successful": True
+        }
         assert repo.languages == LIST_WITH_INTERSECTION
         assert repo.languages_last_updated == MOCKED_NOW
 
@@ -239,7 +235,7 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        res = await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=True)
+        res = task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=True)
         assert res["successful"] == False
         assert res["error"] == "no_repo_in_provider"
 
@@ -250,7 +246,7 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(dbsession, repoid=123, manual_trigger=False) == {
+        assert task.run_impl(dbsession, repoid=123, manual_trigger=False) == {
             "successful": False,
             "error": "no_repo_in_db",
         }

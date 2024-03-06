@@ -25,7 +25,7 @@ class TestCrontasks(object):
     async def test_simple_run(self, dbsession, mock_redis):
         generation_time = datetime(2021, 1, 2, 0, 3, 4).replace(tzinfo=timezone.utc)
         task = SampleCronTask()
-        res = await task.run_async(
+        res = task.run_impl(
             dbsession, cron_task_generation_time_iso=generation_time.isoformat()
         )
         assert res == {
@@ -40,7 +40,7 @@ class TestCrontasks(object):
             generation_time - timedelta(seconds=5)
         ).timestamp()
         task = SampleCronTask()
-        res = await task.run_async(
+        res = task.run_impl(
             dbsession, cron_task_generation_time_iso=generation_time.isoformat()
         )
         assert res == {"executed": False}
@@ -50,7 +50,7 @@ class TestCrontasks(object):
         generation_time = datetime(2021, 1, 2, 0, 3, 4).replace(tzinfo=timezone.utc)
         mock_redis.lock.side_effect = LockError
         task = SampleCronTask()
-        res = await task.run_async(
+        res = task.run_impl(
             dbsession, cron_task_generation_time_iso=generation_time.isoformat()
         )
         assert res == {"executed": False}

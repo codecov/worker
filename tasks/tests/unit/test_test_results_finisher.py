@@ -168,7 +168,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance4)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],
@@ -348,7 +348,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance4)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],
@@ -522,7 +522,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance3)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],
@@ -699,7 +699,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance3)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": False}],
@@ -861,7 +861,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance3)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],
@@ -1023,7 +1023,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance3)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],

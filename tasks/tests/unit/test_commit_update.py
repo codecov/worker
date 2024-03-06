@@ -36,9 +36,7 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": True}
         assert expected_result == result
         assert commit.message == "random-commit-msg"
@@ -72,9 +70,7 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         assert {"was_updated": False} == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
@@ -104,9 +100,7 @@ class TestCommitUpdate(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": False}
         assert expected_result == result
         assert commit.message == ""
@@ -139,9 +133,7 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": False}
         assert expected_result == result
         assert commit.message == ""
@@ -175,9 +167,7 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": False}
         assert expected_result == result
         assert commit.message == ""
@@ -204,9 +194,7 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": False}
         assert expected_result == result
         assert commit.message == "commit_msg"

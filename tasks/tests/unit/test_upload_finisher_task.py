@@ -70,7 +70,7 @@ class TestUploadFinisherTask(object):
         checkpoints = _create_checkpoint_logger(mocker)
         checkpoints_data = json.loads(json.dumps(checkpoints.data))
         kwargs = {_kwargs_key(UploadFlow): checkpoints_data}
-        result = await UploadFinisherTask().run_async(
+        result = UploadFinisherTask().run_impl(
             dbsession,
             previous_results,
             repoid=commit.repoid,
@@ -136,7 +136,7 @@ class TestUploadFinisherTask(object):
         previous_results = {
             "processings_so_far": [{"arguments": {"url": url}, "successful": True}]
         }
-        result = await UploadFinisherTask().run_async(
+        result = UploadFinisherTask().run_impl(
             dbsession,
             previous_results,
             repoid=commit.repoid,
@@ -185,7 +185,7 @@ class TestUploadFinisherTask(object):
         previous_results = {
             "processings_so_far": [{"arguments": {"url": url}, "successful": True}]
         }
-        result = await UploadFinisherTask().run_async(
+        result = UploadFinisherTask().run_impl(
             dbsession,
             previous_results,
             repoid=commit.repoid,
@@ -563,7 +563,7 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        await UploadFinisherTask().run_async(
+        UploadFinisherTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,

@@ -24,7 +24,7 @@ class TestDeleteOwnerTaskUnit(object):
     async def test_unknown_owner(self, mocker, mock_configuration, dbsession):
         unknown_ownerid = 10404
         with pytest.raises(AssertionError, match="Owner not found"):
-            await DeleteOwnerTask().run_async(dbsession, unknown_ownerid)
+            DeleteOwnerTask().run_impl(dbsession, unknown_ownerid)
 
     @pytest.mark.asyncio
     async def test_delete_owner_deletes_owner_with_ownerid(
@@ -57,7 +57,7 @@ class TestDeleteOwnerTaskUnit(object):
 
         dbsession.flush()
 
-        await DeleteOwnerTask().run_async(dbsession, ownerid)
+        DeleteOwnerTask().run_impl(dbsession, ownerid)
 
         owner = dbsession.query(Owner).filter(Owner.ownerid == ownerid).first()
 
@@ -120,7 +120,7 @@ class TestDeleteOwnerTaskUnit(object):
 
         dbsession.flush()
 
-        await DeleteOwnerTask().run_async(dbsession, ownerid)
+        DeleteOwnerTask().run_impl(dbsession, ownerid)
 
         owner = dbsession.query(Owner).filter(Owner.ownerid == ownerid).first()
 
@@ -216,4 +216,4 @@ class TestDeleteOwnerTaskUnit(object):
             DeleteOwnerTask, "delete_repo_archives", side_effect=SoftTimeLimitExceeded()
         )
         with pytest.raises(Retry):
-            await DeleteOwnerTask().run_async(dbsession, org_ownerid)
+            DeleteOwnerTask().run_impl(dbsession, org_ownerid)

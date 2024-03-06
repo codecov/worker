@@ -12,7 +12,7 @@ class TestStaticAnalysisCheckTask(object):
     @pytest.mark.asyncio
     async def test_simple_call_no_object_saved(self, dbsession):
         task = StaticAnalysisSuiteCheckTask()
-        res = await task.run_async(dbsession, suite_id=987654321 * 7)
+        res = task.run_impl(dbsession, suite_id=987654321 * 7)
         assert res == {"changed_count": None, "successful": False}
 
     @pytest.mark.asyncio
@@ -44,7 +44,7 @@ class TestStaticAnalysisCheckTask(object):
         )
         dbsession.add(fp_obj)
         dbsession.flush()
-        res = await task.run_async(dbsession, suite_id=obj.id_)
+        res = task.run_impl(dbsession, suite_id=obj.id_)
         mock_metric_context.assert_called_with(
             repo_id=obj.commit.repository.repoid, commit_id=obj.commit.id
         )
@@ -101,5 +101,5 @@ class TestStaticAnalysisCheckTask(object):
             )
             dbsession.add(fp_obj)
         dbsession.flush()
-        res = await task.run_async(dbsession, suite_id=obj.id_)
+        res = task.run_impl(dbsession, suite_id=obj.id_)
         assert res == {"changed_count": 23, "successful": True}

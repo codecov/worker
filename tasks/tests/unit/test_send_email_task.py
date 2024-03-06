@@ -63,7 +63,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
             ownerid=owner.ownerid,
             from_addr="test_from@codecov.io",
@@ -85,7 +85,7 @@ class TestSendEmailTask(object):
         dbsession.add(owner)
         dbsession.flush()
         with pytest.raises(TemplateNotFound):
-            result = await SendEmailTask().run_async(
+            result = SendEmailTask().run_impl(
                 db_session=dbsession,
                 ownerid=owner.ownerid,
                 from_addr="test_from@codecov.io",
@@ -101,7 +101,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=None)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
             ownerid=owner.ownerid,
             from_addr="test_from@codecov.io",
@@ -123,7 +123,7 @@ class TestSendEmailTask(object):
         dbsession.add(owner)
         dbsession.flush()
         with pytest.raises(UndefinedError):
-            result = await SendEmailTask().run_async(
+            result = SendEmailTask().run_impl(
                 db_session=dbsession,
                 ownerid=owner.ownerid,
                 from_addr="test_from@codecov.io",
@@ -135,7 +135,7 @@ class TestSendEmailTask(object):
     async def test_send_email_invalid_owner_no_list_type(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
             ownerid=99999999,
             from_addr="test_from@codecov.io",
@@ -156,7 +156,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
             ownerid=owner.ownerid,
             from_addr="test_from@codecov.io",
@@ -178,7 +178,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
             ownerid=owner.ownerid,
             from_addr="test_from@codecov.io",
@@ -203,7 +203,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
             ownerid=owner.ownerid,
             from_addr="test_from@codecov.io",
@@ -224,7 +224,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
             ownerid=owner.ownerid,
             from_addr="test_from@codecov.io",
@@ -243,7 +243,7 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
             ownerid=owner.ownerid,
             from_addr="test_from@codecov.io",
