@@ -4,8 +4,7 @@ from database.tests.factories import CommitFactory
 from tasks.bundle_analysis_notify import BundleAnalysisNotifyTask
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_notify_task(
+def test_bundle_analysis_notify_task(
     mocker,
     dbsession,
     celery_app,

@@ -13,8 +13,7 @@ username = "test_username"
 
 @pytest.mark.integration
 class TestSendEmailTask:
-    @pytest.mark.asyncio
-    async def test_send_email_integration(
+    def test_send_email_integration(
         self,
         mocker,
         dbsession,

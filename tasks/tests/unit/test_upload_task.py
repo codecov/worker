@@ -102,8 +102,7 @@ def mock_redis(mocker):
 
 @pytest.mark.integration
 class TestUploadTaskIntegration(object):
-    @pytest.mark.asyncio
-    async def test_upload_task_call(
+    def test_upload_task_call(
         self,
         mocker,
         mock_configuration,
@@ -198,8 +197,7 @@ class TestUploadTaskIntegration(object):
         ]
         mock_checkpoint_submit.assert_has_calls(calls)
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_bundle_analysis(
+    def test_upload_task_call_bundle_analysis(
         self,
         mocker,
         mock_configuration,
@@ -267,8 +265,7 @@ class TestUploadTaskIntegration(object):
         )
         chain.assert_called_with(processor_sig, notify_sig)
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_test_results(
+    def test_upload_task_call_test_results(
         self,
         mocker,
         mock_configuration,
@@ -338,8 +335,7 @@ class TestUploadTaskIntegration(object):
 
         chord.assert_called_with([processor_sig], notify_sig)
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_no_jobs(
+    def test_upload_task_call_no_jobs(
         self,
         mocker,
         mock_configuration,
@@ -373,8 +369,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
 
-    @pytest.mark.asyncio
-    async def test_upload_task_upload_processing_delay_not_enough_delay(
+    def test_upload_task_upload_processing_delay_not_enough_delay(
         self,
         mocker,
         mock_configuration,
@@ -420,8 +415,7 @@ class TestUploadTaskIntegration(object):
         assert mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         assert not mock_possibly_update_commit_from_provider_info.called
 
-    @pytest.mark.asyncio
-    async def test_upload_task_upload_processing_delay_enough_delay(
+    def test_upload_task_upload_processing_delay_enough_delay(
         self,
         mocker,
         mock_configuration,
@@ -468,8 +462,7 @@ class TestUploadTaskIntegration(object):
         assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         mocked_chain.assert_called_with(mocker.ANY, mocker.ANY)
 
-    @pytest.mark.asyncio
-    async def test_upload_task_upload_processing_delay_upload_is_none(
+    def test_upload_task_upload_processing_delay_upload_is_none(
         self,
         mocker,
         mock_configuration,
@@ -511,8 +504,7 @@ class TestUploadTaskIntegration(object):
         assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         mocked_chain.assert_called_with(mocker.ANY, mocker.ANY)
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_multiple_processors(
+    def test_upload_task_call_multiple_processors(
         self,
         mocker,
         mock_configuration,
@@ -611,8 +603,7 @@ class TestUploadTaskIntegration(object):
             timeout=300,
         )
 
-    @pytest.mark.asyncio
-    async def test_upload_task_proper_parent(
+    def test_upload_task_proper_parent(
         self,
         mocker,
         mock_configuration,
@@ -671,8 +662,7 @@ class TestUploadTaskIntegration(object):
             timeout=300,
         )
 
-    @pytest.mark.asyncio
-    async def test_upload_task_no_bot(
+    def test_upload_task_no_bot(
         self,
         mocker,
         mock_configuration,
@@ -724,8 +714,7 @@ class TestUploadTaskIntegration(object):
         )
         assert not mocked_fetch_yaml.called
 
-    @pytest.mark.asyncio
-    async def test_upload_task_bot_no_permissions(
+    def test_upload_task_bot_no_permissions(
         self,
         mocker,
         mock_configuration,
@@ -778,8 +767,7 @@ class TestUploadTaskIntegration(object):
         )
         assert not mocked_fetch_yaml.called
 
-    @pytest.mark.asyncio
-    async def test_upload_task_bot_unauthorized(
+    def test_upload_task_bot_unauthorized(
         self,
         mocker,
         mock_configuration,
@@ -852,8 +840,7 @@ class TestUploadTaskIntegration(object):
             mocker.ANY,
         )
 
-    @pytest.mark.asyncio
-    async def test_upload_task_upload_already_created(
+    def test_upload_task_upload_already_created(
         self,
         mocker,
         mock_configuration,
@@ -1098,8 +1085,7 @@ class TestUploadTaskUnit(object):
         )
         mocked_chain.assert_called_with(t1, t2)
 
-    @pytest.mark.asyncio
-    async def test_run_impl_unobtainable_lock_no_pending_jobs(
+    def test_run_impl_unobtainable_lock_no_pending_jobs(
         self, dbsession, mocker, mock_redis
     ):
         commit = CommitFactory.create()
@@ -1113,8 +1099,7 @@ class TestUploadTaskUnit(object):
             "was_updated": False,
         }
 
-    @pytest.mark.asyncio
-    async def test_run_impl_unobtainable_lock_too_many_retries(
+    def test_run_impl_unobtainable_lock_too_many_retries(
         self, dbsession, mocker, mock_redis
     ):
         commit = CommitFactory.create()
@@ -1132,8 +1117,7 @@ class TestUploadTaskUnit(object):
             "reason": "too_many_retries",
         }
 
-    @pytest.mark.asyncio
-    async def test_run_impl_currently_processing(self, dbsession, mocker, mock_redis):
+    def test_run_impl_currently_processing(self, dbsession, mocker, mock_redis):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
@@ -1150,8 +1134,7 @@ class TestUploadTaskUnit(object):
         mocked_is_currently_processing.assert_called_with()
         assert not mocked_run_impl_within_lock.called
 
-    @pytest.mark.asyncio
-    async def test_run_impl_currently_processing_second_retry(
+    def test_run_impl_currently_processing_second_retry(
         self, dbsession, mocker, mock_redis
     ):
         commit = CommitFactory.create()
@@ -1188,10 +1171,7 @@ class TestUploadTaskUnit(object):
         )
         assert not upload_args.is_currently_processing()
 
-    @pytest.mark.asyncio
-    async def test_run_impl_unobtainable_lock_retry(
-        self, dbsession, mocker, mock_redis
-    ):
+    def test_run_impl_unobtainable_lock_retry(self, dbsession, mocker, mock_redis):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
@@ -1202,8 +1182,7 @@ class TestUploadTaskUnit(object):
         with pytest.raises(Retry):
             task.run_impl(dbsession, commit.repoid, commit.commitid)
 
-    @pytest.mark.asyncio
-    async def test_fetch_commit_yaml_and_possibly_store_only_commit_yaml(
+    def test_fetch_commit_yaml_and_possibly_store_only_commit_yaml(
         self, dbsession, mocker, mock_configuration
     ):
         commit = CommitFactory.create()
@@ -1228,7 +1207,7 @@ class TestUploadTaskUnit(object):
             get_source=mock.AsyncMock(return_value=get_source_result),
         )
 
-        result = await UploadTask().fetch_commit_yaml_and_possibly_store(
+        result = UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
         expected_result = {"codecov": {"notify": {}, "require_ci_to_pass": True}}
@@ -1238,8 +1217,7 @@ class TestUploadTaskUnit(object):
         )
         repository_service.list_top_level_files.assert_called_with(commit.commitid)
 
-    @pytest.mark.asyncio
-    async def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_base_yaml(
+    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_base_yaml(
         self, dbsession, mock_configuration, mocker
     ):
         mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
@@ -1261,7 +1239,7 @@ class TestUploadTaskUnit(object):
             get_source=mock.AsyncMock(return_value=get_source_result),
         )
 
-        result = await UploadTask().fetch_commit_yaml_and_possibly_store(
+        result = UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
         expected_result = {
@@ -1274,8 +1252,7 @@ class TestUploadTaskUnit(object):
         )
         repository_service.list_top_level_files.assert_called_with(commit.commitid)
 
-    @pytest.mark.asyncio
-    async def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_repo_yaml(
+    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_repo_yaml(
         self, dbsession, mock_configuration, mocker
     ):
         mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
@@ -1301,7 +1278,7 @@ class TestUploadTaskUnit(object):
             get_source=mock.AsyncMock(return_value=get_source_result),
         )
 
-        result = await UploadTask().fetch_commit_yaml_and_possibly_store(
+        result = UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
         expected_result = {
@@ -1317,8 +1294,7 @@ class TestUploadTaskUnit(object):
         )
         repository_service.list_top_level_files.assert_called_with(commit.commitid)
 
-    @pytest.mark.asyncio
-    async def test_fetch_commit_yaml_and_possibly_store_commit_yaml_no_commit_yaml(
+    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_no_commit_yaml(
         self, dbsession, mock_configuration, mocker
     ):
         mock_configuration.set_params({"site": {"coverage": {"round": "up"}}})
@@ -1334,7 +1310,7 @@ class TestUploadTaskUnit(object):
             )
         )
 
-        result = await UploadTask().fetch_commit_yaml_and_possibly_store(
+        result = UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
         expected_result = {
@@ -1344,8 +1320,7 @@ class TestUploadTaskUnit(object):
         assert result.to_dict() == expected_result
         assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
 
-    @pytest.mark.asyncio
-    async def test_fetch_commit_yaml_and_possibly_store_commit_yaml_invalid_commit_yaml(
+    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_invalid_commit_yaml(
         self, dbsession, mock_configuration, mocker
     ):
         mock_configuration.set_params({"site": {"comment": {"behavior": "new"}}})
@@ -1373,7 +1348,7 @@ class TestUploadTaskUnit(object):
             get_source=mock.AsyncMock(return_value=get_source_result),
         )
 
-        result = await UploadTask().fetch_commit_yaml_and_possibly_store(
+        result = UploadTask().fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
         expected_result = {
@@ -1384,8 +1359,7 @@ class TestUploadTaskUnit(object):
         assert result.to_dict() == expected_result
         assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
 
-    @pytest.mark.asyncio
-    async def test_possibly_setup_webhooks_public_repo(
+    def test_possibly_setup_webhooks_public_repo(
         self, mocker, mock_configuration, mock_repo_provider
     ):
         mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
@@ -1396,7 +1370,7 @@ class TestUploadTaskUnit(object):
         task = UploadTask()
         mock_repo_provider.data = mocker.MagicMock()
         mock_repo_provider.service = "github"
-        res = await task.possibly_setup_webhooks(commit, mock_repo_provider)
+        res = task.possibly_setup_webhooks(commit, mock_repo_provider)
         assert res is True
         mock_repo_provider.post_webhook.assert_called_with(
             "Codecov Webhook. None",
@@ -1406,8 +1380,7 @@ class TestUploadTaskUnit(object):
             token=None,
         )
 
-    @pytest.mark.asyncio
-    async def test_possibly_setup_webhooks_owner_has_ghapp(
+    def test_possibly_setup_webhooks_owner_has_ghapp(
         self, mocker, dbsession, mock_configuration, mock_repo_provider
     ):
         mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
@@ -1425,12 +1398,11 @@ class TestUploadTaskUnit(object):
         task = UploadTask()
         mock_repo_provider.data = mocker.MagicMock()
         mock_repo_provider.service = "github"
-        res = await task.possibly_setup_webhooks(commit, mock_repo_provider)
+        res = task.possibly_setup_webhooks(commit, mock_repo_provider)
         assert res is False
         mock_repo_provider.post_webhook.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_possibly_setup_webhooks_gitlab(
+    def test_possibly_setup_webhooks_gitlab(
         self, dbsession, mocker, mock_configuration
     ):
         mock_configuration.set_params({"gitlab": {"bot": {"key": "somekey"}}})
@@ -1450,7 +1422,7 @@ class TestUploadTaskUnit(object):
         gitlab_provider.service = "gitlab"
 
         task = UploadTask()
-        res = await task.possibly_setup_webhooks(commit, gitlab_provider)
+        res = task.possibly_setup_webhooks(commit, gitlab_provider)
         assert res is True
 
         assert repository.webhook_secret is not None
@@ -1472,8 +1444,7 @@ class TestUploadTaskUnit(object):
             token=None,
         )
 
-    @pytest.mark.asyncio
-    async def test_upload_not_ready_to_build_report(
+    def test_upload_not_ready_to_build_report(
         self, dbsession, mocker, mock_configuration, mock_repo_provider, mock_redis
     ):
         mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})

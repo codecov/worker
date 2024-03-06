@@ -8,8 +8,7 @@ from database.tests.factories.timeseries import DatasetFactory
 from tasks.timeseries_backfill import TimeseriesBackfillCommitsTask
 
 
-@pytest.mark.asyncio
-async def test_backfill_commits_run_impl(dbsession, mocker):
+def test_backfill_commits_run_impl(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
     mocked_app = mocker.patch.object(
         TimeseriesBackfillCommitsTask,
@@ -63,8 +62,7 @@ async def test_backfill_commits_run_impl(dbsession, mocker):
     )
 
 
-@pytest.mark.asyncio
-async def test_backfill_commits_run_impl_timeseries_not_enabled(dbsession, mocker):
+def test_backfill_commits_run_impl_timeseries_not_enabled(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=False)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 

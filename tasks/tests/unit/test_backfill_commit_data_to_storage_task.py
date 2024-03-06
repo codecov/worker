@@ -251,10 +251,7 @@ class TestBackfillCommitDataToStorageTask(object):
     @patch(
         "tasks.backfill_commit_data_to_storage.BackfillCommitDataToStorageTask.handle_all_report_rows"
     )
-    @pytest.mark.asyncio
-    async def test_run(
-        self, mock_handle_all_report_rows, mock_handle_report_json, dbsession
-    ):
+    def test_run(self, mock_handle_all_report_rows, mock_handle_report_json, dbsession):
         commit = CommitFactory()
         dbsession.add(commit)
         dbsession.flush()
@@ -276,8 +273,7 @@ class TestBackfillCommitDataToStorageTask(object):
     @patch(
         "tasks.backfill_commit_data_to_storage.BackfillCommitDataToStorageTask.handle_all_report_rows"
     )
-    @pytest.mark.asyncio
-    async def test_run_missing_commit(
+    def test_run_missing_commit(
         self, mock_handle_all_report_rows, mock_handle_report_json, dbsession
     ):
         mock_handle_all_report_rows.return_value = {"success": True, "errors": []}

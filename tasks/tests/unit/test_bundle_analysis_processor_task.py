@@ -9,8 +9,7 @@ from database.tests.factories import CommitFactory, UploadFactory
 from tasks.bundle_analysis_processor import BundleAnalysisProcessorTask
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_processor_task(
+def test_bundle_analysis_processor_task(
     mocker,
     mock_configuration,
     dbsession,
@@ -65,8 +64,7 @@ async def test_bundle_analysis_processor_task(
     assert upload.state == "processed"
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_processor_task_error(
+def test_bundle_analysis_processor_task_error(
     mocker,
     mock_configuration,
     dbsession,
@@ -127,8 +125,7 @@ async def test_bundle_analysis_processor_task_error(
     retry.assert_called_once_with(countdown=20, max_retries=5)
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_processor_task_general_error(
+def test_bundle_analysis_processor_task_general_error(
     mocker,
     mock_configuration,
     dbsession,
@@ -184,8 +181,7 @@ async def test_bundle_analysis_processor_task_general_error(
     assert not retry.called
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_processor_task_locked(
+def test_bundle_analysis_processor_task_locked(
     mocker,
     mock_configuration,
     dbsession,

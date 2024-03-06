@@ -9,14 +9,12 @@ from tasks.static_analysis_suite_check import StaticAnalysisSuiteCheckTask
 
 
 class TestStaticAnalysisCheckTask(object):
-    @pytest.mark.asyncio
-    async def test_simple_call_no_object_saved(self, dbsession):
+    def test_simple_call_no_object_saved(self, dbsession):
         task = StaticAnalysisSuiteCheckTask()
         res = task.run_impl(dbsession, suite_id=987654321 * 7)
         assert res == {"changed_count": None, "successful": False}
 
-    @pytest.mark.asyncio
-    async def test_simple_call_with_suite_all_created(
+    def test_simple_call_with_suite_all_created(
         self, dbsession, mock_storage, mock_configuration, mocker
     ):
         mock_metric_context = mocker.patch(
@@ -56,8 +54,7 @@ class TestStaticAnalysisCheckTask(object):
         )
         assert res == {"changed_count": 8, "successful": True}
 
-    @pytest.mark.asyncio
-    async def test_simple_call_with_suite_mix_from_other(
+    def test_simple_call_with_suite_mix_from_other(
         self, dbsession, mock_storage, mock_configuration
     ):
         obj = StaticAnalysisSuiteFactory.create()

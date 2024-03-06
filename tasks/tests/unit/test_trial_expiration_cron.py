@@ -11,9 +11,8 @@ from tasks.trial_expiration_cron import TrialExpirationCronTask
 
 
 class TestTrialExpirationCheck(object):
-    @pytest.mark.asyncio
     @patch("tasks.trial_expiration_cron.yield_amount", 1)
-    async def test_enqueue_trial_expiration_task(self, dbsession, mocker):
+    def test_enqueue_trial_expiration_task(self, dbsession, mocker):
         mocked_now = datetime(2023, 7, 3, 6, 8, 12)
         mocker.patch(
             "tasks.trial_expiration_cron.get_utc_now",
@@ -79,7 +78,7 @@ class TestTrialExpirationCheck(object):
         )
         task = TrialExpirationCronTask()
 
-        assert await task.run_cron_task(dbsession) == {"successful": True}
+        assert task.run_cron_task(dbsession) == {"successful": True}
         mocked_app.tasks[trial_expiration_task_name].apply_async.assert_any_call(
             kwargs={"ownerid": second_ongoing_owner_that_should_expire.ownerid}
         )
@@ -88,8 +87,7 @@ class TestTrialExpirationCheck(object):
         )
         # TODO: couldn't find a way to assert I didn't call the other owners
 
-    @pytest.mark.asyncio
-    async def test_get_min_seconds_interval_between_executions(self, dbsession):
+    def test_get_min_seconds_interval_between_executions(self, dbsession):
         assert isinstance(
             TrialExpirationCronTask.get_min_seconds_interval_between_executions(), int
         )

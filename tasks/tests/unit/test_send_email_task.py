@@ -48,8 +48,7 @@ def mock_configuration_no_smtp(mocker):
 
 
 class TestSendEmailTask(object):
-    @pytest.mark.asyncio
-    async def test_send_email(
+    def test_send_email(
         self,
         mocker,
         mock_configuration,
@@ -77,8 +76,7 @@ class TestSendEmailTask(object):
         assert metrics.data["worker.tasks.send_email.succeed"] == 1
         assert metrics.data["worker.tasks.send_email.fail"] == 0
 
-    @pytest.mark.asyncio
-    async def test_send_email_non_existent_template(
+    def test_send_email_non_existent_template(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         owner = OwnerFactory.create(email=to_addr)
@@ -94,8 +92,7 @@ class TestSendEmailTask(object):
                 username="test_username",
             )
 
-    @pytest.mark.asyncio
-    async def test_send_email_no_owner(
+    def test_send_email_no_owner(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         owner = OwnerFactory.create(email=None)
@@ -115,8 +112,7 @@ class TestSendEmailTask(object):
             "err_msg": "Owner does not have email",
         }
 
-    @pytest.mark.asyncio
-    async def test_send_email_missing_kwargs(
+    def test_send_email_missing_kwargs(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         owner = OwnerFactory.create(email=to_addr)
@@ -131,8 +127,7 @@ class TestSendEmailTask(object):
                 template_name="test",
             )
 
-    @pytest.mark.asyncio
-    async def test_send_email_invalid_owner_no_list_type(
+    def test_send_email_invalid_owner_no_list_type(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         result = SendEmailTask().run_impl(
@@ -145,8 +140,7 @@ class TestSendEmailTask(object):
         )
         assert result == {"email_successful": False, "err_msg": "Unable to find owner"}
 
-    @pytest.mark.asyncio
-    async def test_send_email_recipients_refused(
+    def test_send_email_recipients_refused(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         mock_smtp.configure_mock(
@@ -168,8 +162,7 @@ class TestSendEmailTask(object):
         assert result["email_successful"] == False
         assert result["err_msg"] == "All recipients were refused"
 
-    @pytest.mark.asyncio
-    async def test_send_email_sender_refused(
+    def test_send_email_sender_refused(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         mock_smtp.configure_mock(
@@ -189,8 +182,7 @@ class TestSendEmailTask(object):
         assert result["email_successful"] == False
         assert result["err_msg"] == "Sender was refused"
 
-    @pytest.mark.asyncio
-    async def test_send_email_data_error(
+    def test_send_email_data_error(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         mock_smtp.configure_mock(
@@ -214,8 +206,7 @@ class TestSendEmailTask(object):
         assert result["email_successful"] == False
         assert result["err_msg"] == "The SMTP server did not accept the data"
 
-    @pytest.mark.asyncio
-    async def test_send_email_sends_errs(
+    def test_send_email_sends_errs(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         mock_smtp.configure_mock(
@@ -235,8 +226,7 @@ class TestSendEmailTask(object):
         assert result["email_successful"] == False
         assert result["err_msg"] == "123 abc 456 def"
 
-    @pytest.mark.asyncio
-    async def test_send_email_no_smtp_config(
+    def test_send_email_no_smtp_config(
         self, mocker, mock_configuration_no_smtp, dbsession
     ):
         SMTPService.connection = None

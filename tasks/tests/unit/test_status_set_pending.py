@@ -12,8 +12,7 @@ here = Path(__file__)
 
 
 class TestSetPendingTaskUnit(object):
-    @pytest.mark.asyncio
-    async def test_no_status(self, mocker, mock_configuration, dbsession, mock_redis):
+    def test_no_status(self, mocker, mock_configuration, dbsession, mock_redis):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         repo = mocker.MagicMock(
             service="github",
@@ -41,8 +40,7 @@ class TestSetPendingTaskUnit(object):
         assert res["status_set"] == False
         assert not repo.set_commit_status.called
 
-    @pytest.mark.asyncio
-    async def test_not_in_beta(self, mocker, mock_configuration, dbsession, mock_redis):
+    def test_not_in_beta(self, mocker, mock_configuration, dbsession, mock_redis):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         repo = mocker.MagicMock(
             service="github",
@@ -72,10 +70,7 @@ class TestSetPendingTaskUnit(object):
             )
         mock_redis.sismember.assert_called_with("beta.pending", repoid)
 
-    @pytest.mark.asyncio
-    async def test_skip_set_pending(
-        self, mocker, mock_configuration, dbsession, mock_redis
-    ):
+    def test_skip_set_pending(self, mocker, mock_configuration, dbsession, mock_redis):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         get_commit_statuses = Status([])
         set_commit_status = None
@@ -111,8 +106,7 @@ class TestSetPendingTaskUnit(object):
         assert not repo.set_commit_status.called
         assert res["status_set"] == False
 
-    @pytest.mark.asyncio
-    async def test_skip_set_pending_unknown_branch(
+    def test_skip_set_pending_unknown_branch(
         self, mocker, mock_configuration, dbsession, mock_redis
     ):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
@@ -152,7 +146,6 @@ class TestSetPendingTaskUnit(object):
         assert not repo.set_commit_status.called
         assert res["status_set"] == False
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "context, branch, cc_status_exists",
         [
@@ -169,7 +162,7 @@ class TestSetPendingTaskUnit(object):
             ("changes", "skip", False),
         ],
     )
-    async def test_set_pending(
+    def test_set_pending(
         self,
         context,
         branch,

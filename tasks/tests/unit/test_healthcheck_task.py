@@ -77,7 +77,7 @@ class TestHealthCheckTask(object):
         mock_redis.llen.return_value = 10
         mock_redis.return_value = MagicMock()
         health_check_task = HealthCheckTask()
-        await health_check_task.run_cron_task(dbsession)
+        health_check_task.run_cron_task(dbsession)
         mock_metrics.assert_any_call("celery.queue.celery.len", 10)
         mock_metrics.assert_any_call("celery.queue.enterprise_celery.len", 10)
 
@@ -103,7 +103,7 @@ class TestHealthCheckTask(object):
         mock_redis.llen.return_value = 10
         mock_redis.return_value = MagicMock()
         health_check_task = HealthCheckTask()
-        await health_check_task.run_cron_task(dbsession)
+        health_check_task.run_cron_task(dbsession)
         mock_metrics.assert_any_call("celery.queue.custom_celery.len", 10)
         mock_metrics.assert_any_call("celery.queue.notify_queue.len", 10)
         mock_metrics.assert_any_call("celery.queue.pulls_queue.len", 10)

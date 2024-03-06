@@ -137,10 +137,7 @@ class TestPullSyncTask(object):
         assert not third_commit.merged
         assert not fourth_commit.merged
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_task_no_head_commit(
-        self, dbsession, mocker, mock_redis
-    ):
+    def test_call_pullsync_task_no_head_commit(self, dbsession, mocker, mock_redis):
         task = PullSyncTask()
         pull = PullFactory.create(head="head_commit_nonexistent_sha", state="open")
         dbsession.add(pull)
@@ -159,8 +156,7 @@ class TestPullSyncTask(object):
             "reason": "no_head",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_task_nolock(self, dbsession, mock_redis):
+    def test_call_pullsync_task_nolock(self, dbsession, mock_redis):
         task = PullSyncTask()
         pull = PullFactory.create(state="open")
         dbsession.add(pull)
@@ -174,10 +170,7 @@ class TestPullSyncTask(object):
             "reason": "unable_fetch_lock",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_task_no_database_pull(
-        self, dbsession, mocker, mock_redis
-    ):
+    def test_call_pullsync_task_no_database_pull(self, dbsession, mocker, mock_redis):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -196,8 +189,7 @@ class TestPullSyncTask(object):
             "reason": "no_db_pull",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_task_no_provider_pull_only(
+    def test_call_pullsync_task_no_provider_pull_only(
         self, dbsession, mocker, mock_redis
     ):
         repository = RepositoryFactory.create()
@@ -221,8 +213,7 @@ class TestPullSyncTask(object):
             "reason": "not_in_provider",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_no_bot(self, dbsession, mock_redis, mocker):
+    def test_call_pullsync_no_bot(self, dbsession, mock_redis, mocker):
         task = PullSyncTask()
         pull = PullFactory.create(state="open")
         dbsession.add(pull)
@@ -239,8 +230,7 @@ class TestPullSyncTask(object):
             "reason": "no_bot",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_no_permissions_get_compare(
+    def test_call_pullsync_no_permissions_get_compare(
         self, dbsession, mock_redis, mocker, mock_repo_provider, mock_storage
     ):
         mocker.patch.object(PullSyncTask, "app")
@@ -280,8 +270,7 @@ class TestPullSyncTask(object):
             "reason": "success",
         }
 
-    @pytest.mark.asyncio
-    async def test_run_impl_unobtainable_lock(self, dbsession, mocker, mock_redis):
+    def test_run_impl_unobtainable_lock(self, dbsession, mocker, mock_redis):
         pull = PullFactory.create()
         dbsession.add(pull)
         dbsession.flush()

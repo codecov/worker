@@ -7,10 +7,7 @@ from tasks.trial_expiration import TrialExpirationTask
 
 
 class TestTrialExpiration(object):
-    @pytest.mark.asyncio
-    async def test_trial_expiration_task_with_pretrial_users_count(
-        self, dbsession, mocker
-    ):
+    def test_trial_expiration_task_with_pretrial_users_count(self, dbsession, mocker):
         owner = OwnerFactory.create(pretrial_users_count=5)
         dbsession.add(owner)
         dbsession.flush()
@@ -24,8 +21,7 @@ class TestTrialExpiration(object):
         assert owner.stripe_subscription_id == None
         assert owner.trial_status == TrialStatus.EXPIRED.value
 
-    @pytest.mark.asyncio
-    async def test_trial_expiration_task_without_pretrial_users_count(
+    def test_trial_expiration_task_without_pretrial_users_count(
         self, dbsession, mocker
     ):
         owner = OwnerFactory.create()
@@ -41,8 +37,7 @@ class TestTrialExpiration(object):
         assert owner.stripe_subscription_id == None
         assert owner.trial_status == TrialStatus.EXPIRED.value
 
-    @pytest.mark.asyncio
-    async def test_trial_expiration_task_with_trial_fired_by(self, dbsession, mocker):
+    def test_trial_expiration_task_with_trial_fired_by(self, dbsession, mocker):
         owner = OwnerFactory.create(trial_fired_by=9)
         dbsession.add(owner)
         dbsession.flush()

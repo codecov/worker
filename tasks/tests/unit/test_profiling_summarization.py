@@ -8,8 +8,7 @@ from database.tests.factories.profiling import ProfilingCommitFactory
 from tasks.profiling_summarization import ProfilingSummarizationTask
 
 
-@pytest.mark.asyncio
-async def test_summarize_run_impl_simple_run(
+def test_summarize_run_impl_simple_run(
     dbsession, mock_storage, mock_configuration, mocker
 ):
     mocker.patch(
@@ -66,8 +65,7 @@ async def test_summarize_run_impl_simple_run(
     )
 
 
-@pytest.mark.asyncio
-async def test_summarize_run_impl_simple_run_no_file(
+def test_summarize_run_impl_simple_run_no_file(
     dbsession, mock_storage, mock_configuration
 ):
     mock_configuration._params["services"]["minio"]["bucket"] = "bucket"

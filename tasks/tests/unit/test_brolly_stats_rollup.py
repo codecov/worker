@@ -41,7 +41,7 @@ class TestBrollyStatsRollupTask(object):
     def test_run_cron_task_while_disabled(self, mocker, dbsession):
         task = BrollyStatsRollupTask()
 
-        result = await BrollyStatsRollupTask().run_cron_task(dbsession)
+        result = BrollyStatsRollupTask().run_cron_task(dbsession)
         assert result == {
             "uploaded": False,
             "reason": "telemetry disabled in codecov.yml",
@@ -100,7 +100,7 @@ class TestBrollyStatsRollupTask(object):
         )
 
         task = BrollyStatsRollupTask()
-        result = await task.run_cron_task(dbsession)
+        result = task.run_cron_task(dbsession)
 
         assert mock_request.called
         assert result == {
@@ -130,7 +130,7 @@ class TestBrollyStatsRollupTask(object):
         dbsession.flush()
 
         task = BrollyStatsRollupTask()
-        result = await task.run_cron_task(dbsession)
+        result = task.run_cron_task(dbsession)
         assert mock_request.called
         assert result == {
             "uploaded": False,
@@ -163,7 +163,7 @@ class TestBrollyStatsRollupTask(object):
         dbsession.flush()
 
         task = BrollyStatsRollupTask()
-        result = await task.run_cron_task(dbsession)
+        result = task.run_cron_task(dbsession)
         assert mock_request.called
         assert result == {
             "uploaded": True,

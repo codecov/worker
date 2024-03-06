@@ -10,10 +10,7 @@ here = Path(__file__)
 
 
 class TestPullSyncTask(object):
-    @pytest.mark.asyncio
-    async def test_call_task(
-        self, dbsession, codecov_vcr, mock_storage, mocker, mock_redis
-    ):
+    def test_call_task(self, dbsession, codecov_vcr, mock_storage, mocker, mock_redis):
         mocker.patch.object(PullSyncTask, "app")
         task = PullSyncTask()
         repository = RepositoryFactory.create(

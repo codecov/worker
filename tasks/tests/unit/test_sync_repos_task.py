@@ -25,7 +25,7 @@ class AsyncIterator:
     def __aiter__(self):
         return self
 
-    async def __anext__(self):
+    def __anext__(self):
         try:
             return next(self.iter)
         except StopIteration:
@@ -42,8 +42,7 @@ def reuse_cassette(filepath):
 
 
 class TestSyncReposTaskUnit(object):
-    @pytest.mark.asyncio
-    async def test_unknown_owner(self, mocker, mock_configuration, dbsession):
+    def test_unknown_owner(self, mocker, mock_configuration, dbsession):
         unknown_ownerid = 10404
         with pytest.raises(AssertionError, match="Owner not found"):
             SyncReposTask().run_impl(
@@ -53,8 +52,7 @@ class TestSyncReposTaskUnit(object):
                 using_integration=False,
             )
 
-    @pytest.mark.asyncio
-    async def test_upsert_owner_add_new(self, mocker, mock_configuration, dbsession):
+    def test_upsert_owner_add_new(self, mocker, mock_configuration, dbsession):
         service = "github"
         service_id = "123456"
         username = "some_org"
@@ -79,10 +77,7 @@ class TestSyncReposTaskUnit(object):
         assert new_entry.username == username
         assert new_entry.createstamp is None
 
-    @pytest.mark.asyncio
-    async def test_upsert_owner_update_existing(
-        self, mocker, mock_configuration, dbsession
-    ):
+    def test_upsert_owner_update_existing(self, mocker, mock_configuration, dbsession):
         ownerid = 1
         service = "github"
         service_id = "123456"
@@ -115,9 +110,8 @@ class TestSyncReposTaskUnit(object):
         assert updated_owner.username == new_username
         assert updated_owner.createstamp == now
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
-    async def test_upsert_repo_update_existing(
+    def test_upsert_repo_update_existing(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
         mocker.patch.object(
@@ -172,9 +166,8 @@ class TestSyncReposTaskUnit(object):
         assert updated_repo.updatestamp is not None
         assert updated_repo.deleted is False
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
-    async def test_upsert_repo_exists_but_wrong_owner(
+    def test_upsert_repo_exists_but_wrong_owner(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
         mocker.patch.object(
@@ -235,9 +228,8 @@ class TestSyncReposTaskUnit(object):
         assert updated_repo.deleted is False
         assert updated_repo.updatestamp is not None
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
-    async def test_upsert_repo_exists_both_wrong_owner_and_service_id(
+    def test_upsert_repo_exists_both_wrong_owner_and_service_id(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
         mocker.patch.object(
@@ -310,9 +302,8 @@ class TestSyncReposTaskUnit(object):
         assert repo_same_name.service_id == wrong_service_id
         assert repo_same_name.ownerid == correct_owner.ownerid
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
-    async def test_upsert_repo_exists_but_wrong_service_id(
+    def test_upsert_repo_exists_but_wrong_service_id(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
         mocker.patch.object(
@@ -378,9 +369,8 @@ class TestSyncReposTaskUnit(object):
         )
         assert bad_service_id_repo is None
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
-    async def test_upsert_repo_create_new(
+    def test_upsert_repo_create_new(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
         mocker.patch.object(
@@ -427,9 +417,8 @@ class TestSyncReposTaskUnit(object):
         assert new_repo.branch == repo_data.get("branch")
         assert new_repo.private is True
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default"})
-    async def test_only_public_repos_already_in_db(
+    def test_only_public_repos_already_in_db(
         self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
     ):
 
@@ -486,9 +475,8 @@ class TestSyncReposTaskUnit(object):
         assert user.permission == []  # there were no private repos to add
         assert len(repos) == 3
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
-    async def test_sync_repos_lock_error(
+    def test_sync_repos_lock_error(
         self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
         mocker.patch.object(
@@ -509,14 +497,13 @@ class TestSyncReposTaskUnit(object):
         )
         assert user.permission == []  # there were no private repos to add
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_only_public_repos_not_in_db.yaml"
     )
     @respx.mock
     @pytest.mark.django_db(databases={"default"})
-    async def test_only_public_repos_not_in_db(
+    def test_only_public_repos_not_in_db(
         self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
         mocker.patch.object(
@@ -559,14 +546,13 @@ class TestSyncReposTaskUnit(object):
         assert repos[0].service_id == public_repo_service_id
         assert repos[0].ownerid == user.ownerid
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
     @respx.mock
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration.yaml"
     )
     @pytest.mark.django_db(databases={"default"})
-    async def test_sync_repos_using_integration(
+    def test_sync_repos_using_integration(
         self,
         mocker,
         dbsession,
@@ -670,13 +656,12 @@ class TestSyncReposTaskUnit(object):
         for repo in repos:
             assert repo.using_integration is True
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
     @respx.mock
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration_no_repos.yaml"
     )
-    async def test_sync_repos_using_integration_no_repos(
+    def test_sync_repos_using_integration_no_repos(
         self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
         mocker.patch.object(
@@ -742,9 +727,8 @@ class TestSyncReposTaskUnit(object):
             # repos are no longer using integration
             assert repo.using_integration is False
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
-    async def test_sync_repos_no_github_access(
+    def test_sync_repos_no_github_access(
         self,
         mocker,
         mock_configuration,
@@ -779,9 +763,8 @@ class TestSyncReposTaskUnit(object):
         )
         assert user.permission == []  # repos were removed
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
-    async def test_sync_repos_timeout(
+    def test_sync_repos_timeout(
         self,
         mocker,
         mock_configuration,
@@ -819,13 +802,12 @@ class TestSyncReposTaskUnit(object):
             [r.repoid for r in repos]
         )  # repos were removed
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_only_public_repos_not_in_db.yaml"
     )
     @respx.mock
-    async def test_insert_repo_and_call_repo_sync_languages(
+    def test_insert_repo_and_call_repo_sync_languages(
         self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
         mocked_app = mocker.patch.object(
@@ -881,13 +863,12 @@ class TestSyncReposTaskUnit(object):
             kwargs={"repoid": repos[0].repoid, "manual_trigger": False}
         )
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize("use_generator", [False])
     @respx.mock
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration.yaml"
     )
-    async def test_insert_repo_and_call_repo_sync_languages_using_integration(
+    def test_insert_repo_and_call_repo_sync_languages_using_integration(
         self,
         mocker,
         dbsession,
@@ -1005,8 +986,7 @@ class TestSyncReposTaskUnit(object):
             kwargs={"repoid": new_repo_list[0].repoid, "manual_trigger": False}
         )
 
-    @pytest.mark.asyncio
-    async def test_sync_repos_usgin_integration_affected_repos_known(
+    def test_sync_repos_usgin_integration_affected_repos_known(
         self,
         mocker,
         dbsession,
@@ -1074,7 +1054,7 @@ class TestSyncReposTaskUnit(object):
         dbsession.flush()
 
         # These are the repos we're supposed to query from the service provider
-        async def side_effect(*args, **kwargs):
+        def side_effect(*args, **kwargs):
             results = [
                 {
                     "branch": "main",

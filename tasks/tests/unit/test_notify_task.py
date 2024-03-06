@@ -782,7 +782,7 @@ class TestNotifyTask(object):
                 },
             },
         ]
-        res = await task.submit_third_party_notifications(
+        res = task.submit_third_party_notifications(
             current_yaml,
             base_commit,
             head_commit,

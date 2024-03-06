@@ -118,8 +118,7 @@ class TestCleanLabelsIndexSyncronization(object):
             == is_currently_processing
         )
 
-    @pytest.mark.asyncio
-    async def test_retry_currently_processing(self, dbsession, mocker, mock_redis):
+    def test_retry_currently_processing(self, dbsession, mocker, mock_redis):
         commit = CommitFactory()
         dbsession.add(commit)
         dbsession.flush()
@@ -134,8 +133,7 @@ class TestCleanLabelsIndexSyncronization(object):
         )
         mock_currently_processing.assert_called_with(mock_redis, lock_name)
 
-    @pytest.mark.asyncio
-    async def test_retry_failed_to_get_lock(self, dbsession, mocker, mock_redis):
+    def test_retry_failed_to_get_lock(self, dbsession, mocker, mock_redis):
         commit = CommitFactory()
         dbsession.add(commit)
         dbsession.flush()
@@ -156,8 +154,7 @@ class TestCleanLabelsIndexSyncronization(object):
         mock_currently_processing.assert_called()
         mock_run_impl_within_lock.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_call_actual_logic(self, dbsession, mocker, mock_redis):
+    def test_call_actual_logic(self, dbsession, mocker, mock_redis):
         commit = CommitFactory()
         dbsession.add(commit)
         dbsession.flush()
@@ -200,8 +197,7 @@ class TestCleanLabelsIndexReadOnlyArgs(object):
             task._get_commit_or_fail(dbsession, 10000, "commit_that_dont_exist")
         assert str(exp.value) == "Commit not found in database."
 
-    @pytest.mark.asyncio
-    async def test__get_best_effort_commit_yaml_from_provider(self, dbsession, mocker):
+    def test__get_best_effort_commit_yaml_from_provider(self, dbsession, mocker):
         commit = CommitFactory()
         dbsession.add(commit)
         mock_repo_service = MagicMock(name="repo_provider_service")
@@ -213,15 +209,14 @@ class TestCleanLabelsIndexReadOnlyArgs(object):
             },
         )
         task = CleanLabelsIndexTask()
-        res = await task._get_best_effort_commit_yaml(commit, mock_repo_service)
+        res = task._get_best_effort_commit_yaml(commit, mock_repo_service)
         assert res == {
             "yaml_for": f"commit_{commit.commitid}",
             "origin": "git_provider",
         }
         mock_fetch_commit.assert_called_with(commit, mock_repo_service)
 
-    @pytest.mark.asyncio
-    async def test__get_best_effort_commit_yaml_from_db(self, dbsession, mocker):
+    def test__get_best_effort_commit_yaml_from_db(self, dbsession, mocker):
         commit = CommitFactory()
         dbsession.add(commit)
         mock_fetch_commit = mocker.patch(
@@ -235,7 +230,7 @@ class TestCleanLabelsIndexReadOnlyArgs(object):
             ),
         )
         task = CleanLabelsIndexTask()
-        res = await task._get_best_effort_commit_yaml(commit, None)
+        res = task._get_best_effort_commit_yaml(commit, None)
         assert res == {"yaml_for": f"commit_{commit.commitid}", "origin": "database"}
         mock_fetch_commit.assert_not_called()
         mock_final_yaml.assert_called_with(
@@ -247,8 +242,7 @@ class TestCleanLabelsIndexReadOnlyArgs(object):
 
 
 class TestCleanLabelsIndexLogic(BaseTestCase):
-    @pytest.mark.asyncio
-    async def test_clean_labels_report_not_found(self, dbsession, mocker):
+    def test_clean_labels_report_not_found(self, dbsession, mocker):
         commit = CommitFactory()
         dbsession.add(commit)
         mock_get_report = mocker.patch.object(
@@ -260,8 +254,7 @@ class TestCleanLabelsIndexLogic(BaseTestCase):
         assert res == {"success": False, "error": "Report not found"}
         mock_get_report.assert_called_with(commit, report_code=None)
 
-    @pytest.mark.asyncio
-    async def test_clean_labels_no_labels_index_in_report(self, dbsession, mocker):
+    def test_clean_labels_no_labels_index_in_report(self, dbsession, mocker):
         commit = CommitFactory()
         dbsession.add(commit)
         report = Report()
@@ -278,8 +271,7 @@ class TestCleanLabelsIndexLogic(BaseTestCase):
         }
         mock_get_report.assert_called_with(commit, report_code=None)
 
-    @pytest.mark.asyncio
-    async def test_clean_labels_no_change_needed(
+    def test_clean_labels_no_change_needed(
         self, dbsession, mocker, sample_report_with_labels
     ):
         commit = CommitFactory()
@@ -311,8 +303,7 @@ class TestCleanLabelsIndexLogic(BaseTestCase):
             == sample_report_better_read_original
         )
 
-    @pytest.mark.asyncio
-    async def test_clean_labels_with_renames(
+    def test_clean_labels_with_renames(
         self, dbsession, mocker, sample_report_with_labels_and_renames
     ):
         commit = CommitFactory()

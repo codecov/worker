@@ -11,16 +11,14 @@ here = Path(__file__)
 
 
 class TestSyncTeamsTaskUnit(object):
-    @pytest.mark.asyncio
-    async def test_unknown_owner(self, mocker, mock_configuration, dbsession):
+    def test_unknown_owner(self, mocker, mock_configuration, dbsession):
         unknown_ownerid = 10404
         with pytest.raises(AssertionError, match="Owner not found"):
             SyncTeamsTask().run_impl(
                 dbsession, unknown_ownerid, username=None, using_integration=False
             )
 
-    @pytest.mark.asyncio
-    async def test_no_teams(self, mocker, mock_configuration, dbsession, codecov_vcr):
+    def test_no_teams(self, mocker, mock_configuration, dbsession, codecov_vcr):
         token = "testv2ztxs03zwys22v36ama292esl13swroe6dj"
         user = OwnerFactory.create(
             organizations=[], service="github", unencrypted_oauth_token=token
@@ -30,10 +28,7 @@ class TestSyncTeamsTaskUnit(object):
         SyncTeamsTask().run_impl(dbsession, user.ownerid, using_integration=False)
         assert user.organizations == []
 
-    @pytest.mark.asyncio
-    async def test_team_removed(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
-    ):
+    def test_team_removed(self, mocker, mock_configuration, dbsession, codecov_vcr):
         token = "testv2ztxs03zwys22v36ama292esl13swroe6dj"
         prev_team = OwnerFactory.create(service="github", username="Evil_Corp")
         dbsession.add(prev_team)
@@ -47,8 +42,7 @@ class TestSyncTeamsTaskUnit(object):
         SyncTeamsTask().run_impl(dbsession, user.ownerid, using_integration=False)
         assert prev_team.ownerid not in user.organizations
 
-    @pytest.mark.asyncio
-    async def test_team_data_updated(
+    def test_team_data_updated(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         token = "testh0ry1fe5tiysbtbh6x47fdwotcsoyv7orqrd"
@@ -77,8 +71,7 @@ class TestSyncTeamsTaskUnit(object):
         assert old_team.name == "codecov"
         assert str(old_team.updatestamp) > last_updated
 
-    @pytest.mark.asyncio
-    async def test_gitlab_subgroups(
+    def test_gitlab_subgroups(
         self, mocker, mock_configuration, dbsession, codecov_vcr, caplog
     ):
         import logging

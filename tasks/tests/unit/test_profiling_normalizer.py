@@ -26,8 +26,7 @@ def sample_open_telemetry_normalized():
         return json.load(file)
 
 
-@pytest.mark.asyncio
-async def test_run_impl_simple_normalizing_run(
+def test_run_impl_simple_normalizing_run(
     dbsession,
     mock_storage,
     mock_configuration,
@@ -57,10 +56,7 @@ async def test_run_impl_simple_normalizing_run(
     assert result == sample_open_telemetry_normalized
 
 
-@pytest.mark.asyncio
-async def test_run_sync_normalizing_run_no_file(
-    dbsession, mock_storage, mock_configuration
-):
+def test_run_sync_normalizing_run_no_file(dbsession, mock_storage, mock_configuration):
     puf = ProfilingUploadFactory.create(
         profiling_commit__repository__yaml={"codecov": {"max_report_age": None}},
         raw_upload_location="raw_upload_location",

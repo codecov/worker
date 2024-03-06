@@ -6,8 +6,7 @@ from services.archive import ArchiveService
 from tasks.mutation_test_upload import MutationTestUploadTask
 
 
-@pytest.mark.asyncio
-async def test_mutation_upload_task_call(
+def test_mutation_upload_task_call(
     mocker,
     mock_configuration,
     dbsession,

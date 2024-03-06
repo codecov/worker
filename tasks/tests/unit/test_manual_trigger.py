@@ -8,8 +8,7 @@ from tasks.manual_trigger import ManualTriggerTask
 
 
 class TestUploadCompletionTask(object):
-    @pytest.mark.asyncio
-    async def test_manual_upload_completion_trigger(
+    def test_manual_upload_completion_trigger(
         self,
         mocker,
         mock_configuration,
@@ -70,8 +69,7 @@ class TestUploadCompletionTask(object):
             "app.tasks.compute_comparison.ComputeComparison"
         ].apply_async.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_manual_upload_completion_trigger_uploads_still_processing(
+    def test_manual_upload_completion_trigger_uploads_still_processing(
         self,
         mocker,
         mock_configuration,

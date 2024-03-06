@@ -13,8 +13,7 @@ from tasks.flush_repo import FlushRepoTask, FlushRepoTaskReturnType
 
 
 class TestFlushRepo(object):
-    @pytest.mark.asyncio
-    async def test_flush_repo_nothing(self, dbsession, mock_storage):
+    def test_flush_repo_nothing(self, dbsession, mock_storage):
         task = FlushRepoTask()
         repo = RepositoryFactory.create()
         dbsession.add(repo)
@@ -29,10 +28,7 @@ class TestFlushRepo(object):
             }
         )
 
-    @pytest.mark.asyncio
-    async def test_flush_repo_few_of_each_only_db_objects(
-        self, dbsession, mock_storage
-    ):
+    def test_flush_repo_few_of_each_only_db_objects(self, dbsession, mock_storage):
         task = FlushRepoTask()
         repo = RepositoryFactory.create()
         dbsession.add(repo)
@@ -73,8 +69,7 @@ class TestFlushRepo(object):
             }
         )
 
-    @pytest.mark.asyncio
-    async def test_flush_repo_only_archives(self, dbsession, mock_storage):
+    def test_flush_repo_only_archives(self, dbsession, mock_storage):
         repo = RepositoryFactory.create()
         dbsession.add(repo)
         dbsession.flush()
@@ -92,8 +87,7 @@ class TestFlushRepo(object):
             }
         )
 
-    @pytest.mark.asyncio
-    async def test_flush_repo_little_bit_of_everything(self, dbsession, mock_storage):
+    def test_flush_repo_little_bit_of_everything(self, dbsession, mock_storage):
         repo = RepositoryFactory.create()
         dbsession.add(repo)
         dbsession.flush()

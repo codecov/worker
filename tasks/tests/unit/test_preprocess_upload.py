@@ -15,8 +15,7 @@ from tasks.preprocess_upload import PreProcessUpload
 
 
 class TestPreProcessUpload(object):
-    @pytest.mark.asyncio
-    async def test_preprocess_task(
+    def test_preprocess_task(
         self,
         mocker,
         mock_configuration,
@@ -177,8 +176,7 @@ class TestPreProcessUpload(object):
         dbsession.flush()
         return commit, report
 
-    @pytest.mark.asyncio
-    async def test_run_impl_unobtainable_lock(self, dbsession, mocker, mock_redis):
+    def test_run_impl_unobtainable_lock(self, dbsession, mocker, mock_redis):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()

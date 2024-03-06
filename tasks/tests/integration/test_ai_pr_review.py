@@ -5,8 +5,7 @@ from tasks.ai_pr_review import AiPrReviewTask
 
 
 @pytest.mark.integration
-@pytest.mark.asyncio
-async def test_ai_pr_review_task(
+def test_ai_pr_review_task(
     mocker,
     dbsession,
 ):

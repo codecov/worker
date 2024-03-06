@@ -16,13 +16,12 @@ class SampleCronTask(CodecovCronTask):
     def hard_time_limit_task(self):
         return 100
 
-    async def run_cron_task(self, dbsession):
+    def run_cron_task(self, dbsession):
         return {"unusual": "return", "value": ["something"]}
 
 
 class TestCrontasks(object):
-    @pytest.mark.asyncio
-    async def test_simple_run(self, dbsession, mock_redis):
+    def test_simple_run(self, dbsession, mock_redis):
         generation_time = datetime(2021, 1, 2, 0, 3, 4).replace(tzinfo=timezone.utc)
         task = SampleCronTask()
         res = task.run_impl(
@@ -33,8 +32,7 @@ class TestCrontasks(object):
             "result": {"unusual": "return", "value": ["something"]},
         }
 
-    @pytest.mark.asyncio
-    async def test_simple_run_with_too_recent_call(self, dbsession, mock_redis):
+    def test_simple_run_with_too_recent_call(self, dbsession, mock_redis):
         generation_time = datetime(2021, 1, 2, 0, 3, 4).replace(tzinfo=timezone.utc)
         mock_redis.get.return_value = (
             generation_time - timedelta(seconds=5)
@@ -45,8 +43,7 @@ class TestCrontasks(object):
         )
         assert res == {"executed": False}
 
-    @pytest.mark.asyncio
-    async def test_simple_run_with_lock_error(self, dbsession, mock_redis):
+    def test_simple_run_with_lock_error(self, dbsession, mock_redis):
         generation_time = datetime(2021, 1, 2, 0, 3, 4).replace(tzinfo=timezone.utc)
         mock_redis.lock.side_effect = LockError
         task = SampleCronTask()

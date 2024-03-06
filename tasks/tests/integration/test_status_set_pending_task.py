@@ -7,8 +7,7 @@ from tasks.status_set_pending import StatusSetPendingTask
 
 @pytest.mark.integration
 class TestStatusSetPendingTask(object):
-    @pytest.mark.asyncio
-    async def test_set_pending(
+    def test_set_pending(
         self, dbsession, mocker, mock_configuration, codecov_vcr, mock_redis
     ):
         repository = RepositoryFactory.create(

@@ -47,9 +47,8 @@ class TestUploadProcessorTask(object):
             task.schedule_for_later_try()
         mock_retry.assert_called_with(countdown=180, max_retries=5)
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_processor_task_call(
+    def test_upload_processor_task_call(
         self,
         mocker,
         mock_configuration,
@@ -170,9 +169,8 @@ class TestUploadProcessorTask(object):
             timeout=300,
         )
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_processor_task_call_should_delete(
+    def test_upload_processor_task_call_should_delete(
         self,
         mocker,
         mock_configuration,
@@ -302,8 +300,7 @@ class TestUploadProcessorTask(object):
             timeout=300,
         )
 
-    @pytest.mark.asyncio
-    async def test_upload_processor_call_with_upload_obj(
+    def test_upload_processor_call_with_upload_obj(
         self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
     ):
         mocker.patch.object(
@@ -345,7 +342,7 @@ class TestUploadProcessorTask(object):
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
         mocked_3 = mocker.patch.object(UploadProcessorTask, "app")
         mocked_3.send_task.return_value = True
-        result = await UploadProcessorTask().process_impl_within_lock(
+        result = UploadProcessorTask().process_impl_within_lock(
             db_session=dbsession,
             redis_connection=mock_redis,
             previous_results={},
@@ -421,9 +418,8 @@ class TestUploadProcessorTask(object):
         )
         assert data == parsed.content().getvalue()
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_task_call_existing_chunks(
+    def test_upload_task_call_existing_chunks(
         self,
         mocker,
         mock_configuration,
@@ -498,8 +494,7 @@ class TestUploadProcessorTask(object):
             timeout=300,
         )
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_exception_within_individual_upload(
+    def test_upload_task_call_exception_within_individual_upload(
         self,
         mocker,
         mock_configuration,
@@ -556,8 +551,7 @@ class TestUploadProcessorTask(object):
         mocked_4.assert_called_with(commit.repository, upload)
         mocked_5.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_with_redis_lock_unobtainable(
+    def test_upload_task_call_with_redis_lock_unobtainable(
         self, mocker, mock_configuration, dbsession, mock_redis, celery_app
     ):
         # Mocking retry to also raise the exception so we can see how it is called
@@ -594,8 +588,7 @@ class TestUploadProcessorTask(object):
         mocked_3.assert_called_with(countdown=179, max_retries=5)
         mocked_random.assert_called_with(100, 200)
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_with_expired_report(
+    def test_upload_task_call_with_expired_report(
         self,
         mocker,
         mock_configuration,
@@ -690,8 +683,7 @@ class TestUploadProcessorTask(object):
         assert expected_result == result
         assert commit.state == "complete"
 
-    @pytest.mark.asyncio
-    async def test_upload_task_process_individual_report_with_notfound_report(
+    def test_upload_task_process_individual_report_with_notfound_report(
         self,
         mocker,
         mock_configuration,
@@ -742,8 +734,7 @@ class TestUploadProcessorTask(object):
         assert commit.state == "complete"
         assert upload.state == "error"
 
-    @pytest.mark.asyncio
-    async def test_upload_task_process_individual_report_with_notfound_report_no_retries_yet(
+    def test_upload_task_process_individual_report_with_notfound_report_no_retries_yet(
         self,
         mocker,
         mock_configuration,
@@ -783,8 +774,7 @@ class TestUploadProcessorTask(object):
             )
         mock_schedule_for_later_try.assert_called_with()
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_with_empty_report(
+    def test_upload_task_call_with_empty_report(
         self,
         mocker,
         mock_configuration,
@@ -883,8 +873,7 @@ class TestUploadProcessorTask(object):
         assert upload_2.errors[0].report_upload == upload_2
         assert len(upload_1.errors) == 0
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_no_successful_report(
+    def test_upload_task_call_no_successful_report(
         self,
         mocker,
         mock_configuration,
@@ -978,8 +967,7 @@ class TestUploadProcessorTask(object):
         assert upload_1.errors[0].error_params == {}
         assert upload_1.errors[0].report_upload == upload_1
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_softtimelimit(
+    def test_upload_task_call_softtimelimit(
         self,
         mocker,
         mock_configuration,
@@ -1023,8 +1011,7 @@ class TestUploadProcessorTask(object):
             )
         assert commit.state == "error"
 
-    @pytest.mark.asyncio
-    async def test_upload_task_call_celeryerror(
+    def test_upload_task_call_celeryerror(
         self,
         mocker,
         mock_configuration,
@@ -1068,8 +1055,7 @@ class TestUploadProcessorTask(object):
             )
         assert commit.state == "pending"
 
-    @pytest.mark.asyncio
-    async def test_save_report_results_apply_diff_not_there(
+    def test_save_report_results_apply_diff_not_there(
         self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage
     ):
         commit = CommitFactory.create(
@@ -1097,7 +1083,7 @@ class TestUploadProcessorTask(object):
         mock_repo_provider.get_commit_diff.side_effect = TorngitObjectNotFoundError(
             "response", "message"
         )
-        result = await UploadProcessorTask().save_report_results(
+        result = UploadProcessorTask().save_report_results(
             db_session=dbsession,
             report_service=ReportService({}),
             repository=commit.repository,
@@ -1111,8 +1097,7 @@ class TestUploadProcessorTask(object):
         assert expected_result == result
         assert report.diff_totals is None
 
-    @pytest.mark.asyncio
-    async def test_save_report_results_apply_diff_no_bot(
+    def test_save_report_results_apply_diff_no_bot(
         self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage
     ):
         commit = CommitFactory.create(
@@ -1141,7 +1126,7 @@ class TestUploadProcessorTask(object):
         report.append(report_file_1)
         report.append(report_file_2)
         chunks_archive_service = ArchiveService(commit.repository)
-        result = await UploadProcessorTask().save_report_results(
+        result = UploadProcessorTask().save_report_results(
             db_session=dbsession,
             report_service=ReportService({}),
             repository=commit.repository,
@@ -1155,8 +1140,7 @@ class TestUploadProcessorTask(object):
         assert expected_result == result
         assert report.diff_totals is None
 
-    @pytest.mark.asyncio
-    async def test_save_report_results_apply_diff_valid(
+    def test_save_report_results_apply_diff_valid(
         self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage
     ):
         commit = CommitFactory.create(
@@ -1203,7 +1187,7 @@ class TestUploadProcessorTask(object):
             }
         }
         mock_repo_provider.get_commit_diff.return_value = f
-        result = await UploadProcessorTask().save_report_results(
+        result = UploadProcessorTask().save_report_results(
             db_session=dbsession,
             report_service=ReportService({}),
             commit=commit,
@@ -1232,8 +1216,7 @@ class TestUploadProcessorTask(object):
         )
         assert report.diff_totals == expected_diff_totals
 
-    @pytest.mark.asyncio
-    async def test_save_report_results_empty_report(
+    def test_save_report_results_empty_report(
         self, mocker, mock_configuration, dbsession, mock_repo_provider, mock_storage
     ):
         commit = CommitFactory.create(
@@ -1270,7 +1253,7 @@ class TestUploadProcessorTask(object):
             }
         }
         mock_repo_provider.get_commit_diff.return_value = f
-        result = await UploadProcessorTask().save_report_results(
+        result = UploadProcessorTask().save_report_results(
             db_session=dbsession,
             report_service=ReportService({}),
             commit=commit,
@@ -1300,11 +1283,10 @@ class TestUploadProcessorTask(object):
         assert report.diff_totals == expected_diff_totals
         assert commit.state == "error"
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "pr_value, expected_pr_result", [(1, 1), ("1", 1), ("true", None), ([], None)]
     )
-    async def test_save_report_results_pr_values(
+    def test_save_report_results_pr_values(
         self,
         mocker,
         mock_configuration,
@@ -1322,7 +1304,7 @@ class TestUploadProcessorTask(object):
             "files": {"path/to/first.py": {}}
         }
         mock_report_service = mocker.Mock(save_report=mocker.Mock(return_value="aaaa"))
-        result = await UploadProcessorTask().save_report_results(
+        result = UploadProcessorTask().save_report_results(
             db_session=dbsession,
             report_service=mock_report_service,
             commit=commit,

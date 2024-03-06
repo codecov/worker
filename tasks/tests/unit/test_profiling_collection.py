@@ -28,8 +28,7 @@ def sample_open_telemetry_collected():
         return json.load(file)
 
 
-@pytest.mark.asyncio
-async def test_run_impl_simple_run_no_existing_data(
+def test_run_impl_simple_run_no_existing_data(
     dbsession, mock_storage, mock_configuration, mock_redis, mocker
 ):
     mock_delay = mocker.patch("tasks.profiling_collection.profiling_summarization_task")
@@ -48,8 +47,7 @@ async def test_run_impl_simple_run_no_existing_data(
     mock_delay.delay.assert_called_with(profiling_id=pcf.id)
 
 
-@pytest.mark.asyncio
-async def test_run_impl_simple_run_no_existing_data_yes_new_uploads(
+def test_run_impl_simple_run_no_existing_data_yes_new_uploads(
     dbsession, mock_storage, mock_configuration, mock_redis, mocker
 ):
     mock_delay = mocker.patch("tasks.profiling_collection.profiling_summarization_task")
@@ -97,8 +95,7 @@ async def test_run_impl_simple_run_no_existing_data_yes_new_uploads(
     mock_delay.delay.assert_called_with(profiling_id=pcf.id)
 
 
-@pytest.mark.asyncio
-async def test_run_impl_simple_run_no_existing_data_sample_new_uploads(
+def test_run_impl_simple_run_no_existing_data_sample_new_uploads(
     dbsession,
     mock_storage,
     mock_configuration,
@@ -133,8 +130,7 @@ async def test_run_impl_simple_run_no_existing_data_sample_new_uploads(
     mock_delay.delay.assert_called_with(profiling_id=pcf.id)
 
 
-@pytest.mark.asyncio
-async def test_collection_task_redis_lock_unavailable(dbsession, mocker, mock_redis):
+def test_collection_task_redis_lock_unavailable(dbsession, mocker, mock_redis):
     pcf = ProfilingCommitFactory.create(joined_location=None)
     dbsession.add(pcf)
     dbsession.flush()
