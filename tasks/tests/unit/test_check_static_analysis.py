@@ -46,17 +46,18 @@ class TestStaticAnalysisCheckTask(object):
         mock_metric_context.assert_called_with(
             repo_id=obj.commit.repository.repoid, commit_id=obj.commit.id
         )
-        mock_metric_context.return_value.attempt_log_simple_metric.assert_any_call(
+        mock_metric_context.return_value.log_simple_metric.assert_any_call(
             "static_analysis.data_sent_for_commit", float(True)
         )
-        mock_metric_context.return_value.attempt_log_simple_metric.assert_any_call(
+        mock_metric_context.return_value.log_simple_metric.assert_any_call(
             "static_analysis.files_changed", 8
         )
         assert res == {"changed_count": 8, "successful": True}
 
     def test_simple_call_with_suite_mix_from_other(
-        self, dbsession, mock_storage, mock_configuration
+        self, dbsession, mock_storage, mock_configuration, mocker
     ):
+        _ = mocker.patch("tasks.static_analysis_suite_check.MetricContext")
         obj = StaticAnalysisSuiteFactory.create()
         another_obj_same_repo = StaticAnalysisSuiteFactory.create(
             commit__repository=obj.commit.repository

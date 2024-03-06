@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -167,14 +168,12 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         commits = None
         db_session.commit()
         try:
-            commits_future = repository_service.get_pull_request_commits(pull.pullid)
-            base_ancestors_tree_future = repository_service.get_ancestors_tree(
+            commits = async_to_sync(repository_service.get_pull_request_commits)(
+                pull.pullid
+            )
+            base_ancestors_tree = async_to_sync(repository_service.get_ancestors_tree)(
                 enriched_pull.provider_pull["base"]["branch"]
             )
-            commits, base_ancestors_tree = async_to_sync(
-                asyncio.gather(commits_future, base_ancestors_tree_future)
-            )
-
             commit_updates_done = self.update_pull_commits(
                 enriched_pull, commits, base_ancestors_tree
             )

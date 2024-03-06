@@ -59,13 +59,18 @@ class StatusSetErrorTask(BaseCodecovTask, name=status_set_error_task_name):
                             message or "Coverage not measured fully because CI failed"
                         )
                         if context in statuses:
-                            async_to_sync(repo_service.set_commit_status)(
-                                commit=commitid,
-                                status=state,
-                                context=context,
-                                description=message,
-                                url=url,
-                            )
+                            # async_to_sync has its own "context" argument so we
+                            # have to hide ours in a wrapper
+                            async def wrapper():
+                                await repo_service.set_commit_status(
+                                    commit=commitid,
+                                    status=state,
+                                    context=context,
+                                    description=message,
+                                    url=url,
+                                )
+
+                            async_to_sync(wrapper)()
                             status_set = True
                             log.info(
                                 "Status set",

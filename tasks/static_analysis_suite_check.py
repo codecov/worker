@@ -68,10 +68,10 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask, name=static_analysis_task_na
                 )
 
         db_session.commit()
-        metrics_context.attempt_log_simple_metric(
+        metrics_context.log_simple_metric(
             "static_analysis.data_sent_for_commit", float(True)
         )
-        metrics_context.attempt_log_simple_metric(
+        metrics_context.log_simple_metric(
             "static_analysis.files_changed", changed_count
         )
         return {"successful": True, "changed_count": changed_count}

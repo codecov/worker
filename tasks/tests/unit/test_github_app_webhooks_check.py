@@ -194,14 +194,15 @@ class TestGHAppWebhooksTask(object):
         assert len(filtered_deliveries) == 1
         assert filtered_deliveries[0] == sample_deliveries[2]
 
-    def test_request_redeliveries_return_early(self, mocker):
+    @pytest.mark.asyncio
+    async def test_request_redeliveries_return_early(self, mocker):
         fake_redelivery = mocker.patch.object(
             Github,
             "request_webhook_redelivery",
             return_value=True,
         )
         task = GitHubAppWebhooksCheckTask()
-        assert task.request_redeliveries(mocker.MagicMock(), []) == 0
+        assert await task.request_redeliveries(mocker.MagicMock(), []) == 0
         fake_redelivery.assert_not_called()
 
     def test_skip_check_if_enterprise(self, dbsession, mocker):

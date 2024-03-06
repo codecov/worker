@@ -8,7 +8,7 @@ from tasks.http_request import HTTPRequestTask
 
 @pytest.mark.integration
 class TestHTTPRequestTask:
-    def test_http_request_run_impl_200(self, dbsession, codecov_vcr):
+    def test_http_request_run_async_200(self, dbsession, codecov_vcr):
         task = HTTPRequestTask()
         res = task.run_impl(
             dbsession,
@@ -22,7 +22,7 @@ class TestHTTPRequestTask:
         )
         assert res == {"response": "ok", "status_code": 200, "successful": True}
 
-    def test_http_request_run_impl_400(self, dbsession, codecov_vcr):
+    def test_http_request_run_async_400(self, dbsession, codecov_vcr):
         task = HTTPRequestTask()
         res = task.run_impl(
             dbsession,
@@ -40,7 +40,7 @@ class TestHTTPRequestTask:
             "successful": False,
         }
 
-    def test_http_request_run_impl_500(self, dbsession, codecov_vcr):
+    def test_http_request_run_async_500(self, dbsession, codecov_vcr):
         task = HTTPRequestTask()
         with pytest.raises(Retry):
             task.run_impl(
@@ -54,7 +54,7 @@ class TestHTTPRequestTask:
                 data=json.dumps({"testing": 123}),
             )
 
-    def test_http_request_run_impl_connection_error(self, dbsession, codecov_vcr):
+    def test_http_request_run_async_connection_error(self, dbsession, codecov_vcr):
         task = HTTPRequestTask()
         with pytest.raises(Retry):
             task.run_impl(

@@ -144,7 +144,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         repos_to_search = [
             x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
         ]
-        async for repo_data in git.get_repos_from_nodeids_generator(
+        for repo_data in git.get_repos_from_nodeids_generator(
             repos_to_search, owner.username
         ):
             # Insert those repos
@@ -238,7 +238,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         if repository_service_ids:
             # This flow is different from the ones below because the API already informed us the repos affected
             # So we can update those values directly
-            repoids_added = self.sync_repos_affected_repos_known(
+            repoids_added = await self.sync_repos_affected_repos_known(
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added
