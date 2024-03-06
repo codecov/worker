@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Sequence
 
 import sqlalchemy.orm
+from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.celery_config import notify_task_name, pulls_task_name
 from shared.reports.types import Change
@@ -64,7 +65,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         lock_name = f"pullsync_{repoid}_{pullid}"
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
-                return await self.run_impl_within_lock(
+                return self.run_impl_within_lock(
                     db_session,
                     redis_connection,
                     repoid=repoid,
@@ -117,7 +118,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
             ownerid=repository.owner.ownerid,
         )
         with metrics.timer(f"{self.metrics_prefix}.fetch_pull"):
-            enriched_pull = await fetch_and_update_pull_request_information(
+            enriched_pull = async_to_sync(fetch_and_update_pull_request_information)(
                 repository_service, db_session, repoid, pullid, current_yaml
             )
         pull = enriched_pull.database_pull
@@ -166,10 +167,14 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         commits = None
         db_session.commit()
         try:
-            commits = await repository_service.get_pull_request_commits(pull.pullid)
-            base_ancestors_tree = await repository_service.get_ancestors_tree(
+            commits_future = repository_service.get_pull_request_commits(pull.pullid)
+            base_ancestors_tree_future = repository_service.get_ancestors_tree(
                 enriched_pull.provider_pull["base"]["branch"]
             )
+            commits, base_ancestors_tree = async_to_sync(
+                asyncio.gather(commits_future, base_ancestors_tree_future)
+            )
+
             commit_updates_done = self.update_pull_commits(
                 enriched_pull, commits, base_ancestors_tree
             )
@@ -179,7 +184,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "Unable to fetch information about pull commits",
                 extra=dict(pullid=pullid, repoid=repoid),
             )
-        await self.update_pull_from_reports(
+        self.update_pull_from_reports(
             pull, repository_service, base_report, head_report, current_yaml
         )
         db_session.commit()
@@ -232,7 +237,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 extra=dict(pullid=pull.pullid, repoid=pull.repoid),
             )
 
-    async def update_pull_from_reports(
+    def update_pull_from_reports(
         self,
         pull: Pull,
         repository_service,
@@ -241,7 +246,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         current_yaml,
     ):
         try:
-            compare_dict = await repository_service.get_compare(
+            compare_dict = async_to_sync(repository_service.get_compare)(
                 pull.base, pull.head, with_commits=False
             )
             diff = compare_dict["diff"]

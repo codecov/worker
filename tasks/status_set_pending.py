@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import status_set_pending_task_name
 from shared.helpers.yaml import default_if_true
 from shared.utils.match import match
@@ -51,13 +52,13 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
         commit = commits.first()
         assert commit, "Commit not found in database."
         repo_service = get_repo_provider_service(commit.repository)
-        current_yaml = await get_current_yaml(commit, repo_service)
+        current_yaml = async_to_sync(get_current_yaml)(commit, repo_service)
         settings = read_yaml_field(current_yaml, ("coverage", "status"))
 
         status_set = False
 
         if settings and any(settings.values()):
-            statuses = await repo_service.get_commit_statuses(commitid)
+            statuses = async_to_sync(repo_service.get_commit_statuses)(commitid)
             url = make_url(repo_service, "commit", commitid)
 
             for context in ("project", "patch", "changes"):
@@ -81,7 +82,7 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
                             ), "Pending status disabled in YAML"
                             assert title not in statuses, "Pending status already set"
 
-                            await repo_service.set_commit_status(
+                            async_to_sync(repo_service.set_commit_status)(
                                 commit=commitid,
                                 status="pending",
                                 context=title,

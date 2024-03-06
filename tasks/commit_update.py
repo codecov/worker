@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import commit_update_task_name
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -39,7 +40,7 @@ class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
         was_updated = False
         try:
             repository_service = get_repo_provider_service(repository, commit)
-            was_updated = await possibly_update_commit_from_provider_info(
+            was_updated = async_to_sync(possibly_update_commit_from_provider_info)(
                 commit, repository_service
             )
         except RepositoryWithoutValidBotError:

@@ -48,7 +48,7 @@ class ManualTriggerTask(
                 timeout=60 * 5,
                 blocking_timeout=5,
             ):
-                return await self.process_async_within_lock(
+                return self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -68,7 +68,7 @@ class ManualTriggerTask(
             )
             return {"notifications_called": False, "message": "Unable to acquire lock"}
 
-    async def process_async_within_lock(
+    def process_impl_within_lock(
         self,
         *,
         db_session,

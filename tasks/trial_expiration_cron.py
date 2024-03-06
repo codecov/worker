@@ -18,7 +18,7 @@ class TrialExpirationCronTask(CodecovCronTask, name=trial_expiration_cron_task_n
     def get_min_seconds_interval_between_executions(cls):
         return 86100  # 23 hours and 55 minutes
 
-    async def run_cron_task(self, db_session, *args, **kwargs):
+    def run_cron_task(self, db_session, *args, **kwargs):
         log.info("Doing trial expiration check")
         now = get_utc_now()
 

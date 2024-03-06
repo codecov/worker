@@ -61,7 +61,7 @@ class BundleAnalysisProcessorTask(
                 LockType.BUNDLE_ANALYSIS_PROCESSING,
                 retry_num=self.request.retries,
             ):
-                return await self.process_async_within_lock(
+                return self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -73,7 +73,7 @@ class BundleAnalysisProcessorTask(
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
-    async def process_async_within_lock(
+    def process_impl_within_lock(
         self,
         *,
         db_session,

@@ -2,6 +2,7 @@ import logging
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple, TypedDict, Union
 
 import sentry_sdk
+from asgiref.sync import async_to_sync
 from shared.celery_config import label_analysis_task_name
 from shared.labelanalysis import LabelAnalysisRequestState
 from sqlalchemy.orm import Session
@@ -132,7 +133,7 @@ class LabelAnalysisRequestProcessingTask(
         try:
             lines_relevant_to_diff: Optional[
                 LinesRelevantToChange
-            ] = await self._get_lines_relevant_to_diff(label_analysis_request)
+            ] = self._get_lines_relevant_to_diff(label_analysis_request)
             base_report = self._get_base_report(label_analysis_request)
 
             if lines_relevant_to_diff and base_report:
@@ -333,10 +334,8 @@ class LabelAnalysisRequestProcessingTask(
         )
 
     @sentry_sdk.trace
-    async def _get_lines_relevant_to_diff(
-        self, label_analysis_request: LabelAnalysisRequest
-    ):
-        parsed_git_diff = await self._get_parsed_git_diff(label_analysis_request)
+    def _get_lines_relevant_to_diff(self, label_analysis_request: LabelAnalysisRequest):
+        parsed_git_diff = self._get_parsed_git_diff(label_analysis_request)
         if parsed_git_diff:
             executable_lines_relevant_to_diff = self.get_relevant_executable_lines(
                 label_analysis_request, parsed_git_diff
@@ -356,14 +355,14 @@ class LabelAnalysisRequestProcessingTask(
         return None
 
     @sentry_sdk.trace
-    async def _get_parsed_git_diff(
+    def _get_parsed_git_diff(
         self, label_analysis_request: LabelAnalysisRequest
     ) -> Optional[List[DiffChange]]:
         try:
             repo_service = get_repo_provider_service(
                 label_analysis_request.head_commit.repository
             )
-            git_diff = await repo_service.get_compare(
+            git_diff = async_to_sync(repo_service.get_compare)(
                 label_analysis_request.base_commit.commitid,
                 label_analysis_request.head_commit.commitid,
             )

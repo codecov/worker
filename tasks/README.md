@@ -74,7 +74,7 @@ When adding a new task, you will already have a ton you need to do. But be sure 
 3. Don't start scheduling things to it right away (see point above about the system being asychronous)
 4. Make sure celery displays it when spinning up the system on your local machine
 
-You should be able to copy-paste any of the tasks when creating your own, but the important entrypoint of the task is the `run_async` function.
+You should be able to copy-paste any of the tasks when creating your own, but the important entrypoint of the task is the `run_impl` function.
 
 It needs to have
 
@@ -86,7 +86,7 @@ It needs to have
 * In the end, your function signature should look a bit like this:
 
 ```
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,

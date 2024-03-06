@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from typing import List, Optional, Tuple
 
+from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.celery_config import sync_repo_languages_task_name, sync_repos_task_name
@@ -95,7 +96,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 synced_repoids = []
                 if using_integration:
                     with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
-                        synced_repoids = await self.sync_repos_using_integration(
+                        synced_repoids = async_to_sync(
+                            self.sync_repos_using_integration
+                        )(
                             db_session,
                             git,
                             owner,
@@ -104,7 +107,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                         )
                 else:
                     with metrics.timer(f"{metrics_scope}.sync_repos"):
-                        synced_repoids = await self.sync_repos(
+                        synced_repoids = async_to_sync(self.sync_repos)(
                             db_session, git, owner, username, using_integration
                         )
 
@@ -235,7 +238,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         if repository_service_ids:
             # This flow is different from the ones below because the API already informed us the repos affected
             # So we can update those values directly
-            repoids_added = await self.sync_repos_affected_repos_known(
+            repoids_added = self.sync_repos_affected_repos_known(
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added

@@ -83,7 +83,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 db_session.commit()
                 commit.notified = False
                 db_session.commit()
-                result = await self.finish_reports_processing(
+                result = self.finish_reports_processing(
                     db_session,
                     commit,
                     commit_yaml,
@@ -116,7 +116,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
 
-    async def finish_reports_processing(
+    def finish_reports_processing(
         self,
         db_session,
         commit,

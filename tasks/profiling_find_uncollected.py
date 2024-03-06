@@ -17,7 +17,7 @@ class FindUncollectedProfilingsTask(CodecovCronTask, name=profiling_finding_task
     def get_min_seconds_interval_between_executions(cls):
         return 800
 
-    async def run_cron_task(self, db_session, *args, **kwargs):
+    def run_cron_task(self, db_session, *args, **kwargs):
         min_interval_profilings = timedelta(hours=MIN_INTERVAL_PROFILINGS_HOURS)
         now = get_utc_now()
         query = (

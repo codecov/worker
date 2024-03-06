@@ -39,8 +39,8 @@ class HTTPRequestTask(BaseCodecovTask, name="app.tasks.http_request.HTTPRequest"
         log.info("HTTP request", extra=params)
 
         try:
-            async with httpx.AsyncClient() as client:
-                res = await client.request(**params)
+            with httpx.Client() as client:
+                res = client.request(**params)
 
             if res.status_code >= 500:
                 # server error, we can retry later
