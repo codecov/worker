@@ -62,6 +62,27 @@ def setup_worker():
         log.info(f"External dependencies folder configured to {external_deps_folder}")
         sys.path.append(external_deps_folder)
 
+    # ALERT ALERT ALERT! This is not to be done lightly!
+    # Django's ORM raises errors if run from within an asyncio event loop. Our
+    # base celery task runs all task implementations via asyncio.run(), so when
+    # we use Django's ORM in most of worker it'll get steamed. However, the base
+    # task use of asyncio is actually superfluous. Consider the following:
+    #
+    #    async def run_async():
+    #        await foo()
+    #        await bar()
+    #        await baz()
+    #    asyncio.run(run_async())
+    #
+    # `run_async()` is effectively running `foo()`, `bar()`, and `baz()`
+    # synchronously. When we `await foo()`, there's nothing else running in the
+    # event loop that we could resume, and we can't start `bar()` until `foo()`
+    # has completed. So... there's nothing to do but wait.
+    #
+    # With that in mind, we should be able to safely disable Django's
+    # protections with this environment variable.
+    os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
+
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_scaffold.settings")
     django.setup()
 
