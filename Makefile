@@ -248,17 +248,6 @@ test_env.container_label_analysis:
 test_env.container_ats:
 	codecovcli -u ${CODECOV_URL} --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
 
-test_env.run_mutation:
-	docker-compose exec worker make test_env.container_mutation
-
-test_env.container_mutation:
-	apt-get install -y git
-	git diff origin/main ${full_sha} > data.patch
-	pip install mutmut[patch]
-	mutmut run --use-patch-file data.patch || true
-	mkdir /tmp/artifacts;
-	mutmut junitxml > /tmp/artifacts/mut.xml
-
 test_env:
 	make test_env.up
 	make test_env.prepare
