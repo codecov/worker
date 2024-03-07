@@ -4,6 +4,7 @@ from datetime import datetime
 
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
+from django.db import connection
 from django.db import transaction as django_transaction
 from prometheus_client import REGISTRY
 from shared.celery_router import route_tasks_based_on_user_plan
@@ -137,6 +138,14 @@ class BaseCodecovTask(celery_app.Task):
         if self.time_limit is not None:
             return self.time_limit
         return self.app.conf.task_time_limit or 0
+
+    def after_return(self, *args, **kwargs):
+        # Django + Celery + Psycopg2 apparently don't do a great job of letting
+        # you know whether your connection is dead. If you run multiple tasks
+        # in a row on the same host, they may all just have a dead connection.
+        # So, when a task finishes, close the Django DB connection and force the
+        # next task to open a new connection.
+        connection.close()
 
     def apply_async(self, args=None, kwargs=None, **options):
         db_session = get_db_session()
