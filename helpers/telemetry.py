@@ -109,29 +109,28 @@ class MetricContext:
         self.populated = True
 
     def log_simple_metric(self, name: str, value: float):
-        pass
         # Timezone-aware timestamp in UTC
-        # timestamp = django.utils.timezone.now()
+        timestamp = django.utils.timezone.now()
 
-        # self.populate()
+        self.populate()
 
-        # PgSimpleMetric.objects.create(
-        #     timestamp=timestamp,
-        #     name=name,
-        #     value=value,
-        #     repo_id=self.repo_id,
-        #     owner_id=self.owner_id,
-        #     commit_id=self.commit_id,
-        # )
+        PgSimpleMetric.objects.create(
+            timestamp=timestamp,
+            name=name,
+            value=value,
+            repo_id=self.repo_id,
+            owner_id=self.owner_id,
+            commit_id=self.commit_id,
+        )
 
-        # TsSimpleMetric.objects.create(
-        #     timestamp=timestamp,
-        #     name=name,
-        #     value=value,
-        #     repo_slug=self.repo_slug,
-        #     owner_slug=self.owner_slug,
-        #     commit_slug=self.commit_slug,
-        # )
+        TsSimpleMetric.objects.create(
+            timestamp=timestamp,
+            name=name,
+            value=value,
+            repo_slug=self.repo_slug,
+            owner_slug=self.owner_slug,
+            commit_slug=self.commit_slug,
+        )
 
     @fire_and_forget
     async def attempt_log_simple_metric(self, name: str, value: float):
