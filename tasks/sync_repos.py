@@ -4,11 +4,14 @@ from typing import List, Optional, Tuple
 
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
-from shared.celery_config import sync_repo_languages_task_name, sync_repos_task_name, sync_repo_languages_gql_task_name
+from shared.celery_config import (
+    sync_repo_languages_gql_task_name,
+    sync_repo_languages_task_name,
+    sync_repos_task_name,
+)
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
-from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Owner, Repository
@@ -274,7 +277,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         return {
             "service": git.service,
             "org_usernames": [owner.username],
-            "repoids":repoids
+            "repoids": repoids,
         }
 
     async def sync_repos(self, db_session, git, owner, username, using_integration):
@@ -408,7 +411,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         return {
             "service": git.service,
             "org_usernames": [item[2] for item in owners_by_id.keys()],
-            "repoids":repoids
+            "repoids": repoids,
         }
 
     def upsert_owner(self, db_session, service, service_id, username):
@@ -553,26 +556,24 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         db_session.flush()
         return new_repo.repoid
 
-    def sync_repos_languages(self, sync_repos_output: dict, manual_trigger: bool, current_owner: Owner):
-        if sync_repos_output["service"] == "github":
-            # for owner_username in sync_repos_output["owners_usernames"]:
-            #     self.app.tasks[sync_repo_languages_gql_task_name].apply_async(
-            #         kwargs=dict(owner_username=owner_username, manual_trigger=manual_trigger, current_owner_id=current_owner.ownerid)
-            #     )
-            self.app.tasks[sync_repo_languages_gql_task_name].apply_async(
-                kwargs=dict(org_username=sync_repos_output["org_usernames"][2], manual_trigger=manual_trigger, current_owner_id=current_owner.ownerid)
-            )
-        else:
-            for repoid in sync_repos_output["repoids"]:
-                self.app.tasks[sync_repo_languages_task_name].apply_async(
-                    kwargs=dict(repoid=repoid, manual_trigger=manual_trigger)
-                )
+    def sync_repos_languages(
+        self, sync_repos_output: dict, manual_trigger: bool, current_owner: Owner
+    ):
+        if sync_repos_output:
+            if sync_repos_output["service"] == "github":
+                for owner_username in sync_repos_output["org_usernames"]:
+                    self.app.tasks[sync_repo_languages_gql_task_name].apply_async(
+                        kwargs=dict(
+                            org_username=owner_username,
+                            current_owner_id=current_owner.ownerid,
+                        )
+                    )
+            else:
+                for repoid in sync_repos_output["repoids"]:
+                    self.app.tasks[sync_repo_languages_task_name].apply_async(
+                        kwargs=dict(repoid=repoid, manual_trigger=manual_trigger)
+                    )
 
-# {
-#             "service": git.service,
-#             "owners_usernames": [item[2] for item in owners_by_id.keys()],
-#             "repoids":repoids
-#         }
 
 RegisteredSyncReposTask = celery_app.register_task(SyncReposTask())
 sync_repos_task = celery_app.tasks[SyncReposTask.name]
