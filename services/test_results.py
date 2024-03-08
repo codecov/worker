@@ -172,6 +172,20 @@ class TestResultsNotifier:
             )
             return False, "torngit_error"
 
+    def format_single_test(self, test_name, test_env_list):
+        testsuite_section = f"Testsuite:<br>{test_name.split('//////////')[0]}"
+        testname_section = f"Test name:<br>{test_name.split('//////////')[1]}"
+        single_test = f"{testsuite_section}<br>{testname_section}"
+
+        if len(test_env_list) > 0:
+            env_string_list = [
+                f"- {test_env if test_env != '' else 'default'}"
+                for test_env in sorted(test_env_list)
+            ]
+            single_test = f"{single_test}<br>Envs:<br>{'<br>'.join(env_string_list)}"
+
+        return single_test
+
     def build_message(
         self, url, test_instances, failures, num_passed, num_skipped, num_failed
     ):
@@ -200,7 +214,7 @@ class TestResultsNotifier:
                 (
                     "<br>".join(
                         self.insert_breaks(
-                            f"Testsuite: {test_name.split('//////////')[0]}<br>Test name: {test_name.split('//////////')[1]}<br>Envs: {''.join(f'<br>- {test_env}' for test_env in sorted(test_env_list))}"
+                            self.format_single_test(test_name, test_env_list)
                         )
                         for test_name, test_env_list in sorted(
                             failed_test_to_env_list.items(),
