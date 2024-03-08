@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List
 
+import regex
+
 
 class EscapeEnum(Enum):
     APPEND = "append"
@@ -61,3 +63,47 @@ class StringEscaper:
                         string, replacement.output
                     )
         return replacement_target
+
+
+file_path_regex = regex.compile(
+    r"((\/*[\w\-]+\/)+([\w\.]+)(:\d+:\d+)*)",
+)
+
+
+def shorten_file_paths(string):
+    """
+        This function takes in a string and returns it with all the paths
+        it contains longer than 3 components shortened to 3 components
+
+        Example:
+            string = '''Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: -1
+        at Object.&lt;anonymous&gt; (/Users/josephsawaya/dev/test-result-action/demo/calculator/calculator.test.ts:10:31)
+        at Promise.then.completed (/Users/josephsawaya/dev/test-result-action/node_modules/jest-circus/build/utils.js:298:28)'''
+            shortened_string = shorten_file_paths(string)
+            print(shortened_string)
+
+            will print()
+
+    """
+
+    matches = file_path_regex.findall(string)
+    for match_tuple in matches:
+        file_path = match_tuple[0]
+        split_file_path = file_path.split("/")
+
+        # if the file_path has more than 3 components we should shorten it
+        if len(split_file_path) > 3:
+            last_3_path_components = split_file_path[-3:]
+            no_dots_shortened_file_path = "/".join(last_3_path_components)
+
+            # possibly remove leading / because we're adding it with the dots
+            if no_dots_shortened_file_path.startswith("/"):
+                no_dots_shortened_file_path = no_dots_shortened_file_path[1:]
+
+            shortened_path = ".../" + no_dots_shortened_file_path
+
+            string = string.replace(file_path, shortened_path)
+    return string
