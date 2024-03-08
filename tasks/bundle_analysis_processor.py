@@ -126,7 +126,7 @@ class BundleAnalysisProcessorTask(
             assert params.get("commit") == commit.commitid
 
             report_service = BundleAnalysisReportService(commit_yaml)
-            result: ProcessingResult = report_service.process_upload(upload)
+            result: ProcessingResult = report_service.process_upload(commit, upload)
             if result.error and result.error.is_retryable and self.request.retries == 0:
                 # retryable error and no retry has already be scheduled
                 self.retry(max_retries=5, countdown=20)
