@@ -180,7 +180,7 @@ class TestUploadTestFinisherTask(object):
         expected_result = {"notify_attempted": True, "notify_succeeded": True}
         m.post_comment.assert_called_with(
             pull.pullid,
-            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- b</pre> | <pre>&lt;pre&gt;not that bad&lt;/pre&gt; | hello | goodbye |</pre> |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- a</pre> | <pre>okay i guess</pre> |",
+            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- b</pre> | <pre>&lt;pre&gt;not that bad&lt;/pre&gt; | hello | goodbye |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- a</pre> | <pre>okay i guess</pre> |",
         )
 
         assert expected_result == result
@@ -359,7 +359,7 @@ class TestUploadTestFinisherTask(object):
         expected_result = {"notify_attempted": True, "notify_succeeded": True}
         m.post_comment.assert_called_with(
             pull.pullid,
-            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- a<br><br>- b<br>Testsuite: test_testsuite<br>Test name: test_name_2<br>Envs: <br>- a</pre> | <pre>not that bad</pre> |",
+            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- a<br>- b<br>Testsuite:<br>test_testsuite<br>Test name:<br>test_name_2<br>Envs:<br>- a</pre> | <pre>not that bad</pre> |",
         )
 
         assert expected_result == result
@@ -877,7 +877,7 @@ class TestUploadTestFinisherTask(object):
         m.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- b</pre> | <pre>not that bad</pre> |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- a</pre> | <pre>okay i guess</pre> |",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- b</pre> | <pre>not that bad</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- a</pre> | <pre>okay i guess</pre> |",
         )
 
         assert expected_result == result
