@@ -221,10 +221,13 @@ class TestResultsNotifier:
 
     def insert_breaks(self, table_value):
         line_size = 70
-        lines = [
-            table_value[i : i + line_size]
-            for i in range(0, len(table_value), line_size)
-        ]
+        lines = table_value.split("<br>")
+        for i, line in enumerate(lines):
+            line_with_breaks = [
+                line[i : i + line_size] for i in range(0, len(line), line_size)
+            ]
+            lines[i] = "<br>".join(line_with_breaks)
+
         return "<br>".join(lines)
 
 
