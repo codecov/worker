@@ -12,8 +12,7 @@ from tasks.commit_update import CommitUpdateTask
 
 @pytest.mark.integration
 class TestCommitUpdate(object):
-    @pytest.mark.asyncio
-    async def test_update_commit(
+    def test_update_commit(
         self,
         mocker,
         mock_configuration,
@@ -36,9 +35,7 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": True}
         assert expected_result == result
         assert commit.message == "random-commit-msg"
@@ -46,8 +43,7 @@ class TestCommitUpdate(object):
         assert commit.branch == "featureA"
         assert commit.pullid == 1
 
-    @pytest.mark.asyncio
-    async def test_update_commit_bot_unauthorized(
+    def test_update_commit_bot_unauthorized(
         self,
         mocker,
         mock_configuration,
@@ -72,15 +68,12 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         assert {"was_updated": False} == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
 
-    @pytest.mark.asyncio
-    async def test_update_commit_no_bot(
+    def test_update_commit_no_bot(
         self,
         mocker,
         mock_configuration,
@@ -104,16 +97,13 @@ class TestCommitUpdate(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": False}
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
 
-    @pytest.mark.asyncio
-    async def test_update_commit_repo_not_found(
+    def test_update_commit_repo_not_found(
         self,
         mocker,
         mock_configuration,
@@ -139,16 +129,13 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": False}
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
 
-    @pytest.mark.asyncio
-    async def test_update_commit_not_found(
+    def test_update_commit_not_found(
         self,
         mocker,
         mock_configuration,
@@ -175,16 +162,13 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": False}
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
 
-    @pytest.mark.asyncio
-    async def test_update_commit_already_populated(
+    def test_update_commit_already_populated(
         self,
         mocker,
         mock_configuration,
@@ -204,9 +188,7 @@ class TestCommitUpdate(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        result = await CommitUpdateTask().run_async(
-            dbsession, commit.repoid, commit.commitid
-        )
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_updated": False}
         assert expected_result == result
         assert commit.message == "commit_msg"

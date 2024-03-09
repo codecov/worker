@@ -2,6 +2,7 @@ import logging
 from collections import defaultdict
 from typing import Dict, List, Optional, Set, TypedDict
 
+from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.reports.resources import Report
 from shared.reports.types import CoverageDatapoint
@@ -46,9 +47,7 @@ class CleanLabelsIndexTask(
     BaseCodecovTask,
     name=task_name,
 ):
-    async def run_async(
-        self, db_session, repoid, commitid, report_code=None, *args, **kwargs
-    ):
+    def run_impl(self, db_session, repoid, commitid, report_code=None, *args, **kwargs):
         redis_connection = get_redis_connection()
         repoid = int(repoid)
         lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
@@ -66,9 +65,7 @@ class CleanLabelsIndexTask(
         # so that the time we stay with the lock is as small as possible
         commit = self._get_commit_or_fail(db_session, repoid, commitid)
         repository_service = get_repo_provider_service(commit.repository, commit)
-        commit_yaml = await self._get_best_effort_commit_yaml(
-            commit, repository_service
-        )
+        commit_yaml = self._get_best_effort_commit_yaml(commit, repository_service)
         read_only_args = ReadOnlyArgs(
             commit=commit, commit_yaml=commit_yaml, report_code=report_code
         )
@@ -78,7 +75,7 @@ class CleanLabelsIndexTask(
                 timeout=max(300, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
-                return await self.run_async_within_lock(
+                return self.run_impl_within_lock(
                     db_session,
                     read_only_args,
                     *args,
@@ -98,7 +95,7 @@ class CleanLabelsIndexTask(
         _prepare_kwargs_for_retry(repoid, commitid, report_code, kwargs)
         self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
-    async def run_async_within_lock(
+    def run_impl_within_lock(
         self,
         read_only_args: ReadOnlyArgs,
         *args,
@@ -179,13 +176,13 @@ class CleanLabelsIndexTask(
             labels_stored_max_index -= 1
             offset -= 1
 
-    async def _get_best_effort_commit_yaml(
+    def _get_best_effort_commit_yaml(
         self, commit: Commit, repository_service: TorngitBaseAdapter
     ) -> Dict:
         repository = commit.repository
         commit_yaml = None
         if repository_service:
-            commit_yaml = await fetch_commit_yaml_from_provider(
+            commit_yaml = async_to_sync(fetch_commit_yaml_from_provider)(
                 commit, repository_service
             )
         if commit_yaml is None:

@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from typing import List, Optional, Tuple
 
+from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.celery_config import sync_repo_languages_task_name, sync_repos_task_name
@@ -51,7 +52,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     ignore_result = False
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         # `previous_results`` is added by celery if the task is chained.
@@ -95,7 +96,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 synced_repoids = []
                 if using_integration:
                     with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
-                        synced_repoids = await self.sync_repos_using_integration(
+                        synced_repoids = async_to_sync(
+                            self.sync_repos_using_integration
+                        )(
                             db_session,
                             git,
                             owner,
@@ -104,7 +107,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                         )
                 else:
                     with metrics.timer(f"{metrics_scope}.sync_repos"):
-                        synced_repoids = await self.sync_repos(
+                        synced_repoids = async_to_sync(self.sync_repos)(
                             db_session, git, owner, username, using_integration
                         )
 
@@ -141,7 +144,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         repos_to_search = [
             x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
         ]
-        async for repo_data in git.get_repos_from_nodeids_generator(
+        for repo_data in git.get_repos_from_nodeids_generator(
             repos_to_search, owner.username
         ):
             # Insert those repos

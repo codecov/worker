@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.validation.exceptions import InvalidYamlException
@@ -31,7 +32,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
     uploading a report to codecov
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         *,
@@ -52,7 +53,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                 timeout=60 * 5,
                 blocking_timeout=5,
             ):
-                return await self.process_async_within_lock(
+                return self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -71,7 +72,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             )
             return {"preprocessed_upload": False}
 
-    async def process_async_within_lock(
+    def process_impl_within_lock(
         self,
         *,
         db_session,
@@ -90,11 +91,11 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         repository_service = self.get_repo_service(commit)
         # Makes sure that we can properly carry forward reports
         # By populating the commit info (if needed)
-        updated_commit = await possibly_update_commit_from_provider_info(
+        updated_commit = async_to_sync(possibly_update_commit_from_provider_info)(
             commit=commit, repository_service=repository_service
         )
         if repository_service:
-            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(
+            commit_yaml = self.fetch_commit_yaml_and_possibly_store(
                 commit, repository_service
             )
         else:
@@ -105,7 +106,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                 ownerid=repository.owner.ownerid,
             )
         report_service = ReportService(commit_yaml)
-        commit_report = await report_service.initialize_and_save_report(
+        commit_report = async_to_sync(report_service.initialize_and_save_report)(
             commit, report_code
         )
         return {
@@ -144,14 +145,14 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
 
         return repository_service
 
-    async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
+    def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
         try:
             log.info(
                 "Fetching commit yaml from provider for commit",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            commit_yaml = await fetch_commit_yaml_from_provider(
+            commit_yaml = async_to_sync(fetch_commit_yaml_from_provider)(
                 commit, repository_service
             )
             save_repo_yaml_to_database_if_needed(commit, commit_yaml)

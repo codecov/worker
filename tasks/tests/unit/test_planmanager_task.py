@@ -7,8 +7,7 @@ from tasks.plan_manager_task import DailyPlanManagerTask
 
 
 class TestDailyPlanManagerTask(object):
-    @pytest.mark.asyncio
-    async def test_simple_case(self, dbsession):
+    def test_simple_case(self, dbsession):
         task = DailyPlanManagerTask()
         # Populate DB
         owner_in_enterprise_plan = OwnerFactory.create(
@@ -30,7 +29,7 @@ class TestDailyPlanManagerTask(object):
         dbsession.flush()
         assert dbsession.query(OrganizationLevelToken).count() == 3
 
-        result = await task.run_cron_task(dbsession)
+        result = task.run_cron_task(dbsession)
         assert result.get("checked") == True
         assert result.get("deleted") == 2
         assert dbsession.query(OrganizationLevelToken).count() == 1
@@ -39,8 +38,7 @@ class TestDailyPlanManagerTask(object):
             == owner_in_enterprise_plan.ownerid
         )
 
-    @pytest.mark.asyncio
-    async def test_get_min_seconds_interval_between_executions(self, dbsession):
+    def test_get_min_seconds_interval_between_executions(self, dbsession):
         assert isinstance(
             DailyPlanManagerTask.get_min_seconds_interval_between_executions(), int
         )

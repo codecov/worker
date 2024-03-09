@@ -41,7 +41,7 @@ class MockDateTime(datetime):
 
 
 class SampleTask(BaseCodecovTask, name="test.SampleTask"):
-    async def run_async(self, dbsession):
+    def run_impl(self, dbsession):
         return {"unusual": "return", "value": ["There"]}
 
 
@@ -51,7 +51,7 @@ class SampleTaskWithArbitraryError(
     def __init__(self, error):
         self.error = error
 
-    async def run_async(self, dbsession):
+    def run_impl(self, dbsession):
         raise self.error
 
     def retry(self):
@@ -65,7 +65,7 @@ class SampleTaskWithArbitraryPostgresError(
     def __init__(self, error):
         self.error = error
 
-    async def run_async(self, dbsession):
+    def run_impl(self, dbsession):
         raise DBAPIError("statement", "params", self.error)
 
     def retry(self):
@@ -74,12 +74,12 @@ class SampleTaskWithArbitraryPostgresError(
 
 
 class SampleTaskWithSoftTimeout(BaseCodecovTask, name="test.SampleTaskWithSoftTimeout"):
-    async def run_async(self, dbsession):
+    def run_impl(self, dbsession):
         raise SoftTimeLimitExceeded()
 
 
 class FailureSampleTask(BaseCodecovTask, name="test.FailureSampleTask"):
-    async def run_async(self, *args, **kwargs):
+    def run_impl(self, *args, **kwargs):
         raise Exception("Whhhhyyyyyyy")
 
 
@@ -331,7 +331,7 @@ class TestBaseCodecovTask(object):
 class TestBaseCodecovTaskHooks(object):
     def test_sample_task_success(self, celery_app, mocker):
         class SampleTask(BaseCodecovTask, name="test.SampleTask"):
-            async def run_async(self, dbsession):
+            def run_impl(self, dbsession):
                 return {"unusual": "return", "value": ["There"]}
 
         mock_metrics = mocker.patch("tasks.base.metrics.incr")
@@ -360,7 +360,7 @@ class TestBaseCodecovTaskHooks(object):
 
     def test_sample_task_failure(self, celery_app, mocker):
         class FailureSampleTask(BaseCodecovTask, name="test.FailureSampleTask"):
-            async def run_async(self, *args, **kwargs):
+            def run_impl(self, *args, **kwargs):
                 raise Exception("Whhhhyyyyyyy")
 
         mock_metrics = mocker.patch("tasks.base.metrics.incr")

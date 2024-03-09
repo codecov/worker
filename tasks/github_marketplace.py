@@ -19,7 +19,7 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
     Sync GitHub marketplace plans
     """
 
-    async def run_async(self, db_session, sender=None, account=None, action=None):
+    def run_impl(self, db_session, sender=None, account=None, action=None):
         """
         Sender: The person who took the action that triggered the webhook. Ex:
         { "login":"username", "id":3877742, "type":"User", ...,  "email":"username@email.com" }

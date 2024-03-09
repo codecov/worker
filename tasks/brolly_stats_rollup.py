@@ -79,7 +79,7 @@ class BrollyStatsRollupTask(CodecovCronTask, name=brolly_stats_rollup_task_name)
         """
         return get_config("setup", "telemetry", "admin_email", default=None)
 
-    async def run_cron_task(self, db_session, *args, **kwargs):
+    def run_cron_task(self, db_session, *args, **kwargs):
         # We shouldn't even schedule this task if it's not enabled, but
         # let's double-check that we're supposed to collect stats.
         if not get_config("setup", "telemetry", "enabled", default=True):
@@ -105,7 +105,7 @@ class BrollyStatsRollupTask(CodecovCronTask, name=brolly_stats_rollup_task_name)
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        res = await httpx.AsyncClient().post(
+        res = httpx.Client().post(
             url=brolly_endpoint,
             content=json.dumps(payload),
             headers=headers,

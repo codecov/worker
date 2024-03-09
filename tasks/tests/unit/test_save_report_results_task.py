@@ -222,8 +222,7 @@ class TestSaveReportResultsTaskHelpers(object):
         assert base_report is not None
         assert head_report is not None
 
-    @pytest.mark.asyncio
-    async def test_fetch_yaml_dict(self, dbsession, mocker, mock_repo_provider):
+    def test_fetch_yaml_dict(self, dbsession, mocker, mock_repo_provider):
         task = SaveReportResultsTask()
         mocked_fetch_yaml = mocker.patch("tasks.save_report_results.get_current_yaml")
         mocked_fetch_yaml.return_value = {"coverage": {"status": {"patch": True}}}
@@ -235,7 +234,7 @@ class TestSaveReportResultsTaskHelpers(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        yaml = await task.fetch_yaml_dict(None, commit, mock_repo_provider)
+        yaml = task.fetch_yaml_dict(None, commit, mock_repo_provider)
         mocked_fetch_yaml.assert_called_with(commit, mock_repo_provider)
         assert yaml == {"coverage": {"status": {"patch": True}}}
 
@@ -256,8 +255,7 @@ class TestSaveReportResultsTaskHelpers(object):
 
 
 class TestSaveReportResultsTask(object):
-    @pytest.mark.asyncio
-    async def test_save_patch_results_successful(self, dbsession, mocker):
+    def test_save_patch_results_successful(self, dbsession, mocker):
         commit = CommitFactory.create(
             message="",
             pullid=None,
@@ -284,7 +282,7 @@ class TestSaveReportResultsTask(object):
         )
         mocked_fetch_pull.return_value = None
         task = SaveReportResultsTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession,
             repoid=commit.repository.repoid,
             commitid=commit.commitid,
@@ -293,8 +291,7 @@ class TestSaveReportResultsTask(object):
         )
         assert result == {"report_results_saved": True, "reason": "success"}
 
-    @pytest.mark.asyncio
-    async def test_save_patch_results_no_valid_bot(self, dbsession, mocker):
+    def test_save_patch_results_no_valid_bot(self, dbsession, mocker):
         commit = CommitFactory.create(
             message="",
             pullid=None,
@@ -318,7 +315,7 @@ class TestSaveReportResultsTask(object):
         )
         mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
         task = SaveReportResultsTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession,
             repoid=commit.repository.repoid,
             commitid=commit.commitid,
@@ -330,8 +327,7 @@ class TestSaveReportResultsTask(object):
             "reason": "repository without valid bot",
         }
 
-    @pytest.mark.asyncio
-    async def test_save_patch_results_no_head_report(self, dbsession, mocker):
+    def test_save_patch_results_no_head_report(self, dbsession, mocker):
         commit = CommitFactory.create(
             message="",
             pullid=None,
@@ -350,7 +346,7 @@ class TestSaveReportResultsTask(object):
         )
         mocked_fetch_pull.return_value = None
         task = SaveReportResultsTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession,
             repoid=commit.repository.repoid,
             commitid=commit.commitid,

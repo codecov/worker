@@ -33,7 +33,7 @@ class NewUserActivatedTask(BaseCodecovTask, name=new_user_activated_task_name):
             "upgrade" decoration
     """
 
-    async def run_async(self, db_session, org_ownerid, user_ownerid, *args, **kwargs):
+    def run_impl(self, db_session, org_ownerid, user_ownerid, *args, **kwargs):
         log.info(
             "New user activated",
             extra=dict(org_ownerid=org_ownerid, user_ownerid=user_ownerid),

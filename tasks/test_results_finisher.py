@@ -2,6 +2,7 @@ import logging
 from collections import defaultdict
 from typing import Any, Dict
 
+from asgiref.sync import async_to_sync
 from sentry_sdk import metrics
 from shared.yaml import UserYaml
 from test_results_parser import Outcome
@@ -55,7 +56,7 @@ ESCAPE_FAILURE_MESSAGE_DEFN = [
 
 
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         chord_result: Dict[str, Any],
@@ -91,7 +92,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 LockType.NOTIFICATION,
                 retry_num=self.request.retries,
             ):
-                return await self.process_async_within_lock(
+                return self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -102,7 +103,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
-    async def process_async_within_lock(
+    def process_impl_within_lock(
         self,
         *,
         db_session,
@@ -195,7 +196,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         notifier = TestResultsNotifier(commit, commit_yaml, test_instances)
         with metrics.timing("test_results.finisher.notification"):
-            success = await notifier.notify(
+            success = async_to_sync(notifier.notify)(
                 failures, passed_tests, skipped_tests, failed_tests
             )
 

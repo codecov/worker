@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import sync_teams_task_name
 from sqlalchemy.dialects.postgresql import insert
 
@@ -17,7 +18,7 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
 
     ignore_result = False
 
-    async def run_async(self, db_session, ownerid, *, username=None, **kwargs):
+    def run_impl(self, db_session, ownerid, *, username=None, **kwargs):
         log.info("Sync teams", extra=dict(ownerid=ownerid, username=username))
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
 
@@ -29,7 +30,7 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
         )
 
         # get list of teams with username, name, email, id (service_id), etc
-        teams = await git.list_teams()
+        teams = async_to_sync(git.list_teams)()
 
         updated_teams = []
 

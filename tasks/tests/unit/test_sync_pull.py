@@ -137,10 +137,7 @@ class TestPullSyncTask(object):
         assert not third_commit.merged
         assert not fourth_commit.merged
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_task_no_head_commit(
-        self, dbsession, mocker, mock_redis
-    ):
+    def test_call_pullsync_task_no_head_commit(self, dbsession, mocker, mock_redis):
         task = PullSyncTask()
         pull = PullFactory.create(head="head_commit_nonexistent_sha", state="open")
         dbsession.add(pull)
@@ -151,7 +148,7 @@ class TestPullSyncTask(object):
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=pull, provider_pull={}
         )
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -159,14 +156,13 @@ class TestPullSyncTask(object):
             "reason": "no_head",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_task_nolock(self, dbsession, mock_redis):
+    def test_call_pullsync_task_nolock(self, dbsession, mock_redis):
         task = PullSyncTask()
         pull = PullFactory.create(state="open")
         dbsession.add(pull)
         dbsession.flush()
         mock_redis.lock.return_value.__enter__.side_effect = LockError
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -174,10 +170,7 @@ class TestPullSyncTask(object):
             "reason": "unable_fetch_lock",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_task_no_database_pull(
-        self, dbsession, mocker, mock_redis
-    ):
+    def test_call_pullsync_task_no_database_pull(self, dbsession, mocker, mock_redis):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -188,7 +181,7 @@ class TestPullSyncTask(object):
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=None, provider_pull=None
         )
-        res = await task.run_async(dbsession, repoid=repository.repoid, pullid=99)
+        res = task.run_impl(dbsession, repoid=repository.repoid, pullid=99)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -196,8 +189,7 @@ class TestPullSyncTask(object):
             "reason": "no_db_pull",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_task_no_provider_pull_only(
+    def test_call_pullsync_task_no_provider_pull_only(
         self, dbsession, mocker, mock_redis
     ):
         repository = RepositoryFactory.create()
@@ -213,7 +205,7 @@ class TestPullSyncTask(object):
         mocked_fetch_pr.return_value = EnrichedPull(
             database_pull=pull, provider_pull=None
         )
-        res = await task.run_async(dbsession, repoid=repository.repoid, pullid=99)
+        res = task.run_impl(dbsession, repoid=repository.repoid, pullid=99)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -221,8 +213,7 @@ class TestPullSyncTask(object):
             "reason": "not_in_provider",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_no_bot(self, dbsession, mock_redis, mocker):
+    def test_call_pullsync_no_bot(self, dbsession, mock_redis, mocker):
         task = PullSyncTask()
         pull = PullFactory.create(state="open")
         dbsession.add(pull)
@@ -231,7 +222,7 @@ class TestPullSyncTask(object):
             "tasks.sync_pull.get_repo_provider_service",
             side_effect=RepositoryWithoutValidBotError(),
         )
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,
@@ -239,8 +230,7 @@ class TestPullSyncTask(object):
             "reason": "no_bot",
         }
 
-    @pytest.mark.asyncio
-    async def test_call_pullsync_no_permissions_get_compare(
+    def test_call_pullsync_no_permissions_get_compare(
         self, dbsession, mock_redis, mocker, mock_repo_provider, mock_storage
     ):
         mocker.patch.object(PullSyncTask, "app")
@@ -272,7 +262,7 @@ class TestPullSyncTask(object):
         mock_repo_provider.get_pull_request_commits.side_effect = TorngitClientError(
             403, "response", "message"
         )
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": True,
@@ -280,8 +270,7 @@ class TestPullSyncTask(object):
             "reason": "success",
         }
 
-    @pytest.mark.asyncio
-    async def test_run_async_unobtainable_lock(self, dbsession, mocker, mock_redis):
+    def test_run_impl_unobtainable_lock(self, dbsession, mocker, mock_redis):
         pull = PullFactory.create()
         dbsession.add(pull)
         dbsession.flush()
@@ -289,7 +278,7 @@ class TestPullSyncTask(object):
         mock_redis.exists.return_value = True
         task = PullSyncTask()
         task.request.retries = 0
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert res == {
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
             "notifier_called": False,

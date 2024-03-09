@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock
 
-import pytest
-
 from tasks.health_check import HealthCheckTask
 
 
@@ -74,18 +72,16 @@ class TestHealthCheckTask(object):
         mock_redis_instance_from_url.assert_not_called()
         mock_redis_connection.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_run_async(self, mocker, mock_redis, dbsession):
+    def test_run_impl(self, mocker, mock_redis, dbsession):
         mock_metrics = mocker.patch("tasks.health_check.metrics.gauge")
         mock_redis.llen.return_value = 10
         mock_redis.return_value = MagicMock()
         health_check_task = HealthCheckTask()
-        await health_check_task.run_cron_task(dbsession)
+        health_check_task.run_cron_task(dbsession)
         mock_metrics.assert_any_call("celery.queue.celery.len", 10)
         mock_metrics.assert_any_call("celery.queue.enterprise_celery.len", 10)
 
-    @pytest.mark.asyncio
-    async def test_run_async_with_configs(
+    def test_run_impl_with_configs(
         self, mocker, mock_redis, mock_configuration, dbsession
     ):
         mock_configuration.set_params(
@@ -107,15 +103,14 @@ class TestHealthCheckTask(object):
         mock_redis.llen.return_value = 10
         mock_redis.return_value = MagicMock()
         health_check_task = HealthCheckTask()
-        await health_check_task.run_cron_task(dbsession)
+        health_check_task.run_cron_task(dbsession)
         mock_metrics.assert_any_call("celery.queue.custom_celery.len", 10)
         mock_metrics.assert_any_call("celery.queue.notify_queue.len", 10)
         mock_metrics.assert_any_call("celery.queue.pulls_queue.len", 10)
         mock_metrics.assert_any_call("celery.queue.synchronize_queue.len", 10)
         mock_metrics.assert_any_call("celery.queue.flush_repo_queue.len", 10)
 
-    @pytest.mark.asyncio
-    async def test_get_min_seconds_interval_between_executions(self, dbsession):
+    def test_get_min_seconds_interval_between_executions(self, dbsession):
         assert isinstance(
             HealthCheckTask.get_min_seconds_interval_between_executions(), int
         )
