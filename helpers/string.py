@@ -65,6 +65,8 @@ class StringEscaper:
         return replacement_target
 
 
+MAX_PATH_COMPONENTS = 3
+
 file_path_regex = regex.compile(
     r"((\/*[\w\-]+\/)+([\w\.]+)(:\d+:\d+)*)",
 )
@@ -95,9 +97,9 @@ def shorten_file_paths(string):
         split_file_path = file_path.split("/")
 
         # if the file_path has more than 3 components we should shorten it
-        if len(split_file_path) > 3:
-            last_3_path_components = split_file_path[-3:]
-            no_dots_shortened_file_path = "/".join(last_3_path_components)
+        if len(split_file_path) > MAX_PATH_COMPONENTS:
+            last_path_components = split_file_path[-MAX_PATH_COMPONENTS:]
+            no_dots_shortened_file_path = "/".join(last_path_components)
 
             # possibly remove leading / because we're adding it with the dots
             if no_dots_shortened_file_path.startswith("/"):
