@@ -27,8 +27,7 @@ def _create_checkpoint_logger(mocker):
 
 
 class TestUploadFinisherTask(object):
-    @pytest.mark.asyncio
-    async def test_upload_finisher_task_call(
+    def test_upload_finisher_task_call(
         self,
         mocker,
         mock_configuration,
@@ -70,7 +69,7 @@ class TestUploadFinisherTask(object):
         checkpoints = _create_checkpoint_logger(mocker)
         checkpoints_data = json.loads(json.dumps(checkpoints.data))
         kwargs = {_kwargs_key(UploadFlow): checkpoints_data}
-        result = await UploadFinisherTask().run_async(
+        result = UploadFinisherTask().run_impl(
             dbsession,
             previous_results,
             repoid=commit.repoid,
@@ -104,8 +103,7 @@ class TestUploadFinisherTask(object):
         ]
         mock_checkpoint_submit.assert_has_calls(calls)
 
-    @pytest.mark.asyncio
-    async def test_upload_finisher_task_call_no_author(
+    def test_upload_finisher_task_call_no_author(
         self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
@@ -136,7 +134,7 @@ class TestUploadFinisherTask(object):
         previous_results = {
             "processings_so_far": [{"arguments": {"url": url}, "successful": True}]
         }
-        result = await UploadFinisherTask().run_async(
+        result = UploadFinisherTask().run_impl(
             dbsession,
             previous_results,
             repoid=commit.repoid,
@@ -154,8 +152,7 @@ class TestUploadFinisherTask(object):
             timeout=300,
         )
 
-    @pytest.mark.asyncio
-    async def test_upload_finisher_task_call_different_branch(
+    def test_upload_finisher_task_call_different_branch(
         self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
@@ -185,7 +182,7 @@ class TestUploadFinisherTask(object):
         previous_results = {
             "processings_so_far": [{"arguments": {"url": url}, "successful": True}]
         }
-        result = await UploadFinisherTask().run_async(
+        result = UploadFinisherTask().run_impl(
             dbsession,
             previous_results,
             repoid=commit.repoid,
@@ -203,8 +200,7 @@ class TestUploadFinisherTask(object):
             timeout=300,
         )
 
-    @pytest.mark.asyncio
-    async def test_should_call_notifications(self, dbsession):
+    def test_should_call_notifications(self, dbsession):
         commit_yaml = {"codecov": {"max_report_age": "1y ago"}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -222,8 +218,7 @@ class TestUploadFinisherTask(object):
             commit, commit_yaml, processing_results, None
         )
 
-    @pytest.mark.asyncio
-    async def test_should_call_notifications_local_upload(self, dbsession):
+    def test_should_call_notifications_local_upload(self, dbsession):
         commit_yaml = {"codecov": {"max_report_age": "1y ago"}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -239,8 +234,7 @@ class TestUploadFinisherTask(object):
             commit, commit_yaml, processing_results, "local_report1"
         )
 
-    @pytest.mark.asyncio
-    async def test_should_call_notifications_manual_trigger(self, dbsession):
+    def test_should_call_notifications_manual_trigger(self, dbsession):
         commit_yaml = {"codecov": {"notify": {"manual_trigger": True}}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -256,8 +250,7 @@ class TestUploadFinisherTask(object):
             commit, commit_yaml, processing_results, None
         )
 
-    @pytest.mark.asyncio
-    async def test_should_call_notifications_manual_trigger_off(self, dbsession):
+    def test_should_call_notifications_manual_trigger_off(self, dbsession):
         commit_yaml = {
             "codecov": {"max_report_age": "1y ago", "notify": {"manual_trigger": False}}
         }
@@ -277,8 +270,7 @@ class TestUploadFinisherTask(object):
             commit, commit_yaml, processing_results, None
         )
 
-    @pytest.mark.asyncio
-    async def test_should_call_notifications_no_successful_reports(self, dbsession):
+    def test_should_call_notifications_no_successful_reports(self, dbsession):
         commit_yaml = {"codecov": {"max_report_age": "1y ago"}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -297,8 +289,7 @@ class TestUploadFinisherTask(object):
             commit, commit_yaml, processing_results, None
         )
 
-    @pytest.mark.asyncio
-    async def test_should_call_notifications_not_enough_builds(self, dbsession, mocker):
+    def test_should_call_notifications_not_enough_builds(self, dbsession, mocker):
         commit_yaml = {"codecov": {"notify": {"after_n_builds": 9}}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -324,10 +315,7 @@ class TestUploadFinisherTask(object):
             commit, commit_yaml, processing_results, None
         )
 
-    @pytest.mark.asyncio
-    async def test_should_call_notifications_more_than_enough_builds(
-        self, dbsession, mocker
-    ):
+    def test_should_call_notifications_more_than_enough_builds(self, dbsession, mocker):
         commit_yaml = {"codecov": {"notify": {"after_n_builds": 9}}}
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
@@ -353,8 +341,7 @@ class TestUploadFinisherTask(object):
             commit, commit_yaml, processing_results, None
         )
 
-    @pytest.mark.asyncio
-    async def test_finish_reports_processing(self, dbsession, mocker):
+    def test_finish_reports_processing(self, dbsession, mocker):
         commit_yaml = {}
         mocked_app = mocker.patch.object(UploadFinisherTask, "app")
         commit = CommitFactory.create(
@@ -369,7 +356,7 @@ class TestUploadFinisherTask(object):
         dbsession.flush()
 
         checkpoints = _create_checkpoint_logger(mocker)
-        res = await UploadFinisherTask().finish_reports_processing(
+        res = UploadFinisherTask().finish_reports_processing(
             dbsession,
             commit,
             UserYaml(commit_yaml),
@@ -388,8 +375,7 @@ class TestUploadFinisherTask(object):
         )
         assert mocked_app.send_task.call_count == 0
 
-    @pytest.mark.asyncio
-    async def test_finish_reports_processing_with_pull(self, dbsession, mocker):
+    def test_finish_reports_processing_with_pull(self, dbsession, mocker):
         commit_yaml = {}
         mocked_app = mocker.patch.object(
             UploadFinisherTask,
@@ -424,7 +410,7 @@ class TestUploadFinisherTask(object):
         dbsession.flush()
 
         checkpoints = _create_checkpoint_logger(mocker)
-        res = await UploadFinisherTask().finish_reports_processing(
+        res = UploadFinisherTask().finish_reports_processing(
             dbsession,
             commit,
             UserYaml(commit_yaml),
@@ -457,8 +443,7 @@ class TestUploadFinisherTask(object):
             "app.tasks.upload.UploadCleanLabelsIndex"
         ].apply_async.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_finish_reports_processing_call_clean_labels(self, dbsession, mocker):
+    def test_finish_reports_processing_call_clean_labels(self, dbsession, mocker):
         commit_yaml = {
             "flag_management": {
                 "individual_flags": [
@@ -491,7 +476,7 @@ class TestUploadFinisherTask(object):
         dbsession.flush()
 
         checkpoints = _create_checkpoint_logger(mocker)
-        res = await UploadFinisherTask().finish_reports_processing(
+        res = UploadFinisherTask().finish_reports_processing(
             dbsession,
             commit,
             UserYaml(commit_yaml),
@@ -519,8 +504,7 @@ class TestUploadFinisherTask(object):
         )
         assert mocked_app.send_task.call_count == 0
 
-    @pytest.mark.asyncio
-    async def test_finish_reports_processing_no_notification(self, dbsession, mocker):
+    def test_finish_reports_processing_no_notification(self, dbsession, mocker):
         commit_yaml = {}
         mocked_app = mocker.patch.object(UploadFinisherTask, "app")
         commit = CommitFactory.create(
@@ -535,7 +519,7 @@ class TestUploadFinisherTask(object):
         dbsession.flush()
 
         checkpoints = _create_checkpoint_logger(mocker)
-        res = await UploadFinisherTask().finish_reports_processing(
+        res = UploadFinisherTask().finish_reports_processing(
             dbsession,
             commit,
             UserYaml(commit_yaml),
@@ -547,8 +531,7 @@ class TestUploadFinisherTask(object):
         assert mocked_app.send_task.call_count == 0
         assert not mocked_app.tasks["app.tasks.notify.Notify"].apply_async.called
 
-    @pytest.mark.asyncio
-    async def test_upload_finisher_task_calls_save_commit_measurements_task(
+    def test_upload_finisher_task_calls_save_commit_measurements_task(
         self, mocker, dbsession, mock_redis
     ):
         mocked_app = mocker.patch.object(
@@ -563,7 +546,7 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        await UploadFinisherTask().run_async(
+        UploadFinisherTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,

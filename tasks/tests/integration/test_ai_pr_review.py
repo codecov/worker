@@ -5,8 +5,7 @@ from tasks.ai_pr_review import AiPrReviewTask
 
 
 @pytest.mark.integration
-@pytest.mark.asyncio
-async def test_ai_pr_review_task(
+def test_ai_pr_review_task(
     mocker,
     dbsession,
 ):
@@ -20,7 +19,7 @@ async def test_ai_pr_review_task(
 
     task = AiPrReviewTask()
 
-    result = await task.run_async(
+    result = task.run_impl(
         dbsession,
         repoid=repository.repoid,
         pullid=123,

@@ -30,7 +30,7 @@ class BackfillCommitDataToStorageTask(
     BaseCodecovTask,
     name=f"app.tasks.{TaskConfigGroup.archive.value}.BackfillCommitDataToStorage",
 ):
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,

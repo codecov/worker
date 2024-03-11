@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 class TimeseriesBackfillCommitsTask(
     BaseCodecovTask, name="app.tasks.timeseries.backfill_commits"
 ):
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,
@@ -58,7 +58,7 @@ class TimeseriesBackfillDatasetTask(BaseCodecovTask):
     # TODO: add name to `shared.celery_config`
     name = "app.tasks.timeseries.backfill_dataset"
 
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,

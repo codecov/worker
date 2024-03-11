@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from shared.reports.readonly import ReadOnlyReport
 from shared.yaml import UserYaml
 
@@ -25,7 +26,7 @@ log = logging.getLogger(__name__)
 class SaveReportResultsTask(
     BaseCodecovTask, name="app.tasks.reports.save_report_results"
 ):
-    async def run_async(
+    def run_impl(
         self, db_session, *, repoid, commitid, report_code, current_yaml, **kwargs
     ):
         commit = self.fetch_commit(db_session, repoid, commitid)
@@ -38,12 +39,10 @@ class SaveReportResultsTask(
                 "reason": "repository without valid bot",
             }
 
-        current_yaml = await self.fetch_yaml_dict(
-            current_yaml, commit, repository_service
-        )
-        enriched_pull = await fetch_and_update_pull_request_information_from_commit(
-            repository_service, commit, current_yaml
-        )
+        current_yaml = self.fetch_yaml_dict(current_yaml, commit, repository_service)
+        enriched_pull = async_to_sync(
+            fetch_and_update_pull_request_information_from_commit
+        )(repository_service, commit, current_yaml)
         base_commit = self.fetch_base_commit(commit, enriched_pull)
         base_report, head_report = self.fetch_base_and_head_reports(
             current_yaml, commit, base_commit, report_code
@@ -79,7 +78,7 @@ class SaveReportResultsTask(
             notifier_site_settings=True,
             current_yaml=current_yaml,
         )
-        result = await notifier.build_payload(comparison)
+        result = async_to_sync(notifier.build_payload)(comparison)
         report = self.fetch_report(commit, report_code)
         log.info(
             "Saving report results into the db",
@@ -113,9 +112,9 @@ class SaveReportResultsTask(
             base_commit = self.fetch_parent(commit)
         return base_commit
 
-    async def fetch_yaml_dict(self, current_yaml, commit, repository_service):
+    def fetch_yaml_dict(self, current_yaml, commit, repository_service):
         if current_yaml is None:
-            current_yaml = await get_current_yaml(commit, repository_service)
+            current_yaml = async_to_sync(get_current_yaml)(commit, repository_service)
         else:
             current_yaml = UserYaml.from_dict(current_yaml)
         return current_yaml

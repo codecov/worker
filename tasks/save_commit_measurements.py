@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 class SaveCommitMeasurementsTask(
     BaseCodecovTask, name=timeseries_save_commit_measurements_task_name
 ):
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         commitid: str,

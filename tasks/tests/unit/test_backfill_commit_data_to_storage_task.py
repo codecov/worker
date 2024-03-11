@@ -251,10 +251,7 @@ class TestBackfillCommitDataToStorageTask(object):
     @patch(
         "tasks.backfill_commit_data_to_storage.BackfillCommitDataToStorageTask.handle_all_report_rows"
     )
-    @pytest.mark.asyncio
-    async def test_run(
-        self, mock_handle_all_report_rows, mock_handle_report_json, dbsession
-    ):
+    def test_run(self, mock_handle_all_report_rows, mock_handle_report_json, dbsession):
         commit = CommitFactory()
         dbsession.add(commit)
         dbsession.flush()
@@ -267,7 +264,7 @@ class TestBackfillCommitDataToStorageTask(object):
 
         assert dbsession.query(Commit).get(commit.id_) is not None
         task = BackfillCommitDataToStorageTask()
-        result = await task.run_async(dbsession, commitid=commit.id_)
+        result = task.run_impl(dbsession, commitid=commit.id_)
         assert result == {"success": False, "errors": ["missing_data"]}
 
     @patch(
@@ -276,8 +273,7 @@ class TestBackfillCommitDataToStorageTask(object):
     @patch(
         "tasks.backfill_commit_data_to_storage.BackfillCommitDataToStorageTask.handle_all_report_rows"
     )
-    @pytest.mark.asyncio
-    async def test_run_missing_commit(
+    def test_run_missing_commit(
         self, mock_handle_all_report_rows, mock_handle_report_json, dbsession
     ):
         mock_handle_all_report_rows.return_value = {"success": True, "errors": []}
@@ -288,5 +284,5 @@ class TestBackfillCommitDataToStorageTask(object):
 
         assert dbsession.query(Commit).get(-1) is None
         task = BackfillCommitDataToStorageTask()
-        result = await task.run_async(dbsession, commitid=-1)
+        result = task.run_impl(dbsession, commitid=-1)
         assert result == {"success": False, "errors": ["commit_not_found"]}

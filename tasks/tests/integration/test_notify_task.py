@@ -15,8 +15,7 @@ sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
 @pytest.mark.integration
 class TestNotifyTask(object):
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_no_notifiers(
+    def test_simple_call_no_notifiers(
         self,
         mock_requests_post,
         dbsession,
@@ -71,7 +70,7 @@ class TestNotifyTask(object):
             )
             mock_storage.write_file("archive", master_chunks_url, content)
         task = NotifyTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
         expected_result = {
@@ -142,8 +141,7 @@ class TestNotifyTask(object):
         assert result == expected_result
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_only_status_notifiers(
+    def test_simple_call_only_status_notifiers(
         self,
         mock_post_request,
         dbsession,
@@ -196,7 +194,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -328,8 +326,7 @@ class TestNotifyTask(object):
         assert result == expected_result
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_only_status_notifiers_no_pull_request(
+    def test_simple_call_only_status_notifiers_no_pull_request(
         self,
         mock_post_request,
         dbsession,
@@ -383,7 +380,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -555,8 +552,7 @@ class TestNotifyTask(object):
         assert result == expected_result
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_only_status_notifiers_with_pull_request(
+    def test_simple_call_only_status_notifiers_with_pull_request(
         self,
         mock_post_request,
         dbsession,
@@ -611,7 +607,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -771,8 +767,7 @@ class TestNotifyTask(object):
         assert result == expected_result
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_status_and_notifiers(
+    def test_simple_call_status_and_notifiers(
         self,
         mock_post_request,
         dbsession,
@@ -831,7 +826,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -1234,8 +1229,7 @@ class TestNotifyTask(object):
         )
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_notifier_call_no_head_commit_report(
+    def test_notifier_call_no_head_commit_report(
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
     ):
         mock_configuration.params["setup"][
@@ -1277,7 +1271,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,

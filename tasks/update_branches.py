@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         *args,

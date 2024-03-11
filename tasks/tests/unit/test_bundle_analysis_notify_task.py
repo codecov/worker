@@ -4,8 +4,7 @@ from database.tests.factories import CommitFactory
 from tasks.bundle_analysis_notify import BundleAnalysisNotifyTask
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_notify_task(
+def test_bundle_analysis_notify_task(
     mocker,
     dbsession,
     celery_app,
@@ -19,7 +18,7 @@ async def test_bundle_analysis_notify_task(
 
     mocker.patch("services.bundle_analysis.Notifier.notify", return_value=True)
 
-    result = await BundleAnalysisNotifyTask().run_async(
+    result = BundleAnalysisNotifyTask().run_impl(
         dbsession,
         {"results": [{"error": None}]},
         repoid=commit.repoid,

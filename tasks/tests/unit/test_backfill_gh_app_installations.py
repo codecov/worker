@@ -28,8 +28,7 @@ def repo_obj(service_id, name, language, private, branch, using_integration):
 
 
 class TestBackfillWithPreviousGHAppInstallation(object):
-    @pytest.mark.asyncio
-    async def test_gh_app_with_selection_all(
+    def test_gh_app_with_selection_all(
         self, mocker, mock_repo_provider, dbsession: Session
     ):
         owner = OwnerFactory(service="github", integration_id=12345)
@@ -53,7 +52,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=None) == {
+        assert task.run_impl(dbsession, owner_ids=None) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -66,8 +65,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
         assert gh_app_installation.owner == owner
         assert gh_app_installation.repository_service_ids == None
 
-    @pytest.mark.asyncio
-    async def test_gh_app_with_specific_owner_ids(
+    def test_gh_app_with_specific_owner_ids(
         self, mocker, mock_repo_provider, dbsession: Session
     ):
         owner = OwnerFactory(service="github", integration_id=123)
@@ -101,7 +99,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=[owner.ownerid]) == {
+        assert task.run_impl(dbsession, owner_ids=[owner.ownerid]) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -126,8 +124,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             == gh_app_installation_two.repository_service_ids
         )
 
-    @pytest.mark.asyncio
-    async def test_gh_app_without_all_repo_selection(
+    def test_gh_app_without_all_repo_selection(
         self, mocker, mock_repo_provider, dbsession: Session
     ):
         owner = OwnerFactory(service="github", integration_id=12345)
@@ -169,7 +166,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=None) == {
+        assert task.run_impl(dbsession, owner_ids=None) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -189,8 +186,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
 
 
 class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
-    @pytest.mark.asyncio
-    async def test_no_previous_app_existing_repos_only(
+    def test_no_previous_app_existing_repos_only(
         self, mocker, mock_repo_provider, dbsession: Session
     ):
         owner = OwnerFactory(service="github", integration_id=12345)
@@ -223,7 +219,7 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=[owner.ownerid]) == {
+        assert task.run_impl(dbsession, owner_ids=[owner.ownerid]) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -243,8 +239,7 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
                 in new_gh_app_installation.repository_service_ids
             )
 
-    @pytest.mark.asyncio
-    async def test_no_previous_app_some_existing_repos(
+    def test_no_previous_app_some_existing_repos(
         self, mocker, mock_repo_provider, dbsession: Session
     ):
         owner = OwnerFactory(service="github", integration_id=12345)
@@ -272,7 +267,7 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=None) == {
+        assert task.run_impl(dbsession, owner_ids=None) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -290,8 +285,7 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
 
 
 class TestBackfillBothTypesOfOwners(object):
-    @pytest.mark.asyncio
-    async def test_backfill_with_both_types_of_owners(
+    def test_backfill_with_both_types_of_owners(
         self, mocker, mock_repo_provider, dbsession: Session
     ):
         owner = OwnerFactory(service="github", integration_id=12345)
@@ -331,7 +325,7 @@ class TestBackfillBothTypesOfOwners(object):
         )
 
         task = BackfillGHAppInstallationsTask()
-        assert await task.run_async(dbsession, owner_ids=None) == {
+        assert task.run_impl(dbsession, owner_ids=None) == {
             "successful": True,
             "reason": "backfill task finished",
         }

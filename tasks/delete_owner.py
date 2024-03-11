@@ -20,7 +20,7 @@ class DeleteOwnerTask(BaseCodecovTask, name=delete_owner_task_name):
     - Cascading deletes of repos, pulls, and branches for the owner
     """
 
-    async def run_async(self, db_session, ownerid):
+    def run_impl(self, db_session, ownerid):
         log.info("Delete owner", extra=dict(ownerid=ownerid))
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
 

@@ -7,8 +7,7 @@ from tasks.status_set_pending import StatusSetPendingTask
 
 @pytest.mark.integration
 class TestStatusSetPendingTask(object):
-    @pytest.mark.asyncio
-    async def test_set_pending(
+    def test_set_pending(
         self, dbsession, mocker, mock_configuration, codecov_vcr, mock_redis
     ):
         repository = RepositoryFactory.create(
@@ -32,7 +31,7 @@ class TestStatusSetPendingTask(object):
         mock_redis.sismember.side_effect = [True]
 
         task = StatusSetPendingTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession, repository.repoid, commit.commitid, commit.branch, True
         )
         expected_result = {"status_set": True}

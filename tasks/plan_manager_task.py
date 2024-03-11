@@ -24,7 +24,7 @@ class DailyPlanManagerTask(CodecovCronTask, name=daily_plan_manager_task_name):
     def get_min_seconds_interval_between_executions(cls):
         return 86100  # 1 day - 5 minutes
 
-    async def run_cron_task(self, db_session: Session, *args, **kwargs):
+    def run_cron_task(self, db_session: Session, *args, **kwargs):
         # Query all org-wide tokens
         tokens_to_delete = (
             db_session.query(OrganizationLevelToken.id_)

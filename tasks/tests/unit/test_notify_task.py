@@ -241,8 +241,7 @@ class TestNotifyTaskHelpers(object):
 
 
 class TestNotifyTask(object):
-    @pytest.mark.asyncio
-    async def test_simple_call_no_notifications(
+    def test_simple_call_no_notifications(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
         mock_configuration.params["setup"][
@@ -267,7 +266,7 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
         assert result == {"notified": False, "notifications": None}
@@ -275,8 +274,7 @@ class TestNotifyTask(object):
             UserYaml({}), commit, fetch_and_update_whether_ci_passed_result, None
         )
 
-    @pytest.mark.asyncio
-    async def test_simple_call_no_notifications_no_yaml_given(
+    def test_simple_call_no_notifications_no_yaml_given(
         self, dbsession, mocker, mock_storage, mock_configuration, mock_repo_provider
     ):
         mock_configuration.params["setup"][
@@ -305,7 +303,7 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml=None
         )
         assert result == {"notified": False, "notifications": None}
@@ -314,8 +312,7 @@ class TestNotifyTask(object):
         )
         mocked_fetch_yaml.assert_called_with(commit, mock_repo_provider)
 
-    @pytest.mark.asyncio
-    async def test_simple_call_no_notifications_commit_differs_from_pulls_head(
+    def test_simple_call_no_notifications_commit_differs_from_pulls_head(
         self,
         dbsession,
         mocker,
@@ -355,7 +352,7 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -373,8 +370,7 @@ class TestNotifyTask(object):
             head_report,
         )
 
-    @pytest.mark.asyncio
-    async def test_simple_call_yes_notifications_no_base(
+    def test_simple_call_yes_notifications_no_base(
         self,
         dbsession,
         mocker,
@@ -425,7 +421,7 @@ class TestNotifyTask(object):
         kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
 
         task = NotifyTask()
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -465,8 +461,7 @@ class TestNotifyTask(object):
         ]
         mock_checkpoint_submit.assert_has_calls(calls)
 
-    @pytest.mark.asyncio
-    async def test_simple_call_no_pullrequest_found(
+    def test_simple_call_no_pullrequest_found(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
         mocked_submit_third_party_notifications = mocker.patch.object(
@@ -494,7 +489,7 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -508,8 +503,7 @@ class TestNotifyTask(object):
         dbsession.refresh(commit)
         assert commit.notified is True
 
-    @pytest.mark.asyncio
-    async def test_simple_call_should_delay(
+    def test_simple_call_should_delay(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
         mock_configuration.params["setup"][
@@ -536,7 +530,7 @@ class TestNotifyTask(object):
         dbsession.flush()
         task = NotifyTask()
         with pytest.raises(Retry):
-            await task.run_async_within_lock(
+            task.run_impl_within_lock(
                 dbsession,
                 repoid=commit.repoid,
                 commitid=commit.commitid,
@@ -547,8 +541,7 @@ class TestNotifyTask(object):
             UserYaml({}), commit, fetch_and_update_whether_ci_passed_result
         )
 
-    @pytest.mark.asyncio
-    async def test_simple_call_should_delay_using_integration(
+    def test_simple_call_should_delay_using_integration(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
         mock_configuration.params["setup"][
@@ -576,7 +569,7 @@ class TestNotifyTask(object):
         dbsession.flush()
         task = NotifyTask()
         with pytest.raises(Retry):
-            await task.run_async_within_lock(
+            task.run_impl_within_lock(
                 dbsession,
                 repoid=commit.repoid,
                 commitid=commit.commitid,
@@ -587,8 +580,7 @@ class TestNotifyTask(object):
             UserYaml({}), commit, fetch_and_update_whether_ci_passed_result
         )
 
-    @pytest.mark.asyncio
-    async def test_simple_call_not_able_fetch_ci(
+    def test_simple_call_not_able_fetch_ci(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
         mock_configuration.params["setup"][
@@ -610,7 +602,7 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        res = await task.run_async_within_lock(
+        res = task.run_impl_within_lock(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
         expected_result = {
@@ -620,8 +612,7 @@ class TestNotifyTask(object):
         }
         assert expected_result == res
 
-    @pytest.mark.asyncio
-    async def test_simple_call_not_able_fetch_ci_server_issues(
+    def test_simple_call_not_able_fetch_ci_server_issues(
         self, dbsession, mocker, mock_storage, mock_configuration
     ):
         mock_configuration.params["setup"][
@@ -643,7 +634,7 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
         task = NotifyTask()
-        res = await task.run_async_within_lock(
+        res = task.run_impl_within_lock(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
         expected_result = {
@@ -693,8 +684,7 @@ class TestNotifyTask(object):
         res = task.should_send_notifications(current_yaml, commit, True, mock_report)
         assert not res
 
-    @pytest.mark.asyncio
-    async def test_notify_task_no_bot(self, dbsession, mocker):
+    def test_notify_task_no_bot(self, dbsession, mocker):
         get_repo_provider_service = mocker.patch(
             "tasks.notify.get_repo_provider_service"
         )
@@ -710,7 +700,7 @@ class TestNotifyTask(object):
         dbsession.flush()
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
-        res = await task.run_async_within_lock(
+        res = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -723,8 +713,7 @@ class TestNotifyTask(object):
         }
         assert expected_result == res
 
-    @pytest.mark.asyncio
-    async def test_submit_third_party_notifications_exception(self, mocker, dbsession):
+    def test_submit_third_party_notifications_exception(self, mocker, dbsession):
         current_yaml = {}
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -793,7 +782,7 @@ class TestNotifyTask(object):
                 },
             },
         ]
-        res = await task.submit_third_party_notifications(
+        res = task.submit_third_party_notifications(
             current_yaml,
             base_commit,
             head_commit,
@@ -803,8 +792,7 @@ class TestNotifyTask(object):
         )
         assert expected_result == res
 
-    @pytest.mark.asyncio
-    async def test_notify_task_max_retries_exceeded(
+    def test_notify_task_max_retries_exceeded(
         self, dbsession, mocker, mock_repo_provider
     ):
         mocker.patch.object(NotifyTask, "should_wait_longer", return_value=True)
@@ -823,7 +811,7 @@ class TestNotifyTask(object):
         dbsession.flush()
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
-        res = await task.run_async_within_lock(
+        res = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -836,10 +824,9 @@ class TestNotifyTask(object):
         }
         assert expected_result == res
 
-    @pytest.mark.asyncio
-    async def test_run_async_unobtainable_lock(self, dbsession, mock_redis, mocker):
-        mocked_run_async_within_lock = mocker.patch.object(
-            NotifyTask, "run_async_within_lock"
+    def test_run_impl_unobtainable_lock(self, dbsession, mock_redis, mocker):
+        mocked_run_impl_within_lock = mocker.patch.object(
+            NotifyTask, "run_impl_within_lock"
         )
         mocked_has_upcoming_notifies_according_to_redis = mocker.patch.object(
             NotifyTask, "has_upcoming_notifies_according_to_redis", return_value=False
@@ -853,7 +840,7 @@ class TestNotifyTask(object):
         m.return_value.locked.return_value.__enter__.side_effect = LockError()
         mocker.patch("tasks.notify.LockManager", m)
 
-        res = await task.run_async(
+        res = task.run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -865,12 +852,11 @@ class TestNotifyTask(object):
             "notified": False,
             "reason": "unobtainable_lock",
         }
-        assert not mocked_run_async_within_lock.called
+        assert not mocked_run_impl_within_lock.called
 
-    @pytest.mark.asyncio
-    async def test_run_async_other_jobs_coming(self, dbsession, mock_redis, mocker):
-        mocked_run_async_within_lock = mocker.patch.object(
-            NotifyTask, "run_async_within_lock"
+    def test_run_impl_other_jobs_coming(self, dbsession, mock_redis, mocker):
+        mocked_run_impl_within_lock = mocker.patch.object(
+            NotifyTask, "run_impl_within_lock"
         )
         commit = CommitFactory.create()
         dbsession.add(commit)
@@ -878,7 +864,7 @@ class TestNotifyTask(object):
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
         mock_redis.get.return_value = True
-        res = await task.run_async(
+        res = task.run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -889,14 +875,13 @@ class TestNotifyTask(object):
             "notified": False,
             "reason": "has_other_notifies_coming",
         }
-        assert not mocked_run_async_within_lock.called
+        assert not mocked_run_impl_within_lock.called
 
-    @pytest.mark.asyncio
-    async def test_run_async_can_run_logic(self, dbsession, mock_redis, mocker):
-        mocked_run_async_within_lock = mocker.patch.object(
-            NotifyTask, "run_async_within_lock"
+    def test_run_impl_can_run_logic(self, dbsession, mock_redis, mocker):
+        mocked_run_impl_within_lock = mocker.patch.object(
+            NotifyTask, "run_impl_within_lock"
         )
-        mocked_run_async_within_lock.return_value = {
+        mocked_run_impl_within_lock.return_value = {
             "notifications": [],
             "notified": True,
             "reason": "yay",
@@ -910,7 +895,7 @@ class TestNotifyTask(object):
         checkpoints = _create_checkpoint_logger(mocker)
         checkpoints_data = json.loads(json.dumps(checkpoints.data))
         kwargs = {_kwargs_key(UploadFlow): checkpoints_data}
-        res = await task.run_async(
+        res = task.run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -919,7 +904,7 @@ class TestNotifyTask(object):
         )
         assert res == {"notifications": [], "notified": True, "reason": "yay"}
         kwargs = {_kwargs_key(UploadFlow): mocker.ANY}
-        mocked_run_async_within_lock.assert_called_with(
+        mocked_run_impl_within_lock.assert_called_with(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -928,8 +913,7 @@ class TestNotifyTask(object):
             **kwargs,
         )
 
-    @pytest.mark.asyncio
-    async def test_checkpoints_not_logged_outside_upload_flow(
+    def test_checkpoints_not_logged_outside_upload_flow(
         self, dbsession, mock_redis, mocker, mock_checkpoint_submit, mock_configuration
     ):
         fake_notifier = mocker.MagicMock(
@@ -972,7 +956,7 @@ class TestNotifyTask(object):
         dbsession.flush()
 
         task = NotifyTask()
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,

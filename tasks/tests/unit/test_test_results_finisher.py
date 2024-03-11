@@ -17,9 +17,8 @@ here = Path(__file__)
 
 
 class TestUploadTestFinisherTask(object):
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_finisher_task_call(
+    def test_upload_finisher_task_call(
         self,
         mocker,
         mock_configuration,
@@ -168,7 +167,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance4)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],
@@ -186,9 +185,8 @@ class TestUploadTestFinisherTask(object):
 
         assert expected_result == result
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_finisher_task_call_multi_env_fail(
+    def test_upload_finisher_task_call_multi_env_fail(
         self,
         mocker,
         mock_configuration,
@@ -348,7 +346,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance4)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],
@@ -382,9 +380,8 @@ class TestUploadTestFinisherTask(object):
         for c in calls:
             assert c in mock_metrics.timing.mock_calls
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_finisher_task_call_no_failures(
+    def test_upload_finisher_task_call_no_failures(
         self,
         mocker,
         mock_configuration,
@@ -522,7 +519,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance3)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],
@@ -558,9 +555,8 @@ class TestUploadTestFinisherTask(object):
         for c in calls:
             assert c in mock_metrics.timing.mock_calls
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_finisher_task_call_no_success(
+    def test_upload_finisher_task_call_no_success(
         self,
         mocker,
         mock_configuration,
@@ -699,7 +695,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance3)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": False}],
@@ -723,9 +719,8 @@ class TestUploadTestFinisherTask(object):
         )
         assert mock_metrics.timing.mock_calls == []
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_finisher_task_call_existing_comment(
+    def test_upload_finisher_task_call_existing_comment(
         self,
         mocker,
         mock_configuration,
@@ -861,7 +856,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance3)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],
@@ -881,9 +876,8 @@ class TestUploadTestFinisherTask(object):
 
         assert expected_result == result
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_finisher_task_call_comment_fails(
+    def test_upload_finisher_task_call_comment_fails(
         self,
         mocker,
         mock_configuration,
@@ -1023,7 +1017,7 @@ class TestUploadTestFinisherTask(object):
         dbsession.add(test_instance3)
         dbsession.flush()
 
-        result = await TestResultsFinisherTask().run_async(
+        result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],

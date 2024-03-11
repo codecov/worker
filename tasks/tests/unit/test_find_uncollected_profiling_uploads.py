@@ -14,14 +14,12 @@ class TestFindUncollectedProfilingsTask(object):
         task = FindUncollectedProfilingsTask()
         assert task.get_min_seconds_interval_between_executions() == 800
 
-    @pytest.mark.asyncio
-    async def test_run_cron_task_empty(self, dbsession):
+    def test_run_cron_task_empty(self, dbsession):
         task = FindUncollectedProfilingsTask()
-        res = await task.run_cron_task(dbsession)
+        res = task.run_cron_task(dbsession)
         assert res == {"delayed_profiling_ids": [], "delayed_profiling_ids_count": 0}
 
-    @pytest.mark.asyncio
-    async def test_run_cron_task_one_matching_profiling(self, dbsession, mocker):
+    def test_run_cron_task_one_matching_profiling(self, dbsession, mocker):
         mocked_get_utc_now = mocker.patch(
             "tasks.profiling_find_uncollected.get_utc_now"
         )
@@ -41,7 +39,7 @@ class TestFindUncollectedProfilingsTask(object):
         dbsession.add(profiling_upload)
         dbsession.flush()
         task = FindUncollectedProfilingsTask()
-        res = await task.run_cron_task(dbsession)
+        res = task.run_cron_task(dbsession)
         assert res == {
             "delayed_profiling_ids": [(pcf.id, 1, ("1234",))],
             "delayed_profiling_ids_count": 1,

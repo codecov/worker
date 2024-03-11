@@ -1,6 +1,7 @@
 import logging
 from typing import List, Mapping
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import compute_comparison_task_name
 from shared.components import Component
 from shared.helpers.flag import Flag
@@ -25,7 +26,7 @@ log = logging.getLogger(__name__)
 
 
 class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
-    async def run_async(self, db_session, comparison_id, *args, **kwargs):
+    def run_impl(self, db_session, comparison_id, *args, **kwargs):
         comparison = db_session.query(CompareCommit).get(comparison_id)
         repo = comparison.compare_commit.repository
         log_extra = dict(comparison_id=comparison_id, repoid=repo.repoid)
@@ -33,7 +34,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         current_yaml = self.get_yaml_commit(comparison.compare_commit)
 
         with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
-            comparison_proxy = await self.get_comparison_proxy(comparison, current_yaml)
+            comparison_proxy = self.get_comparison_proxy(comparison, current_yaml)
         if not comparison_proxy.has_project_coverage_base_report():
             comparison.error = CompareCommitError.missing_base_report.value
         elif not comparison_proxy.has_head_report():
@@ -47,7 +48,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             return {"successful": False}
         try:
             with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files") as tm:
-                impacted_files = await self.serialize_impacted_files(comparison_proxy)
+                impacted_files = self.serialize_impacted_files(comparison_proxy)
         except TorngitRateLimitError:
             log.warning(
                 "Unable to compute comparison due to rate limit error",
@@ -68,29 +69,27 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         log.info("Computing comparison successful", extra=log_extra)
         db_session.commit()
 
-        await self.compute_flag_comparison(db_session, comparison, comparison_proxy)
+        self.compute_flag_comparison(db_session, comparison, comparison_proxy)
         db_session.commit()
-        await self.compute_component_comparisons(
-            db_session, comparison, comparison_proxy
-        )
+        self.compute_component_comparisons(db_session, comparison, comparison_proxy)
         db_session.commit()
         return {"successful": True}
 
-    async def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
+    def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
         log_extra = dict(comparison_id=comparison.id)
         log.info("Computing flag comparisons", extra=log_extra)
         head_report_flags = comparison_proxy.comparison.head.report.flags
         if not head_report_flags:
             log.info("Head report does not have any flags", extra=log_extra)
             return
-        await self.create_or_update_flag_comparisons(
+        self.create_or_update_flag_comparisons(
             db_session,
             head_report_flags,
             comparison,
             comparison_proxy,
         )
 
-    async def create_or_update_flag_comparisons(
+    def create_or_update_flag_comparisons(
         self,
         db_session,
         head_report_flags: List[Flag],
@@ -99,7 +98,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
     ):
         repository_id = comparison.compare_commit.repository.repoid
         for flag_name, _ in head_report_flags.items():
-            totals = await self.get_flag_comparison_totals(flag_name, comparison_proxy)
+            totals = self.get_flag_comparison_totals(flag_name, comparison_proxy)
             repositoryflag = (
                 db_session.query(RepositoryFlag)
                 .filter_by(
@@ -150,7 +149,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             extra=dict(number_stored=len(head_report_flags)),
         )
 
-    async def get_flag_comparison_totals(
+    def get_flag_comparison_totals(
         self,
         flag_name: str,
         comparison_proxy: ComparisonProxy,
@@ -166,7 +165,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         totals = dict(
             head_totals=head_totals, base_totals=base_totals, patch_totals=None
         )
-        diff = await comparison_proxy.get_diff()
+        diff = async_to_sync(comparison_proxy.get_diff)()
         if diff:
             patch_totals = flag_head_report.apply_diff(diff)
             if patch_totals:
@@ -190,11 +189,11 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         db_session.add(flag_comparison)
         db_session.flush()
 
-    async def compute_component_comparisons(
+    def compute_component_comparisons(
         self, db_session, comparison: CompareCommit, comparison_proxy: ComparisonProxy
     ):
         head_commit = comparison_proxy.comparison.head.commit
-        yaml: UserYaml = await get_current_yaml(
+        yaml: UserYaml = async_to_sync(get_current_yaml)(
             head_commit, comparison_proxy.repository_service
         )
         components = yaml.get_components()
@@ -206,11 +205,11 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             ),
         )
         for component in components:
-            await self.compute_component_comparison(
+            self.compute_component_comparison(
                 db_session, comparison, comparison_proxy, component
             )
 
-    async def compute_component_comparison(
+    def compute_component_comparison(
         self,
         db_session,
         comparison: CompareCommit,
@@ -243,7 +242,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             filtered.project_coverage_base.report.totals.asdict()
         )
         component_comparison.head_totals = filtered.head.report.totals.asdict()
-        diff = await comparison_proxy.get_diff()
+        diff = async_to_sync(comparison_proxy.get_diff)()
         if diff:
             patch_totals = filtered.head.report.apply_diff(diff)
             if patch_totals:
@@ -255,7 +254,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
     def get_yaml_commit(self, commit):
         return get_repo_yaml(commit.repository)
 
-    async def get_comparison_proxy(self, comparison, current_yaml):
+    def get_comparison_proxy(self, comparison, current_yaml):
         compare_commit = comparison.compare_commit
         base_commit = comparison.base_commit
         report_service = ReportService(current_yaml)
@@ -279,8 +278,8 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             )
         )
 
-    async def serialize_impacted_files(self, comparison_proxy):
-        return await comparison_proxy.get_impacted_files()
+    def serialize_impacted_files(self, comparison_proxy):
+        return async_to_sync(comparison_proxy.get_impacted_files)()
 
     def store_results(self, comparison, impacted_files):
         repository = comparison.compare_commit.repository

@@ -1,8 +1,6 @@
 from datetime import datetime
 from os import times
 
-import pytest
-
 from database.models import MeasurementName
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory
@@ -13,8 +11,7 @@ from tasks.timeseries_backfill import (
 )
 
 
-@pytest.mark.asyncio
-async def test_backfill_dataset_run_async(dbsession, mocker):
+def test_backfill_dataset_run_impl(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
@@ -47,7 +44,7 @@ async def test_backfill_dataset_run_async(dbsession, mocker):
     dbsession.flush()
 
     task = TimeseriesBackfillDatasetTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         dataset_id=dataset.id_,
         start_date="2022-01-01T00:00:00",
@@ -73,8 +70,7 @@ async def test_backfill_dataset_run_async(dbsession, mocker):
     mock_group.assert_called_once_with(expected_signatures)
 
 
-@pytest.mark.asyncio
-async def test_backfill_dataset_run_async_invalid_dataset(dbsession, mocker):
+def test_backfill_dataset_run_impl_invalid_dataset(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
@@ -90,7 +86,7 @@ async def test_backfill_dataset_run_async_invalid_dataset(dbsession, mocker):
     dbsession.flush()
 
     task = TimeseriesBackfillDatasetTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         dataset_id=9999,
         start_date="2022-01-01T00:00:00",
@@ -101,8 +97,7 @@ async def test_backfill_dataset_run_async_invalid_dataset(dbsession, mocker):
     assert not mock_group.called
 
 
-@pytest.mark.asyncio
-async def test_backfill_dataset_run_async_invalid_repository(dbsession, mocker):
+def test_backfill_dataset_run_impl_invalid_repository(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
@@ -118,7 +113,7 @@ async def test_backfill_dataset_run_async_invalid_repository(dbsession, mocker):
     dbsession.flush()
 
     task = TimeseriesBackfillDatasetTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         dataset_id=dataset.id_,
         start_date="2022-01-01T00:00:00",
@@ -129,8 +124,7 @@ async def test_backfill_dataset_run_async_invalid_repository(dbsession, mocker):
     assert not mock_group.called
 
 
-@pytest.mark.asyncio
-async def test_backfill_dataset_run_async_invalid_start_date(dbsession, mocker):
+def test_backfill_dataset_run_impl_invalid_start_date(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
@@ -146,7 +140,7 @@ async def test_backfill_dataset_run_async_invalid_start_date(dbsession, mocker):
     dbsession.flush()
 
     task = TimeseriesBackfillDatasetTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         dataset_id=dataset.id_,
         start_date="invalid",
@@ -157,8 +151,7 @@ async def test_backfill_dataset_run_async_invalid_start_date(dbsession, mocker):
     assert not mock_group.called
 
 
-@pytest.mark.asyncio
-async def test_backfill_dataset_run_async_invalid_end_date(dbsession, mocker):
+def test_backfill_dataset_run_impl_invalid_end_date(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
@@ -174,7 +167,7 @@ async def test_backfill_dataset_run_async_invalid_end_date(dbsession, mocker):
     dbsession.flush()
 
     task = TimeseriesBackfillDatasetTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         dataset_id=dataset.id_,
         start_date="2022-01-01T00:00:00",
@@ -185,13 +178,12 @@ async def test_backfill_dataset_run_async_invalid_end_date(dbsession, mocker):
     assert not mock_group.called
 
 
-@pytest.mark.asyncio
-async def test_backfill_dataset_run_async_timeseries_not_enabled(dbsession, mocker):
+def test_backfill_dataset_run_impl_timeseries_not_enabled(dbsession, mocker):
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=False)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     task = TimeseriesBackfillDatasetTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         dataset_id=9999,
         start_date="2022-01-01T00:00:00",

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from json import loads
 from typing import Any, List, Mapping, Optional
 
+from asgiref.sync import async_to_sync
 from celery import chain, chord
 from redis import Redis
 from redis.exceptions import LockError
@@ -233,7 +234,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         repoid,
@@ -288,7 +289,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 timeout=max(300, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
-                return await self.run_async_within_lock(
+                return self.run_impl_within_lock(
                     db_session,
                     upload_context,
                     *args,
@@ -338,7 +339,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
-    async def run_async_within_lock(
+    def run_impl_within_lock(
         self,
         db_session,
         upload_context: UploadContext,
@@ -412,10 +413,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         was_updated, was_setup = False, False
         try:
             repository_service = get_repo_provider_service(repository, commit)
-            was_updated = await possibly_update_commit_from_provider_info(
+            was_updated = async_to_sync(possibly_update_commit_from_provider_info)(
                 commit, repository_service
             )
-            was_setup = await self.possibly_setup_webhooks(commit, repository_service)
+            was_setup = self.possibly_setup_webhooks(commit, repository_service)
         except RepositoryWithoutValidBotError:
             save_commit_error(
                 commit,
@@ -439,7 +440,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 exc_info=True,
             )
         if repository_service:
-            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(
+            commit_yaml = self.fetch_commit_yaml_and_possibly_store(
                 commit, repository_service
             )
         else:
@@ -470,7 +471,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     report_code=report_code,
                 ),
             )
-            commit_report = await report_service.initialize_and_save_report(
+            commit_report = async_to_sync(report_service.initialize_and_save_report)(
                 commit,
                 report_code,
             )
@@ -514,14 +515,14 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
         return {"was_setup": was_setup, "was_updated": was_updated}
 
-    async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
+    def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
         repository = commit.repository
         try:
             log.info(
                 "Fetching commit yaml from provider for commit",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            commit_yaml = await fetch_commit_yaml_from_provider(
+            commit_yaml = async_to_sync(fetch_commit_yaml_from_provider)(
                 commit, repository_service
             )
             save_repo_yaml_to_database_if_needed(commit, commit_yaml)
@@ -755,7 +756,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         )
         return None
 
-    async def possibly_setup_webhooks(self, commit, repository_service):
+    def possibly_setup_webhooks(self, commit, repository_service):
         repository = commit.repository
         repo_data = repository_service.data
 
@@ -793,7 +794,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 else:
                     # service-level config value will be used instead in this case
                     webhook_secret = None
-                hook_result = await create_webhook_on_provider(
+                hook_result = async_to_sync(create_webhook_on_provider)(
                     repository_service, webhook_secret=webhook_secret
                 )
                 hookid = hook_result["id"]
