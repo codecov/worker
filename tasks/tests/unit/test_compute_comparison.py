@@ -14,8 +14,7 @@ from tasks.compute_comparison import ComputeComparisonTask
 
 
 class TestComputeComparisonTask(object):
-    @pytest.mark.asyncio
-    async def test_set_state_to_processed(
+    def test_set_state_to_processed(
         self, dbsession, mocker, mock_repo_provider, mock_storage
     ):
         comparison = CompareCommitFactory.create()
@@ -46,7 +45,7 @@ class TestComputeComparisonTask(object):
         get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
         get_current_yaml.return_value = UserYaml({"coverage": {"status": None}})
 
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
         data_in_storage = mock_storage.read_file(
@@ -70,8 +69,7 @@ class TestComputeComparisonTask(object):
             },
         }
 
-    @pytest.mark.asyncio
-    async def test_set_state_to_processed_non_empty_report_with_flag_comparisons(
+    def test_set_state_to_processed_non_empty_report_with_flag_comparisons(
         self,
         dbsession,
         mocker,
@@ -113,7 +111,7 @@ class TestComputeComparisonTask(object):
             repository_id=comparison.compare_commit.repository.repoid, flag_name="unit"
         )
         dbsession.add(unit_repositoryflag)
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
         compare_flag_records = dbsession.query(CompareFlag).all()
@@ -172,8 +170,7 @@ class TestComputeComparisonTask(object):
             },
         }
 
-    @pytest.mark.asyncio
-    async def test_flag_comparisons_without_head_report(
+    def test_flag_comparisons_without_head_report(
         self,
         dbsession,
         mocker,
@@ -209,7 +206,7 @@ class TestComputeComparisonTask(object):
         get_current_yaml = mocker.patch("tasks.compute_comparison.get_current_yaml")
         get_current_yaml.return_value = UserYaml({"coverage": {"status": None}})
 
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
         data_in_storage = mock_storage.read_file(
@@ -264,8 +261,7 @@ class TestComputeComparisonTask(object):
             },
         }
 
-    @pytest.mark.asyncio
-    async def test_update_existing_flag_comparisons(
+    def test_update_existing_flag_comparisons(
         self, dbsession, mocker, mock_repo_provider, mock_storage, sample_report
     ):
         comparison = CompareCommitFactory.create()
@@ -308,7 +304,7 @@ class TestComputeComparisonTask(object):
             base_totals=None,
         )
         dbsession.add(existing_flag_comparison)
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.processed.value
         compare_flag_records = dbsession.query(CompareFlag).all()
@@ -316,8 +312,7 @@ class TestComputeComparisonTask(object):
         assert compare_flag_records[0].repositoryflag_id == repositoryflag.id_
         assert compare_flag_records[0].patch_totals is not None
 
-    @pytest.mark.asyncio
-    async def test_set_state_to_error_missing_base_report(self, dbsession, mocker):
+    def test_set_state_to_error_missing_base_report(self, dbsession, mocker):
         comparison = CompareCommitFactory.create()
         dbsession.add(comparison)
         dbsession.flush()
@@ -328,13 +323,12 @@ class TestComputeComparisonTask(object):
         mocker.patch.object(
             ReportService, "get_existing_report_for_commit", return_value=None
         )
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.error.value
         assert comparison.error == CompareCommitError.missing_base_report.value
 
-    @pytest.mark.asyncio
-    async def test_set_state_to_error_missing_head_report(
+    def test_set_state_to_error_missing_head_report(
         self, dbsession, mocker, sample_report
     ):
         comparison = CompareCommitFactory.create()
@@ -349,13 +343,12 @@ class TestComputeComparisonTask(object):
             "get_existing_report_for_commit",
             side_effect=(ReadOnlyReport.create_from_report(sample_report), None),
         )
-        await task.run_async(dbsession, comparison.id)
+        task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert comparison.state == CompareCommitState.error.value
         assert comparison.error == CompareCommitError.missing_head_report.value
 
-    @pytest.mark.asyncio
-    async def test_run_task_ratelimit_error(self, dbsession, mocker, sample_report):
+    def test_run_task_ratelimit_error(self, dbsession, mocker, sample_report):
         comparison = CompareCommitFactory.create()
         dbsession.add(comparison)
         dbsession.flush()
@@ -370,14 +363,13 @@ class TestComputeComparisonTask(object):
             "get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
         )
-        res = await task.run_async(dbsession, comparison.id)
+        res = task.run_impl(dbsession, comparison.id)
         assert res == {"successful": False}
         dbsession.flush()
         assert comparison.state == CompareCommitState.pending.value
         assert comparison.error is None
 
-    @pytest.mark.asyncio
-    async def test_compute_component_comparisons(
+    def test_compute_component_comparisons(
         self, dbsession, mocker, mock_repo_provider, mock_storage, sample_report
     ):
         mocker.patch.object(
@@ -418,7 +410,7 @@ class TestComputeComparisonTask(object):
         dbsession.flush()
 
         task = ComputeComparisonTask()
-        res = await task.run_async(dbsession, comparison.id)
+        res = task.run_impl(dbsession, comparison.id)
         assert res == {"successful": True}
 
         component_comparisons = (
@@ -524,8 +516,7 @@ class TestComputeComparisonTask(object):
             "diff": 0,
         }
 
-    @pytest.mark.asyncio
-    async def test_compute_component_comparisons_empty_diff(
+    def test_compute_component_comparisons_empty_diff(
         self,
         dbsession,
         mocker,
@@ -562,7 +553,7 @@ class TestComputeComparisonTask(object):
         dbsession.flush()
 
         task = ComputeComparisonTask()
-        res = await task.run_async(dbsession, comparison.id)
+        res = task.run_impl(dbsession, comparison.id)
         assert res == {"successful": True}
 
         component_comparisons = (

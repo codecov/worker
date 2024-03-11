@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import sync_repo_languages_task_name
 from shared.torngit.exceptions import TorngitError
 from sqlalchemy import String
@@ -21,7 +22,7 @@ REPOSITORY_LANGUAGE_SYNC_THRESHOLD = 7
 
 
 class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name):
-    async def run_async(
+    def run_impl(
         self, db_session: Session, repoid: String, manual_trigger=False, *args, **kwargs
     ):
         repository = db_session.query(Repository).get(repoid)
@@ -58,11 +59,11 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
                     or repository.owner.service == "bitbucket_server"
                 )
                 if is_bitbucket_call:
-                    languages = await repository_service.get_repo_languages(
+                    languages = async_to_sync(repository_service.get_repo_languages)(
                         token=None, language=repository.language
                     )
                 else:
-                    languages = await repository_service.get_repo_languages()
+                    languages = async_to_sync(repository_service.get_repo_languages)()
                 repository.languages = languages
                 repository.languages_last_updated = now
                 db_session.flush()

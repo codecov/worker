@@ -13,7 +13,7 @@ class HourlyCheckTask(CodecovCronTask, name=hourly_check_task_name):
     def get_min_seconds_interval_between_executions(cls):
         return 3300  # 55 minutes
 
-    async def run_cron_task(self, db_session, *args, **kwargs):
+    def run_cron_task(self, db_session, *args, **kwargs):
         log.info("Doing hourly check")
         metrics.incr(f"{self.metrics_prefix}.checks")
         return {"checked": True}

@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Optional
 
 import sentry_sdk
+from asgiref.sync import async_to_sync
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.celery_config import upload_processor_task_name
@@ -69,7 +70,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         retry_in = FIRST_RETRY_DELAY * 3**self.request.retries
         self.retry(max_retries=max_retries, countdown=retry_in)
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         previous_results,
@@ -105,7 +106,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 blocking_timeout=5,
             ):
                 actual_arguments_list = deepcopy(arguments_list)
-                return await self.process_async_within_lock(
+                return self.process_impl_within_lock(
                     db_session=db_session,
                     previous_results=previous_results,
                     repoid=repoid,
@@ -131,7 +132,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             )
             self.retry(max_retries=5, countdown=retry_in)
 
-    async def process_async_within_lock(
+    def process_impl_within_lock(
         self,
         *,
         db_session,
@@ -241,7 +242,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
             with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
-                results_dict = await self.save_report_results(
+                results_dict = self.save_report_results(
                     db_session,
                     report_service,
                     repository,
@@ -394,7 +395,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             archive_service = report_service.get_archive_service(commit.repository)
             archive_service.write_file(archive_url, raw_report.content().getvalue())
 
-    async def save_report_results(
+    def save_report_results(
         self,
         db_session,
         report_service,
@@ -415,7 +416,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commitid = commit.commitid
         try:
             repository_service = get_repo_provider_service(repository, commit)
-            report.apply_diff(await repository_service.get_commit_diff(commitid))
+            report.apply_diff(
+                async_to_sync(repository_service.get_commit_diff)(commitid)
+            )
         except TorngitError:
             # When this happens, we have that commit.totals["diff"] is not available.
             # Since there is no way to calculate such diff without the git commit,

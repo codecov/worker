@@ -19,9 +19,8 @@ here = Path(__file__)
 
 
 class TestUploadTestProcessorTask(object):
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_processor_task_call(
+    def test_upload_processor_task_call(
         self,
         mocker,
         mock_configuration,
@@ -58,7 +57,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=upload.report.commit.repoid,
             commitid=commit.commitid,
@@ -107,9 +106,8 @@ class TestUploadTestProcessorTask(object):
         for c in calls:
             assert c in mock_metrics.timing.mock_calls
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_processor_task_call_pytest_reportlog(
+    def test_upload_processor_task_call_pytest_reportlog(
         self,
         mocker,
         mock_configuration,
@@ -142,7 +140,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -173,9 +171,8 @@ class TestUploadTestProcessorTask(object):
         assert expected_result == result
         assert commit.message == "hello world"
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_processor_task_call_vitest(
+    def test_upload_processor_task_call_vitest(
         self,
         mocker,
         mock_configuration,
@@ -208,7 +205,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -240,9 +237,8 @@ class TestUploadTestProcessorTask(object):
         assert expected_result == result
         assert commit.message == "hello world"
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_test_result_processor_task_error_report_matching(
+    def test_test_result_processor_task_error_report_matching(
         self,
         caplog,
         mocker,
@@ -287,7 +283,7 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(current_report_row)
         dbsession.flush()
 
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -311,9 +307,8 @@ class TestUploadTestProcessorTask(object):
         for c in calls:
             assert c in mock_metrics.timing.mock_calls
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_test_result_processor_task_error_parsing_file(
+    def test_test_result_processor_task_error_parsing_file(
         self,
         caplog,
         mocker,
@@ -358,7 +353,7 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(current_report_row)
         dbsession.flush()
 
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -382,9 +377,8 @@ class TestUploadTestProcessorTask(object):
         for c in calls:
             assert c in mock_metrics.timing.mock_calls
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_test_result_processor_task_delete_archive(
+    def test_test_result_processor_task_delete_archive(
         self,
         caplog,
         mocker,
@@ -422,7 +416,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -455,9 +449,8 @@ class TestUploadTestProcessorTask(object):
         with pytest.raises(FileNotInStorageError):
             mock_storage.read_file("archive", url)
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_test_result_processor_task_bad_file(
+    def test_test_result_processor_task_bad_file(
         self,
         caplog,
         mocker,
@@ -494,7 +487,7 @@ class TestUploadTestProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -506,9 +499,8 @@ class TestUploadTestProcessorTask(object):
         assert expected_result == result
         assert "File did not match any parser format" in caplog.text
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_processor_task_call_existing_test(
+    def test_upload_processor_task_call_existing_test(
         self,
         mocker,
         mock_configuration,
@@ -561,7 +553,7 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(existing_test)
         dbsession.flush()
 
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=repoid,
             commitid=commit.commitid,
@@ -593,9 +585,8 @@ class TestUploadTestProcessorTask(object):
         assert expected_result == result
         assert commit.message == "hello world"
 
-    @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_upload_processor_task_call_existing_test_diff_flags_hash(
+    def test_upload_processor_task_call_existing_test_diff_flags_hash(
         self,
         mocker,
         mock_configuration,
@@ -648,7 +639,7 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(existing_test)
         dbsession.flush()
 
-        result = await TestResultsProcessorTask().run_async(
+        result = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=repoid,
             commitid=commit.commitid,

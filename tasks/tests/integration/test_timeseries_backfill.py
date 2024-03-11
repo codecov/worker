@@ -9,8 +9,7 @@ from tasks.timeseries_backfill import TimeseriesBackfillCommitsTask
 
 
 @pytest.mark.integration
-@pytest.mark.asyncio
-async def test_backfill_dataset_run_async(dbsession, mocker, mock_storage):
+def test_backfill_dataset_run_impl(dbsession, mocker, mock_storage):
     mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
     mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
     mocked_app = mocker.patch.object(
@@ -55,7 +54,7 @@ async def test_backfill_dataset_run_async(dbsession, mocker, mock_storage):
         MeasurementName.coverage.value,
         MeasurementName.flag_coverage.value,
     ]
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         commit_ids=[commit.id_],
         dataset_names=dataset_names,

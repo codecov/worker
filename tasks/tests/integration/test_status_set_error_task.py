@@ -7,8 +7,7 @@ from tasks.status_set_error import StatusSetErrorTask
 
 @pytest.mark.integration
 class TestStatusSetErrorTask(object):
-    @pytest.mark.asyncio
-    async def test_set_error(self, dbsession, mocker, mock_configuration, codecov_vcr):
+    def test_set_error(self, dbsession, mocker, mock_configuration, codecov_vcr):
         repository = RepositoryFactory.create(
             owner__username="ThiagoCodecov",
             owner__service="github",
@@ -28,7 +27,7 @@ class TestStatusSetErrorTask(object):
         dbsession.add(commit)
 
         task = StatusSetErrorTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession, repository.repoid, commit.commitid, message="Test err message"
         )
         expected_result = {"status_set": True}

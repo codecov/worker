@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional
 
 import shared.torngit as torngit
+from asgiref.sync import async_to_sync
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
@@ -17,14 +18,14 @@ class BackfillGHAppInstallationsTask(
     BaseCodecovTask, name=backfill_gh_app_installations
 ):
     # Looping and adding all repositories in the installation app
-    async def add_repos_service_ids_from_provider(
+    def add_repos_service_ids_from_provider(
         self,
         db_session: Session,
         ownerid: int,
         owner_service: torngit.base.TorngitBaseAdapter,
         gh_app_installation: GithubAppInstallation,
     ):
-        repos = await owner_service.list_repos_using_installation()
+        repos = async_to_sync(owner_service.list_repos_using_installation)()
 
         if repos:
             # Fetching all repos service ids we have for that owner in the DB
@@ -53,7 +54,7 @@ class BackfillGHAppInstallationsTask(
             gh_app_installation.repository_service_ids = new_repo_service_ids
             db_session.commit()
 
-    async def backfill_existing_gh_apps(
+    def backfill_existing_gh_apps(
         self, db_session: Session, owner_ids: List[int] = None
     ):
         # Get owners that have installations, and installations queries
@@ -92,9 +93,9 @@ class BackfillGHAppInstallationsTask(
                 owner=owner, using_integration=True
             )
 
-            remote_gh_app_installation = await owner_service.get_gh_app_installation(
-                installation_id=installation_id
-            )
+            remote_gh_app_installation = async_to_sync(
+                owner_service.get_gh_app_installation
+            )(installation_id=installation_id)
             repository_selection = remote_gh_app_installation.get(
                 "repository_selection", ""
             )
@@ -107,7 +108,7 @@ class BackfillGHAppInstallationsTask(
                 )
             else:
                 # Find and add all repos the gh app has access to
-                await self.add_repos_service_ids_from_provider(
+                self.add_repos_service_ids_from_provider(
                     db_session=db_session,
                     ownerid=ownerid,
                     owner_service=owner_service,
@@ -115,7 +116,7 @@ class BackfillGHAppInstallationsTask(
                 )
                 log.info("Successful backfill", extra=dict(ownerid=ownerid))
 
-    async def backfill_owners_with_integration_without_gh_app(
+    def backfill_owners_with_integration_without_gh_app(
         self, db_session: Session, owner_ids: List[int] = None
     ):
         owners_with_integration_id_without_gh_app_query = (
@@ -158,7 +159,7 @@ class BackfillGHAppInstallationsTask(
             db_session.commit()
 
             # Find and add all repos the gh app has access to
-            await self.add_repos_service_ids_from_provider(
+            self.add_repos_service_ids_from_provider(
                 db_session=db_session,
                 ownerid=ownerid,
                 owner_service=owner_service,
@@ -166,7 +167,7 @@ class BackfillGHAppInstallationsTask(
             )
             log.info("Successful backfill", extra=dict(ownerid=ownerid))
 
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         owner_ids: Optional[List[int]] = None,
@@ -174,10 +175,10 @@ class BackfillGHAppInstallationsTask(
         **kwargs
     ):
         # Backfill gh apps we already have
-        await self.backfill_existing_gh_apps(db_session=db_session, owner_ids=owner_ids)
+        self.backfill_existing_gh_apps(db_session=db_session, owner_ids=owner_ids)
 
         # Backfill owners with legacy integration + adding new gh app
-        await self.backfill_owners_with_integration_without_gh_app(
+        self.backfill_owners_with_integration_without_gh_app(
             db_session=db_session, owner_ids=owner_ids
         )
 

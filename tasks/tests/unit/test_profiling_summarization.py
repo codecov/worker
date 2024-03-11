@@ -8,8 +8,7 @@ from database.tests.factories.profiling import ProfilingCommitFactory
 from tasks.profiling_summarization import ProfilingSummarizationTask
 
 
-@pytest.mark.asyncio
-async def test_summarize_run_async_simple_run(
+def test_summarize_run_impl_simple_run(
     dbsession, mock_storage, mock_configuration, mocker
 ):
     mocker.patch(
@@ -40,7 +39,7 @@ async def test_summarize_run_async_simple_run(
     dbsession.add(pfc)
     dbsession.flush()
     task = ProfilingSummarizationTask()
-    res = await task.run_async(dbsession, profiling_id=pfc.id)
+    res = task.run_impl(dbsession, profiling_id=pfc.id)
     assert res["successful"]
     assert json.loads(mock_storage.read_file("bucket", res["location"]).decode()) == {
         "version": "v1",
@@ -66,8 +65,7 @@ async def test_summarize_run_async_simple_run(
     )
 
 
-@pytest.mark.asyncio
-async def test_summarize_run_async_simple_run_no_file(
+def test_summarize_run_impl_simple_run_no_file(
     dbsession, mock_storage, mock_configuration
 ):
     mock_configuration._params["services"]["minio"]["bucket"] = "bucket"
@@ -75,7 +73,7 @@ async def test_summarize_run_async_simple_run_no_file(
     dbsession.add(pfc)
     dbsession.flush()
     task = ProfilingSummarizationTask()
-    res = await task.run_async(dbsession, profiling_id=pfc.id)
+    res = task.run_impl(dbsession, profiling_id=pfc.id)
     assert res == {"successful": False}
 
 

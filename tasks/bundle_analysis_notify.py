@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import notify_task_name
 from shared.yaml import UserYaml
 
@@ -17,7 +18,7 @@ bundle_analysis_notify_task_name = "app.tasks.bundle_analysis.BundleAnalysisNoti
 
 
 class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task_name):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         # Celery `chain` injects this argument - it's the returned result
@@ -52,7 +53,7 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
                 LockType.BUNDLE_ANALYSIS_NOTIFY,
                 retry_num=self.request.retries,
             ):
-                return await self.process_async_within_lock(
+                return self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -63,7 +64,7 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
-    async def process_async_within_lock(
+    def process_impl_within_lock(
         self,
         *,
         db_session,
@@ -101,7 +102,7 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
         success = None
         if notify:
             notifier = Notifier(commit, commit_yaml)
-            success = await notifier.notify()
+            success = async_to_sync(notifier.notify)()
 
         log.info(
             "Finished bundle analysis notify",

@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
 from openai import AsyncOpenAI
 from shared.config import get_config
@@ -19,7 +20,7 @@ log = logging.getLogger(__name__)
 class AiPrReviewTask(BaseCodecovTask, name="app.tasks.ai_pr_review.AiPrReview"):
     throws = (SoftTimeLimitExceeded,)
 
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,
@@ -36,7 +37,7 @@ class AiPrReviewTask(BaseCodecovTask, name="app.tasks.ai_pr_review.AiPrReview"):
             return {"successful": False, "error": "not_github"}
 
         try:
-            await perform_review(repository, pullid)
+            async_to_sync(perform_review)(repository, pullid)
             return {"successful": True}
         except RepositoryWithoutValidBotError:
             log.warning(

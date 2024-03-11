@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import datetime
 
@@ -271,9 +270,7 @@ class BaseCodecovTask(celery_app.Task):
                         ):
                             with self.task_core_runtime.time():  # Timer isn't tested
                                 with metrics.timer(f"{self.metrics_prefix}.run"):
-                                    return asyncio.run(
-                                        self.run_async(db_session, *args, **kwargs)
-                                    )
+                                    return self.run_impl(db_session, *args, **kwargs)
                     except (DataError, IntegrityError):
                         log.exception(
                             "Errors related to the constraints of database happened",
