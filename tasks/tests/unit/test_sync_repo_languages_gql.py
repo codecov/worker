@@ -11,16 +11,15 @@ from tasks.sync_repo_languages_gql import SyncRepoLanguagesGQLTask
 
 
 class TestSyncRepoLanguagesGQL(object):
-    @pytest.mark.asyncio
-    async def test_get_repo_languages_without_org_or_current_owner(self, dbsession):
+    def test_get_repo_languages_without_org_or_current_owner(self, dbsession):
         task = SyncRepoLanguagesGQLTask()
 
-        assert await task.run_async(
-            dbsession, org_username="asdf", current_owner_id=123
-        ) == {"successful": False, "error": "no_owner_in_db"}
+        assert task.run_impl(dbsession, org_username="asdf", current_owner_id=123) == {
+            "successful": False,
+            "error": "no_owner_in_db",
+        }
 
-    @pytest.mark.asyncio
-    async def test_get_repo_languages_with_torngit_rate_limit_error(
+    def test_get_repo_languages_with_torngit_rate_limit_error(
         self, dbsession, mocker, mock_repo_provider
     ):
         current_owner = OwnerFactory.create(service="github")
@@ -39,12 +38,11 @@ class TestSyncRepoLanguagesGQL(object):
 
         task = SyncRepoLanguagesGQLTask()
 
-        assert await task.run_async(
+        assert task.run_impl(
             dbsession, org_username=org.username, current_owner_id=current_owner.ownerid
         ) == {"successful": False, "error": "torngit_rate_limit_error"}
 
-    @pytest.mark.asyncio
-    async def test_get_repo_languages_with_torngit_error(
+    def test_get_repo_languages_with_torngit_error(
         self, dbsession, mocker, mock_repo_provider
     ):
         current_owner = OwnerFactory.create(service="github")
@@ -63,12 +61,11 @@ class TestSyncRepoLanguagesGQL(object):
 
         task = SyncRepoLanguagesGQLTask()
 
-        assert await task.run_async(
+        assert task.run_impl(
             dbsession, org_username=org.username, current_owner_id=current_owner.ownerid
         ) == {"successful": False, "error": "torngit_error"}
 
-    @pytest.mark.asyncio
-    async def test_get_repo_languages_expected_response(
+    def test_get_repo_languages_expected_response(
         self, dbsession, mocker, mock_repo_provider
     ):
         current_owner = OwnerFactory.create(service="github")
@@ -110,7 +107,7 @@ class TestSyncRepoLanguagesGQL(object):
 
         task = SyncRepoLanguagesGQLTask()
 
-        assert await task.run_async(
+        assert task.run_impl(
             dbsession, org_username=org.username, current_owner_id=current_owner.ownerid
         ) == {"successful": True}
 

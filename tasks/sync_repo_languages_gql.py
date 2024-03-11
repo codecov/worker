@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import sync_repo_languages_gql_task_name
 from shared.torngit.exceptions import TorngitError, TorngitRateLimitError
 from sqlalchemy import String
@@ -16,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class SyncRepoLanguagesGQLTask(BaseCodecovTask, name=sync_repo_languages_gql_task_name):
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         org_username: String,
@@ -42,11 +43,9 @@ class SyncRepoLanguagesGQLTask(BaseCodecovTask, name=sync_repo_languages_gql_tas
         owner_service = get_owner_provider_service(owner=current_owner)
 
         try:
-            repos_in_github: dict[
-                str, List[str]
-            ] = await owner_service.get_repos_with_languages_graphql(
-                owner_username=org_username
-            )
+            repos_in_github: dict[str, List[str]] = async_to_sync(
+                owner_service.get_repos_with_languages_graphql
+            )(owner_username=org_username)
         except TorngitRateLimitError:
             log.warning(
                 "Unable to fetch repositories due to rate limit error",
@@ -59,6 +58,8 @@ class SyncRepoLanguagesGQLTask(BaseCodecovTask, name=sync_repo_languages_gql_tas
                 extra=dict(current_owner_id=current_owner_id, org_id=org.ownerid),
             )
             return {"successful": False, "error": "torngit_error"}
+
+        print("helloo!", repos_in_github)
 
         updated_repoids = []
         for db_repo in org_db_repositories:
