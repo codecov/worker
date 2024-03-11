@@ -68,7 +68,7 @@ class TestSyncRepoLanguagesGQL(object):
         ) == {"successful": False, "error": "torngit_error"}
 
     @pytest.mark.asyncio
-    async def test_get_repo_languages_expected_repsonse(
+    async def test_get_repo_languages_expected_response(
         self, dbsession, mocker, mock_repo_provider
     ):
         current_owner = OwnerFactory.create(service="github")
@@ -114,7 +114,11 @@ class TestSyncRepoLanguagesGQL(object):
             dbsession, org_username=org.username, current_owner_id=current_owner.ownerid
         ) == {"successful": True}
 
-        all_repos = dbsession.query(Repository).all()
+        all_repos = (
+            dbsession.query(Repository)
+            .filter(Repository.name.startswith("test-"))
+            .all()
+        )
 
         for repo in all_repos:
             assert repo.languages == mock_return_value[repo.name]

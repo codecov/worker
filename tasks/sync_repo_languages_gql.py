@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from shared.celery_config import sync_repo_languages_gql_task_name
 from shared.torngit.exceptions import TorngitError, TorngitRateLimitError
@@ -62,7 +62,10 @@ class SyncRepoLanguagesGQLTask(BaseCodecovTask, name=sync_repo_languages_gql_tas
 
         updated_repoids = []
         for db_repo in org_db_repositories:
-            if db_repo.name in repos_in_github.keys():
+            repo_langs_from_github: Optional[List[str]] = repos_in_github.get(
+                db_repo.name
+            )
+            if repo_langs_from_github is not None:
                 updated_repoids.append(db_repo.repoid)
                 db_repo.languages = repos_in_github[db_repo.name]
                 db_repo.languages_last_updated = get_utc_now()
