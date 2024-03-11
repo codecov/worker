@@ -59,8 +59,6 @@ class SyncRepoLanguagesGQLTask(BaseCodecovTask, name=sync_repo_languages_gql_tas
             )
             return {"successful": False, "error": "torngit_error"}
 
-        print("helloo!", repos_in_github)
-
         updated_repoids = []
         for db_repo in org_db_repositories:
             repo_langs_from_github: Optional[List[str]] = repos_in_github.get(
