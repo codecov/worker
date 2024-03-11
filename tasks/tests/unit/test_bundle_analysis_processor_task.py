@@ -24,7 +24,7 @@ def test_bundle_analysis_processor_task(
 
     mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
 
-    commit = CommitFactory.create()
+    commit = CommitFactory.create(state="pending")
     dbsession.add(commit)
     dbsession.flush()
 
@@ -61,6 +61,7 @@ def test_bundle_analysis_processor_task(
         ],
     }
 
+    assert commit.state == "complete"
     assert upload.state == "processed"
 
 
@@ -79,7 +80,7 @@ def test_bundle_analysis_processor_task_error(
 
     mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
 
-    commit = CommitFactory.create()
+    commit = CommitFactory.create(state="pending")
     dbsession.add(commit)
     dbsession.flush()
 
@@ -121,6 +122,7 @@ def test_bundle_analysis_processor_task_error(
         ],
     }
 
+    assert commit.state == "error"
     assert upload.state == "error"
     retry.assert_called_once_with(countdown=20, max_retries=5)
 

@@ -47,6 +47,7 @@ class ProcessingError:
 @dataclass
 class ProcessingResult:
     upload: Upload
+    commit: Commit
     bundle_report: Optional[BundleAnalysisReport] = None
     session_id: Optional[int] = None
     error: Optional[ProcessingError] = None
@@ -66,6 +67,7 @@ class ProcessingResult:
         db_session = self.upload.get_db_session()
 
         if self.error:
+            self.commit.state = "error"
             self.upload.state = "error"
             self.upload.state_id = UploadState.ERROR.db_id
 
@@ -77,6 +79,7 @@ class ProcessingResult:
             db_session.add(upload_error)
         else:
             assert self.bundle_report is not None
+            self.commit.state = "complete"
             self.upload.state = "processed"
             self.upload.state_id = UploadState.PROCESSED.db_id
             self.upload.order_number = self.session_id
@@ -110,7 +113,7 @@ class BundleAnalysisReportService(BaseReportService):
         return commit_report
 
     @sentry_sdk.trace
-    def process_upload(self, upload: Upload) -> ProcessingResult:
+    def process_upload(self, commit: Commit, upload: Upload) -> ProcessingResult:
         """
         Download and parse the data associated with the given upload and
         merge the results into a bundle report.
@@ -142,6 +145,7 @@ class BundleAnalysisReportService(BaseReportService):
         except FileNotInStorageError:
             return ProcessingResult(
                 upload=upload,
+                commit=commit,
                 error=ProcessingError(
                     code="file_not_in_storage",
                     params={"location": upload.storage_path},
@@ -153,6 +157,7 @@ class BundleAnalysisReportService(BaseReportService):
 
         return ProcessingResult(
             upload=upload,
+            commit=commit,
             bundle_report=bundle_report,
             session_id=session_id,
         )
