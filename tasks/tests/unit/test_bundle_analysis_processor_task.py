@@ -9,8 +9,7 @@ from database.tests.factories import CommitFactory, UploadFactory
 from tasks.bundle_analysis_processor import BundleAnalysisProcessorTask
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_processor_task(
+def test_bundle_analysis_processor_task(
     mocker,
     mock_configuration,
     dbsession,
@@ -40,7 +39,7 @@ async def test_bundle_analysis_processor_task(
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
     ingest.return_value = 123  # session_id
 
-    result = await BundleAnalysisProcessorTask().run_async(
+    result = BundleAnalysisProcessorTask().run_impl(
         dbsession,
         {"results": [{"previous": "result"}]},
         repoid=commit.repoid,
@@ -66,8 +65,7 @@ async def test_bundle_analysis_processor_task(
     assert upload.state == "processed"
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_processor_task_error(
+def test_bundle_analysis_processor_task_error(
     mocker,
     mock_configuration,
     dbsession,
@@ -99,7 +97,7 @@ async def test_bundle_analysis_processor_task_error(
     task = BundleAnalysisProcessorTask()
     retry = mocker.patch.object(task, "retry")
 
-    result = await task.run_async(
+    result = task.run_impl(
         dbsession,
         {"results": [{"previous": "result"}]},
         repoid=commit.repoid,
@@ -129,8 +127,7 @@ async def test_bundle_analysis_processor_task_error(
     retry.assert_called_once_with(countdown=20, max_retries=5)
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_processor_task_general_error(
+def test_bundle_analysis_processor_task_general_error(
     mocker,
     mock_configuration,
     dbsession,
@@ -170,7 +167,7 @@ async def test_bundle_analysis_processor_task_general_error(
     retry = mocker.patch.object(task, "retry")
 
     with pytest.raises(Exception):
-        await task.run_async(
+        task.run_impl(
             dbsession,
             {"results": [{"previous": "result"}]},
             repoid=commit.repoid,
@@ -186,8 +183,7 @@ async def test_bundle_analysis_processor_task_general_error(
     assert not retry.called
 
 
-@pytest.mark.asyncio
-async def test_bundle_analysis_processor_task_locked(
+def test_bundle_analysis_processor_task_locked(
     mocker,
     mock_configuration,
     dbsession,
@@ -222,7 +218,7 @@ async def test_bundle_analysis_processor_task_locked(
     task = BundleAnalysisProcessorTask()
     retry = mocker.patch.object(task, "retry")
 
-    result = await task.run_async(
+    result = task.run_impl(
         dbsession,
         {"results": [{"previous": "result"}]},
         repoid=commit.repoid,

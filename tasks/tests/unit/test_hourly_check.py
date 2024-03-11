@@ -1,16 +1,12 @@
-import pytest
-
 from tasks.hourly_check import HourlyCheckTask
 
 
 class TestHourlyCheck(object):
-    @pytest.mark.asyncio
-    async def test_simple_case(self, dbsession):
+    def test_simple_case(self, dbsession):
         task = HourlyCheckTask()
-        assert await task.run_cron_task(dbsession) == {"checked": True}
+        assert task.run_cron_task(dbsession) == {"checked": True}
 
-    @pytest.mark.asyncio
-    async def test_get_min_seconds_interval_between_executions(self, dbsession):
+    def test_get_min_seconds_interval_between_executions(self, dbsession):
         assert isinstance(
             HourlyCheckTask.get_min_seconds_interval_between_executions(), int
         )

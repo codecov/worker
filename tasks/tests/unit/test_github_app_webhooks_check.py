@@ -142,8 +142,7 @@ def sample_deliveries():
 
 
 class TestGHAppWebhooksTask(object):
-    @pytest.mark.asyncio
-    async def test_get_min_seconds_interval_between_executions(self, dbsession):
+    def test_get_min_seconds_interval_between_executions(self, dbsession):
         assert isinstance(
             GitHubAppWebhooksCheckTask.get_min_seconds_interval_between_executions(),
             int,
@@ -206,18 +205,16 @@ class TestGHAppWebhooksTask(object):
         assert await task.request_redeliveries(mocker.MagicMock(), []) == 0
         fake_redelivery.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_skip_check_if_enterprise(self, dbsession, mocker):
+    def test_skip_check_if_enterprise(self, dbsession, mocker):
         mock_is_enterprise = mocker.patch(
             "tasks.github_app_webhooks_check.is_enterprise", return_value=True
         )
         task = GitHubAppWebhooksCheckTask()
-        ans = await task.run_cron_task(dbsession)
+        ans = task.run_cron_task(dbsession)
         assert ans == dict(checked=False, reason="Enterprise env")
         mock_is_enterprise.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_return_on_exception(self, dbsession, mocker):
+    def test_return_on_exception(self, dbsession, mocker):
         def throw_exception(*args, **kwargs):
             raise TorngitUnauthorizedError(
                 response_data="error error", message="error error"
@@ -239,7 +236,7 @@ class TestGHAppWebhooksTask(object):
             return_value="integration_jwt_token",
         )
         task = GitHubAppWebhooksCheckTask()
-        ans = await task.run_cron_task(dbsession)
+        ans = task.run_cron_task(dbsession)
         assert ans == dict(
             checked=False,
             reason="Failed with exception. Ending task immediately",
@@ -257,9 +254,8 @@ class TestGHAppWebhooksTask(object):
         fake_get_token.assert_called()
         fake_redelivery.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_successful_run(self, dbsession, mocker, sample_deliveries):
-        async def side_effect(*args, **kwargs):
+    def test_successful_run(self, dbsession, mocker, sample_deliveries):
+        def side_effect(*args, **kwargs):
             yield sample_deliveries
 
         fake_list_deliveries = mocker.patch.object(
@@ -277,7 +273,7 @@ class TestGHAppWebhooksTask(object):
             return_value=True,
         )
         task = GitHubAppWebhooksCheckTask()
-        ans = await task.run_cron_task(dbsession)
+        ans = task.run_cron_task(dbsession)
         assert ans == dict(
             checked=True,
             redeliveries_requested=1,
@@ -289,11 +285,10 @@ class TestGHAppWebhooksTask(object):
         fake_get_token.assert_called()
         fake_redelivery.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_redelivery_counters(
+    def test_redelivery_counters(
         self, dbsession, mocker, sample_deliveries, mock_metrics
     ):
-        async def side_effect(*args, **kwargs):
+        def side_effect(*args, **kwargs):
             yield sample_deliveries
 
         fake_list_deliveries = mocker.patch.object(
@@ -311,7 +306,7 @@ class TestGHAppWebhooksTask(object):
             return_value=True,
         )
         task = GitHubAppWebhooksCheckTask()
-        _ = await task.run_cron_task(dbsession)
+        _ = task.run_cron_task(dbsession)
 
         # There are 3 failed deliveries above, but 1 of them is old and excluded from the query
         assert mock_metrics["webhooks.github.deliveries.failed"] == 2

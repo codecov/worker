@@ -6,8 +6,7 @@ from services.archive import ArchiveService
 from tasks.mutation_test_upload import MutationTestUploadTask
 
 
-@pytest.mark.asyncio
-async def test_mutation_upload_task_call(
+def test_mutation_upload_task_call(
     mocker,
     mock_configuration,
     dbsession,
@@ -29,5 +28,5 @@ async def test_mutation_upload_task_call(
     task_data = dict(
         repoid=repository.repoid, upload_path=chunks_url, commitid=commit.commitid
     )
-    res = await MutationTestUploadTask().run_async(dbsession, **task_data)
+    res = MutationTestUploadTask().run_impl(dbsession, **task_data)
     assert res == fake_data.decode()

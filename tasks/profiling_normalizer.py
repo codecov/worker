@@ -24,9 +24,7 @@ log = logging.getLogger(__name__)
 
 
 class ProfilingNormalizerTask(BaseCodecovTask, name=profiling_normalization_task_name):
-    async def run_async(
-        self, db_session: Session, *, profiling_upload_id: int, **kwargs
-    ):
+    def run_impl(self, db_session: Session, *, profiling_upload_id: int, **kwargs):
         profiling_upload = (
             db_session.query(ProfilingUpload).filter_by(id=profiling_upload_id).first()
         )

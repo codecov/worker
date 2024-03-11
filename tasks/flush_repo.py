@@ -171,7 +171,7 @@ class FlushRepoTask(BaseCodecovTask, name="app.tasks.flush_repo.FlushRepo"):
         return deleted_pulls
 
     @sentry_sdk.trace
-    async def run_async(
+    def run_impl(
         self, db_session: Session, *, repoid: int, **kwargs
     ) -> FlushRepoTaskReturnType:
         log.info("Deleting repo contents", extra=dict(repoid=repoid))

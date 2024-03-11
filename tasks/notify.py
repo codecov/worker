@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.celery_config import (
@@ -49,7 +50,7 @@ log = logging.getLogger(__name__)
 class NotifyTask(BaseCodecovTask, name=notify_task_name):
     throws = (SoftTimeLimitExceeded,)
 
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,
@@ -87,7 +88,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 lock_type=LockType.NOTIFICATION, retry_num=self.request.retries
             ):
                 lock_acquired = True
-                return await self.run_async_within_lock(
+                return self.run_impl_within_lock(
                     db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -126,7 +127,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         if checkpoints.data:
             checkpoints.log(checkpoint)
 
-    async def run_async_within_lock(
+    def run_impl_within_lock(
         self,
         db_session: Session,
         *,
@@ -175,12 +176,12 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             self.log_checkpoint(kwargs, UploadFlow.NOTIF_NO_VALID_INTEGRATION)
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         if current_yaml is None:
-            current_yaml = await get_current_yaml(commit, repository_service)
+            current_yaml = async_to_sync(get_current_yaml)(commit, repository_service)
         else:
             current_yaml = UserYaml.from_dict(current_yaml)
         assert commit, "Commit not found in database."
         try:
-            ci_results = await self.fetch_and_update_whether_ci_passed(
+            ci_results = self.fetch_and_update_whether_ci_passed(
                 repository_service, commit, current_yaml
             )
         except TorngitClientError as ex:
@@ -260,9 +261,9 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         if self.should_send_notifications(
             current_yaml, commit, ci_results, head_report
         ):
-            enriched_pull = await fetch_and_update_pull_request_information_from_commit(
-                repository_service, commit, current_yaml
-            )
+            enriched_pull = async_to_sync(
+                fetch_and_update_pull_request_information_from_commit
+            )(repository_service, commit, current_yaml)
             if enriched_pull and enriched_pull.database_pull:
                 pull = enriched_pull.database_pull
                 base_commit = self.fetch_pull_request_base(pull)
@@ -316,7 +317,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     current_yaml=current_yaml.to_dict(),
                 ),
             )
-            notifications = await self.submit_third_party_notifications(
+            notifications = self.submit_third_party_notifications(
                 current_yaml,
                 base_commit,
                 commit,
@@ -368,7 +369,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             return True
         return False
 
-    async def submit_third_party_notifications(
+    def submit_third_party_notifications(
         self,
         current_yaml: UserYaml,
         base_commit,
@@ -414,7 +415,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         notifications_service = NotificationService(
             commit.repository, current_yaml, decoration_type
         )
-        return await notifications_service.notify(comparison)
+        return async_to_sync(notifications_service.notify)(comparison)
 
     def send_notifications_if_commit_differs_from_pulls_head(
         self, commit, enriched_pull, current_yaml
@@ -522,10 +523,12 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             kwargs=dict(org_ownerid=org_ownerid, user_ownerid=user_ownerid),
         )
 
-    async def fetch_and_update_whether_ci_passed(
+    def fetch_and_update_whether_ci_passed(
         self, repository_service, commit, current_yaml
     ):
-        all_statuses = await repository_service.get_commit_statuses(commit.commitid)
+        all_statuses = async_to_sync(repository_service.get_commit_statuses)(
+            commit.commitid
+        )
         ci_state = all_statuses.filter(RepositoryCIFilter(current_yaml))
         if ci_state:
             # cannot use instead of "codecov/*" because

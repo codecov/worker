@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class SendEmailTask(BaseCodecovTask, name=send_email_task_name):
-    async def run_async(
+    def run_impl(
         self, db_session, ownerid, template_name, from_addr, subject, **kwargs
     ):
         with metrics.timer("worker.tasks.send_email"):

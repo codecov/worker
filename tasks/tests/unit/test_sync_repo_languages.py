@@ -60,8 +60,7 @@ def setup_with_torngit_error(mocker, mock_repo_provider):
 
 
 class TestSyncRepoLanguages(object):
-    @pytest.mark.asyncio
-    async def test_languages_no_intersection_and_not_synced_github(
+    def test_languages_no_intersection_and_not_synced_github(
         self, dbsession, setup_with_languages
     ):
         owner = OwnerFactory.create(service="github")
@@ -73,14 +72,13 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=False
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True
+        }
         assert repo.languages == LIST_WITH_INTERSECTION
         assert repo.languages_last_updated == MOCKED_NOW
 
-    @pytest.mark.asyncio
-    async def test_languages_no_intersection_and_not_synced_gitlab(
+    def test_languages_no_intersection_and_not_synced_gitlab(
         self, dbsession, setup_with_languages
     ):
         owner = OwnerFactory.create(service="gitlab")
@@ -92,14 +90,13 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=False
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True
+        }
         assert repo.languages == LIST_WITH_INTERSECTION
         assert repo.languages_last_updated == MOCKED_NOW
 
-    @pytest.mark.asyncio
-    async def test_languages_no_intersection_and_not_synced_bitbucket(
+    def test_languages_no_intersection_and_not_synced_bitbucket(
         self, dbsession, setup_with_languages_bitbucket
     ):
         owner = OwnerFactory.create(service="bitbucket")
@@ -114,14 +111,13 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=False
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True
+        }
         assert repo.languages == ["javascript"]
         assert repo.languages_last_updated == MOCKED_NOW
 
-    @pytest.mark.asyncio
-    async def test_languages_no_intersection_and_synced_below_threshold(
+    def test_languages_no_intersection_and_synced_below_threshold(
         self, dbsession, setup_with_languages
     ):
         mocked_below_threshold = MOCKED_NOW + timedelta(days=-3)
@@ -134,12 +130,10 @@ class TestSyncRepoLanguages(object):
 
         task = SyncRepoLanguagesTask()
         assert (
-            await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=False)
-            == None
+            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == None
         )
 
-    @pytest.mark.asyncio
-    async def test_languages_no_intersection_and_synced_beyond_threshold(
+    def test_languages_no_intersection_and_synced_beyond_threshold(
         self, dbsession, setup_with_languages
     ):
         mocked_beyond_threshold = MOCKED_NOW + timedelta(days=-10)
@@ -151,14 +145,13 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=False
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True
+        }
         assert repo.languages == LIST_WITH_INTERSECTION
         assert repo.languages_last_updated == MOCKED_NOW
 
-    @pytest.mark.asyncio
-    async def test_languages_intersection_and_synced_below_threshold(
+    def test_languages_intersection_and_synced_below_threshold(
         self, dbsession, setup_with_languages
     ):
         mocked_below_threshold = MOCKED_NOW + timedelta(days=-3)
@@ -171,12 +164,10 @@ class TestSyncRepoLanguages(object):
 
         task = SyncRepoLanguagesTask()
         assert (
-            await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=False)
-            == None
+            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == None
         )
 
-    @pytest.mark.asyncio
-    async def test_languages_intersection_and_synced_beyond_threshold(
+    def test_languages_intersection_and_synced_beyond_threshold(
         self, dbsession, setup_with_null_languages
     ):
         mocked_beyond_threshold = MOCKED_NOW + timedelta(days=-10)
@@ -189,12 +180,10 @@ class TestSyncRepoLanguages(object):
 
         task = SyncRepoLanguagesTask()
         assert (
-            await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=False)
-            == None
+            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == None
         )
 
-    @pytest.mark.asyncio
-    async def test_languages_intersection_and_synced_beyond_threshold(
+    def test_languages_intersection_and_synced_beyond_threshold(
         self, dbsession, setup_with_languages
     ):
         mocked_beyond_threshold = MOCKED_NOW + timedelta(days=-10)
@@ -207,12 +196,10 @@ class TestSyncRepoLanguages(object):
 
         task = SyncRepoLanguagesTask()
         assert (
-            await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=False)
-            == None
+            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == None
         )
 
-    @pytest.mark.asyncio
-    async def test_languages_intersection_and_synced_with_manual_trigger(
+    def test_languages_intersection_and_synced_with_manual_trigger(
         self, dbsession, setup_with_languages
     ):
         mocked_beyond_threshold = MOCKED_NOW + timedelta(days=-10)
@@ -224,14 +211,13 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(
-            dbsession, repoid=repo.repoid, manual_trigger=True
-        ) == {"successful": True}
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=True) == {
+            "successful": True
+        }
         assert repo.languages == LIST_WITH_INTERSECTION
         assert repo.languages_last_updated == MOCKED_NOW
 
-    @pytest.mark.asyncio
-    async def test_languages_torngit_error(self, dbsession, setup_with_torngit_error):
+    def test_languages_torngit_error(self, dbsession, setup_with_torngit_error):
         repo = RepositoryFactory.create(
             languages_last_updated=None, languages=["javascript"]
         )
@@ -239,18 +225,17 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        res = await task.run_async(dbsession, repoid=repo.repoid, manual_trigger=True)
+        res = task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=True)
         assert res["successful"] == False
         assert res["error"] == "no_repo_in_provider"
 
-    @pytest.mark.asyncio
-    async def test_languages_no_repository(self, dbsession):
+    def test_languages_no_repository(self, dbsession):
         owner = OwnerFactory.create(service="github")
         dbsession.add(owner)
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert await task.run_async(dbsession, repoid=123, manual_trigger=False) == {
+        assert task.run_impl(dbsession, repoid=123, manual_trigger=False) == {
             "successful": False,
             "error": "no_repo_in_db",
         }

@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Iterable, List, Tuple
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import gh_app_webhook_check_task_name
 from shared.config import get_config
 from shared.metrics import metrics
@@ -99,7 +100,7 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task
         results = await asyncio.gather(*redelivery_coroutines)
         return sum(results)
 
-    async def run_cron_task(self, db_session, *args, **kwargs):
+    def run_cron_task(self, db_session, *args, **kwargs):
         if is_enterprise():
             return dict(checked=False, reason="Enterprise env")
 
@@ -117,8 +118,13 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task
         successful_redeliveries = 0
         all_deliveries = 0
         pages_processed = 0
-        try:
-            async for deliveries in gh_handler.list_webhook_deliveries():
+
+        async def process_deliveries():
+            for deliveries in gh_handler.list_webhook_deliveries():
+                nonlocal all_deliveries
+                nonlocal pages_processed
+                nonlocal redeliveries_requested
+                nonlocal successful_redeliveries
                 all_deliveries += len(deliveries)
                 pages_processed += 1
                 deliveries_to_request = self.apply_filters_to_deliveries(deliveries)
@@ -136,6 +142,9 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task
                         acc_redeliveries_requested=redeliveries_requested,
                     ),
                 )
+
+        try:
+            async_to_sync(process_deliveries)()
         except (
             TorngitUnauthorizedError,
             TorngitServer5xxCodeError,
