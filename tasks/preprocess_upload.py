@@ -47,6 +47,12 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         )
         lock_name = f"preprocess_upload_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
+        if self._is_running(redis_connection, lock_name):
+            log.info(
+                "PreProcess task is already running",
+                extra=dict(commit=commitid, repoid=repoid),
+            )
+            return {"preprocessed_upload": False, "reason": "already_running"}
         try:
             with redis_connection.lock(
                 lock_name,
@@ -70,7 +76,12 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                     lock_name=lock_name,
                 ),
             )
-            return {"preprocessed_upload": False}
+            return {"preprocessed_upload": False, "reason": "unable_to_acquire_lock"}
+
+    def _is_running(self, redis_connection, lock_name):
+        if redis_connection.get(lock_name):
+            return True
+        return False
 
     def process_impl_within_lock(
         self,

@@ -15,6 +15,12 @@ from tasks.preprocess_upload import PreProcessUpload
 
 
 class TestPreProcessUpload(object):
+    def test_is_running(self, mock_redis):
+        mock_redis.get = lambda lock_name: "value" if lock_name == "lock_1" else None
+        task = PreProcessUpload()
+        assert task._is_running(mock_redis, "lock_1") == True
+        assert task._is_running(mock_redis, "lock_2") == False
+
     def test_preprocess_task(
         self,
         mocker,
@@ -45,6 +51,7 @@ class TestPreProcessUpload(object):
                 }
             },
         )
+        mocker.patch.object(PreProcessUpload, "_is_running", return_value=False)
 
         def fake_possibly_shift(report, base, head):
             return report
@@ -176,7 +183,21 @@ class TestPreProcessUpload(object):
         dbsession.flush()
         return commit, report
 
+    def test_run_impl_already_running(self, dbsession, mocker, mock_redis):
+        mocker.patch.object(PreProcessUpload, "_is_running", return_value=True)
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        result = PreProcessUpload().run_impl(
+            dbsession,
+            repoid=commit.repository.repoid,
+            commitid=commit.commitid,
+            report_code=None,
+        )
+        assert result == {"preprocessed_upload": False, "reason": "already_running"}
+
     def test_run_impl_unobtainable_lock(self, dbsession, mocker, mock_redis):
+        mocker.patch.object(PreProcessUpload, "_is_running", return_value=False)
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
@@ -187,7 +208,10 @@ class TestPreProcessUpload(object):
             commitid=commit.commitid,
             report_code=None,
         )
-        assert result == {"preprocessed_upload": False}
+        assert result == {
+            "preprocessed_upload": False,
+            "reason": "unable_to_acquire_lock",
+        }
 
     def test_get_repo_provider_service_no_bot(self, dbsession, mocker):
         mocker.patch("tasks.preprocess_upload.save_commit_error")
