@@ -167,7 +167,7 @@ class TestSyncReposTaskUnit(object):
         assert updated_repo.deleted is False
 
     @pytest.mark.parametrize("use_generator", [False, True])
-    async def test_upsert_repo_exists_but_wrong_owner(
+    def test_upsert_repo_exists_but_wrong_owner(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
         mocker.patch.object(
@@ -229,7 +229,7 @@ class TestSyncReposTaskUnit(object):
         assert updated_repo.updatestamp is not None
 
     @pytest.mark.parametrize("use_generator", [False, True])
-    async def test_upsert_repo_exists_both_wrong_owner_and_service_id(
+    def test_upsert_repo_exists_both_wrong_owner_and_service_id(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
         mocker.patch.object(
@@ -303,7 +303,7 @@ class TestSyncReposTaskUnit(object):
         assert repo_same_name.ownerid == correct_owner.ownerid
 
     @pytest.mark.parametrize("use_generator", [False, True])
-    async def test_upsert_repo_exists_but_wrong_service_id(
+    def test_upsert_repo_exists_but_wrong_service_id(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
         mocker.patch.object(
@@ -370,7 +370,7 @@ class TestSyncReposTaskUnit(object):
         assert bad_service_id_repo is None
 
     @pytest.mark.parametrize("use_generator", [False, True])
-    async def test_upsert_repo_create_new(
+    def test_upsert_repo_create_new(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
         mocker.patch.object(
@@ -476,7 +476,7 @@ class TestSyncReposTaskUnit(object):
         assert len(repos) == 3
 
     @pytest.mark.parametrize("use_generator", [False, True])
-    async def test_sync_repos_lock_error(
+    def test_sync_repos_lock_error(
         self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
         mocker.patch.object(
@@ -728,7 +728,7 @@ class TestSyncReposTaskUnit(object):
             assert repo.using_integration is False
 
     @pytest.mark.parametrize("use_generator", [False, True])
-    async def test_sync_repos_no_github_access(
+    def test_sync_repos_no_github_access(
         self,
         mocker,
         mock_configuration,
@@ -764,7 +764,7 @@ class TestSyncReposTaskUnit(object):
         assert user.permission == []  # repos were removed
 
     @pytest.mark.parametrize("use_generator", [False, True])
-    async def test_sync_repos_timeout(
+    def test_sync_repos_timeout(
         self,
         mocker,
         mock_configuration,
