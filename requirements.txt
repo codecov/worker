@@ -333,6 +333,8 @@ redis==4.5.4
     #   -r requirements.in
     #   python-redis-lock
     #   shared
+regex==2023.12.25
+    # via -r requirements.in
 requests==2.31.0
     # via
     #   -r requirements.in
