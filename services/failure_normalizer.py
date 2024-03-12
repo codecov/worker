@@ -1,28 +1,35 @@
 import regex
 
-predefined_list_of_regexes_to_match = [
-    r"[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}",
-]
+predefined_dict_of_regexes_to_match = {
+    "UUID": r"[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}",
+    "DATE": r"(?:19|20)[0-9]{2}-(?:(?:0?[0-9])|(?:1[012]))-(?:(?:0?[0-9])\b|1[0-9]|2[0-9]|3[01])",
+    "TIME": r"(?:0[0-9]|1[0-9]|2[0-3]):(?:[0-5][0-9]):(?:[0-5][0-9])Z?",
+    "TIME2": r"T(?:0[0-9]|1[0-9]|2[0-3])(?:[0-5][0-9])(?:[0-5][0-9])Z?",
+    "DATETIME": r"(?:19|20)[0-9]{2}-(?:(?:0?[0-9])|(?:1[012]))-(?:(?:0?[0-9])|1[0-9]|2[0-9]|3[01])T(?:0[0-9]|1[0-9]|2[0-3]):(?:[0-5][0-9]):(?:[0-5][0-9])(?:Z|(?:-(?:0[0-9]:[03]0)))?",
+    "DATETIME2": r"(?:19|20)[0-9]{2}(?:(?:0?[0-9])|(?:1[012]))(?:(?:0?[0-9])|1[0-9]|2[0-9]|3[01])T(?:0[0-9]|1[0-9]|2[0-3])(?:[0-5][0-9])(?:[0-5][0-9])(?:Z|(?:-(?:0[0-9]:[03]0)))?",
+}
 
 
 class FailureNormalizer:
     """
     Class for normalizing a failure message
 
-    Takes a list of strings to strings describing regexes that we want to match for
-    and a boolean that toggles whether we should ignore the predefined
-    list of patterns in the constructor
+    Takes a dict of strings to strings where the key is the replacement string and the value is
+    the regex we want to match and replace occurences of and a boolean that toggles whether we
+    should ignore the predefined list of patterns in the constructor
 
     The normalize_failure_message method on the class takes a string as a parameter
     it will remove all occurences of a match of the regexes specified in the list
 
+    If the users
+
     Usage:
 
-    list_of_regex_strings = [
-        r"(\d{4}-\d{2}-\d{2})",
+    dict_of_regex_strings = [
+        "DATE": r"(\d{4}-\d{2}-\d{2})",
     ]
 
-    f = FailureNormalizer(list_of_regex_strings)
+    f = FailureNormalizer(dict_of_regex_strings)
     s = '''
         abcdefAB-1234-1234-1234-abcdef123456 test_1 abcdefAB-1234-1234-1234-abcdef123456 test_2 2024-03-09
         test_3 abcdefAB-5678-5678-5678-abcdef123456 2024-03-10 test_4
@@ -34,27 +41,30 @@ class FailureNormalizer:
     will give:
 
     '''
-     test_1 test_2
-    test_3 test_4
-
+    UUID test_1 UUID test_2 DATE
+    test_3 UUID DATE test_4
+    DATE
     '''
     """
 
-    def __init__(self, list_of_regex_strings, ignore_predefined=False):
+    def __init__(self, user_dict_of_regex_strings, ignore_predefined=False):
         flags = regex.MULTILINE
 
-        self.list_of_regex = []
+        self.dict_of_regex = dict()
 
+        dict_of_regex_strings = user_dict_of_regex_strings
         if not ignore_predefined:
-            list_of_regex_strings += predefined_list_of_regexes_to_match
+            dict_of_regex_strings = (
+                predefined_dict_of_regexes_to_match | dict_of_regex_strings
+            )
 
-        for regex_string in list_of_regex_strings:
+        for key, regex_string in dict_of_regex_strings.items():
             compiled_regex = regex.compile(regex_string, flags=flags)
-            self.list_of_regex.append(compiled_regex)
+            self.dict_of_regex[key] = compiled_regex
 
     def normalize_failure_message(self, failure_message):
-        for compiled_regex in self.list_of_regex:
+        for key, compiled_regex in self.dict_of_regex.items():
             for match_obj in compiled_regex.finditer(failure_message):
                 actual_match = match_obj.group()
-                failure_message = failure_message.replace(actual_match, "")
+                failure_message = failure_message.replace(actual_match, key)
         return failure_message
