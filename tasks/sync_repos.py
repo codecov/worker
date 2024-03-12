@@ -246,7 +246,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
             ):
-                for page in git.list_repos_using_installation_generator(username):
+                async for page in git.list_repos_using_installation_generator(username):
                     received_repos = True
                     process_repos(page)
         else:
