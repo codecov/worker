@@ -1,6 +1,7 @@
 from app import celery_app
 from tasks.ai_pr_review import ai_pr_view_task
 from tasks.backfill_commit_data_to_storage import backfill_commit_data_to_storage_task
+from tasks.backfill_gh_app_installations import backfill_gh_app_installations
 from tasks.brolly_stats_rollup import brolly_stats_rollup_task
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
