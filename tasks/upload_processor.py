@@ -20,6 +20,7 @@ from database.enums import CommitErrorTypes
 from database.models import Commit, Upload
 from helpers.metrics import metrics
 from helpers.save_commit_error import save_commit_error
+from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
 from services.report import ProcessingResult, Report, ReportService
@@ -80,6 +81,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commit_yaml,
         arguments_list,
         report_code=None,
+        chunk_idx,
         **kwargs,
     ):
         repoid = int(repoid)
@@ -114,6 +116,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     commit_yaml=commit_yaml,
                     arguments_list=actual_arguments_list,
                     report_code=report_code,
+                    chunk_idx=chunk_idx,
                     parent_task=self.request.parent_id,
                     **kwargs,
                 )
@@ -142,6 +145,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commit_yaml,
         arguments_list,
         report_code,
+        chunk_idx,
         **kwargs,
     ):
         commit_yaml = UserYaml(commit_yaml)
@@ -167,15 +171,22 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         try_later = []
         report_service = ReportService(commit_yaml)
 
-        with metrics.timer(f"{self.metrics_prefix}.build_original_report"):
-            report = report_service.get_existing_report_for_commit(
-                commit, report_code=report_code
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
+            log.info(
+                "Creating partial report for commit", extra=dict(commit=commit.commitid)
             )
-            if report is None:
-                log.info(
-                    "No existing report for commit", extra=dict(commit=commit.commitid)
+            report = Report()
+        else:
+            with metrics.timer(f"{self.metrics_prefix}.build_original_report"):
+                report = report_service.get_existing_report_for_commit(
+                    commit, report_code=report_code
                 )
-                report = Report()
+                if report is None:
+                    log.info(
+                        "No existing report for commit",
+                        extra=dict(commit=commit.commitid),
+                    )
+                    report = Report()
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")
@@ -241,16 +252,41 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     parent_task=self.request.parent_id,
                 ),
             )
-            with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
-                results_dict = self.save_report_results(
-                    db_session,
-                    report_service,
-                    repository,
-                    commit,
-                    report,
-                    pr,
-                    report_code,
+
+            parallel_incremental_result = None
+            results_dict = {}
+            if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
+                archive_service = report_service.get_archive_service(commit.repository)
+
+                # save incremental results to archive storage
+                # upload_finisher will combine
+                chunks = report.to_archive().encode()
+                _, files_and_sessions = report.to_database()
+
+                chunks_url = archive_service.write_chunks(
+                    commitid, chunks, report_code=f"incremental/chunk{chunk_idx}.txt"
                 )
+                files_and_sessions_url = archive_service.write_chunks(
+                    commitid,
+                    files_and_sessions,
+                    report_code=f"incremental/files_and_sessions{chunk_idx}.txt",
+                )
+                parallel_incremental_result = {
+                    "idx": 1,
+                    "chunks_path": chunks_url,
+                    "files_and_sessions_path": files_and_sessions_url,
+                }
+            else:
+                with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
+                    results_dict = self.save_report_results(
+                        db_session,
+                        report_service,
+                        repository,
+                        commit,
+                        report,
+                        pr,
+                        report_code,
+                    )
             for processed_individual_report in processings_so_far:
                 deleted_archive = self._possibly_delete_archive(
                     processed_individual_report, report_service, commit
@@ -272,7 +308,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     parent_task=self.request.parent_id,
                 ),
             )
-            return {"processings_so_far": processings_so_far}
+            return {
+                "processings_so_far": processings_so_far,
+                "parallel_incremental_result": parallel_incremental_result,
+            }
         except CeleryError:
             raise
         except Exception:
