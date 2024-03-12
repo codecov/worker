@@ -45,8 +45,10 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             "Received preprocess upload task",
             extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
         )
-        lock_name = f"preprocess_upload_lock_{repoid}_{commitid}"
+        lock_name = f"preprocess_upload_lock_{repoid}_{commitid}_{report_code}"
         redis_connection = get_redis_connection()
+        # This task only needs to run once per commit (per report_code)
+        # To generate the report. So if one is already running we don't need another
         if self._is_running(redis_connection, lock_name):
             log.info(
                 "PreProcess task is already running",
@@ -57,7 +59,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             with redis_connection.lock(
                 lock_name,
                 timeout=60 * 5,
-                blocking_timeout=5,
+                blocking_timeout=None,
             ):
                 return self.process_impl_within_lock(
                     db_session=db_session,
@@ -120,6 +122,8 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         commit_report = async_to_sync(report_service.initialize_and_save_report)(
             commit, report_code
         )
+        # Persist changes from within the lock
+        db_session.flush()
         return {
             "preprocessed_upload": True,
             "reportid": str(commit_report.external_id),
