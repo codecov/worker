@@ -18,20 +18,6 @@ from tasks.sync_repos import LIST_REPOS_GENERATOR_BY_OWNER_ID, SyncReposTask
 here = Path(__file__)
 
 
-class AsyncIterator:
-    def __init__(self, seq):
-        self.iter = iter(seq)
-
-    def __aiter__(self):
-        return self
-
-    def __anext__(self):
-        try:
-            return next(self.iter)
-        except StopIteration:
-            raise StopAsyncIteration
-
-
 def reuse_cassette(filepath):
     return vcr.use_cassette(
         filepath,
@@ -609,9 +595,9 @@ class TestSyncReposTaskUnit(object):
 
         # Mock GitHub response for repos that are visible to our app
         if use_generator:
-            mock_owner_provider.list_repos_using_installation_generator.return_value = (
-                AsyncIterator([mock_repos])
-            )
+            mock_owner_provider.list_repos_using_installation_generator.return_value.__aiter__.return_value = [
+                mock_repos
+            ]
         else:
             mock_owner_provider.list_repos_using_installation.return_value = mock_repos
 
@@ -933,9 +919,9 @@ class TestSyncReposTaskUnit(object):
 
         # Mock GitHub response for repos that are visible to our app
         if use_generator:
-            mock_owner_provider.list_repos_using_installation_generator.return_value = (
-                AsyncIterator([mock_repos])
-            )
+            mock_owner_provider.list_repos_using_installation_generator.return_value.__aiter__.return_value = [
+                mock_repos
+            ]
         else:
             mock_owner_provider.list_repos_using_installation.return_value = mock_repos
 
