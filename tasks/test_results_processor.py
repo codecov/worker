@@ -240,7 +240,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             }
         flags_hash = generate_flags_hash(upload_obj.flag_names)
         upload_id = upload_obj.id
-        if BULK_INSERT_TEST_INSTANCES.check_value(repoid, default=False):
+        if BULK_INSERT_TEST_INSTANCES.check_value(repo_id=repoid, default=False):
             self._bulk_write_tests_to_db(
                 db_session, repoid, upload_id, parsed_testruns, flags_hash
             )
