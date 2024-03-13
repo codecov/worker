@@ -1,5 +1,5 @@
 import pytest
-from shared.bundle_analysis.comparison import BundleChange, BundleReport
+from shared.bundle_analysis.comparison import BundleChange
 from shared.yaml import UserYaml
 
 from database.enums import ReportType
@@ -8,28 +8,7 @@ from database.tests.factories import CommitFactory, PullFactory
 from services.archive import ArchiveService
 from services.bundle_analysis import Notifier, get_bucket_name
 from services.repository import EnrichedPull
-
-expected_message_increase = """## Bundle Report
-
-Changes will increase total bundle size by 14.57kB :arrow_up:
-
-| Bundle name | Size | Change |
-| ----------- | ---- | ------ |
-| added-bundle | 123.46kB | 12.35kB :arrow_up: |
-| changed-bundle | 123.46kB | 3.46kB :arrow_up: |
-| removed-bundle | (removed) | 1.23kB :arrow_down: |"""
-
-expected_message_decrease = """## Bundle Report
-
-Changes will decrease total bundle size by 3.46kB :arrow_down:
-
-| Bundle name | Size | Change |
-| ----------- | ---- | ------ |
-| test-bundle | 123.46kB | 3.46kB :arrow_down: |"""
-
-expected_message_unchanged = """## Bundle Report
-
-Bundle size has no change :white_check_mark:"""
+from services.urls import get_bundle_analysis_pull_url
 
 
 class MockBundleReport:
@@ -122,6 +101,16 @@ async def test_bundle_analysis_notify(
         database_pull=pull,
         provider_pull={},
     )
+    url = get_bundle_analysis_pull_url(pull=pull)
+    expected_message_increase = f"""## [Bundle]({url}) Report
+
+Changes will increase total bundle size by 14.57kB :arrow_up:
+
+| Bundle name | Size | Change |
+| ----------- | ---- | ------ |
+| added-bundle | 123.46kB | 12.35kB :arrow_up: |
+| changed-bundle | 123.46kB | 3.46kB :arrow_up: |
+| removed-bundle | (removed) | 1.23kB :arrow_down: |"""
 
     mock_repo_provider.post_comment.return_value = {"id": "test-comment-id"}
 
@@ -209,6 +198,15 @@ async def test_bundle_analysis_notify_size_decrease(
         provider_pull={},
     )
 
+    url = get_bundle_analysis_pull_url(pull=pull)
+    expected_message_decrease = f"""## [Bundle]({url}) Report
+
+Changes will decrease total bundle size by 3.46kB :arrow_down:
+
+| Bundle name | Size | Change |
+| ----------- | ---- | ------ |
+| test-bundle | 123.46kB | 3.46kB :arrow_down: |"""
+
     success = await notifier.notify()
     assert success == True
     mock_repo_provider.post_comment.assert_called_once_with(
@@ -286,6 +284,10 @@ async def test_bundle_analysis_notify_size_unchanged(
         database_pull=pull,
         provider_pull={},
     )
+    url = get_bundle_analysis_pull_url(pull=pull)
+    expected_message_unchanged = f"""## [Bundle]({url}) Report
+
+Bundle size has no change :white_check_mark:"""
 
     success = await notifier.notify()
     assert success == True

@@ -89,7 +89,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
             repo_service = comparison.repository_service.service
             yield ("")
             yield (
-                "[:umbrella: View full report in Codecov by Sentry]({0}?src=pr&el=continue).   ".format(
+                "[:umbrella: View full report in Codecov by Sentry]({0}?dropdown=coverage&src=pr&el=continue).   ".format(
                     links["pull"]
                 )
             )
@@ -130,7 +130,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
 
         if base_report and head_report:
             yield (
-                "> Project coverage is {head_cov}%. Comparing base [(`{commitid_base}`)]({links[base]}?el=desc) to head [(`{commitid_head}`)]({links[pull]}?src=pr&el=desc).".format(
+                "> Project coverage is {head_cov}%. Comparing base [(`{commitid_base}`)]({links[base]}?dropdown=coverage&el=desc) to head [(`{commitid_head}`)]({links[pull]}?dropdown=coverage&src=pr&el=desc).".format(
                     commitid_head=comparison.head.commit.commitid[:7],
                     commitid_base=comparison.project_coverage_base.commit.commitid[:7],
                     links=links,
@@ -373,7 +373,7 @@ class FooterSectionWriter(BaseSectionWriter):
         yield ("------")
         yield ("")
         yield (
-            "[Continue to review full report in Codecov by Sentry]({0}?src=pr&el=continue).".format(
+            "[Continue to review full report in Codecov by Sentry]({0}?dropdown=coverage&src=pr&el=continue).".format(
                 links["pull"]
             )
         )
@@ -384,7 +384,7 @@ class FooterSectionWriter(BaseSectionWriter):
             "> `\u0394 = absolute <relative> (impact)`, `\xF8 = not affected`, `? = missing data`"
         )
         yield (
-            "> Powered by [Codecov]({pull}?src=pr&el=footer). Last update [{base}...{head}]({pull}?src=pr&el=lastupdated). Read the [comment docs]({comment}).".format(
+            "> Powered by [Codecov]({pull}?dropdown=coverage&src=pr&el=footer). Last update [{base}...{head}]({pull}?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs]({comment}).".format(
                 pull=links["pull"],
                 base=pull_dict["base"]["commitid"][:7],
                 head=pull_dict["head"]["commitid"][:7],
@@ -495,7 +495,7 @@ class NewFilesSectionWriter(BaseSectionWriter):
             changed_files_with_missing_lines = [f for f in changed_files if f[3] > 0]
             if changed_files_with_missing_lines:
                 yield (
-                    "| [Files]({0}?src=pr&el=tree) {1}".format(
+                    "| [Files]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
                         links["pull"], table_header
                     )
                 )
@@ -570,7 +570,9 @@ class FileSectionWriter(BaseSectionWriter):
                     )
 
             yield (
-                "| [Files]({0}?src=pr&el=tree) {1}".format(links["pull"], table_header)
+                "| [Files]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
+                    links["pull"], table_header
+                )
             )
             yield (table_layout)
             for line in starmap(

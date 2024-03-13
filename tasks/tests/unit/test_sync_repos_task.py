@@ -23,20 +23,6 @@ from tasks.sync_repos import LIST_REPOS_GENERATOR_BY_OWNER_ID, SyncReposTask
 here = Path(__file__)
 
 
-class AsyncIterator:
-    def __init__(self, seq):
-        self.iter = iter(seq)
-
-    def __aiter__(self):
-        return self
-
-    def __anext__(self):
-        try:
-            return next(self.iter)
-        except StopIteration:
-            raise StopAsyncIteration
-
-
 def reuse_cassette(filepath):
     return vcr.use_cassette(
         filepath,
@@ -115,7 +101,7 @@ class TestSyncReposTaskUnit(object):
         assert updated_owner.username == new_username
         assert updated_owner.createstamp == now
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     def test_upsert_repo_update_existing(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
@@ -171,7 +157,7 @@ class TestSyncReposTaskUnit(object):
         assert updated_repo.updatestamp is not None
         assert updated_repo.deleted is False
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     def test_upsert_repo_exists_but_wrong_owner(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
@@ -233,7 +219,7 @@ class TestSyncReposTaskUnit(object):
         assert updated_repo.deleted is False
         assert updated_repo.updatestamp is not None
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     def test_upsert_repo_exists_both_wrong_owner_and_service_id(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
@@ -307,7 +293,7 @@ class TestSyncReposTaskUnit(object):
         assert repo_same_name.service_id == wrong_service_id
         assert repo_same_name.ownerid == correct_owner.ownerid
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     def test_upsert_repo_exists_but_wrong_service_id(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
@@ -374,7 +360,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert bad_service_id_repo is None
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     def test_upsert_repo_create_new(
         self, mocker, mock_configuration, dbsession, use_generator
     ):
@@ -480,7 +466,7 @@ class TestSyncReposTaskUnit(object):
         assert user.permission == []  # there were no private repos to add
         assert len(repos) == 3
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     def test_sync_repos_lock_error(
         self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
@@ -502,7 +488,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert user.permission == []  # there were no private repos to add
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_only_public_repos_not_in_db.yaml"
     )
@@ -551,7 +537,7 @@ class TestSyncReposTaskUnit(object):
         assert repos[0].service_id == public_repo_service_id
         assert repos[0].ownerid == user.ownerid
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     @respx.mock
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration.yaml"
@@ -614,9 +600,9 @@ class TestSyncReposTaskUnit(object):
 
         # Mock GitHub response for repos that are visible to our app
         if use_generator:
-            mock_owner_provider.list_repos_using_installation_generator.return_value = (
-                AsyncIterator([mock_repos])
-            )
+            mock_owner_provider.list_repos_using_installation_generator.return_value.__aiter__.return_value = [
+                mock_repos
+            ]
         else:
             mock_owner_provider.list_repos_using_installation.return_value = mock_repos
 
@@ -661,7 +647,7 @@ class TestSyncReposTaskUnit(object):
         for repo in repos:
             assert repo.using_integration is True
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     @respx.mock
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration_no_repos.yaml"
@@ -732,7 +718,7 @@ class TestSyncReposTaskUnit(object):
             # repos are no longer using integration
             assert repo.using_integration is False
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     def test_sync_repos_no_github_access(
         self,
         mocker,
@@ -768,7 +754,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert user.permission == []  # repos were removed
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     def test_sync_repos_timeout(
         self,
         mocker,
@@ -807,7 +793,7 @@ class TestSyncReposTaskUnit(object):
             [r.repoid for r in repos]
         )  # repos were removed
 
-    @pytest.mark.parametrize("use_generator", [False])
+    @pytest.mark.parametrize("use_generator", [False, True])
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_only_public_repos_not_in_db.yaml"
     )
@@ -926,9 +912,9 @@ class TestSyncReposTaskUnit(object):
 
         # Mock GitHub response for repos that are visible to our app
         if use_generator:
-            mock_owner_provider.list_repos_using_installation_generator.return_value = (
-                AsyncIterator([mock_repos])
-            )
+            mock_owner_provider.list_repos_using_installation_generator.return_value.__aiter__.return_value = [
+                mock_repos
+            ]
         else:
             mock_owner_provider.list_repos_using_installation.return_value = mock_repos
 

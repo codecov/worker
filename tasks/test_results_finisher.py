@@ -10,7 +10,7 @@ from test_results_parser import Outcome
 from app import celery_app
 from database.enums import ReportType
 from database.models import Commit, TestResultReportTotals
-from helpers.string import EscapeEnum, Replacement, StringEscaper
+from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
     TestResultsNotifier,
@@ -159,7 +159,16 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 suffix = ""
                 if flag_names:
                     suffix = f"{''.join(flag_names) or ''}"
-                failure_message = escaper.replace(test_instance.failure_message)
+
+                failure_message = test_instance.failure_message
+
+                if commit_yaml.read_yaml_field(
+                    "test_analytics", "shorten_paths", _else=True
+                ):
+                    failure_message = shorten_file_paths(failure_message)
+
+                failure_message = escaper.replace(failure_message)
+
                 failures[failure_message][
                     f"{test_instance.test.testsuite}//////////{test_instance.test.name}"
                 ].append(suffix)
