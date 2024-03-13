@@ -355,7 +355,7 @@ screen==1.0.1
     # via excel-base
 sentry-sdk==1.40.0
     # via -r requirements.in
-shared @ https://github.com/codecov/shared/archive/5c6de0f898bfa32ef64a23b3519e44fa99028845.tar.gz
+shared @ https://github.com/codecov/shared/archive/a0d0333196f1c9577243ff15c85515754849127c.tar.gz
     # via -r requirements.in
 six==1.15.0
     # via
