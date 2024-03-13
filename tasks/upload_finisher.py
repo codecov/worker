@@ -20,6 +20,7 @@ from database.models import Commit, Pull
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
+from helpers.metrics import metrics
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
@@ -91,14 +92,12 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             report = report_service.get_existing_report_for_commit(
                 commit, report_code=report_code
             )
-            repository = commit.repository
-            archive_service = report_service.get_archive_service(commit.repository)
+
+            archive_service = report_service.get_archive_service(repository)
             # `UploadProcessorTask` processed each upload in parallel and uploaded
             # intermediate results to archive_service. Fetch them all
-            def dl(partial_report):
-                print(partial_report)
+            def download_and_build_incremental_report(partial_report):
                 partial_report = partial_report["parallel_incremental_result"]
-                print("started")
                 chunks = archive_service.read_file(
                     partial_report["chunks_path"]
                 ).decode(errors="replace")
@@ -117,6 +116,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 session_id, session = l.add_session(r.sessions[0])
                 session.id = session_id
                 # current behavior uploads an UploadProcessingResult with this data
+
                 session_manipulation_result = _adjust_sessions(
                     l, r, session, commit_yaml
                 )
@@ -126,24 +126,62 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             if report is None:
                 report = Report()
 
-            # with ThreadPoolExecutor() as pool:
-            #     unmerged_reports = pool.map(dl, processing_results)
-
-            unmerged_reports = []
-            for p in processing_results:
-                unmerged_reports.append(dl(p))
-
-            report = functools.reduce(merge_report, unmerged_reports, report)
-            results_dict = self.save_report_results(
-                db_session,
-                report_service,
-                repository,
-                commit,
-                report,
-                None,
-                report_code,
+            log.info(
+                "Downloading %s incremental reports that were processed in parallel",
+                len(processing_results),
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    # processing_results=processing_results,
+                    parent_task=self.request.parent_id,
+                ),
             )
-            print("FINAL DICT", results_dict)
+
+            with ThreadPoolExecutor() as pool:
+                unmerged_reports = pool.map(
+                    download_and_build_incremental_report, processing_results
+                )
+
+            log.info(
+                "Merging %s incremental reports together",
+                len(processing_results),
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    # processing_results=processing_results,
+                    parent_task=self.request.parent_id,
+                ),
+            )
+            report = functools.reduce(merge_report, unmerged_reports, report)
+
+            log.info(
+                "Saving combined report",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    # processing_results=processing_results,
+                    parent_task=self.request.parent_id,
+                ),
+            )
+
+            with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
+                results_dict = self.save_report_results(
+                    db_session,
+                    report_service,
+                    repository,
+                    commit,
+                    report,
+                    None,  # TODO
+                    report_code,
+                )
+
+                actual_processing_results = []
+
+                for task in processing_results:
+                    actual_processing_results.append(task.get("processsings_so_far"))
+
+                processing_results = {"processsings_so_far": actual_processing_results}
+
         redis_connection = get_redis_connection()
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
@@ -307,10 +345,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             flags = flags_str.split(",") if flags_str else []
             return results["successful"] and any(map(should_clean_for_flag, flags))
 
-        print("RESULTS", processing_results)
-        actual_processing_results = processing_results[0].get(
-            "processings_so_far", []
-        )  # TODO
+        actual_processing_results = processing_results.get("processings_so_far", [])
         return any(map(should_clean_for_processing_result, actual_processing_results))
 
     def should_call_notifications(
@@ -344,9 +379,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
             return False
-        print(processing_results)
         if not any(
-            x["successful"] for x in processing_results[0].get("processings_so_far", [])
+            x["successful"] for x in processing_results.get("processings_so_far", [])
         ):
             log.info(
                 "Not scheduling notify because there are no successful processing results",
