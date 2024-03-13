@@ -164,7 +164,11 @@ class BundleAnalysisReportService(BaseReportService):
             )
         except Exception as e:
             # Metrics to count number of parsing errors of bundle files by plugins
-            print("DOING SENTRY METRIC", "parser_error", getattr(e, "bundle_analysis_plugin_name", "unknown"))
+            print(
+                "DOING SENTRY METRIC",
+                "parser_error",
+                getattr(e, "bundle_analysis_plugin_name", "unknown"),
+            )
             sentry_metrics.incr(
                 "bundle_analysis_upload",
                 tags={
