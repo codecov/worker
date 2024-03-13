@@ -113,7 +113,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
             for task in processing_results:
                 actual_processing_results.append(task.get("processsings_so_far"))
-                pr = task.get("processings_so_far", {}).get("pr") or pr
+                pr = (
+                    task.get("processings_so_far", {})[0].get("pr") or pr
+                )  # okay since argument_list size is set to 1 for parallel upload processing
 
             processing_results = {"processsings_so_far": actual_processing_results}
 
@@ -387,7 +389,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         processing_results,
     ):
         archive_service = report_service.get_archive_service(repository)
-        repoid = repository.id
+        repoid = repository.repoid
         commitid = commit.id
 
         report = report_service.get_existing_report_for_commit(
