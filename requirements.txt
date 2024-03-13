@@ -94,7 +94,7 @@ distlib==0.3.7
     # via virtualenv
 distro==1.8.0
     # via openai
-django==4.2.7
+django==5.0.3
     # via shared
 django-admin==2.0.2
     # via -r requirements.in
@@ -355,7 +355,7 @@ screen==1.0.1
     # via excel-base
 sentry-sdk==1.40.0
     # via -r requirements.in
-shared @ https://github.com/codecov/shared/archive/a0d0333196f1c9577243ff15c85515754849127c.tar.gz
+shared @ https://github.com/codecov/shared/archive/e741731525865ccb84110a7f0069aac4bffa830f.tar.gz
     # via -r requirements.in
 six==1.15.0
     # via
