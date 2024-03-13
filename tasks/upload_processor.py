@@ -89,51 +89,78 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             "Received upload processor task",
             extra=dict(repoid=repoid, commit=commitid),
         )
-        lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
-        redis_connection = get_redis_connection()
-        try:
+
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repoid):
             log.info(
-                "Acquiring upload processing lock",
+                "Using parallel upload processing, skip acquiring upload processing lock",
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
                     report_code=report_code,
-                    lock_name=lock_name,
                     parent_task=self.request.parent_id,
                 ),
             )
-            with redis_connection.lock(
-                lock_name,
-                timeout=max(60 * 5, self.hard_time_limit_task),
-                blocking_timeout=5,
-            ):
-                actual_arguments_list = deepcopy(arguments_list)
-                return self.process_impl_within_lock(
-                    db_session=db_session,
-                    previous_results=previous_results,
-                    repoid=repoid,
-                    commitid=commitid,
-                    commit_yaml=commit_yaml,
-                    arguments_list=actual_arguments_list,
-                    report_code=report_code,
-                    chunk_idx=chunk_idx,
-                    parent_task=self.request.parent_id,
-                    **kwargs,
+
+            # This function is named `within_lock` but we gate any concurrency-
+            # unsafe operations with `PARALLEL_UPLOAD_PROCESSING_BY_REPO`.
+            return self.process_impl_within_lock(
+                db_session=db_session,
+                previous_results=previous_results,
+                repoid=repoid,
+                commitid=commitid,
+                commit_yaml=commit_yaml,
+                arguments_list=arguments_list,
+                chunk_idx=chunk_idx,
+                report_code=report_code,
+                parent_task=self.request.parent_id,
+                **kwargs,
+            )
+        else:
+            lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
+            redis_connection = get_redis_connection()
+            try:
+                log.info(
+                    "Acquiring upload processing lock",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        report_code=report_code,
+                        lock_name=lock_name,
+                        parent_task=self.request.parent_id,
+                    ),
                 )
-        except LockError:
-            max_retry = 200 * 3**self.request.retries
-            retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
-            log.warning(
-                "Unable to acquire lock for key %s. Retrying",
-                lock_name,
-                extra=dict(
-                    commit=commitid,
-                    repoid=repoid,
-                    countdown=retry_in,
-                    number_retries=self.request.retries,
-                ),
-            )
-            self.retry(max_retries=5, countdown=retry_in)
+                with redis_connection.lock(
+                    lock_name,
+                    timeout=max(60 * 5, self.hard_time_limit_task),
+                    blocking_timeout=5,
+                ):
+                    actual_arguments_list = deepcopy(arguments_list)
+                    return self.process_impl_within_lock(
+                        db_session=db_session,
+                        previous_results=previous_results,
+                        repoid=repoid,
+                        commitid=commitid,
+                        commit_yaml=commit_yaml,
+                        arguments_list=actual_arguments_list,
+                        report_code=report_code,
+                        chunk_idx=chunk_idx,
+                        parent_task=self.request.parent_id,
+                        **kwargs,
+                    )
+            except LockError:
+                max_retry = 200 * 3**self.request.retries
+                retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
+                log.warning(
+                    "Unable to acquire lock for key %s. Retrying",
+                    lock_name,
+                    extra=dict(
+                        commit=commitid,
+                        repoid=repoid,
+                        countdown=retry_in,
+                        number_retries=self.request.retries,
+                    ),
+                )
+                self.retry(max_retries=5, countdown=retry_in)
 
     def process_impl_within_lock(
         self,
@@ -148,19 +175,21 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         chunk_idx,
         **kwargs,
     ):
+        if not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repoid):
+            log.info(
+                "Obtained upload processing lock, starting",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    parent_task=self.request.parent_id,
+                    report_code=report_code,
+                ),
+            )
+
         commit_yaml = UserYaml(commit_yaml)
-        log.info(
-            "Obtained upload processing lock, starting",
-            extra=dict(
-                repoid=repoid,
-                commit=commitid,
-                parent_task=self.request.parent_id,
-                report_code=report_code,
-            ),
-        )
         processings_so_far = previous_results.get("processings_so_far", [])
-        commit = None
         n_processed = 0
+        commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
         )
@@ -172,9 +201,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_service = ReportService(commit_yaml)
 
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
-            log.info(
-                "Creating partial report for commit", extra=dict(commit=commit.commitid)
-            )
+            log.info("Creating partial report for commit", extra=dict(commit=commitid))
             report = Report()
         else:
             with metrics.timer(f"{self.metrics_prefix}.build_original_report"):
@@ -256,26 +283,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             parallel_incremental_result = None
             results_dict = {}
             if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
-                archive_service = report_service.get_archive_service(commit.repository)
-
-                # save incremental results to archive storage
-                # upload_finisher will combine
-                chunks = report.to_archive().encode()
-                _, files_and_sessions = report.to_database()
-
-                chunks_url = archive_service.write_chunks(
-                    commitid, chunks, report_code=f"incremental/chunk{chunk_idx}.txt"
-                )
-                files_and_sessions_url = archive_service.write_chunks(
-                    commitid,
-                    files_and_sessions,
-                    report_code=f"incremental/files_and_sessions{chunk_idx}.txt",
-                )
-                parallel_incremental_result = {
-                    "idx": 1,
-                    "chunks_path": chunks_url,
-                    "files_and_sessions_path": files_and_sessions_url,
-                }
+                with metrics.timer(
+                    f"{self.metrics_prefix}.save_incremental_report_results"
+                ):
+                    parallel_incremental_result = self.save_incremental_report_results(
+                        report_service,
+                        commit,
+                        report,
+                        chunk_idx,
+                    )
             else:
                 with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
                     results_dict = self.save_report_results(
@@ -504,6 +520,36 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         res = report_service.save_report(commit, report, report_code)
         db_session.commit()
         return res
+
+    def save_incremental_report_results(
+        self,
+        report_service,
+        commit,
+        report,
+        chunk_idx,
+    ):
+        commitid = commit.id
+        archive_service = report_service.get_archive_service(commit.repository)
+
+        # save incremental results to archive storage
+        # upload_finisher will combine
+        chunks = report.to_archive().encode()
+        _, files_and_sessions = report.to_database()
+
+        chunks_url = archive_service.write_chunks(
+            commitid, chunks, report_code=f"incremental/chunk{chunk_idx}.txt"
+        )
+        files_and_sessions_url = archive_service.write_chunks(
+            commitid,
+            files_and_sessions,
+            report_code=f"incremental/files_and_sessions{chunk_idx}.txt",
+        )
+        parallel_incremental_result = {
+            "idx": 1,
+            "chunks_path": chunks_url,
+            "files_and_sessions_path": files_and_sessions_url,
+        }
+        return parallel_incremental_result
 
 
 RegisteredUploadTask = celery_app.register_task(UploadProcessorTask())

@@ -613,11 +613,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
             chunk_size = 1
 
-        print(
-            "WHAST",
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid),
-        )
-
         processing_tasks = []
         for i in range(0, len(argument_list), chunk_size):
             chunk = argument_list[i : i + chunk_size]
@@ -626,7 +621,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     args=({},)
                     if i == 0
                     or (
-                        not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+                        PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
                             commit.repository.repoid
                         )
                     )
@@ -639,24 +634,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         report_code=commit_report.code,
                         chunk_idx=i,
                     ),
-                )
-                print(
-                    dict(
-                        args=({},)
-                        if i == 0
-                        or (
-                            not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                                commit.repository.repoid
-                            )
-                        )
-                        else (),
-                        repoid=commit.repoid,
-                        commitid=commit.commitid,
-                        commit_yaml=commit_yaml,
-                        arguments_list=chunk,
-                        report_code=commit_report.code,
-                        chunk_idx=i,
-                    )
                 )
                 processing_tasks.append(sig)
         if processing_tasks:
@@ -677,6 +654,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
                 res = chord(processing_tasks)(finish_sig)
             else:
+                processing_tasks.append(finish_sig)
                 res = chain(*processing_tasks).apply_async()
             log.info(
                 "Scheduling task for %s different reports",
