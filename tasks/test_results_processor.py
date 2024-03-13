@@ -3,6 +3,7 @@ import json
 import logging
 import zlib
 from io import BytesIO
+from sys import getsizeof
 from typing import List
 
 from sentry_sdk import metrics
@@ -10,6 +11,7 @@ from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 from test_results_parser import (
     ParserError,
     Testrun,
@@ -20,6 +22,7 @@ from test_results_parser import (
 
 from app import celery_app
 from database.models import Repository, Test, TestInstance, Upload
+from rollouts import BULK_INSERT_TEST_INSTANCES
 from services.archive import ArchiveService
 from services.test_results import generate_flags_hash, generate_test_id
 from services.yaml import read_yaml_field
@@ -95,29 +98,16 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         return testrun_dict_list
 
-    def process_individual_upload(
-        self, db_session, repoid, commitid, upload_obj: Upload
+    def _write_tests_to_db(
+        self,
+        db_session: Session,
+        repoid: int,
+        upload_id: int,
+        parsed_testruns: List[Testrun],
+        flags_hash: str,
     ):
-        upload_id = upload_obj.id
-        with metrics.timing("test_results.processor.process_individual_arg"):
-            parsed_testruns: List[Testrun] = self.process_individual_arg(
-                upload_obj, upload_obj.report.commit.repository
-            )
-        if not parsed_testruns:
-            log.error(
-                "No test result files were successfully parsed for this upload",
-                extra=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    upload_id=upload_id,
-                ),
-            )
-            return {
-                "successful": False,
-            }
-        flags_hash = generate_flags_hash(upload_obj.flag_names)
-        upload_id = upload_obj.id
-        with metrics.timing("test_results.processor.write_to_db"):
+        metric_tags = {"method": "simple_insert"}
+        with metrics.timing(key="test_results.processor.write_to_db", tags=metric_tags):
             for testrun in parsed_testruns:
                 name = testrun.name
                 testsuite = testrun.testsuite
@@ -148,6 +138,116 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 )
                 db_session.add(ti)
                 db_session.flush()
+        # Memory outside the time metrics to not disturb the counter
+        # Obviously this is a very rough estimate of sizes. We are interested more
+        # in the difference between the insert approaches. SO this should be fine.
+        # And these aux memory structures take the bulk of extra memory we need
+        memory_used = getsizeof(parsed_testruns) // 1024
+        metrics.gauge(
+            key="test_results.processor.write_to_db.aux_memory_used",
+            value=memory_used,
+            unit="kilobytes",
+            tags=metric_tags,
+        )
+
+    def _bulk_write_tests_to_db(
+        self,
+        db_session: Session,
+        repoid: int,
+        upload_id: int,
+        parsed_testruns: List[Testrun],
+        flags_hash: str,
+    ):
+        metric_tags = {"method": "bulk_insert"}
+        memory_used = getsizeof(parsed_testruns) // 1024
+        with metrics.timing(key="test_results.processor.write_to_db", tags=metric_tags):
+
+            test_data = []
+            test_instance_data = []
+            for testrun in parsed_testruns:
+                # Build up the data for bulk insert
+                name = testrun.name
+                testsuite = testrun.testsuite
+                outcome = str(testrun.outcome)
+                duration_seconds = testrun.duration
+                failure_message = testrun.failure_message
+                test_id = generate_test_id(repoid, testsuite, name, flags_hash)
+
+                test_data.append(
+                    dict(
+                        id=test_id,
+                        repoid=repoid,
+                        name=name,
+                        testsuite=testsuite,
+                        flags_hash=flags_hash,
+                    )
+                )
+
+                test_instance_data.append(
+                    dict(
+                        test_id=test_id,
+                        upload_id=upload_id,
+                        duration_seconds=duration_seconds,
+                        outcome=outcome,
+                        failure_message=failure_message,
+                    )
+                )
+
+            # Save Tests
+            insert_on_conflict_do_nothing = (
+                insert(Test.__table__).values(test_data).on_conflict_do_nothing()
+            )
+            db_session.execute(insert_on_conflict_do_nothing)
+            db_session.flush()
+            # Save TestInstances
+            insert_test_instances = insert(TestInstance.__table__).values(
+                test_instance_data
+            )
+            db_session.execute(insert_test_instances)
+            db_session.flush()
+        # Memory outside the time metrics to not disturb the counter
+        # Obviously this is a very rough estimate of sizes. We are interested more
+        # in the difference between the insert approaches. SO this should be fine.
+        # And these aux memory structures take the bulk of extra memory we need
+        memory_used += getsizeof(test_data) // 1024
+        memory_used += getsizeof(test_instance_data) // 1024
+        metrics.gauge(
+            key="test_results.processor.write_to_db.aux_memory_used",
+            value=memory_used,
+            unit="kilobytes",
+            tags=metric_tags,
+        )
+
+    def process_individual_upload(
+        self, db_session, repoid, commitid, upload_obj: Upload
+    ):
+        upload_id = upload_obj.id
+        with metrics.timing("test_results.processor.process_individual_arg"):
+            parsed_testruns: List[Testrun] = self.process_individual_arg(
+                upload_obj, upload_obj.report.commit.repository
+            )
+        if not parsed_testruns:
+            log.error(
+                "No test result files were successfully parsed for this upload",
+                extra=dict(
+                    repoid=repoid,
+                    commitid=commitid,
+                    upload_id=upload_id,
+                ),
+            )
+            return {
+                "successful": False,
+            }
+        flags_hash = generate_flags_hash(upload_obj.flag_names)
+        upload_id = upload_obj.id
+        if BULK_INSERT_TEST_INSTANCES.check_value(repoid, default=False):
+            self._bulk_write_tests_to_db(
+                db_session, repoid, upload_id, parsed_testruns, flags_hash
+            )
+        else:
+            self._write_tests_to_db(
+                db_session, repoid, upload_id, parsed_testruns, flags_hash
+            )
 
         return {
             "successful": True,
