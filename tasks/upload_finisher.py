@@ -89,70 +89,14 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
             report_service = ReportService(commit_yaml)
-            report = report_service.get_existing_report_for_commit(
-                commit, report_code=report_code
+            report = self.merge_incremental_reports(
+                commit_yaml,
+                repository,
+                commit,
+                report_code,
+                report_service,
+                processing_results,
             )
-
-            archive_service = report_service.get_archive_service(repository)
-            # `UploadProcessorTask` processed each upload in parallel and uploaded
-            # intermediate results to archive_service. Fetch them all
-            def download_and_build_incremental_report(partial_report):
-                partial_report = partial_report["parallel_incremental_result"]
-                chunks = archive_service.read_file(
-                    partial_report["chunks_path"]
-                ).decode(errors="replace")
-                files_and_sessions = json.loads(
-                    archive_service.read_file(partial_report["files_and_sessions_path"])
-                )
-                return report_service.build_report(
-                    chunks,
-                    files_and_sessions["files"],
-                    files_and_sessions["sessions"],
-                    None,
-                )
-
-            def merge_report(l, r):
-                assert len(r.sessions) == 1
-                session_id, session = l.add_session(r.sessions[0])
-                session.id = session_id
-                # current behavior uploads an UploadProcessingResult with this data
-
-                session_manipulation_result = _adjust_sessions(
-                    l, r, session, commit_yaml
-                )
-                l.merge(r)
-                return l
-
-            if report is None:
-                report = Report()
-
-            log.info(
-                "Downloading %s incremental reports that were processed in parallel",
-                len(processing_results),
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    # processing_results=processing_results,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-
-            with ThreadPoolExecutor() as pool:
-                unmerged_reports = pool.map(
-                    download_and_build_incremental_report, processing_results
-                )
-
-            log.info(
-                "Merging %s incremental reports together",
-                len(processing_results),
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    # processing_results=processing_results,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-            report = functools.reduce(merge_report, unmerged_reports, report)
 
             log.info(
                 "Saving combined report",
@@ -164,6 +108,15 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
 
+            actual_processing_results = []
+            pr = None
+
+            for task in processing_results:
+                actual_processing_results.append(task.get("processsings_so_far"))
+                pr = task.get("processings_so_far", {}).get("pr") or pr
+
+            processing_results = {"processsings_so_far": actual_processing_results}
+
             with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
                 results_dict = self.save_report_results(
                     db_session,
@@ -171,16 +124,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     repository,
                     commit,
                     report,
-                    None,  # TODO
+                    pr,
                     report_code,
                 )
-
-                actual_processing_results = []
-
-                for task in processing_results:
-                    actual_processing_results.append(task.get("processsings_so_far"))
-
-                processing_results = {"processsings_so_far": actual_processing_results}
 
         redis_connection = get_redis_connection()
         try:
@@ -431,6 +377,84 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             if commit.branch == repository.branch:
                 redis_connection.hdel("badge", ("%s:" % key).lower())
 
+    def merge_incremental_reports(
+        self,
+        commit_yaml,
+        repository,
+        commit,
+        report_code,
+        report_service,
+        processing_results,
+    ):
+        archive_service = report_service.get_archive_service(repository)
+        repoid = repository.id
+        commitid = commit.id
+
+        report = report_service.get_existing_report_for_commit(
+            commit, report_code=report_code
+        )
+
+        if report is None:
+            report = Report()
+
+        log.info(
+            "Downloading %s incremental reports that were processed in parallel",
+            len(processing_results),
+            extra=dict(
+                repoid=repoid,
+                commit=commitid,
+                processing_results=processing_results,
+                parent_task=self.request.parent_id,
+            ),
+        )
+
+        def download_and_build_incremental_report(partial_report):
+            partial_report = partial_report["parallel_incremental_result"]
+            chunks = archive_service.read_file(partial_report["chunks_path"]).decode(
+                errors="replace"
+            )
+            files_and_sessions = json.loads(
+                archive_service.read_file(partial_report["files_and_sessions_path"])
+            )
+            return report_service.build_report(
+                chunks,
+                files_and_sessions["files"],
+                files_and_sessions["sessions"],
+                None,
+            )
+
+        def merge_report(cumulative_report, incremental_report):
+            assert len(incremental_report.sessions) == 1
+            session_id, session = cumulative_report.add_session(
+                incremental_report.sessions[0]
+            )
+            session.id = session_id
+            # current behavior uploads an UploadProcessingResult with this data
+
+            _adjust_sessions(
+                cumulative_report, incremental_report, session, commit_yaml
+            )
+            cumulative_report.merge(incremental_report)
+            return cumulative_report
+
+        with ThreadPoolExecutor(max_workers=10) as pool:  # max chosen arbitrarily
+            unmerged_reports = pool.map(
+                download_and_build_incremental_report, processing_results
+            )
+
+        log.info(
+            "Merging %s incremental reports together",
+            len(processing_results),
+            extra=dict(
+                repoid=repoid,
+                commit=commitid,
+                processing_results=processing_results,
+                parent_task=self.request.parent_id,
+            ),
+        )
+        report = functools.reduce(merge_report, unmerged_reports, report)
+        return report
+
     def save_report_results(
         self,
         db_session,
@@ -460,7 +484,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             commit,
             report,
             pr,
-            report_code=None,
+            report_code=report_code,
         )
 
 
