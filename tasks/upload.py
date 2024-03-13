@@ -55,6 +55,8 @@ log = logging.getLogger(__name__)
 regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]").search
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
+CHUNK_SIZE = 3
+
 
 class UploadContext:
     """
@@ -608,7 +610,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
     def _schedule_coverage_processing_task(
         self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
     ):
-        chunk_size = 3
+        chunk_size = CHUNK_SIZE
 
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
             chunk_size = 1
