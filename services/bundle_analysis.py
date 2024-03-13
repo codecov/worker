@@ -176,6 +176,7 @@ class BundleAnalysisReportService(BaseReportService):
                     "plugin_name": getattr(e, "bundle_analysis_plugin_name", "unknown"),
                 },
             )
+            raise e
         finally:
             os.remove(local_path)
 
