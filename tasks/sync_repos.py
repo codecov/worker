@@ -342,17 +342,17 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.commit()
 
         try:
-            if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(
-                owner_id=ownerid, default=False
-            ):
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
-                    async for page in git.list_repos_generator():
-                        process_repos(page)
-            else:
-                # get my repos (and team repos)
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                    repos = await git.list_repos()
-                    process_repos(repos)
+            # if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(
+            #     owner_id=ownerid, default=False
+            # ):
+            #     with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
+            #         async for page in git.list_repos_generator():
+            #             process_repos(page)
+            # else:
+            # get my repos (and team repos)
+            with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
+                repos = await git.list_repos()
+                process_repos(repos)
         except SoftTimeLimitExceeded:
             old_permissions = owner.permission or []
             log.warning(

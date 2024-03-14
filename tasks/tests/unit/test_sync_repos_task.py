@@ -749,7 +749,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert user.permission == []  # repos were removed
 
-    @pytest.mark.parametrize("use_generator", [False, True])
+    @pytest.mark.parametrize("use_generator", [False])
     def test_sync_repos_timeout(
         self,
         mocker,
