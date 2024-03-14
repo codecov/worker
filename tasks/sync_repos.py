@@ -144,7 +144,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         repos_to_search = [
             x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
         ]
-        for repo_data in git.get_repos_from_nodeids_generator(
+        async for repo_data in git.get_repos_from_nodeids_generator(
             repos_to_search, owner.username
         ):
             # Insert those repos
