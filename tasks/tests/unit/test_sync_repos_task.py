@@ -972,7 +972,7 @@ class TestSyncReposTaskUnit(object):
             kwargs={"repoid": new_repo_list[0].repoid, "manual_trigger": False}
         )
 
-    def test_sync_repos_usgin_integration_affected_repos_known(
+    def test_sync_repos_using_integration_affected_repos_known(
         self,
         mocker,
         dbsession,
@@ -1040,7 +1040,7 @@ class TestSyncReposTaskUnit(object):
         dbsession.flush()
 
         # These are the repos we're supposed to query from the service provider
-        def side_effect(*args, **kwargs):
+        async def side_effect(*args, **kwargs):
             results = [
                 {
                     "branch": "main",
