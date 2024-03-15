@@ -4,7 +4,7 @@ import pytest
 from shared.reports.readonly import ReadOnlyReport
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy, NotificationContext
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.comment import CommentNotifier
@@ -337,6 +337,7 @@ def sample_comparison_for_limited_upload(
 class TestCommentNotifierIntegration(object):
     @pytest.mark.asyncio
     async def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
+        sample_comparison.context = NotificationContext(all_tests_passed=True)
         mock_configuration._params["setup"] = {
             "codecov_url": None,
             "codecov_dashboard_url": None,
@@ -358,6 +359,8 @@ class TestCommentNotifierIntegration(object):
             "All modified and coverable lines are covered by tests :white_check_mark:",
             "> Project coverage is 60.00%. Comparing base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=desc).",
             "> Report is 2 commits behind head on main.",
+            "",
+            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
             "",
             ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
             "",

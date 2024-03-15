@@ -149,7 +149,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         repos_to_search = [
             x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
         ]
-        for repo_data in git.get_repos_from_nodeids_generator(
+        async for repo_data in git.get_repos_from_nodeids_generator(
             repos_to_search, owner.username
         ):
             # Insert those repos
@@ -247,7 +247,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added
-        elif LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
+        elif LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(
+            owner_id=ownerid, default=False
+        ):
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
             ):
@@ -349,15 +351,17 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.commit()
 
         try:
-            if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
-                    async for page in git.list_repos_generator():
-                        process_repos(page)
-            else:
-                # get my repos (and team repos)
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                    repos = await git.list_repos()
-                    process_repos(repos)
+            # if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(
+            #     owner_id=ownerid, default=False
+            # ):
+            #     with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
+            #         async for page in git.list_repos_generator():
+            #             process_repos(page)
+            # else:
+            # get my repos (and team repos)
+            with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
+                repos = await git.list_repos()
+                process_repos(repos)
         except SoftTimeLimitExceeded:
             old_permissions = owner.permission or []
             log.warning(
