@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from dataclasses import dataclass
 from typing import List, Optional
 
 from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
@@ -23,6 +24,13 @@ from services.repository import get_repo_provider_service
 log = logging.getLogger(__name__)
 
 
+@dataclass
+class NotificationContext(object):
+    """Extra information not necessarily related to coverage that may affect notifications"""
+
+    all_tests_passed: bool
+
+
 class ComparisonProxy(object):
 
     """The idea of this class is to produce a wrapper around Comparison with functionalities that
@@ -42,7 +50,9 @@ class ComparisonProxy(object):
         comparison (Comparison): The original comparison we want to wrap and proxy
     """
 
-    def __init__(self, comparison: Comparison):
+    def __init__(
+        self, comparison: Comparison, context: Optional[NotificationContext] = None
+    ):
         self.comparison = comparison
         self._repository_service = None
         self._adjusted_base_diff = None
@@ -57,6 +67,7 @@ class ComparisonProxy(object):
         self._behind_by_lock = asyncio.Lock()
         self._archive_service = None
         self._overlays = {}
+        self.context = context
 
     def get_archive_service(self):
         if self._archive_service is None:
@@ -240,6 +251,9 @@ class ComparisonProxy(object):
                     "behind_by_commit"
                 ]
         return self._behind_by
+
+    def all_tests_passed(self):
+        return self.context is not None and self.context.all_tests_passed
 
     async def get_existing_statuses(self):
         async with self._existing_statuses_lock:

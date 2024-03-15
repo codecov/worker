@@ -103,6 +103,13 @@ class NewFooterSectionWriter(BaseSectionWriter):
 
 
 class NewHeaderSectionWriter(BaseSectionWriter):
+    def _possibly_include_test_result_setup_confirmation(self, comparison):
+        if comparison.all_tests_passed():
+            yield ("")
+            yield (
+                ":heavy_check_mark: Test ingestion set up successfully. No failed tests found. :relaxed:"
+            )
+
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         yaml = self.current_yaml
         base_report = comparison.project_coverage_base.report
@@ -126,6 +133,10 @@ class NewHeaderSectionWriter(BaseSectionWriter):
 
         hide_project_coverage = self.settings.get("hide_project_coverage", False)
         if hide_project_coverage:
+            for msg in self._possibly_include_test_result_setup_confirmation(
+                comparison
+            ):
+                yield msg
             return
 
         if base_report and head_report:
@@ -196,6 +207,9 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
                 )
+
+        for msg in self._possibly_include_test_result_setup_confirmation(comparison):
+            yield msg
 
 
 class HeaderSectionWriter(BaseSectionWriter):
@@ -302,6 +316,12 @@ class HeaderSectionWriter(BaseSectionWriter):
                 yield (
                     "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
                 )
+
+        if comparison.all_tests_passed():
+            yield ("")
+            yield (
+                ":heavy_check_mark: Test ingestion set up successfully. No failed tests found. :relaxed:"
+            )
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):
