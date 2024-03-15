@@ -366,10 +366,13 @@ class TestUploadTestFinisherTask(object):
 
         mock_metrics.incr.assert_has_calls(
             [
-                call("test_results.finisher", tags={"status": "failures_exist"}),
                 call(
                     "test_results.finisher",
-                    tags={"status": True, "reason": "notified"},
+                    tags={"status": "success", "reason": "tests_failed"},
+                ),
+                call(
+                    "test_results.finisher.test_result_notifier",
+                    tags={"status": True, "reason": "comment_posted"},
                 ),
             ]
         )
@@ -545,7 +548,10 @@ class TestUploadTestFinisherTask(object):
             [
                 call(
                     "test_results.finisher",
-                    tags={"status": "success", "reason": "no_failures"},
+                    tags={
+                        "status": "normal_notify_called",
+                        "reason": "all_tests_passed",
+                    },
                 ),
             ]
         )
@@ -713,7 +719,7 @@ class TestUploadTestFinisherTask(object):
             [
                 call(
                     "test_results.finisher",
-                    tags={"status": "failure", "reason": "no_success"},
+                    tags={"status": "failure", "reason": "no_successful_processing"},
                 ),
             ]
         )
@@ -1033,10 +1039,13 @@ class TestUploadTestFinisherTask(object):
 
         mock_metrics.incr.assert_has_calls(
             [
-                call("test_results.finisher", tags={"status": "failures_exist"}),
                 call(
                     "test_results.finisher",
-                    tags={"status": False, "reason": "notified"},
+                    tags={"status": "success", "reason": "tests_failed"},
+                ),
+                call(
+                    "test_results.finisher.test_result_notifier",
+                    tags={"status": False, "reason": "torngit_error"},
                 ),
             ]
         )
