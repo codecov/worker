@@ -360,7 +360,7 @@ class TestCommentNotifierIntegration(object):
             "> Project coverage is 60.00%. Comparing base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=desc).",
             "> Report is 2 commits behind head on main.",
             "",
-            ":heavy_check_mark: Test ingestion set up successfully. No failed tests found. :relaxed:",
+            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
             "",
             ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
             "",

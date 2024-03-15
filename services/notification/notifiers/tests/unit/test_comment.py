@@ -4020,7 +4020,7 @@ class TestNewHeaderSectionWriter(object):
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
             "",
-            ":heavy_check_mark: Test ingestion set up successfully. No failed tests found. :relaxed:",
+            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
         ]
 
     @pytest.mark.asyncio
@@ -4077,7 +4077,7 @@ class TestNewHeaderSectionWriter(object):
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
             "",
-            ":heavy_check_mark: Test ingestion set up successfully. No failed tests found. :relaxed:",
+            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
         ]
 
 

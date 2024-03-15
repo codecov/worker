@@ -107,7 +107,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
         if comparison.all_tests_passed():
             yield ("")
             yield (
-                ":heavy_check_mark: Test ingestion set up successfully. No failed tests found. :relaxed:"
+                ":white_check_mark: All tests successful. No failed tests found :relaxed:"
             )
 
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
@@ -320,7 +320,7 @@ class HeaderSectionWriter(BaseSectionWriter):
         if comparison.all_tests_passed():
             yield ("")
             yield (
-                ":heavy_check_mark: Test ingestion set up successfully. No failed tests found. :relaxed:"
+                ":white_check_mark: All tests successful. No failed tests found :relaxed:"
             )
 
 
