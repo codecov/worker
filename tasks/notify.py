@@ -27,7 +27,7 @@ from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
 from services.billing import BillingPlan
 from services.commit_status import RepositoryCIFilter
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy, NotificationContext
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import determine_decoration_details
 from services.lock_manager import LockManager, LockType
@@ -325,6 +325,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 head_report,
                 enriched_pull,
                 empty_upload,
+                all_tests_passed=(
+                    test_result_commit_report is not None
+                    and test_result_commit_report.test_result_totals is not None
+                ),
             )
             self.log_checkpoint(kwargs, UploadFlow.NOTIFIED)
             log.info(
@@ -378,6 +382,9 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         head_report,
         enriched_pull: EnrichedPull,
         empty_upload=None,
+        # It's only true if the test_result processing is setup
+        # And all tests indeed passed
+        all_tests_passed: bool = False,
     ):
         # base_commit is an "adjusted" base commit; for project coverage, we
         # compare a PR head's report against its base's report, or if the base
@@ -405,7 +412,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 ),
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
                 current_yaml=current_yaml,
-            )
+            ),
+            context=NotificationContext(all_tests_passed=all_tests_passed),
         )
 
         decoration_type = self.determine_decoration_type_from_pull(

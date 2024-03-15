@@ -16,6 +16,7 @@ from shared.yaml import UserYaml
 
 from database.models.core import GithubAppInstallation
 from database.tests.factories import RepositoryFactory
+from services.comparison import NotificationContext
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
@@ -3992,6 +3993,37 @@ class TestNewHeaderSectionWriter(object):
         ]
 
     @pytest.mark.asyncio
+    async def test_new_header_section_writer_test_results_setup(
+        self, mocker, sample_comparison
+    ):
+        sample_comparison.context = NotificationContext(all_tests_passed=True)
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
+            "",
+            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
+        ]
+
+    @pytest.mark.asyncio
     async def test_new_header_section_writer_no_project_coverage(
         self, mocker, sample_comparison
     ):
@@ -4016,6 +4048,36 @@ class TestNewHeaderSectionWriter(object):
         )
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_new_header_section_writer_no_project_coverage_test_results_setup(
+        self, mocker, sample_comparison
+    ):
+        sample_comparison.context = NotificationContext(all_tests_passed=True)
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={"hide_project_coverage": True},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "",
+            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
         ]
 
 
