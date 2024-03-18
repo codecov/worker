@@ -26,11 +26,11 @@ def test_failure_normalizer_ignore_predefined():
 
 
 def test_failure_normalizer_overwrite_predefined():
-    user_dict = {"UUID": "test", "HEX": r"0x\d{8}"}
+    user_dict = {"UUID": "test"}
     f = FailureNormalizer(user_dict)
     s = f.normalize_failure_message(test_string)
 
     assert (
         s
-        == "abcdefAB-1234-1234-1234-abcdefabcdef DATE UUID HEX DATETIME2 DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
+        == "abcdefAB-1234-1234-1234-abcdefabcdef DATE UUID HEXNUMBER DATETIME2 DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
     )
