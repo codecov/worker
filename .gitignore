@@ -26,6 +26,8 @@ wheels/
 MANIFEST
 .mutmut-cache
 
+*.pem
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -126,6 +128,3 @@ background_app/.report.json
 # Vim temporary files
 *.swp
 *.swo
-
-# GH App local webhooks
-*.pem
