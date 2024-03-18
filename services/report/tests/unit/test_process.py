@@ -197,8 +197,8 @@ class TestProcessRawUpload(BaseTestCase):
                 session=Session(flags=["fruits"]),
                 flags=[],
             )
-        assert len(original_report.sessions) == 2
-        assert sorted(original_report.flags.keys()) == ["fruits", "unit"]
+        assert len(original_report.sessions) == 1
+        assert sorted(original_report.flags.keys()) == ["unit"]
         assert original_report.files == ["file_1.go", "file_2.py"]
         assert original_report.flags["unit"].totals == ReportTotals(
             files=2,
@@ -215,21 +215,7 @@ class TestProcessRawUpload(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
-        assert original_report.flags["fruits"].totals == ReportTotals(
-            files=0,
-            lines=0,
-            hits=0,
-            misses=0,
-            partials=0,
-            coverage=None,
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=1,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
+        assert original_report.flags.get("fruits") is None
         general_totals, json_data = original_report.to_database()
         assert general_totals == {
             "f": 2,
@@ -241,7 +227,7 @@ class TestProcessRawUpload(BaseTestCase):
             "b": 1,
             "d": 0,
             "M": 0,
-            "s": 2,
+            "s": 1,
             "C": 10,
             "N": 2,
             "diff": None,
@@ -279,22 +265,7 @@ class TestProcessRawUpload(BaseTestCase):
                     "e": None,
                     "st": "uploaded",
                     "se": {},
-                },
-                "1": {
-                    "t": None,
-                    "d": None,
-                    "a": None,
-                    "f": ["fruits"],
-                    "c": None,
-                    "n": None,
-                    "N": None,
-                    "j": None,
-                    "u": None,
-                    "p": None,
-                    "e": None,
-                    "st": "uploaded",
-                    "se": {},
-                },
+                }
             },
         }
 
@@ -1015,9 +986,8 @@ class TestProcessReport(BaseTestCase):
 
 
 class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
-    def test_process_raw_upload_with_carryforwarded_flags(self):
+    def _generate_sample_report(self) -> EditableReport:
         original_report = EditableReport()
-        upload_flags = ["somethingold", "flag_two"]
         first_file = EditableReportFile("banana.py")
         first_file.append(100, ReportLine.create(1, sessions=[LineSession(0, 1)]))
         first_file.append(200, ReportLine.create(0, sessions=[LineSession(0, 0)]))
@@ -1062,6 +1032,11 @@ class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
             ],
             "third.c": [(2, 1, None, [[1, 1, None, None, None]], None, None)],
         }
+        return original_report
+
+    def test_process_raw_upload_with_carryforwarded_flags(self):
+        original_report = self._generate_sample_report()
+        upload_flags = ["somethingold", "flag_two"]
         raw_content = dumps(
             {
                 "coverage": {
@@ -1229,3 +1204,52 @@ class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
                 (1, 1, None, [[session.id, 1, None, None, None]], None, None)
             ],
         }
+
+    def test_process_raw_upload_carryforward_flag_empty_upload(self):
+        """Tests that an upload with carryforward flag doesn't create a new session
+        in the original report for the flag it was uploaded with.
+
+        That is, a new session is created in the commit's report only if the upload
+        was properly processed
+        """
+        original_report = self._generate_sample_report()
+        original_sessions = original_report.sessions
+        expected_sessions = {
+            0: Session(flags=["super"]),
+            1: Session(flags=["somethingold"], session_type=SessionType.carriedforward),
+        }
+        assert isinstance(original_sessions, dict)
+        assert list(original_sessions.keys()) == [0, 1]
+        assert original_sessions == expected_sessions
+        empty_uploaded_report = LegacyParsedRawReport(
+            toc=None,
+            env=None,
+            report_fixes=None,
+            uploaded_files=[
+                ParsedUploadedReportFile(
+                    filename="/Users/path/to/app.coverage.json",
+                    file_contents=BytesIO(
+                        "Bogus report that shouldn't match any parser".encode()
+                    ),
+                ),
+            ],
+        )
+        session = Session(flags=["somethingold"])
+        with pytest.raises(ReportEmptyError):
+            process.process_raw_upload(
+                UserYaml(
+                    {
+                        "flag_management": {
+                            "individual_flags": [
+                                {"name": "somethingold", "carryforward": True}
+                            ]
+                        }
+                    }
+                ),
+                original_report,
+                empty_uploaded_report,
+                ["somethingold"],
+                session=session,
+            )
+        assert list(original_report.sessions.keys()) == [0, 1]
+        assert original_report.sessions == expected_sessions
