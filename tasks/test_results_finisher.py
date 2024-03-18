@@ -132,7 +132,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             # every processor errored, nothing to notify on
             metrics.incr(
                 "test_results.finisher",
-                tags={"status": "failure", "reason": "no_success"},
+                tags={"status": "failure", "reason": "no_successful_processing"},
             )
             return {"notify_attempted": False, "notify_succeeded": False}
 
@@ -191,7 +191,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         if self.check_if_no_failures(test_instances):
             metrics.incr(
                 "test_results.finisher",
-                tags={"status": "success", "reason": "no_failures"},
+                tags={"status": "normal_notify_called", "reason": "all_tests_passed"},
             )
             self.app.tasks[notify_task_name].apply_async(
                 args=None,
@@ -201,11 +201,14 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             )
             return {"notify_attempted": False, "notify_succeeded": False}
 
-        metrics.incr("test_results.finisher", tags={"status": "failures_exist"})
+        metrics.incr(
+            "test_results.finisher",
+            tags={"status": "success", "reason": "tests_failed"},
+        )
 
         notifier = TestResultsNotifier(commit, commit_yaml, test_instances)
         with metrics.timing("test_results.finisher.notification"):
-            success = async_to_sync(notifier.notify)(
+            success, reason = async_to_sync(notifier.notify)(
                 failures, passed_tests, skipped_tests, failed_tests
             )
 
@@ -222,8 +225,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         # using a var as a tag here will be fine as it's a boolean
         metrics.incr(
-            "test_results.finisher",
-            tags={"status": success, "reason": "notified"},
+            "test_results.finisher.test_result_notifier",
+            tags={"status": success, "reason": reason},
         )
         return {"notify_attempted": True, "notify_succeeded": success}
 

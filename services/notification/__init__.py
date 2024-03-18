@@ -16,7 +16,7 @@ from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.metrics import metrics
-from services.comparison.types import Comparison
+from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 from services.license import is_properly_licensed
 from services.notification.commit_notifications import (
@@ -186,7 +186,7 @@ class NotificationService(object):
         for component_status in self._get_component_statuses(current_flags):
             yield component_status
 
-    async def notify(self, comparison: Comparison) -> List[NotificationResult]:
+    async def notify(self, comparison: ComparisonProxy) -> List[NotificationResult]:
         if not is_properly_licensed(comparison.head.commit.get_db_session()):
             log.warning(
                 "Not sending notifications because the system is not properly licensed"
@@ -218,7 +218,7 @@ class NotificationService(object):
         return results
 
     async def notify_individual_notifier(
-        self, notifier, comparison
+        self, notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> NotificationResult:
         commit = comparison.head.commit
         base_commit = comparison.project_coverage_base.commit
