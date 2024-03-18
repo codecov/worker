@@ -696,32 +696,81 @@ class TestTimeseriesService(object):
             MeasurementName.component_coverage.value,
         ]
 
-    def test_backfill_batch_size(self, repository):
-        batch_size = backfill_batch_size(repository)
+    def test_backfill_batch_size(self, repository, mocker):
+
+        dbsession = repository.get_db_session()
+        coverage_dataset = (
+            dbsession.query(Dataset.name)
+            .filter_by(
+                repository_id=repository.repoid, name=MeasurementName.coverage.value
+            )
+            .first()
+        )
+        flag_coverage_dataset = (
+            dbsession.query(Dataset.name)
+            .filter_by(
+                repository_id=repository.repoid,
+                name=MeasurementName.flag_coverage.value,
+            )
+            .first()
+        )
+        component_coverage_dataset = (
+            dbsession.query(Dataset.name)
+            .filter_by(
+                repository_id=repository.repoid,
+                name=MeasurementName.component_coverage.value,
+            )
+            .first()
+        )
+
+        # Initially batch size is 500 for all measurement names
+        batch_size = backfill_batch_size(repository, coverage_dataset)
+        assert batch_size == 500
+        batch_size = backfill_batch_size(repository, flag_coverage_dataset)
+        assert batch_size == 500
+        batch_size = backfill_batch_size(repository, component_coverage_dataset)
         assert batch_size == 500
 
         dbsession = repository.get_db_session()
-        flag = RepositoryFlagFactory(repository=repository, flag_name="flag1")
-        dbsession.add(flag)
+        flag1 = RepositoryFlagFactory(repository=repository, flag_name="flag1")
+        flag2 = RepositoryFlagFactory(repository=repository, flag_name="flag2")
+        dbsession.add(flag1)
+        dbsession.add(flag2)
         dbsession.flush()
 
-        batch_size = backfill_batch_size(repository)
+        # Adding flags should only affect flag coverage measurement
+        batch_size = backfill_batch_size(repository, coverage_dataset)
+        assert batch_size == 500
+        batch_size = backfill_batch_size(repository, flag_coverage_dataset)
+        assert batch_size == 250
+        batch_size = backfill_batch_size(repository, component_coverage_dataset)
         assert batch_size == 500
 
-        flag = RepositoryFlagFactory(repository=repository, flag_name="flag2")
-        dbsession.add(flag)
-        dbsession.flush()
+        get_repo_yaml = mocker.patch("services.timeseries.get_repo_yaml")
+        yaml_dict = {
+            "component_management": {
+                "default_rules": {
+                    "paths": [r".*\.go"],
+                    "flag_regexes": [r"test-flag-*"],
+                },
+                "individual_components": [
+                    {"component_id": "component_1"},
+                    {"component_id": "component_2"},
+                    {"component_id": "component_3"},
+                    {"component_id": "component_4"},
+                    {"component_id": "component_5"},
+                ],
+            }
+        }
+        get_repo_yaml.return_value = UserYaml(yaml_dict)
 
-        batch_size = backfill_batch_size(repository)
+        # Adding componets should only affect component coverage measurement
+        batch_size = backfill_batch_size(repository, coverage_dataset)
+        assert batch_size == 500
+        batch_size = backfill_batch_size(repository, flag_coverage_dataset)
         assert batch_size == 250
-
-        for i in range(8):
-            flag = RepositoryFlagFactory(repository=repository, flag_name="flag2")
-            dbsession.add(flag)
-            dbsession.flush()
-
-        batch_size = backfill_batch_size(repository)
-        assert batch_size == 50
+        batch_size = backfill_batch_size(repository, component_coverage_dataset)
+        assert batch_size == 100
 
     def test_delete_repository_data(self, dbsession, sample_report, repository, mocker):
         mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
