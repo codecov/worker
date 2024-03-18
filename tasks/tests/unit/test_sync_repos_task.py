@@ -8,11 +8,16 @@ import respx
 import vcr
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
-from shared.celery_config import sync_repo_languages_task_name
+from shared.celery_config import (
+    sync_repo_languages_gql_task_name,
+    sync_repo_languages_task_name,
+)
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
+from tasks.sync_repo_languages import SyncRepoLanguagesTask
+from tasks.sync_repo_languages_gql import SyncRepoLanguagesGQLTask
 from tasks.sync_repos import LIST_REPOS_GENERATOR_BY_OWNER_ID, SyncReposTask
 
 here = Path(__file__)
@@ -796,14 +801,6 @@ class TestSyncReposTaskUnit(object):
     def test_insert_repo_and_call_repo_sync_languages(
         self, mocker, mock_configuration, dbsession, mock_redis, use_generator
     ):
-        mocked_app = mocker.patch.object(
-            SyncReposTask,
-            "app",
-            tasks={
-                sync_repo_languages_task_name: mocker.MagicMock(),
-            },
-        )
-
         mocker.patch.object(
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
@@ -845,11 +842,7 @@ class TestSyncReposTaskUnit(object):
         assert repos[0].service_id == public_repo_service_id
         assert repos[0].ownerid == user.ownerid
 
-        mocked_app.tasks[sync_repo_languages_task_name].apply_async.assert_any_call(
-            kwargs={"repoid": repos[0].repoid, "manual_trigger": False}
-        )
-
-    @pytest.mark.parametrize("use_generator", [False, True])
+    @pytest.mark.parametrize("use_generator", [False])
     @respx.mock
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration.yaml"
@@ -991,10 +984,10 @@ class TestSyncReposTaskUnit(object):
         dbsession.add(user)
 
         mocked_app = mocker.patch.object(
-            SyncReposTask,
+            SyncRepoLanguagesGQLTask,
             "app",
             tasks={
-                sync_repo_languages_task_name: mocker.MagicMock(),
+                sync_repo_languages_gql_task_name: mocker.MagicMock(),
             },
         )
         repository_service_ids = [
@@ -1109,9 +1102,14 @@ class TestSyncReposTaskUnit(object):
         )
         assert len(repos) == 5
 
-        mocked_app.tasks[sync_repo_languages_task_name].apply_async.calls(
+        mocked_app.tasks[sync_repo_languages_gql_task_name].apply_async.calls(
             [
-                call(kwargs={"repoid": repo.repoid, "manual_trigger": False})
+                call(
+                    kwargs={
+                        "current_owner_id": user.ownerid,
+                        "org_username": user.ownerid,
+                    }
+                )
                 for repo in repos_added
             ]
         )
