@@ -4,7 +4,11 @@ from typing import Iterable, Optional
 
 from celery import group
 from celery.canvas import Signature
-from shared.celery_config import timeseries_save_commit_measurements_task_name
+from shared.celery_config import (
+    timeseries_backfill_commits_task_name,
+    timeseries_backfill_dataset_task_name,
+    timeseries_save_commit_measurements_task_name,
+)
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
@@ -17,9 +21,8 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-# TODO: add name to `shared.celery_config`
 class TimeseriesBackfillCommitsTask(
-    BaseCodecovTask, name="app.tasks.timeseries.backfill_commits"
+    BaseCodecovTask, name=timeseries_backfill_commits_task_name
 ):
     def run_impl(
         self,
@@ -53,11 +56,9 @@ timeseries_backfill_commits_task = celery_app.tasks[
 ]
 
 
-class TimeseriesBackfillDatasetTask(BaseCodecovTask):
-
-    # TODO: add name to `shared.celery_config`
-    name = "app.tasks.timeseries.backfill_dataset"
-
+class TimeseriesBackfillDatasetTask(
+    BaseCodecovTask, name=timeseries_backfill_dataset_task_name
+):
     def run_impl(
         self,
         db_session: Session,

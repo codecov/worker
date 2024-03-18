@@ -893,7 +893,7 @@ class ReportService(BaseReportService):
                 upload_obj=upload,
             )
         except ReportEmptyError:
-            log.info(
+            log.warning(
                 "Report %s is empty",
                 reportid,
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),

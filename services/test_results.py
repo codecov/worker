@@ -1,6 +1,6 @@
 import logging
 from hashlib import sha256
-from typing import Mapping, Sequence
+from typing import Mapping, Sequence, Tuple
 
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
@@ -117,7 +117,9 @@ class TestResultsNotifier:
         self.commit_yaml = commit_yaml
         self.test_instances = test_instances
 
-    async def notify(self, failures, num_passed, num_skipped, num_failed):
+    async def notify(
+        self, failures, num_passed, num_skipped, num_failed
+    ) -> Tuple[bool, str]:
         commit_report = self.commit.commit_report(report_type=ReportType.TEST_RESULTS)
         if not commit_report:
             log.warning(
@@ -141,7 +143,7 @@ class TestResultsNotifier:
                     report_key=commit_report.external_id,
                 ),
             )
-            return False
+            return False, "no_pull"
 
         pullid = pull.database_pull.pullid
 
@@ -158,7 +160,7 @@ class TestResultsNotifier:
             else:
                 res = await repo_service.post_comment(pullid, message)
                 pull.database_pull.commentid = res["id"]
-            return True
+            return True, "comment_posted"
         except TorngitClientError:
             log.error(
                 "Error creating/updating PR comment",
@@ -168,7 +170,7 @@ class TestResultsNotifier:
                     pullid=pullid,
                 ),
             )
-            return False
+            return False, "torngit_error"
 
     def build_message(
         self, url, test_instances, failures, num_passed, num_skipped, num_failed

@@ -180,7 +180,7 @@ class TestUploadTestFinisherTask(object):
         expected_result = {"notify_attempted": True, "notify_succeeded": True}
         m.post_comment.assert_called_with(
             pull.pullid,
-            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- b</pre> | <pre>\\<pre\\>not that bad\\</pre\\> \\| hello \\| goodbye \\|</pre> |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- a</pre> | <pre>okay i guess</pre> |",
+            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- b</pre> | <pre>&lt;pre&gt;not that bad&lt;/pre&gt; | hello | goodbye |</pre> |\n| <pre>Testsuite: test_testsuite<br>Test name: test_name<br>Envs: <br>- a</pre> | <pre>okay i guess</pre> |",
         )
 
         assert expected_result == result
@@ -366,10 +366,13 @@ class TestUploadTestFinisherTask(object):
 
         mock_metrics.incr.assert_has_calls(
             [
-                call("test_results.finisher", tags={"status": "failures_exist"}),
                 call(
                     "test_results.finisher",
-                    tags={"status": True, "reason": "notified"},
+                    tags={"status": "success", "reason": "tests_failed"},
+                ),
+                call(
+                    "test_results.finisher.test_result_notifier",
+                    tags={"status": True, "reason": "comment_posted"},
                 ),
             ]
         )
@@ -545,7 +548,10 @@ class TestUploadTestFinisherTask(object):
             [
                 call(
                     "test_results.finisher",
-                    tags={"status": "success", "reason": "no_failures"},
+                    tags={
+                        "status": "normal_notify_called",
+                        "reason": "all_tests_passed",
+                    },
                 ),
             ]
         )
@@ -713,7 +719,7 @@ class TestUploadTestFinisherTask(object):
             [
                 call(
                     "test_results.finisher",
-                    tags={"status": "failure", "reason": "no_success"},
+                    tags={"status": "failure", "reason": "no_successful_processing"},
                 ),
             ]
         )
@@ -1033,10 +1039,13 @@ class TestUploadTestFinisherTask(object):
 
         mock_metrics.incr.assert_has_calls(
             [
-                call("test_results.finisher", tags={"status": "failures_exist"}),
                 call(
                     "test_results.finisher",
-                    tags={"status": False, "reason": "notified"},
+                    tags={"status": "success", "reason": "tests_failed"},
+                ),
+                call(
+                    "test_results.finisher.test_result_notifier",
+                    tags={"status": False, "reason": "torngit_error"},
                 ),
             ]
         )
