@@ -255,3 +255,15 @@ def delete_repository_data(repository: Repository):
         owner_id=repository.ownerid,
         repo_id=repository.repoid,
     ).delete()
+
+
+def delete_repository_measurements(
+    repository: Repository, measurement_type: str, measurement_id: str
+):
+    db_session = repository.get_db_session()
+    db_session.query(Measurement).filter_by(
+        owner_id=repository.ownerid,
+        repo_id=repository.repoid,
+        name=measurement_type,
+        measurable_id=measurement_id,
+    ).delete()
