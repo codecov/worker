@@ -114,6 +114,8 @@ class FlakeDetector:
                 1,
                 tags={"flake_type": str(FlakeType.FailedInDefaultBranch)},
             )
+            return True
+        return False
 
     def check_if_consecutive_diff_outcomes(self, instance):
         # ignore skips
@@ -137,10 +139,12 @@ class FlakeDetector:
                     1,
                     tags={"flake_type": str(FlakeType.ConsecutiveDiffOutcomes)},
                 )
+                return True
             elif existing_outcome_on_commit is None:
                 self.curr_test_context.commit_to_outcome[
                     instance.commitid
                 ] = instance.outcome
+        return False
 
     def check_if_failure_messages_match(self, instance):
         failure_message = instance.failure_message
@@ -170,6 +174,8 @@ class FlakeDetector:
                 1,
                 tags={"flake_type": str(FlakeType.UnrelatedMatchingFailures)},
             )
+            return True
+        return False
 
     @trace
     def detect_flakes(self) -> List[Tuple[str, str]]:
@@ -219,15 +225,17 @@ class FlakeDetector:
 
                     # check if failed on default branch
                     # should probably automatically create an issue here
-                    self.check_if_failed_on_default(instance)
-
+                    if self.check_if_failed_on_default(instance):
+                        continue
                     # else check if consecutive fails, ignoring skips
-                    self.check_if_consecutive_diff_outcomes(instance)
+                    if self.check_if_consecutive_diff_outcomes(instance):
+                        continue
 
                     # else check if meets other requirements for flakes
                     if instance.failure_message is None:
                         continue
 
-                    self.check_if_failure_messages_match(instance)
+                    if self.check_if_failure_messages_match(instance):
+                        continue
 
         return self.resulting_flakes
