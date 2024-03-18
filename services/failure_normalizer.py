@@ -1,3 +1,5 @@
+from typing import Dict
+
 import regex
 
 predefined_dict_of_regexes_to_match = {
@@ -8,7 +10,8 @@ predefined_dict_of_regexes_to_match = {
     "TIME": r"(?:0[0-9]|1[0-9]|2[0-3]):(?:[0-5][0-9]):(?:[0-5][0-9])Z?",
     "TIME2": r"T(?:0[0-9]|1[0-9]|2[0-3])(?:[0-5][0-9])(?:[0-5][0-9])Z?",
     "URL": r"(?:(?:http)s?:\/\/)?\w+(?:\.\w+)+(?:(?:(?:\/*[\w\-]+\/)+(?:[\w\.]+)(:\d+:\d+)*))?",
-    "LINENO": r"\d+:\d+",
+    "LINENO": r":\d+:\d*",
+    "HEXNUMBER": r"0?x[a-f0-9]+",
 }
 
 
@@ -49,7 +52,9 @@ class FailureNormalizer:
     '''
     """
 
-    def __init__(self, user_dict_of_regex_strings, ignore_predefined=False):
+    def __init__(
+        self, user_dict_of_regex_strings: Dict[str, str], ignore_predefined=False
+    ):
         flags = regex.MULTILINE
 
         self.dict_of_regex = dict()
@@ -64,7 +69,7 @@ class FailureNormalizer:
             compiled_regex = regex.compile(regex_string, flags=flags)
             self.dict_of_regex[key] = compiled_regex
 
-    def normalize_failure_message(self, failure_message):
+    def normalize_failure_message(self, failure_message: str):
         for key, compiled_regex in self.dict_of_regex.items():
             for match_obj in compiled_regex.finditer(failure_message):
                 actual_match = match_obj.group()
