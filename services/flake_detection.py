@@ -7,6 +7,7 @@ from sys import getsizeof
 from typing import List, Set, Tuple
 
 from sentry_sdk import metrics, trace
+from test_results_parser import Outcome
 
 from database.models.core import Commit, Repository
 from database.models.reports import CommitReport, Test, TestInstance, Upload
@@ -22,9 +23,23 @@ class FlakeDetectionObject:
 
 
 class FlakeType(Enum):
-    FailedIndefaultBranch = "FailedIndefaultBranch"
+    FailedInDefaultBranch = "FailedInDefaultBranch"
     ConsecutiveDiffOutcomes = "ConsecutiveDiffOutcomes"
     UnrelatedMatchingFailures = "UnrelatedMatchingFailures"
+
+
+@dataclass
+class FlakeDetectionContext:
+    is_curr_flake = False
+    curr_test_id = None
+    flake_dict = defaultdict(FlakeDetectionObject)
+    commit_to_outcome = dict()
+
+    def reset(self, test_id):
+        self.curr_test_id = test_id
+        self.is_curr_flake = False
+        self.flake_dict.clear()
+        self.commit_to_outcome.clear()
 
 
 class FlakeDetector:
@@ -33,7 +48,7 @@ class FlakeDetector:
     ):
 
         self.repoid = repoid
-        if self.default_branch:
+        if default_branch:
             self.default_branch = default_branch
         else:
             self.default_branch = (
@@ -43,6 +58,7 @@ class FlakeDetector:
                 .branch
             )
         self.failure_normalizer = failure_normalizer
+        self.resulting_flakes = []
 
     @trace
     def populate(self, db_session):
@@ -84,6 +100,77 @@ class FlakeDetector:
             unit="kilobytes",
         )
 
+    def check_if_failed_on_default(self, instance):
+        if instance.branch == self.default_branch:
+            self.curr_test_context.is_curr_flake = True
+            self.resulting_flakes.append(
+                (
+                    self.curr_test_context.curr_test_id,
+                    FlakeType.FailedInDefaultBranch,
+                )
+            )
+            metrics.incr(
+                "flake_detection.detect_flakes.flake_detected",
+                1,
+                tags={"flake_type": str(FlakeType.FailedInDefaultBranch)},
+            )
+
+    def check_if_consecutive_diff_outcomes(self, instance):
+        # ignore skips
+        if instance.outcome != str(Outcome.Skip):
+            existing_outcome_on_commit = self.curr_test_context.commit_to_outcome.get(
+                instance.commitid, None
+            )
+            if (
+                existing_outcome_on_commit is not None
+                and existing_outcome_on_commit != instance.outcome
+            ):
+                self.curr_test_context.is_curr_flake = True
+                self.resulting_flakes.append(
+                    (
+                        self.curr_test_context.curr_test_id,
+                        FlakeType.ConsecutiveDiffOutcomes,
+                    )
+                )
+                metrics.incr(
+                    "flake_detection.detect_flakes.flake_detected",
+                    1,
+                    tags={"flake_type": str(FlakeType.ConsecutiveDiffOutcomes)},
+                )
+            elif existing_outcome_on_commit is None:
+                self.curr_test_context.commit_to_outcome[
+                    instance.commitid
+                ] = instance.outcome
+
+    def check_if_failure_messages_match(self, instance):
+        failure_message = instance.failure_message
+        if self.failure_normalizer is not None:
+            failure_message = self.failure_normalizer.normalize_failure_message(
+                failure_message
+            )
+
+        self.curr_test_context.flake_dict[failure_message].counter += 1
+        self.curr_test_context.flake_dict[failure_message].branch.add(instance.branch)
+        self.curr_test_context.flake_dict[failure_message].time.append(
+            instance.created_at.timestamp()
+        )
+
+        potential_flake = self.curr_test_context.flake_dict[failure_message]
+        if potential_flake.counter > 1 and len(potential_flake.branch) > 2:
+            # Exact error happened on 2 other branches at least
+            self.curr_test_context.is_curr_flake = True
+            self.resulting_flakes.append(
+                (
+                    self.curr_test_context.curr_test_id,
+                    FlakeType.UnrelatedMatchingFailures,
+                )
+            )
+            metrics.incr(
+                "flake_detection.detect_flakes.flake_detected",
+                1,
+                tags={"flake_type": str(FlakeType.UnrelatedMatchingFailures)},
+            )
+
     @trace
     def detect_flakes(self) -> List[Tuple[str, str]]:
         """
@@ -108,9 +195,7 @@ class FlakeDetector:
 
         Returns a list of tuples of flaky test id and type of flake
         """
-        curr_test = None
-        resulting_flakes = []
-        curr_flake = False
+        self.curr_test_context = FlakeDetectionContext()
 
         metrics.distribution(
             "flake_detection.detect_flakes.number_of_test_instances",
@@ -122,84 +207,27 @@ class FlakeDetector:
                 with metrics.timing(
                     "flake_detection.detect_flakes.process_individual_test_instance"
                 ):
-
                     # because the query above orders by test_id, if we see a new test
                     # we are now trying to determine if the next test is flaky
-                    if instance.test_id != curr_test:
-                        flake_dict = defaultdict(FlakeDetectionObject)
-                        commit_to_outcome = dict()
-                        curr_test = instance.test_id
-                        curr_flake = False
+                    if instance.test_id != self.curr_test_context.curr_test_id:
+                        self.curr_test_context.reset(instance.test_id)
 
                     # if we've already determined the current test to be a flake
                     # we don't have to keep examining instances of this test
-                    if curr_flake:
+                    if self.curr_test_context.is_curr_flake:
                         continue
 
                     # check if failed on default branch
                     # should probably automatically create an issue here
-                    if instance.branch == self.default_branch:
-                        curr_flake = True
-                        resulting_flakes.append(
-                            (curr_test, FlakeType.FailedIndefaultBranch)
-                        )
-                        metrics.incr(
-                            "flake_detection.detect_flakes.flake_detected",
-                            1,
-                            tags={"flake_type": str(FlakeType.FailedIndefaultBranch)},
-                        )
+                    self.check_if_failed_on_default(instance)
 
-                    # else check if consecutive fails
-                    existing_outcome_on_commit = commit_to_outcome.get(
-                        instance.commitid, None
-                    )
-                    if (
-                        existing_outcome_on_commit is not None
-                        and existing_outcome_on_commit != instance.outcome
-                    ):
-                        curr_flake = True
-                        resulting_flakes.append(
-                            (curr_test, FlakeType.ConsecutiveDiffOutcomes)
-                        )
-                        metrics.incr(
-                            "flake_detection.detect_flakes.flake_detected",
-                            1,
-                            tags={"flake_type": str(FlakeType.ConsecutiveDiffOutcomes)},
-                        )
-                    elif existing_outcome_on_commit is None:
-                        commit_to_outcome[instance.commitid] = instance.outcome
+                    # else check if consecutive fails, ignoring skips
+                    self.check_if_consecutive_diff_outcomes(instance)
 
                     # else check if meets other requirements for flakes
                     if instance.failure_message is None:
                         continue
 
-                    failure_message = instance.failure_message
-                    if self.failure_normalizer is not None:
-                        failure_message = (
-                            self.failure_normalizer.normalize_failure_message(
-                                failure_message
-                            )
-                        )
+                    self.check_if_failure_messages_match(instance)
 
-                    flake_dict[failure_message].counter += 1
-                    flake_dict[failure_message].branch.add(instance.branch)
-                    flake_dict[failure_message].time.append(
-                        instance.created_at.timestamp()
-                    )
-
-                    potential_flake = flake_dict[failure_message]
-                    if potential_flake.counter > 1 and len(potential_flake.branch) > 2:
-                        # Exact error happened on 2 other branches at least
-                        curr_flake = True
-                        resulting_flakes.append(
-                            (curr_test, FlakeType.UnrelatedMatchingFailures)
-                        )
-                        metrics.incr(
-                            "flake_detection.detect_flakes.flake_detected",
-                            1,
-                            tags={
-                                "flake_type": str(FlakeType.UnrelatedMatchingFailures)
-                            },
-                        )
-
-        return resulting_flakes
+        return self.resulting_flakes

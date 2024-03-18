@@ -107,10 +107,11 @@ def test_flake_detector_failure_on_main(dbsession):
     )
 
     fd = FlakeDetector(dbsession, repoid)
+    fd.populate(dbsession)
 
     flaky_tests = fd.detect_flakes()
 
-    assert flaky_tests == [(test_id, FlakeType.DefaultFailure)]
+    assert flaky_tests == [(test_id, FlakeType.FailedInDefaultBranch)]
 
 
 def test_flake_consecutive_differing_outcomes(dbsession):
@@ -129,6 +130,7 @@ def test_flake_consecutive_differing_outcomes(dbsession):
     create_test_instance(dbsession, test_id, uploadid2, str(Outcome.Pass), None)
 
     fd = FlakeDetector(dbsession, repoid)
+    fd.populate(dbsession)
 
     flaky_tests = fd.detect_flakes()
 
@@ -163,6 +165,7 @@ def test_flake_matching_failures_on_unrelated_branches(dbsession):
     )
 
     fd = FlakeDetector(dbsession, repoid)
+    fd.populate(dbsession)
 
     flaky_tests = fd.detect_flakes()
 
@@ -197,6 +200,7 @@ def test_flake_matching_failures_on_related_branches(dbsession):
     )
 
     fd = FlakeDetector(dbsession, repoid)
+    fd.populate(dbsession)
 
     flaky_tests = fd.detect_flakes()
 
