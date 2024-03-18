@@ -58,7 +58,7 @@ class FlakeDetector:
                 .branch
             )
         self.failure_normalizer = failure_normalizer
-        self.resulting_flakes = []
+        self.resulting_flakes = dict()
 
     @trace
     def populate(self, db_session):
@@ -103,12 +103,10 @@ class FlakeDetector:
     def check_if_failed_on_default(self, instance):
         if instance.branch == self.default_branch:
             self.curr_test_context.is_curr_flake = True
-            self.resulting_flakes.append(
-                (
-                    self.curr_test_context.curr_test_id,
-                    FlakeType.FailedInDefaultBranch,
-                )
-            )
+            self.resulting_flakes[
+                self.curr_test_context.curr_test_id
+            ] = FlakeType.FailedInDefaultBranch
+
             metrics.incr(
                 "flake_detection.detect_flakes.flake_detected",
                 1,
@@ -128,12 +126,10 @@ class FlakeDetector:
                 and existing_outcome_on_commit != instance.outcome
             ):
                 self.curr_test_context.is_curr_flake = True
-                self.resulting_flakes.append(
-                    (
-                        self.curr_test_context.curr_test_id,
-                        FlakeType.ConsecutiveDiffOutcomes,
-                    )
-                )
+                self.resulting_flakes[
+                    self.curr_test_context.curr_test_id
+                ] = FlakeType.ConsecutiveDiffOutcomes
+
                 metrics.incr(
                     "flake_detection.detect_flakes.flake_detected",
                     1,
@@ -163,12 +159,10 @@ class FlakeDetector:
         if potential_flake.counter > 1 and len(potential_flake.branch) > 2:
             # Exact error happened on 2 other branches at least
             self.curr_test_context.is_curr_flake = True
-            self.resulting_flakes.append(
-                (
-                    self.curr_test_context.curr_test_id,
-                    FlakeType.UnrelatedMatchingFailures,
-                )
-            )
+            self.resulting_flakes[
+                self.curr_test_context.curr_test_id
+            ] = FlakeType.UnrelatedMatchingFailures
+
             metrics.incr(
                 "flake_detection.detect_flakes.flake_detected",
                 1,

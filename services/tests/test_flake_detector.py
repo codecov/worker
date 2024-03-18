@@ -111,7 +111,7 @@ def test_flake_detector_failure_on_main(dbsession):
 
     flaky_tests = fd.detect_flakes()
 
-    assert flaky_tests == [(test_id, FlakeType.FailedInDefaultBranch)]
+    assert flaky_tests == {test_id: FlakeType.FailedInDefaultBranch}
 
 
 def test_flake_consecutive_differing_outcomes(dbsession):
@@ -134,7 +134,7 @@ def test_flake_consecutive_differing_outcomes(dbsession):
 
     flaky_tests = fd.detect_flakes()
 
-    assert flaky_tests == [(test_id, FlakeType.ConsecutiveDiffOutcomes)]
+    assert flaky_tests == {test_id: FlakeType.ConsecutiveDiffOutcomes}
 
 
 def test_flake_matching_failures_on_unrelated_branches(dbsession):
@@ -169,7 +169,7 @@ def test_flake_matching_failures_on_unrelated_branches(dbsession):
 
     flaky_tests = fd.detect_flakes()
 
-    assert flaky_tests == [(test_id, FlakeType.UnrelatedMatchingFailures)]
+    assert flaky_tests == {test_id: FlakeType.UnrelatedMatchingFailures}
 
 
 def test_flake_matching_failures_on_related_branches(dbsession):
@@ -204,4 +204,4 @@ def test_flake_matching_failures_on_related_branches(dbsession):
 
     flaky_tests = fd.detect_flakes()
 
-    assert flaky_tests == []
+    assert flaky_tests == dict()
