@@ -16,6 +16,164 @@ from tasks.test_results_finisher import TestResultsFinisherTask
 here = Path(__file__)
 
 
+@pytest.fixture
+def mock_metrics(mocker):
+    mocked_metrics = mocker.patch(
+        "tasks.test_results_finisher.metrics",
+        mocker.MagicMock(),
+    )
+    return mocked_metrics
+
+
+@pytest.fixture
+def test_results_mock_app(mocker):
+    mocked_app = mocker.patch.object(
+        TestResultsFinisherTask,
+        "app",
+        tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
+    )
+    return mocked_app
+
+
+@pytest.fixture
+def mock_repo_provider_comments(mocker):
+    m = mocker.MagicMock(
+        edit_comment=AsyncMock(return_value=True),
+        post_comment=AsyncMock(return_value={"id": 1}),
+    )
+    _ = mocker.patch(
+        "services.test_results.get_repo_provider_service",
+        return_value=m,
+    )
+    return m
+
+
+@pytest.fixture
+def test_results_setup(mocker, dbsession):
+    mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
+
+    commit = CommitFactory.create(
+        message="hello world",
+        commitid="cd76b0821854a780b60012aed85af0a8263004ad",
+        repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+        repository__owner__username="joseph-sentry",
+        repository__owner__service="github",
+        repository__name="codecov-demo",
+    )
+    dbsession.add(commit)
+    dbsession.flush()
+
+    repoid = commit.repoid
+
+    current_report_row = CommitReport(
+        commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
+    )
+    dbsession.add(current_report_row)
+    dbsession.flush()
+
+    pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
+
+    _ = mocker.patch(
+        "services.test_results.fetch_and_update_pull_request_information_from_commit",
+        return_value=EnrichedPull(
+            database_pull=pull,
+            provider_pull={},
+        ),
+    )
+
+    uploads = [UploadFactory.create() for _ in range(4)]
+    uploads[3].created_at += datetime.timedelta(0, 3)
+
+    for upload in uploads:
+        upload.report = current_report_row
+        upload.report.commit.repoid = repoid
+        dbsession.add(upload)
+    dbsession.flush()
+
+    flags = [RepositoryFlag(repository_id=repoid, flag_name=str(i)) for i in range(2)]
+    for flag in flags:
+        dbsession.add(flag)
+    dbsession.flush()
+
+    uploads[0].flags = [flags[0]]
+    uploads[1].flags = [flags[1]]
+    uploads[2].flags = []
+    uploads[3].flags = [flags[0]]
+    dbsession.flush()
+
+    test_name = "test_name"
+    test_suite = "test_testsuite"
+
+    test_id1 = generate_test_id(repoid, test_name, test_suite, "a")
+    test1 = Test(
+        id_=test_id1,
+        repoid=repoid,
+        name=test_name,
+        testsuite=test_suite,
+        flags_hash="a",
+    )
+    dbsession.add(test1)
+
+    test_id2 = generate_test_id(repoid, test_name, test_suite, "b")
+    test2 = Test(
+        id_=test_id2,
+        repoid=repoid,
+        name=test_name,
+        testsuite=test_name,
+        flags_hash="b",
+    )
+    dbsession.add(test2)
+
+    test_id3 = generate_test_id(repoid, test_name, test_suite, "")
+    test3 = Test(
+        id_=test_id3,
+        repoid=repoid,
+        name=test_name,
+        testsuite=test_name,
+        flags_hash="",
+    )
+    dbsession.add(test3)
+
+    dbsession.flush()
+
+    duration = 1
+    test_instances = [
+        TestInstance(
+            test_id=test_id1,
+            outcome=str(Outcome.Failure),
+            failure_message="This should not be in the comment, it will get overwritten by the last test instance",
+            duration_seconds=duration,
+            upload_id=uploads[0].id,
+        ),
+        TestInstance(
+            test_id=test_id2,
+            outcome=str(Outcome.Failure),
+            failure_message="Shared failure message",
+            duration_seconds=duration,
+            upload_id=uploads[1].id,
+        ),
+        TestInstance(
+            test_id=test_id3,
+            outcome=str(Outcome.Failure),
+            failure_message="Shared failure message",
+            duration_seconds=duration,
+            upload_id=uploads[2].id,
+        ),
+        TestInstance(
+            test_id=test_id1,
+            outcome=str(Outcome.Failure),
+            failure_message="<pre>Fourth \r\n\r\n</pre> | test  | instance |",
+            duration_seconds=duration,
+            upload_id=uploads[3].id,
+        ),
+    ]
+    for instance in test_instances:
+        dbsession.add(instance)
+    dbsession.flush()
+
+    return (repoid, commit, pull, test_instances)
+
+
 class TestUploadTestFinisherTask(object):
     @pytest.mark.integration
     def test_upload_finisher_task_call(
@@ -27,145 +185,12 @@ class TestUploadTestFinisherTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        mock_metrics,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
     ):
-        mocked_app = mocker.patch.object(
-            TestResultsFinisherTask,
-            "app",
-            tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
-        )
-
-        commit = CommitFactory.create(
-            message="hello world",
-            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-            repository__owner__username="joseph-sentry",
-            repository__owner__service="github",
-            repository__name="codecov-demo",
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-
-        upload1 = UploadFactory.create()
-        dbsession.add(upload1)
-        dbsession.flush()
-
-        upload2 = UploadFactory.create()
-        upload2.created_at = upload1.created_at + datetime.timedelta(0, 3)
-        dbsession.add(upload2)
-        dbsession.flush()
-
-        current_report_row = CommitReport(
-            commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
-        )
-        dbsession.add(current_report_row)
-        dbsession.flush()
-        upload1.report = current_report_row
-        upload2.report = current_report_row
-        dbsession.flush()
-
-        pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
-
-        _ = mocker.patch(
-            "services.test_results.fetch_and_update_pull_request_information_from_commit",
-            return_value=EnrichedPull(
-                database_pull=pull,
-                provider_pull={},
-            ),
-        )
-        mock_metrics = mocker.patch(
-            "tasks.test_results_finisher.metrics",
-            mocker.MagicMock(),
-        )
-
-        mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
-
-        m = mocker.MagicMock(
-            edit_comment=AsyncMock(return_value=True),
-            post_comment=AsyncMock(return_value={"id": 1}),
-        )
-        mocked_repo_provider = mocker.patch(
-            "services.test_results.get_repo_provider_service",
-            return_value=m,
-        )
-
-        repoid = upload1.report.commit.repoid
-        upload2.report.commit.repoid = repoid
-        dbsession.flush()
-
-        flag1 = RepositoryFlag(repository_id=repoid, flag_name="a")
-        flag2 = RepositoryFlag(repository_id=repoid, flag_name="b")
-        dbsession.flush()
-
-        upload1.flags = [flag1]
-        upload2.flags = [flag2]
-        dbsession.flush()
-
-        upload_id1 = upload1.id
-        upload_id2 = upload2.id
-
-        test_id1 = generate_test_id(repoid, "test_name", "test_testsuite", "a")
-        test_id2 = generate_test_id(repoid, "test_name", "test_testsuite", "b")
-
-        test1 = Test(
-            id_=test_id1,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="a",
-        )
-        dbsession.add(test1)
-        dbsession.flush()
-        test2 = Test(
-            id_=test_id2,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="b",
-        )
-        dbsession.add(test2)
-        dbsession.flush()
-
-        test_instance1 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="bad",
-            duration_seconds=1,
-            upload_id=upload_id1,
-        )
-        dbsession.add(test_instance1)
-        dbsession.flush()
-
-        test_instance2 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="<pre>not that bad</pre> | hello | goodbye |",
-            duration_seconds=1,
-            upload_id=upload_id2,
-        )
-        dbsession.add(test_instance2)
-        dbsession.flush()
-
-        test_instance3 = TestInstance(
-            test_id=test_id2,
-            outcome=str(Outcome.Failure),
-            failure_message="okay i guess",
-            duration_seconds=2,
-            upload_id=upload_id1,
-        )
-
-        dbsession.add(test_instance3)
-        dbsession.flush()
-
-        test_instance4 = TestInstance(
-            test_id=test_id2,
-            outcome=str(Outcome.Failure),
-            failure_message="<pre>not that\r\n\r\n bad</pre> | hello | goodbye |",
-            duration_seconds=2,
-            upload_id=upload_id1,
-        )
-
-        dbsession.add(test_instance4)
-        dbsession.flush()
+        repoid, commit, pull, _ = test_results_setup
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
@@ -178,191 +203,12 @@ class TestUploadTestFinisherTask(object):
         )
 
         expected_result = {"notify_attempted": True, "notify_succeeded": True}
-        m.post_comment.assert_called_with(
-            pull.pullid,
-            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- b</pre> | <pre>&lt;pre&gt;not that bad&lt;/pre&gt; | hello | goodbye |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- a</pre> | <pre>okay i guess</pre> |",
-        )
 
         assert expected_result == result
-
-    @pytest.mark.integration
-    def test_upload_finisher_task_call_multi_env_fail(
-        self,
-        mocker,
-        mock_configuration,
-        dbsession,
-        codecov_vcr,
-        mock_storage,
-        mock_redis,
-        celery_app,
-    ):
-        mocked_app = mocker.patch.object(
-            TestResultsFinisherTask,
-            "app",
-            tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
-        )
-
-        mock_metrics = mocker.patch(
-            "tasks.test_results_finisher.metrics",
-            mocker.MagicMock(),
-        )
-
-        commit = CommitFactory.create(
-            message="hello world",
-            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-            repository__owner__username="joseph-sentry",
-            repository__owner__service="github",
-            repository__name="codecov-demo",
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-
-        upload1 = UploadFactory.create()
-        dbsession.add(upload1)
-        dbsession.flush()
-
-        upload2 = UploadFactory.create()
-        upload2.created_at = upload1.created_at + datetime.timedelta(0, 3)
-        dbsession.add(upload2)
-        dbsession.flush()
-
-        current_report_row = CommitReport(
-            commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
-        )
-        dbsession.add(current_report_row)
-        dbsession.flush()
-        upload1.report = current_report_row
-        upload2.report = current_report_row
-        dbsession.flush()
-
-        pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
-
-        _ = mocker.patch(
-            "services.test_results.fetch_and_update_pull_request_information_from_commit",
-            return_value=EnrichedPull(
-                database_pull=pull,
-                provider_pull={},
-            ),
-        )
-
-        mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
-
-        m = mocker.MagicMock(
-            edit_comment=AsyncMock(return_value=True),
-            post_comment=AsyncMock(return_value={"id": 1}),
-        )
-        mocked_repo_provider = mocker.patch(
-            "services.test_results.get_repo_provider_service",
-            return_value=m,
-        )
-
-        repoid = upload1.report.commit.repoid
-        upload2.report.commit.repoid = repoid
-        dbsession.flush()
-
-        flag1 = RepositoryFlag(repository_id=repoid, flag_name="a")
-        flag2 = RepositoryFlag(repository_id=repoid, flag_name="b")
-        dbsession.flush()
-
-        upload1.flags = [flag1]
-        upload2.flags = [flag2]
-        dbsession.flush()
-
-        upload_id1 = upload1.id
-        upload_id2 = upload2.id
-
-        test_id1 = generate_test_id(repoid, "test_name", "test_testsuite", "a")
-        test_id2 = generate_test_id(repoid, "test_name", "test_testsuite", "b")
-        test_id3 = generate_test_id(repoid, "test_name_2", "test_testsuite", "a")
-
-        test1 = Test(
-            id_=test_id1,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="a",
-        )
-        dbsession.add(test1)
-        dbsession.flush()
-        test2 = Test(
-            id_=test_id2,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="b",
-        )
-        dbsession.add(test2)
-        dbsession.flush()
-        test3 = Test(
-            id_=test_id3,
-            repoid=repoid,
-            name="test_name_2",
-            testsuite="test_testsuite",
-            flags_hash="a",
-        )
-        dbsession.add(test3)
-        dbsession.flush()
-
-        test_instance1 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="bad",
-            duration_seconds=1,
-            upload_id=upload_id1,
-        )
-        dbsession.add(test_instance1)
-        dbsession.flush()
-
-        test_instance2 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="not that bad",
-            duration_seconds=1,
-            upload_id=upload_id2,
-        )
-        dbsession.add(test_instance2)
-        dbsession.flush()
-
-        test_instance3 = TestInstance(
-            test_id=test_id2,
-            outcome=str(Outcome.Failure),
-            failure_message="not that bad",
-            duration_seconds=2,
-            upload_id=upload_id1,
-        )
-
-        dbsession.add(test_instance3)
-        dbsession.flush()
-
-        test_instance4 = TestInstance(
-            test_id=test_id3,
-            outcome=str(Outcome.Failure),
-            failure_message="not that bad",
-            duration_seconds=2,
-            upload_id=upload_id1,
-        )
-
-        dbsession.add(test_instance4)
-        dbsession.flush()
-
-        result = TestResultsFinisherTask().run_impl(
-            dbsession,
-            [
-                [{"successful": True}],
-            ],
-            repoid=repoid,
-            commitid=commit.commitid,
-            commit_yaml={"codecov": {"max_report_age": False}},
-        )
-
-        expected_result = {"notify_attempted": True, "notify_succeeded": True}
-        m.post_comment.assert_called_with(
+        mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- a<br>- b<br>Testsuite:<br>test_testsuite<br>Test name:<br>test_name_2<br>Envs:<br>- a</pre> | <pre>not that bad</pre> |",
+            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- 0</pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_name<br>Test name:<br>test_name<br>Envs:<br>- default<br>- 1</pre> | <pre>Shared failure message</pre> |",
         )
-
-        assert expected_result == result
 
         mock_metrics.incr.assert_has_calls(
             [
@@ -393,133 +239,15 @@ class TestUploadTestFinisherTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        mock_metrics,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
     ):
-        mocked_app = mocker.patch.object(
-            TestResultsFinisherTask,
-            "app",
-            tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
-        )
+        repoid, commit, _, test_instances = test_results_setup
 
-        commit = CommitFactory.create(
-            message="hello world",
-            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-            repository__owner__username="joseph-sentry",
-            repository__owner__service="github",
-            repository__name="codecov-demo",
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-
-        upload1 = UploadFactory.create()
-        dbsession.add(upload1)
-        dbsession.flush()
-
-        upload2 = UploadFactory.create()
-        upload2.created_at = upload2.created_at + datetime.timedelta(0, 3)
-        dbsession.add(upload2)
-        dbsession.flush()
-
-        current_report_row = CommitReport(
-            commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
-        )
-        dbsession.add(current_report_row)
-        dbsession.flush()
-        upload1.report = current_report_row
-        upload2.report = current_report_row
-        dbsession.flush()
-
-        pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
-
-        _ = mocker.patch(
-            "services.test_results.fetch_and_update_pull_request_information_from_commit",
-            return_value=EnrichedPull(
-                database_pull=pull,
-                provider_pull={},
-            ),
-        )
-
-        mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
-
-        m = mocker.MagicMock(
-            edit_comment=AsyncMock(return_value=True),
-            post_comment=AsyncMock(return_value={"id": 1}),
-        )
-        mocked_repo_provider = mocker.patch(
-            "services.test_results.get_repo_provider_service",
-            return_value=m,
-        )
-        mock_metrics = mocker.patch(
-            "tasks.test_results_finisher.metrics",
-            mocker.MagicMock(),
-        )
-
-        repoid = upload1.report.commit.repoid
-        upload2.report.commit.repoid = repoid
-        dbsession.flush()
-
-        flag1 = RepositoryFlag(repository_id=repoid, flag_name="a")
-        flag2 = RepositoryFlag(repository_id=repoid, flag_name="b")
-        dbsession.flush()
-
-        upload1.flags = [flag1]
-        upload2.flags = [flag2]
-        dbsession.flush()
-
-        upload_id1 = upload1.id
-        upload_id2 = upload2.id
-
-        test_id1 = generate_test_id(repoid, "test_name", "test_testsuite", "a")
-        test_id2 = generate_test_id(repoid, "test_name", "test_testsuite", "b")
-
-        test1 = Test(
-            id_=test_id1,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="a",
-        )
-        dbsession.add(test1)
-        dbsession.flush()
-        test2 = Test(
-            id_=test_id2,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="b",
-        )
-        dbsession.add(test2)
-        dbsession.flush()
-
-        test_instance1 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Pass),
-            failure_message="bad",
-            duration_seconds=1,
-            upload_id=upload_id1,
-        )
-        dbsession.add(test_instance1)
-        dbsession.flush()
-
-        test_instance2 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Pass),
-            failure_message="not that bad",
-            duration_seconds=1,
-            upload_id=upload_id2,
-        )
-        dbsession.add(test_instance2)
-        dbsession.flush()
-
-        test_instance3 = TestInstance(
-            test_id=test_id2,
-            outcome=str(Outcome.Pass),
-            failure_message="okay i guess",
-            duration_seconds=2,
-            upload_id=upload_id1,
-        )
-
-        dbsession.add(test_instance3)
+        for instance in test_instances:
+            instance.outcome = str(Outcome.Pass)
         dbsession.flush()
 
         result = TestResultsFinisherTask().run_impl(
@@ -533,12 +261,14 @@ class TestUploadTestFinisherTask(object):
         )
 
         expected_result = {"notify_attempted": False, "notify_succeeded": False}
-        mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
+        test_results_mock_app.tasks[
+            "app.tasks.notify.Notify"
+        ].apply_async.assert_called_with(
             args=None,
             kwargs={
                 "commitid": commit.commitid,
                 "current_yaml": {"codecov": {"max_report_age": False}},
-                "repoid": commit.repoid,
+                "repoid": repoid,
             },
         )
 
@@ -571,135 +301,12 @@ class TestUploadTestFinisherTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        mock_metrics,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
     ):
-        mocked_app = mocker.patch.object(
-            TestResultsFinisherTask,
-            "app",
-            tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
-        )
-
-        commit = CommitFactory.create(
-            message="hello world",
-            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-            repository__owner__username="joseph-sentry",
-            repository__owner__service="github",
-            repository__name="codecov-demo",
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-
-        upload1 = UploadFactory.create()
-        dbsession.add(upload1)
-        dbsession.flush()
-
-        upload2 = UploadFactory.create()
-        upload2.created_at = upload2.created_at + datetime.timedelta(0, 3)
-        dbsession.add(upload2)
-        dbsession.flush()
-
-        current_report_row = CommitReport(
-            commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
-        )
-        dbsession.add(current_report_row)
-        dbsession.flush()
-        upload1.report = current_report_row
-        upload2.report = current_report_row
-        dbsession.flush()
-
-        pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
-
-        _ = mocker.patch(
-            "services.test_results.fetch_and_update_pull_request_information_from_commit",
-            return_value=EnrichedPull(
-                database_pull=pull,
-                provider_pull={},
-            ),
-        )
-
-        mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
-
-        m = mocker.MagicMock(
-            edit_comment=AsyncMock(return_value=True),
-            post_comment=AsyncMock(return_value={"id": 1}),
-        )
-        mocked_repo_provider = mocker.patch(
-            "services.test_results.get_repo_provider_service",
-            return_value=m,
-        )
-
-        mock_metrics = mocker.patch(
-            "tasks.test_results_finisher.metrics",
-            mocker.MagicMock(),
-        )
-
-        repoid = upload1.report.commit.repoid
-        upload2.report.commit.repoid = repoid
-        dbsession.flush()
-
-        flag1 = RepositoryFlag(repository_id=repoid, flag_name="a")
-        flag2 = RepositoryFlag(repository_id=repoid, flag_name="b")
-        dbsession.flush()
-
-        upload1.flags = [flag1]
-        upload2.flags = [flag2]
-        dbsession.flush()
-
-        upload_id1 = upload1.id
-        upload_id2 = upload2.id
-
-        test_id1 = generate_test_id(repoid, "test_name", "test_testsuite", "a")
-        test_id2 = generate_test_id(repoid, "test_name", "test_testsuite", "b")
-
-        test1 = Test(
-            id_=test_id1,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="a",
-        )
-        dbsession.add(test1)
-        dbsession.flush()
-        test2 = Test(
-            id_=test_id2,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="b",
-        )
-        dbsession.add(test2)
-        dbsession.flush()
-
-        test_instance1 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Pass),
-            failure_message="bad",
-            duration_seconds=1,
-            upload_id=upload_id1,
-        )
-        dbsession.add(test_instance1)
-        dbsession.flush()
-
-        test_instance2 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Pass),
-            failure_message="not that bad",
-            duration_seconds=1,
-            upload_id=upload_id2,
-        )
-        dbsession.add(test_instance2)
-        dbsession.flush()
-
-        test_instance3 = TestInstance(
-            test_id=test_id2,
-            outcome=str(Outcome.Pass),
-            failure_message="okay i guess",
-            duration_seconds=2,
-            upload_id=upload_id1,
-        )
-
-        dbsession.add(test_instance3)
-        dbsession.flush()
+        repoid, commit, _, _ = test_results_setup
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
@@ -735,131 +342,14 @@ class TestUploadTestFinisherTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        mock_metrics,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
     ):
-        mocked_app = mocker.patch.object(
-            TestResultsFinisherTask,
-            "app",
-            tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
-        )
+        repoid, commit, pull, _ = test_results_setup
 
-        commit = CommitFactory.create(
-            message="hello world",
-            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-            repository__owner__username="joseph-sentry",
-            repository__owner__service="github",
-            repository__name="codecov-demo",
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-
-        upload1 = UploadFactory.create()
-        dbsession.add(upload1)
-        dbsession.flush()
-
-        upload2 = UploadFactory.create()
-        upload2.created_at = upload1.created_at + datetime.timedelta(0, 3)
-        dbsession.add(upload2)
-        dbsession.flush()
-
-        current_report_row = CommitReport(
-            commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
-        )
-        dbsession.add(current_report_row)
-        dbsession.flush()
-        upload1.report = current_report_row
-        upload2.report = current_report_row
-        dbsession.flush()
-
-        pull = PullFactory.create(
-            repository=commit.repository, head=commit.commitid, commentid=1, pullid=1
-        )
-
-        _ = mocker.patch(
-            "services.test_results.fetch_and_update_pull_request_information_from_commit",
-            return_value=EnrichedPull(
-                database_pull=pull,
-                provider_pull={},
-            ),
-        )
-
-        mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
-
-        m = mocker.MagicMock(
-            edit_comment=AsyncMock(return_value=True),
-            post_comment=AsyncMock(return_value={"id": 1}),
-        )
-        mocked_repo_provider = mocker.patch(
-            "services.test_results.get_repo_provider_service",
-            return_value=m,
-        )
-
-        repoid = upload1.report.commit.repoid
-        upload2.report.commit.repoid = repoid
-        dbsession.flush()
-
-        flag1 = RepositoryFlag(repository_id=repoid, flag_name="a")
-        flag2 = RepositoryFlag(repository_id=repoid, flag_name="b")
-        dbsession.flush()
-
-        upload1.flags = [flag1]
-        upload2.flags = [flag2]
-        dbsession.flush()
-
-        upload_id1 = upload1.id
-        upload_id2 = upload2.id
-
-        test_id1 = generate_test_id(repoid, "test_name", "test_testsuite", "a")
-        test_id2 = generate_test_id(repoid, "test_name", "test_testsuite", "b")
-
-        test1 = Test(
-            id_=test_id1,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="a",
-        )
-        dbsession.add(test1)
-        dbsession.flush()
-        test2 = Test(
-            id_=test_id2,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="b",
-        )
-        dbsession.add(test2)
-        dbsession.flush()
-
-        test_instance1 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="bad",
-            duration_seconds=1,
-            upload_id=upload_id1,
-        )
-        dbsession.add(test_instance1)
-        dbsession.flush()
-
-        test_instance2 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="not that bad",
-            duration_seconds=1,
-            upload_id=upload_id2,
-        )
-        dbsession.add(test_instance2)
-        dbsession.flush()
-
-        test_instance3 = TestInstance(
-            test_id=test_id2,
-            outcome=str(Outcome.Failure),
-            failure_message="okay i guess",
-            duration_seconds=2,
-            upload_id=upload_id1,
-        )
-
-        dbsession.add(test_instance3)
+        pull.commentid = 1
         dbsession.flush()
 
         result = TestResultsFinisherTask().run_impl(
@@ -874,10 +364,10 @@ class TestUploadTestFinisherTask(object):
 
         expected_result = {"notify_attempted": True, "notify_succeeded": True}
 
-        m.edit_comment.assert_called_with(
+        mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 2 tests with **`2 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- b</pre> | <pre>not that bad</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- a</pre> | <pre>okay i guess</pre> |",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- 0</pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_name<br>Test name:<br>test_name<br>Envs:<br>- default<br>- 1</pre> | <pre>Shared failure message</pre> |",
         )
 
         assert expected_result == result
@@ -892,136 +382,14 @@ class TestUploadTestFinisherTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        mock_metrics,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
     ):
-        mocked_app = mocker.patch.object(
-            TestResultsFinisherTask,
-            "app",
-            tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
-        )
+        repoid, commit, _, _ = test_results_setup
 
-        commit = CommitFactory.create(
-            message="hello world",
-            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-            repository__owner__username="joseph-sentry",
-            repository__owner__service="github",
-            repository__name="codecov-demo",
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-
-        upload1 = UploadFactory.create()
-        dbsession.add(upload1)
-        dbsession.flush()
-
-        upload2 = UploadFactory.create()
-        upload2.created_at = upload2.created_at + datetime.timedelta(0, 3)
-        dbsession.add(upload2)
-        dbsession.flush()
-
-        current_report_row = CommitReport(
-            commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
-        )
-        dbsession.add(current_report_row)
-        dbsession.flush()
-        upload1.report = current_report_row
-        upload2.report = current_report_row
-        dbsession.flush()
-
-        pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
-
-        _ = mocker.patch(
-            "services.test_results.fetch_and_update_pull_request_information_from_commit",
-            return_value=EnrichedPull(
-                database_pull=pull,
-                provider_pull={},
-            ),
-        )
-
-        mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
-
-        m = mocker.MagicMock(
-            edit_comment=AsyncMock(return_value=True),
-            post_comment=AsyncMock(side_effect=TorngitClientError),
-        )
-
-        mocked_repo_provider = mocker.patch(
-            "services.test_results.get_repo_provider_service",
-            return_value=m,
-        )
-
-        mock_metrics = mocker.patch(
-            "tasks.test_results_finisher.metrics",
-            mocker.MagicMock(),
-        )
-
-        repoid = upload1.report.commit.repoid
-        upload2.report.commit.repoid = repoid
-        dbsession.flush()
-
-        flag1 = RepositoryFlag(repository_id=repoid, flag_name="a")
-        flag2 = RepositoryFlag(repository_id=repoid, flag_name="b")
-        dbsession.flush()
-
-        upload1.flags = [flag1]
-        upload2.flags = [flag2]
-        dbsession.flush()
-
-        upload_id1 = upload1.id
-        upload_id2 = upload2.id
-
-        test_id1 = generate_test_id(repoid, "test_name", "test_testsuite", "a")
-        test_id2 = generate_test_id(repoid, "test_name", "test_testsuite", "b")
-
-        test1 = Test(
-            id_=test_id1,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="a",
-        )
-        dbsession.add(test1)
-        dbsession.flush()
-        test2 = Test(
-            id_=test_id2,
-            repoid=repoid,
-            name="test_name",
-            testsuite="test_testsuite",
-            flags_hash="b",
-        )
-        dbsession.add(test2)
-        dbsession.flush()
-
-        test_instance1 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="bad",
-            duration_seconds=1,
-            upload_id=upload_id1,
-        )
-        dbsession.add(test_instance1)
-        dbsession.flush()
-
-        test_instance2 = TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="not that bad",
-            duration_seconds=1,
-            upload_id=upload_id2,
-        )
-        dbsession.add(test_instance2)
-        dbsession.flush()
-
-        test_instance3 = TestInstance(
-            test_id=test_id2,
-            outcome=str(Outcome.Failure),
-            failure_message="okay i guess",
-            duration_seconds=2,
-            upload_id=upload_id1,
-        )
-
-        dbsession.add(test_instance3)
-        dbsession.flush()
+        mock_repo_provider_comments.post_comment.side_effect = TorngitClientError
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
