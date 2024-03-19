@@ -1,15 +1,14 @@
 import logging
+from dataclasses import dataclass
 from hashlib import sha256
-from typing import Mapping, Sequence, Tuple
+from typing import List, Mapping, Sequence, Tuple
 
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
 from sqlalchemy import desc
-from test_results_parser import Outcome
 
 from database.enums import ReportType
 from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
-from helpers.string import EscapeEnum, Replacement, StringEscaper
 from services.report import BaseReportService
 from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
@@ -111,84 +110,77 @@ def generate_test_id(repoid, testsuite, name, flags_hash):
     ).hexdigest()
 
 
+@dataclass
+class TestResultsNotificationFailure:
+    failure_message: str
+    testsuite: str
+    testname: str
+    envs: List[str]
+    test_id: str
+
+
+@dataclass
+class TestResultsNotificationPayload:
+    failed: int
+    passed: int
+    skipped: int
+    failures: List[TestResultsNotificationFailure]
+
+
 class TestResultsNotifier:
-    def __init__(self, commit: Commit, commit_yaml, test_instances):
+    def __init__(
+        self,
+        commit: Commit,
+        commit_yaml,
+    ):
         self.commit = commit
         self.commit_yaml = commit_yaml
-        self.test_instances = test_instances
 
-    async def notify(
-        self, failures, num_passed, num_skipped, num_failed
-    ) -> Tuple[bool, str]:
-        commit_report = self.commit.commit_report(report_type=ReportType.TEST_RESULTS)
-        if not commit_report:
-            log.warning(
-                "No test results commit report found for this commit",
-                extra=dict(
-                    commitid=self.commit.commitid,
-                    report_key=commit_report.external_id,
-                ),
-            )
-
-        repo_service = get_repo_provider_service(self.commit.repository, self.commit)
-
-        pull = await fetch_and_update_pull_request_information_from_commit(
-            repo_service, self.commit, self.commit_yaml
-        )
-        if pull is None:
-            log.info(
-                "Not notifying since there is no pull request associated with this commit",
-                extra=dict(
-                    commitid=self.commit.commitid,
-                    report_key=commit_report.external_id,
-                ),
-            )
-            return False, "no_pull"
-
-        pullid = pull.database_pull.pullid
-
-        pull_url = get_pull_url(pull.database_pull)
-
-        message = self.build_message(
-            pull_url, self.test_instances, failures, num_passed, num_skipped, num_failed
+    async def get_pull(self):
+        self.pull = await fetch_and_update_pull_request_information_from_commit(
+            self.repo_service, self.commit, self.commit_yaml
         )
 
+    async def send_to_github(self, message):
+        pullid = self.pull.database_pull.pullid
         try:
-            comment_id = pull.database_pull.commentid
+            comment_id = self.pull.database_pull.commentid
             if comment_id:
-                await repo_service.edit_comment(pullid, comment_id, message)
+                await self.repo_service.edit_comment(pullid, comment_id, message)
             else:
-                res = await repo_service.post_comment(pullid, message)
-                pull.database_pull.commentid = res["id"]
-            return True, "comment_posted"
+                res = await self.repo_service.post_comment(pullid, message)
+                self.pull.database_pull.commentid = res["id"]
+            return True
         except TorngitClientError:
             log.error(
                 "Error creating/updating PR comment",
                 extra=dict(
                     commitid=self.commit.commitid,
-                    report_key=commit_report.external_id,
                     pullid=pullid,
                 ),
             )
-            return False, "torngit_error"
+            return False
 
-    def format_single_test(self, test_name, test_env_list):
-        testsuite_section = f"Testsuite:<br>{test_name.split('//////////')[0]}"
-        testname_section = f"Test name:<br>{test_name.split('//////////')[1]}"
-        single_test = f"{testsuite_section}<br>{testname_section}"
-
-        if len(test_env_list) > 0:
-            env_string_list = [
-                f"- {test_env if test_env != '' else 'default'}"
-                for test_env in sorted(test_env_list)
-            ]
-            single_test = f"{single_test}<br>Envs:<br>{'<br>'.join(env_string_list)}"
-
-        return single_test
-
-    def build_message(
-        self, url, test_instances, failures, num_passed, num_skipped, num_failed
+    def generate_test_description(
+        self,
+        fail: TestResultsNotificationFailure,
     ):
+        envs = [f"- {env}" for env in fail.envs] or ["- default"]
+        env_section = "<br>".join(envs)
+        test_description = (
+            f"Testsuite:<br>{fail.testsuite}<br>"
+            f"Test name:<br>{fail.testname}<br>"
+            f"Envs:<br>{env_section}<br>"
+        )
+        return test_description
+
+    def generate_failure_info(
+        self,
+        fail: TestResultsNotificationFailure,
+    ):
+        return fail.failure_message
+
+    def build_message(self, payload: TestResultsNotificationPayload) -> str:
         message = []
 
         message += [
@@ -197,7 +189,8 @@ class TestResultsNotifier:
             "### :x: Failed Test Results: ",
         ]
 
-        results = f"Completed {len(test_instances)} tests with **`{num_failed} failed`**, {num_passed} passed and {num_skipped} skipped."
+        completed = payload.failed + payload.passed + payload.skipped
+        results = f"Completed {completed} tests with **`{payload.failed} failed`**, {payload.passed} passed and {payload.skipped} skipped."
 
         message.append(results)
 
@@ -209,29 +202,40 @@ class TestResultsNotifier:
         ]
 
         message += details
-        failure_table = [
-            "| <pre>{0}</pre> | <pre>{1}</pre> |".format(
-                (
-                    "<br>".join(
-                        self.insert_breaks(
-                            self.format_single_test(test_name, test_env_list)
-                        )
-                        for test_name, test_env_list in sorted(
-                            failed_test_to_env_list.items(),
-                            key=lambda failed_test: failed_test[0],
-                        )
-                    )
-                ),
-                failure_message,
-            )
-            for failure_message, failed_test_to_env_list in sorted(
-                failures.items(), key=lambda failure: failure[0]
-            )
-        ]
 
-        message += failure_table
+        for fail in payload.failures:
+
+            test_description = self.generate_test_description(fail)
+            failure_information = self.generate_failure_info(fail)
+            single_test_row = (
+                f"| <pre>{test_description}</pre> | <pre>{failure_information}</pre> |"
+            )
+            message.append(single_test_row)
 
         return "\n".join(message)
+
+    async def notify(self, payload: TestResultsNotificationPayload) -> Tuple[bool, str]:
+        self.repo_service = get_repo_provider_service(
+            self.commit.repository, self.commit
+        )
+
+        await self.get_pull()
+        if self.pull is None:
+            log.info(
+                "Not notifying since there is no pull request associated with this commit",
+                extra=dict(
+                    commitid=self.commit.commitid,
+                ),
+            )
+            return False, "no_pull"
+
+        message = self.build_message(payload)
+
+        sent_to_github = await self.send_to_github(message)
+        if sent_to_github == False:
+            return (False, "torngit_error")
+
+        return (True, "comment_posted")
 
     def insert_breaks(self, table_value):
         line_size = 70
