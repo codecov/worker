@@ -13,6 +13,8 @@ from database.models import Commit, TestResultReportTotals
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
+    TestResultsNotificationFailure,
+    TestResultsNotificationPayload,
     TestResultsNotifier,
     latest_test_instances_for_a_given_commit,
 )
@@ -125,19 +127,17 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         passed_tests = 0
         skipped_tests = 0
 
-        failures = defaultdict(lambda: defaultdict(list))
-
         escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
+
+        failures = []
 
         for test_instance in test_instances:
             if test_instance.outcome == str(
                 Outcome.Failure
             ) or test_instance.outcome == str(Outcome.Error):
                 failed_tests += 1
+
                 flag_names = sorted(test_instance.upload.flag_names)
-                suffix = ""
-                if flag_names:
-                    suffix = f"{''.join(flag_names) or ''}"
 
                 failure_message = test_instance.failure_message
 
@@ -148,9 +148,15 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
                 failure_message = escaper.replace(failure_message)
 
-                failures[failure_message][
-                    f"{test_instance.test.testsuite}//////////{test_instance.test.name}"
-                ].append(suffix)
+                failures.append(
+                    TestResultsNotificationFailure(
+                        testsuite=test_instance.test.testsuite,
+                        testname=test_instance.test.name,
+                        failure_message=failure_message,
+                        test_id=test_instance.test_id,
+                        envs=flag_names,
+                    )
+                )
             elif test_instance.outcome == str(Outcome.Skip):
                 skipped_tests += 1
             elif test_instance.outcome == str(Outcome.Pass):
@@ -167,7 +173,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         totals.failed = failed_tests
         db_session.flush()
 
-        if self.check_if_no_failures(test_instances):
+        if failed_tests == 0:
             metrics.incr(
                 "test_results.finisher",
                 tags={"status": "normal_notify_called", "reason": "all_tests_passed"},
@@ -185,11 +191,15 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             tags={"status": "success", "reason": "tests_failed"},
         )
 
-        notifier = TestResultsNotifier(commit, commit_yaml, test_instances)
+        notifier = TestResultsNotifier(commit, commit_yaml)
+
+        failures = sorted(failures, key=lambda x: x.testsuite + x.testname)
+        payload = TestResultsNotificationPayload(
+            failed_tests, passed_tests, skipped_tests, failures
+        )
+
         with metrics.timing("test_results.finisher.notification"):
-            success, reason = async_to_sync(notifier.notify)(
-                failures, passed_tests, skipped_tests, failed_tests
-            )
+            success, reason = async_to_sync(notifier.notify)(payload)
 
         log.info(
             "Finished test results notify",
