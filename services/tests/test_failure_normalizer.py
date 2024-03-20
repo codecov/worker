@@ -4,18 +4,18 @@ test_string = "abcdefAB-1234-1234-1234-abcdefabcdef test_string 2024-03-10 test 
 
 
 def test_failure_normalizer():
-    user_dict = {"TEST": r"test_string"}
+    user_dict = {"TEST": [r"test_string"]}
     f = FailureNormalizer(user_dict)
     s = f.normalize_failure_message(test_string)
 
     assert (
         s
-        == "UUID TEST DATE test HEXNUMBER DATETIME2 DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
+        == "UUID TEST DATE test HEXNUMBER DATETIME DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
     )
 
 
 def test_failure_normalizer_ignore_predefined():
-    user_dict = {"TEST": r"test_string"}
+    user_dict = {"TEST": [r"test_string"]}
     f = FailureNormalizer(user_dict, True)
     s = f.normalize_failure_message(test_string)
 
@@ -26,11 +26,11 @@ def test_failure_normalizer_ignore_predefined():
 
 
 def test_failure_normalizer_overwrite_predefined():
-    user_dict = {"UUID": "test"}
+    user_dict = {"UUID": ["test"]}
     f = FailureNormalizer(user_dict)
     s = f.normalize_failure_message(test_string)
 
     assert (
         s
-        == "abcdefAB-1234-1234-1234-abcdefabcdef UUID_string DATE UUID HEXNUMBER DATETIME2 DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
+        == "UUID UUID_string DATE UUID HEXNUMBER DATETIME DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
     )
