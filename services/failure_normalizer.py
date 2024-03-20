@@ -1,18 +1,27 @@
-from typing import Dict
-
 import regex
 from sentry_sdk import metrics, trace
 
 predefined_dict_of_regexes_to_match = {
-    "UUID": r"[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}",
-    "DATETIME": r"(?:19|20)[0-9]{2}-(?:(?:0?[0-9])|(?:1[012]))-(?:(?:0?[0-9])|1[0-9]|2[0-9]|3[01])T(?:0[0-9]|1[0-9]|2[0-3]):(?:[0-5][0-9]):(?:[0-5][0-9])(?:Z|(?:-(?:0[0-9]:[03]0)))?",
-    "DATETIME2": r"(?:19|20)[0-9]{2}(?:(?:0?[0-9])|(?:1[012]))(?:(?:0?[0-9])|1[0-9]|2[0-9]|3[01])T(?:0[0-9]|1[0-9]|2[0-3])(?:[0-5][0-9])(?:[0-5][0-9])(?:Z|(?:-(?:0[0-9]:[03]0)))?",
-    "DATE": r"(?:19|20)[0-9]{2}-(?:(?:0?[0-9])|(?:1[012]))-(?:(?:0?[0-9])\b|1[0-9]|2[0-9]|3[01])",
-    "TIME": r"(?:0[0-9]|1[0-9]|2[0-3]):(?:[0-5][0-9]):(?:[0-5][0-9])Z?",
-    "TIME2": r"T(?:0[0-9]|1[0-9]|2[0-3])(?:[0-5][0-9])(?:[0-5][0-9])Z?",
-    "URL": r"(?:(?:http)s?:\/\/)?\w+(?:\.\w+)+(?:(?:(?:\/*[\w\-]+\/)+(?:[\w\.]+)(:\d+:\d+)*))?",
-    "LINENO": r":\d+:\d*",
-    "HEXNUMBER": r"0?x[a-f0-9]+",
+    "UUID": [
+        r"[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}"
+    ],
+    "DATETIME": [
+        r"(?:19|20)[0-9]{2}-(?:(?:0?[0-9])|(?:1[012]))-(?:(?:0?[0-9])|1[0-9]|2[0-9]|3[01])T(?:0[0-9]|1[0-9]|2[0-3]):(?:[0-5][0-9]):(?:[0-5][0-9])(?:Z|(?:-(?:0[0-9]:[03]0)))?",
+        r"(?:19|20)[0-9]{2}(?:(?:0?[0-9])|(?:1[012]))(?:(?:0?[0-9])|1[0-9]|2[0-9]|3[01])T(?:0[0-9]|1[0-9]|2[0-3])(?:[0-5][0-9])(?:[0-5][0-9])(?:Z|(?:-(?:0[0-9]:[03]0)))?",
+    ],
+    "DATE": [
+        r"(?:19|20)[0-9]{2}-(?:(?:0?[0-9])|(?:1[012]))-(?:(?:0?[0-9])\b|1[0-9]|2[0-9]|3[01])"
+    ],
+    "TIME": [
+        r"(?:0[0-9]|1[0-9]|2[0-3]):(?:[0-5][0-9]):(?:[0-5][0-9])Z?",
+        r"T(?:0[0-9]|1[0-9]|2[0-3])(?:[0-5][0-9])(?:[0-5][0-9])Z?",
+    ],
+    "URL": [
+        r"(?:(?:http)s?:\/\/)?\w+(?:\.\w+)+(?:(?:(?:\/*[\w\-]+\/)+(?:[\w\.]+)(:\d+:\d+)*))?"
+    ],
+    "LINENO": [r":\d+:\d*"],
+    "HEXNUMBER": [r"0?x[a-f0-9]+"],
+    "NO": [r"\d+"],
 }
 
 
@@ -55,27 +64,36 @@ class FailureNormalizer:
     """
 
     def __init__(
-        self, user_dict_of_regex_strings: Dict[str, str], ignore_predefined=False
+        self, user_dict_of_regex_strings: dict[str, list[str]], ignore_predefined=False
     ):
         flags = regex.MULTILINE
 
         self.dict_of_regex = dict()
 
-        dict_of_regex_strings = user_dict_of_regex_strings
         if not ignore_predefined:
-            dict_of_regex_strings = (
-                predefined_dict_of_regexes_to_match | dict_of_regex_strings
-            )
+            dict_of_regex_strings = dict(predefined_dict_of_regexes_to_match)
+            for key, user_regex_string in user_dict_of_regex_strings.items():
+                if key in dict_of_regex_strings:
+                    dict_of_regex_strings[key] = (
+                        user_regex_string + dict_of_regex_strings[key]
+                    )
+                else:
+                    dict_of_regex_strings[key] = user_regex_string
+        else:
+            dict_of_regex_strings = dict(user_dict_of_regex_strings)
 
-        for key, regex_string in dict_of_regex_strings.items():
-            compiled_regex = regex.compile(regex_string, flags=flags)
-            self.dict_of_regex[key] = compiled_regex
+        for key, list_of_regex_string in dict_of_regex_strings.items():
+            self.dict_of_regex[key] = [
+                regex.compile(regex_string, flags=flags)
+                for regex_string in list_of_regex_string
+            ]
 
     @trace
     def normalize_failure_message(self, failure_message: str):
         with metrics.timing("failure_normalizer.normalize_failure_message"):
-            for key, compiled_regex in self.dict_of_regex.items():
-                for match_obj in compiled_regex.finditer(failure_message):
-                    actual_match = match_obj.group()
-                    failure_message = failure_message.replace(actual_match, key)
+            for key, list_of_compiled_regex in self.dict_of_regex.items():
+                for compiled_regex in list_of_compiled_regex:
+                    for match_obj in compiled_regex.finditer(failure_message):
+                        actual_match = match_obj.group()
+                        failure_message = failure_message.replace(actual_match, key)
         return failure_message
