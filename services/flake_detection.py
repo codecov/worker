@@ -23,9 +23,9 @@ class FlakeDetectionObject:
 
 
 class FlakeType(Enum):
-    FailedInDefaultBranch = "FailedInDefaultBranch"
-    ConsecutiveDiffOutcomes = "ConsecutiveDiffOutcomes"
-    UnrelatedMatchingFailures = "UnrelatedMatchingFailures"
+    FAILED_IN_DEFAULT_BRANCH = "failed_in_default_branch"
+    CONSECUTIVE_DIFF_OUTCOMES = "consecutive_diff_outcomes"
+    UNRELATED_MATCHING_FAILURES = "unrelated_matching_failures"
 
 
 @dataclass
@@ -107,7 +107,7 @@ class FlakeDetector:
             curr_test_context.is_curr_flake = True
             self.resulting_flakes[
                 curr_test_context.curr_test_id
-            ] = FlakeType.FailedInDefaultBranch
+            ] = FlakeType.FAILED_IN_DEFAULT_BRANCH
 
             return True
         return False
@@ -127,7 +127,7 @@ class FlakeDetector:
                 curr_test_context.is_curr_flake = True
                 self.resulting_flakes[
                     curr_test_context.curr_test_id
-                ] = FlakeType.ConsecutiveDiffOutcomes
+                ] = FlakeType.CONSECUTIVE_DIFF_OUTCOMES
 
                 return True
             elif existing_outcome_on_commit is None:
@@ -157,7 +157,7 @@ class FlakeDetector:
             curr_test_context.is_curr_flake = True
             self.resulting_flakes[
                 curr_test_context.curr_test_id
-            ] = FlakeType.UnrelatedMatchingFailures
+            ] = FlakeType.UNRELATED_MATCHING_FAILURES
             return True
         return False
 
@@ -213,7 +213,9 @@ class FlakeDetector:
                         metrics.incr(
                             "flake_detection.detect_flakes.flake_detected",
                             1,
-                            tags={"flake_type": str(FlakeType.FailedInDefaultBranch)},
+                            tags={
+                                "flake_type": str(FlakeType.FAILED_IN_DEFAULT_BRANCH)
+                            },
                         )
                     # else check if consecutive fails, ignoring skips
                     elif self.check_if_consecutive_diff_outcomes(
@@ -222,7 +224,9 @@ class FlakeDetector:
                         metrics.incr(
                             "flake_detection.detect_flakes.flake_detected",
                             1,
-                            tags={"flake_type": str(FlakeType.ConsecutiveDiffOutcomes)},
+                            tags={
+                                "flake_type": str(FlakeType.CONSECUTIVE_DIFF_OUTCOMES)
+                            },
                         )
 
                     # else check if meets other requirements for flakes
@@ -235,7 +239,9 @@ class FlakeDetector:
                         metrics.incr(
                             "flake_detection.detect_flakes.flake_detected",
                             1,
-                            tags={"flake_type": str(FlakeType.ConsecutiveDiffOutcomes)},
+                            tags={
+                                "flake_type": str(FlakeType.UNRELATED_MATCHING_FAILURES)
+                            },
                         )
 
         return self.resulting_flakes
