@@ -141,7 +141,7 @@ class TestResultsNotifier:
             self.repo_service, self.commit, self.commit_yaml
         )
 
-    async def send_to_github(self, message):
+    async def send_to_provider(self, message):
         pullid = self.pull.database_pull.pullid
         try:
             comment_id = self.pull.database_pull.commentid
@@ -231,8 +231,8 @@ class TestResultsNotifier:
 
         message = self.build_message(payload)
 
-        sent_to_github = await self.send_to_github(message)
-        if sent_to_github == False:
+        sent_to_provider = await self.send_to_provider(message)
+        if sent_to_provider == False:
             return (False, "torngit_error")
 
         return (True, "comment_posted")

@@ -127,8 +127,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         passed_tests = 0
         skipped_tests = 0
 
-        failures = defaultdict(lambda: defaultdict(list))
-
         escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
 
         failures = []
