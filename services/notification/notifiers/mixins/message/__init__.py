@@ -1,6 +1,8 @@
 import logging
 from typing import Callable
 
+from database.models.core import Owner
+from services.billing import BillingPlan
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
 
@@ -12,6 +14,7 @@ from services.notification.notifiers.mixins.message.helpers import (
 )
 from services.notification.notifiers.mixins.message.sections import (
     NullSectionWriter,
+    TeamPlanWriterSection,
     get_section_class_from_layout_name,
 )
 from services.urls import get_commit_url, get_pull_url
@@ -68,6 +71,26 @@ class MessageMixin(object):
         message = [
             f'## [Codecov]({links["pull"]}?dropdown=coverage&src=pr&el=h1) Report',
         ]
+
+        repo = comparison.head.commit.repository
+        owner: Owner = repo.owner
+
+        # Separate PR comment based on plan that can't/won't be tweaked by codecov.yml settings
+        if owner.plan == BillingPlan.team_monthly.value or owner.plan == BillingPlan.team_yearly.value:
+            writer_class = TeamPlanWriterSection()
+
+            with metrics.timer(
+                f"worker.services.notifications.notifiers.comment.section.{writer_class.name}"
+            ):
+                # Settings here enable failed tests results for now as a new product
+                for line in writer_class.header_lines(comparison=comparison, diff=diff, settings=settings):
+                    message.append(line)
+                for line in writer_class.middle_lines(comparison=comparison, diff=diff, links=links, current_yaml=current_yaml):
+                    message.append(line)
+                for line in writer_class.footer_lines():
+                    message.append(line)
+
+                return message
 
         write = message.append
         # note: since we're using append, calling write("") will add a newline to the message
