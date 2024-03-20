@@ -1,6 +1,7 @@
 from typing import Dict
 
 import regex
+from sentry_sdk import metrics, trace
 
 predefined_dict_of_regexes_to_match = {
     "UUID": r"[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}",
@@ -24,7 +25,8 @@ class FailureNormalizer:
     should ignore the predefined list of patterns in the constructor
 
     The normalize_failure_message method on the class takes a string as a parameter
-    it will remove all occurences of a match of the regexes specified in the list
+    it will replace all occurences of a match of the regexes specified in the list
+    with the keys that map to that regex, in that string
 
     If the users
 
@@ -69,9 +71,11 @@ class FailureNormalizer:
             compiled_regex = regex.compile(regex_string, flags=flags)
             self.dict_of_regex[key] = compiled_regex
 
+    @trace
     def normalize_failure_message(self, failure_message: str):
-        for key, compiled_regex in self.dict_of_regex.items():
-            for match_obj in compiled_regex.finditer(failure_message):
-                actual_match = match_obj.group()
-                failure_message = failure_message.replace(actual_match, key)
+        with metrics.timing("failure_normalizer.normalize_failure_message"):
+            for key, compiled_regex in self.dict_of_regex.items():
+                for match_obj in compiled_regex.finditer(failure_message):
+                    actual_match = match_obj.group()
+                    failure_message = failure_message.replace(actual_match, key)
         return failure_message
