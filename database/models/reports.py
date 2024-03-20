@@ -283,6 +283,8 @@ class Test(CodecovBaseModel):
     # for example: the same test being run on windows vs. mac
     flags_hash = Column(types.String(256), nullable=False)
 
+    flaky_status = Column(types.String(100), nullable=True)
+
     __table_args__ = (
         UniqueConstraint(
             "repoid",
