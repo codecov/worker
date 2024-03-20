@@ -43,11 +43,16 @@ log = logging.getLogger(__name__)
 
 class NotificationService(object):
     def __init__(
-        self, repository, current_yaml: UserYaml, decoration_type=Decoration.standard
+        self,
+        repository,
+        current_yaml: UserYaml,
+        decoration_type=Decoration.standard,
+        gh_installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     ) -> None:
         self.repository = repository
         self.current_yaml = current_yaml
         self.decoration_type = decoration_type
+        self.gh_installation_name_to_use = gh_installation_name_to_use
 
     def _should_use_checks_notifier(self) -> bool:
         checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
@@ -55,22 +60,24 @@ class NotificationService(object):
             return False
 
         owner = self.repository.owner
-        default_app_installation_filter = filter(
-            lambda obj: obj.name == GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        if owner.service not in ["github", "github_enterprise"]:
+            return False
+
+        app_installation_filter = filter(
+            lambda obj: (
+                obj.name == self.gh_installation_name_to_use and obj.is_configured()
+            ),
             owner.github_app_installations or [],
         )
         # filter is an Iterator, so we need to scan matches
-        # in practice we only consider the 1st one
-        for app_installation in default_app_installation_filter:
-            return app_installation.is_repo_covered_by_integration(self.repository)
+        for app_installation in app_installation_filter:
+            if app_installation.is_repo_covered_by_integration(self.repository):
+                return True
         # DEPRECATED FLOW
         return (
             self.repository.using_integration
             and self.repository.owner.integration_id
-            and (
-                self.repository.owner.service == "github"
-                or self.repository.owner.service == "github_enterprise"
-            )
+            and (self.repository.owner.service in ["github", "github_enterprise"])
         )
 
     def get_notifiers_instances(self) -> Iterator[AbstractBaseNotifier]:
@@ -104,6 +111,7 @@ class NotificationService(object):
                         notifier_site_settings={},
                         current_yaml=self.current_yaml,
                         decoration_type=self.decoration_type,
+                        gh_installation_name_to_use=self.gh_installation_name_to_use,
                     ),
                     status_notifier=status_notifier_class(
                         repository=self.repository,
@@ -112,6 +120,7 @@ class NotificationService(object):
                         notifier_site_settings={},
                         current_yaml=self.current_yaml,
                         decoration_type=self.decoration_type,
+                        gh_installation_name_to_use=self.gh_installation_name_to_use,
                     ),
                 )
             else:
@@ -122,6 +131,7 @@ class NotificationService(object):
                     notifier_site_settings={},
                     current_yaml=self.current_yaml,
                     decoration_type=self.decoration_type,
+                    gh_installation_name_to_use=self.gh_installation_name_to_use,
                 )
 
         # yield notifier if slack_app field is True, nonexistent, or a non-empty dict
@@ -134,6 +144,7 @@ class NotificationService(object):
                 notifier_site_settings={},
                 current_yaml=self.current_yaml,
                 decoration_type=self.decoration_type,
+                gh_installation_name_to_use=self.gh_installation_name_to_use,
             )
 
         comment_yaml_field = read_yaml_field(self.current_yaml, ("comment",))
@@ -146,6 +157,7 @@ class NotificationService(object):
                     notifier_site_settings={},
                     current_yaml=self.current_yaml,
                     decoration_type=self.decoration_type,
+                    gh_installation_name_to_use=self.gh_installation_name_to_use,
                 )
 
     def _get_component_statuses(self, current_flags: List[str]):
