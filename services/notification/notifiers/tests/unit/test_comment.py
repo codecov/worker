@@ -4744,7 +4744,7 @@ class TestCommentNotifierInNewLayout(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
-    async def test_build_message_for_team_plan_customer_missing_lines(
+    async def test_build_message_team_plan_customer_missing_lines(
         self,
         dbsession,
         mock_configuration,
@@ -4791,7 +4791,7 @@ class TestCommentNotifierInNewLayout(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
-    async def test_build_message_for_team_plan_customer_all_lines_covered(
+    async def test_build_message_team_plan_customer_all_lines_covered(
         self,
         dbsession,
         mock_configuration,
