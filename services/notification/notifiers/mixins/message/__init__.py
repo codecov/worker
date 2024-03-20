@@ -1,13 +1,13 @@
 import logging
 from typing import Callable
 
-from database.models.core import Owner
-from services.billing import BillingPlan
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
 
+from database.models.core import Owner
 from helpers.environment import is_enterprise
 from helpers.metrics import metrics
+from services.billing import BillingPlan
 from services.comparison import ComparisonProxy
 from services.notification.notifiers.mixins.message.helpers import (
     should_message_be_compact,
@@ -76,16 +76,26 @@ class MessageMixin(object):
         owner: Owner = repo.owner
 
         # Separate PR comment based on plan that can't/won't be tweaked by codecov.yml settings
-        if owner.plan == BillingPlan.team_monthly.value or owner.plan == BillingPlan.team_yearly.value:
+        if (
+            owner.plan == BillingPlan.team_monthly.value
+            or owner.plan == BillingPlan.team_yearly.value
+        ):
             writer_class = TeamPlanWriterSection()
 
             with metrics.timer(
                 f"worker.services.notifications.notifiers.comment.section.{writer_class.name}"
             ):
                 # Settings here enable failed tests results for now as a new product
-                for line in writer_class.header_lines(comparison=comparison, diff=diff, settings=settings):
+                for line in writer_class.header_lines(
+                    comparison=comparison, diff=diff, settings=settings
+                ):
                     message.append(line)
-                for line in writer_class.middle_lines(comparison=comparison, diff=diff, links=links, current_yaml=current_yaml):
+                for line in writer_class.middle_lines(
+                    comparison=comparison,
+                    diff=diff,
+                    links=links,
+                    current_yaml=current_yaml,
+                ):
                     message.append(line)
                 for line in writer_class.footer_lines():
                     message.append(line)

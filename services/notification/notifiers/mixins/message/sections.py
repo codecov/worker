@@ -820,6 +820,7 @@ class ComponentsSectionWriter(BaseSectionWriter):
                 )
             )
 
+
 class TeamPlanWriterSection:
     @property
     def name(self):
@@ -845,7 +846,9 @@ class TeamPlanWriterSection:
                 f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} lines` in your changes are missing coverage. Please review."
             )
         else:
-            lines.append("All modified and coverable lines are covered by tests :white_check_mark:")
+            lines.append(
+                "All modified and coverable lines are covered by tests :white_check_mark:"
+            )
 
         hide_project_coverage = settings.get("hide_project_coverage", False)
         if hide_project_coverage:
@@ -855,23 +858,11 @@ class TeamPlanWriterSection:
                     ":white_check_mark: All tests successful. No failed tests found :relaxed:"
                 )
 
-        if not base_report or not head_report:
-            lines.append(
-                "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
-                    what="base" if not base_report else "head",
-                    branch=pull_dict["base" if not base_report else "head"]["branch"],
-                    commit=pull_dict["base" if not base_report else "head"]["commitid"][
-                        :7
-                    ],
-                    request_type=(
-                        "merge request" if repo_service == "gitlab" else "pull request"
-                    ),
-                )
-            )
-
         return lines
 
-    def middle_lines(self, comparison: ComparisonProxy, diff, links, current_yaml) -> List[str]:
+    def middle_lines(
+        self, comparison: ComparisonProxy, diff, links, current_yaml
+    ) -> List[str]:
         lines = []
 
         # create list of files changed in diff
