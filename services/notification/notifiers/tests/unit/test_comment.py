@@ -4775,14 +4775,16 @@ class TestCommentNotifierInNewLayout(object):
                 }
             },
         )
-        result = await notifier.build_message(comparison)
 
+        pull = comparison.pull
+        repository = sample_comparison_head_and_pull_head_differ.head.commit.repository
+        result = await notifier.build_message(comparison)
         expected_result = [
-            "## [Codecov](test.example.br/gh/ThiagoCodecov/example-python/pull/10?dropdown=coverage&src=pr&el=h1) Report",
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            "| [Files](test.example.br/gh/ThiagoCodecov/example-python/pull/10?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
             "|---|---|---|",
-            "| [file\\_1.go](test.example.br/gh/ThiagoCodecov/example-python/pull/10?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/ThiagoCodecov/example-python/pull/10?src=pr&el=tree) |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
         ]
