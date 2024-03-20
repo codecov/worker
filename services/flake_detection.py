@@ -162,7 +162,7 @@ class FlakeDetector:
         return False
 
     @trace
-    def detect_flakes(self) -> List[Tuple[str, str]]:
+    def detect_flakes(self) -> dict[str, FlakeType]:
         """
         Detect flaky tests on a given repo based on the test instances
         gathered in the query in the constructor
