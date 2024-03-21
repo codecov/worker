@@ -19,11 +19,12 @@ predefined_dict_of_regexes_to_match = {
         r"T(?:0[0-9]|1[0-9]|2[0-3])(?:[0-5][0-9])(?:[0-5][0-9])Z?",
     ],
     "URL": [
-        r"(?:(?:http)s?:\/\/)?\w+(?:\.\w+)+(?:(?:(?:\/*[\w\-]+\/)+(?:[\w\.]+)(:\d+:\d+)*))?"
+        r"[a-z]+:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
     ],
     "LINENO": [r":\d+:\d*"],
     "HEXNUMBER": [r"0?x[a-f0-9]+"],
-    "NO": [r"\d+"],
+    "LONGSTRING": [r"[0-9a-zA-Z\-]{30}[0-9a-zA-Z\-]*"],
+    "NO": [r" \d+(?:\.\d+)? "],
 }
 
 
@@ -79,18 +80,13 @@ class FailureNormalizer:
         self.key_analysis_order = key_analysis_order
 
         if not ignore_predefined:
-            dict_of_regex_strings = dict(predefined_dict_of_regexes_to_match)
-            for key, user_regex_string in user_dict_of_regex_strings.items():
-                if not override_predefined and key in dict_of_regex_strings:
-                    dict_of_regex_strings[key] = (
-                        user_regex_string + dict_of_regex_strings[key]
-                    )
-                else:
-                    dict_of_regex_strings[key] = user_regex_string
+            dict_of_list_of_regex_string = (
+                predefined_dict_of_regexes_to_match | user_dict_of_regex_strings
+            )
         else:
-            dict_of_regex_strings = dict(user_dict_of_regex_strings)
+            dict_of_list_of_regex_string = dict(user_dict_of_regex_strings)
 
-        for key, list_of_regex_string in dict_of_regex_strings.items():
+        for key, list_of_regex_string in dict_of_list_of_regex_string.items():
             self.dict_of_regex[key] = [
                 regex.compile(regex_string, flags=flags)
                 for regex_string in list_of_regex_string
