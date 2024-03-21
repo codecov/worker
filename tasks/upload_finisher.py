@@ -1,5 +1,8 @@
+import functools
+import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 from redis.exceptions import LockError
 from shared.celery_config import (
@@ -9,6 +12,7 @@ from shared.celery_config import (
     timeseries_save_commit_measurements_task_name,
     upload_finisher_task_name,
 )
+from shared.reports.resources import Report
 from shared.yaml import UserYaml
 
 from app import celery_app
@@ -16,12 +20,16 @@ from database.models import Commit, Pull
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
+from helpers.metrics import metrics
+from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
+from services.report.raw_upload_processor import _adjust_sessions
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
+from tasks.upload_processor import UploadProcessorTask
 
 log = logging.getLogger(__name__)
 
@@ -76,6 +84,52 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         )
         commit = commits.first()
         assert commit, "Commit not found in database."
+
+        repository = commit.repository
+
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
+            report_service = ReportService(commit_yaml)
+            report = self.merge_incremental_reports(
+                commit_yaml,
+                repository,
+                commit,
+                report_code,
+                report_service,
+                processing_results,
+            )
+
+            log.info(
+                "Saving combined report",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    # processing_results=processing_results,
+                    parent_task=self.request.parent_id,
+                ),
+            )
+
+            actual_processing_results = []
+            pr = None
+
+            for task in processing_results:
+                actual_processing_results.append(task.get("processsings_so_far"))
+                pr = (
+                    task.get("processings_so_far", {})[0].get("pr") or pr
+                )  # okay since argument_list size is set to 1 for parallel upload processing
+
+            processing_results = {"processsings_so_far": actual_processing_results}
+
+            with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
+                results_dict = self.save_report_results(
+                    db_session,
+                    report_service,
+                    repository,
+                    commit,
+                    report,
+                    pr,
+                    report_code,
+                )
+
         redis_connection = get_redis_connection()
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
@@ -324,6 +378,116 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             redis_connection.hdel("badge", ("%s:%s" % (key, (commit.branch))).lower())
             if commit.branch == repository.branch:
                 redis_connection.hdel("badge", ("%s:" % key).lower())
+
+    def merge_incremental_reports(
+        self,
+        commit_yaml,
+        repository,
+        commit,
+        report_code,
+        report_service,
+        processing_results,
+    ):
+        archive_service = report_service.get_archive_service(repository)
+        repoid = repository.repoid
+        commitid = commit.id
+
+        report = report_service.get_existing_report_for_commit(
+            commit, report_code=report_code
+        )
+
+        if report is None:
+            report = Report()
+
+        log.info(
+            "Downloading %s incremental reports that were processed in parallel",
+            len(processing_results),
+            extra=dict(
+                repoid=repoid,
+                commit=commitid,
+                processing_results=processing_results,
+                parent_task=self.request.parent_id,
+            ),
+        )
+
+        def download_and_build_incremental_report(partial_report):
+            partial_report = partial_report["parallel_incremental_result"]
+            chunks = archive_service.read_file(partial_report["chunks_path"]).decode(
+                errors="replace"
+            )
+            files_and_sessions = json.loads(
+                archive_service.read_file(partial_report["files_and_sessions_path"])
+            )
+            return report_service.build_report(
+                chunks,
+                files_and_sessions["files"],
+                files_and_sessions["sessions"],
+                None,
+            )
+
+        def merge_report(cumulative_report, incremental_report):
+            assert len(incremental_report.sessions) == 1
+            session_id, session = cumulative_report.add_session(
+                incremental_report.sessions[0]
+            )
+            session.id = session_id
+            # current behavior uploads an UploadProcessingResult with this data
+
+            _adjust_sessions(
+                cumulative_report, incremental_report, session, commit_yaml
+            )
+            cumulative_report.merge(incremental_report)
+            return cumulative_report
+
+        with ThreadPoolExecutor(max_workers=10) as pool:  # max chosen arbitrarily
+            unmerged_reports = pool.map(
+                download_and_build_incremental_report, processing_results
+            )
+
+        log.info(
+            "Merging %s incremental reports together",
+            len(processing_results),
+            extra=dict(
+                repoid=repoid,
+                commit=commitid,
+                processing_results=processing_results,
+                parent_task=self.request.parent_id,
+            ),
+        )
+        report = functools.reduce(merge_report, unmerged_reports, report)
+        return report
+
+    def save_report_results(
+        self,
+        db_session,
+        report_service,
+        repository,
+        commit,
+        report,
+        pr,
+        report_code=None,
+    ):
+        """
+        This is a nasty hack related to testing parallel upload processing.
+        In today's behavior, `UploadProcessorTask` will merge an upload
+        into an accumulated "final" report, save it, and repeat for every
+        upload. If processing uploads in parallel, `UploadProcessorTask` skips
+        the merge step and we merge/save in one go in `UploadFinisherTask`. The
+        function definition really doesn't use `self` at all so calling it this
+        way should actually work.
+        When parallel upload processing is fully rolled out, steal the
+        definition of `save_report_results()` from `UploadProcessorTask`.
+        """
+        return UploadProcessorTask.save_report_results(
+            self,
+            db_session,
+            report_service,
+            repository,
+            commit,
+            report,
+            pr,
+            report_code=report_code,
+        )
 
 
 RegisteredUploadTask = celery_app.register_task(UploadFinisherTask())

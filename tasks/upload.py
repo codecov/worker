@@ -28,6 +28,7 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.save_commit_error import save_commit_error
+from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.bundle_analysis import BundleAnalysisReportService
 from services.redis import Redis, download_archive_from_redis, get_redis_connection
@@ -609,22 +610,35 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
     def _schedule_coverage_processing_task(
         self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
     ):
-        chain_to_call = []
-        for i in range(0, len(argument_list), CHUNK_SIZE):
-            chunk = argument_list[i : i + CHUNK_SIZE]
+        chunk_size = CHUNK_SIZE
+
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
+            chunk_size = 1
+
+        processing_tasks = []
+        for i in range(0, len(argument_list), chunk_size):
+            chunk = argument_list[i : i + chunk_size]
             if chunk:
                 sig = upload_processor_task.signature(
-                    args=({},) if i == 0 else (),
+                    args=({},)
+                    if i == 0
+                    or (
+                        PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+                            commit.repository.repoid
+                        )
+                    )
+                    else (),
                     kwargs=dict(
                         repoid=commit.repoid,
                         commitid=commit.commitid,
                         commit_yaml=commit_yaml,
                         arguments_list=chunk,
                         report_code=commit_report.code,
+                        chunk_idx=i,
                     ),
                 )
-                chain_to_call.append(sig)
-        if chain_to_call:
+                processing_tasks.append(sig)
+        if processing_tasks:
             checkpoint_data = None
             if checkpoints:
                 checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
@@ -639,9 +653,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     _kwargs_key(UploadFlow): checkpoint_data,
                 },
             )
-            chain_to_call.append(finish_sig)
-            res = chain(*chain_to_call).apply_async()
-
+            if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
+                res = chord(processing_tasks)(finish_sig)
+            else:
+                processing_tasks.append(finish_sig)
+                res = chain(*processing_tasks).apply_async()
             log.info(
                 "Scheduling task for %s different reports",
                 len(argument_list),
