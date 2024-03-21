@@ -247,7 +247,11 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         f"{self.metrics_prefix}.process_individual_report"
                     ):
                         result = self.process_individual_report(
-                            report_service, commit, report, upload_obj
+                            report_service,
+                            commit,
+                            report,
+                            upload_obj,
+                            parallel_index=chunk_idx,
                         )
                     individual_info.update(result)
                 except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
@@ -296,6 +300,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         report,
                         chunk_idx,
                     )
+                    parallel_incremental_result["upload_pk"] = arguments_list[0].get(
+                        "upload_pk"
+                    )
             else:
                 with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
                     results_dict = self.save_report_results(
@@ -307,6 +314,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         pr,
                         report_code,
                     )
+
+            # TODO FOR PARALLEL, make sure that it still works
             for processed_individual_report in processings_so_far:
                 deleted_archive = self._possibly_delete_archive(
                     processed_individual_report, report_service, commit
@@ -343,9 +352,11 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             raise
 
     @sentry_sdk.trace
-    def process_individual_report(self, report_service, commit, report, upload_obj):
+    def process_individual_report(
+        self, report_service, commit, report, upload_obj, parallel_index=None
+    ):
         processing_result = self.do_process_individual_report(
-            report_service, report, upload=upload_obj
+            report_service, report, upload=upload_obj, parallel_index=parallel_index
         )
         if (
             processing_result.error is not None
@@ -376,9 +387,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         current_report: Optional[Report],
         *,
         upload: Upload,
+        parallel_index=None,
     ):
         res: ProcessingResult = report_service.build_report_from_raw_content(
-            current_report, upload
+            current_report, upload, parallel_idx=parallel_index
         )
         return res
 
@@ -394,7 +406,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
     ):
         if self.should_delete_archive(report_service.current_yaml):
             upload = processing_result.get("upload_obj")
-            archive_url = upload.storage_path
+            archive_url = upload.get("storage_path")
             if archive_url and not archive_url.startswith("http"):
                 log.info(
                     "Deleting uploaded file as requested",
@@ -532,7 +544,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report,
         chunk_idx,
     ):
-        commitid = commit.id
+        commitid = commit.commitid
         archive_service = report_service.get_archive_service(commit.repository)
 
         # save incremental results to archive storage
@@ -549,7 +561,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             report_code=f"incremental/files_and_sessions{chunk_idx}",
         )
         parallel_incremental_result = {
-            "idx": chunk_idx,
+            "chunk_idx": chunk_idx,
             "chunks_path": chunks_url,
             "files_and_sessions_path": files_and_sessions_url,
         }

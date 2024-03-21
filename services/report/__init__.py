@@ -41,6 +41,7 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from helpers.labels import get_labels_per_session
+from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
@@ -519,7 +520,7 @@ class ReportService(BaseReportService):
             get_current_env() == Environment.local
             or commit.repoid in report_builder_repo_ids
         )
-        if not new_report_builder_enabled:
+        if not new_report_builder_enabled:  # sometimes this runs
             return self.get_existing_report_for_commit_from_legacy_data(
                 commit, report_class=report_class, report_code=report_code
             )
@@ -791,7 +792,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def build_report_from_raw_content(
-        self, master: Optional[Report], upload: Upload
+        self, master: Optional[Report], upload: Upload, parallel_idx=None
     ) -> ProcessingResult:
         """
             Processes an upload on top of an existing report `master` and returns
@@ -854,6 +855,7 @@ class ReportService(BaseReportService):
                     flags,
                     session,
                     upload=upload,
+                    parallel_idx=parallel_idx,
                 )
             log.info(
                 "Successfully processed report",
@@ -914,9 +916,15 @@ class ReportService(BaseReportService):
         db_session = upload_obj.get_db_session()
         session = processing_result.session
         if processing_result.error is None:
-            upload_obj.state = "processed"
-            upload_obj.state_id = UploadState.PROCESSED.db_id
-            upload_obj.order_number = session.id
+            if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+                "jfdios"
+            ):  # TODO: temp string
+                upload_obj.state_id = UploadState.PARALLEL_PROCESSED.db_id
+                upload_obj.state = "parallel_processed"
+            else:
+                upload_obj.state_id = UploadState.PROCESSED.db_id
+                upload_obj.state = "processed"
+            upload_obj.order_number = session.id  # this value uses parallel_idx
             upload_totals = upload_obj.totals
             if upload_totals is None:
                 upload_totals = UploadLevelTotals(

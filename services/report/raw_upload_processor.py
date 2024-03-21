@@ -61,6 +61,7 @@ def process_raw_upload(
     flags,
     session=None,
     upload: Upload = None,
+    parallel_idx=None,
 ) -> UploadProcessingResult:
     toc, env = None, None
 
@@ -93,8 +94,10 @@ def process_raw_upload(
     # Get a sesisonid to merge into
     # anything merged into the original_report
     # will take on this sessionid
-    sessionid, session = original_report.add_session(session or Session())
-    session.id = sessionid
+    sessionid, session = original_report.add_session(
+        session or Session(), parallel_idx=parallel_idx
+    )
+    session.id = sessionid  # this uses parallel idx
     if env:
         session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
 
@@ -124,7 +127,7 @@ def process_raw_upload(
             log.info(
                 "Customer is using joined=False feature", extra=dict(flag_used=flag)
             )
-            joined = False
+            joined = False  # TODO: make this work for parallel
     # ---------------
     # Process reports
     # ---------------
