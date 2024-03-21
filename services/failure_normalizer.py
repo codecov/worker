@@ -80,9 +80,14 @@ class FailureNormalizer:
         self.key_analysis_order = key_analysis_order
 
         if not ignore_predefined:
-            dict_of_list_of_regex_string = (
-                predefined_dict_of_regexes_to_match | user_dict_of_regex_strings
-            )
+            dict_of_list_of_regex_string = dict(predefined_dict_of_regexes_to_match)
+            for key, user_regex_string in user_dict_of_regex_strings.items():
+                if not override_predefined and key in dict_of_list_of_regex_string:
+                    dict_of_list_of_regex_string[key] = (
+                        user_regex_string + dict_of_list_of_regex_string[key]
+                    )
+                else:
+                    dict_of_list_of_regex_string[key] = user_regex_string
         else:
             dict_of_list_of_regex_string = dict(user_dict_of_regex_strings)
 
