@@ -108,7 +108,7 @@ def test_results_setup(mocker, dbsession):
     test1 = Test(
         id_=test_id1,
         repoid=repoid,
-        name=test_name,
+        name=test_name + "0",
         testsuite=test_suite,
         flags_hash="a",
     )
@@ -118,8 +118,8 @@ def test_results_setup(mocker, dbsession):
     test2 = Test(
         id_=test_id2,
         repoid=repoid,
-        name=test_name,
-        testsuite=test_name,
+        name=test_name + "1",
+        testsuite=test_suite,
         flags_hash="b",
     )
     dbsession.add(test2)
@@ -129,7 +129,7 @@ def test_results_setup(mocker, dbsession):
         id_=test_id3,
         repoid=repoid,
         name=test_name,
-        testsuite=test_name,
+        testsuite=test_suite + "2",
         flags_hash="",
     )
     dbsession.add(test3)
@@ -207,7 +207,7 @@ class TestUploadTestFinisherTask(object):
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- 0</pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_name<br>Test name:<br>test_name<br>Envs:<br>- default<br>- 1</pre> | <pre>Shared failure message</pre> |",
+            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite2<br>Test name:<br>test_name<br>Envs:<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name0<br>Envs:<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name1<br>Envs:<br>- 1<br></pre> | <pre>Shared failure message</pre> |",
         )
 
         mock_metrics.incr.assert_has_calls(
@@ -367,7 +367,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name<br>Envs:<br>- 0</pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_name<br>Test name:<br>test_name<br>Envs:<br>- default<br>- 1</pre> | <pre>Shared failure message</pre> |",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite2<br>Test name:<br>test_name<br>Envs:<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name0<br>Envs:<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name1<br>Envs:<br>- 1<br></pre> | <pre>Shared failure message</pre> |",
         )
 
         assert expected_result == result
