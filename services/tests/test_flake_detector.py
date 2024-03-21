@@ -48,38 +48,23 @@ def create_upload(dbsession, report_id):
     return u.id_
 
 
-def create_test(dbsession, repoid, flags=None):
-    if flags is None:
-        name = str(uuid4())
-        testsuite = str(uuid4())
-        id_ = generate_test_id(repoid, testsuite, name, "")
-        t = Test(
-            id_=id_,
-            repoid=repoid,
-            testsuite=testsuite,
-            name=name,
-            flags_hash="",
-        )
-        dbsession.add(t)
-        dbsession.flush()
-        return id_
-    else:
-        name = str(uuid4())
-        testsuite = str(uuid4())
-        ids = []
-        for flag in flags:
-            id_ = generate_test_id(repoid, testsuite, name, flag)
-            ids.append(id_)
-            t = Test(
-                id_=id_,
-                repoid=repoid,
-                testsuite=testsuite,
-                name=name,
-                flags_hash=flag,
-            )
-            dbsession.add(t)
-            dbsession.flush()
-            return ids
+def create_test(
+    dbsession,
+    repoid,
+):
+    name = str(uuid4())
+    testsuite = str(uuid4())
+    id_ = generate_test_id(repoid, testsuite, name, "")
+    t = Test(
+        id_=id_,
+        repoid=repoid,
+        testsuite=testsuite,
+        name=name,
+        flags_hash="",
+    )
+    dbsession.add(t)
+    dbsession.flush()
+    return id_
 
 
 def create_test_instance(dbsession, test_id, upload_id, outcome, failure_message):
