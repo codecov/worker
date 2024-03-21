@@ -34,7 +34,7 @@ def test_failure_normalizer_overwrite_predefined():
 
     assert (
         s
-        == "UUID UUID_string DATE UUID HEXNUMBER DATETIME DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
+        == "LONGSTRING UUID_string DATE UUID HEXNUMBER DATETIME DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
     )
 
 
