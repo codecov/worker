@@ -24,7 +24,7 @@ predefined_dict_of_regexes_to_match = {
     "LINENO": [r":\d+:\d*"],
     "HEXNUMBER": [r"0?x[a-f0-9]+"],
     "LONGSTRING": [r"[0-9a-zA-Z\-]{30}[0-9a-zA-Z\-]*"],
-    "NO": [r" \d+(?:\.\d+)? "],
+    "NO": [r"\s\d+(?:\.\d+)?\s"],
 }
 
 
