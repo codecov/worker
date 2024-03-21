@@ -1030,17 +1030,8 @@ class TestSyncReposTaskUnit(object):
         mock_repos = [
             repo_obj("159089634", "pytest", "python", False, "main", True),
         ]
+        mock_owner_provider.list_repos_using_installation.return_value = mock_repos
 
-        # Mock GitHub response for repos that are visible to our app
-        if use_generator:
-            mock_owner_provider.list_repos_using_installation_generator.return_value.__aiter__.return_value = [
-                mock_repos
-            ]
-        else:
-            mock_owner_provider.list_repos_using_installation.return_value = mock_repos
-
-        # Three of the four repositories we can see are already in the database.
-        # Will we update `using_integration` correctly?
         preseeded_repos = []
         for repo in mock_repos[:-1]:
             preseeded_repos.append(
