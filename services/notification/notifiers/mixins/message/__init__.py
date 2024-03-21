@@ -1,6 +1,7 @@
 import logging
 from typing import Callable, List
 
+from services.notification.notifiers.mixins.message.writers import TeamPlanWriter
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
 
@@ -16,7 +17,6 @@ from services.notification.notifiers.mixins.message.sections import (
     NullSectionWriter,
     get_section_class_from_layout_name,
 )
-from services.notification.notifiers.mixins.message.writers import TeamPlanWriter
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import read_yaml_field
 
