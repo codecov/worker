@@ -1,5 +1,5 @@
 import logging
-from typing import Callable
+from typing import Callable, List
 
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
@@ -14,9 +14,9 @@ from services.notification.notifiers.mixins.message.helpers import (
 )
 from services.notification.notifiers.mixins.message.sections import (
     NullSectionWriter,
-    TeamPlanWriterSection,
     get_section_class_from_layout_name,
 )
+from services.notification.notifiers.mixins.message.writers import TeamPlanWriter
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import read_yaml_field
 
@@ -80,27 +80,14 @@ class MessageMixin(object):
             owner.plan == BillingPlan.team_monthly.value
             or owner.plan == BillingPlan.team_yearly.value
         ):
-            writer_class = TeamPlanWriterSection()
-
-            with metrics.timer(
-                f"worker.services.notifications.notifiers.comment.section.{writer_class.name}"
-            ):
-                # Settings here enable failed tests results for now as a new product
-                for line in writer_class.header_lines(
-                    comparison=comparison, diff=diff, settings=settings
-                ):
-                    message.append(line)
-                for line in writer_class.middle_lines(
-                    comparison=comparison,
-                    diff=diff,
-                    links=links,
-                    current_yaml=current_yaml,
-                ):
-                    message.append(line)
-                for line in writer_class.footer_lines():
-                    message.append(line)
-
-                return message
+            return self._team_plan_notification(
+                comparison=comparison,
+                message=message,
+                diff=diff,
+                settings=settings,
+                links=links,
+                current_yaml=current_yaml,
+            )
 
         write = message.append
         # note: since we're using append, calling write("") will add a newline to the message
@@ -208,6 +195,37 @@ class MessageMixin(object):
             message_to_display = "Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality."
             write(f":exclamation: {message_to_display}")
             write("")
+
+    def _team_plan_notification(
+        self,
+        comparison: ComparisonProxy,
+        message: List[str],
+        diff,
+        settings,
+        links,
+        current_yaml,
+    ) -> List[str]:
+        writer_class = TeamPlanWriter()
+
+        with metrics.timer(
+            f"worker.services.notifications.notifiers.comment.section.{writer_class.name}"
+        ):
+            # Settings here enable failed tests results for now as a new product
+            for line in writer_class.header_lines(
+                comparison=comparison, diff=diff, settings=settings
+            ):
+                message.append(line)
+            for line in writer_class.middle_lines(
+                comparison=comparison,
+                diff=diff,
+                links=links,
+                current_yaml=current_yaml,
+            ):
+                message.append(line)
+            for line in writer_class.footer_lines():
+                message.append(line)
+
+            return message
 
     async def write_section_to_msg(
         self, comparison, changes, diff, links, write, section_writer, behind_by=None
