@@ -27,9 +27,20 @@ def test_failure_normalizer_ignore_predefined():
     )
 
 
-def test_failure_normalizer_overwrite_predefined():
+def test_failure_normalizer_append_predefined():
     user_dict = {"UUID": ["test"]}
     f = FailureNormalizer(user_dict)
+    s = f.normalize_failure_message(test_string)
+
+    assert (
+        s
+        == "UUID UUID_string DATE UUID HEXNUMBER DATETIME DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
+    )
+
+
+def test_failure_normalizer_overwrite_predefined():
+    user_dict = {"UUID": ["test"]}
+    f = FailureNormalizer(user_dict, override_predefined=True)
     s = f.normalize_failure_message(test_string)
 
     assert (
