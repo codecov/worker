@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 import regex
 from sentry_sdk import metrics, trace
 
@@ -64,16 +66,22 @@ class FailureNormalizer:
     """
 
     def __init__(
-        self, user_dict_of_regex_strings: dict[str, list[str]], ignore_predefined=False
+        self,
+        user_dict_of_regex_strings: dict[str, list[str]],
+        ignore_predefined=False,
+        override_predefined=False,
+        *,
+        key_analysis_order: Optional[List[str]] = None
     ):
         flags = regex.MULTILINE
 
         self.dict_of_regex = dict()
+        self.key_analysis_order = key_analysis_order
 
         if not ignore_predefined:
             dict_of_regex_strings = dict(predefined_dict_of_regexes_to_match)
             for key, user_regex_string in user_dict_of_regex_strings.items():
-                if key in dict_of_regex_strings:
+                if not override_predefined and key in dict_of_regex_strings:
                     dict_of_regex_strings[key] = (
                         user_regex_string + dict_of_regex_strings[key]
                     )
@@ -91,9 +99,13 @@ class FailureNormalizer:
     @trace
     def normalize_failure_message(self, failure_message: str):
         with metrics.timing("failure_normalizer.normalize_failure_message"):
-            for key, list_of_compiled_regex in self.dict_of_regex.items():
+            key_ordering = self.key_analysis_order or self.dict_of_regex.keys()
+            for key in key_ordering:
+                list_of_compiled_regex = self.dict_of_regex[key]
                 for compiled_regex in list_of_compiled_regex:
                     for match_obj in compiled_regex.finditer(failure_message):
                         actual_match = match_obj.group()
-                        failure_message = failure_message.replace(actual_match, key)
+                        # Limit number of replaces to 1 so one match doesn't interfere
+                        # With future matches
+                        failure_message = failure_message.replace(actual_match, key, 1)
         return failure_message
