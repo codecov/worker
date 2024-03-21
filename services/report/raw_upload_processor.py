@@ -61,6 +61,7 @@ def process_raw_upload(
     flags,
     session=None,
     upload: Upload = None,
+    parallel_idx=None,
 ) -> UploadProcessingResult:
     toc, env = None, None
 
@@ -97,7 +98,10 @@ def process_raw_upload(
     # But we don't actually merge yet in case the report is empty.
     # This is done to avoid garbage sessions to build up in the report
     # How can you be sure this will be the sessionid used when you actually merge it? Remember that this piece of code runs inside a lock u.u
-    sessionid = original_report.next_session_number()
+    if parallel_idx is not None:
+        sessionid = parallel_idx
+    else:
+        sessionid = original_report.next_session_number()
     session.id = sessionid
     if env:
         session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
@@ -128,7 +132,7 @@ def process_raw_upload(
             log.info(
                 "Customer is using joined=False feature", extra=dict(flag_used=flag)
             )
-            joined = False
+            joined = False  # TODO: make this work for parallel
     # ---------------
     # Process reports
     # ---------------
@@ -188,6 +192,9 @@ def process_raw_upload(
         temporary_report.labels_index = None
     # Now we actually add the session to the original_report
     # Because we know that the processing was successful
+    sessionid, session = original_report.add_session(
+        session, parallel_idx=parallel_idx
+    )
     sessionid, session = original_report.add_session(session)
     # Adjust sessions removed carryforward sessions that are being replaced
     session_manipulation_result = _adjust_sessions(

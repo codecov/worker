@@ -27,6 +27,7 @@ from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.metrics import metrics
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
@@ -611,9 +612,20 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
     ):
         chunk_size = CHUNK_SIZE
+        parallel_session_id = 0
 
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
             chunk_size = 1
+
+            # technically don't need to build the entire report, just need to know how many sessions
+            # have been processed in the report
+            with metrics.timer(f"{self.metrics_prefix}.build_original_report"):
+                report_service = ReportService(commit_yaml)
+                report = report_service.get_existing_report_for_commit(
+                    commit, report_code=commit_report.code
+                )
+                if report:
+                    parallel_session_id = report.next_session_number(None)
 
         processing_tasks = []
         for i in range(0, len(argument_list), chunk_size):
@@ -634,7 +646,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         commit_yaml=commit_yaml,
                         arguments_list=chunk,
                         report_code=commit_report.code,
-                        chunk_idx=i,
+                        chunk_idx=i + parallel_session_id,
                     ),
                 )
                 processing_tasks.append(sig)

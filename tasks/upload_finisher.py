@@ -16,7 +16,7 @@ from shared.reports.resources import Report
 from shared.yaml import UserYaml
 
 from app import celery_app
-from database.models import Commit, Pull
+from database.models import Commit, Pull, Upload
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
@@ -88,6 +88,22 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repository = commit.repository
 
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
+            actual_processing_results = {
+                "processings_so_far": [],
+                "parallel_incremental_result": [],
+            }
+            pr = None
+
+            for task in processing_results:
+                pr = task["processings_so_far"][0].get("pr") or pr
+                actual_processing_results["processings_so_far"].append(
+                    task["processings_so_far"][0]
+                )
+                actual_processing_results["parallel_incremental_result"].append(
+                    task["parallel_incremental_result"]
+                )
+            processing_results = actual_processing_results
+
             report_service = ReportService(commit_yaml)
             report = self.merge_incremental_reports(
                 commit_yaml,
@@ -96,6 +112,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 report_code,
                 report_service,
                 processing_results,
+                db_session,
             )
 
             log.info(
@@ -107,17 +124,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     parent_task=self.request.parent_id,
                 ),
             )
-
-            actual_processing_results = []
-            pr = None
-
-            for task in processing_results:
-                actual_processing_results.append(task.get("processsings_so_far"))
-                pr = (
-                    task.get("processings_so_far", {})[0].get("pr") or pr
-                )  # okay since argument_list size is set to 1 for parallel upload processing
-
-            processing_results = {"processsings_so_far": actual_processing_results}
 
             with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
                 results_dict = self.save_report_results(
@@ -387,6 +393,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         report_code,
         report_service,
         processing_results,
+        db_session,
     ):
         archive_service = report_service.get_archive_service(repository)
         repoid = repository.repoid
@@ -401,56 +408,69 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
         log.info(
             "Downloading %s incremental reports that were processed in parallel",
-            len(processing_results),
+            len(processing_results["processings_so_far"]),
             extra=dict(
                 repoid=repoid,
                 commit=commitid,
-                processing_results=processing_results,
+                processing_results=processing_results["processings_so_far"],
                 parent_task=self.request.parent_id,
             ),
         )
 
         def download_and_build_incremental_report(partial_report):
-            partial_report = partial_report["parallel_incremental_result"]
             chunks = archive_service.read_file(partial_report["chunks_path"]).decode(
                 errors="replace"
             )
             files_and_sessions = json.loads(
                 archive_service.read_file(partial_report["files_and_sessions_path"])
             )
-            return report_service.build_report(
+            report = report_service.build_report(
                 chunks,
                 files_and_sessions["files"],
                 files_and_sessions["sessions"],
                 None,
             )
+            return {
+                "chunk_idx": partial_report["chunk_idx"],
+                "report": report,
+                "upload_pk": partial_report["upload_pk"],
+            }
 
-        def merge_report(cumulative_report, incremental_report):
+        def merge_report(cumulative_report, obj):
+            incremental_report = obj["report"]
+            chunk_idx = obj["chunk_idx"]
             assert len(incremental_report.sessions) == 1
             session_id, session = cumulative_report.add_session(
-                incremental_report.sessions[0]
+                incremental_report.sessions[chunk_idx]
             )
             session.id = session_id
             # current behavior uploads an UploadProcessingResult with this data
 
             _adjust_sessions(
-                cumulative_report, incremental_report, session, commit_yaml
+                cumulative_report, incremental_report, session, UserYaml(commit_yaml)
             )
+
             cumulative_report.merge(incremental_report)
+            upload_obj = (
+                db_session.query(Upload).filter_by(id_=obj["upload_pk"]).first()
+            )
+            upload_obj.state = "processed"
+            db_session.commit()
             return cumulative_report
 
         with ThreadPoolExecutor(max_workers=10) as pool:  # max chosen arbitrarily
             unmerged_reports = pool.map(
-                download_and_build_incremental_report, processing_results
+                download_and_build_incremental_report,
+                processing_results["parallel_incremental_result"],
             )
 
         log.info(
             "Merging %s incremental reports together",
-            len(processing_results),
+            len(processing_results["processings_so_far"]),
             extra=dict(
                 repoid=repoid,
                 commit=commitid,
-                processing_results=processing_results,
+                processing_results=processing_results["processings_so_far"],
                 parent_task=self.request.parent_id,
             ),
         )
