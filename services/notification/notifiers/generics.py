@@ -41,7 +41,9 @@ class StandardNotifier(AbstractBaseNotifier):
     @property
     def repository_service(self):
         if not self._repository_service:
-            self._repository_service = get_repo_provider_service(self.repository)
+            self._repository_service = get_repo_provider_service(
+                self.repository, installation_name_to_use=self.gh_installation_name
+            )
         return self._repository_service
 
     def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
