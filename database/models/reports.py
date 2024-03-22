@@ -282,6 +282,12 @@ class Test(CodecovBaseModel):
     # in a different environment
     # for example: the same test being run on windows vs. mac
     flags_hash = Column(types.String(256), nullable=False)
+    testinstances = relationship(
+        "TestInstance",
+        back_populates="test",
+        cascade="all",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -303,6 +309,10 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     upload_id = Column(types.Integer, ForeignKey("reports_upload.id"))
     upload = relationship("Upload", backref=backref("testinstances"))
     failure_message = Column(types.Text)
+    flake_id = Column(types.Integer, ForeignKey("reports_flake.id"))
+    flake = relationship("Flake", backref=backref("testinstances"))
+    # should only be used with the FlakeSymptom enum
+    flake_symptom = Column(types.String(100), nullable=True)
 
 
 class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
@@ -312,3 +322,12 @@ class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     passed = Column(types.Integer)
     skipped = Column(types.Integer)
     failed = Column(types.Integer)
+
+
+class Flake(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "reports_flake"
+    test_id = Column(types.Text, ForeignKey("reports_test.id"))
+    test = relationship("Test", backref=backref("flakes"))
+    active = Column(types.Boolean, nullable=False)
+    # no cascade because we want TestInstances to just have a null flake if the flake is deleted
+    testinstances = relationship("TestInstance", back_populates="flake")

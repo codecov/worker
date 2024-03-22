@@ -62,3 +62,9 @@ class ReportType(Enum):
     COVERAGE = "coverage"
     TEST_RESULTS = "test_results"
     BUNDLE_ANALYSIS = "bundle_analysis"
+
+
+class FlakeSymptom(Enum):
+    DEFAULT_FAILURE = "failed_in_default_branch"
+    CONSECUTIVE_DIFF_OUTCOMES = "consecutive_diff_outcomes"
+    UNRELATED_MATCHING_FAILURES = "unrelated_matching_failures"
