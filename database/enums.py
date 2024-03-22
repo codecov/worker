@@ -65,6 +65,6 @@ class ReportType(Enum):
 
 
 class FlakeSymptom(Enum):
-    DEFAULT_FAILURE = "failed_in_default_branch"
+    FAILED_IN_DEFAULT_BRANCH = "failed_in_default_branch"
     CONSECUTIVE_DIFF_OUTCOMES = "consecutive_diff_outcomes"
     UNRELATED_MATCHING_FAILURES = "unrelated_matching_failures"
