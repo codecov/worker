@@ -9,6 +9,7 @@ from typing import List, Set, Tuple
 from sentry_sdk import metrics, trace
 from test_results_parser import Outcome
 
+from database.enums import FlakeSymptom
 from database.models.core import Commit, Repository
 from database.models.reports import CommitReport, Test, TestInstance, Upload
 
@@ -22,10 +23,10 @@ class FlakeDetectionObject:
     time: List[datetime] = field(default_factory=list)
 
 
-class FlakeType(Enum):
-    FAILED_IN_DEFAULT_BRANCH = "failed_in_default_branch"
-    CONSECUTIVE_DIFF_OUTCOMES = "consecutive_diff_outcomes"
-    UNRELATED_MATCHING_FAILURES = "unrelated_matching_failures"
+@dataclass
+class FlakeDetected:
+    test_instance: TestInstance
+    symptom: FlakeSymptom
 
 
 @dataclass
@@ -105,9 +106,9 @@ class FlakeDetector:
     ):
         if instance.branch == self.default_branch:
             curr_test_context.is_curr_flake = True
-            self.resulting_flakes[
-                curr_test_context.curr_test_id
-            ] = FlakeType.FAILED_IN_DEFAULT_BRANCH
+            self.resulting_flakes[curr_test_context.curr_test_id] = FlakeDetected(
+                instance, FlakeSymptom.FAILED_IN_DEFAULT_BRANCH
+            )
 
             return True
         return False
@@ -125,9 +126,9 @@ class FlakeDetector:
                 and existing_outcome_on_commit != instance.outcome
             ):
                 curr_test_context.is_curr_flake = True
-                self.resulting_flakes[
-                    curr_test_context.curr_test_id
-                ] = FlakeType.CONSECUTIVE_DIFF_OUTCOMES
+                self.resulting_flakes[curr_test_context.curr_test_id] = FlakeDetected(
+                    instance, FlakeSymptom.CONSECUTIVE_DIFF_OUTCOMES
+                )
 
                 return True
             elif existing_outcome_on_commit is None:
@@ -155,14 +156,14 @@ class FlakeDetector:
         if potential_flake.counter > 1 and len(potential_flake.branch) > 2:
             # Exact error happened on 2 other branches at least
             curr_test_context.is_curr_flake = True
-            self.resulting_flakes[
-                curr_test_context.curr_test_id
-            ] = FlakeType.UNRELATED_MATCHING_FAILURES
+            self.resulting_flakes[curr_test_context.curr_test_id] = FlakeDetected(
+                instance, FlakeSymptom.UNRELATED_MATCHING_FAILURES
+            )
             return True
         return False
 
     @trace
-    def detect_flakes(self) -> dict[str, FlakeType]:
+    def detect_flakes(self) -> dict[str, FlakeDetected]:
         """
         Detect flaky tests on a given repo based on the test instances
         gathered in the query in the constructor
@@ -199,11 +200,6 @@ class FlakeDetector:
                 if instance.test_id != curr_test_context.curr_test_id:
                     curr_test_context.reset(instance.test_id)
 
-                # if we've already determined the current test to be a flake
-                # we don't have to keep examining instances of this test
-                if curr_test_context.is_curr_flake:
-                    continue
-
                 with metrics.timing(
                     "flake_detection.detect_flakes.process_individual_test_instance"
                 ):
@@ -214,7 +210,7 @@ class FlakeDetector:
                             "flake_detection.detect_flakes.flake_detected",
                             1,
                             tags={
-                                "flake_type": str(FlakeType.FAILED_IN_DEFAULT_BRANCH)
+                                "flake_type": str(FlakeSymptom.FAILED_IN_DEFAULT_BRANCH)
                             },
                         )
                     # else check if consecutive fails, ignoring skips
@@ -225,7 +221,9 @@ class FlakeDetector:
                             "flake_detection.detect_flakes.flake_detected",
                             1,
                             tags={
-                                "flake_type": str(FlakeType.CONSECUTIVE_DIFF_OUTCOMES)
+                                "flake_type": str(
+                                    FlakeSymptom.CONSECUTIVE_DIFF_OUTCOMES
+                                )
                             },
                         )
 
@@ -240,7 +238,9 @@ class FlakeDetector:
                             "flake_detection.detect_flakes.flake_detected",
                             1,
                             tags={
-                                "flake_type": str(FlakeType.UNRELATED_MATCHING_FAILURES)
+                                "flake_type": str(
+                                    FlakeSymptom.UNRELATED_MATCHING_FAILURES
+                                )
                             },
                         )
 
