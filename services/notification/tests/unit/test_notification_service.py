@@ -19,6 +19,9 @@ from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.notification import NotificationService
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.checks import ProjectChecksNotifier
+from services.notification.notifiers.checks.checks_with_fallback import (
+    ChecksWithFallback,
+)
 
 
 @pytest.fixture
@@ -104,7 +107,7 @@ class TestNotificationService(object):
         assert service._should_use_checks_notifier() == outcome
 
     def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
-        repository = RepositoryFactory.create()
+        repository = RepositoryFactory.create(owner__service="github")
         ghapp_installation = GithubAppInstallation(
             name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
             installation_id=456789,
@@ -118,20 +121,30 @@ class TestNotificationService(object):
         service = NotificationService(repository, current_yaml)
         assert service._should_use_checks_notifier() == True
 
-    def test_should_use_checks_notifier_ghapp_some_repos_covered(self, dbsession):
-        repository = RepositoryFactory.create()
+    @pytest.mark.parametrize(
+        "gh_installation_name",
+        [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
+    )
+    def test_should_use_checks_notifier_ghapp_some_repos_covered(
+        self, dbsession, gh_installation_name
+    ):
+        repository = RepositoryFactory.create(owner__service="github")
         other_repo_same_owner = RepositoryFactory.create(owner=repository.owner)
         ghapp_installation = GithubAppInstallation(
-            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            name=gh_installation_name,
             installation_id=456789,
             owner=repository.owner,
             repository_service_ids=[repository.service_id],
+            app_id=123123,
+            pem_path="path_to_pem_file",
         )
         dbsession.add(ghapp_installation)
         dbsession.flush()
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == [ghapp_installation]
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(
+            repository, current_yaml, gh_installation_name_to_use=gh_installation_name
+        )
         assert service._should_use_checks_notifier() == True
         service = NotificationService(other_repo_same_owner, current_yaml)
         assert service._should_use_checks_notifier() == False
@@ -192,8 +205,12 @@ class TestNotificationService(object):
             "codecov-slack-app",
         ]
 
+    @pytest.mark.parametrize(
+        "gh_installation_name",
+        [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
+    )
     def test_get_notifiers_instances_checks_percentage_whitelist(
-        self, dbsession, mock_configuration, mocker
+        self, dbsession, mock_configuration, mocker, gh_installation_name
     ):
         repository = RepositoryFactory.create(
             owner__integration_id=123,
@@ -215,7 +232,9 @@ class TestNotificationService(object):
                 "CHECKS_WHITELISTED_PERCENTAGE": "35",
             },
         )
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(
+            repository, current_yaml, gh_installation_name_to_use=gh_installation_name
+        )
         instances = list(service.get_notifiers_instances())
         # we don't need that for slack-app notifier
         names = [
@@ -224,6 +243,43 @@ class TestNotificationService(object):
             if instance.name != "codecov-slack-app"
         ]
         assert names == ["checks-project", "checks-patch", "checks-changes"]
+        for instance in instances:
+            if isinstance(instance, ChecksWithFallback):
+                assert (
+                    instance._checks_notifier.gh_installation_name
+                    == gh_installation_name
+                )
+                assert (
+                    instance._status_notifier.gh_installation_name
+                    == gh_installation_name
+                )
+            else:
+                assert instance.gh_installation_name == gh_installation_name
+
+    @pytest.mark.parametrize(
+        "gh_installation_name",
+        [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
+    )
+    def test_get_notifiers_instances_comment(
+        self, dbsession, mock_configuration, mocker, gh_installation_name
+    ):
+        repository = RepositoryFactory.create(
+            owner__integration_id=123,
+            owner__service="github",
+            owner__ownerid=1234,
+            yaml={"codecov": {"max_report_age": "1y ago"}},
+            name="example-python",
+            using_integration=True,
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        current_yaml = {"comment": {"layout": "condensed_header"}, "slack_app": False}
+        service = NotificationService(
+            repository, current_yaml, gh_installation_name_to_use=gh_installation_name
+        )
+        instances = list(service.get_notifiers_instances())
+        assert len(instances) == 1
+        assert instances[0].gh_installation_name == gh_installation_name
 
     @pytest.mark.asyncio
     async def test_notify_general_exception(self, mocker, dbsession, sample_comparison):

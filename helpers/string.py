@@ -67,6 +67,11 @@ class StringEscaper:
 
 MAX_PATH_COMPONENTS = 3
 
+
+# matches file paths with an optional line number and column at the end:
+# /Users/josephsawaya/dev/test-result-action/demo/calculator/calculator.test.ts:10:31
+# /Users/josephsawaya/dev/test-result-action/demo/calculator/calculator.test.ts
+# Users/josephsawaya/dev/test-result-action/demo/calculator/calculator.test.ts
 file_path_regex = regex.compile(
     r"((\/*[\w\-]+\/)+([\w\.]+)(:\d+:\d+)*)",
 )
@@ -74,21 +79,24 @@ file_path_regex = regex.compile(
 
 def shorten_file_paths(string):
     """
-        This function takes in a string and returns it with all the paths
-        it contains longer than 3 components shortened to 3 components
+    This function takes in a string and returns it with all the paths
+    it contains longer than 3 components shortened to 3 components
 
-        Example:
-            string = '''Error: expect(received).toBe(expected) // Object.is equality
+    Example:
+        string =    '''
+            Expected: 1
+            Received: -1
+                at Object.&lt;anonymous&gt; (/Users/josephsawaya/dev/test-result-action/demo/calculator/calculator.test.ts:10:31)
+                at Promise.then.completed (/Users/josephsawaya/dev/test-result-action/node_modules/jest-circus/build/utils.js:298:28)
+        '''
+        shortened_string = shorten_file_paths(string)
+        print(shortened_string)
 
-    Expected: 1
-    Received: -1
-        at Object.&lt;anonymous&gt; (/Users/josephsawaya/dev/test-result-action/demo/calculator/calculator.test.ts:10:31)
-        at Promise.then.completed (/Users/josephsawaya/dev/test-result-action/node_modules/jest-circus/build/utils.js:298:28)'''
-            shortened_string = shorten_file_paths(string)
-            print(shortened_string)
-
-            will print()
-
+        will print:
+            Expected: 1
+            Received: -1
+                at Object.&lt;anonymous&gt; (.../demo/calculator/calculator.test.ts:10:31)
+                at Promise.then.completed (.../jest-circus/build/utils.js:298:28)
     """
 
     matches = file_path_regex.findall(string)
@@ -108,4 +116,5 @@ def shorten_file_paths(string):
             shortened_path = ".../" + no_dots_shortened_file_path
 
             string = string.replace(file_path, shortened_path)
+
     return string
