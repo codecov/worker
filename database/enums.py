@@ -64,7 +64,7 @@ class ReportType(Enum):
     BUNDLE_ANALYSIS = "bundle_analysis"
 
 
-class FlakeSymptom(Enum):
+class FlakeSymptomType(Enum):
     FAILED_IN_DEFAULT_BRANCH = "failed_in_default_branch"
     CONSECUTIVE_DIFF_OUTCOMES = "consecutive_diff_outcomes"
     UNRELATED_MATCHING_FAILURES = "unrelated_matching_failures"
