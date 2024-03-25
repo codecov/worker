@@ -75,9 +75,13 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         **kwargs,
     ):
         log.info(
-            "Sync repos",
+            f"Sync repos for {ownerid}",
             extra=dict(
-                ownerid=ownerid, username=username, using_integration=using_integration
+                ownerid=ownerid,
+                username=username,
+                using_integration=using_integration,
+                manual_trigger=manual_trigger,
+                repository_service_ids=repository_service_ids,
             ),
         )
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
@@ -145,6 +149,15 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         )
         missing_repo_service_ids = service_ids.difference(existing_repos)
 
+        log.info(
+            f"Owner: {owner.id} is missing {len(missing_repo_service_ids)} service ids",
+            extra=dict(
+                ownerid=owner.id,
+                missing_repo_service_ids=missing_repo_service_ids,
+                existing_repos=existing_repos,
+            ),
+        )
+
         # Get info from provider on the repos we don't have
         repos_to_search = [
             x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
@@ -186,11 +199,12 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     ):
         ownerid = owner.ownerid
         log.info(
-            "Syncing repos using integration",
+            f"Syncing repos using integration for {ownerid}",
             extra=dict(ownerid=ownerid, username=username),
         )
 
         repoids = []
+
         # We're testing processing repos a page at a time and this helper
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
@@ -289,12 +303,13 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         private_project_ids = []
 
         log.info(
-            "Syncing repos without integration",
+            f"Syncing repos without integration for {ownerid}",
             extra=dict(ownerid=ownerid, username=username, service=service),
         )
 
         repoids = []
         owners_by_id = {}
+
         # We're testing processing repos a page at a time and this helper
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
@@ -387,14 +402,16 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             return
 
         log.info(
-            "Updating permissions",
-            extra=dict(ownerid=ownerid, username=username, repoids=private_project_ids),
+            f"Updating permissions for {ownerid}",
+            extra=dict(
+                ownerid=ownerid, username=username, privaterepoids=private_project_ids
+            ),
         )
         old_permissions = owner.permission or []
         removed_permissions = set(old_permissions) - set(private_project_ids)
         if removed_permissions:
             log.warning(
-                "Owner had permissions that are being removed",
+                f"Owner: {ownerid} had permissions that are being removed",
                 extra=dict(
                     old_permissions=old_permissions[:100],
                     number_old_permissions=len(old_permissions),
@@ -409,7 +426,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         # update user permissions
         owner.permission = sorted(set(private_project_ids))
 
-        log.info("Repo sync done", extra=dict(repoids=repoids))
+        log.info(
+            f"Repo sync done for {ownerid}",
+            extra=dict(ownerid=ownerid, username=username, repoids=repoids),
+        )
 
         return {
             "service": git.service,
@@ -419,7 +439,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     def upsert_owner(self, db_session, service, service_id, username):
         log.info(
-            "Upserting owner",
+            f"Upserting owner: {username}",
             extra=dict(git_service=service, service_id=service_id, username=username),
         )
         owner = (
@@ -441,7 +461,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     def upsert_repo(
         self, db_session, service, ownerid, repo_data, using_integration=None
     ):
-        log.info("Upserting repo", extra=dict(ownerid=ownerid, repo_data=repo_data))
+        log.info(
+            f"Upserting repo: {repo_data.name} for {ownerid}",
+            extra=dict(ownerid=ownerid, repo_data=repo_data),
+        )
         repo = (
             db_session.query(Repository)
             .filter(
@@ -550,7 +573,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             using_integration=using_integration,
         )
         log.info(
-            "Inserting repo",
+            f"Inserting repo: {new_repo.name} for {ownerid}",
             extra=dict(
                 ownerid=ownerid, repo_id=new_repo.repoid, repo_name=new_repo.name
             ),
@@ -562,6 +585,14 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     def sync_repos_languages(
         self, sync_repos_output: dict, manual_trigger: bool, current_owner: Owner
     ):
+        log.info(
+            f"Syncing Repos Languages for owner: {current_owner.id}",
+            extra=dict(
+                ownerid=current_owner.id,
+                sync_repos_output=sync_repos_output,
+                manual_trigger=manual_trigger,
+            ),
+        )
         if sync_repos_output:
             if sync_repos_output["service"] == "github":
                 for owner_username in sync_repos_output["org_usernames"]:

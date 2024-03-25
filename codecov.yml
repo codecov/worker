@@ -21,13 +21,13 @@ component_management:
     - component_id: actual_code
       name: NonTestCode
       paths:
-          - "!conftest.py"
-          - "!**/conftest.py"
-          - "!**tests**/test_*.py"
-          - "!database/tests/factories/**"
+        - "!conftest.py"
+        - "!**/conftest.py"
+        - "!**tests**/test_*.py"
+        - "!database/tests/factories/**"
     - component_id: no_tasks
       name: OutsideTasks
       paths:
-          - "!tasks/**"
+        - "!tasks/**"
       flag_regexes:
-          - "unit"
+        - "unit"
