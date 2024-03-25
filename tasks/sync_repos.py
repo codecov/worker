@@ -152,7 +152,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         log.info(
             "Sync missing repos if any",
             extra=dict(
-                ownerid=owner.id,
+                ownerid=owner.ownerid,
                 missing_repo_service_ids=missing_repo_service_ids,
                 num_missing_repos=len(missing_repo_service_ids),
                 existing_repos=existing_repos,
