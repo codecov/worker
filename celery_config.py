@@ -1,4 +1,5 @@
 # http://docs.celeryq.org/en/latest/configuration.html#configuration
+import gc
 import logging
 import logging.config
 import os
@@ -33,6 +34,15 @@ from helpers.version import get_current_version
 from services.redis import get_redis_connection
 
 log = logging.getLogger(__name__)
+
+
+@signals.worker_before_create_process.connect
+def prefork_gc_freeze(**kwargs) -> None:
+    # This comes from https://github.com/getsentry/sentry/pull/63001
+    # More info https://www.youtube.com/watch?v=Hgw_RlCaIds
+    # The idea is to save memory in the worker subprocesses
+    # By freezing all the stuff we can just read from
+    gc.freeze()
 
 
 @signals.setup_logging.connect
