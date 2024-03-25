@@ -63,8 +63,8 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         # It contains the results of tasks that came before this one in the chain
         previous_results=None,
         *,
-        ownerid,
-        username=None,
+        ownerid: int,
+        username: Optional[str] = None,
         using_integration=False,
         manual_trigger=False,
         # `repository_service_ids` is optionally passed to the task

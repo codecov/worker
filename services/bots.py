@@ -29,13 +29,13 @@ def get_owner_installation_id(
 ) -> Optional[Dict]:
 
     log.info(
-        "Get owner installation id",
+        "Getting owner installation id",
         extra=dict(
             deprecated_using_integration=deprecated_using_integration,
             installation_name=installation_name,
             ignore_installation=ignore_installation,
-            ownerid=owner.id,
-            repoid=getattr(repository, "id", None),
+            ownerid=owner.ownerid,
+            repoid=getattr(repository, "repoid", None),
         ),
     )
 
@@ -59,8 +59,8 @@ def get_owner_installation_id(
                         extra=dict(
                             installation=app_installation.external_id,
                             installation_name=app_installation.name,
-                            ownerid=owner.id,
-                            repoid=repository.id,
+                            ownerid=owner.ownerid,
+                            repoid=repository.repoid,
                         ),
                     )
                     return {
@@ -78,7 +78,7 @@ def get_owner_installation_id(
                     extra=dict(
                         installation=app_installation.external_id,
                         installation_name=app_installation.name,
-                        ownerid=owner.id,
+                        ownerid=owner.ownerid,
                     ),
                 )
                 return {
@@ -103,7 +103,7 @@ def get_repo_appropriate_bot_token(
         "Get repo appropriate bot token",
         extra=dict(
             installation_name_to_use=installation_name_to_use,
-            repoid=repo.id,
+            repoid=repo.repoid,
         ),
     )
 
