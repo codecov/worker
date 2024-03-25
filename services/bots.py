@@ -9,7 +9,6 @@ from database.models import Owner, Repository
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.environment import is_enterprise
 from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
-from helpers.github_installation import get_installation_name_for_owner_for_task
 from services.encryption import encryptor
 from services.github import get_github_integration_token
 
@@ -28,6 +27,17 @@ def get_owner_installation_id(
     # And might get out-of-sync soon
     ignore_installation: bool = False
 ) -> Optional[Dict]:
+
+    log.info(
+        "Get owner installation id",
+        extra=dict(
+            deprecated_using_integration=deprecated_using_integration,
+            installation_name=installation_name,
+            ignore_installation=ignore_installation,
+            ownerid=owner.id,
+            repoid=getattr(repository, "id", None),
+        ),
+    )
 
     if not ignore_installation or deprecated_using_integration:
         default_app_installation_filter = list(
@@ -49,6 +59,8 @@ def get_owner_installation_id(
                         extra=dict(
                             installation=app_installation.external_id,
                             installation_name=app_installation.name,
+                            ownerid=owner.id,
+                            repoid=repository.id,
                         ),
                     )
                     return {
@@ -66,6 +78,7 @@ def get_owner_installation_id(
                     extra=dict(
                         installation=app_installation.external_id,
                         installation_name=app_installation.name,
+                        ownerid=owner.id,
                     ),
                 )
                 return {
@@ -85,6 +98,15 @@ def get_repo_appropriate_bot_token(
     repo: Repository,
     installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> Tuple[Dict, Optional[Owner]]:
+
+    log.info(
+        "Get repo appropriate bot token",
+        extra=dict(
+            installation_name_to_use=installation_name_to_use,
+            repoid=repo.id,
+        ),
+    )
+
     if is_enterprise() and get_config(repo.service, "bot"):
         return get_public_bot_token(repo)
 
