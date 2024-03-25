@@ -589,7 +589,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         log.info(
             "Syncing repos languages",
             extra=dict(
-                ownerid=current_owner.id,
+                ownerid=current_owner.ownerid,
                 sync_repos_output=sync_repos_output,
                 manual_trigger=manual_trigger,
             ),
