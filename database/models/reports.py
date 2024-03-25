@@ -282,12 +282,6 @@ class Test(CodecovBaseModel):
     # in a different environment
     # for example: the same test being run on windows vs. mac
     flags_hash = Column(types.String(256), nullable=False)
-    testinstances = relationship(
-        "TestInstance",
-        back_populates="test",
-        cascade="all",
-        passive_deletes=True,
-    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -310,8 +304,8 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     upload = relationship("Upload", backref=backref("testinstances"))
     failure_message = Column(types.Text)
     flake_id = Column(types.Integer, ForeignKey("reports_flake.id"))
-    flake = relationship("Flake", backref=backref("testinstances"))
-    # should only be used with the FlakeSymptom enum
+    flake = relationship("Flake", back_populates="testinstances")
+    # should only be used with the FlakeSymptomType enum in database/enums.py
     flake_symptom = Column(types.String(100), nullable=True)
 
 
