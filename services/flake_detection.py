@@ -2,6 +2,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+from functools import cached_property
+from itertools import groupby
 from logging import getLogger
 from sys import getsizeof
 from typing import List, Set, Tuple
@@ -9,60 +11,163 @@ from typing import List, Set, Tuple
 from sentry_sdk import metrics, trace
 from test_results_parser import Outcome
 
-from database.enums import FlakeSymptom
+from database.enums import FlakeSymptomType
 from database.models.core import Commit, Repository
 from database.models.reports import CommitReport, Test, TestInstance, Upload
 
 log = getLogger(__name__)
 
-
-@dataclass
-class FlakeDetectionObject:
-    counter: int = 0
-    branch: Set[str] = field(default_factory=set)
-    time: List[datetime] = field(default_factory=list)
+FlakeDetectionResult = dict[Test, dict[TestInstance, list[FlakeSymptomType]]]
 
 
-@dataclass
-class FlakeDetected:
-    test_instance: TestInstance
-    symptom: FlakeSymptom
+class SymptomDetector:
+    """
+    blueprint class for a single symptom of flakiness detector
+
+    classes that implement this interface are expected to:
+    - maintain their own state necessary to detect a symptom of flakiness
+    - implement the ingest method that:
+        - receives a TestInstanceInfo object
+        - adds the necessary information to its state to be able to
+          detect the symptom of flakiness it is responsible for
+    - implement the detect method that:
+        - Runs the detection based on all the instances that it has
+          ingested
+        - returns an InstanceMapping
+    """
+
+    def ingest(self, instance):
+        raise NotImplementedError()
+
+    def detect(self) -> dict[str, TestInstance]:
+        raise NotImplementedError()
+
+    @cached_property
+    def symptom(self) -> FlakeSymptomType:
+        raise NotImplementedError()
 
 
-@dataclass
-class FlakeDetectionContext:
-    is_curr_flake = False
-    curr_test_id = None
-    flake_dict = defaultdict(FlakeDetectionObject)
-    commit_to_outcome = dict()
+class DefaultBranchFailureDetector(SymptomDetector):
+    def __init__(self, db_session, repoid=None, default_branch=None):
+        self.instances = defaultdict(list)
 
-    def reset(self, test_id):
-        self.curr_test_id = test_id
-        self.is_curr_flake = False
-        self.flake_dict.clear()
-        self.commit_to_outcome.clear()
-
-
-class FlakeDetector:
-    def __init__(
-        self, db_session, repoid, default_branch=None, failure_normalizer=None
-    ):
-
-        self.repoid = repoid
         if default_branch:
             self.default_branch = default_branch
-        else:
+        elif repoid:
             self.default_branch = (
                 db_session.query(Repository.branch)
                 .filter(Repository.repoid == repoid)
                 .first()
                 .branch
             )
+        else:
+            raise ValueError()
+
+    def ingest(self, instance):
+        outcome = instance.TestInstance.outcome
+        branch = instance.branch
+        test_id = instance.TestInstance.test_id
+        if (
+            outcome == str(Outcome.Failure) or outcome == str(Outcome.Error)
+        ) and branch == self.default_branch:
+            self.instances[test_id].append(instance.TestInstance)
+
+    def detect(self):
+        return self.instances
+
+    def symptom(self):
+        return FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH
+
+
+class CommitDictObject:
+    def __init__(self):
+        self.outcomes = set()
+        self.instances = list()
+
+
+class DiffOutcomeDetector(SymptomDetector):
+    def __init__(self):
+        self.state = defaultdict(lambda: defaultdict(CommitDictObject))
+        self.res = defaultdict(list)
+
+    def ingest(self, instance):
+        test_id = instance.TestInstance.test_id
+        commit_id = instance.commitid
+        outcome = instance.TestInstance.outcome
+        self.state[test_id][commit_id].outcomes.add(outcome)
+        if outcome == str(Outcome.Failure) or outcome == str(Outcome.Error):
+            self.state[test_id][commit_id].instances.append(instance.TestInstance)
+
+    def detect(self):
+        for test_id, commit_dict in self.state.items():
+            for _, obj in commit_dict.items():
+                if str(Outcome.Pass) in obj.outcomes and (
+                    str(Outcome.Failure) in obj.outcomes
+                    or str(Outcome.Error) in obj.outcomes
+                ):
+                    self.res[test_id] += obj.instances
+
+        return self.res
+
+    def symptom(self):
+        return FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES
+
+
+@dataclass
+class TestDictObject:
+    def __init__(self):
+        self.branches = set()
+        self.instances = list()
+
+
+class UnrelatedMatchesDetector(SymptomDetector):
+    def __init__(self):
+        self.state = defaultdict(lambda: defaultdict(TestDictObject))
+        self.res = defaultdict(list)
+
+    def ingest(self, instance):
+        outcome = instance.TestInstance.outcome
+        if outcome == str(Outcome.Failure) or outcome == str(Outcome.Error):
+            test_id = instance.TestInstance.test_id
+            fail = instance.TestInstance.failure_message
+            branch = instance.branch
+
+            self.state[test_id][fail].branches.add(branch)
+            self.state[test_id][fail].instances.append(instance.TestInstance)
+
+    def detect(self):
+        for test_id, test_dict in self.state.items():
+            for _, obj in test_dict.items():
+                if len(obj.branches) > 1:
+                    self.res[test_id] += obj.instances
+        return self.res
+
+    def symptom(self):
+        return FlakeSymptomType.UNRELATED_MATCHING_FAILURES
+
+
+@dataclass
+class FlakeEngineInstance:
+    test_id: str
+    outcome: str
+    failure_message: str
+
+
+class FlakeDetectionEngine:
+    def __init__(
+        self,
+        db_session,
+        repoid,
+        symptom_detectors: list[SymptomDetector],
+        failure_normalizer=None,
+    ):
+        self.db_session = db_session
+        self.repoid = repoid
         self.failure_normalizer = failure_normalizer
-        self.resulting_flakes = dict()
+        self.symptom_detectors = symptom_detectors
 
     @trace
-    def populate(self, db_session):
+    def populate(self):
         """
         Populate test_instances_ordered_by_test with:
         Test instances on a given repo that were uploaded in the past
@@ -73,10 +178,8 @@ class FlakeDetector:
         test id so we can process one test id at a time
         """
         self.test_instances_ordered_by_test = (
-            db_session.query(
-                TestInstance.test_id.label("test_id"),
-                TestInstance.outcome,
-                TestInstance.failure_message,
+            self.db_session.query(
+                TestInstance,
                 Upload.created_at,
                 Upload.report_id,
                 Commit.branch,
@@ -91,7 +194,7 @@ class FlakeDetector:
                 Repository.repoid == self.repoid,
                 Upload.created_at >= (datetime.now() - timedelta(days=30)),
             )
-            .order_by(TestInstance.test_id)
+            .order_by(TestInstance.test_id, Commit.commitid)
             .all()
         )
         memory_used_kb = getsizeof(self.test_instances_ordered_by_test) // 1024
@@ -101,69 +204,8 @@ class FlakeDetector:
             unit="kilobytes",
         )
 
-    def check_if_failed_on_default(
-        self, curr_test_context: FlakeDetectionContext, instance: TestInstance
-    ):
-        if instance.branch == self.default_branch:
-            curr_test_context.is_curr_flake = True
-            self.resulting_flakes[curr_test_context.curr_test_id] = FlakeDetected(
-                instance, FlakeSymptom.FAILED_IN_DEFAULT_BRANCH
-            )
-
-            return True
-        return False
-
-    def check_if_consecutive_diff_outcomes(
-        self, curr_test_context: FlakeDetectionContext, instance: TestInstance
-    ):
-        # ignore skips
-        if instance.outcome != str(Outcome.Skip):
-            existing_outcome_on_commit = curr_test_context.commit_to_outcome.get(
-                instance.commitid, None
-            )
-            if (
-                existing_outcome_on_commit is not None
-                and existing_outcome_on_commit != instance.outcome
-            ):
-                curr_test_context.is_curr_flake = True
-                self.resulting_flakes[curr_test_context.curr_test_id] = FlakeDetected(
-                    instance, FlakeSymptom.CONSECUTIVE_DIFF_OUTCOMES
-                )
-
-                return True
-            elif existing_outcome_on_commit is None:
-                curr_test_context.commit_to_outcome[
-                    instance.commitid
-                ] = instance.outcome
-        return False
-
-    def check_if_failure_messages_match(
-        self, curr_test_context: FlakeDetectionContext, instance: TestInstance
-    ):
-        failure_message = instance.failure_message
-        if self.failure_normalizer is not None:
-            failure_message = self.failure_normalizer.normalize_failure_message(
-                failure_message
-            )
-
-        curr_test_context.flake_dict[failure_message].counter += 1
-        curr_test_context.flake_dict[failure_message].branch.add(instance.branch)
-        curr_test_context.flake_dict[failure_message].time.append(
-            instance.created_at.timestamp()
-        )
-
-        potential_flake = curr_test_context.flake_dict[failure_message]
-        if potential_flake.counter > 1 and len(potential_flake.branch) > 2:
-            # Exact error happened on 2 other branches at least
-            curr_test_context.is_curr_flake = True
-            self.resulting_flakes[curr_test_context.curr_test_id] = FlakeDetected(
-                instance, FlakeSymptom.UNRELATED_MATCHING_FAILURES
-            )
-            return True
-        return False
-
     @trace
-    def detect_flakes(self) -> dict[str, FlakeDetected]:
+    def detect_flakes(self) -> FlakeDetectionResult:
         """
         Detect flaky tests on a given repo based on the test instances
         gathered in the query in the constructor
@@ -177,16 +219,15 @@ class FlakeDetector:
 
         We check which kind of flake exists in that order
 
-
         TODO: Differentiate between random flakes and infra flakes. Infra flakes
         are flakes that are caused by a dependency or a temporary outage.
         They can be defined as: matching failure messages on unrelated branches
         clustered at a point in time, this test should only be failing for that
         range in time.
 
-        Returns a list of tuples of flaky test id and type of flake
+        Returns a FlakeDetectionResult
         """
-        curr_test_context = FlakeDetectionContext()
+        self.populate()
 
         metrics.distribution(
             "flake_detection.detect_flakes.number_of_test_instances",
@@ -194,54 +235,24 @@ class FlakeDetector:
             unit="test_instance",
         )
         with metrics.timing("flake_detection.detect_flakes.total_time_taken"):
-            for instance in self.test_instances_ordered_by_test:
-                # because the query above orders by test_id, if we see a new test
-                # we are now trying to determine if the next test is flaky
-                if instance.test_id != curr_test_context.curr_test_id:
-                    curr_test_context.reset(instance.test_id)
+            with metrics.timing(
+                "flake_detection.detect_flakes.ingestion",
+            ):
+                for instance in self.test_instances_ordered_by_test:
+                    for symptom_detector in self.symptom_detectors:
+                        symptom_detector.ingest(instance)
 
-                with metrics.timing(
-                    "flake_detection.detect_flakes.process_individual_test_instance"
-                ):
-                    # check if failed on default branch
-                    # should probably automatically create an issue here
-                    if self.check_if_failed_on_default(curr_test_context, instance):
-                        metrics.incr(
-                            "flake_detection.detect_flakes.flake_detected",
-                            1,
-                            tags={
-                                "flake_type": str(FlakeSymptom.FAILED_IN_DEFAULT_BRANCH)
-                            },
-                        )
-                    # else check if consecutive fails, ignoring skips
-                    elif self.check_if_consecutive_diff_outcomes(
-                        curr_test_context, instance
-                    ):
-                        metrics.incr(
-                            "flake_detection.detect_flakes.flake_detected",
-                            1,
-                            tags={
-                                "flake_type": str(
-                                    FlakeSymptom.CONSECUTIVE_DIFF_OUTCOMES
-                                )
-                            },
-                        )
+            results = defaultdict(lambda: defaultdict(list))
 
-                    # else check if meets other requirements for flakes
-                    elif (
-                        instance.failure_message is not None
-                        and self.check_if_failure_messages_match(
-                            curr_test_context, instance
-                        )
-                    ):
-                        metrics.incr(
-                            "flake_detection.detect_flakes.flake_detected",
-                            1,
-                            tags={
-                                "flake_type": str(
-                                    FlakeSymptom.UNRELATED_MATCHING_FAILURES
-                                )
-                            },
-                        )
+            with metrics.timing(
+                "flake_detection.detect_flakes.detection",
+            ):
+                for symptom_detector in self.symptom_detectors:
+                    test_to_instance = symptom_detector.detect()
+                    for test_id, instance_list in test_to_instance.items():
+                        for instance in instance_list:
+                            results[test_id][instance].append(
+                                symptom_detector.symptom()
+                            )
 
-        return self.resulting_flakes
+        return results
