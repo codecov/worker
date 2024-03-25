@@ -75,7 +75,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         **kwargs,
     ):
         log.info(
-            f"Sync repos for {ownerid}",
+            "Sync repos",
             extra=dict(
                 ownerid=ownerid,
                 username=username,
@@ -150,10 +150,11 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         missing_repo_service_ids = service_ids.difference(existing_repos)
 
         log.info(
-            f"Owner: {owner.id} is missing {len(missing_repo_service_ids)} service ids",
+            "Sync missing repos if any",
             extra=dict(
                 ownerid=owner.id,
                 missing_repo_service_ids=missing_repo_service_ids,
+                num_missing_repos=len(missing_repo_service_ids),
                 existing_repos=existing_repos,
             ),
         )
@@ -199,7 +200,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     ):
         ownerid = owner.ownerid
         log.info(
-            f"Syncing repos using integration for {ownerid}",
+            "Syncing repos using integration",
             extra=dict(ownerid=ownerid, username=username),
         )
 
@@ -303,7 +304,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         private_project_ids = []
 
         log.info(
-            f"Syncing repos without integration for {ownerid}",
+            "Syncing repos without integration",
             extra=dict(ownerid=ownerid, username=username, service=service),
         )
 
@@ -402,7 +403,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             return
 
         log.info(
-            f"Updating permissions for {ownerid}",
+            "Updating permissions",
             extra=dict(
                 ownerid=ownerid, username=username, privaterepoids=private_project_ids
             ),
@@ -411,7 +412,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         removed_permissions = set(old_permissions) - set(private_project_ids)
         if removed_permissions:
             log.warning(
-                f"Owner: {ownerid} had permissions that are being removed",
+                "Owner had permissions that are being removed",
                 extra=dict(
                     old_permissions=old_permissions[:100],
                     number_old_permissions=len(old_permissions),
@@ -427,7 +428,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         owner.permission = sorted(set(private_project_ids))
 
         log.info(
-            f"Repo sync done for {ownerid}",
+            "Repo sync done",
             extra=dict(ownerid=ownerid, username=username, repoids=repoids),
         )
 
@@ -439,7 +440,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     def upsert_owner(self, db_session, service, service_id, username):
         log.info(
-            f"Upserting owner: {username}",
+            "Upserting owner",
             extra=dict(git_service=service, service_id=service_id, username=username),
         )
         owner = (
@@ -462,7 +463,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         self, db_session, service, ownerid, repo_data, using_integration=None
     ):
         log.info(
-            f"Upserting repo: {repo_data.name} for {ownerid}",
+            "Upserting repo",
             extra=dict(ownerid=ownerid, repo_data=repo_data),
         )
         repo = (
@@ -573,7 +574,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             using_integration=using_integration,
         )
         log.info(
-            f"Inserting repo: {new_repo.name} for {ownerid}",
+            "Inserting repo",
             extra=dict(
                 ownerid=ownerid, repo_id=new_repo.repoid, repo_name=new_repo.name
             ),
@@ -586,7 +587,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         self, sync_repos_output: dict, manual_trigger: bool, current_owner: Owner
     ):
         log.info(
-            f"Syncing Repos Languages for owner: {current_owner.id}",
+            "Syncing repos languages",
             extra=dict(
                 ownerid=current_owner.id,
                 sync_repos_output=sync_repos_output,
