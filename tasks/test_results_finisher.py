@@ -9,12 +9,17 @@ from shared.yaml import UserYaml
 from test_results_parser import Outcome
 
 from app import celery_app
-from database.enums import FlakeType, ReportType
-from database.models import Commit, Test, TestResultReportTotals
+from database.enums import FlakeSymptomType, ReportType
+from database.models import Commit, Flake, Test, TestResultReportTotals
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from rollouts import FLAKY_TEST_DETECTION
 from services.failure_normalizer import FailureNormalizer
-from services.flake_detection import FlakeDetector
+from services.flake_detection import (
+    DefaultBranchFailureDetector,
+    DiffOutcomeDetector,
+    FlakeDetectionEngine,
+    UnrelatedMatchesDetector,
+)
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
     TestResultsNotificationFailure,
@@ -46,7 +51,7 @@ ESCAPE_FAILURE_MESSAGE_DEFN = [
 class FlakeUpdateInfo:
     new_flake_ids: list[str]
     old_flake_ids: list[str]
-    newly_calculated_flakes: dict[str, FlakeType]
+    newly_calculated_flakes: dict[str, set[FlakeSymptomType]]
 
 
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
@@ -252,11 +257,17 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         # get current flaky test
         tests = db_session.query(Test).filter(Test.repoid == repoid).all()
         for test in tests:
-            if test.flaky_status is not None:
-                flaky_tests[test.test_id] = TestResultsNotificationFlake(
-                    test.flaky_status,
-                    False,
-                )
+            if test.flakes is not None:
+                for flake in test.flakes:
+                    if flake.active == True:
+                        symptom_set = set()
+                        for instance in test.flake.testinstances:
+                            symptom_set |= set(instance.flaky_symptoms)
+
+                        flaky_tests[test.test_id] = TestResultsNotificationFlake(
+                            list(symptom_set),
+                            False,
+                        )
 
         return flaky_tests, tests
 
@@ -276,35 +287,75 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             "test_analytics", "normalization_regex", _else=dict()
         )
 
-        fn = FailureNormalizer(user_normalization_regex, ignore_predefined)
+        failure_normalizer = FailureNormalizer(
+            user_normalization_regex, ignore_predefined
+        )
 
-        fd = FlakeDetector(db_session, repoid, failure_normalizer=fn)
+        default_branch_failure_detector = DefaultBranchFailureDetector(
+            db_session, repoid, "main"
+        )
+        unrelated_matches_detector = UnrelatedMatchesDetector()
+        diff_outcome_detector = DiffOutcomeDetector()
 
-        fd.populate(db_session)
+        flake_detection_engine = FlakeDetectionEngine(
+            db_session,
+            repoid,
+            [
+                default_branch_failure_detector,
+                unrelated_matches_detector,
+                diff_outcome_detector,
+            ],
+            failure_normalizer,
+        )
 
-        newly_calculated_flakes = fd.detect_flakes()
+        current_state_of_repo_flakes = flake_detection_engine.detect_flakes()
 
         new_flake_ids, old_flake_ids = self.get_flake_diff(
-            newly_calculated_flakes, payload.flaky_tests
+            current_state_of_repo_flakes, payload.flaky_tests
         )
 
-        flake_update_info = FlakeUpdateInfo(
-            new_flake_ids, old_flake_ids, newly_calculated_flakes
-        )
+        flakes_to_notify = defaultdict(set)
 
-        if len(new_flake_ids) > 0 or len(old_flake_ids):
-            with metrics.timing("test_results.finisher.update_comment_with_flake_info"):
-                success, reason = self.update_comment_with_flake_info(
-                    flake_update_info, notifier, payload
+        for test_id, instance_dict in current_state_of_repo_flakes.items():
+            if test_id in new_flake_ids:
+                flake = Flake(test_id=test_id, active=True)
+                db_session.add(flake)
+                db_session.flush()
+
+                for instance, symptoms in instance_dict.items():
+                    instance.flake = flake
+
+                    flakes_to_notify[test_id] |= set(symptoms)
+            elif test_id in old_flake_ids:
+                flake = db_session.query(Flake).filter(
+                    Flake.test_id == test_id, Flake.active == True
                 )
+                flake.active = False
+            else:
+                flake = db_session.query(Flake).filter(
+                    Flake.test_id == test_id, Flake.active == True
+                )
+                for instance, symptoms in instance_dict.items():
+                    instance.flake = flake
+                    instance.flake_symptom = symptoms
 
-            with metrics.timing("test_results.finisher.update_flakes_in_db"):
-                self.update_flakes_in_db(db_session, tests, flake_update_info)
+                    flakes_to_notify[test_id] |= set(symptoms)
+
+            db_session.flush()
+
+        for test_id, flake_symptoms in flakes_to_notify.items():
+            payload.flaky_tests[test_id] = TestResultsNotificationFlake(
+                list(flake_symptoms),
+                True,
+            )
+
+        success, reason = async_to_sync(notifier.notify)(payload)
+
         return success, reason
 
     def get_flake_diff(
         self,
-        newly_calculated_flakes: dict[str, FlakeType],
+        newly_calculated_flakes: dict[str, FlakeSymptomType],
         existing_flakes_from_db: dict[str, TestResultsNotificationFlake],
     ):
         newly_discovered_flakes = set(newly_calculated_flakes.keys()) - set(
@@ -315,38 +366,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         )
 
         return list(newly_discovered_flakes), list(no_longer_flakes)
-
-    def update_comment_with_flake_info(
-        self,
-        flake_update_info: FlakeUpdateInfo,
-        notifier: TestResultsNotifier,
-        payload: TestResultsNotificationPayload,
-    ):
-        for new_flake in list(flake_update_info.new_flake_ids):
-            payload.flaky_tests[new_flake] = TestResultsNotificationFlake(
-                flake_type=flake_update_info.newly_calculated_flakes[new_flake],
-                is_new_flake=True,
-            )
-
-        for not_a_flake in list(flake_update_info.old_flake_ids):
-            del payload.flaky_tests[not_a_flake]
-
-        success, reason = async_to_sync(notifier.notify)(payload)
-
-        return success, reason
-
-    def update_flakes_in_db(
-        self, db_session, tests: list[Test], flake_update_info: FlakeUpdateInfo
-    ):
-        # update flaky status of tests in db
-        for test in tests:
-            if test.id_ in flake_update_info.new_flake_ids:
-                test.flaky_status = str(
-                    flake_update_info.newly_calculated_flakes[test.id_]
-                )
-            elif test.id_ in flake_update_info.old_flake_ids:
-                test.flaky_status = None
-        db_session.flush()
 
     def check_if_no_success(self, previous_result):
         return all(

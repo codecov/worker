@@ -7,7 +7,7 @@ from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
 from sqlalchemy import desc
 
-from database.enums import FlakeType, ReportType
+from database.enums import FlakeSymptomType, ReportType
 from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
 from services.report import BaseReportService
 from services.repository import (
@@ -121,7 +121,7 @@ class TestResultsNotificationFailure:
 
 @dataclass
 class TestResultsNotificationFlake:
-    flake_type: FlakeType
+    flake_type: list[FlakeSymptomType]
     is_new_flake: bool
 
 
@@ -177,17 +177,17 @@ class TestResultsNotifier:
         env_section = "<br>".join(envs)
         test_description = (
             "<pre>"
-            f"Testsuite:<br>{fail.testsuite}<br>"
-            f"Test name:<br>{fail.testname}<br>"
-            f"Envs:<br>{env_section}<br>"
+            f"**Testsuite:**<br>{fail.testsuite}<br><br>"
+            f"**Test name:**<br>{fail.testname}<br><br>"
+            f"**Envs:**<br>{env_section}<br>"
             "</pre>"
         )
 
         if flake is not None:
             if flake.is_new_flake:
-                test_description = f":snowflake::card_index_dividers: **Known Flaky Test**<br>{test_description}"
-            else:
                 test_description = f":snowflake::card_index_dividers: **Newly Detected Flake**<br>{test_description}"
+            else:
+                test_description = f":snowflake::card_index_dividers: **Known Flaky Test**<br>{test_description}"
 
         return test_description
 
@@ -197,13 +197,20 @@ class TestResultsNotifier:
         flake: TestResultsNotificationFlake | None = None,
     ):
         if flake is not None:
-            if flake.flake_type == FlakeType.FAILED_IN_DEFAULT_BRANCH:
-                flake_message = "Failure on default branch"
-            elif flake.flake_type == FlakeType.CONSECUTIVE_DIFF_OUTCOMES:
-                flake_message = "Differing outcomes on the same commit"
-            else:
-                flake_message = "Matching failures on unrelated branches"
-            return f":snowflake: :card_index_dividers: **{flake_message}**<br><pre>{fail.failure_message}</pre>"
+            flake_messages = []
+            if FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH in flake.flake_type:
+                flake_messages.append("Failure on default branch")
+            if FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES in flake.flake_type:
+                flake_messages.append("Differing outcomes on the same commit")
+            if FlakeSymptomType.UNRELATED_MATCHING_FAILURES in flake.flake_type:
+                flake_messages.append("Matching failures on unrelated branches")
+            flake_section = "".join(
+                [
+                    f":snowflake: :card_index_dividers: **{msg}**<br>"
+                    for msg in flake_messages
+                ]
+            )
+            return f"{flake_section}<pre>{fail.failure_message}</pre>"
         return f"<pre>{fail.failure_message}</pre>"
 
     def build_message(self, payload: TestResultsNotificationPayload) -> str:
