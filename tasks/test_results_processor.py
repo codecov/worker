@@ -123,6 +123,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         name=name,
                         testsuite=testsuite,
                         flags_hash=flags_hash,
+                        flaky_status=None,
                     )
                     .on_conflict_do_nothing()
                 )
