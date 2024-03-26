@@ -13,6 +13,7 @@ from shared.celery_config import (
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
+from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Owner, Repository
@@ -58,7 +59,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     def run_impl(
         self,
-        db_session,
+        db_session: Session,
         # `previous_results`` is added by celery if the task is chained.
         # It contains the results of tasks that came before this one in the chain
         previous_results=None,
@@ -192,10 +193,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     async def sync_repos_using_integration(
         self,
-        db_session,
+        db_session: Session,
         git,
-        owner,
-        username,
+        owner: Owner,
+        username: str,
         repository_service_ids: Optional[List[Tuple[str, str]]] = None,
     ):
         ownerid = owner.ownerid
@@ -298,7 +299,14 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             "repoids": repoids,
         }
 
-    async def sync_repos(self, db_session, git, owner, username, using_integration):
+    async def sync_repos(
+        self,
+        db_session: Session,
+        git,
+        owner: Owner,
+        username: Optional[str],
+        using_integration: bool,
+    ):
         service = owner.service
         ownerid = owner.ownerid
         private_project_ids = []
@@ -438,7 +446,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             "repoids": repoids,
         }
 
-    def upsert_owner(self, db_session, service, service_id, username):
+    def upsert_owner(
+        self, db_session: Session, service: str, service_id: int, username: str
+    ):
         log.info(
             "Upserting owner",
             extra=dict(git_service=service, service_id=service_id, username=username),
@@ -460,7 +470,12 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         return owner.ownerid
 
     def upsert_repo(
-        self, db_session, service, ownerid, repo_data, using_integration=None
+        self,
+        db_session: Session,
+        service: str,
+        ownerid: int,
+        repo_data,
+        using_integration: Optional[bool] = None,
     ):
         log.info(
             "Upserting repo",
