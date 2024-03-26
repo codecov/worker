@@ -21,10 +21,11 @@ predefined_dict_of_regexes_to_match = {
     "URL": [
         r"[a-z]+:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
     ],
+    "FILEPATH": [r"\/?[a-zA-Z0-9-_]+(\/[a-zA-Z0-9-_]+)+(?=\/([a-zA-Z0-9-_]+\/){2})"],
     "LINENO": [r":\d+:\d*"],
-    "HEXNUMBER": [r"0?x[a-f0-9]+"],
-    "LONGSTRING": [r"[0-9a-zA-Z\-]{30}[0-9a-zA-Z\-]*"],
-    "NO": [r"\s\d+(?:\.\d+)?\s"],
+    "HEXNUMBER": [r"0?x[A-Fa-f0-9]+\b"],
+    "HASH": [r"[0-9a-fA-F\-]{30}[0-9a-fA-F\-]*"],
+    "NO": [r"[+-]?\d+(\.\d+)?\b"],
 }
 
 

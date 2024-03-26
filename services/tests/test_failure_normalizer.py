@@ -45,8 +45,17 @@ def test_failure_normalizer_overwrite_predefined():
 
     assert (
         s
-        == "LONGSTRING UUID_string DATE UUID HEXNUMBER DATETIME DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
+        == "HASH UUID_string DATE UUID HEXNUMBER DATETIME DATETIME  TIME  DATETIME URL LINENO LINENO :: HEXNUMBER"
     )
+
+
+def test_failure_normalizer_overwrite_predefined():
+    thing_string = "hello/my/name/is/hello/world.js"
+    user_dict = {"UUID": ["test"]}
+    f = FailureNormalizer(user_dict, override_predefined=True)
+    s = f.normalize_failure_message(thing_string)
+
+    assert s == "FILEPATH/is/hello/world.js"
 
 
 @pytest.mark.parametrize(
@@ -98,15 +107,6 @@ altchars = None, validate = False
 )
 def test_from_random_cases(input, expected):
     test_message = input
-    regexes_to_use = {
-        # URL regex comes from https://stackoverflow.com/a/3809435
-        "URL": [
-            r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
-        ],
-        "HASH": [r"[0-9A-Fa-f]{40}[0-9A-Fa-f]*"],
-        "NO": [r"[+-]?\d+(\.\d+)?\b"],
-        "HEXNUMBER": [r"0?x[A-Fa-f0-9]+\b"],
-    }
     order_to_process = [
         "UUID",
         "DATETIME",
@@ -120,7 +120,7 @@ def test_from_random_cases(input, expected):
     ]
 
     normalizer_class = FailureNormalizer(
-        regexes_to_use, override_predefined=True, key_analysis_order=order_to_process
+        dict(), override_predefined=True, key_analysis_order=order_to_process
     )
     s = normalizer_class.normalize_failure_message(test_message)
     assert s == expected
