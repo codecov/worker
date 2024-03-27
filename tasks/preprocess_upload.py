@@ -119,6 +119,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                 ownerid=repository.owner.ownerid,
             )
         report_service = ReportService(commit_yaml)
+        # For parallel upload processing, saving the report to GCS happens here
         commit_report = async_to_sync(report_service.initialize_and_save_report)(
             commit, report_code
         )

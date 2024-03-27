@@ -502,7 +502,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         if argument_list:
             db_session.commit()
             self.schedule_task(
-                commit, commit_yaml, argument_list, commit_report, checkpoints
+                commit,
+                commit_yaml,
+                argument_list,
+                commit_report,
+                upload_context,
+                checkpoints,
             )
         else:
             if checkpoints:
@@ -568,6 +573,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit_yaml,
         argument_list,
         commit_report: CommitReport,
+        upload_context: UploadContext,
         checkpoints=None,
     ):
         commit_yaml = commit_yaml.to_dict()
@@ -582,6 +588,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit_yaml,
                 argument_list,
                 commit_report,
+                upload_context,
                 checkpoints=checkpoints,
             )
         elif commit_report.report_type == ReportType.BUNDLE_ANALYSIS.value:
@@ -609,67 +616,100 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         return None
 
     def _schedule_coverage_processing_task(
-        self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
+        self,
+        commit,
+        commit_yaml,
+        argument_list,
+        commit_report,
+        upload_context: UploadContext,
+        checkpoints=None,
     ):
         chunk_size = CHUNK_SIZE
         parallel_session_id = 0
 
-        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
-            chunk_size = 1
-
-            # technically don't need to build the entire report, just need to know how many sessions
-            # have been processed in the report
-            with metrics.timer(f"{self.metrics_prefix}.build_original_report"):
-                report_service = ReportService(commit_yaml)
-                report = report_service.get_existing_report_for_commit(
-                    commit, report_code=commit_report.code
-                )
-                if report:
-                    parallel_session_id = report.next_session_number(None)
+        checkpoint_data = None
+        if checkpoints:
+            checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+            checkpoint_data = checkpoints.data
 
         processing_tasks = []
         for i in range(0, len(argument_list), chunk_size):
             chunk = argument_list[i : i + chunk_size]
             if chunk:
                 sig = upload_processor_task.signature(
-                    args=({},)
-                    if i == 0
-                    or (
-                        PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                            commit.repository.repoid
-                        )
-                    )
-                    else (),
+                    args=({},) if i == 0 else (),
                     kwargs=dict(
                         repoid=commit.repoid,
                         commitid=commit.commitid,
                         commit_yaml=commit_yaml,
                         arguments_list=chunk,
                         report_code=commit_report.code,
-                        chunk_idx=i + parallel_session_id,
+                        in_parallel=False,
                     ),
                 )
                 processing_tasks.append(sig)
-        if processing_tasks:
-            checkpoint_data = None
-            if checkpoints:
-                checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-                checkpoint_data = checkpoints.data
 
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
+            parallel_chunk_size = 1
+            num_sessions = len(argument_list)
+
+            # increment redis to claim session ids. TODO: what if the increment fails
+            parallel_session_id = (
+                upload_context.redis_connection.incrby(
+                    name="sessioncounterkey" + str(commit.commitid), amount=num_sessions
+                )
+                - num_sessions
+            )
+
+            parallel_processing_tasks = []
+            for i in range(0, num_sessions, parallel_chunk_size):
+                chunk = argument_list[i : i + parallel_chunk_size]
+                if chunk:
+                    sig = upload_processor_task.signature(
+                        args=(),
+                        kwargs=dict(
+                            repoid=commit.repoid,
+                            commitid=commit.commitid,
+                            commit_yaml=commit_yaml,
+                            arguments_list=chunk,
+                            report_code=commit_report.code,
+                            parallel_idx=i + parallel_session_id,
+                            in_parallel=True,
+                        ),
+                    )
+                    parallel_processing_tasks.append(sig)
+
+        if processing_tasks:
             finish_sig = upload_finisher_task.signature(
                 kwargs={
                     "repoid": commit.repoid,
                     "commitid": commit.commitid,
                     "commit_yaml": commit_yaml,
                     "report_code": commit_report.code,
+                    "in_parallel": False,
                     _kwargs_key(UploadFlow): checkpoint_data,
                 },
             )
+            finish_parallel_sig = upload_finisher_task.signature(
+                kwargs={
+                    "repoid": commit.repoid,
+                    "commitid": commit.commitid,
+                    "commit_yaml": commit_yaml,
+                    "report_code": commit_report.code,
+                    "in_parallel": True,
+                    _kwargs_key(UploadFlow): checkpoint_data,
+                },
+            )
+            processing_tasks.append(finish_sig)
+            serial_tasks = chain(*processing_tasks)
+
             if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
-                res = chord(processing_tasks)(finish_sig)
+                parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
+                workflow = serial_tasks | parallel_tasks
+                res = workflow.apply_async()
             else:
-                processing_tasks.append(finish_sig)
-                res = chain(*processing_tasks).apply_async()
+                res = serial_tasks.apply_async()
+
             log.info(
                 "Scheduling task for %s different reports",
                 len(argument_list),
