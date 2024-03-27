@@ -81,7 +81,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commit_yaml,
         arguments_list,
         report_code=None,
-        chunk_idx,
+        parallel_idx=None,
+        in_parallel=False,
         **kwargs,
     ):
         repoid = int(repoid)
@@ -90,7 +91,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             extra=dict(repoid=repoid, commit=commitid),
         )
 
-        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repoid):
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repoid) and in_parallel:
             log.info(
                 "Using parallel upload processing, skip acquiring upload processing lock",
                 extra=dict(
@@ -105,14 +106,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             # unsafe operations with `PARALLEL_UPLOAD_PROCESSING_BY_REPO`.
             return self.process_impl_within_lock(
                 db_session=db_session,
-                previous_results=previous_results,
+                previous_results={},
                 repoid=repoid,
                 commitid=commitid,
                 commit_yaml=commit_yaml,
                 arguments_list=arguments_list,
-                chunk_idx=chunk_idx,
+                parallel_idx=parallel_idx,
                 report_code=report_code,
                 parent_task=self.request.parent_id,
+                in_parallel=in_parallel,
                 **kwargs,
             )
         else:
@@ -143,8 +145,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         commit_yaml=commit_yaml,
                         arguments_list=actual_arguments_list,
                         report_code=report_code,
-                        chunk_idx=chunk_idx,
+                        parallel_idx=parallel_idx,
                         parent_task=self.request.parent_id,
+                        in_parallel=in_parallel,
                         **kwargs,
                     )
             except LockError:
@@ -172,10 +175,11 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commit_yaml,
         arguments_list,
         report_code,
-        chunk_idx,
+        parallel_idx,
+        in_parallel,
         **kwargs,
     ):
-        if not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repoid):
+        if not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repoid) and in_parallel:
             log.info(
                 "Obtained upload processing lock, starting",
                 extra=dict(
@@ -201,7 +205,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         try_later = []
         report_service = ReportService(commit_yaml)
 
-        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
+        if (
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+            and in_parallel
+        ):
             log.info(
                 "Creating empty report to store incremental result",
                 extra=dict(commit=commitid),
@@ -251,7 +258,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                             commit,
                             report,
                             upload_obj,
-                            parallel_index=chunk_idx,
+                            parallel_idx=parallel_idx,
+                            in_parallel=in_parallel,
                         )
                     individual_info.update(result)
                 except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
@@ -290,7 +298,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
             parallel_incremental_result = None
             results_dict = {}
-            if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
+            if (
+                PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+                and in_parallel
+            ):
                 with metrics.timer(
                     f"{self.metrics_prefix}.save_incremental_report_results"
                 ):
@@ -298,7 +309,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         report_service,
                         commit,
                         report,
-                        chunk_idx,
+                        parallel_idx,
                     )
                     parallel_incremental_result["upload_pk"] = arguments_list[0].get(
                         "upload_pk"
@@ -315,15 +326,20 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         report_code,
                     )
 
-            # TODO FOR PARALLEL, make sure that it still works
             for processed_individual_report in processings_so_far:
-                deleted_archive = self._possibly_delete_archive(
-                    processed_individual_report, report_service, commit
-                )
-                if not deleted_archive:
-                    self._rewrite_raw_report_readable(
+                # We delete and rewrite the artifacts when the serial flow runs first. When
+                # the parallel flow runs second, it parses the human readable artifacts instead
+                if not (
+                    PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+                    and in_parallel
+                ):
+                    deleted_archive = self._possibly_delete_archive(
                         processed_individual_report, report_service, commit
                     )
+                    if not deleted_archive:
+                        self._rewrite_raw_report_readable(
+                            processed_individual_report, report_service, commit
+                        )
                 processed_individual_report.pop("upload_obj", None)
                 processed_individual_report.pop("raw_report", None)
             log.info(
@@ -353,10 +369,16 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
     @sentry_sdk.trace
     def process_individual_report(
-        self, report_service, commit, report, upload_obj, parallel_index=None
+        self,
+        report_service,
+        commit,
+        report,
+        upload_obj,
+        parallel_idx=None,
+        in_parallel=False,
     ):
         processing_result = self.do_process_individual_report(
-            report_service, report, upload=upload_obj, parallel_index=parallel_index
+            report_service, report, upload=upload_obj, parallel_idx=parallel_idx
         )
         if (
             processing_result.error is not None
@@ -376,9 +398,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
             self.schedule_for_later_try()
-        report_service.update_upload_with_processing_result(
-            upload_obj, processing_result
-        )
+        if not in_parallel:
+            report_service.update_upload_with_processing_result(
+                upload_obj, processing_result
+            )
         return processing_result.as_dict()
 
     def do_process_individual_report(
@@ -387,10 +410,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         current_report: Optional[Report],
         *,
         upload: Upload,
-        parallel_index=None,
+        parallel_idx=None,
     ):
         res: ProcessingResult = report_service.build_report_from_raw_content(
-            current_report, upload, parallel_idx=parallel_index
+            current_report, upload, parallel_idx=parallel_idx
         )
         return res
 
@@ -453,6 +476,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         raw_report = processing_result.get("raw_report")
         if raw_report:
             upload = processing_result.get("upload_obj")
+            # if upload:
             archive_url = upload.storage_path
             log.info(
                 "Re-writing raw report in readable format",
@@ -542,7 +566,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_service,
         commit,
         report,
-        chunk_idx,
+        parallel_idx,
     ):
         commitid = commit.commitid
         archive_service = report_service.get_archive_service(commit.repository)
@@ -553,15 +577,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         _, files_and_sessions = report.to_database()
 
         chunks_url = archive_service.write_chunks(
-            commitid, chunks, report_code=f"incremental/chunk{chunk_idx}"
+            commitid, chunks, report_code=f"parallel/incremental/chunk{parallel_idx}"
         )
         files_and_sessions_url = archive_service.write_chunks(
             commitid,
             files_and_sessions,
-            report_code=f"incremental/files_and_sessions{chunk_idx}",
+            report_code=f"parallel/incremental/files_and_sessions{parallel_idx}",
         )
         parallel_incremental_result = {
-            "chunk_idx": chunk_idx,
+            "parallel_idx": parallel_idx,
             "chunks_path": chunks_url,
             "files_and_sessions_path": files_and_sessions_url,
         }

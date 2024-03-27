@@ -13,6 +13,7 @@ from shared.celery_config import (
     upload_finisher_task_name,
 )
 from shared.reports.resources import Report
+from shared.storage.exceptions import FileNotInStorageError
 from shared.yaml import UserYaml
 
 from app import celery_app
@@ -22,6 +23,7 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.metrics import metrics
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
+from services.archive import MinioEndpoints
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -59,6 +61,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repoid,
         commitid,
         commit_yaml,
+        in_parallel,
         report_code=None,
         **kwargs,
     ):
@@ -87,7 +90,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
         repository = commit.repository
 
-        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid):
+        if (
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+            and in_parallel
+        ):
             actual_processing_results = {
                 "processings_so_far": [],
                 "parallel_incremental_result": [],
@@ -103,7 +109,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     task["parallel_incremental_result"]
                 )
             processing_results = actual_processing_results
-
             report_service = ReportService(commit_yaml)
             report = self.merge_incremental_reports(
                 commit_yaml,
@@ -125,17 +130,17 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
 
-            with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
-                results_dict = self.save_report_results(
-                    db_session,
-                    report_service,
-                    repository,
-                    commit,
-                    report,
-                    pr,
-                    report_code,
+            with metrics.timer(f"{self.metrics_prefix}.save_parallel_report_results"):
+                report_service.save_parallel_report_to_archive(
+                    commit, report, report_code
                 )
+            # now that we've built the report and stored it to GCS, we have what we need to
+            # compare the results with the current upload pipeline. We end execution of the
+            # finisher task here so that we don't cause any additional side-effects
 
+            # we should also fire the comparison task to verify correctness of our
+            # parallel report here
+            return
         redis_connection = get_redis_connection()
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
@@ -399,11 +404,28 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repoid = repository.repoid
         commitid = commit.id
 
-        report = report_service.get_existing_report_for_commit(
-            commit, report_code=report_code
+        path = MinioEndpoints.chunks.get_path(
+            version="v4",
+            repo_hash=archive_service.get_archive_hash(repository),
+            commitid=commit.commitid,
+            chunks_file_name="parallel",
         )
+        path = path[:-4]  # TODO: this is nasty to remove ".txt" extension
 
-        if report is None:
+        try:
+            files_and_sessions = json.loads(
+                archive_service.read_file(path + "/files_and_sessions.txt")
+            )
+            chunks = archive_service.read_file(path + "/chunks.txt").decode(
+                errors="replace"
+            )
+            report = report_service.build_report(
+                chunks,
+                files_and_sessions["files"],
+                files_and_sessions["sessions"],
+                None,
+            )
+        except FileNotInStorageError:  # there were no CFFs, so no report was stored in GCS
             report = Report()
 
         log.info(
@@ -431,17 +453,17 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 None,
             )
             return {
-                "chunk_idx": partial_report["chunk_idx"],
+                "parallel_idx": partial_report["parallel_idx"],
                 "report": report,
                 "upload_pk": partial_report["upload_pk"],
             }
 
         def merge_report(cumulative_report, obj):
             incremental_report = obj["report"]
-            chunk_idx = obj["chunk_idx"]
+            parallel_idx = obj["parallel_idx"]
             assert len(incremental_report.sessions) == 1
             session_id, session = cumulative_report.add_session(
-                incremental_report.sessions[chunk_idx]
+                incremental_report.sessions[parallel_idx]
             )
             session.id = session_id
             # current behavior uploads an UploadProcessingResult with this data
