@@ -49,7 +49,7 @@ def test_failure_normalizer_overwrite_predefined():
     )
 
 
-def test_failure_normalizer_overwrite_predefined():
+def test_failure_normalizer_filepath():
     thing_string = "hello/my/name/is/hello/world.js"
     user_dict = {"UUID": ["test"]}
     f = FailureNormalizer(user_dict, override_predefined=True)
@@ -95,7 +95,7 @@ altchars = None, validate = False
 mock_configuration = &lt;shared.config.ConfigHelper object at HEXNUMBER&gt;
 chain = mocker.patch("tasks.upload.chain")
 storage_path = (
-    "vNO/repos/testing/UUID/bundle_report.sqlite"
+    "FILEPATH/testing/UUID/bundle_report.sqlite"
 )
 message="",
 commitid="HASH",
@@ -113,6 +113,7 @@ def test_from_random_cases(input, expected):
         "DATE",
         "TIME",
         "URL",
+        "FILEPATH",
         "LINENO",
         "HASH",
         "HEXNUMBER",
