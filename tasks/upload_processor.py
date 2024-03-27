@@ -227,7 +227,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     report = Report()
         try:
             for arguments in arguments_list:
-                pr = arguments.get("pr") or pr
+                pr = arguments.get("pr")
                 upload_obj = (
                     db_session.query(Upload)
                     .filter_by(id_=arguments.get("upload_pk"))
@@ -329,6 +329,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             for processed_individual_report in processings_so_far:
                 # We delete and rewrite the artifacts when the serial flow runs first. When
                 # the parallel flow runs second, it parses the human readable artifacts instead
+                # since the serial flow already rewrote it
                 if not (
                     PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
                     and in_parallel
@@ -429,7 +430,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
     ):
         if self.should_delete_archive(report_service.current_yaml):
             upload = processing_result.get("upload_obj")
-            archive_url = upload.get("storage_path")
+            archive_url = upload.storage_path
             if archive_url and not archive_url.startswith("http"):
                 log.info(
                     "Deleting uploaded file as requested",
@@ -476,7 +477,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         raw_report = processing_result.get("raw_report")
         if raw_report:
             upload = processing_result.get("upload_obj")
-            # if upload:
             archive_url = upload.storage_path
             log.info(
                 "Re-writing raw report in readable format",
@@ -571,7 +571,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commitid = commit.commitid
         archive_service = report_service.get_archive_service(commit.repository)
 
-        # save incremental results to archive storage
+        # save incremental results to archive storage,
         # upload_finisher will combine
         chunks = report.to_archive().encode()
         _, files_and_sessions = report.to_database()
