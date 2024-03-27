@@ -100,6 +100,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             }
             pr = None
 
+            # need to transform processing_results produced by chord to get it into the
+            # same format as the processing_results produced from chain
             for task in processing_results:
                 pr = task["processings_so_far"][0].get("pr") or pr
                 actual_processing_results["processings_so_far"].append(
@@ -109,6 +111,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     task["parallel_incremental_result"]
                 )
             processing_results = actual_processing_results
+
             report_service = ReportService(commit_yaml)
             report = self.merge_incremental_reports(
                 commit_yaml,
@@ -125,7 +128,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
-                    # processing_results=processing_results,
+                    processing_results=processing_results,
                     parent_task=self.request.parent_id,
                 ),
             )
@@ -410,7 +413,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             commitid=commit.commitid,
             chunks_file_name="parallel",
         )
-        path = path[:-4]  # TODO: this is nasty to remove ".txt" extension
+        path = path[:-4]  # TODO: this is to remove ".txt" extension
 
         try:
             files_and_sessions = json.loads(
@@ -466,18 +469,19 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 incremental_report.sessions[parallel_idx]
             )
             session.id = session_id
-            # current behavior uploads an UploadProcessingResult with this data
 
-            _adjust_sessions(
+            session_manipulation_result = _adjust_sessions(
                 cumulative_report, incremental_report, session, UserYaml(commit_yaml)
             )
+            # ReportService.update_upload_with_processing_result should use this result
+            # to update the state of Upload. Once the experiement is finished, it should
+            # be set to: parallel_processed (instead of processed)
 
             cumulative_report.merge(incremental_report)
-            upload_obj = (
-                db_session.query(Upload).filter_by(id_=obj["upload_pk"]).first()
-            )
-            upload_obj.state = "processed"
-            db_session.commit()
+
+            # once the experiment is finished, we should be modifying the Upload here
+            # moving it's state from: parallel_processed -> processed
+
             return cumulative_report
 
         with ThreadPoolExecutor(max_workers=10) as pool:  # max chosen arbitrarily
@@ -498,38 +502,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         )
         report = functools.reduce(merge_report, unmerged_reports, report)
         return report
-
-    def save_report_results(
-        self,
-        db_session,
-        report_service,
-        repository,
-        commit,
-        report,
-        pr,
-        report_code=None,
-    ):
-        """
-        This is a nasty hack related to testing parallel upload processing.
-        In today's behavior, `UploadProcessorTask` will merge an upload
-        into an accumulated "final" report, save it, and repeat for every
-        upload. If processing uploads in parallel, `UploadProcessorTask` skips
-        the merge step and we merge/save in one go in `UploadFinisherTask`. The
-        function definition really doesn't use `self` at all so calling it this
-        way should actually work.
-        When parallel upload processing is fully rolled out, steal the
-        definition of `save_report_results()` from `UploadProcessorTask`.
-        """
-        return UploadProcessorTask.save_report_results(
-            self,
-            db_session,
-            report_service,
-            repository,
-            commit,
-            report,
-            pr,
-            report_code=report_code,
-        )
 
 
 RegisteredUploadTask = celery_app.register_task(UploadFinisherTask())

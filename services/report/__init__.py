@@ -536,7 +536,7 @@ class ReportService(BaseReportService):
             get_current_env() == Environment.local
             or commit.repoid in report_builder_repo_ids
         )
-        if not new_report_builder_enabled:  # sometimes this runs
+        if not new_report_builder_enabled:
             return self.get_existing_report_for_commit_from_legacy_data(
                 commit, report_class=report_class, report_code=report_code
             )

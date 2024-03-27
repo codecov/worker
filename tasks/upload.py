@@ -705,8 +705,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
             if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
                 parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
-                workflow = serial_tasks | parallel_tasks
-                res = workflow.apply_async()
+                parallel_shadow_experiment = serial_tasks | parallel_tasks
+                res = parallel_shadow_experiment.apply_async()
             else:
                 res = serial_tasks.apply_async()
 
