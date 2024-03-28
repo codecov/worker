@@ -10,6 +10,7 @@ from shared.celery_config import (
     sync_repo_languages_task_name,
     sync_repos_task_name,
 )
+from shared.config import get_config
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
@@ -115,11 +116,14 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                             db_session, git, owner, username, using_integration
                         )
 
-                self.sync_repos_languages(
-                    sync_repos_output=sync_repos_output,
-                    manual_trigger=manual_trigger,
-                    current_owner=owner,
-                )
+                if get_config(
+                    "setup", "tasks", "sync_repo_languages", "enabled", default=True
+                ):
+                    self.sync_repos_languages(
+                        sync_repos_output=sync_repos_output,
+                        manual_trigger=manual_trigger,
+                        current_owner=owner,
+                    )
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 
