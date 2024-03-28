@@ -204,7 +204,7 @@ test_env.install_cli:
 	pip install --no-cache-dir codecov-cli==$(CODECOV_CLI_VERSION)
 
 test_env.container_prepare:
-	apk add -U curl git build-base jq
+	apt-get install -y git build-essential netcat-traditional
 	make test_env.install_cli
 	git config --global --add safe.directory /worker
 
@@ -252,7 +252,7 @@ test_env.run_mutation:
 	docker-compose exec worker make test_env.container_mutation
 
 test_env.container_mutation:
-	apk add git
+	apt-get install -y git
 	git diff origin/main ${full_sha} > data.patch
 	pip install mutmut[patch]
 	mutmut run --use-patch-file data.patch || true
