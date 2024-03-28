@@ -92,7 +92,7 @@ class TimeseriesBackfillDatasetTask(
             return {"successful": False}
 
         if batch_size is None:
-            batch_size = backfill_batch_size(repository)
+            batch_size = backfill_batch_size(repository, dataset)
 
         try:
             start_date = datetime.fromisoformat(start_date)

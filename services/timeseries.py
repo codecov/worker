@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from database.models import Commit, Dataset, Measurement, MeasurementName
 from database.models.core import Repository
 from database.models.reports import RepositoryFlag
+from database.models.timeseries import Dataset
 from helpers.timeseries import backfill_max_batch_size, timeseries_enabled
 from services.report import ReportService
 from services.yaml import get_repo_yaml
@@ -227,17 +228,23 @@ def repository_flag_ids(repository: Repository) -> Mapping[str, int]:
     return {repo_flag.flag_name: repo_flag.id for repo_flag in repo_flags}
 
 
-def backfill_batch_size(repository: Repository) -> int:
+def backfill_batch_size(repository: Repository, dataset: Dataset) -> int:
     db_session = repository.get_db_session()
+    batch_size = backfill_max_batch_size()
 
-    flag_count = (
-        db_session.query(RepositoryFlag)
-        .filter_by(repository_id=repository.repoid)
-        .count()
-    )
+    if dataset.name == MeasurementName.component_coverage.value:
+        current_yaml = get_repo_yaml(repository)
+        component_count = max(len(current_yaml.get_components()), 1)
+        batch_size = int(batch_size / component_count)
+    elif dataset.name == MeasurementName.flag_coverage.value:
+        flag_count = (
+            db_session.query(RepositoryFlag)
+            .filter_by(repository_id=repository.repoid)
+            .count()
+        )
+        flag_count = max(flag_count, 1)
+        batch_size = int(batch_size / flag_count)
 
-    flag_count = max(flag_count, 1)
-    batch_size = int(backfill_max_batch_size() / flag_count)
     return max(batch_size, 1)
 
 
@@ -247,4 +254,16 @@ def delete_repository_data(repository: Repository):
     db_session.query(Measurement).filter_by(
         owner_id=repository.ownerid,
         repo_id=repository.repoid,
+    ).delete()
+
+
+def delete_repository_measurements(
+    repository: Repository, measurement_type: str, measurement_id: str
+):
+    db_session = repository.get_db_session()
+    db_session.query(Measurement).filter_by(
+        owner_id=repository.ownerid,
+        repo_id=repository.repoid,
+        name=measurement_type,
+        measurable_id=measurement_id,
     ).delete()
