@@ -219,7 +219,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 )
             )
             rely_on_webhook_ghapp = ghapp_default_installations != [] and any(
-                lambda obj: obj.is_repo_covered_by_integration(commit.repository)
+                obj.is_repo_covered_by_integration(commit.repository)
+                for obj in ghapp_default_installations
             )
             rely_on_webhook_legacy = commit.repository.using_integration
             if (
