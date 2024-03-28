@@ -132,22 +132,22 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         failures = []
 
         for test_instance in test_instances:
-            if (
-                test_instance.outcome == str(Outcome.Failure)
-                or test_instance.outcome == str(Outcome.Error)
-            ) and test_instance.failure_message:
+            if test_instance.outcome == str(
+                Outcome.Failure
+            ) or test_instance.outcome == str(Outcome.Error):
                 failed_tests += 1
 
                 flag_names = sorted(test_instance.upload.flag_names)
 
                 failure_message = test_instance.failure_message
 
-                if commit_yaml.read_yaml_field(
-                    "test_analytics", "shorten_paths", _else=True
-                ):
-                    failure_message = shorten_file_paths(failure_message)
+                if failure_message is not None:
+                    if commit_yaml.read_yaml_field(
+                        "test_analytics", "shorten_paths", _else=True
+                    ):
+                        failure_message = shorten_file_paths(failure_message)
 
-                failure_message = escaper.replace(failure_message)
+                    failure_message = escaper.replace(failure_message)
 
                 failures.append(
                     TestResultsNotificationFailure(
