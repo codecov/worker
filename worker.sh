@@ -10,7 +10,7 @@ if [[ "$CODECOV_WORKER_QUEUES" ]]; then
   queues="--queue $CODECOV_WORKER_QUEUES"
 fi
 
-if [[ "$RUN_ENV" == "enterprise" ]] || [[ "$RUN_ENV" == "DEV" ]]; then
+if [[ "$RUN_ENV" == "ENTERPRISE" ]] || [[ "$RUN_ENV" == "DEV" ]]; then
     python manage.py migrate
     python manage.py migrate --database "timeseries"
 fi
