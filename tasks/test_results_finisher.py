@@ -141,12 +141,13 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
                 failure_message = test_instance.failure_message
 
-                if commit_yaml.read_yaml_field(
-                    "test_analytics", "shorten_paths", _else=True
-                ):
-                    failure_message = shorten_file_paths(failure_message)
+                if failure_message is not None:
+                    if commit_yaml.read_yaml_field(
+                        "test_analytics", "shorten_paths", _else=True
+                    ):
+                        failure_message = shorten_file_paths(failure_message)
 
-                failure_message = escaper.replace(failure_message)
+                    failure_message = escaper.replace(failure_message)
 
                 failures.append(
                     TestResultsNotificationFailure(
