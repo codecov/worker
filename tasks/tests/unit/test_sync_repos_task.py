@@ -1210,3 +1210,65 @@ class TestSyncReposTaskUnit(object):
         )
         assert upserted_owner is not None
         assert upserted_owner.username == "codecov"
+
+    @pytest.mark.django_db(databases={"default"})
+    def test_sync_repos_with_feature_flag_django_call(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_redis,
+    ):
+        # Don't mock LIST_REPOS_GENERATOR_BY_OWNER_ID here so the django db
+        # query will actually run. The point of this test is to ensure that
+        # `Feature` can actually query db with django without causing an error
+
+        token = "ecd73a086eadc85db68747a66bdbd662a785a072"
+        user = OwnerFactory.create(
+            organizations=[],
+            service="github",
+            username="1nf1n1t3l00p",
+            unencrypted_oauth_token=token,
+            permission=[],
+            service_id="45343385",
+        )
+        dbsession.add(user)
+
+        repo_pub = RepositoryFactory.create(
+            private=False,
+            name="pub",
+            using_integration=False,
+            service_id="159090647",
+            owner=user,
+        )
+        repo_pytest = RepositoryFactory.create(
+            private=False,
+            name="pytest",
+            using_integration=False,
+            service_id="159089634",
+            owner=user,
+        )
+        repo_spack = RepositoryFactory.create(
+            private=False,
+            name="spack",
+            using_integration=False,
+            service_id="164948070",
+            owner=user,
+        )
+        dbsession.add(repo_pub)
+        dbsession.add(repo_pytest)
+        dbsession.add(repo_spack)
+        dbsession.flush()
+
+        SyncReposTask().run_impl(
+            dbsession, ownerid=user.ownerid, using_integration=False
+        )
+        repos = (
+            dbsession.query(Repository)
+            .filter(Repository.service_id.in_(("159090647", "159089634", "164948070")))
+            .all()
+        )
+
+        assert user.permission == []  # there were no private repos to add
+        assert len(repos) == 3
