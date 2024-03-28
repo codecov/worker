@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from freezegun import freeze_time
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
@@ -32,6 +33,8 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.plan == BillingPlan.users_basic.value
         assert owner.plan_user_count == 1
         assert owner.plan_activated_users == None
+        # Owner was already created, we don't update this value
+        assert owner.createstamp is None
 
         dbsession.commit()
         # their repos should also be deactivated
@@ -44,6 +47,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         for repo in repos:
             assert repo.activated is False
 
+    @freeze_time("2024-03-28T00:00:00")
     def test_create_or_update_to_free_plan_unknown_user(self, dbsession, mocker):
         service_id = "12345"
         username = "tomcat"
@@ -68,6 +72,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.username == username
         assert owner.name == name
         assert owner.email == email
+        assert owner.createstamp.isoformat() == "2024-03-28T00:00:00"
 
     def test_create_or_update_plan_known_user_with_plan(self, dbsession, mocker):
         owner = OwnerFactory.create(
