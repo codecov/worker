@@ -284,6 +284,7 @@ def get_or_create_author(
             username=username,
             name=name,
             email=email,
+            createstamp=datetime.now(),
         )
         db_session.add(author)
         db_session.commit()

@@ -436,7 +436,12 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             if (owner.username or "").lower() != username.lower():
                 owner.username = username
         else:
-            owner = Owner(service=service, service_id=service_id, username=username)
+            owner = Owner(
+                service=service,
+                service_id=service_id,
+                username=username,
+                createstamp=datetime.now(),
+            )
             db_session.add(owner)
             db_session.flush()
 

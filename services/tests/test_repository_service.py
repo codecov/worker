@@ -3,6 +3,7 @@ from datetime import datetime
 
 import mock
 import pytest
+from freezegun import freeze_time
 from shared.encryption.oauth import get_encryptor_from_configuration
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
@@ -602,6 +603,7 @@ class TestRepositoryServiceTestCase(object):
         )
         assert expected_result == result
 
+    @freeze_time("2024-03-28T00:00:00")
     def test_get_or_create_author_doesnt_exist(self, dbsession):
         service = "github"
         author_id = "123"
@@ -626,6 +628,7 @@ class TestRepositoryServiceTestCase(object):
         assert author.yaml is None
         assert author.oauth_token is None
         assert author.bot_id is None
+        assert author.createstamp.isoformat() == "2024-03-28T00:00:00"
 
     def test_get_or_create_author_already_exists(self, dbsession):
         owner = OwnerFactory.create(
@@ -661,6 +664,7 @@ class TestRepositoryServiceTestCase(object):
         assert author.yaml == {"a": ["12", "3"]}
         assert author.oauth_token == owner.oauth_token
         assert author.bot_id == owner.bot_id
+        assert owner.createstamp is None
 
     @pytest.mark.asyncio
     async def test_update_commit_from_provider_info_no_author_id(

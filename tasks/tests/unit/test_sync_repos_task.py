@@ -7,6 +7,7 @@ import pytest
 import respx
 import vcr
 from celery.exceptions import SoftTimeLimitExceeded
+from freezegun import freeze_time
 from redis.exceptions import LockError
 from shared.celery_config import (
     sync_repo_languages_gql_task_name,
@@ -43,6 +44,7 @@ class TestSyncReposTaskUnit(object):
                 using_integration=False,
             )
 
+    @freeze_time("2024-03-28T00:00:00")
     def test_upsert_owner_add_new(self, mocker, mock_configuration, dbsession):
         service = "github"
         service_id = "123456"
@@ -66,7 +68,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert new_entry is not None
         assert new_entry.username == username
-        assert new_entry.createstamp is None
+        assert new_entry.createstamp.isoformat() == "2024-03-28T00:00:00"
 
     def test_upsert_owner_update_existing(self, mocker, mock_configuration, dbsession):
         ownerid = 1

@@ -153,6 +153,7 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
             name=name,
             email=email,
             plan_provider="github",
+            createstamp=datetime.now(),
         )
         db_session.add(owner)
         db_session.flush()

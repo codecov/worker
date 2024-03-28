@@ -92,6 +92,7 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
                 email=data.get("email"),
                 avatar_url=data.get("avatar_url"),
                 parent_service_id=data.get("parent_service_id"),
+                createstamp=datetime.now(),
             )
             db_session.add(team)
             db_session.flush()
