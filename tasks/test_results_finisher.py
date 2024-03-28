@@ -132,9 +132,10 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         failures = []
 
         for test_instance in test_instances:
-            if test_instance.outcome == str(
-                Outcome.Failure
-            ) or test_instance.outcome == str(Outcome.Error):
+            if (
+                test_instance.outcome == str(Outcome.Failure)
+                or test_instance.outcome == str(Outcome.Error)
+            ) and test_instance.failure_message:
                 failed_tests += 1
 
                 flag_names = sorted(test_instance.upload.flag_names)
