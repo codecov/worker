@@ -20,7 +20,7 @@ log = getLogger(__name__)
 FlakeDetectionResult = dict[Test, set[FlakeSymptomType]]
 
 
-class SymptomDetector:
+class BaseSymptomDetector:
     """
     blueprint class for a single symptom of flakiness detector
 
@@ -47,7 +47,7 @@ class SymptomDetector:
         raise NotImplementedError()
 
 
-class DefaultBranchFailureDetector(SymptomDetector):
+class DefaultBranchFailureDetector(BaseSymptomDetector):
     def __init__(self, db_session, repoid=None, default_branch=None):
         self.instances = defaultdict(list)
 
@@ -85,7 +85,7 @@ class CommitDictObject:
         self.instances = list()
 
 
-class DiffOutcomeDetector(SymptomDetector):
+class DiffOutcomeDetector(BaseSymptomDetector):
     def __init__(self):
         self.state = defaultdict(lambda: defaultdict(CommitDictObject))
         self.res = defaultdict(list)
@@ -120,7 +120,7 @@ class TestDictObject:
         self.instances = list()
 
 
-class UnrelatedMatchesDetector(SymptomDetector):
+class UnrelatedMatchesDetector(BaseSymptomDetector):
     def __init__(self):
         self.state = defaultdict(lambda: defaultdict(TestDictObject))
         self.res = defaultdict(list)
@@ -158,7 +158,7 @@ class FlakeDetectionEngine:
         self,
         db_session,
         repoid,
-        symptom_detectors: list[SymptomDetector],
+        symptom_detectors: list[BaseSymptomDetector],
         failure_normalizer=None,
     ):
         self.db_session = db_session
