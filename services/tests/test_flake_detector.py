@@ -137,6 +137,33 @@ def test_flake_consecutive_differing_outcomes(dbsession):
     assert flaky_tests[test_id][ti1] == [FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES]
 
 
+def test_flake_consecutive_differing_outcomes_no_main_branch_specified(dbsession):
+    repoid = create_repo(
+        dbsession,
+    )
+    commitid = create_commit(dbsession, repoid, "not_main")
+    reportid = create_report(dbsession, commitid)
+    reportid2 = create_report(dbsession, commitid)
+    uploadid = create_upload(dbsession, reportid)
+    uploadid2 = create_upload(dbsession, reportid2)
+    test_id = create_test(dbsession, repoid)
+    ti1 = create_test_instance(
+        dbsession, test_id, uploadid, str(Outcome.Failure), "failure message"
+    )
+    _ = create_test_instance(dbsession, test_id, uploadid2, str(Outcome.Pass), None)
+
+    dbfd = DefaultBranchFailureDetector(dbsession, repoid)
+    umd = UnrelatedMatchesDetector()
+    dod = DiffOutcomeDetector()
+
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
+    flaky_tests = fd.detect_flakes()
+
+    assert test_id in flaky_tests
+    assert ti1 in flaky_tests[test_id]
+    assert flaky_tests[test_id][ti1] == [FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES]
+
+
 def test_flake_matching_failures_on_unrelated_branches(dbsession):
     repoid = create_repo(
         dbsession,
