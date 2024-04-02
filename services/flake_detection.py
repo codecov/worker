@@ -1,12 +1,9 @@
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from enum import Enum
 from functools import cached_property
-from itertools import groupby
 from logging import getLogger
 from sys import getsizeof
-from typing import List, Set, Tuple
 
 from sentry_sdk import metrics, trace
 from test_results_parser import Outcome
