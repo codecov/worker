@@ -178,7 +178,10 @@ class TestResultsNotifier:
         self,
         fail: TestResultsNotificationFailure,
     ):
-        return fail.failure_message
+        if fail.failure_message is not None:
+            return fail.failure_message
+        else:
+            return "No failure message available"
 
     def build_message(self, payload: TestResultsNotificationPayload) -> str:
         message = []
