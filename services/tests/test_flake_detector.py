@@ -106,8 +106,7 @@ def test_flake_detector_failure_on_main(dbsession):
     flaky_tests = fd.detect_flakes()
 
     assert test_id in flaky_tests
-    assert ti in flaky_tests[test_id]
-    assert flaky_tests[test_id][ti] == [FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH]
+    assert flaky_tests[test_id] == {FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH}
 
 
 def test_flake_consecutive_differing_outcomes(dbsession):
@@ -133,8 +132,7 @@ def test_flake_consecutive_differing_outcomes(dbsession):
     flaky_tests = fd.detect_flakes()
 
     assert test_id in flaky_tests
-    assert ti1 in flaky_tests[test_id]
-    assert flaky_tests[test_id][ti1] == [FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES]
+    assert flaky_tests[test_id] == {FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES}
 
 
 def test_flake_consecutive_differing_outcomes_no_main_branch_specified(dbsession):
@@ -160,8 +158,7 @@ def test_flake_consecutive_differing_outcomes_no_main_branch_specified(dbsession
     flaky_tests = fd.detect_flakes()
 
     assert test_id in flaky_tests
-    assert ti1 in flaky_tests[test_id]
-    assert flaky_tests[test_id][ti1] == [FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES]
+    assert flaky_tests[test_id] == {FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES}
 
 
 def test_flake_matching_failures_on_unrelated_branches(dbsession):
@@ -199,13 +196,10 @@ def test_flake_matching_failures_on_unrelated_branches(dbsession):
     flaky_tests = fd.detect_flakes()
 
     assert test_id in flaky_tests
-    assert ti1 in flaky_tests[test_id]
-    assert ti2 in flaky_tests[test_id]
-    assert ti3 in flaky_tests[test_id]
 
-    assert flaky_tests[test_id][ti1] == [FlakeSymptomType.UNRELATED_MATCHING_FAILURES]
-    assert flaky_tests[test_id][ti2] == [FlakeSymptomType.UNRELATED_MATCHING_FAILURES]
-    assert flaky_tests[test_id][ti3] == [FlakeSymptomType.UNRELATED_MATCHING_FAILURES]
+    assert flaky_tests[test_id] == {FlakeSymptomType.UNRELATED_MATCHING_FAILURES}
+    assert flaky_tests[test_id] == {FlakeSymptomType.UNRELATED_MATCHING_FAILURES}
+    assert flaky_tests[test_id] == {FlakeSymptomType.UNRELATED_MATCHING_FAILURES}
 
 
 def test_flake_matching_failures_on_related_branches(dbsession):

@@ -17,7 +17,7 @@ from database.models.reports import CommitReport, Test, TestInstance, Upload
 
 log = getLogger(__name__)
 
-FlakeDetectionResult = dict[Test, dict[TestInstance, list[FlakeSymptomType]]]
+FlakeDetectionResult = dict[Test, set[FlakeSymptomType]]
 
 
 class SymptomDetector:
@@ -242,7 +242,7 @@ class FlakeDetectionEngine:
                     for symptom_detector in self.symptom_detectors:
                         symptom_detector.ingest(instance)
 
-            results = defaultdict(lambda: defaultdict(list))
+            results = defaultdict(set)
 
             with metrics.timing(
                 "flake_detection.detect_flakes.detection",
@@ -251,8 +251,6 @@ class FlakeDetectionEngine:
                     test_to_instance = symptom_detector.detect()
                     for test_id, instance_list in test_to_instance.items():
                         for instance in instance_list:
-                            results[test_id][instance].append(
-                                symptom_detector.symptom()
-                            )
+                            results[test_id].add(symptom_detector.symptom())
 
         return results
