@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from freezegun import freeze_time
@@ -450,7 +450,7 @@ class TestBotsService(BaseTestCase):
     def test__get_installation_weight(
         self, time_edited_days, expected_weight, dbsession
     ):
-        time_diff = datetime.now(UTC) - timedelta(days=time_edited_days)
+        time_diff = datetime.now(timezone.utc) - timedelta(days=time_edited_days)
         owner = OwnerFactory(service="github", integration_id=12341234)
         installation = GithubAppInstallation(
             owner=owner,
@@ -474,8 +474,8 @@ class TestBotsService(BaseTestCase):
         installation_new should have a ~4% chance of being selected
         that is ~40 in 1000 selection we make.
         """
-        ten_days_ago = datetime.now(UTC) - timedelta(days=10)
-        two_days_ago = datetime.now(UTC) - timedelta(days=2)
+        ten_days_ago = datetime.now(timezone.utc) - timedelta(days=10)
+        two_days_ago = datetime.now(timezone.utc) - timedelta(days=2)
         owner = OwnerFactory(service="github", integration_id=12341234)
         installation_old = GithubAppInstallation(
             owner=owner,

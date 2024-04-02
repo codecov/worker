@@ -1,6 +1,6 @@
 import logging
 import random
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 from shared.config import get_config
@@ -26,11 +26,11 @@ def _get_installation_weight(installation: GithubAppInstallation) -> int:
     """The weight for a given app installation.
     Establishes an exponential ramp-up period for installations after being updated.
     """
-    age = datetime.now(UTC) - installation.updated_at
+    age = datetime.now(timezone.utc) - installation.updated_at
     if age.days >= 10:
         return MAX_GITHUB_APP_SELECTION_WEIGHT
-    # seconds_in_hour = 3600
-    age_hours = (age.seconds // 3600) + age.days * 24
+    seconds_in_hour = 3600
+    age_hours = (age.seconds // seconds_in_hour) + age.days * 24
     return age_hours + 2**age.days
 
 
@@ -50,7 +50,16 @@ def get_owner_installation_id(
     if not ignore_installation or deprecated_using_integration:
         default_app_installation_filter: List[GithubAppInstallation] = list(
             filter(
-                lambda obj: obj.name == installation_name and obj.is_configured(),
+                lambda obj: (
+                    obj.name == installation_name
+                    and obj.is_configured()
+                    and (
+                        # If there is a repo we want only the apps that cover said repo
+                        (repository and obj.is_repo_covered_by_integration(repository))
+                        # If there is no repo we still need some true value
+                        or (not repository)
+                    )
+                ),
                 owner.github_app_installations or [],
             )
         )
