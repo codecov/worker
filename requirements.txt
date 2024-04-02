@@ -109,9 +109,7 @@ django-six==1.0.5
     #   django-admin
     #   django-excel-response2
 django==4.2.11
-    # via
-    #   django-model-utils
-    #   shared
+    # via shared
 ecdsa==0.18.0
     # via tlslite-ng
 excel-base==1.0.4
@@ -367,10 +365,8 @@ s3transfer==0.3.4
 screen==1.0.1
     # via excel-base
 sentry-sdk==1.40.0
-    # via
-    #   -r requirements.in
-    #   shared
-https://github.com/codecov/shared/archive/e80424c20033ca96077002d7097d53f9aaec83e4.tar.gz#egg=shared
+    # via -r requirements.in
+https://github.com/codecov/shared/archive/3022b4e40bf4e0ae155d86a4220b636e738a946e.tar.gz#egg=shared
     # via -r requirements.in
 six==1.15.0
     # via
