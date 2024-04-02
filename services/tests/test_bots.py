@@ -1,4 +1,7 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
+from freezegun import freeze_time
 
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
@@ -9,6 +12,7 @@ from services.bots import (
     OwnerWithoutValidBotError,
     RepositoryWithoutValidBotError,
     TokenType,
+    _get_installation_weight,
     get_owner_appropriate_bot_token,
     get_owner_installation_id,
     get_repo_appropriate_bot_token,
@@ -437,6 +441,86 @@ class TestBotsService(BaseTestCase):
             repo_not_covered_by_installation.using_integration,
             repository=repo_not_covered_by_installation,
         ) == {"installation_id": 12341234}
+
+    @pytest.mark.parametrize(
+        "time_edited_days,expected_weight",
+        [(1, 26), (2, 52), (5, 152), (7, 296), (8, 448), (9, 728), (10, 1200)],
+    )
+    @freeze_time("2024-04-02 00:00:00")
+    def test__get_installation_weight(
+        self, time_edited_days, expected_weight, dbsession
+    ):
+        time_diff = datetime.now(UTC) - timedelta(days=time_edited_days)
+        owner = OwnerFactory(service="github", integration_id=12341234)
+        installation = GithubAppInstallation(
+            owner=owner,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            repository_service_ids=None,
+            installation_id=123456,
+            app_id=123,
+            pem_path="some_path",
+            created_at=time_diff,
+            updated_at=time_diff,
+        )
+        dbsession.add(owner)
+        dbsession.add(installation)
+        dbsession.flush()
+        assert _get_installation_weight(installation) == expected_weight
+
+    @freeze_time("2024-04-02 00:00:00 UTC")
+    def test_get_owner_installation_id_multiple_apps_weights(self, mocker, dbsession):
+        """! This test is inherently flaky.
+        We are testing the ramp up process for recently updated apps.
+        installation_new should have a ~4% chance of being selected
+        that is ~40 in 1000 selection we make.
+        """
+        ten_days_ago = datetime.now(UTC) - timedelta(days=10)
+        two_days_ago = datetime.now(UTC) - timedelta(days=2)
+        owner = OwnerFactory(service="github", integration_id=12341234)
+        installation_old = GithubAppInstallation(
+            owner=owner,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            repository_service_ids=None,
+            installation_id=123456,
+            app_id=123,
+            pem_path="some_path",
+            created_at=ten_days_ago,
+            updated_at=ten_days_ago,
+        )
+        installation_new = GithubAppInstallation(
+            owner=owner,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            repository_service_ids=None,
+            installation_id=123000,
+            app_id=456,
+            pem_path="other_path",
+            created_at=two_days_ago,
+            updated_at=two_days_ago,
+        )
+        dbsession.add(owner)
+        dbsession.add(installation_old)
+        dbsession.add(installation_new)
+        dbsession.flush()
+
+        assert _get_installation_weight(installation_old) == 1200
+        assert _get_installation_weight(installation_new) == 52
+        choices = dict()
+        choices[installation_old.installation_id] = 0
+        choices[installation_new.installation_id] = 0
+        # We select apps 1K times to reduce margin of test flakiness
+        for _ in range(1000):
+            installation_dict = get_owner_installation_id(owner, False)
+            assert installation_dict is not None
+            id_chosen = installation_dict["installation_id"]
+            choices[id_chosen] += 1
+        # Assert that both apps can be selected
+        assert choices[installation_old.installation_id] > 0
+        assert choices[installation_new.installation_id] > 0
+        # Assert that the old app is selected more frequently
+        assert (
+            choices[installation_old.installation_id]
+            > choices[installation_new.installation_id]
+        )
 
     def test_get_token_type_mapping_public_repo_no_configuration_no_particular_bot(
         self, mock_configuration, dbsession

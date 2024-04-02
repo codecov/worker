@@ -1,19 +1,37 @@
 import logging
-from random import shuffle
-from typing import Dict, Optional, Tuple
+import random
+from datetime import UTC, datetime
+from typing import Dict, List, Optional, Tuple
 
 from shared.config import get_config
 from shared.torngit.base import TokenType
 
 from database.models import Owner, Repository
-from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from helpers.environment import is_enterprise
 from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
-from helpers.github_installation import get_installation_name_for_owner_for_task
 from services.encryption import encryptor
 from services.github import get_github_integration_token
 
 log = logging.getLogger(__name__)
+
+
+MAX_GITHUB_APP_SELECTION_WEIGHT = 1200
+
+
+def _get_installation_weight(installation: GithubAppInstallation) -> int:
+    """The weight for a given app installation.
+    Establishes an exponential ramp-up period for installations after being updated.
+    """
+    age = datetime.now(UTC) - installation.updated_at
+    if age.days >= 10:
+        return MAX_GITHUB_APP_SELECTION_WEIGHT
+    # seconds_in_hour = 3600
+    age_hours = (age.seconds // 3600) + age.days * 24
+    return age_hours + 2**age.days
 
 
 def get_owner_installation_id(
@@ -30,18 +48,34 @@ def get_owner_installation_id(
 ) -> Optional[Dict]:
 
     if not ignore_installation or deprecated_using_integration:
-        default_app_installation_filter = list(
+        default_app_installation_filter: List[GithubAppInstallation] = list(
             filter(
                 lambda obj: obj.name == installation_name and obj.is_configured(),
                 owner.github_app_installations or [],
             )
         )
-        # We shuffle the results so apps are considered with close to the same probability
-        # (so that if the owner has multiple apps for the same objective their rate limit
-        # is spent equally fast)
-        shuffle(default_app_installation_filter)
+        # We assign weights to the apps based on how long ago they were updated.
+        # The idea is that there's a greater chance that a change misconfigured the app,
+        # So apps recently updated are selected less frequently than older apps
+        weights = [
+            min(MAX_GITHUB_APP_SELECTION_WEIGHT, _get_installation_weight(obj))
+            for obj in default_app_installation_filter
+        ]
+        # Random selection of size 3.
+        # If all apps have roughly the same probability of being selected, the array would have different entries.
+        # If 1 app dominates the probability of selection than it would probably be that app repeated 3 times, BUT
+        # from time to time the less frequent one would be selected.
+        apps_to_consider = (
+            random.choices(default_app_installation_filter, weights=weights, k=3)
+            if len(default_app_installation_filter) > 0
+            else []
+        )
+        already_checked = dict()
         # filter is an Iterator, so we need to scan matches
-        for app_installation in default_app_installation_filter:
+        for app_installation in apps_to_consider:
+            if already_checked.get(app_installation.installation_id):
+                continue
+            already_checked[app_installation.installation_id] = True
             if repository:
                 if app_installation.is_repo_covered_by_integration(repository):
                     log.info(
