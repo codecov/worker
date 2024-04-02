@@ -303,9 +303,6 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     upload_id = Column(types.Integer, ForeignKey("reports_upload.id"))
     upload = relationship("Upload", backref=backref("testinstances"))
     failure_message = Column(types.Text)
-    flake_id = Column(types.Integer, ForeignKey("reports_flake.id"))
-    flake = relationship("Flake", back_populates="testinstances")
-    # should only be used with the FlakeSymptomType enum in database/enums.py
 
 
 class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
@@ -315,14 +312,3 @@ class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     passed = Column(types.Integer)
     skipped = Column(types.Integer)
     failed = Column(types.Integer)
-
-
-class Flake(CodecovBaseModel, MixinBaseClass):
-    __tablename__ = "reports_flake"
-    test_id = Column(types.Text, ForeignKey("reports_test.id"))
-    test = relationship("Test", backref=backref("flakes"))
-    active = Column(types.Boolean, nullable=False)
-    # no cascade because we want TestInstances to just have a null flake if the flake is deleted
-    testinstances = relationship("TestInstance", back_populates="flake")
-    # rollup column of flake symptoms from relevant test instances
-    flake_symptoms = Column(postgresql.ARRAY(types.String(100)), nullable=True)
