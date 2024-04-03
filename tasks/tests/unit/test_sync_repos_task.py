@@ -967,6 +967,95 @@ class TestSyncReposTaskUnit(object):
             kwargs={"repoid": new_repo_list[0].repoid, "manual_trigger": False}
         )
 
+    @pytest.mark.parametrize("use_generator", [False])
+    @respx.mock
+    @reuse_cassette(
+        "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration.yaml"
+    )
+    def test_insert_repo_and_not_call_repo_sync_languages_using_integration(
+        self,
+        mocker,
+        dbsession,
+        mock_owner_provider,
+        mock_redis,
+        use_generator,
+    ):
+        mocked_app = mocker.patch.object(
+            SyncReposTask,
+            "app",
+            tasks={
+                sync_repo_languages_task_name: mocker.MagicMock(),
+            },
+        )
+
+        mocker.patch.object(
+            LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
+        )
+        mocker.patch("tasks.sync_repos.get_config", return_value=False)
+
+        if use_generator:
+            respx.post("https://api.github.com/graphql").mock(
+                httpx.Response(
+                    status_code=200,
+                    content='{"data":{"viewer":{"repositories":{"totalCount": 4}}}}',
+                    headers={"Content-Type": "application/json"},
+                )
+            )
+
+        token = "ecd73a086eadc85db68747a66bdbd662a785a072"
+        user = OwnerFactory.create(
+            organizations=[],
+            service="github",
+            username="1nf1n1t3l00p",
+            unencrypted_oauth_token=token,
+            permission=[],
+            service_id="45343385",
+        )
+        dbsession.add(user)
+
+        def repo_obj(service_id, name, language, private, branch, using_integration):
+            return {
+                "owner": {
+                    "service_id": "test-owner-service-id",
+                    "username": "test-owner-username",
+                },
+                "repo": {
+                    "service_id": service_id,
+                    "name": name,
+                    "language": language,
+                    "private": private,
+                    "branch": branch,
+                },
+                "_using_integration": using_integration,
+            }
+
+        mock_repos = [
+            repo_obj("159089634", "pytest", "python", False, "main", True),
+        ]
+        mock_owner_provider.list_repos_using_installation.return_value = mock_repos
+
+        preseeded_repos = []
+        for repo in mock_repos[:-1]:
+            preseeded_repos.append(
+                RepositoryFactory.create(
+                    private=repo["repo"]["private"],
+                    name=repo["repo"]["name"],
+                    using_integration=repo["_using_integration"],
+                    service_id=repo["repo"]["service_id"],
+                    owner=user,
+                )
+            )
+
+        for repo in preseeded_repos:
+            dbsession.add(repo)
+        dbsession.flush()
+
+        SyncReposTask().run_impl(
+            dbsession, ownerid=user.ownerid, using_integration=True
+        )
+
+        mocked_app.tasks[sync_repo_languages_task_name].apply_async.assert_not_called()
+
     def test_sync_repos_using_integration_affected_repos_known(
         self,
         mocker,
@@ -1123,3 +1212,65 @@ class TestSyncReposTaskUnit(object):
         )
         assert upserted_owner is not None
         assert upserted_owner.username == "codecov"
+
+    @pytest.mark.django_db(databases={"default"})
+    def test_sync_repos_with_feature_flag_django_call(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_redis,
+    ):
+        # Don't mock LIST_REPOS_GENERATOR_BY_OWNER_ID here so the django db
+        # query will actually run. The point of this test is to ensure that
+        # `Feature` can actually query db with django without causing an error
+
+        token = "ecd73a086eadc85db68747a66bdbd662a785a072"
+        user = OwnerFactory.create(
+            organizations=[],
+            service="github",
+            username="1nf1n1t3l00p",
+            unencrypted_oauth_token=token,
+            permission=[],
+            service_id="45343385",
+        )
+        dbsession.add(user)
+
+        repo_pub = RepositoryFactory.create(
+            private=False,
+            name="pub",
+            using_integration=False,
+            service_id="159090647",
+            owner=user,
+        )
+        repo_pytest = RepositoryFactory.create(
+            private=False,
+            name="pytest",
+            using_integration=False,
+            service_id="159089634",
+            owner=user,
+        )
+        repo_spack = RepositoryFactory.create(
+            private=False,
+            name="spack",
+            using_integration=False,
+            service_id="164948070",
+            owner=user,
+        )
+        dbsession.add(repo_pub)
+        dbsession.add(repo_pytest)
+        dbsession.add(repo_spack)
+        dbsession.flush()
+
+        SyncReposTask().run_impl(
+            dbsession, ownerid=user.ownerid, using_integration=False
+        )
+        repos = (
+            dbsession.query(Repository)
+            .filter(Repository.service_id.in_(("159090647", "159089634", "164948070")))
+            .all()
+        )
+
+        assert user.permission == []  # there were no private repos to add
+        assert len(repos) == 3
