@@ -345,7 +345,7 @@ class TestUploadTestFinisherTask(object):
         mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
-        repoid, commit, _, _ = test_results_setup
+        repoid, commit, pull, _ = test_results_setup
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
@@ -374,6 +374,11 @@ class TestUploadTestFinisherTask(object):
             ]
         )
         assert mock_metrics.timing.mock_calls == []
+
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+        )
 
     @pytest.mark.integration
     def test_upload_finisher_task_call_existing_comment(

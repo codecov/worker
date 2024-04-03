@@ -141,11 +141,18 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         )
         assert commit, "commit not found"
 
+        notifier = TestResultsNotifier(commit, commit_yaml)
+
         if self.check_if_no_success(previous_result):
             # every processor errored, nothing to notify on
             metrics.incr(
                 "test_results.finisher",
                 tags={"status": "failure", "reason": "no_successful_processing"},
+            )
+            success, reason = async_to_sync(notifier.error_comment)()
+            metrics.incr(
+                "test_results.finisher.test_result_notifier_error_comment",
+                tags={"status": success, "reason": reason},
             )
             return {
                 "notify_attempted": False,
@@ -234,8 +241,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         flaky_tests = None
         if FLAKY_TEST_DETECTION.check_value(repo_id=repoid):
             flaky_tests = dict()
-
-        notifier = TestResultsNotifier(commit, commit_yaml)
 
         failures = sorted(failures, key=lambda x: x.testsuite + x.testname)
         payload = TestResultsNotificationPayload(
