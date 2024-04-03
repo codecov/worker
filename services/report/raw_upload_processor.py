@@ -132,7 +132,7 @@ def process_raw_upload(
             log.info(
                 "Customer is using joined=False feature", extra=dict(flag_used=flag)
             )
-            joined = False  # TODO: make this work for parallel
+            joined = False  # TODO: ensure this works for parallel
     # ---------------
     # Process reports
     # ---------------

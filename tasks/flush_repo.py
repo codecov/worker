@@ -155,17 +155,20 @@ class FlushRepoTask(BaseCodecovTask, name="app.tasks.flush_repo.FlushRepo"):
 
     @sentry_sdk.trace
     def _delete_commits(self, db_session: Session, repoid: int) -> int:
-        commits_to_delete = db_session.query(Commit).filter_by(repoid=repoid).all()
+        commits_to_delete = (
+            db_session.query(Commit.commitid).filter_by(repoid=repoid).all()
+        )
         commit_ids_to_delete = [commit.commitid for commit in commits_to_delete]
 
-        # Reset parallel session id redis key for each commit
-        for commit in commits_to_delete:
-            get_redis_connection().set(
+        pipeline = get_redis_connection().pipeline()
+        for id in commit_ids_to_delete:
+            pipeline.set(
                 get_parallel_upload_processing_session_counter_redis_key(
-                    repoid=commit.repoid, commitid=commit.commitid
+                    repoid=repoid, commitid=id
                 ),
                 0,
             )
+        pipeline.execute()
 
         delete_count = (
             db_session.query(Commit)

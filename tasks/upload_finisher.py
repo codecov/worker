@@ -407,21 +407,22 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repoid = repository.repoid
         commitid = commit.id
 
-        path = MinioEndpoints.chunks.get_path(
+        fas_path = MinioEndpoints.parallel_upload_experiment.get_path(
             version="v4",
             repo_hash=archive_service.get_archive_hash(repository),
             commitid=commit.commitid,
-            chunks_file_name="parallel",
+            file_name="files_and_sessions",
         )
-        path = path[:-4]  # TODO: this is to remove ".txt" extension
+        chunks_path = MinioEndpoints.parallel_upload_experiment.get_path(
+            version="v4",
+            repo_hash=archive_service.get_archive_hash(repository),
+            commitid=commit.commitid,
+            file_name="chunks",
+        )
 
         try:
-            files_and_sessions = json.loads(
-                archive_service.read_file(path + "/files_and_sessions.txt")
-            )
-            chunks = archive_service.read_file(path + "/chunks.txt").decode(
-                errors="replace"
-            )
+            files_and_sessions = json.loads(archive_service.read_file(fas_path))
+            chunks = archive_service.read_file(chunks_path).decode(errors="replace")
             report = report_service.build_report(
                 chunks,
                 files_and_sessions["files"],

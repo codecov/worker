@@ -664,7 +664,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
             # if session count expired due to TTL (which is unlikely for most cases), recalculate the
             # session ids used and set it in redis.
-            if self.parallel_session_count_key_maybe_expired(
+            if self.parallel_session_count_key_expired(
                 redis_key, upload_context.redis_connection
             ):
                 report_service = ReportService(commit_yaml)
@@ -910,7 +910,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 )
         return False
 
-    def parallel_session_count_key_maybe_expired(self, redis_key, redis_connection):
+    def parallel_session_count_key_expired(self, redis_key, redis_connection):
         if redis_connection.exists(redis_key):
             return False
         return True

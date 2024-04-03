@@ -958,7 +958,7 @@ class ReportService(BaseReportService):
             # else:
             upload_obj.state_id = UploadState.PROCESSED.db_id
             upload_obj.state = "processed"
-            upload_obj.order_number = session.id  # this value uses parallel_idx
+            upload_obj.order_number = session.id
             upload_totals = upload_obj.totals
             if upload_totals is None:
                 upload_totals = UploadLevelTotals(
