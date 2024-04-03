@@ -378,17 +378,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "Org not on PR plan"
         assert decoration_details.should_attempt_author_auto_activation is False
 
-    def test_get_decoration_type_users_plan(self, dbsession, mocker, enriched_pull):
-        enriched_pull.database_pull.repository.owner.plan = "users"
-        dbsession.flush()
-
-        decoration_details = determine_decoration_details(enriched_pull)
-
-        assert decoration_details.decoration_type == Decoration.standard
-        assert decoration_details.reason == "Org not on PR plan"
-        assert decoration_details.should_attempt_author_auto_activation is False
-
-    def test_get_decoration_type_for_whitelisted_org_with_pr_author(self, dbsession):
+    def test_get_decoration_type_for_users_plan(self, dbsession):
         repository = RepositoryFactory.create(
             owner__username="drazisil-org",
             owner__service="github",

@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+from freezegun import freeze_time
 
 from database.models import Owner
 from database.tests.factories import OwnerFactory
@@ -71,6 +72,7 @@ class TestSyncTeamsTaskUnit(object):
         assert old_team.name == "codecov"
         assert str(old_team.updatestamp) > last_updated
 
+    @freeze_time("2024-03-28T00:00:00")
     def test_gitlab_subgroups(
         self, mocker, mock_configuration, dbsession, codecov_vcr, caplog
     ):
@@ -132,5 +134,6 @@ class TestSyncTeamsTaskUnit(object):
             expected_data = expected_groups.get(service_id, {})
             assert g.username == expected_data.get("username")
             assert g.name == expected_data["name"]
+            assert g.createstamp.isoformat() == "2024-03-28T00:00:00"
             if expected_data["parent_service_id"]:
                 assert g.parent_service_id == expected_data["parent_service_id"]

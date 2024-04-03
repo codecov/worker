@@ -10,6 +10,7 @@ from shared.celery_config import (
     sync_repo_languages_task_name,
     sync_repos_task_name,
 )
+from shared.config import get_config
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
@@ -120,11 +121,14 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                             db_session, git, owner, username, using_integration
                         )
 
-                self.sync_repos_languages(
-                    sync_repos_output=sync_repos_output,
-                    manual_trigger=manual_trigger,
-                    current_owner=owner,
-                )
+                if get_config(
+                    "setup", "tasks", "sync_repo_languages", "enabled", default=True
+                ):
+                    self.sync_repos_languages(
+                        sync_repos_output=sync_repos_output,
+                        manual_trigger=manual_trigger,
+                        current_owner=owner,
+                    )
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 
@@ -263,7 +267,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added
-        elif LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(
+        elif await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
             owner_id=ownerid, default=False
         ):
             with metrics.timer(
@@ -375,17 +379,17 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.commit()
 
         try:
-            # if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(
-            #     owner_id=ownerid, default=False
-            # ):
-            #     with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
-            #         async for page in git.list_repos_generator():
-            #             process_repos(page)
-            # else:
-            # get my repos (and team repos)
-            with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                repos = await git.list_repos()
-                process_repos(repos)
+            if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
+                owner_id=ownerid, default=False
+            ):
+                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
+                    async for page in git.list_repos_generator():
+                        process_repos(page)
+            else:
+                # get my repos (and team repos)
+                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
+                    repos = await git.list_repos()
+                    process_repos(repos)
         except SoftTimeLimitExceeded:
             old_permissions = owner.permission or []
             log.warning(
@@ -463,7 +467,12 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             if (owner.username or "").lower() != username.lower():
                 owner.username = username
         else:
-            owner = Owner(service=service, service_id=service_id, username=username)
+            owner = Owner(
+                service=service,
+                service_id=service_id,
+                username=username,
+                createstamp=datetime.now(),
+            )
             db_session.add(owner)
             db_session.flush()
 

@@ -9,6 +9,7 @@ log = logging.getLogger(__name__)
 
 
 class BillingPlan(Enum):
+    users_ghm = "users"
     users_monthly = "users-inappm"
     users_yearly = "users-inappy"
     users_free = "users-free"
@@ -34,6 +35,7 @@ def is_pr_billing_plan(plan: str) -> bool:
             BillingPlan.enterprise_cloud_yearly.value,
             BillingPlan.team_monthly.value,
             BillingPlan.team_yearly.value,
+            BillingPlan.users_ghm.value,
         ]
     else:
         license = get_current_license()

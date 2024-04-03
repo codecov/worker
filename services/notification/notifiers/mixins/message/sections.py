@@ -4,6 +4,7 @@ from base64 import b64encode
 from decimal import Decimal
 from itertools import starmap
 from typing import List
+from urllib.parse import urlencode
 
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
@@ -19,7 +20,6 @@ from services.notification.notifiers.mixins.message.helpers import (
     get_table_layout,
     make_metrics,
     make_patch_only_metrics,
-    sort_by_importance,
 )
 from services.urls import get_commit_url_from_commit_sha, get_pull_graph_url
 from services.yaml.reader import get_components_from_yaml, round_number
@@ -452,6 +452,18 @@ class DiffSectionWriter(BaseSectionWriter):
         yield ("```")
 
 
+def _get_tree_cell(typ, path, metrics, compare, is_critical):
+    return "| {rm}[{path}]({compare}?src=pr&el=tree&{path_as_query_param}#diff-{hash}){rm}{file_tags} {metrics}".format(
+        rm="~~" if typ == "deleted" else "",
+        path=escape_markdown(ellipsis(path, 50, False)),
+        path_as_query_param=urlencode({"filepath": path}),
+        compare=compare,
+        hash=b64encode(path.encode()).decode(),
+        metrics=metrics,
+        file_tags=" **Critical**" if is_critical else "",
+    )
+
+
 class NewFilesSectionWriter(BaseSectionWriter):
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # create list of files changed in diff
@@ -498,13 +510,12 @@ class NewFilesSectionWriter(BaseSectionWriter):
                 if path not in mentioned:
                     # mentioned: for files that are in diff and changes
                     mentioned.append(path)
-                    return "| {rm}[{path}]({compare}?src=pr&el=tree#diff-{hash}){rm}{file_tags} {metrics}".format(
-                        rm="~~" if typ == "deleted" else "",
-                        path=escape_markdown(ellipsis(path, 50, False)),
-                        compare=links["pull"],
-                        hash=b64encode(path.encode()).decode(),
+                    return _get_tree_cell(
+                        typ=typ,
+                        path=path,
                         metrics=metrics,
-                        file_tags=" **Critical**" if path in files_in_critical else "",
+                        compare=links["pull"],
+                        is_critical=path in files_in_critical,
                     )
 
             remaining_files = 0
@@ -580,13 +591,12 @@ class FileSectionWriter(BaseSectionWriter):
                 if path not in mentioned:
                     # mentioned: for files that are in diff and changes
                     mentioned.append(path)
-                    return "| {rm}[{path}]({compare}?src=pr&el=tree#diff-{hash}){rm}{file_tags} {metrics}".format(
-                        rm="~~" if typ == "deleted" else "",
-                        path=escape_markdown(ellipsis(path, 50, False)),
-                        compare=links["pull"],
-                        hash=b64encode(path.encode()).decode(),
+                    return _get_tree_cell(
+                        typ=typ,
+                        path=path,
                         metrics=metrics,
-                        file_tags=" **Critical**" if path in files_in_critical else "",
+                        compare=links["pull"],
+                        is_critical=path in files_in_critical,
                     )
 
             yield (

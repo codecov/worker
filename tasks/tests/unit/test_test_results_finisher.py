@@ -104,7 +104,7 @@ def test_results_setup(mocker, dbsession):
     test_name = "test_name"
     test_suite = "test_testsuite"
 
-    test_id1 = generate_test_id(repoid, test_name, test_suite, "a")
+    test_id1 = generate_test_id(repoid, test_name + "0", test_suite, "a")
     test1 = Test(
         id_=test_id1,
         repoid=repoid,
@@ -114,7 +114,7 @@ def test_results_setup(mocker, dbsession):
     )
     dbsession.add(test1)
 
-    test_id2 = generate_test_id(repoid, test_name, test_suite, "b")
+    test_id2 = generate_test_id(repoid, test_name + "1", test_suite, "b")
     test2 = Test(
         id_=test_id2,
         repoid=repoid,
@@ -124,15 +124,25 @@ def test_results_setup(mocker, dbsession):
     )
     dbsession.add(test2)
 
-    test_id3 = generate_test_id(repoid, test_name, test_suite, "")
+    test_id3 = generate_test_id(repoid, test_name + "2", test_suite, "")
     test3 = Test(
         id_=test_id3,
         repoid=repoid,
-        name=test_name,
-        testsuite=test_suite + "2",
+        name=test_name + "2",
+        testsuite=test_suite,
         flags_hash="",
     )
     dbsession.add(test3)
+
+    test_id4 = generate_test_id(repoid, test_name + "3", test_suite, "")
+    test4 = Test(
+        id_=test_id4,
+        repoid=repoid,
+        name=test_name + "3",
+        testsuite=test_suite,
+        flags_hash="",
+    )
+    dbsession.add(test4)
 
     dbsession.flush()
 
@@ -163,6 +173,13 @@ def test_results_setup(mocker, dbsession):
             test_id=test_id1,
             outcome=str(Outcome.Failure),
             failure_message="<pre>Fourth \r\n\r\n</pre> | test  | instance |",
+            duration_seconds=duration,
+            upload_id=uploads[3].id,
+        ),
+        TestInstance(
+            test_id=test_id4,
+            outcome=str(Outcome.Failure),
+            failure_message=None,
             duration_seconds=duration,
             upload_id=uploads[3].id,
         ),
@@ -207,7 +224,7 @@ class TestUploadTestFinisherTask(object):
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite2<br>Test name:<br>test_name<br>Envs:<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name0<br>Envs:<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name1<br>Envs:<br>- 1<br></pre> | <pre>Shared failure message</pre> |",
+            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name0<br>Envs:<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name1<br>Envs:<br>- 1<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name2<br>Envs:<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name3<br>Envs:<br>- 0<br></pre> | <pre>No failure message available</pre> |",
         )
 
         mock_metrics.incr.assert_has_calls(
@@ -367,7 +384,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 3 tests with **`3 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite2<br>Test name:<br>test_name<br>Envs:<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name0<br>Envs:<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name1<br>Envs:<br>- 1<br></pre> | <pre>Shared failure message</pre> |",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name0<br>Envs:<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name1<br>Envs:<br>- 1<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name2<br>Envs:<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name3<br>Envs:<br>- 0<br></pre> | <pre>No failure message available</pre> |",
         )
 
         assert expected_result == result
