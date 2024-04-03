@@ -52,8 +52,7 @@ class Owner(CodecovBaseModel):
     plan_activated_users = Column(
         postgresql.ARRAY(types.Integer), server_default=FetchedValue()
     )
-    # createstamp seems to be used by legacy to track first login
-    # so we shouldn't touch this outside login
+
     createstamp = Column(types.DateTime, server_default=FetchedValue())
     admins = Column(postgresql.ARRAY(types.Integer), server_default=FetchedValue())
     permission = Column(postgresql.ARRAY(types.Integer), server_default=FetchedValue())
