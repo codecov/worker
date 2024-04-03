@@ -419,7 +419,6 @@ tqdm==4.66.1
 typing-extensions==4.6.3
     # via
     #   asgiref
-    #   kombu
     #   openai
     #   opentelemetry-sdk
     #   pydantic

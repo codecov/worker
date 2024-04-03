@@ -61,7 +61,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repoid,
         commitid,
         commit_yaml,
-        in_parallel,
+        in_parallel=False,
         report_code=None,
         **kwargs,
     ):

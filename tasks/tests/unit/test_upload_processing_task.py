@@ -48,6 +48,7 @@ class TestUploadProcessorTask(object):
         mock_retry.assert_called_with(countdown=180, max_retries=5)
 
     @pytest.mark.integration
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_processor_task_call(
         self,
         mocker,
@@ -170,6 +171,7 @@ class TestUploadProcessorTask(object):
         )
 
     @pytest.mark.integration
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_processor_task_call_should_delete(
         self,
         mocker,
@@ -300,6 +302,7 @@ class TestUploadProcessorTask(object):
             timeout=300,
         )
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_processor_call_with_upload_obj(
         self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
     ):
@@ -419,6 +422,7 @@ class TestUploadProcessorTask(object):
         assert data == parsed.content().getvalue()
 
     @pytest.mark.integration
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_existing_chunks(
         self,
         mocker,
@@ -494,6 +498,7 @@ class TestUploadProcessorTask(object):
             timeout=300,
         )
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_exception_within_individual_upload(
         self,
         mocker,
@@ -544,13 +549,16 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         assert exc.value.args == ("first", "aruba", "digimon")
-        mocked_2.assert_called_with(mocker.ANY, mocker.ANY, upload=upload)
+        mocked_2.assert_called_with(
+            mocker.ANY, mocker.ANY, upload=upload, parallel_idx=mocker.ANY
+        )
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
         assert not mocked_3.called
         mocked_4.assert_called_with(commit.repository, upload)
         mocked_5.assert_called()
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_with_redis_lock_unobtainable(
         self, mocker, mock_configuration, dbsession, mock_redis, celery_app
     ):
@@ -588,6 +596,7 @@ class TestUploadProcessorTask(object):
         mocked_3.assert_called_with(countdown=179, max_retries=5)
         mocked_random.assert_called_with(100, 200)
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_with_expired_report(
         self,
         mocker,
@@ -774,6 +783,7 @@ class TestUploadProcessorTask(object):
             )
         mock_schedule_for_later_try.assert_called_with()
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_with_empty_report(
         self,
         mocker,
@@ -873,6 +883,7 @@ class TestUploadProcessorTask(object):
         assert upload_2.errors[0].report_upload == upload_2
         assert len(upload_1.errors) == 0
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_no_successful_report(
         self,
         mocker,
@@ -967,6 +978,7 @@ class TestUploadProcessorTask(object):
         assert upload_1.errors[0].error_params == {}
         assert upload_1.errors[0].report_upload == upload_1
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_softtimelimit(
         self,
         mocker,
@@ -1011,6 +1023,7 @@ class TestUploadProcessorTask(object):
             )
         assert commit.state == "error"
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_celeryerror(
         self,
         mocker,

@@ -175,8 +175,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commit_yaml,
         arguments_list,
         report_code,
-        parallel_idx,
-        in_parallel,
+        parallel_idx=None,
+        in_parallel=False,
         **kwargs,
     ):
         if not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repoid) and in_parallel:
@@ -351,10 +351,18 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     parent_task=self.request.parent_id,
                 ),
             )
-            return {
+
+            result = {
                 "processings_so_far": processings_so_far,
-                "parallel_incremental_result": parallel_incremental_result,
             }
+
+            if (
+                PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+                and in_parallel
+            ):
+                result["parallel_incremental_result"] = (parallel_incremental_result,)
+
+            return result
         except CeleryError:
             raise
         except Exception:
