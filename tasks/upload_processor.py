@@ -306,10 +306,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     f"{self.metrics_prefix}.save_incremental_report_results"
                 ):
                     parallel_incremental_result = self.save_incremental_report_results(
-                        report_service,
-                        commit,
-                        report,
-                        parallel_idx,
+                        report_service, commit, report, parallel_idx, report_code
                     )
                     parallel_incremental_result["upload_pk"] = arguments_list[0].get(
                         "upload_pk"
@@ -399,6 +396,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
             self.schedule_for_later_try()
+
+        # for the parallel experiment, we don't want to modify anything in the
+        # database, so we disable it here
         if not in_parallel:
             report_service.update_upload_with_processing_result(
                 upload_obj, processing_result
@@ -562,11 +562,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         return res
 
     def save_incremental_report_results(
-        self,
-        report_service,
-        commit,
-        report,
-        parallel_idx,
+        self, report_service, commit, report, parallel_idx, report_code
     ):
         commitid = commit.commitid
         archive_service = report_service.get_archive_service(commit.repository)
@@ -576,14 +572,16 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         chunks = report.to_archive().encode()
         _, files_and_sessions = report.to_database()
 
-        chunks_url = archive_service.write_chunks(
-            commitid, chunks, report_code=f"parallel/incremental/chunk{parallel_idx}"
+        chunks_url = archive_service.write_parallel_experiment_file(
+            commitid, chunks, report_code, f"incremental/chunk{parallel_idx}"
         )
-        files_and_sessions_url = archive_service.write_chunks(
+        files_and_sessions_url = archive_service.write_parallel_experiment_file(
             commitid,
             files_and_sessions,
-            report_code=f"parallel/incremental/files_and_sessions{parallel_idx}",
+            report_code,
+            f"incremental/files_and_sessions{parallel_idx}",
         )
+
         parallel_incremental_result = {
             "parallel_idx": parallel_idx,
             "chunks_path": chunks_url,

@@ -32,7 +32,13 @@ from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.bundle_analysis import BundleAnalysisReportService
-from services.redis import Redis, download_archive_from_redis, get_redis_connection
+from services.redis import (
+    PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+    Redis,
+    download_archive_from_redis,
+    get_parallel_upload_processing_session_counter_redis_key,
+    get_redis_connection,
+)
 from services.report import NotReadyToBuildReportYetError, ReportService
 from services.repository import (
     create_webhook_on_provider,
@@ -652,13 +658,33 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
             parallel_chunk_size = 1
             num_sessions = len(argument_list)
+            redis_key = get_parallel_upload_processing_session_counter_redis_key(
+                repoid=commit.repository.repoid, commitid=commit.commitid
+            )
 
-            # increment redis to claim session ids. TODO: what if the increment fails
+            # if session count expired due to TTL (which is unlikely for most cases), recalculate the
+            # session ids used and set it in redis.
+            if self.parallel_session_count_key_maybe_expired(
+                redis_key, upload_context.redis_connection
+            ):
+                report_service = ReportService(commit_yaml)
+                sessions = report_service.build_sessions(commit=commit)
+                upload_context.redis_connection.set(
+                    redis_key,
+                    max(sessions.keys()) + 1,
+                )
+
+            # increment redis to claim session ids
             parallel_session_id = (
                 upload_context.redis_connection.incrby(
-                    name="sessioncounterkey" + str(commit.commitid), amount=num_sessions
+                    name=redis_key,
+                    amount=num_sessions,
                 )
                 - num_sessions
+            )
+            upload_context.redis_connection.expire(
+                name=redis_key,
+                time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
             )
 
             parallel_processing_tasks = []
@@ -883,6 +909,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     extra=dict(repoid=repository.repoid, commit=commit.commitid),
                 )
         return False
+
+    def parallel_session_count_key_maybe_expired(self, redis_key, redis_connection):
+        if redis_connection.exists(redis_key):
+            return False
+        return True
 
 
 RegisteredUploadTask = celery_app.register_task(UploadTask())

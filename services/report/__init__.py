@@ -43,7 +43,11 @@ from helpers.exceptions import (
 from helpers.labels import get_labels_per_session
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
-from services.redis import get_redis_connection
+from services.redis import (
+    PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+    get_parallel_upload_processing_session_counter_redis_key,
+    get_redis_connection,
+)
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.raw_upload_processor import process_raw_upload
@@ -284,8 +288,8 @@ class ReportService(BaseReportService):
                 self.save_full_report(commit, report, report_code)
 
                 # Behind parallel processing flag, save the CFF report to GCS so the parallel variant of
-                # finisher can build off of it later. Makes the assumption that the CFFs takes the first
-                # 0 to i session ids where i is the number of CFFs to be carried forward.
+                # finisher can build off of it later. Makes the assumption that the CFFs occupy the first
+                # j to i session ids where i is the max id of the CFFs and j is some integer less than i.
                 if await PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value_async(
                     commit.repository.repoid
                 ):
@@ -294,8 +298,16 @@ class ReportService(BaseReportService):
                         report.sessions.keys()
                     )  # the largest id among the CFFs
                     get_redis_connection().incrby(
-                        name="sessioncounterkey" + str(commit.commitid),
+                        name=get_parallel_upload_processing_session_counter_redis_key(
+                            commit.repository.repoid, commit.commitid
+                        ),
                         amount=highest_session_id + 1,
+                    )
+                    get_redis_connection().expire(
+                        name=get_parallel_upload_processing_session_counter_redis_key(
+                            commit.repository.repoid, commit.commitid
+                        ),
+                        time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
                     )
 
         return current_report_row
@@ -790,7 +802,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def parse_raw_report_from_storage(
-        self, repo: Repository, upload: Upload, parallel_idx=None
+        self, repo: Repository, upload: Upload, is_parallel=False
     ) -> ParsedRawReport:
         """Pulls the raw uploaded report from storage and parses it do it's
         easier to access different parts of the raw upload.
@@ -800,7 +812,12 @@ class ReportService(BaseReportService):
         """
         archive_service = self.get_archive_service(repo)
         archive_url = upload.storage_path
-        parser = get_proper_parser(upload, parallel_idx)
+
+        # for the parallel experiment: since the parallel version runs after the old behaviour
+        # has finished, the current uploads have already been rewritten in a human readable
+        # format, so we need to use the legacy parser here for the parallel version.
+        parser = get_proper_parser(upload, use_legacy=is_parallel)
+
         raw_uploaded_report = parser.parse_raw_report_from_bytes(
             archive_service.read_file(archive_url)
         )
@@ -845,7 +862,7 @@ class ReportService(BaseReportService):
         )
         try:
             raw_uploaded_report = self.parse_raw_report_from_storage(
-                commit.repository, upload, parallel_idx
+                commit.repository, upload, is_parallel=parallel_idx is not None
             )
         except FileNotInStorageError:
             return ProcessingResult(
@@ -1088,19 +1105,15 @@ class ReportService(BaseReportService):
         commitid = commit.commitid
         archive_service = self.get_archive_service(commit.repository)
 
-        # save incremental results to archive storage
+        # save incremental results to archive storage,
         # upload_finisher will combine
         chunks = report.to_archive().encode()
         _, files_and_sessions = report.to_database()
 
-        archive_service.write_chunks(
-            commitid,
-            chunks,
-            report_code=f"parallel/chunks",  # TODO: actual report_code won't work anymore
+        archive_service.write_parallel_experiment_file(
+            commitid, chunks, report_code, "chunks"
         )
 
-        archive_service.write_chunks(
-            commitid,
-            files_and_sessions,
-            report_code=f"parallel/files_and_sessions",
+        archive_service.write_parallel_experiment_file(
+            commitid, files_and_sessions, report_code, "files_and_sessions"
         )

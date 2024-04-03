@@ -30,7 +30,10 @@ from database.models import (
     uploadflagmembership,
 )
 from services.archive import ArchiveService
-from services.redis import get_redis_connection
+from services.redis import (
+    get_parallel_upload_processing_session_counter_redis_key,
+    get_redis_connection,
+)
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -152,16 +155,17 @@ class FlushRepoTask(BaseCodecovTask, name="app.tasks.flush_repo.FlushRepo"):
 
     @sentry_sdk.trace
     def _delete_commits(self, db_session: Session, repoid: int) -> int:
-        commits_to_delete = (
-            db_session.query(Commit.commitid).filter_by(repoid=repoid).all()
-        )
+        commits_to_delete = db_session.query(Commit).filter_by(repoid=repoid).all()
         commit_ids_to_delete = [commit.commitid for commit in commits_to_delete]
 
         # Reset parallel session id redis key for each commit
-        for commit_id in commit_ids_to_delete:
+        for commit in commits_to_delete:
             get_redis_connection().set(
-                "sessioncounterkey" + str(commit_id), 0
-            )  # TODO: find a better redis key name
+                get_parallel_upload_processing_session_counter_redis_key(
+                    repoid=commit.repoid, commitid=commit.commitid
+                ),
+                0,
+            )
 
         delete_count = (
             db_session.query(Commit)

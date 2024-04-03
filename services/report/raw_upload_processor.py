@@ -193,9 +193,8 @@ def process_raw_upload(
     # Now we actually add the session to the original_report
     # Because we know that the processing was successful
     sessionid, session = original_report.add_session(
-        session, parallel_idx=parallel_idx
+        session, use_id_from_session=parallel_idx is not None
     )
-    sessionid, session = original_report.add_session(session)
     # Adjust sessions removed carryforward sessions that are being replaced
     session_manipulation_result = _adjust_sessions(
         original_report,

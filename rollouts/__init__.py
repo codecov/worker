@@ -13,4 +13,4 @@ USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID = Feature(
     "use_label_index_in_report_processing"
 )
 
-PARALLEL_UPLOAD_PROCESSING_BY_REPO = Feature("parallel_upload_processing", refresh=True)
+PARALLEL_UPLOAD_PROCESSING_BY_REPO = Feature("parallel_upload_processing")
