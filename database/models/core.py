@@ -147,7 +147,7 @@ class Repository(CodecovBaseModel):
     webhook_secret = Column(types.Text)
     activated = Column(types.Boolean, default=False)
 
-    # DEPRECATED - prefer GithubAppInstallation.is_repo_covered_by_isntallation
+    # DEPRECATED - prefer GithubAppInstallation.is_repo_covered_by_integration
     using_integration = Column(types.Boolean)
 
     owner = relationship(Owner, foreign_keys=[ownerid], back_populates="repositories")
