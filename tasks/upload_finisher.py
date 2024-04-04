@@ -465,9 +465,13 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         def merge_report(cumulative_report, obj):
             incremental_report = obj["report"]
             parallel_idx = obj["parallel_idx"]
+
             assert len(incremental_report.sessions) == 1
+            sessionid = next(iter(incremental_report.sessions))
+            incremental_report.sessions[sessionid].id = sessionid
+
             session_id, session = cumulative_report.add_session(
-                incremental_report.sessions[parallel_idx]
+                incremental_report.sessions[parallel_idx], use_id_from_session=True
             )
             session.id = session_id
 
@@ -502,7 +506,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             ),
         )
         report = functools.reduce(merge_report, unmerged_reports, report)
-        return report
+        return report  # TODO: should compute totals after all incremental reports get merged together
 
 
 RegisteredUploadTask = celery_app.register_task(UploadFinisherTask())

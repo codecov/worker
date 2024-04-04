@@ -31,6 +31,7 @@ from database.models import (
 )
 from services.archive import ArchiveService
 from services.redis import (
+    PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
     get_parallel_upload_processing_session_counter_redis_key,
     get_redis_connection,
 )
@@ -167,6 +168,7 @@ class FlushRepoTask(BaseCodecovTask, name="app.tasks.flush_repo.FlushRepo"):
                     repoid=repoid, commitid=id
                 ),
                 0,
+                ex=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
             )
         pipeline.execute()
 

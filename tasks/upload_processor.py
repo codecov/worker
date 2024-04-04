@@ -360,7 +360,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
                 and in_parallel
             ):
-                result["parallel_incremental_result"] = (parallel_incremental_result,)
+                result["parallel_incremental_result"] = parallel_incremental_result
 
             return result
         except CeleryError:
