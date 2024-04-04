@@ -6,6 +6,7 @@ from shared.bundle_analysis.storage import get_bucket_name
 
 from database.models import CommitReport
 from database.tests.factories import CommitFactory, UploadFactory
+from services.bundle_analysis import sentry_metrics
 from tasks.bundle_analysis_processor import BundleAnalysisProcessorTask
 
 
@@ -146,6 +147,58 @@ def test_bundle_analysis_processor_task_general_error(
         "services.bundle_analysis.BundleAnalysisReportService.process_upload"
     )
     process_upload.side_effect = Exception()
+
+    commit = CommitFactory.create()
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(commit_id=commit.id_)
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(
+        state="started",
+        storage_path="invalid-storage-path",
+        report=commit_report,
+    )
+    dbsession.add(upload)
+    dbsession.flush()
+
+    task = BundleAnalysisProcessorTask()
+    retry = mocker.patch.object(task, "retry")
+
+    with pytest.raises(Exception):
+        task.run_impl(
+            dbsession,
+            {"results": [{"previous": "result"}]},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={},
+            params={
+                "upload_pk": upload.id_,
+                "commit": commit.commitid,
+            },
+        )
+
+    assert upload.state == "error"
+    assert not retry.called
+
+
+def test_bundle_analysis_process_upload_general_error(
+    mocker,
+    dbsession,
+    mock_storage,
+    celery_app,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+
+    get_storage_client = mocker.patch("services.bundle_analysis.get_storage_client")
+    get_storage_client.side_effect = Exception()
 
     commit = CommitFactory.create()
     dbsession.add(commit)
