@@ -239,7 +239,7 @@ def test_bundle_analysis_process_upload_general_error(
                     },
                 },
                 "session_id": None,
-                "upload_id": 1,
+                "upload_id": upload.id_,
             },
         ],
     }
